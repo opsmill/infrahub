@@ -1,7 +1,7 @@
 # Data Model: Git remote writeback failure handling
 
 **Feature**: `dev/specs/ifc-3220-writeback-failure-handling`
-**Date**: 2026-10-02
+**Date**: 2026-10-02, revised after [critiques/critique-20261002-1500.md](critiques/critique-20261002-1500.md)
 
 > **Governance**: the "Schema changes" section is an "Ask First" change under `AGENTS.md`. It is a
 > database schema change, and the attributes and two mutations change the GraphQL schema. The
@@ -24,14 +24,14 @@ Every attribute has these settings in common:
 | `read_only` | `True` | Left out of the generated create, update and upsert inputs (FR-009). |
 | `optional` | `True` | No backfill, no `GRAPH_VERSION` bump. |
 | `default_value` | none | A null value means "never used". |
-| `display` | `extra` | Kept out of the main and list views. The repository page renders them in a section of its own, read from the default branch (FR-025). |
+| `display` | `extra` | Kept out of the main view. The frontend also keeps them out of the "extra" toggle and the column picker, and renders them in a section of their own, read from the default branch (FR-025). |
 | `allow_override` | `NONE` | A user schema cannot redefine them. |
 
 | Name | Kind | Label | Meaning |
 |---|---|---|---|
 | `delivery_status` | `Dropdown` | Push to remote | The required action. See "Status" below. A null value reads as `none`. |
 | `delivery_failure_cause` | `Dropdown` | Push failure cause | Why the last attempt failed. Null when nothing failed. |
-| `delivery_error` | `TextArea` | Push error | The remote's message of the last failed attempt, verbatim. |
+| `delivery_error` | `TextArea` | Push error | The remote's message of the last failed attempt, verbatim, with credentials removed. |
 | `delivery_queue` | `JSON` | Pending pushes | The queue. See `DeliveryQueue`. |
 | `delivery_held_regeneration` | `JSON` | Held regeneration | The held set. See `HeldRegeneration`. |
 | `delivery_last_abandonment` | `JSON` | Last abandoned push | See `AbandonmentRecord`. |
@@ -58,41 +58,61 @@ migration. The attribute names never carry the label.
 #### Failure cause
 
 `delivery_failure_cause` choices, backed by `RepositoryDeliveryFailureCause`. The required action is
-a function of the cause, so the frontend derives it, and no ninth attribute stores it.
+a function of the cause, so the frontend derives it, and no ninth attribute stores it. Every required
+action while something is pending ends with "Imports from the remote default branch are paused until
+the pending pushes clear."
 
 | Value | Label | Retried automatically | Required action |
 |---|---|---|---|
 | `remote-unreachable` | Remote unreachable | yes | Wait, or retry once the remote is reachable. |
 | `remote-advanced` | Remote moved during the push | yes | Wait, or retry. |
 | `record-failed` | Pushed, not recorded | yes | Wait, or retry. The remote has the content. |
+| `not-found` | Repository not found on the remote | no | Check the location, and that the credential can see the repository, then retry. |
 | `certificate` | Certificate verification failed | no | Fix the certificate configuration, then retry. |
 | `credentials` | Credentials rejected | no | Fix the credential, then retry. |
 | `permission` | Push refused by the remote | no | Grant push permission or lift the branch protection, then retry. |
-| `import-failed` | Import of the remote content failed | no | Fix the content on the remote, then retry. |
-| `replay-conflict` | A pending merge conflicts with the remote | no | Abandon. |
+| `import-failed` | Import of the delivered commit failed | for a database or connection fault | Fix the content on the remote, then retry. |
+| `replay-conflict` | A pending merge conflicts with the remote | no | Merge the source branch on the remote by hand, then retry. Or abandon. |
 | `source-discarded` | A source commit is no longer on the remote | no | Abandon. |
 | `destination-rewritten` | The remote branch history was rewritten | no | Abandon. |
 | `unclassified` | Unclassified failure | no | Read the message, then retry or abandon. |
 
-The last three named causes, together with `replay-conflict`, are the "unreplayable" causes. FR-020
-names `source-discarded`. FR-022 names `destination-rewritten`.
+`replay-conflict`, `source-discarded` and `destination-rewritten` are the "unreplayable" causes.
+FR-020 names `source-discarded`. FR-022 names `destination-rewritten`.
+
+#### Actions by status
+
+A delivery is **stale** when its status is `pending`, no retry is due in the future, and
+`last_progress_at` is older than 15 minutes (`research.md` R20).
+
+| Status | Retry | Abandon |
+|---|---|---|
+| `none` | refused: nothing pending | refused: nothing pending |
+| `pending`, attempt running or retry due | refused: an attempt is running | allowed. It waits for the attempt, then checks the version. |
+| `pending`, stale | allowed | allowed |
+| `action-required` | allowed | allowed |
 
 ---
 
 ## JSON values
 
 Each JSON attribute holds one Pydantic model, serialised with `model_dump(mode="json")` and parsed
-with `model_validate`. Each model has a `format` field, `1` today, so a later shape can be read
-next to an old one. The models live in `backend/infrahub/git/writeback/models.py`. Principle III
-forbids untyped dictionaries for this data.
+with `model_validate`. Each model has a `format` field, `1` today, so a later shape can be read next
+to an old one. The models live in `backend/infrahub/git/writeback/models.py`. Principle III forbids
+untyped dictionaries for this data.
 
 ### `DeliveryQueue`
 
 | Field | Type | Meaning |
 |---|---|---|
 | `format` | `Literal[1]` | |
-| `version` | `int` | Increases by one at every change. An abandonment names it. |
+| `version` | `int` | Increases by one at every change of `entries`. An abandonment names it. |
 | `entries` | `tuple[PendingMerge, ...]` | In merge order. |
+| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them (FR-005b). |
+| `last_progress_at` | `datetime \| None` | Moves at every enqueue, attempt start and recorded failure. Drives staleness. |
+| `attempt_started_at` | `datetime \| None` | The start of the last attempt. |
+| `retry_due_at` | `datetime \| None` | When a waiting automatic retry is due. Null when none waits. |
+| `import_owed_commit` | `str \| None` | A recorded commit whose import has not succeeded yet (FR-023). |
 
 ### `PendingMerge`
 
@@ -103,6 +123,7 @@ forbids untyped dictionaries for this data.
 | `source_git_branch` | `str` | The remote branch that holds the source commit. |
 | `source_commit` | `str` | The commit Infrahub imported on the source branch. |
 | `merged_at` | `datetime` | The merge time. |
+| `delete_source_git_branch` | `bool` | Set by the deletion guard. The delivery deletes the branch (FR-011). |
 
 Validation: `source_commit` is a full 40-character hexadecimal SHA. `source_git_branch` is never the
 destination branch.
@@ -112,13 +133,17 @@ destination branch.
 | Field | Type | Meaning |
 |---|---|---|
 | `format` | `Literal[1]` | |
-| `artifact_definition_ids` | `tuple[str, ...]` | Sorted, unique. |
-| `generator_definition_ids` | `tuple[str, ...]` | Sorted, unique. |
-| `python_attributes` | `tuple[HeldPythonAttribute, ...]` | `(kind, attribute)` pairs. Sorted, unique. |
-| `widen` | `bool` | Release as a full regeneration (R9, R10). |
+| `next_hold_seq` | `int` | The sequence of the next hold. Starts at 1. |
+| `artifact_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
+| `generator_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
+| `python_attributes` | `tuple[HeldPythonAttribute, ...]` | One item per `(kind, attribute)`. |
+| `widen_seq` | `int \| None` | Set when a full regeneration of the repository is owed (`research.md` R9, R10). |
 
-`HeldRegeneration.merge(other)` is a union. It never removes an identifier. `without(other)` removes
-the identifiers of a released snapshot and keeps the rest.
+`HeldItem` is `id: str`, `hold_seq: int`. `HeldPythonAttribute` is `kind: str`, `attribute: str`,
+`hold_seq: int`. A repeated hold of the same identifier keeps one item and raises its `hold_seq`.
+
+`HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence.
+`without(up_to_seq)` removes the items whose `hold_seq` is not above `up_to_seq`, and keeps the rest.
 
 No member, target or node id is stored (FR-014). The set grows with the number of definitions that
 the queued merges touched, not with the data.
@@ -133,6 +158,7 @@ the queued merges touched, not with the data.
 | `account_name` | `str` | Its name at that time. |
 | `queue_version` | `int` | The version the request named. |
 | `recorded_commit` | `str` | The commit the default branch kept. |
+| `import_owed_commit` | `str \| None` | An import that was still owed and was dropped with the queue. |
 | `entries` | `tuple[PendingMerge, ...]` | What was dropped. |
 
 Earlier records stay readable through the temporal history of the node.
@@ -148,10 +174,24 @@ Earlier records stay readable through the temporal history of the node.
 
 ---
 
+## The narrowed-selection cache
+
+Not persisted in the graph (FR-014). Written by the barrier at a hold, read by the release.
+
+| Property | Value |
+|---|---|
+| Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
+| Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or the coalesced Python submission. |
+| Time to live | 15 minutes |
+| Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
+| Miss | The release dispatches the identifier with no narrowing. A miss over-executes and never skips. |
+
+---
+
 ## State transitions
 
 ```text
-                 enqueue                       attempt fails (not retryable)
+                 enqueue                       attempt fails (not retryable, or last retry)
    none ───────────────────────▶ pending ─────────────────────────────▶ action-required
     ▲                             │  ▲                                     │
     │ queue empty after a         │  │ attempt fails (retryable),          │ retry submitted,
@@ -161,26 +201,33 @@ Earlier records stay readable through the temporal history of the node.
 
 | From | Event | To | Writes |
 |---|---|---|---|
-| any | enqueue | `pending` | append entry, bump version |
-| `pending` | attempt starts | `pending` | nothing else |
-| `pending` | retryable failure, retries left | `pending` | cause, error |
-| `pending` | not retryable, or last retry failed | `action-required` | cause, error |
-| `action-required` | retry flow starts | `pending` | nothing else |
-| `pending` | barrier holds | unchanged | union into the held set |
-| any | delivery clears the snapshot | `none`, or `pending` if entries remain | remove snapshot entries, remove released held ids, last delivered commit, clear cause and error when `none` |
-| any | abandonment | `none`, or `pending` if entries remain | remove snapshot entries, abandonment record, remove released held ids, clear cause and error when `none` |
+| any | enqueue | `pending` | append entry, bump version, `last_progress_at` |
+| `pending`, `action-required` | attempt starts | `pending` | `attempt_started_at`, `last_progress_at`, clear `retry_due_at` |
+| `pending` | retryable failure, not the final attempt | `pending` | cause, error, `retry_due_at`, `last_progress_at` |
+| `pending` | not retryable, or final attempt | `action-required` | cause, error, `last_progress_at`, clear `retry_due_at` |
+| `pending` | an import becomes owed | unchanged | `import_owed_commit` |
+| `pending` | the owed import succeeds | unchanged | clear `import_owed_commit` |
+| any but `none` | barrier holds | unchanged | items with the next sequence |
+| any | delivery clears the snapshot | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, remove held items up to the snapshot sequence, last delivered commit, clear cause and error when `none` |
+| any but `none` | abandonment | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record. The held set stays until the release. |
+| `none` | abandonment release done | `none` | remove held items up to the snapshot sequence |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
+| any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch |
 
 ### Invariants
 
 1. The status is `none` if and only if the queue is empty.
-2. A non-empty held set implies a non-empty queue. The queue removal and the held-set removal are
-   one save, so no crash can leave held work behind an empty queue.
+2. A non-empty held set behind an empty queue, or an owed import behind an empty queue, means a
+   release or an import is owed. The recovery check of `research.md` R20 starts a delivery flow for
+   it. Nothing else may clear the held set.
 3. The queue version only increases.
 4. Entries leave the queue only by a delivery that observed them on the remote, or by an
    abandonment that writes its record in the same save (FR-009, SC-006).
-5. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
-6. No write emits a node mutation event (FR-026).
+5. An entry id that left the queue is never appended again while it is in `removed_entry_ids`.
+6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
+7. A hold recorded after a release's snapshot survives that release's clear (FR-015).
+8. `import_owed_commit` is saved before the commit it names is recorded (`research.md` R4 step 9).
+9. No write emits a node mutation event (FR-026).
 
 ---
 
@@ -191,12 +238,14 @@ unless stated otherwise.
 
 | Type | Kind | Fields | Meaning |
 |---|---|---|---|
-| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `last_delivered_commit` | The whole state of one repository, as the store reads it. |
-| `DeliveryFailure` | frozen dataclass | `cause`, `retryable: bool`, `message` | The classifier's output. |
-| `DeliveryOutcome` | `StrEnum` | `nothing-pending`, `delivered`, `observed`, `failed`, `unreplayable` | What one attempt did. |
+| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `last_delivered_commit` | The whole state of one repository, as the store reads it. Exposes `is_stale(now)`. |
+| `DeliveryStage` | `StrEnum` | `push`, `record`, `import`, `replay` | Where an attempt failed. An input of the classifier. |
+| `DeliveryFailure` | frozen dataclass | `cause`, `retryable: bool`, `message` | The classifier's output. `message` is already scrubbed. |
+| `DeliveryOutcome` | `StrEnum` | `nothing-pending`, `delivered`, `observed`, `released`, `failed`, `unreplayable`, `deferred` | What one attempt did. `deferred` means a retry chain was already due. |
 | `DeliveryAttemptResult` | frozen dataclass | `outcome`, `commit: str \| None`, `failure: DeliveryFailure \| None` | The service's return value. |
-| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `unknown` | Carried on `RepositoryPushRejectedError`. |
-| `OwnedRegeneration` | frozen dataclass, in `core/merge/regeneration_barrier.py` | `repository_id: str \| None`, `held: HeldRegeneration`, `request: object` | One barrier candidate: what to hold, who owns it, and the request to dispatch if admitted. |
+| `Actor` | frozen dataclass | `account_id`, `account_name` | Who requested an abandonment. |
+| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `unknown` | Carried on `RepositoryPushRejectedError`, from the `PushInfo` flags. |
+| `OwnedRegeneration` | frozen dataclass, in `core/merge/regeneration_barrier.py` | `repository_id: str \| None`, `held: HeldRegeneration`, `request: RequestT` | One barrier candidate: what to hold, who owns it, and the narrowed request to dispatch if admitted. |
 
 ### New exceptions
 
@@ -206,9 +255,13 @@ In `backend/infrahub/exceptions.py`:
 |---|---|---|---|
 | `RepositoryPushRejectedError` | `RepositoryError` | `reason: PushRejectionReason`, `remote_message: str` | Today's per-ref rejection wording, unchanged. |
 | `RepositoryTLSError` | `RepositoryConnectionError` | none | Today's TLS wording, unchanged. |
+| `RepositoryNotFoundError` | `RepositoryConnectionError` | none | Today's connection wording, unchanged. |
+| `DeliveryQueueChangedError` | `ValidationError` | none | "The pending pushes of repository <name> changed since version <n>; reload and try again." |
+| `NothingPendingError` | `ValidationError` | none | "Repository <name> has nothing pending to push." |
 
-`InfrahubRepositoryBase._raise_enriched_error` maps `RepositoryTLSError` to `ERROR_CONNECTION`, as
-the parent type maps today.
+Both operational-status maps (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
+`message_bus/operations/git/repository.py::connectivity`) resolve the status with `isinstance`, most
+specific first, so the two connection subtypes keep `ERROR_CONNECTION`.
 
 ---
 
@@ -218,12 +271,15 @@ Every new field is optional with a default, so a run queued by the previous code
 
 | Model | Module | Field | Type |
 |---|---|---|---|
-| `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None` |
+| `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
-| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids` | `list[str] \| None = None` |
-| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids` | `list[str] \| None = None` |
+| `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
+| `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
 | `GitRepositoryDeliveryRetry` | `git/models.py`, new | `repository_id`, `repository_name` | `str` |
 | `GitRepositoryDeliveryAbandon` | `git/models.py`, new | `repository_id`, `repository_name`, `queue_version` | `str`, `str`, `int` |
+
+The actor of an abandonment comes from the workflow's `InfrahubContext`, not from the payload, so a
+caller cannot name another account.
 
 ### New workflows
 
@@ -247,9 +303,9 @@ regeneration could not be resolved".
 | Thing | Why |
 |---|---|
 | `operational_status` | It describes whether the remote is reachable. A push failure has never written it, and two tests pin that. |
-| `sync_status` | Delivery failures are not folded into it, so INFP-671 can redefine it. |
+| `sync_status` | Delivery failures are not folded into it, so INFP-671 can redefine it. An import failure of a delivered commit still sets it, as any import failure does. |
 | `commit` | It is still written only once the remote holds the commit (FR-001). |
 | `CoreReadOnlyRepository`, `CoreGenericRepository` | A read-only repository never delivers. |
-| `NodeMutationOrigin` | No new member. The store emits no node events at all (R2). |
-| `EventType` | No new member. The abandonment record lives on the repository (R8). |
+| `NodeMutationOrigin` | No new member. The store emits no node events at all (`research.md` R2). |
+| `EventType` | No new member. The abandonment record lives on the repository (`research.md` R8). |
 | `GRAPH_VERSION` | Optional attributes are added by the schema migration of `infrahub upgrade`. |

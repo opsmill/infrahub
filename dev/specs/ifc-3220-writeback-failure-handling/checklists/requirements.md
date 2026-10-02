@@ -56,3 +56,12 @@ these names to judge the decisions. Marking these items a clean pass would be th
 - FR-015 first promised "exactly one" release unconditionally. A failure between the dispatch and the
   clear can repeat a release, and over-execution is the accepted direction. FR-015 and SC-004 now
   state the one-sided guarantee.
+
+**Validation pass 2**, after the critique of 2026-10-02, re-checked every item. The spec changed in
+these ways, and every item still holds:
+
+- FR-024 no longer re-imports on abandonment. The import cannot do what the first draft promised.
+- FR-005b and FR-027 are added, and FR-004, FR-005, FR-011, FR-014 to FR-017 and FR-023 are
+  sharpened.
+- SC-001 is reworded so that it can be met, and SC-008 protects the success path.
+- "Merge follow-up path" is defined in "Terms", so FR-016 and FR-017 have a testable scope.

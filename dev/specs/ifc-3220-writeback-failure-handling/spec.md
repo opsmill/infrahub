@@ -45,6 +45,7 @@ this work.
 | **Held regeneration** | Regeneration work that waits until the delivery queue of its repository clears. |
 | **Release** | The dispatch of held regeneration after the queue clears. |
 | **Abandonment** | A deliberate decision by a user to stop delivering the pending queue. |
+| **Merge follow-up path** | The regeneration that a merge starts itself: the post-merge dispatcher of generators and artifacts, the coalesced recompute and its chained levels, and the schema-scoped recompute that a schema-changing merge starts. |
 
 In this codebase a branch merge always targets Infrahub's default branch. The destination of every
 delivery is therefore the repository's configured default branch on the remote, and the delivery
@@ -62,24 +63,28 @@ words, and what the operator must do. The operator needs no worker log and no or
 and nobody knows that recovery is necessary.
 
 **Independent Test**: Install a server-side rejection on the default branch of a live remote. Merge
-a branch that is synchronised with Git. Read the repository on the default branch. It must show one
-pending delivery, the status "action required", the cause "permission or branch protection" and the
-remote's rejection message.
+a branch that is synchronised with Git and that changes a repository file. Read the repository on
+the default branch. It must show one pending delivery, the status "action required", the cause
+"permission or branch protection" and the remote's rejection message.
 
 **Acceptance Scenarios**:
 
 1. **Given** a read-write repository whose remote rejects pushes to its default branch, **When** a
-   branch synchronised with Git merges, **Then** the repository reports one pending delivery for
-   that merge, with the status "action required".
+   branch synchronised with Git and carrying repository changes merges, **Then** the repository
+   reports one pending delivery for that merge, with the status "action required".
 2. **Given** the same repository, **When** a user reads its delivery state, **Then** the state
    carries the cause and the remote's rejection message exactly as the remote sent it.
 3. **Given** the same repository, **When** a user reads its commit on the default branch, **Then**
-   the commit is unchanged and equals the commit on the remote.
+   the commit is unchanged, and the remote has it.
 4. **Given** a merge whose first delivery attempt succeeds, **When** a user reads the repository,
    **Then** it reports nothing pending and no error.
 5. **Given** a pending delivery, **When** a user views the repository from a branch that is not the
    default branch, **Then** the view shows the current delivery state of the default branch, and
    never a stale copy that the branch inherited when it was created.
+6. **Given** a pending delivery, **When** a user reads the required action, **Then** it also says
+   that imports from the remote default branch are paused until the pending pushes clear.
+7. **Given** a merge whose branch changed only data and no repository file, **When** it merges,
+   **Then** no delivery is queued for it.
 
 ---
 
@@ -105,8 +110,8 @@ must equal the remote head, and nothing must be pending.
 2. **Given** one pending merge, **When** a second branch merges, **Then** the second merge is
    appended to the queue, and the first one stays in the queue.
 3. **Given** a remote default branch that advanced during the outage, **When** the retry runs,
-   **Then** the replay merges onto the fetched remote head, no force-push happens, and the remote
-   commits that Infrahub had not imported are imported before the delivered commit is recorded.
+   **Then** the replay merges onto the fetched remote head, no force-push happens, the delivered
+   commit is recorded, and the repository objects of that commit are imported.
 4. **Given** a push that the remote accepted while the recording failed, **When** the next attempt
    runs, **Then** Infrahub sees that the remote already holds the merges, records the commit, clears
    the queue and pushes nothing again.
@@ -122,9 +127,9 @@ must equal the remote head, and nothing must be pending.
 
 ### User Story 3 - Regeneration waits for the final content and runs once (Priority: P1)
 
-While a repository has a pending delivery, the post-merge regeneration of the definitions that this
-repository owns waits. When the queue clears, the held work runs once, against the commit that is
-then on the remote. The definitions of other repositories regenerate as usual.
+While a repository has a pending delivery, the regeneration that a merge starts for the definitions
+this repository owns waits. When the queue clears, the held work runs once, against the commit that
+is then on the remote. The definitions of other repositories regenerate as usual.
 
 **Why this priority**: Without this, a failed push produces artifacts and computed values from a
 commit that does not match the merged data, and a recovery pays the regeneration cost twice.
@@ -140,26 +145,31 @@ the delivery clears, then exactly once, against the delivered commit.
    follow-up selects definitions of both, **Then** the definitions of Y are dispatched normally and
    the definitions of X are held.
 2. **Given** held work for X, **When** the queue of X clears by delivery, **Then** exactly one
-   release for X runs. It covers every held definition with no member or target narrowing, and it
-   runs against the delivered commit.
+   release for X runs, against the delivered commit. It covers every held definition.
 3. **Given** a delivery that completes before the merge follow-up runs, **When** the follow-up runs,
    **Then** it dispatches normally, holds nothing, and no release runs.
 4. **Given** a held definition that a user deletes before the release, **When** the release runs,
-   **Then** it widens to full regeneration of the branch instead of skipping the gap.
+   **Then** it widens to full regeneration of that repository's definitions instead of skipping the
+   gap.
 5. **Given** pending deliveries on two repositories, **When** each queue clears, **Then** each
    repository releases its own held work, independently.
 6. **Given** a Python-transform computed attribute whose transform belongs to X, **When** the
-   coalesced recompute of a merge runs, **Then** the recompute of that attribute is held. Jinja2
-   computed attributes, display labels and human-friendly ids are never held.
+   coalesced recompute of a merge runs, or the schema-scoped recompute of a schema-changing merge
+   runs, **Then** the recompute of that attribute is held. Jinja2 computed attributes, display
+   labels and human-friendly ids are never held.
 7. **Given** held work for X, **When** a user abandons the queue of X, **Then** the release still
    runs, exactly once.
+8. **Given** a merge whose first delivery attempt succeeds within the short hold window, **When** the
+   held work is released, **Then** it dispatches the same targets, members and node ids that the
+   merge would have dispatched with no pending delivery.
 
 ---
 
 ### User Story 4 - Transient faults heal, policy faults stop at once (Priority: P2)
 
-A network blip during a push resolves without anyone. A missing permission or a branch protection
-does not retry for an hour. The repository says at once what to fix.
+A network blip during a push resolves without anyone. A worker that dies during a delivery does not
+leave it pending for ever. A missing permission or a branch protection does not retry for an hour.
+The repository says at once what to fix.
 
 **Why this priority**: It turns a momentary fault into zero user actions, and a policy fault into
 one clear action. It depends on the queue and the status of P1.
@@ -179,17 +189,23 @@ must become "action required" after one attempt, with no automatic retry.
    **Then** no automatic retry runs and the status is "action required" at once.
 4. **Given** an automatic retry that waits to run, **When** a user reads the status, **Then** the
    status is "pending", not "action required".
+5. **Given** a delivery attempt lost to a worker restart, **When** the next synchronisation cycle
+   runs after the attempt went stale, **Then** a new attempt starts with no user action, and a user
+   can also retry at once.
+6. **Given** a push to a remote that stops answering, **When** the bound of the Git command expires,
+   **Then** the attempt fails as transient and does not hang.
 
 ---
 
 ### User Story 5 - Abandon an undeliverable change, with a record (Priority: P2)
 
 Sometimes the queue cannot be delivered. For example, the remote default branch received a change
-that conflicts with a pending merge. A user with write access abandons the queue on purpose. The
-repository returns to a working state, and the system records what was dropped, by whom and when.
+that conflicts with a pending merge. The user can resolve the conflict on the remote and retry. Or a
+user with write access abandons the queue on purpose. The repository returns to a working state, and
+the system records what was dropped, by whom and when.
 
-**Why this priority**: Without it, a stuck repository stays stuck for ever. It ships after P1
-because it matters only once deliveries can be pending.
+**Why this priority**: Without it, a stuck repository stays stuck for ever. It ships with the MVP,
+because the queue must have an exit from the first day.
 
 **Independent Test**: Make a pending merge conflict with a change pushed directly to the remote.
 Trigger a retry. It must fail at that merge and push nothing. Abandon the queue. The queue must be
@@ -199,18 +215,23 @@ empty, the record must name the merges, the user and the time, and the held rege
 
 1. **Given** a queue whose replay conflicts with the remote head, **When** a retry runs, **Then** it
    stops at that merge, pushes nothing, and sets the status "action required" with the cause "replay
-   conflict". The required action is to abandon.
-2. **Given** a pending queue, **When** a user with write access abandons it and names the queue
+   conflict". The required actions are: merge the source branch on the remote by hand and retry, or
+   abandon.
+2. **Given** a conflicting entry that a user merged by hand on the remote, **When** a retry runs,
+   **Then** the system sees that the remote holds that entry and clears it with no replay.
+3. **Given** a pending queue, **When** a user with write access abandons it and names the queue
    state that the user saw, **Then** the queue clears, a record of the abandoned merges, the user
    and the time is stored, and the held regeneration is released.
-3. **Given** a queue that changed after the user read it, **When** that user abandons it, **Then**
+4. **Given** a queue that changed after the user read it, **When** that user abandons it, **Then**
    the system refuses the request as stale.
-4. **Given** an abandonment, **When** it completes, **Then** the repository-owned objects on the
-   default branch match the content of the commit recorded for that branch, before the release
-   runs.
-5. **Given** an abandonment, **When** it completes, **Then** nothing was removed from the remote,
+5. **Given** an abandonment, **When** it completes, **Then** the repository says that the default
+   branch can hold repository objects that the recorded commit lacks, and it offers the existing
+   reimport of the current commit.
+6. **Given** an abandonment, **When** it completes, **Then** nothing was removed from the remote,
    and the remote source branches still exist.
-6. **Given** any path other than a delivery or an abandonment, including the generic repository
+7. **Given** any repository content, **When** a user abandons, **Then** the abandonment does not fail
+   because of that content.
+8. **Given** any path other than a delivery or an abandonment, including the generic repository
    update, **When** it runs, **Then** it cannot change or clear the delivery state.
 
 ---
@@ -223,19 +244,26 @@ remote is broken.
 
 **Why this priority**: If the source branch is deleted, the source commit can be garbage-collected
 and the delivery becomes impossible. With `delete_git_branch_after_merge` enabled this path is
-reachable today.
+reachable today, on the success path as well, because the deletion and the push are submitted
+together.
 
 **Independent Test**: Enable branch deletion after merge. Reject pushes. Merge a branch. The remote
-source branch must still exist after the deletion flow ran. Clear the queue. A later deletion must
-proceed normally.
+source branch must still exist after the deletion flow ran, and the next synchronisation must not
+import it again as a new branch. Lift the rejection and retry. The remote source branch must then be
+deleted.
 
 **Acceptance Scenarios**:
 
 1. **Given** a pending delivery whose source is remote branch S, **When** Infrahub would delete S
-   from the remote, **Then** it does not delete S, and it logs why.
-2. **Given** no pending delivery that references S, **When** Infrahub deletes S, **Then** the
+   from the remote, **Then** it does not delete S, it logs why, and it deletes S once the delivery
+   of that entry succeeds.
+2. **Given** a pending delivery whose source is remote branch S, **When** the synchronisation runs,
+   **Then** it does not import S as a new Infrahub branch.
+3. **Given** a pending delivery whose source is S, **When** a user abandons it, **Then** S stays on
+   the remote.
+4. **Given** no pending delivery that references S, **When** Infrahub deletes S, **Then** the
    deletion proceeds as it does today.
-3. **Given** a pending delivery on repository X, **When** a user merges another branch, **Then** the
+5. **Given** a pending delivery on repository X, **When** a user merges another branch, **Then** the
    merge is not blocked.
 
 ---
@@ -273,27 +301,36 @@ unreplayable, with a cause that names the discarded source commit.
 - **A second merge lands while a delivery is outstanding.** It is appended to the queue and never
   replaces an earlier entry. One retry delivers both.
 - **The pending queue becomes unreplayable.** The remote destination advanced and a replayed merge
-  now conflicts. The retry fails at that entry and cannot succeed. Abandonment is the only exit. See
-  "Decisions Taken During Specification".
+  now conflicts. The retry fails at that entry and cannot succeed as it is. Inside Infrahub,
+  abandonment is the only exit. Outside Infrahub, a user can merge the source branch on the remote
+  by hand, and the next retry clears the entry by observation. See "Decisions Taken During
+  Specification".
 - **The worker that performed the merge never returns.** Nothing on a worker's disk is
   load-bearing. The queue names merge inputs that are on the remote, so any worker can perform the
-  delivery.
+  delivery. The next synchronisation cycle starts a new attempt once the lost one is stale.
 - **The remote destination advanced between the failure and the retry.** The replay merges onto the
-  freshly fetched remote head. No force-push happens. Infrahub imports the remote commits it had not
-  imported before it records the delivered commit.
+  freshly fetched remote head. No force-push happens. Infrahub records the delivered commit, then
+  imports it, with a durable obligation to import that survives a crash.
 - **The periodic synchronisation runs while a delivery is pending.** It does not advance the
   destination branch of that repository. A desired-state import of the remote head would delete
   the merged repository objects that are not delivered yet. The delivery imports the remote commits
   instead. Other branches synchronise as usual.
+- **A worker clones the repository while a delivery is pending.** The seed import after a fresh
+  clone skips the default branch, for the same reason.
 - **The remote source branch would be deleted after the merge.** Refused while a delivery that
   references it is outstanding, so the commit needed for the replay cannot be garbage-collected. The
-  remote branch stays after the queue clears. It is not deleted later.
+  synchronisation does not import that branch again as a new Infrahub branch while it is kept. The
+  delivery deletes it once the entry is delivered. An abandonment keeps it.
 - **The delivery succeeds but the recording fails.** The destination worktree is reset behind the
   remote, and the queue stays. The next attempt sees that the remote already holds the merges. It
   records the commit and clears the queue by observation, never by replay.
-- **The import fails after a successful push.** The remote received content that Infrahub cannot
-  import. The attempt fails with the cause "import failed" and the remote content stays. A retry
-  after the content is fixed on the remote imports and records it.
+- **The import fails after a successful push.** The commit is recorded, and the obligation to
+  import stays. A database or connection fault retries. A content fault stops with the cause "import
+  failed" until the content is fixed on the remote and a retry runs.
+- **A merge lands during the import of a delivered commit.** The desired-state import can delete the
+  new merge's repository objects, which the delivered commit does not hold yet. The obligation to
+  import then stays, and the next attempt imports a commit that holds them. Their object ids can
+  change. A merge racing a synchronisation import has the same exposure today.
 - **A branch is left ahead of its remote.** The reset on failure prevents the once-a-minute "update
   detected but commit unchanged" loop.
 - **The delivery completes before the merge follow-up runs.** The barrier sees an empty queue and
@@ -301,19 +338,40 @@ unreplayable, with a cause that names the discarded source commit.
 - **Several repositories fail delivery after the same merge.** Each keeps its own queue and its own
   held set, and each releases independently.
 - **A held definition is deleted before the release.** It is skipped, and its absence widens the
-  release to full regeneration of the branch instead of leaving a silent gap.
+  release to full regeneration of that repository's definitions instead of leaving a silent gap.
 - **A failure between the release dispatch and the clear of the held set.** The release can run a
   second time. It can never be lost. Over-execution is the accepted direction.
+- **The same definition is held again during a release.** A hold that arrives after the release
+  started survives the clear, so the definition is released again later.
 - **A branch forked from the default branch while a delivery is pending.** A branch-local value is
   read through the branch it forked from, so the new branch sees a copy of the delivery state as it
-  was at the fork. The product never acts on that copy and never presents it as current.
+  was at the fork. The product never acts on that copy and never presents it as current. The new
+  branch's graph also holds the pending merges' objects, while its Git branch does not hold their
+  files. A later import of that branch deletes them on the branch. The reimport of the current
+  commit refuses on every branch while a delivery is pending. A synchronisation import of such a
+  branch is a known limitation, documented.
+- **A git-synced branch that changed only data.** It carries no repository content. When the branch
+  never recorded a commit of its own, or its own commit equals the default branch's commit at its
+  fork point, no entry is queued.
+- **A staging repository.** It is never queued. It is delivered when its proposed change merges, as
+  today.
+- **A repository with no remote.** The merge happens locally and is recorded, as today. Nothing is
+  queued.
 - **An abandonment while a delivery attempt runs.** The two never interleave. The abandonment waits
-  for the attempt or is refused, and it then checks the queue state again.
+  for the attempt, then checks the queue version again. If the attempt delivered entries, the
+  version moved and the abandonment is refused as stale.
 - **An abandonment after the remote accepted a push that Infrahub did not record.** Abandonment never
   removes content from the remote. The remote keeps the merged content, and the next synchronisation
   imports it.
-- **A direct edit while a delivery is pending.** A live edit runs transforms against the recorded
-  commit, which is the commit on the remote. It is not held. Only the merge follow-up is held.
+- **An abandonment of a merge whose repository objects stay in the graph.** The import never deletes
+  artifact definitions, and the recorded commit lacks the abandoned merges' files. The released
+  regeneration can then fail for those definitions. The repository says so and offers the reimport
+  of the current commit.
+- **A late first attempt of an abandoned merge.** A merge flow that starts after its entry was
+  abandoned does not put the entry back.
+- **A direct edit, or a live event of another writer, while a delivery is pending.** It runs
+  transforms against the recorded commit, which is the commit on the remote. It is not held. Only
+  the merge follow-up path is held.
 - **Concurrent attempts.** The first attempt of a merge and a manual retry can overlap. They run one
   after the other. The second one finds nothing pending and does nothing.
 - **The Infrahub source branch is deleted after the merge.** The queue references the source by its
@@ -330,8 +388,8 @@ unreplayable, with a cause that names the discarded source commit.
 ## Requirements *(mandatory)*
 
 The identifiers FR-001 to FR-019 match the source PRD. FR-020 and FR-021 are FR-015 and FR-016 of
-the IFC-3210 PRD, which that epic defers to this one. FR-005a and FR-022 to FR-026 are added here.
-"Decisions Taken During Specification" says why each one is added.
+the IFC-3210 PRD, which that epic defers to this one. FR-005a, FR-005b and FR-022 to FR-027 are
+added here. "Decisions Taken During Specification" says why each one is added.
 
 ### Functional Requirements
 
@@ -350,13 +408,17 @@ system, and the new delivery path must keep them true.*
   raised error.
 - **FR-004**: The system MUST retry a transient failure automatically, a bounded number of times. It
   MUST NOT automatically retry a credential, permission or branch-protection failure. A failure
-  after the remote accepted the push counts as transient.
+  after the remote accepted the push counts as transient. Every Git command of a delivery MUST be
+  bounded in time, so that a remote that stops answering produces a transient failure.
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
-  imported, and never the merge result.
+  imported, and never the merge result. A merge that carries no repository content, a staging
+  repository and a repository with no remote MUST NOT be queued.
 - **FR-005a**: The system MUST record a merge in the queue before the first delivery attempt for it
-  starts, and before the merge follow-up consults the regeneration barrier.
+  starts, and before the merge follow-up consults the regeneration barrier. A failure to record one
+  repository's entry MUST NOT stop the delivery of any repository.
+- **FR-005b**: An entry that left the queue MUST NOT come back.
 - **FR-006**: The system MUST NOT force-push to the remote under any circumstance.
 
 #### Recovery
@@ -373,7 +435,9 @@ system, and the new delivery path must keep them true.*
 - **FR-010**: The system MUST NOT block a branch merge because a repository's delivery is
   outstanding.
 - **FR-011**: The system MUST NOT delete a remote branch while a delivery that references its commit
-  is outstanding.
+  is outstanding. When the system refused a deletion that was requested, it MUST delete the branch
+  once the referencing entry is delivered, and MUST NOT delete it when the entry is abandoned. While
+  the branch is kept, the system MUST NOT import it as a new Infrahub branch.
 - **FR-012**: When a push succeeded but recording it did not, the system MUST clear the pending
   queue by observing that the remote already contains the merges, and never by replaying them.
 
@@ -383,23 +447,28 @@ system, and the new delivery path must keep them true.*
   with a pending delivery, partitioned by the repository that owns each definition. It MUST dispatch
   the rest of the selection normally.
 - **FR-014**: The system MUST persist held work as identifiers only: definition identifiers, without
-  member or target narrowing. A long recovery then cannot dispatch a stale target set.
+  member or target narrowing. A long recovery then cannot dispatch a stale target set. A narrowed
+  selection MAY be kept outside the persisted state for a short, bounded time, and used only by a
+  release inside that time.
 - **FR-015**: When the pending queue of a repository clears, by delivery or by abandonment, the
   system MUST dispatch exactly one release for that repository, covering the work it held. A failure
-  between the dispatch and the clear MAY repeat the release. It MUST NOT drop it.
+  between the dispatch and the clear MAY repeat the release. It MUST NOT drop it. A hold recorded
+  after a release started MUST survive that release's clear.
 - **FR-016**: A deferred regeneration MUST always reach a release. No path may clear the held work
-  without dispatching it. An unresolvable held set MUST widen to full branch regeneration and MUST
-  NOT be skipped. Every dispatch on the merge follow-up path, a release included, MUST pass through
-  the barrier.
-- **FR-017**: The coalesced recompute path MUST consult the same barrier for transform-based
-  computed attributes, so that a transform never runs on the merge follow-up path against a
-  repository with a pending delivery.
+  without dispatching it. An unresolvable held set MUST widen to full regeneration of the owning
+  repository's definitions and MUST NOT be skipped. Every dispatch on the merge follow-up path, a
+  release included, MUST pass through the barrier. When the barrier cannot read the delivery state,
+  it MUST dispatch and log, never hold blindly.
+- **FR-017**: The coalesced recompute and the schema-scoped recompute MUST consult the same barrier
+  for transform-based computed attributes, so that a transform never runs on the merge follow-up
+  path against a repository with a pending delivery. Recomputes that live events of other writers
+  start, and webhooks that run a transform, are not held.
 
 #### Visibility
 
 - **FR-018**: The system MUST report the cause and the required action for a failed delivery on the
-  repository itself, with the remote's message verbatim. Worker logs and orchestrator access MUST NOT
-  be necessary.
+  repository itself, with the remote's own message verbatim and free of credentials. Worker logs and
+  orchestrator access MUST NOT be necessary.
 - **FR-019**: The delivery state MUST NOT appear in a branch diff or a proposed change, and MUST NOT
   be able to produce a merge conflict.
 
@@ -419,19 +488,24 @@ system, and the new delivery path must keep them true.*
 #### Consistency with the import
 
 - **FR-023**: While a delivery is pending for a branch, the system MUST NOT import that branch from
-  the remote by any other path. When a delivery merges remote commits that the system has not
-  imported, the system MUST import the delivered commit before it records it.
-- **FR-024**: When a queue is abandoned, the system MUST return the repository-owned objects on the
-  destination branch to the content of the commit recorded for that branch, before it releases the
-  held regeneration.
+  the remote by any other path: the synchronisation, the seed import after a fresh clone, and the
+  reimport of the current commit. When a delivery records a commit that holds remote commits the
+  system has not imported, the system MUST keep a durable obligation to import that commit until an
+  import of it succeeds.
+- **FR-024**: An abandonment MUST NOT fail because of repository content. After an abandonment, the
+  repository MUST say that the default branch can hold repository objects that the recorded commit
+  lacks, and MUST offer the existing reimport of the current commit.
 
-#### Location and side effects of the state
+#### Location, liveness and side effects of the state
 
 - **FR-025**: The system MUST read and write the delivery state only on the branch that is the
   destination of the delivery. A branch that sees an inherited copy of that state MUST NOT act on
   it, and the repository view MUST NOT present the copy as current.
 - **FR-026**: A write of delivery state by the system MUST NOT start the automations that a direct
   user edit of the repository starts.
+- **FR-027**: A pending delivery MUST NOT stay pending without a running or scheduled attempt. When
+  an attempt is lost, the system MUST start a new one within a bounded time, and a user MUST be able
+  to retry at once. The same check MUST release held work that waits behind an empty queue.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -443,14 +517,15 @@ system, and the new delivery path must keep them true.*
   - **Delivery status**: names the required action. Nothing pending, pending (an attempt runs or an
     automatic retry waits), or action required.
   - **Failure cause**: why the last attempt failed. At least remote unreachable, credentials,
-    permission or branch protection, replay conflict, source commit no longer on the remote,
-    destination history rewritten, import failed, and unclassified.
-  - **Error message**: the remote's message, verbatim.
+    permission or branch protection, repository not found, certificate, replay conflict, source
+    commit no longer on the remote, destination history rewritten, import failed, and unclassified.
+  - **Error message**: the remote's message, verbatim, with credentials removed.
   - **Delivery queue**: the ordered entries. Each entry names the remote source branch, the source
     commit, the Infrahub branch it came from and the time of the merge. The queue carries a version
-    that an abandonment names.
+    that an abandonment names, the identifiers of recently removed entries, the time of the last
+    progress, and any owed import.
   - **Held regeneration set**: identifiers only. Artifact definitions, generator definitions, and
-    Python-transform computed attributes.
+    Python-transform computed attributes, each with the sequence number of its last hold.
   - **Abandonment record**: the abandoned entries, the user and the time of the last abandonment.
     Earlier records stay readable through the temporal history of the node.
   - **Last delivered commit**, and the **reverted delivery** record of FR-021.
@@ -469,25 +544,28 @@ state from the repository node.
 
 ### Measurable Outcomes
 
-- **SC-001**: After any push that the remote rejects, the commit Infrahub reports for that branch
-  equals the commit on the remote. No state exists in which Infrahub reports a commit the remote does
-  not have.
+- **SC-001**: After any delivery attempt, Infrahub never reports a commit for the default branch that
+  the remote does not have.
 - **SC-002**: The cause of a delivery failure and the required action can both be read from the
   repository view alone, with no access to worker logs or the orchestrator. Baseline today: both are
   necessary, at about two hours of Solution Architecture time per incident.
-- **SC-003**: A delivery failure caused by a transient network fault needs zero user actions. A
-  failure caused by a permission or branch-protection problem needs exactly one user action after
-  the cause is fixed, however many merges accumulated while it failed.
+- **SC-003**: A delivery failure caused by a transient network fault, or by a lost worker, needs
+  zero user actions. A failure caused by a permission or branch-protection problem needs exactly one
+  user action after the cause is fixed, however many merges accumulated while it failed.
 - **SC-004**: A recovery produces exactly one regeneration release per repository. It covers only
-  the definitions that the repository owns and that the affected merges touched. No artifact,
-  generator or transform-based computed attribute on the merge follow-up path runs against a commit
-  other than the one that is finally on the remote. A failure between the dispatch and the clear can
-  repeat a release, and it can never drop one.
+  the definitions that the repository owns. Outside the widened fallback, it covers only the
+  definitions that the affected merges touched. No artifact, generator or transform-based computed
+  attribute on the merge follow-up path runs against a commit other than the one that is finally on
+  the remote. A failure between the dispatch and the clear can repeat a release, and it can never
+  drop one.
 - **SC-005**: No deferred regeneration is ever dropped. The clear of the held work and its dispatch
   are inseparable, on the abandonment path and on the delivery path.
 - **SC-006**: No pending delivery is ever cleared without a durable record of what was abandoned, by
   whom and when.
 - **SC-007**: No delivery ever pushes a commit that a history rewrite removed from the remote.
+- **SC-008**: A git-synced merge whose first delivery attempt succeeds within the hold window
+  dispatches the same regeneration targets, members and node ids included, as the same merge with no
+  barrier.
 
 ## Assumptions
 
@@ -500,8 +578,9 @@ state from the repository node.
   long an outage lasts.
 - Jinja2 computed attributes, display labels and human-friendly ids render from the schema in the
   graph and do not depend on repository delivery state.
-- A repository import is desired-state: it deletes the repository-owned objects that are not in the
-  imported commit. FR-023 and FR-024 depend on this.
+- A repository import deletes the queries, transforms, checks, generator definitions and objects
+  that the imported commit lacks. It never deletes artifact definitions or schema. FR-023 and FR-024
+  depend on this.
 - A branch-local attribute isolates writes, diffs and merges, but a read on a branch falls back to
   the branch it forked from. The sibling spec documents this in its data model. FR-025 depends on
   it.
@@ -522,6 +601,8 @@ state from the repository node.
   invariant as FR-016.
 - **IFC-3210** is recommended first. FR-021 needs its rewrite detection. FR-020 and FR-022 do not:
   they are checks of the replay and ship with it.
+- **The Python SDK.** New schema attributes regenerate the SDK protocols, which live in the
+  `python_sdk` submodule. That change needs its own SDK PR, shared with IFC-3210.
 
 ## Out of Scope
 
@@ -529,30 +610,34 @@ state from the repository node.
 - Pausing synchronisation, and pinning a repository to an earlier commit (INFP-672).
 - The per-branch status list, the commit log, the upstream-versus-imported comparison, and the new
   meaning of the synchronisation status (INFP-671 and INFP-557).
+- A delivery signal outside the repository page, such as on the proposed change or the repository
+  list. INFP-671 owns those surfaces. The delivery runs appear in the repository's task list.
 - Gating a merge on the import state of a branch, a separate and genuinely unsafe condition, for a
   later INFP-670 slice.
 - Bringing Python-transform computed attributes to parity with the coalesced families (IFC-3002).
   This work consumes that outcome and does not deliver it.
 - Unifying the generator and artifact regeneration path with the coalesced recompute path. The
   barrier is consulted by both, and they stay separate.
+- Holding recomputes that live events of other writers start, and webhooks that run a transform.
 - Dead-worker concurrency-slot recovery (IFC-2912) and scheduled-task recreation.
 - A pull-request-based delivery mode for protected remotes.
-- Delivering a replayable prefix of an unreplayable queue. See decision 1 below.
-- Deleting, after the queue clears, a remote branch whose deletion this work refused.
+- Delivering a replayable prefix of an unreplayable queue, or skipping one entry. See decision 1.
 - Decomposing the Git modules as an end in itself (INFP-546). New components follow the
   component-design rule. Existing code is not refactored opportunistically.
 
 ## Decisions Taken During Specification
 
-These were settled without asking. Two of them answer the open questions of the PRD and need
-confirmation from the PRD owner.
+These were settled without asking. Three of them need confirmation, and say so.
 
-1. **PRD open question: is abandonment the only exit from an unreplayable queue?** Yes, in this
-   epic. Delivering the replayable prefix needs reasoning about which later entries depend on an
-   abandoned one, and a partial abandonment would need its own record shape. The remote source
-   branches stay on the remote while a delivery is pending (FR-011), so a user can still deliver a
-   prefix by hand in Git. A conflicting queue needs the remote destination to receive a conflicting
-   change during an outage, which is rare. **To confirm with Patrick Ogenstad.**
+1. **PRD open question: is abandonment the only exit from an unreplayable queue?** Inside Infrahub,
+   yes, in this epic. Outside Infrahub, a user can merge the source branch on the remote by hand,
+   and the next retry clears the entry by observation. Delivering a replayable prefix, or skipping
+   one entry, needs reasoning about which later entries depend on a dropped one, and a partial
+   abandonment would need its own record shape. The cost of whole-queue abandonment is real: every
+   later good entry is dropped too, and an Infrahub branch that merged cannot merge again, so
+   re-delivery means a manual merge on the remote for each dropped entry. A conflicting queue needs
+   the remote destination to receive a conflicting change during an outage, which is rare. **To
+   confirm with Patrick Ogenstad, with that cost in view.**
 2. **PRD open question: the user-facing label of the delivery status.** The provisional label is
    "Push to remote". The attribute names do not carry the label, so INFP-671 can change the label
    later without a schema migration. **To settle with the owner of INFP-671.**
@@ -567,24 +652,41 @@ confirmation from the PRD owner.
    before the delivery workflow is submitted, which makes the barrier race-free". It is a
    requirement in fact, because without it the barrier can see an empty queue for a merge whose
    delivery has not started.
-6. **FR-022 is added.** It carries IFC-3210's FR-005b, "the system MUST NOT push a commit the remote
+6. **FR-005b is added.** A merge flow can start after its entry was abandoned. Without the rule, it
+   would put the entry back and push it.
+7. **FR-022 is added.** It carries IFC-3210's FR-005b, "the system MUST NOT push a commit the remote
    has already discarded", onto the replay. A source branch forked from a discarded trunk carries the
    discarded commits. Replaying it onto the rewritten trunk and pushing would restore them.
-7. **FR-023 is added.** The PRD's edge case "the remote destination advanced" stops at the replay.
-   Two gaps follow from it. First, a synchronisation that imports the advanced remote head during the
-   outage deletes the merged repository objects that are not delivered yet, because the import is
-   desired-state. Second, a delivery that merges remote commits and records the result without an
-   import leaves the graph without those commits' objects. Nothing would ever import them, because
-   the local and remote clones then agree.
-8. **FR-024 is added.** After an abandonment, the graph holds repository objects from the abandoned
-   merges that the recorded commit does not contain. The release would then run those definitions
-   against files that do not have them. Converging the objects to the recorded commit before the
-   release keeps SC-004 true.
-9. **FR-025 is added.** It turns the PRD's "branch-local" into a testable rule. Because a branch read
-   falls back to its origin branch, a new branch sees a frozen copy of the default branch's delivery
-   state. Without the rule, the view of that branch would show "action required" for ever.
-10. **FR-026 is added.** The PRD's further notes say that "delivery bookkeeping writes should carry a
+8. **FR-023 is added.** The PRD's edge case "the remote destination advanced" stops at the replay.
+   Two gaps follow from it. First, an import of the advanced remote head during the outage deletes
+   the merged repository objects that are not delivered yet, because the import is desired-state.
+   Three paths import: the synchronisation, the seed import after a fresh clone, and the reimport of
+   the current commit. Second, a delivery that merges remote commits and records the result without
+   an import leaves the graph without those commits' objects. Nothing would ever import them,
+   because the local and remote clones then agree. The obligation is durable, and the record comes
+   first, because regeneration that the import starts reads the recorded commit.
+9. **FR-024 is added, and it is deliberately weak.** An earlier draft re-imported the recorded commit
+   inside the abandonment. That is beyond the PRD, and the import cannot do it: it never deletes
+   artifact definitions, and it can refuse to delete a transform that an artifact definition needs.
+   The only exit must never fail, so the abandonment only clears, records and releases, and the user
+   decides on the reimport.
+10. **FR-025 is added.** It turns the PRD's "branch-local" into a testable rule. Because a branch read
+    falls back to its origin branch, a new branch sees a frozen copy of the default branch's delivery
+    state. Without the rule, the view of that branch would show "action required" for ever.
+11. **FR-026 is added.** The PRD's further notes say that "delivery bookkeeping writes should carry a
     non-live mutation origin per 0016". This states the observable outcome instead of the mechanism.
-11. **The delivery state lives on `CoreRepository` only**, not on the generic. A read-only repository
+12. **FR-027 is added.** A worker restart, a lost workflow submission or a hung push would otherwise
+    leave a delivery pending for ever, with its regeneration held, and with no action available to a
+    user. SC-003 counts a lost worker as transient.
+13. **SC-008 and the second sentence of FR-014 are added.** A merge of a git-synced branch nearly
+    always reaches the coalesced recompute before its first delivery attempt completes, so the hold
+    is the normal path for such a merge. Without a short-lived narrowed selection, every such merge
+    would recompute whole kinds. SC-008 makes that cost measurable.
+14. **The merge follow-up path is defined in "Terms".** FR-016 and FR-017 hold the regeneration that a
+    merge starts itself. A live event of another writer, such as a generator write in the cascade,
+    can still start a per-node recompute of a held repository's transform. It runs against the
+    recorded commit, which the remote has. Holding every live path would gate the per-node
+    automations on repository state, which is a much larger change.
+15. **The delivery state lives on `CoreRepository` only**, not on the generic. A read-only repository
     never delivers, so the attributes would be dead on that kind. The PRD names "CoreRepository /
     CoreGenericRepository" and leaves the choice open.
