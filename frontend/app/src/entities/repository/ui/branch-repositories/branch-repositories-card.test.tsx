@@ -10,6 +10,7 @@ import { getBranchRepositoryHealth } from "@/entities/repository/domain/use-case
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 
 import { render } from "../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../tests/components/utils";
 import {
   buildBranchRepositoriesScenario,
   generateBranchRepository,
@@ -339,6 +340,7 @@ describe("BranchRepositoriesCard", () => {
     const component = await renderCard();
 
     // WHEN
+    await initPointerTracking(component.locator);
     await component.getByRole("img", { name: "Credential Error" }).hover();
 
     // THEN
