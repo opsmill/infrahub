@@ -246,16 +246,17 @@ describe("RepositoryErrorBands in the card", () => {
     } as unknown as ReturnType<typeof useGetBranchRepositories>);
   };
 
-  const renderCard = (page = 1) =>
-    render(
-      <BranchRepositoriesCard
-        branchName="feature"
-        isDefaultBranch={false}
-        syncWithGit
-        page={page}
-        onPageChange={vi.fn()}
-      />
-    );
+  const card = ({ page = 1, branchName = "feature" } = {}) => (
+    <BranchRepositoriesCard
+      branchName={branchName}
+      isDefaultBranch={false}
+      syncWithGit
+      page={page}
+      onPageChange={vi.fn()}
+    />
+  );
+
+  const renderCard = (page = 1) => render(card({ page }));
 
   test("gives a repository that is both failing and unreachable one import error band", async () => {
     // GIVEN
@@ -306,6 +307,23 @@ describe("RepositoryErrorBands in the card", () => {
     expect(useGetRepositoryImportError).toHaveBeenCalledWith(
       expect.objectContaining({ repositoryId: "a", branchName: "feature", isSyncing: true })
     );
+  });
+
+  test("collapses the bands again on another branch", async () => {
+    // GIVEN
+    mockRepositories(
+      generateBranchRepositoriesResult(["a", "b", "c", "d"].map((id) => importErrorRepository(id)))
+    );
+    const component = await renderCard();
+    await component.getByRole("button", { name: "Show all" }).click();
+    expect(bands(component.container)).toHaveLength(4);
+
+    // WHEN
+    await component.rerender(card({ branchName: "other-branch" }));
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Show all" })).toBeVisible();
+    expect(bands(component.container)).toHaveLength(3);
   });
 
   test("puts the truncation notice after the bands", async () => {

@@ -94,6 +94,7 @@ function BranchRepositoriesBody({
         onPageChange={onPageChange}
       />
       <RepositoryErrorBands
+        key={branchName}
         repositories={repositories}
         branchName={branchName}
         isDefaultBranch={isDefaultBranch}
