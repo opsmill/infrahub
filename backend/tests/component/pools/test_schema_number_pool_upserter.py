@@ -1,37 +1,54 @@
 import pytest
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import NumberPoolType
+from infrahub.core.constants import InfrahubKind, MetadataOptions, NumberPoolType
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.registry import registry
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.component.pools.helpers import NumberPoolRepositoryFailingOnRange
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 
-@pytest.fixture
-def base_schema() -> NodeSchema:
+def number_pool_schema(parameters: NumberPoolParameters) -> NodeSchema:
     return NodeSchema(
         name="Node",
         namespace="Test",
         attributes=[
             AttributeSchema(name="name", kind="Text"),
             AttributeSchema(
-                name="number",
-                kind="NumberPool",
-                optional=False,
-                read_only=True,
-                unique=True,
-                parameters=NumberPoolParameters(start_range=1, end_range=100),
+                name="number", kind="NumberPool", optional=False, read_only=True, unique=True, parameters=parameters
             ),
         ],
     )
+
+
+async def pool_ranges(db: InfrahubDatabase, pool_id: str) -> list[tuple[int, int, int | None]]:
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
+    return [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges]
+
+
+async def written_at(db: InfrahubDatabase, node_id: str, attribute_name: str) -> str | None:
+    node = await NodeManager.get_one(
+        db=db, id=node_id, include_metadata=MetadataOptions.USER_TIMESTAMPS, branch_agnostic=True
+    )
+    assert node is not None
+    updated_at = node.get_attribute(attribute_name)._get_updated_at()
+    return updated_at.to_string() if updated_at else None
+
+
+@pytest.fixture
+def base_schema() -> NodeSchema:
+    return number_pool_schema(parameters=NumberPoolParameters(start_range=1, end_range=100))
 
 
 @pytest.fixture
@@ -111,6 +128,99 @@ async def test_upsert_number_pool_creates_new_pool(
     assert pool.start_range.value == 1
     assert pool.end_range.value == 100
     assert pool.pool_type.value.value == NumberPoolType.SCHEMA.value
+
+
+async def test_upsert_number_pool_from_ranges_materialises_weighted_ranges(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """A declaration listing ranges gives the pool one range node per entry, weights kept, at the pool's timestamp."""
+    schema = number_pool_schema(
+        parameters=NumberPoolParameters(
+            ranges=[
+                NumberPoolRangeParameters(start=300, end=400),
+                NumberPoolRangeParameters(start=100, end=200, weight=10),
+            ]
+        )
+    )
+    at = Timestamp()
+
+    pool = await SchemaNumberPoolUpserter(
+        db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+    ).upsert_number_pool(
+        schema_node=schema, attribute=schema.get_attribute("number"), branch_name=registry.default_branch, at=at
+    )
+
+    assert await pool_ranges(db=db, pool_id=pool.get_id()) == [(100, 200, 10), (300, 400, None)]
+    assert (pool.start_range.value, pool.end_range.value) == (None, None)
+    for pool_range in await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id()):
+        assert await written_at(db=db, node_id=pool_range.get_id(), attribute_name="start") == at.to_string()
+
+
+async def test_upsert_number_pool_from_shorthand_materialises_one_range(
+    db: InfrahubDatabase, base_schema: NodeSchema, register_core_models_schema: SchemaBranch
+) -> None:
+    """The shorthand declaration gives the pool a single range, mirrored back onto the shorthand at the same time."""
+    at = Timestamp()
+
+    pool = await SchemaNumberPoolUpserter(
+        db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+    ).upsert_number_pool(
+        schema_node=base_schema,
+        attribute=base_schema.get_attribute("number"),
+        branch_name=registry.default_branch,
+        at=at,
+    )
+
+    assert await pool_ranges(db=db, pool_id=pool.get_id()) == [(1, 100, None)]
+    stored = await NodeManager.get_one(db=db, id=pool.get_id(), branch_agnostic=True)
+    assert stored is not None
+    assert (stored.get_attribute("start_range").value, stored.get_attribute("end_range").value) == (1, 100)
+    assert await written_at(db=db, node_id=pool.get_id(), attribute_name="start_range") == at.to_string()
+
+
+async def test_upsert_number_pool_without_declared_range_creates_an_empty_pool(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """A declaration using neither spelling gives a pool holding no range and a null shorthand."""
+    schema = number_pool_schema(parameters=NumberPoolParameters())
+
+    pool = await SchemaNumberPoolUpserter(
+        db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+    ).upsert_number_pool(
+        schema_node=schema, attribute=schema.get_attribute("number"), branch_name=registry.default_branch
+    )
+
+    assert await pool_ranges(db=db, pool_id=pool.get_id()) == []
+    stored = await NodeManager.get_one(db=db, id=pool.get_id(), branch_agnostic=True)
+    assert stored is not None
+    assert (stored.get_attribute("start_range").value, stored.get_attribute("end_range").value) == (None, None)
+
+
+async def test_upsert_number_pool_leaves_nothing_behind_when_a_range_cannot_be_written(
+    db: InfrahubDatabase, register_core_models_schema: SchemaBranch
+) -> None:
+    """A pool is created with every declared range or not at all."""
+    schema = number_pool_schema(
+        parameters=NumberPoolParameters(
+            ranges=[NumberPoolRangeParameters(start=1, end=100), NumberPoolRangeParameters(start=200, end=300)]
+        )
+    )
+    upserter = SchemaNumberPoolUpserter(
+        db=db,
+        schema_manager=registry.schema,
+        range_store_factory=lambda db: NumberPoolRepositoryFailingOnRange(db=db, failing_start=200),
+    )
+
+    with pytest.raises(RuntimeError, match="range write failed"):
+        await upserter.upsert_number_pool(
+            schema_node=schema, attribute=schema.get_attribute("number"), branch_name=registry.default_branch
+        )
+
+    pools = await NodeManager.query(
+        db=db, schema=InfrahubKind.NUMBERPOOL, filters={"node__value": "TestNode"}, branch_agnostic=True
+    )
+    assert pools == []
+    assert await NodeManager.query(db=db, schema=CoreNumberPoolRange, branch_agnostic=True) == []
 
 
 async def test_upsert_number_pool_returns_existing_pool(

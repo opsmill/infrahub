@@ -12,7 +12,9 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.database import within_transaction
 from infrahub.pools.models import NumberPoolLockDefinition
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
@@ -110,7 +112,7 @@ class SchemaNumberPoolUpserter:
 
         Check for an existing pool.
         If found, retrieves the pool using registry.manager.get_one().
-        If not found, creates a new pool with appropriate node and node_attribute values.
+        If not found, creates a new pool carrying the ranges the attribute declares.
 
         Args:
             schema_node: The schema containing the NumberPool attribute.
@@ -166,22 +168,39 @@ class SchemaNumberPoolUpserter:
                 self._cache[pool.id] = pool
                 return pool
 
-            # Create new pool
-            effective_ranges = attribute.parameters.effective_ranges()
-            single_range = effective_ranges[0] if len(effective_ranges) == 1 else None
+            # One transaction, so a pool missing a declared range is never handed back as existing on the next lookup.
             number_pool_id = str(uuid4())
-            number_pool = await Node.init(db=self.db, schema=InfrahubKind.NUMBERPOOL)
-            await number_pool.new(
-                db=self.db,
-                id=number_pool_id,
-                name=f"{pool_kind}.{attribute.name} [{number_pool_id}]",
-                node=pool_kind,
-                node_attribute=attribute.name,
-                start_range=single_range.start if single_range else None,
-                end_range=single_range.end if single_range else None,
-                pool_type=NumberPoolType.SCHEMA.value,
-            )
-            await number_pool.save(db=self.db, at=at, user_id=user_id)
+            async with within_transaction(db=self.db) as dbt:
+                number_pool = await Node.init(db=dbt, schema=InfrahubKind.NUMBERPOOL)
+                await number_pool.new(
+                    db=dbt,
+                    id=number_pool_id,
+                    name=f"{pool_kind}.{attribute.name} [{number_pool_id}]",
+                    node=pool_kind,
+                    node_attribute=attribute.name,
+                    pool_type=NumberPoolType.SCHEMA.value,
+                )
+                await number_pool.save(db=dbt, at=at, user_id=user_id)
+
+                repository = self._range_store_factory(db=dbt)
+                ranges = [
+                    await repository.create_range(
+                        pool=number_pool,
+                        start=declared.start,
+                        end=declared.end,
+                        weight=declared.weight,
+                        at=at,
+                        user_id=user_id,
+                    )
+                    for declared in attribute.parameters.effective_ranges()
+                ]
+
+                pool_node = await NodeManager.get_one(
+                    db=dbt, id=number_pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
+                )
+                await NumberPoolShorthandMirror(db=dbt, repository=repository).sync(
+                    pool=pool_node, ranges=ranges, at=at, user_id=user_id
+                )
 
             # Re-fetch using _get_by_id to get the proper CoreNumberPool instance with its methods
             return await self._get_by_id(number_pool_id)
