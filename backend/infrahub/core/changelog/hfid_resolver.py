@@ -52,10 +52,15 @@ class ChangelogHfidResolver:
             ids_to_load = [node_id for node_id in resolvable_ids if node_id not in node_hfids]
             node_hfids.update(await self._label_loader.load_hfids(ids_to_load))
             for action, changelog in changelogs:
-                changelog.hfid = node_hfids.get(changelog.node_id)
-                if changelog.hfid is None and action == DiffAction.REMOVED:
+                if (
+                    node_hfids.get(changelog.node_id) is None
+                    and action == DiffAction.REMOVED
+                    and is_resolvable_kind(changelog.node_kind)
+                    and (previous_hfid := _hfid_from_diff(changelog)) is not None
+                ):
                     # A removed node is gone when the batch load runs, but the diff still records its HFID.
-                    changelog.hfid = _hfid_from_diff(changelog)
+                    node_hfids[changelog.node_id] = previous_hfid
+                changelog.hfid = node_hfids.get(changelog.node_id)
             external_count = await self._fill_peer_hfids(
                 changelogs=changelogs, node_hfids=node_hfids, is_resolvable_kind=is_resolvable_kind
             )
