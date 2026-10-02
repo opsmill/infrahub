@@ -39,12 +39,10 @@ class RepositoryWarmUp:
     async def warm_up(self, model: GitRepositoryWarmUp) -> None:
         """Clone the repository here at the imported commit, then broadcast so every other worker holds a copy too.
 
-        The worker that asked for the warm-up may not be the one running it, so the broadcast is what
-        reaches it. The imported commit is read once the repository lock is held, so a sync that
-        finished while this waited cannot be undone. A copy left at the remote head instead would hide
-        the commits not yet imported from this worker's own sync, which only imports what its local
-        branches lack. For the same reason a read-write repository with nothing imported is not
-        cloned at all: its sync creates the copy and imports it.
+        The imported commit is read with the repository lock held. Other workers receive a fetch
+        pinned to it, or a clone-only request for a read-only branch with nothing imported. A
+        read-write repository with nothing imported is neither cloned nor broadcast; its sync
+        creates the copy.
 
         Raises:
             RepositoryError: When the repository cannot be cloned.

@@ -127,6 +127,8 @@ class TestRepositoryWarmUp(TestInfrahubApp):
             repository_kind=InfrahubKind.REPOSITORY,
             infrahub_branch_name=registry.default_branch,
         )
+        # Otherwise the memo answers the next initialization and the copy on disk is never looked at.
+        _get_initialized_repo.cache_clear()
 
     @pytest.fixture
     def bus(self) -> BusRecorder:

@@ -44,7 +44,7 @@ drift for 200 branches in one worker request (SC-005); an idle read-only reposit
 **Constraints**: no synchronous clone inside a read (FR-013); worker wait bounded by
 `broker.rpc_timeout` with a catalogued error (FR-012); no write to `commit` or `ref` anywhere in this
 feature (FR-016); one graph schema change only, a new `sync_status` choice written by the read-only
-check (FR-030, lands with T101); `schema/schema.graphql` must stay environment-independent
+check (FR-030, lands with T108); `schema/schema.graphql` must stay environment-independent
 **Scale/Scope**: 3 GraphQL operations, 1 Cypher query class, 2 RPC message pairs, 3 workflow
 definitions, 2 settings, 1 catalogue error, 1 frontend tab plus one query chain; one shared-path
 change to `InfrahubMessageBus.rpc`
@@ -58,7 +58,7 @@ remains.
 
 | Principle | Status | Notes |
 | --- | --- | --- |
-| I. Schema-Driven Integrity | PASS | No node, attribute or migration. One added choice on the existing `sync_status` dropdown (T101), which needs no migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
+| I. Schema-Driven Integrity | PASS | No node, attribute or migration. One added choice on the existing `sync_status` dropdown (T108), which needs no migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
 | II. Branch-Safe by Default | PASS | Every answer is computed for `graphql_context.branch`: the imported commit is the branch-local or branch-aware `commit`, the read-only `ref` is branch-aware, and the remote branch is mapped through `_get_mapped_remote_branch`. Nothing is written, so merge behaviour is unchanged (SC-011). |
 | III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.state.models`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol returning those dataclasses, never a wire model; frontend uses gql.tada-derived types. |
 | IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, handlers; a unit test for the RPC timeout, whose never-replying doubles open no connection; integration tests for behind, rewritten, tag move, lock serialisation, and the broadcast binding that makes convergence per-worker; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. FR-017 is covered as three deterministic links rather than a multi-worker fixture, per `checklists/requirements.md`. |

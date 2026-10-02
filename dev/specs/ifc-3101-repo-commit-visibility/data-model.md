@@ -2,7 +2,7 @@
 
 **Feature**: IFC-3101 | **Branch**: `pog-repo-commit-visibility-ifc-3101`
 
-One graph schema change, landing with T101: a new choice on the existing `sync_status` dropdown (see "`sync_status`
+One graph schema change, landing with T108: a new choice on the existing `sync_status` dropdown (see "`sync_status`
 addition" below). No new node kind, attribute or relationship. Everything else below is an in-memory
 value object, a wire message, a cache key, an enum or a configuration setting.
 
@@ -291,7 +291,7 @@ through the worker, because a refs listing touches no file the worker could stam
 read-write repositories, where the every-minute sync fetches and `fetched_at` already means what a
 user would read it to mean, and null for a read-only repository whose remote has never been checked.
 
-## `sync_status` addition (the one graph write, lands with T101)
+## `sync_status` addition (the one graph write, lands with T108)
 
 | Kind | Attribute | Branch support | New choice | Written by |
 | --- | --- | --- | --- | --- |
