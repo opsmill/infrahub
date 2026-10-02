@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING, Any
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
-from infrahub.core.constants import InfrahubKind, NumberPoolType
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
-from infrahub.database import retry_db_transaction
+from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
@@ -19,7 +19,14 @@ from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ...main import DeleteResult, InfrahubMutation
-from .common import pool_lock, range_bounds, sync_shorthand, within_transaction
+from .common import (
+    SCHEMA_POOL_RANGES_REFUSED,
+    SCHEMA_POOL_SHORTHAND_REFUSED,
+    pool_lock,
+    range_bounds,
+    refuse_schema_pool,
+    sync_shorthand,
+)
 
 if TYPE_CHECKING:
     from graphene import InputObjectType
@@ -191,9 +198,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
 
-        cls._refuse_shorthand_conflicts(
-            pool=obj, shorthand_supplied=shorthand_supplied, ranges_supplied=ranges_supplied
-        )
+        cls._refuse_unsupported_writes(pool=obj, shorthand_supplied=shorthand_supplied, ranges_supplied=ranges_supplied)
 
         graphql_context: GraphqlContext = info.context
         pool_id = obj.get_id()
@@ -219,20 +224,17 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         return number_pool, result
 
     @classmethod
-    def _refuse_shorthand_conflicts(cls, pool: Node, shorthand_supplied: bool, ranges_supplied: bool) -> None:
-        """Refuse a shorthand write on a schema-created pool, or alongside `ranges`.
+    def _refuse_unsupported_writes(cls, pool: Node, shorthand_supplied: bool, ranges_supplied: bool) -> None:
+        """Refuse a shorthand or `ranges` write on a schema-created pool, and the shorthand alongside `ranges`.
 
         Raises:
             ValidationError: On either refusal, the schema-created pool one first.
 
         """
-        if not shorthand_supplied:
-            return
-        if pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
-            raise ValidationError(
-                input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
-            )
-        if ranges_supplied:
+        refuse_schema_pool(
+            pool=pool, message=SCHEMA_POOL_SHORTHAND_REFUSED if shorthand_supplied else SCHEMA_POOL_RANGES_REFUSED
+        )
+        if shorthand_supplied and ranges_supplied:
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
     @classmethod
