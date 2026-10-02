@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Protocol
 
 from git import BadName
@@ -9,6 +10,8 @@ from infrahub.exceptions import RepositoryError
 
 if TYPE_CHECKING:
     from git import Repo
+
+COMMIT_SHA_PATTERN = re.compile(r"[0-9a-fA-F]{40}")
 
 
 class AncestryGateway(Protocol):
@@ -61,19 +64,23 @@ class GitPythonAncestryGateway:
         a git call that could not run both surface as the same error from the ancestry check.
 
         Raises:
-            RepositoryError: When the identifier is not a well-formed object name.
+            RepositoryError: When the identifier is not a full object name, or when the object
+                database could not be read.
 
         """
-        try:
-            binary_sha = bytes.fromhex(commit)
-        except ValueError as exc:
+        if not COMMIT_SHA_PATTERN.fullmatch(commit):
             raise RepositoryError(
                 identifier=self.repository_name, message=f"{commit!r} is not a valid commit identifier"
-            ) from exc
+            )
 
         try:
-            self.repo.odb.info(binary_sha)
+            self.repo.odb.info(bytes.fromhex(commit))
         except ValueError:
             # The object database reports an absent object by refusing to resolve its sha.
             return False
+        except Exception as exc:
+            raise RepositoryError(
+                identifier=self.repository_name,
+                message=f"Unable to read {commit} from the object database: {exc}",
+            ) from exc
         return True

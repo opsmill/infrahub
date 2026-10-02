@@ -71,6 +71,10 @@ def test_a_pruned_commit_reads_as_absent_rather_than_raising(repo: Repo, gateway
     assert gateway.has_commit(commit=pruned) is False
 
 
-def test_a_malformed_commit_identifier_is_an_error_not_an_absence(gateway: GitPythonAncestryGateway) -> None:
+@pytest.mark.parametrize("identifier", ["not-a-sha", "abcd", "0" * 39, "0" * 41])
+def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
+    gateway: GitPythonAncestryGateway, identifier: str
+) -> None:
+    """An identifier that is not a full sha must not be reported as a pruned commit."""
     with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
-        gateway.has_commit(commit="not-a-sha")
+        gateway.has_commit(commit=identifier)
