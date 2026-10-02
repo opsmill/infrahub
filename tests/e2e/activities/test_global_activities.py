@@ -2,8 +2,8 @@
 
 Global activity log: navigate from the sidebar, filter by a primary node tag
 (blue) and by has-children, then open event details (reloading until the
-activity appears). Reads the activity log populated by the data_sites load
-itself (the blue tag comes transitively), so depends on data_sites.
+activity appears). Reads the activity log populated by the data_site_atl1 load
+itself (the blue tag comes transitively), so depends on data_site_atl1.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class TestGlobalActivities:
     async def test_navigate_to_global_activity_log_from_sidebar(
-        self, admin_page: Page, data_sites: SitesHandle
+        self, admin_page: Page, data_site_atl1: SitesHandle
     ) -> None:
         await admin_page.goto("/")
 
@@ -31,7 +31,7 @@ class TestGlobalActivities:
         await admin_page.get_by_role("menuitem", name="Activities").click()
         await expect(admin_page.get_by_role("heading", name="Activities")).to_be_visible()
 
-    async def test_filter_activities_by_primary_node_tag(self, admin_page: Page, data_sites: SitesHandle) -> None:
+    async def test_filter_activities_by_primary_node_tag(self, admin_page: Page, data_site_atl1: SitesHandle) -> None:
         # Navigate to activity log page
         await admin_page.goto("/activities")
 
@@ -46,7 +46,7 @@ class TestGlobalActivities:
         await save_screenshot_for_docs(admin_page, "topics/activity-logs/activity_log_global_filters_primary")
 
     async def test_filter_by_has_children_and_view_event_details(
-        self, admin_page: Page, data_sites: SitesHandle
+        self, admin_page: Page, data_site_atl1: SitesHandle
     ) -> None:
         # Navigate to activity log page
         await admin_page.goto("/activities")

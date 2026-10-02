@@ -7,7 +7,7 @@ sort with a single-field header sort, and sorting by a related attribute
 through the Site header's "Sort by" submenu — with the pointer and with the
 keyboard alone. Sorting is URL state only (no mutations), so the tests run as
 Admin against main; data_sites provides the demo devices (name ascending
-starts at atl1-core1, descending at ord1-leaf2; within a site the order is an
+starts at atl1-core1, descending at den1-leaf2; within a site the order is an
 implicit uuid tiebreaker, so site-sorted assertions only pin the site prefix).
 """
 
@@ -43,13 +43,13 @@ class TestObjectHeaderSort:
         await admin_page.get_by_role("menuitem", name="Sort descending").click()
 
         await expect(admin_page).to_have_url(re.compile(r"sort=name__value__desc"))
-        await expect(first_row_link).to_have_text("ord1-leaf2")
+        await expect(first_row_link).to_have_text("den1-leaf2")
         await expect(admin_page.get_by_role("button", name="Name sorted descending")).to_be_visible()
 
         # reload and verify the sort persists
         await admin_page.reload()
         await expect(admin_page).to_have_url(re.compile(r"sort=name__value__desc"))
-        await expect(first_row_link).to_have_text("ord1-leaf2")
+        await expect(first_row_link).to_have_text("den1-leaf2")
         await expect(admin_page.get_by_role("button", name="Name sorted descending")).to_be_visible()
 
         # toggle-clear restores the default order
