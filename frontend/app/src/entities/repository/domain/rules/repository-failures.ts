@@ -4,7 +4,7 @@ import type {
 } from "@/entities/repository/domain/model/branch-repository";
 import {
   REPOSITORY_OPERATIONAL_ERRORS,
-  REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
 } from "@/entities/repository/domain/model/repository";
 
 export type RepositoryBandKind = "import-error" | "unreachable";
@@ -12,7 +12,7 @@ export type RepositoryBandKind = "import-error" | "unreachable";
 const OPERATIONAL_ERRORS: ReadonlySet<string> = new Set(REPOSITORY_OPERATIONAL_ERRORS);
 
 export function hasImportError(repository: BranchRepository): boolean {
-  return repository.syncStatus.value === REPOSITORY_SYNC_STATUS_IMPORT_ERROR;
+  return repository.syncStatus.value === REPOSITORY_SYNC_STATUS_ERROR_VALUE;
 }
 
 export function isRepositoryUnreachable(repository: BranchRepository): boolean {

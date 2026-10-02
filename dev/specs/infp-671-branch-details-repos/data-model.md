@@ -44,7 +44,7 @@ type RepositoryImportError =
 
 ### Vocabulary (`domain/model/repository.ts`)
 
-- `REPOSITORY_SYNC_STATUS_IMPORT_ERROR = "error-import"`, `REPOSITORY_SYNC_STATUS_SYNCING = "syncing"`
+- `REPOSITORY_SYNC_STATUS_ERROR_VALUE = "error-import"`, `REPOSITORY_SYNC_STATUS_SYNCING = "syncing"`
 - `REPOSITORY_OPERATIONAL_ERRORS = ["error-cred", "error-connection", "error"] as const`
 - `IMPORT_WORKFLOWS` (research R2), `IMPORT_FAILED_TASK_STATES = [FAILED, CRASHED]`
 - `IMPORT_LOG_LIMIT = 10_000` (backend cap; still needed because logs come oldest first)

@@ -5,7 +5,7 @@ import { getBranchRepositoryHealthFromApi } from "@/entities/repository/api/get-
 import type { BranchRepositoryHealth } from "@/entities/repository/domain/model/branch-repository";
 import {
   REPOSITORY_OPERATIONAL_ERRORS,
-  REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
   REPOSITORY_SYNC_STATUS_SYNCING,
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryListKind } from "@/entities/repository/domain/rules/get-repository-list-kind";
@@ -25,7 +25,7 @@ export const getBranchRepositoryHealth: GetBranchRepositoryHealth = async ({
   const data = await getBranchRepositoryHealthFromApi({
     branchName,
     kind: getRepositoryListKind(syncWithGit),
-    importErrorStatuses: [REPOSITORY_SYNC_STATUS_IMPORT_ERROR],
+    importErrorStatuses: [REPOSITORY_SYNC_STATUS_ERROR_VALUE],
     unreachableStatuses: [...REPOSITORY_OPERATIONAL_ERRORS],
     syncingStatuses: [REPOSITORY_SYNC_STATUS_SYNCING],
   });
