@@ -110,30 +110,30 @@ Task identifiers are stable references, not an execution order: phases run in th
 
 ### Tests
 
-- [ ] T035 [P] [US2] Unit tests in `backend/tests/unit/core/schema/test_number_pool_parameters.py`: shorthand-only declaration yields one effective range; one bound resolves the other to `1` / `sys.maxsize`; neither yields `[]`; both spellings refused; `start > end` refused; overlap refused; `get_pool_size()` sums ranges; fields not rewritten by validation
-- [ ] T036 [P] [US5] Unit test (same file or a schema warnings test): `SchemaRoot.gather_warnings` emits one `DEPRECATION` warning per NumberPool attribute using the shorthand and none for `ranges`
-- [ ] T037 [P] [US4] Component tests in `backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py`: value outside every declared range refused with the object identified; value inside a second range accepted; zero ranges with held values refused; constraint name `attribute.parameters.ranges.update` resolves to the checker
-- [ ] T038 [P] [US4] Component tests in `backend/tests/component/pools/test_schema_number_pool_upserter.py`: pool created from `parameters.ranges` has the range nodes with weights; from the shorthand has one range; from neither has zero ranges; shorthand synced
-- [ ] T039 [P] [US4] Component tests in new `backend/tests/component/pools/test_schema_number_pool_synchronizer.py`: default-branch declaration adds, removes and reweights ranges; matched range updated in place (same id); records retained; zero ranges legal
-- [ ] T040 [P] [US4] Component tests in `backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py`: range create/update/delete on a schema pool refused pointing at the default-branch schema; pool update carrying `ranges` refused; shorthand on a multi-range schema pool gets the schema-pool message first
-- [ ] T041 [P] [US4] Extend `backend/tests/component/core/schema/test_attribute_parameters.py`: both spellings refused at load; single bound loads with the old meaning; `ranges` declaration loads
-- [ ] T042 [P] [US4] Extend `backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py`: a schema load that moves a range so a held value falls outside is refused; a safe range change reconciles the pool
-- [ ] T043 [P] [US4] Extend `backend/tests/component/core/migrations/schema/test_node_attribute_add.py` with a single-range `ranges` declaration: the pool is materialised with its range and existing nodes receive values
-- [ ] T044 [P] [US5] Extend `backend/tests/unit/core/schema/test_write_json_schema.py`: `start_range` / `end_range` marked `deprecated: true` with a message pointing at `ranges`
+- [X] T035 [P] [US2] Unit tests in `backend/tests/unit/core/schema/test_number_pool_parameters.py`: shorthand-only declaration yields one effective range; one bound resolves the other to `1` / `sys.maxsize`; neither yields `[]`; both spellings refused; `start > end` refused; overlap refused; `get_pool_size()` sums ranges; fields not rewritten by validation
+- [X] T036 [P] [US5] Unit test (same file or a schema warnings test): `SchemaRoot.gather_warnings` emits one `DEPRECATION` warning per NumberPool attribute using the shorthand and none for `ranges`
+- [X] T037 [P] [US4] Component tests in `backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py`: value outside every declared range refused with the object identified; value inside a second range accepted; zero ranges with held values refused; constraint name `attribute.parameters.ranges.update` resolves to the checker
+- [X] T038 [P] [US4] Component tests in `backend/tests/component/pools/test_schema_number_pool_upserter.py`: pool created from `parameters.ranges` has the range nodes with weights; from the shorthand has one range; from neither has zero ranges; shorthand synced
+- [X] T039 [P] [US4] Component tests in new `backend/tests/component/pools/test_schema_number_pool_synchronizer.py`: default-branch declaration adds, removes and reweights ranges; matched range updated in place (same id); records retained; zero ranges legal
+- [X] T040 [P] [US4] Component tests in `backend/tests/component/graphql/resource_manager/number_pools/test_schema_pool_range_writes.py`: range create/update/delete on a schema pool refused pointing at the default-branch schema; pool update carrying `ranges` refused; shorthand on a multi-range schema pool gets the schema-pool message first
+- [X] T041 [P] [US4] Extend `backend/tests/component/core/schema/test_attribute_parameters.py`: both spellings refused at load; single bound loads with the old meaning; `ranges` declaration loads
+- [X] T042 [P] [US4] Extend `backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py`: a schema load that moves a range so a held value falls outside is refused; a safe range change reconciles the pool
+- [X] T043 [P] [US4] Extend `backend/tests/component/core/migrations/schema/test_node_attribute_add.py` with a single-range `ranges` declaration: the pool is materialised with its range and existing nodes receive values
+- [X] T044 [P] [US5] Extend `backend/tests/unit/core/schema/test_write_json_schema.py`: `start_range` / `end_range` marked `deprecated: true` with a message pointing at `ranges`
 
 ### Implementation
 
-- [ ] T045 [US2] Change `NumberPoolParameters` in `backend/infrahub/core/schema/attribute_parameters.py`: `start_range`/`end_range` `int | None = None` with deprecation in the description, new `NumberPoolRangeParameters(HashableModel)` (`start`, `end`, `weight`, `_sort_by = ["start", "end"]`), `ranges` with `update: VALIDATE_CONSTRAINT`, `validate_ranges` rules, `effective_ranges()`, `get_pool_size()`
-- [ ] T046 [US4] Add `ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE = "attribute.parameters.ranges.update"` in `backend/infrahub/core/validators/enum.py`; register `AttributeNumberPoolChecker` for it in `backend/infrahub/core/validators/__init__.py`; extend `supports()`
-- [ ] T047 [US4] Rewrite `AttributeNumberPoolUpdateValidatorQuery` in `backend/infrahub/core/validators/attribute/number_pool.py` to bind `$ranges` from `effective_ranges()` and return values where `none(r IN $ranges WHERE value >= r[0] AND value <= r[1])`
-- [ ] T048 [US4] In `SchemaNumberPoolUpserter.upsert_number_pool` (`backend/infrahub/pools/schema_number_pool_upserter.py`): create range nodes from `effective_ranges()` after the pool, same lock and timestamp, then sync the shorthand
-- [ ] T049 [US4] In `SchemaNumberPoolSynchronizer._update_pool_from_schema` (`backend/infrahub/pools/schema_number_pool_synchronizer.py`): positional reconciliation of declared versus existing ranges (update in place, create, delete), then sync the shorthand
-- [ ] T050 [US4] Extend the schema-pool guard in `InfrahubNumberPoolMutation.mutate_update` to `ranges`, and make `InfrahubNumberPoolRangeMutation` refuse create/update/delete when the parent pool is `pool_type: Schema`, both with the existing default-branch message
-- [ ] T051 [US5] Add the shorthand `DEPRECATION` warning to `SchemaRoot.gather_warnings` in `backend/infrahub/core/schema/__init__.py`
-- [ ] T052 [US5] Add `start_range` / `end_range` to `DEPRECATED_MESSAGES` in `backend/infrahub/core/schema/write_json_schema.py`
-- [ ] T053 Extend `tasks/backend.py`: `NumberPoolRange` family (`start`, `end` required Number, `weight` optional Number), `number_pool_parameters_fields` with optional deprecated `start_range`/`end_range` and `ranges` as a list of the family through `_sdk_extension_field`; adjust `tasks/docs.py` so an absent default renders blank
-- [ ] T054 Regenerate the SDK models in `python_sdk/infrahub_sdk/schema/generated/` and `python_sdk/infrahub_sdk/protocols.py`; update `python_sdk/tests/unit/test_schema_offline_validation.py`; push the submodule commit and open the SDK PR against `opsmill/infrahub-sdk-python` `stable`; bump the submodule pointer here once it is merged
-- [ ] T055 Regenerate and commit `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `docs/docs/snippets/attribute-kind-params.mdx` and the reference docs (`uv run invoke schema.generate-jsonschema`, `docs.generate`, `cd frontend/app && pnpm codegen`); run `uv run invoke docs.validate`
+- [X] T045 [US2] Change `NumberPoolParameters` in `backend/infrahub/core/schema/attribute_parameters.py`: `start_range`/`end_range` `int | None = None` with deprecation in the description, new `NumberPoolRangeParameters(HashableModel)` (`start`, `end`, `weight`, `_sort_by = ["start", "end"]`), `ranges` with `update: VALIDATE_CONSTRAINT`, `validate_ranges` rules, `effective_ranges()`, `get_pool_size()`
+- [X] T046 [US4] Add `ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE = "attribute.parameters.ranges.update"` in `backend/infrahub/core/validators/enum.py`; register `AttributeNumberPoolChecker` for it in `backend/infrahub/core/validators/__init__.py`; extend `supports()`
+- [X] T047 [US4] Rewrite `AttributeNumberPoolUpdateValidatorQuery` in `backend/infrahub/core/validators/attribute/number_pool.py` to bind `$ranges` from `effective_ranges()` and return values where `none(r IN $ranges WHERE value >= r[0] AND value <= r[1])`
+- [X] T048 [US4] In `SchemaNumberPoolUpserter.upsert_number_pool` (`backend/infrahub/pools/schema_number_pool_upserter.py`): create range nodes from `effective_ranges()` after the pool, same lock and timestamp, then sync the shorthand
+- [X] T049 [US4] In `SchemaNumberPoolSynchronizer._update_pool_from_schema` (`backend/infrahub/pools/schema_number_pool_synchronizer.py`): positional reconciliation of declared versus existing ranges (update in place, create, delete), then sync the shorthand
+- [X] T050 [US4] Extend the schema-pool guard in `InfrahubNumberPoolMutation.mutate_update` to `ranges`, and make `InfrahubNumberPoolRangeMutation` refuse create/update/delete when the parent pool is `pool_type: Schema`, both with the existing default-branch message
+- [X] T051 [US5] Add the shorthand `DEPRECATION` warning to `SchemaRoot.gather_warnings` in `backend/infrahub/core/schema/__init__.py`
+- [X] T052 [US5] Add `start_range` / `end_range` to `DEPRECATED_MESSAGES` in `backend/infrahub/core/schema/write_json_schema.py`
+- [X] T053 Extend `tasks/backend.py`: `NumberPoolRange` family (`start`, `end` required Number, `weight` optional Number), `number_pool_parameters_fields` with optional deprecated `start_range`/`end_range` and `ranges` as a list of the family through `_sdk_extension_field`; adjust `tasks/docs.py` so an absent default renders blank
+- [X] T054 Regenerate the SDK models in `python_sdk/infrahub_sdk/schema/generated/` and `python_sdk/infrahub_sdk/protocols.py`; update `python_sdk/tests/unit/test_schema_offline_validation.py`; push the submodule commit onto the open SDK PR opsmill/infrahub-sdk-python#1371 (branch `pmi-number-pool-range-protocols`, base `infrahub-develop`); bump the submodule pointer here to that PR head
+- [X] T055 Regenerate and commit `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `docs/docs/snippets/attribute-kind-params.mdx` and the reference docs (`uv run invoke schema.generate-jsonschema`, `docs.generate`, `cd frontend/app && pnpm codegen`); run `uv run invoke docs.validate`
 
 **Checkpoint**: schema-created pools carry ranges end to end; published contract regenerated
 
@@ -195,7 +195,7 @@ Task identifiers are stable references, not an execution order: phases run in th
 
 - PR 1 → PR 2 → PR 3 → PR 4 → PR 5 → PR 6, merged bottom to top with `gh stack`
 - PR 2, PR 3 and PR 4 before PR 5 is mandatory: allocation reads range nodes only, so the migration, the pool mutations and the schema pool upserter and synchronizer must all write ranges first
-- The SDK PR (T054) is opened during PR 4 and must merge before PR 4's submodule pointer bump
+- The SDK changes (T054) ride the already open SDK PR #1371, which must merge before PR 4 merges; PR 4's submodule pointer tracks that PR's head meanwhile
 
 ### Within a PR
 
