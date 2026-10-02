@@ -11,7 +11,10 @@ import {
   type BranchRepositoryPage,
 } from "@/entities/repository/domain/model/branch-repository";
 import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/is-any-repository-syncing";
-import { getFailingRepositories } from "@/entities/repository/domain/rules/repository-failures";
+import {
+  countUnlistedFailures,
+  getFailingRepositories,
+} from "@/entities/repository/domain/rules/repository-failures";
 import {
   BranchRepositoriesDenied,
   BranchRepositoriesFailed,
@@ -68,6 +71,7 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
         <RepositoryErrorBands
           key={branchName}
           repositories={getFailingRepositories(health)}
+          unlistedCount={countUnlistedFailures(health)}
           branchName={branchName}
           isSyncing={isSyncing}
         />

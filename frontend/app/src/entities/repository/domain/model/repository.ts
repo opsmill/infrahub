@@ -26,6 +26,7 @@ export const IMPORT_FAILED_TASK_STATES = [TASK_STATE_FAILED, TASK_STATE_CRASHED]
 export const IMPORT_LOG_LIMIT = 10_000;
 
 export const MAX_VISIBLE_BANDS = 3;
+export const REPOSITORY_HEALTH_LIST_LIMIT = 50;
 
 /**
  * Selects repositories whose import failed. Attribute-value filters match on substrings, so

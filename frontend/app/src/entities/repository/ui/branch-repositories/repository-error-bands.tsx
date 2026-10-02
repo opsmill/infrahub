@@ -9,13 +9,17 @@ import { UnreachableBand } from "@/entities/repository/ui/branch-repositories/un
 
 interface RepositoryErrorBandsProps {
   repositories: BranchRepository[];
+  unlistedCount?: number;
   branchName: string;
   isSyncing: boolean;
 }
 
+const pluralizeRepositories = (count: number) => (count === 1 ? "repository" : "repositories");
+
 // Hidden bands aren't mounted, so their import logs are only fetched once Show all opens them.
 export function RepositoryErrorBands({
   repositories,
+  unlistedCount = 0,
   branchName,
   isSyncing,
 }: RepositoryErrorBandsProps) {
@@ -24,6 +28,8 @@ export function RepositoryErrorBands({
 
   const visible = isExpanded ? repositories : repositories.slice(0, MAX_VISIBLE_BANDS);
   const hidden = repositories.slice(MAX_VISIBLE_BANDS);
+  const andMore = unlistedCount > 0 ? ` and ${unlistedCount} more` : "";
+  const hiddenCount = hidden.length + unlistedCount;
 
   return (
     <>
@@ -44,8 +50,8 @@ export function RepositoryErrorBands({
         <div className="flex items-center justify-between gap-2 border-danger/30 border-t bg-danger-surface px-4 py-2 text-danger-strong text-xs">
           <span className="tabular-nums">
             {isExpanded
-              ? `${repositories.length} repositories with errors`
-              : `${hidden.length} more ${hidden.length === 1 ? "repository" : "repositories"} with errors: ${hidden.map(({ name }) => name).join(", ")}`}
+              ? `${repositories.length} repositories with errors${andMore}`
+              : `${hiddenCount} more ${pluralizeRepositories(hiddenCount)} with errors: ${hidden.map(({ name }) => name).join(", ")}${andMore}`}
           </span>
           <Button variant="ghost" size="xs" onPress={() => setIsExpanded((value) => !value)}>
             {isExpanded ? "Collapse" : "Show all"}

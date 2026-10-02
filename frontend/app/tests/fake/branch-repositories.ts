@@ -63,11 +63,15 @@ export const generateBranchRepository = (
   };
 };
 
-export const generateBranchRepositoryHealth = (
-  overrides: Partial<BranchRepositoryHealth> = {}
-): BranchRepositoryHealth => ({
-  importErrors: [],
-  unreachable: [],
+export const generateBranchRepositoryHealth = ({
+  importErrors = [],
+  unreachable = [],
+  ...overrides
+}: Partial<BranchRepositoryHealth> = {}): BranchRepositoryHealth => ({
+  importErrors,
+  importErrorCount: importErrors.length,
+  unreachable,
+  unreachableCount: unreachable.length,
   syncingCount: 0,
   ...overrides,
 });
@@ -75,15 +79,16 @@ export const generateBranchRepositoryHealth = (
 // What the server's filtered lists would return for these repositories.
 export const toBranchRepositoryHealth = (
   repositories: BranchRepository[]
-): BranchRepositoryHealth => ({
-  importErrors: repositories.filter(
-    ({ syncStatus }) => syncStatus.value === SYNC_STATUS.importError.value
-  ),
-  unreachable: repositories.filter(({ operationalStatus }) =>
-    ["error-cred", "error-connection", "error"].includes(operationalStatus.value ?? "")
-  ),
-  syncingCount: repositories.filter(({ syncStatus }) => syncStatus.value === "syncing").length,
-});
+): BranchRepositoryHealth =>
+  generateBranchRepositoryHealth({
+    importErrors: repositories.filter(
+      ({ syncStatus }) => syncStatus.value === SYNC_STATUS.importError.value
+    ),
+    unreachable: repositories.filter(({ operationalStatus }) =>
+      ["error-cred", "error-connection", "error"].includes(operationalStatus.value ?? "")
+    ),
+    syncingCount: repositories.filter(({ syncStatus }) => syncStatus.value === "syncing").length,
+  });
 
 // One page of these repositories, as the server would slice it.
 export const toBranchRepositoryPage = (

@@ -13,6 +13,7 @@ import { render } from "../../../../../tests/components/render";
 import {
   buildBranchRepositoriesScenario,
   generateBranchRepository,
+  generateBranchRepositoryHealth,
   OPERATIONAL_STATUS,
   SYNC_STATUS,
   toBranchRepositoryHealth,
@@ -37,9 +38,14 @@ const importErrorRepository = (id: string, overrides: Partial<BranchRepository> 
 const unreachableRepository = (id: string) =>
   generateBranchRepository({ id, name: id, operationalStatus: OPERATIONAL_STATUS.errorCred });
 
-const renderBands = (repositories: BranchRepository[]) =>
+const renderBands = (repositories: BranchRepository[], unlistedCount?: number) =>
   render(
-    <RepositoryErrorBands repositories={repositories} branchName="feature" isSyncing={false} />
+    <RepositoryErrorBands
+      repositories={repositories}
+      unlistedCount={unlistedCount}
+      branchName="feature"
+      isSyncing={false}
+    />
   );
 
 const bands = (container: HTMLElement) => [
@@ -159,6 +165,23 @@ describe("RepositoryErrorBands", () => {
     await expect.element(component.getByRole("button", { name: "Collapse" })).toBeVisible();
   });
 
+  test("adds the failing repositories past the list limit to the summary", async () => {
+    // GIVEN
+    const repositories = ["a", "b", "c", "d", "e"].map((id) => importErrorRepository(id));
+    const component = await renderBands(repositories, 7);
+    await expect
+      .element(component.getByText("9 more repositories with errors: d, e and 7 more"))
+      .toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Show all" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByText("5 repositories with errors and 7 more"))
+      .toBeVisible();
+  });
+
   test("uses the singular for one hidden repository", async () => {
     // WHEN
     const component = await renderBands(
@@ -220,14 +243,6 @@ describe("RepositoryErrorBands", () => {
     dark.forEach((value, index) => {
       expect(value).not.toBe(lightValues[index]);
     });
-  });
-
-  test("renders nothing when no repository fails", async () => {
-    // WHEN
-    const component = await renderBands([]);
-
-    // THEN
-    expect(component.container.textContent).toBe("");
   });
 });
 
@@ -295,11 +310,10 @@ describe("RepositoryErrorBands in the card", () => {
   test("shows bands for failing repositories the server reports, even when none is on the page", async () => {
     // GIVEN
     const healthy = buildBranchRepositoriesScenario("all-clear");
-    serve(healthy, {
-      importErrors: [importErrorRepository("elsewhere")],
-      unreachable: [],
-      syncingCount: 0,
-    });
+    serve(
+      healthy,
+      generateBranchRepositoryHealth({ importErrors: [importErrorRepository("elsewhere")] })
+    );
 
     // WHEN
     const component = await renderCard();
@@ -307,6 +321,28 @@ describe("RepositoryErrorBands in the card", () => {
     // THEN
     await expect.element(component.getByText("elsewhere — import failed")).toBeVisible();
     expect(component.container.querySelector("tbody")?.textContent).not.toContain("elsewhere");
+  });
+
+  test("shows no band when every repository on the branch is healthy", async () => {
+    // GIVEN
+    const repositories = [
+      generateBranchRepository({ id: "in-sync", name: "in-sync" }),
+      generateBranchRepository({ id: "syncing", name: "syncing", syncStatus: SYNC_STATUS.syncing }),
+      generateBranchRepository({
+        id: "unknown",
+        name: "unknown",
+        operationalStatus: { value: "unknown", label: "Unknown" },
+      }),
+    ];
+    serve(repositories);
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "in-sync" })).toBeVisible();
+    expect(bands(component.container)).toHaveLength(0);
+    expect(component.container.textContent).not.toContain("with errors");
   });
 
   test("passes the syncing flag from the server's syncing count to the import error lookup", async () => {

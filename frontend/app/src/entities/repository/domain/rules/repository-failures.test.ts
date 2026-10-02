@@ -8,6 +8,7 @@ import {
 } from "../../../../../tests/fake/branch-repositories";
 import { isAnyRepositorySyncing } from "./is-any-repository-syncing";
 import {
+  countUnlistedFailures,
   getBandKind,
   getFailingRepositories,
   hasImportError,
@@ -78,6 +79,28 @@ describe("getFailingRepositories", () => {
 
   it("returns nothing before the health has loaded", () => {
     expect(getFailingRepositories(undefined)).toEqual([]);
+  });
+});
+
+describe("countUnlistedFailures", () => {
+  it("counts the failing repositories the server has past each list's limit", () => {
+    // GIVEN
+    const health = generateBranchRepositoryHealth({
+      importErrors: [importError("a")],
+      importErrorCount: 4,
+      unreachable: [unreachable("b"), unreachable("c")],
+      unreachableCount: 3,
+    });
+
+    // WHEN / THEN
+    expect(countUnlistedFailures(health)).toBe(4);
+  });
+
+  it("is zero when every failing repository is listed, or before the health has loaded", () => {
+    expect(
+      countUnlistedFailures(generateBranchRepositoryHealth({ importErrors: [importError("a")] }))
+    ).toBe(0);
+    expect(countUnlistedFailures(undefined)).toBe(0);
   });
 });
 

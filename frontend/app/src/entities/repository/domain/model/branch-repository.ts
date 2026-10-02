@@ -37,9 +37,12 @@ export interface BranchRepositoryPage {
   count: number;
 }
 
+// Each list stops at REPOSITORY_HEALTH_LIST_LIMIT; its count is the server's total.
 export interface BranchRepositoryHealth {
   importErrors: BranchRepository[];
+  importErrorCount: number;
   unreachable: BranchRepository[];
+  unreachableCount: number;
   syncingCount: number;
 }
 

@@ -33,6 +33,19 @@ export function getFailingRepositories(
   ];
 }
 
+// Failing repositories past the list limit. One that is both failing and unreachable, and past
+// the limit of both lists, is counted twice.
+export function countUnlistedFailures(health: BranchRepositoryHealth | undefined): number {
+  if (!health) return 0;
+
+  return (
+    health.importErrorCount -
+    health.importErrors.length +
+    health.unreachableCount -
+    health.unreachable.length
+  );
+}
+
 export function getBandKind(repository: BranchRepository): RepositoryBandKind {
   return hasImportError(repository) ? "import-error" : "unreachable";
 }

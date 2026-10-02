@@ -91,13 +91,14 @@ describe("getBranchRepositoryHealthFromApi", () => {
     importErrorStatuses: ["error-import"],
     unreachableStatuses: ["error-cred", "error-connection", "error"],
     syncingStatuses: ["syncing"],
+    limit: 50,
   };
 
   beforeEach(() => {
     mockQuery.mockReset();
   });
 
-  it("filters failing and syncing repositories on the server, on the page's branch", async () => {
+  it("filters failing and syncing repositories on the server, capped, on the page's branch", async () => {
     // GIVEN
     const data = {
       importErrors: { count: 0, edges: [] },
@@ -119,10 +120,16 @@ describe("getBranchRepositoryHealthFromApi", () => {
       expect.objectContaining({ variables: statuses, context: { branch: "feature" } })
     );
     const query = sentQuery();
-    expect(query).toMatch(/importErrors: CoreGenericRepository\(\s*sync_status__values:/);
-    expect(query).toMatch(/unreachable: CoreGenericRepository\(\s*operational_status__values:/);
-    expect(query).toMatch(/syncing: CoreGenericRepository\(sync_status__values:/);
-    expect(query).not.toMatch(/limit|offset/);
+    expect(query).toMatch(
+      /importErrors: CoreGenericRepository\(\s*sync_status__values: \$importErrorStatuses\s*limit: \$limit/
+    );
+    expect(query).toMatch(
+      /unreachable: CoreGenericRepository\(\s*operational_status__values: \$unreachableStatuses\s*limit: \$limit/
+    );
+    expect(query).toMatch(
+      /syncing: CoreGenericRepository\(sync_status__values: \$syncingStatuses\)/
+    );
+    expect(query).not.toMatch(/offset/);
   });
 
   it("filters read-only repositories only for the read-only kind", async () => {
@@ -138,6 +145,6 @@ describe("getBranchRepositoryHealthFromApi", () => {
 
     // THEN
     expect(sentQuery()).toMatch(/importErrors: CoreReadOnlyRepository\(/);
-    expect(sentQuery()).not.toContain("CoreGenericRepository");
+    expect(sentQuery()).not.toMatch(/\w+: CoreGenericRepository\(/);
   });
 });

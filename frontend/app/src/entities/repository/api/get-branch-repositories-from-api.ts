@@ -4,7 +4,20 @@ import type { BranchContextParams } from "@/shared/api/types";
 import type { BranchRepositoryListKind } from "@/entities/repository/domain/model/branch-repository";
 import { READONLY_REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 
-const GET_BRANCH_REPOSITORIES = graphql(`
+export const BRANCH_REPOSITORY_FIELDS = graphql(`
+  fragment BranchRepositoryFields on CoreGenericRepository @_unmask {
+    id
+    __typename
+    display_label
+    name { value }
+    commit { value }
+    sync_status { value label color description }
+    operational_status { value label color }
+  }
+`);
+
+const GET_BRANCH_REPOSITORIES = graphql(
+  `
   query GET_BRANCH_REPOSITORIES($limit: Int!, $offset: Int!) {
     CoreGenericRepository(
       limit: $limit
@@ -14,20 +27,17 @@ const GET_BRANCH_REPOSITORIES = graphql(`
       count
       edges {
         node {
-          id
-          __typename
-          display_label
-          name { value }
-          commit { value }
-          sync_status { value label color description }
-          operational_status { value label color }
+          ...BranchRepositoryFields
         }
       }
     }
   }
-`);
+`,
+  [BRANCH_REPOSITORY_FIELDS]
+);
 
-const GET_BRANCH_READONLY_REPOSITORIES = graphql(`
+const GET_BRANCH_READONLY_REPOSITORIES = graphql(
+  `
   query GET_BRANCH_READONLY_REPOSITORIES($limit: Int!, $offset: Int!) {
     CoreReadOnlyRepository(
       limit: $limit
@@ -37,18 +47,14 @@ const GET_BRANCH_READONLY_REPOSITORIES = graphql(`
       count
       edges {
         node {
-          id
-          __typename
-          display_label
-          name { value }
-          commit { value }
-          sync_status { value label color description }
-          operational_status { value label color }
+          ...BranchRepositoryFields
         }
       }
     }
   }
-`);
+`,
+  [BRANCH_REPOSITORY_FIELDS]
+);
 
 export type BranchRepositoriesConnection =
   | ResultOf<typeof GET_BRANCH_REPOSITORIES>["CoreGenericRepository"]

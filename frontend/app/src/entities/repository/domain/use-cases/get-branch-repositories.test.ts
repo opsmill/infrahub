@@ -145,6 +145,7 @@ describe("getBranchRepositoryHealth", () => {
       importErrorStatuses: ["error-import"],
       unreachableStatuses: ["error-cred", "error-connection", "error"],
       syncingStatuses: ["syncing"],
+      limit: 50,
     });
   });
 
@@ -180,5 +181,21 @@ describe("getBranchRepositoryHealth", () => {
     expect(health.importErrors.map(({ id }) => id)).toEqual(["broken"]);
     expect(health.unreachable.map(({ id }) => id)).toEqual(["offline"]);
     expect(health.syncingCount).toBe(3);
+  });
+
+  it("keeps the server's total of each failing list next to its capped rows", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoryHealthFromApi).mockResolvedValue({
+      importErrors: connection([node("broken", { sync_status: { value: "error-import" } })], 120),
+      unreachable: connection([node("offline", { operational_status: { value: "error" } })], 2),
+      syncing: { count: 0 },
+    } as unknown as HealthResult);
+
+    // WHEN
+    const health = await getBranchRepositoryHealth({ branchName: "feature", syncWithGit: true });
+
+    // THEN
+    expect(health.importErrorCount).toBe(120);
+    expect(health.unreachableCount).toBe(2);
   });
 });
