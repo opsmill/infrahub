@@ -504,7 +504,7 @@ precondition are identical either way. The tasks name both attachment points.
 |---|---|---|
 | #10667 | IFC-3147, one status row per branch | None. It reads per-branch repository values for a GraphQL query. It does not touch the sync or pull paths. It is a natural reader of the four new attributes later, which is INFP-671's job, not this epic's. |
 | #10530 | IFC-3101, commit visibility spec | None directly. It introduces `git/state/` and a bounded worker RPC. The four attributes are readable through its query surface once INFP-671 exposes them. |
-| #10542 | IFC-3105, honour the default branch | **Adjacent and important.** It makes the repository trunk a resolved value rather than a silent fallback, changes `git/base.py` heavily, adds `git/remote_refs.py`, and rewrites `get_initialized_repo`. It removes the "warm path falls back to Infrahub's default branch" defect this epic's trunk handling would otherwise inherit. It is not a prerequisite, but a rebase conflict in `git/base.py` is likely. Flagged in the plan's risk list. |
+| #10542 | IFC-3105, honour the default branch | **Merged into `develop`.** It makes the repository trunk a resolved value rather than a silent fallback. It rewrote 193 lines of `git/base.py`, removing `default_branch` and adding `_get_mapped_remote_branch`, `_get_mapped_target_branch` and `_resolve_worktree_identifier`; rewrote `get_initialized_repo`; and added `git/remote_refs.py` and `git/graph_settings.py`. This epic builds on it, and the "warm path falls back to Infrahub's default branch" defect is gone. |
 | #10513 | INFP-671, cross-branch repository status | None. It is the display surface this epic's record will eventually feed. Explicitly out of scope here. |
 
 ---
@@ -557,5 +557,6 @@ bullet, "Re-running the merge no-ops", still describes a local merge commit that
 after a rejected push, which the reset now removes, so a retry re-derives the merge and reaches the
 push again. The paragraph below the bullets still says a merge commit "exists on exactly one
 worker's disk". Only the second bullet, "Nothing ever re-pushes", stays accurate.
-**Leave the other two alone.** They cover the trunk fallback (PR #10542) and the persisted
-writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
+There are three such notes, not four: PR #10542 removed the trunk-fallback one when it landed.
+**Leave the remaining one alone.** It covers the persisted writeback state (IFC-3220). Rewriting
+it would claim another fix shipped.
