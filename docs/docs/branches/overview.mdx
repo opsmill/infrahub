@@ -138,9 +138,9 @@ Infrahub sets a status on every branch, and blocks some operations on a branch w
 
 | Status | Set by | Blocks | Cleared by |
 |---|---|---|---|
-| `OPEN` | Creating the branch, a rebase, or a merge that is rolled back or recovered | Nothing | The events that set another status |
+| `OPEN` | Creating the branch, a rebase, or a merge that is rolled back or recovered | Nothing | — |
 | `NEED_REBASE` | Converting the kind of a branch-agnostic object whose branch-aware attributes carry over to the new kind, which runs on the default branch and marks every other open branch | Writes to the branch. Rebasing or deleting it, creating a branch, and opening a Proposed Change still work | A rebase |
-| `NEED_UPGRADE_REBASE` | `infrahub upgrade`, on every open branch on an older graph version | Merging the branch. Writes still work | A rebase |
+| `NEED_UPGRADE_REBASE` | `infrahub upgrade`, on every open branch on an older graph version; also set while a branch migration runs | Merging the branch. Writes still work | A rebase |
 | `MERGING` | The start of a merge | Writes to the branch and to the default branch, and deleting the branch | The end of the merge: `MERGED` when it completes, `OPEN` when it is rolled back |
 | `MERGE_FAILED` | Infrahub, when the worker running the merge is no longer live | Writes to the branch and to the default branch, and deleting the branch | [`infrahub recover merge`](./merge.mdx#recovering-the-failed-merge) |
 | `MERGED` | A completed merge | Every change to the branch except deleting it | Not cleared: a merged branch stays read-only |

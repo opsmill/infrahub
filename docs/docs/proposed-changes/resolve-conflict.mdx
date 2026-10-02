@@ -21,7 +21,7 @@ To resolve conflicts on a proposed change:
 2. On the **Data** tab, find the message "Choose the branch to resolve the conflict:" under each conflict on an attribute value or on a relationship to a single peer, and select the branch whose version to keep. Infrahub saves the choice as soon as you select it.
 3. Merge the proposed change once every conflict has a branch selected and no delete-versus-modify conflict remains.
 
-The **Data Integrity** check keeps listing a conflict after you choose a branch for it, and its result stays failed, including when the check runs again after later changes to the branch. Retrying the checks does not re-run **Data Integrity** unless the branch has changed since the last run. A conflict with a branch selected does not block the merge, and the merge applies the version you chose. A delete-versus-modify conflict is the exception: it blocks the merge whichever branch is selected, as described below.
+The **Data Integrity** check keeps listing a conflict after you choose a branch for it, and its result stays failed, including when the check runs again after later changes to the branch. Retrying the checks does not re-run **Data Integrity** unless one of the two branches has changed since the last run. A conflict with a branch selected does not block the merge, and the merge applies the version you chose. A delete-versus-modify conflict is the exception: it blocks the merge whichever branch is selected, as described below.
 
 ![Conflict resolution interface showing branch selection](../media/topics/proposed_change/pc_conflict_resolution.png)
 

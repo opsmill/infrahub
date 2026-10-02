@@ -122,7 +122,7 @@ The third column of `showmigrations` reports the migration's class. The four typ
 - **GraphMigration**: applies one or more Cypher queries to the graph.
 - **InternalSchemaMigration**: updates the internal schema definition.
 - **ArbitraryMigration**: runs arbitrary Python logic. May print its own progress messages while it works.
-- **MigrationRequiringRebase**: rewrites data that open branches read from the default branch. Rebasing a branch runs the pending migrations on it; see `infrahub upgrade --rebase-branches`.
+- **MigrationRequiringRebase**: Infrahub applies it to an open branch only after you rebase that branch. Rebasing runs the pending migrations on it; see `infrahub upgrade --rebase-branches`.
 
 After any upgrade that changes the graph version, Infrahub marks every open branch on the older graph version as `NEED_UPGRADE_REBASE`, whatever types of migration ran. You can keep writing to such a branch, but you cannot merge it until you rebase it. For what each branch status blocks, see [Branch statuses](../../../branches/overview.mdx#branch-statuses).
 

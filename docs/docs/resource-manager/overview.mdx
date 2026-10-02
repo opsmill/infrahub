@@ -243,7 +243,7 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 ### Concurrent requests
 
-Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values. Requests to different pools do not wait for each other.
+Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values — unless they carry the same identifier, in which case the second gets the value already reserved under it. Requests to different pools do not wait for each other.
 
 ```mermaid
 sequenceDiagram
@@ -287,7 +287,7 @@ mutation {
 
 The same `identifier` field is available on `from_pool` when you allocate through a relationship. How Infrahub treats identifiers:
 
-- **The web interface never sends one.** When you choose a pool in a form, Infrahub applies its default, described in the next two rules.
+- **The web interface never sends one.** When you choose a pool in a form, Infrahub applies the default for that kind of pool, described in the three rules below.
 - **Infrahub allocates a new value for every direct allocation without an identifier.**
 - **A relationship `from_pool` without an identifier gets a default one** when the object's kind has an HFID. Infrahub builds it from the object's kind, its HFID and the relationship name. When the kind has no HFID, there is no default, and Infrahub allocates a new value for each request.
 - **Number pools ignore identifiers.** A number pool keys each reservation on the object whose attribute it fills.

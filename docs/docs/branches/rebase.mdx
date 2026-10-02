@@ -5,7 +5,7 @@ title: Rebase a branch
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-A rebase moves a branch's `branched_from` forward to the time the rebase starts, so the branch reads the current data on the default branch plus its own changes. Rebase before you open a Proposed Change, and after other branches merge into the default branch.
+A rebase brings a branch up to date with the default branch. Afterwards, a query on the branch returns the default branch's current data together with the branch's own changes. Rebase before you open a Proposed Change, and again after another branch merges into the default branch.
 
 :::note
 
@@ -118,7 +118,7 @@ For each conflict type in more detail, see [Resolve conflicts](./resolve-conflic
 
 The web interface has two **Rebase** buttons, and they show the result differently:
 
-- **On the branch details page**, next to **Merge** and **Validate**. Selecting it starts the rebase as a background task. The page shows no message with the outcome: check the `Rebase branch <name>` task under **Tasks** on the same page, which ends as failed when the rebase is refused. The button is disabled on a merged branch.
+- **On the branch details page**, next to **Merge** and **Validate**. Selecting it starts the rebase as a background task and confirms that the request was sent. To see the outcome, check the `Rebase branch <name>` task under **Tasks** on the same page; it ends as failed when the rebase is refused. The button is disabled on a merged branch.
 - **On the Data tab** of a branch or of its Proposed Change, next to **Refresh diff**. Selecting it makes the web interface wait for the rebase. When the rebase succeeds, the web interface refreshes the diff. When the rebase is refused, it shows the server's message, which lists each conflict and what it needs. The message does not include the error code.
 
 Choose the button on the **Data** tab when you want to see why a rebase was refused.

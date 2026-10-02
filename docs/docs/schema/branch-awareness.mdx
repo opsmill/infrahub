@@ -16,7 +16,7 @@ An element can also be configured as:
 | Branch Support | Description                                                                          | Diff | Merge | Rebase |
 | -------------- | ------------------------------------------------------------------------------------ | ---- | ----- | ------ |
 | **Aware**      | All changes will be local to the branch and can be merged back into the main branch. | Yes  | Yes   | Yes    |
-| **Agnostic**   | All changes will automatically be available in all branches                          | No   | No    | No     |
+| **Agnostic**   | All changes will automatically be available in all branches                          | Yes  | No    | No     |
 | **Local**      | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
 
 ```mermaid
@@ -25,8 +25,8 @@ flowchart LR
 on a branch"] --> Q{"branch setting"}
   Q -->|agnostic| G["Every branch
 sees it at once
-not in the diff,
-merge or rebase"]
+shown in the diff
+not merged or rebased"]
   Q -->|aware| A["Stays on the branch
 in the diff and the merge
 kept by a rebase"]

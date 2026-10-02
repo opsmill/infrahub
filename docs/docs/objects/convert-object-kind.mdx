@@ -65,6 +65,8 @@ Converting a branch-agnostic object whose branch-aware attributes carry over to 
 
 On a branch in `NEED_REBASE`, only rebasing the branch, deleting it, creating a branch and opening a Proposed Change work (the `BranchRebase`, `BranchDelete`, `BranchCreate` and `ProposedChangeCreate` mutations). Any other change fails with the `BRANCH_NEEDS_REBASE` error until you [rebase the branch](../branches/rebase.mdx).
 
+When you convert the object, Infrahub deletes it on every branch and creates the replacement on the default branch, using the default branch's values. Any value another branch had set on a branch-aware attribute of the original object is lost, and rebasing that branch does not restore it.
+
 **Commit preservation:**
 The conversion process maintains object history and commit lineage, ensuring auditability and rollback capabilities.
 
