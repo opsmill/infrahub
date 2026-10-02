@@ -65,3 +65,7 @@ these ways, and every item still holds:
   sharpened.
 - SC-001 is reworded so that it can be met, and SC-008 protects the success path.
 - "Merge follow-up path" is defined in "Terms", so FR-016 and FR-017 have a testable scope.
+
+**Validation pass 3**, after the second critique, re-checked every item. FR-005 and FR-017 changed
+wording, SC-004 states the fail-open exception, and two edge cases and one decision changed. Every
+item still holds.

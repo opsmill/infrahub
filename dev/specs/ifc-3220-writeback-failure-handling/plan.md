@@ -24,8 +24,8 @@ periodic synchronisation call the same service. A Prefect task retries transient
 times, and every Git command is bounded in time. While a delivery is pending, no other path imports
 the default branch. A regeneration barrier, consulted at every dispatch point of the merge
 follow-up, holds the definitions of a repository with a pending delivery as identifiers with hold
-sequences, keeps their narrowed selection in the cache for 15 minutes, and releases them once when
-the queue clears. A user with write access can retry, or abandon the queue with a durable record.
+sequences, keeps their narrowed selection in the cache for the length of the automatic retry chain,
+about 45 minutes, and releases them once, under a lease, when the queue clears. A user with write access can retry, or abandon the queue with a durable record.
 The repository page shows the state, read from the default branch, and the two actions.
 
 ## Technical Context
@@ -49,15 +49,15 @@ testcontainers. The Gogs live-remote harness of `backend/tests/integration/git/`
 **Performance Goals**: on a merge with no pending delivery, the barrier adds one indexed read per
 consultation, and the merge dispatcher adds two reads and one write per git-synced repository that
 carries content. The synchronisation adds one read per repository per cycle. A delivery adds one
-fetch and one ancestry test per queued entry to today's merge and push. SC-008: a merge whose first
-attempt succeeds within 15 minutes regenerates as precisely as today.
+fetch and one ancestry test per queued entry to today's merge and push. SC-008: a merge whose
+delivery succeeds within its automatic retry chain regenerates as precisely as today.
 
 **Constraints**: the repository lock is the most contended lock of the Git subsystem. The new
 delivery-state lock is held for one read-modify-write, has a 30-second time to live, and is never
 held across Git work, so a branch merge never waits for a push. A delivery attempt holds no lock
 across a retry delay or a release. Every Git command of a delivery is bounded.
 
-**Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
+**Scale/Scope**: one new package of eleven files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
 entity slice. The stored history of the queue grows with the square of the merges in one outage:
 about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table at the end of
@@ -69,7 +69,7 @@ about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table 
 
 | Principle | Assessment |
 |---|---|
-| **I. Schema-Driven Integrity** | Pass. Eight attributes declared in the schema layer. Protocols, the GraphQL schema and the frontend types are regenerated, never hand-edited. |
+| **I. Schema-Driven Integrity** | Pass. Nine attributes declared in the schema layer. Protocols, the GraphQL schema and the frontend types are regenerated, never hand-edited. |
 | **II. Branch-Safe by Default** | Pass, and it is a central decision. `LOCAL` makes the state diff-invisible and never merged. The read inheritance of `LOCAL` is specified (FR-025) and handled: the store reads the default branch only, and no generic UI surface shows the inherited copy. A branch-safety test asserts both. |
 | **III. Type Safety & Explicit Contracts** | Pass. The queue, the held set and the records are versioned Pydantic models, not dictionaries. The causes are a closed enum. Per-ref rejections get a typed exception whose reason comes from GitPython's flags. Both contracts are written before implementation. |
 | **IV. Test Discipline** | Pass. The classifier, the queue model, the service, the abandoner, the recovery check and the barrier are unit-testable without a database, through three ports. Integration tests run against a live Gogs remote. Two e2e tests cover the user-facing actions. |
@@ -81,8 +81,8 @@ about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table 
 
 | Gate | Status |
 |---|---|
-| Database schema or migration change | **Yes.** Eight branch-local attributes on `CoreRepository`. Optional with no default, so no data migration and no `GRAPH_VERSION` bump. **Needs sign-off.** |
-| GraphQL schema modification | **Yes.** The eight fields and two mutations. **Needs sign-off.** |
+| Database schema or migration change | **Yes.** Nine branch-local attributes on `CoreRepository`. Optional with no default, so no data migration and no `GRAPH_VERSION` bump. **Needs sign-off.** |
+| GraphQL schema modification | **Yes.** The nine fields and two mutations. **Needs sign-off.** |
 | Authentication or authorization change | **Yes.** Two new permission-gated mutations. The delivery uses the repository's stored credential, so a permitted user can cause a push the user could not personally make. A proposed-change merge already does. **Needs sign-off.** |
 | New dependency | No |
 | CI/CD workflow change | No |
@@ -141,7 +141,7 @@ backend/infrahub/
 │                                          # recovery check; repository filters on the blanket flow
 ├── core/
 │   ├── constants/__init__.py              # RepositoryDeliveryStatus, RepositoryDeliveryFailureCause
-│   ├── schema/definitions/core/repository.py   # the eight attributes
+│   ├── schema/definitions/core/repository.py   # the nine attributes
 │   ├── merge/
 │   │   ├── regeneration_barrier.py        # NEW
 │   │   ├── regeneration_release.py        # NEW
@@ -168,7 +168,7 @@ frontend/app/src/entities/
 │   ├── api/                               # retry-, abandon-, get-delivery-state-from-api.ts
 │   ├── domain/                            # use cases, delivery-state model, actions-by-status rule
 │   └── ui/                                # delivery section, menu items, abandon modal, queries
-└── nodes/object/ and nodes/.../columns/   # keep the eight attributes out of the generic surfaces
+└── nodes/object/ and nodes/.../columns/   # keep the nine attributes out of the generic surfaces
 
 backend/tests/
 ├── unit/git/writeback/                    # classifier, scrubber, models, service, abandoner, recovery
@@ -228,7 +228,7 @@ for the no-remote path and the live-remote tests of #10465.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **The hold is the normal path for a git-synced merge that carries content.** | Without the narrowed cache, such a merge would recompute whole kinds. | The narrowed cache of `research.md` R9 keeps SC-008 true for 15 minutes. The data-only skip of R3 removes every merge that carries no content. A release after the window widens, which is FR-014's intent. |
+| **The hold is the normal path for a git-synced merge that carries content.** | Without the narrowed cache, such a merge would recompute whole kinds. | The narrowed cache of `research.md` R9 keeps SC-008 true for the whole automatic retry chain, and a repeated hold writes a union. The data-only skip of R3 removes every merge that carries no content. A release after the window widens, which is FR-014's intent. |
 | **A merge lands during the import of a delivered commit.** | Its repository objects can be deleted, then recreated with new ids at the next attempt. | The obligation stays, so the next attempt imports them. The same exposure exists today between a synchronisation import and a merge. Documented. |
 | **The abandonment leaves repository objects that the recorded commit lacks.** | The release can fail for those definitions until a user reimports. | The repository section says so and offers the reimport. An abandonment that removed them would itself fail on the delete validator (`research.md` R8). |
 | **Whole-queue abandonment drops good entries.** | Re-delivery needs a manual merge on the remote per dropped entry, since a merged Infrahub branch cannot merge again. | A conflict can also be resolved on the remote, and a retry then clears it. The cost is stated in spec decision 1, for Patrick to confirm. |
@@ -265,9 +265,12 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 | 10 | The release runs inline, dispatches first and clears by hold sequence. | `research.md` R10. |
 | 11 | A refused remote branch deletion is carried on the entry and done at delivery. | `research.md` R12. |
 | 12 | `RequestArtifactDefinitionGenerate` gains `repository_id`, which corrects a PRD claim. | `research.md` R0, R9. |
-| 13 | The narrowed selection lives in the cache for 15 minutes. | `research.md` R9. |
+| 13 | The narrowed selection lives in the cache for the length of the retry chain, as a union over repeated holds. | `research.md` R9. |
 | 14 | The periodic synchronisation restarts a lost attempt and an owed release. | `research.md` R20. |
 | 15 | Recomputes from live events of other writers, and transform webhooks, are not held. | `spec.md` decision 14. |
+| 16 | The end of an attempt has the shape of the abandonment: entries settle under the repository lock, then a leased release runs. | `research.md` R4, R10. |
+| 17 | The barrier also holds runs that no merge started, on the default branch, while a delivery is pending. | `research.md` R9. |
+| 18 | After an abandonment, a kept source branch comes back as a new Infrahub branch on every worker. | `research.md` R12. To confirm with the product owner. |
 
 ## Complexity Tracking
 

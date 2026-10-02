@@ -135,7 +135,7 @@ created while main has a pending delivery therefore reads main's delivery state 
 fork, until B is rebased.
 
 **Decision**: nothing in the backend reads the state on another branch. The store reads and writes
-the default branch, whatever branch the caller runs on. The frontend keeps the eight attributes out
+the default branch, whatever branch the caller runs on. The frontend keeps the nine attributes out
 of every generic surface of `CoreRepository`: the main attribute list, the "extra" toggle of the
 details page, and the column picker of the list view. It renders them only in a section of their
 own that always queries the default branch (R14). Each attribute's description says that only the
@@ -208,9 +208,11 @@ enqueue is guarded on its own: a failed enqueue is logged, and the merge is stil
 `pending_merge` set. The flow writes the same entry again, idempotently, before its first attempt.
 
 **Which merges are queued** (FR-005): only a repository whose internal status on the source branch
-is `active`, that has a remote, on a source branch that syncs with Git, and whose source commit
-carries repository content. A staging repository keeps today's path and is never queued. A
-repository with no remote merges and records locally, as today.
+is `active`, on a source branch that syncs with Git, and whose source commit carries repository
+content. A staging repository keeps today's path and is never queued. Whether a clone has a remote
+is a fact of a worker's disk, which the dispatcher cannot read. So the flow's no-remote path merges
+and records locally, as today, and then removes the entry it finds, as a delivery by observation
+would. A repository with no remote therefore never stays queued.
 
 **When a merge carries no repository content.** The dispatcher reads, for the source branch, the
 `commit` value and the branch's `branched_from`, then reads the default branch's `commit` at that
@@ -252,18 +254,22 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt)`. The merge flow, the retry flow and the
-recovery check (R20) all call it (FR-007).
+flow, with one entry point, `deliver(final_attempt, manual)`. The merge flow, the retry flow and the
+recovery check (R20) all call it (FR-007). Its end has the same shape as the abandonment of R8: the
+entries leave the queue under the repository lock, and the release runs after the lock is released,
+under a lease.
 
 ### The algorithm
 
 Under the repository lock:
 
-1. **Snapshot.** Under the state lock, take a snapshot of the queue and of the held set, and stamp
-   `attempt_started_at` and `last_progress_at`. If the queue is empty, no import is owed and the held
-   set is empty, return. If only held work remains, go to step 14.
+1. **Snapshot.** Under the state lock, read the queue and the held set, and stamp
+   `attempt_started_at` and `last_progress_at` in `delivery_progress`. "Something to do" means a
+   non-empty queue, or held work with no live release lease. If there is nothing to do, return
+   `nothing-pending`. If only held work remains, take a lease through `lease_owed_release`, leave
+   the repository lock, and go to step 16.
 2. **Fetch**, bounded in time (R6). Let **H** be the remote head of the destination, and **R** the
-   commit recorded for the destination.
+   commit recorded for the destination. Move `last_progress_at`.
 3. **Destination check** (FR-022). If R is neither H nor an ancestor of H, the destination was
    rewritten. Mark the queue unreplayable with the cause `destination-rewritten`. Push nothing. A
    worker that does not hold R locally treats it as rewritten, which is the safe reading.
@@ -272,35 +278,48 @@ Under the repository lock:
 5. **Source check** (FR-020). For each remaining entry, the source commit must be the remote head of
    its source branch or an ancestor of it. If it is not, mark the queue unreplayable with the cause
    `source-discarded`. Push nothing. A missing remote branch fails the check too.
-6. **Replay.** Reset the destination worktree to H. Merge each remaining source commit, in queue
-   order, with the same `--no-ff` rule as today (`git.use_explicit_merge_commit`). On a conflict,
-   abort, reset to the pre-attempt commit, and mark the queue unreplayable with the cause
-   `replay-conflict`, naming the entry.
+6. **Replay.** Reset the destination worktree to H, **always**, also when no entry remains to
+   replay. Merge each remaining source commit, in queue order, with the same `--no-ff` rule as today
+   (`git.use_explicit_merge_commit`). On a conflict, abort, reset to the pre-attempt commit, and mark
+   the queue unreplayable with the cause `replay-conflict`, naming the entry.
 7. **Push** once, if any entry was replayed, bounded in time. On a failure, reset the worktree to
-   the pre-attempt commit (FR-002) and classify the failure (R5).
-8. Let **M** be the final head.
+   the pre-attempt commit (FR-002) and classify the failure (R5). Move `last_progress_at`.
+8. Let **M** be the worktree head. Because step 6 always resets to H, M is H on the observation
+   path, and H plus the replayed merges otherwise.
 9. **Import obligation.** If H is not R, or an import is already owed, save
    `import_owed_commit = M` through the store. This save comes **before** the commit write: a crash
    between the two then leaves an obligation that the next attempt honours, never a recorded commit
    with nothing owed.
 10. **Record.** Create the commit worktree of M and write the commit, through `update_commit_value`
     as today (FR-001). On a failure, reset the worktree behind the remote. The next attempt observes
-    the delivery and records it.
-11. **Import** at M on the default branch when an import is owed (FR-023). On success, clear the
-    obligation. On a failure, classify it (R5) and stop: the obligation stays, the entries stay, and
+    the delivery and records it. Move `last_progress_at`.
+11. **Import** at M on the default branch when an import is owed (FR-023). Move `last_progress_at`
+    before and after it. On success, clear the obligation, unless the queue grew past the snapshot
+    meanwhile. On a failure, classify it (R5) and stop: the obligation stays, the entries stay, and
     the held work stays held.
 12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today.
 13. **Delete source branches.** For each delivered entry with `delete_source_git_branch` set, and
     that no remaining entry names, delete the remote branch and send
-    `RefreshGitRepositoryBranchDeleted` (R12).
+    `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted.
+14. **Settle.** Under the state lock, in one save: remove the snapshot's entries into
+    `removed_entry_ids` and bump the version; set `delivery_last_delivered_commit` to M when
+    something was pushed; set the status from what remains, and clear the cause and the message when
+    it is `none`; set the **release lease** over the held items up to the snapshot's highest
+    sequence (R10). The held items stay.
+15. Leave the repository lock.
 
 Then, outside the repository lock:
 
-14. **Release** the held snapshot (R10).
-15. **Clear.** Under the state lock: remove the snapshot's entries and add their ids to
-    `removed_entry_ids`; remove the held items whose hold sequence is not above the snapshot's;
-    set `delivery_last_delivered_commit` to M when something was pushed; set the status `none` if
-    the queue is now empty, otherwise `pending`; clear the cause and the message when `none`.
+16. **Release** the held items of the lease window (R10). The releaser renews the lease after each
+    awaited step.
+17. **Clear.** Under the state lock: remove the held items of the lease window, and end the lease.
+
+**Why the entries leave under the lock.** Two kinds of waiter take the repository lock the moment
+it is free: an abandonment and the branch-deletion guard. If the entries stayed queued until after
+the release, an abandonment would pass its version check and record as "dropped" merges that the
+remote already holds, and the guard would flag an entry whose deletion step has already run, so the
+branch would never be deleted. Settling under the lock bumps the version first: the abandonment is
+refused as stale, and the guard finds no entry and deletes the branch itself.
 
 **Why the record comes before the import.** The import writes artifact definitions through the SDK,
 and each write submits a generation that reads the recorded commit. With the import first, those
@@ -312,9 +331,11 @@ generations would read R. The synchronisation already records first (R0).
 that has not heard the broadcast yet. Holding the lock across the release would deadlock. The
 broadcast goes first so that most workers already hold M.
 
-**What a second attempt between steps 13 and 15 does.** It takes the free repository lock, observes
-every entry on the remote, records nothing new, and releases the held set again. Over-execution, the
-accepted direction.
+**Why the release has a lease.** Between steps 15 and 17, a waking retry chain, a manual retry or
+the recovery check can start a run. That run must not release the same items again. While a lease
+is live, a run releases only the items held after the lease's window, and the recovery check does
+nothing for held work. A lease that expires, because the releasing worker died, makes the release
+owed again, and the recovery check starts it.
 
 **Why the checks run before the replay.** A worker can hold a discarded commit in its object
 database long after the remote dropped it. A replay that merges it and pushes would restore it. A
@@ -335,6 +356,10 @@ files. When the queue grew past the snapshot while the import ran, the service k
 and the next attempt, which delivers the new entry, imports its own head. The objects come back,
 possibly with new ids. A synchronisation import racing a merge has the same exposure today. Closing
 it would need merges to wait for imports, which FR-010 forbids.
+
+**An owed import implies a non-empty queue.** The obligation is cleared before the settle, or the
+attempt stops with its entries still queued. An abandonment clears both together. This invariant
+lets the barrier's fast path read the scalar status alone (R9).
 
 **Rejected: storing the merge commit as a Git bundle.** The PRD measured and rejected it: it becomes
 undeliverable as soon as the remote destination advances, and delivering it then needs a
@@ -363,16 +388,16 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 ## R5. Classifying a failure, and keeping the remote's words
 
 **Decision**: a pure function, `classify_delivery_failure(error, stage) -> DeliveryFailure`, in
-`git/writeback/classifier.py`. `stage` is one of `push`, `record`, `import`. It reads the exception
-type first. Per-ref push rejections get a typed error whose reason comes from GitPython's
+`git/writeback/classifier.py`. `stage` is one of `fetch`, `push`, `record`, `import`, `replay`
+and `release`. It reads the exception type first. Per-ref push rejections get a typed error whose reason comes from GitPython's
 `PushInfo` flags, not from text.
 
 | Stage | Exception | Cause | Retried automatically |
 |---|---|---|---|
-| push | `RepositoryConnectionError` (unreachable, timeout, 5xx) | `remote-unreachable` | yes |
-| push | `RepositoryNotFoundError` (new subtype) | `not-found` | no |
-| push | `RepositoryTLSError` (new subtype) | `certificate` | no |
-| push | `RepositoryCredentialsError` | `credentials` | no |
+| fetch, push | `RepositoryConnectionError` (unreachable, timeout, 5xx, a killed Git command) | `remote-unreachable` | yes |
+| fetch, push | `RepositoryNotFoundError` (new subtype) | `not-found` | no |
+| fetch, push | `RepositoryTLSError` (new subtype) | `certificate` | no |
+| fetch, push | `RepositoryCredentialsError` | `credentials` | no |
 | push | `RepositoryPermissionError` | `permission` | no |
 | push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`) | `permission` | no |
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
@@ -381,6 +406,7 @@ type first. Per-ref push rejections get a typed error whose reason comes from Gi
 | import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-failed` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict | `replay-conflict` | no |
+| release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -396,6 +422,12 @@ which `test_git_live_remote.py` asserts.
 `RepositoryTLSError` and `RepositoryNotFoundError` subclass `RepositoryConnectionError`. Both
 operational-status maps (R0) move from an exact-type lookup to an `isinstance` lookup, most specific
 first, so both subtypes keep `ERROR_CONNECTION`.
+
+**A killed Git command.** When `kill_after_timeout` expires, GitPython kills the process and reports
+"process killed because it timed out" (`git/cmd.py::handle_process_output`). Today no rule of
+`_raise_enriched_error_static` matches that text, so it would become a plain `RepositoryError`. The
+text joins the connection markers, so a timeout of the fetch or the push raises
+`RepositoryConnectionError` and is retried.
 
 ### The remote's own message (FR-018)
 
@@ -490,13 +522,19 @@ The mutations read the state before they submit. The table "Actions by status" i
 [data-model.md](data-model.md) is the full rule. They refuse with a `ValidationError` when:
 
 - nothing is pending (both);
-- an attempt is running and is not stale (retry);
 - the queue version named by an abandonment differs from the current one (abandon);
 - the repository is read-only or `STAGING` (both).
 
-The workflows check again under the locks, because the state can change between the mutation and
-the run. This mirrors ADR 0014, where the mutations "re-check availability at execution time to
-reject a stale action".
+A retry is allowed in every status other than `none`, a running attempt and a waiting automatic
+retry included. The retry flow waits for the repository lock, so two attempts run one after the
+other, and the second finds nothing. A user who fixed the cause need not wait for the next
+automatic attempt.
+
+**The workflows re-check differently.** The retry workflow checks nothing itself: it calls
+`deliver`, whose step 1 decides, and "something to do" there also covers held work behind an empty
+queue, which the recovery check submits the same workflow for. The abandon workflow re-checks the
+version and the queue under both locks, inside the store transition. This mirrors ADR 0014, where
+the mutations "re-check availability at execution time to reject a stale action".
 
 **Why the abandonment is a workflow too.** It must not interleave with a running attempt, so it
 takes the repository lock, which a worker flow already holds in the same way.
@@ -512,24 +550,32 @@ repository's queue, which outlives every task run, so the action belongs on the 
 `git-repository-delivery-abandon`. It changes no Git state and imports nothing.
 
 1. Under the repository lock and the state lock, in one transition: refuse when the version differs
-   or nothing is pending; otherwise remove every entry, add their ids to `removed_entry_ids`, clear
-   any owed import, and write the abandonment record with the actor, the time, the version, the
-   recorded commit and the owed import. The save passes the actor's account id as `user_id`. The
-   held set stays.
-2. Leave both locks. Release the held snapshot (R10).
-3. Under the state lock, remove the held items whose hold sequence is not above the snapshot's.
+   or nothing is pending; otherwise remove every entry, add their ids to `removed_entry_ids`, bump
+   the version, clear any owed import, write the abandonment record with the actor, the time, the
+   version, the recorded commit and the owed import, and set the release lease over the held items.
+   The save passes the actor's account id as `user_id`. The held items stay.
+2. For each abandoned entry with `delete_source_git_branch` set, send
+   `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
+   branch stays (R12).
+3. Leave both locks. Release the held items of the lease window (R10).
+4. Under the state lock, remove the held items of the lease window, and end the lease.
 
 **Why step 1 removes the entries before the release.** With the entries still queued, a delivery
 attempt could start between the release and the clear and push the merges the user is abandoning.
 After step 1, the queue is empty and no attempt can deliver them.
 
-**What a crash between step 1 and step 3 leaves.** An empty queue with a held set: a release is
-owed. The recovery check of R20 starts a delivery flow, which finds only held work and releases it.
-That is invariant 2 of the data model, in its revised form.
+**What a crash between step 1 and step 4 leaves.** An empty queue with held items under a lease.
+When the lease expires, the release is owed, and the recovery check of R20 starts a delivery flow,
+which finds only held work and releases it. That is invariant 2 of the data model.
 
 **What the abandonment does not do.** It never touches the remote, never deletes a remote branch,
-and never re-imports. The repository section then says that the default branch can hold repository
-objects that the recorded commit lacks, and offers "Reimport current commit" (FR-024).
+and never re-imports. The repository section then says two things (FR-024): the default branch can
+hold repository objects that the recorded commit lacks, and, when the record shows a dropped owed
+import, it can lack objects that the recorded commit holds. It names that commit and offers
+"Reimport current commit".
+
+**Why the owed import is dropped and not kept.** An owed import that failed on content would fail
+again at every recovery check, for ever. The reimport is the user's explicit way back.
 
 **Rejected: a re-import at the recorded commit inside the abandonment.** Three reasons. The import
 never deletes artifact definitions, so it cannot do what that design promised. It can refuse to
@@ -593,7 +639,9 @@ The blanket triggers take a branch and enumerate every definition. When a reposi
 delivery, the barrier:
 
 1. holds a `widen` marker for that repository, which releases as a full regeneration of that
-   repository's definitions (R10);
+   repository's definitions (R10). The marker has a scope: `all` from `_full_regeneration` and the
+   flag-off path, `terminals` from `_submit_full_terminal_regeneration`, which deliberately never
+   re-runs the generators that just failed;
 2. submits the blanket triggers with a new optional parameter, `exclude_repository_ids`, naming the
    pending repositories.
 
@@ -608,13 +656,32 @@ repository is not in it.
 ### The atomic hold, with sequence numbers
 
 The barrier holds a repository's candidates only after it confirms, under the state lock, that the
-repository's queue is still non-empty. When the delivery cleared the queue in between, the
-candidates are dispatched.
+repository's queue is still non-empty. When the delivery settled the queue in between, the
+candidates are dispatched. An owed import implies a non-empty queue (R4), so the queue alone
+decides.
 
 Each hold gets the next value of a per-repository sequence, and every held item keeps the sequence
-of its latest hold. A release remembers the highest sequence of its snapshot, and its clear removes
-only the items whose sequence is not above it. A definition held again while a release runs
-therefore survives the clear (FR-015).
+of its latest hold. A release covers a window of sequences, from the end of the previous live lease
+to the highest sequence at its settle, and its clear removes only the items in that window. A
+definition held again while a release runs therefore survives the clear (FR-015).
+
+**The fast path.** `pending_repository_ids` filters on the scalar `delivery_status` alone, which is
+`pending` or `action-required` exactly when the queue is non-empty. A held-only state behind an
+empty queue needs no barrier decision, since nothing is held there. The recovery check reads that
+state per repository (R20).
+
+### Where the barrier holds more than a merge started
+
+Two consultation sites cannot tell a merge-started run from any other run on the default branch.
+`computed_attribute_setup_python` runs for every `SchemaUpdatedEvent`, and the delivery's own
+import can send one. `RecomputeChainSubmitter` levels run whatever started the chain, for example
+`InfrahubRecomputeComputedAttribute`. While a repository has a pending delivery, the barrier holds
+those runs too, for that repository's transforms.
+
+**Decision**: accept the wider hold, and state it in FR-017. A held run is never dropped: it is
+released with the next release of its repository, or by the recovery check when it was held after
+the last release started. Passing a merge marker through the Prefect trigger and the chain would
+cost a new parameter on four flows for a case that only delays work during an outage.
 
 ### When the store fails
 
@@ -631,18 +698,30 @@ repository content will therefore nearly always see a non-empty queue. Holding i
 would then turn every such merge's narrowed recompute into a whole-kind recompute.
 
 **Decision**: at each hold, the barrier also writes the narrowed request of each candidate to the
-cache, keyed by repository id and hold sequence, with a time to live of 15 minutes. The value is the
-request model, serialised. A release reads it per item. Inside the time to live, it dispatches the
-narrowed request, so the dispatch equals what the merge would have dispatched with no barrier. After
-it, or when the read fails, or when the serialised request exceeds 512 KiB, it dispatches the
-identifier with no narrowing.
+cache, keyed by repository id, hold sequence and identifier. The value is the request model,
+serialised. A release reads it per item, under the item's latest sequence. Inside the time to live,
+it dispatches the narrowed request, so the dispatch equals what the merge would have dispatched with
+no barrier. After it, or when the read fails, or when the serialised request exceeds 512 KiB, it
+dispatches the identifier with no narrowing.
+
+**A repeated hold writes a union.** An item keeps only its latest sequence, so a release reads only
+the latest entry. Merge A can hold artifact definition D for member d1, and merge B hold D again for
+member d2. If the entry of B held only d2, d1 would never be regenerated. So, on a repeated hold, the
+barrier reads the entry of the previous sequence and writes the union of the two narrowed requests
+under the new sequence, with the selectors' existing consolidation of member filters. If the
+previous entry is missing, expired or too large, it writes no entry for the new sequence, and the
+release dispatches that item with no narrowing. `hold` returns the previous sequence of every item
+it refreshed, so the barrier knows which entry to read.
 
 **Why this keeps FR-014.** The persisted state still holds identifiers only. The cache entry dies
 before a long recovery could read it, which is exactly FR-014's purpose: "a long recovery cannot
 dispatch a stale target set".
 
-**Why 15 minutes.** It covers the first attempt and every automatic retry (R6), plus a margin. A
-merge whose delivery succeeds within the retry window regenerates as precisely as today.
+**The time to live is derived, not chosen.** `NARROWED_HOLD_TTL_SECONDS` is the sum of the retry
+delays, plus the fetch and push timeouts times the number of attempts, plus a 10-minute margin for
+the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
+about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
+precisely as today. A miss only widens.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.
@@ -651,16 +730,41 @@ merge by the Git round trip, and by minutes when the remote is down.
 
 ## R10. The release
 
-**Decision**: the release runs at the end of a delivery (R4 step 14) or an abandonment (R8 step 2),
+**Decision**: the release runs at the end of a delivery (R4 step 16) or an abandonment (R8 step 3),
 outside the repository lock, through a component, `HeldRegenerationReleaser`, behind a port of the
-service. It dispatches first and clears second, by sequence.
+service. It runs under a release lease, dispatches first and clears second, by sequence window.
+
+### The release lease
+
+The transition that settles a delivery or records an abandonment also adds a lease to the held set:
+a window of sequences and an expiry. The window holds every held item that no live lease covers,
+up to a bound:
+
+- for a delivery, the highest sequence at the attempt's **snapshot**. A hold recorded after the
+  snapshot can belong to a merge whose entry is still queued and not delivered, so it must wait for
+  that entry's delivery;
+- for an abandonment, and for a held-only run, the highest sequence at the transition. The queue is
+  then empty, so every held item belongs to an entry that has left it. The releaser renews the expiry after each awaited
+step, because a release awaits generator runs and can take minutes. Each renewal adds 15 minutes.
+
+The rules:
+
+1. A release dispatches the items of its own window, and its clear removes those items and its own
+   lease. Items held later stay.
+2. While a lease is live, no other run releases its items. A held-only run and the recovery check
+   do nothing for them.
+3. An expired lease, left by a worker that died, protects nothing. The next release covers its
+   items again, and the recovery check starts one if no delivery comes.
+4. A release that fails is retried by its task (stage `release`, R5). If it still fails, its lease
+   expires, and rule 3 applies.
 
 | Held item | Released as |
 |---|---|
 | Artifact definition | The cached narrowed request if present, else `RequestArtifactDefinitionGenerate` with no `members` and no `limit`, through `_dispatch_plan`. |
 | Generator definition | The cached narrowed request if present, else `RequestGeneratorDefinitionRun` with no `target_members`, through `_dispatch_plan`, so the generator-to-artifact cascade runs as on a merge. |
 | Python `(kind, attribute)` | The cached narrowed submission if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
-| `widen` marker | Full regeneration of that repository's definitions: the blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
+| `widen` marker, scope `all` | Full regeneration of that repository's definitions: both blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
+| `widen` marker, scope `terminals` | The artifact blanket trigger only, with `include_repository_ids=[repository]`. |
 
 An identifier that no longer resolves, for example a deleted definition, turns the release into the
 `widen` release of that repository (FR-016). The PRD names this as "a further named fallback
@@ -679,8 +783,8 @@ direction, and FR-015 and SC-004 state it.
 again, while the release runs. A clear by value would drop the repeated hold.
 
 **Why inline and not a separate workflow.** A separate release workflow whose submission fails
-leaves a held set that nothing would release. The recovery check of R20 covers the crash cases of
-the inline release.
+leaves a held set that nothing would release. The lease and the recovery check of R20 cover the
+crash cases of the inline release.
 
 ---
 
@@ -690,7 +794,7 @@ the inline release.
 
 | Path | Change |
 |---|---|
-| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull, and removes from the new branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
+| `InfrahubRepository.collect_pending_imports`, the active loop | Removes the repository's default branch from the branches to pull. Removes from the new **and** the updated branches every remote branch that a pending entry names as its source. Logs both once per cycle. `_collect_staging_imports` keeps the full list, because a staging repository is never queued. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch after a fresh clone, and logs it. The clone itself proceeds. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on **every** branch, with a message that names the pending delivery. |
 
@@ -699,9 +803,12 @@ that are not in the imported commit. If the remote destination advanced during a
 of the remote head would delete the objects of the pending merges. They would come back at the
 delivery, possibly with new ids. The delivery imports the remote commits itself (R4 step 11).
 
-**Why the kept source branches.** R12 keeps a remote source branch whose Infrahub branch was
-deleted. With `git.import_sync_branch_names` empty, which is the default, the synchronisation would
-import it as a new Infrahub branch at the next cycle.
+**Why the kept source branches, new and updated.** R12 keeps a remote source branch whose Infrahub
+branch was deleted. With `git.import_sync_branch_names` empty, which is the default, a worker with
+no local branch of that name would import it as a new Infrahub branch at the next cycle. A worker
+that kept its local branch sees a developer's push to it as an update instead, and `pull` would then
+record a commit on a deleted Infrahub branch. That graph error propagates out of
+`collect_pending_imports` and stops the synchronisation cycle of every later repository.
 
 **Why the reimport refuses on every branch.** A branch forked during the outage holds the pending
 merges' objects in its graph, but its Git branch was created from the local trunk head, which lacks
@@ -738,13 +845,23 @@ The entry already names the branch, so no new persisted work is needed: the flag
 and disappears with it. This re-opens, with the facts of the critique, the alternative that the
 first draft rejected as "new persisted work".
 
-**The success path.** `BRANCH_DELETE` and the first attempt are submitted together, so the guard
-often refuses while the first attempt runs. The attempt then deletes the branch a few seconds later.
-The end state is today's, without the race.
+**The success path.** `BRANCH_DELETE` and the first attempt are submitted together. Both take the
+repository lock, so one runs first:
 
-**After an abandonment.** No entry names the branch any more. With `git.import_sync_branch_names`
-empty, the next synchronisation imports it as a new Infrahub branch. That gives the user the
-undelivered content back as a branch. It is documented as intended behaviour.
+- The guard first: it flags the entry and skips the deletion. The attempt deletes the branch at R4
+  step 13.
+- The attempt first: it settles the queue before it releases the lock (R4 step 14). The guard then
+  finds no entry and deletes the branch itself, as today.
+
+Either way the end state is today's, without the race.
+
+**After an abandonment.** The abandonment sends `RefreshGitRepositoryBranchDeleted` for every
+abandoned entry that carried the flag (R8 step 2), so every worker drops its local branch. No entry
+names the remote branch any more. With `git.import_sync_branch_names` empty, the next
+synchronisation on any worker imports it as a new Infrahub branch. That gives the user the
+undelivered content back as a branch, which the user can merge again through Infrahub, and that
+merge is delivered as a new entry. **To confirm with the product owner**: the alternative is to keep
+the branch on the remote only.
 
 ---
 
@@ -777,19 +894,24 @@ reverted delivery overwrites it.
   queries the default branch, whatever branch the user selected (FR-025). It shows the status, the
   cause, the required action in plain words, the sentence "Imports from the remote default branch
   are paused until the pending pushes clear", the remote's message verbatim, and the pending merges
-  in order. After an abandonment it shows the last record, and advises "Reimport current commit".
+  in order. After an abandonment it shows the last record.
 - Two items in `entities/repository/ui/repository-menu-section.tsx`: "Retry push" and "Abandon
   pending push". Both are disabled without `permission.update`, and as the table "Actions by status"
   of [data-model.md](data-model.md) says.
 - An abandonment confirmation modal that lists the merges it will drop, says that nothing is
   removed from the remote, and says that repository objects of the dropped merges can stay on the
   default branch until a reimport.
-- The eight attributes are left out of the main attribute list, the "extra" toggle
+- The nine attributes are left out of the main attribute list, the "extra" toggle
   (`object-data-display.tsx`) and the list-view column picker (`get-column-candidates.ts`) for
   `CoreRepository`, so the inherited copy of a non-default branch is never shown as current.
 - Each mutation follows the existing three-file pattern: `api/*-from-api.ts` with gql.tada,
   `domain/use-cases/*.ts`, and `ui/queries/*.mutation.ts`. The task link toast and the query
-  invalidation follow `import-current-commit`.
+  invalidation follow `import-current-commit`. Both mutations are sent with the default branch as
+  their branch context, whatever branch the user selected, because the backend refuses any other.
+- After an abandonment, the section names the recorded commit and says that the default branch can
+  hold repository objects that the commit lacks. When the record shows a dropped owed import, it
+  also says that the branch can lack objects that the commit holds. Both cases offer "Reimport
+  current commit".
 
 **Out of scope**: the per-branch status list, a signal on the proposed change or the repository
 list, and the status vocabulary (INFP-671).
@@ -800,15 +922,21 @@ list, and the status vocabulary (INFP-671).
 
 **Unit, no database** (`backend/tests/unit/git/writeback/`, `backend/tests/unit/core/merge/`):
 
-- the classifier across every row of R5, the flags included;
+- the classifier across every row of R5, the flags included, a fetch outage, and a killed fetch and
+  push;
 - the scrubber;
 - the queue model: append, idempotent enqueue, refusal of a removed id, snapshot removal, version;
-- the held set: a repeated hold of the same identifier during a release survives the clear;
+- the held set: a repeated hold of the same identifier during a release survives the clear; two
+  leases never cover one item; an expired lease protects nothing;
 - the service against an in-memory `DeliveryGitPort` and an in-memory store: observation, the two
   checks, replay conflict, push failure and reset, the obligation saved before the record, a crash
-  between the two, the import condition, the release outside the lock, release then clear;
+  between the two, the import condition, the reset to H on the observation path, the settle under
+  the lock, the release outside the lock, release then clear;
+- the interleavings: an abandonment and a deletion guard that wait for the attempt find the entries
+  already settled; a held-only run during a live lease does nothing;
 - the barrier: partition, the atomic hold, the fast path, unknown owners, `releasing`, fail-open,
-  the narrowed cache hit and miss;
+  the narrowed cache hit and miss, and two holds of one item with different members, which release
+  both members;
 - the retry condition and `final_attempt`.
 
 **Component, with a database**: the store's transitions and the lock time to live; `read_only`
@@ -905,26 +1033,48 @@ A setting would be configurability for a hypothetical need (Principle VII).
 
 ## R20. Liveness and recovery (FR-027)
 
-**Decision**: the queue keeps `last_progress_at` and `retry_due_at`. A pending delivery is **stale**
-when its status is `pending`, no retry is due in the future, and `last_progress_at` is older than
-`STALE_AFTER`, 15 minutes. That bound exceeds the longest retry delay plus the two Git timeouts.
+**Decision**: a separate attribute, `delivery_progress`, a small JSON value, keeps `last_progress_at`,
+`attempt_started_at` and `retry_due_at`. They live outside `delivery_queue`, so a progress write
+never rewrites the queue (R23).
 
-`last_progress_at` moves at every enqueue, every attempt start, and every recorded failure.
+`last_progress_at` moves at every enqueue, attempt start and recorded failure, and at each step
+boundary of an attempt: after the fetch, after the push, after the record, and before and after the
+import.
 
-**The recovery check.** The periodic synchronisation already reads the store for each repository
-(R11). When it finds a stale delivery, or held work behind an empty queue, or an owed import behind
-an empty queue, it submits `GIT_REPOSITORY_DELIVERY_RETRY` with a system context and moves
-`last_progress_at`, so it submits at most once per `STALE_AFTER`.
+A pending delivery is **stale** when all four hold:
+
+1. its status is `pending`;
+2. no automatic retry is due in the future;
+3. `last_progress_at` is older than `STALE_AFTER`, 15 minutes, which exceeds the longest retry delay
+   plus the two Git timeouts;
+4. the repository lock is free (`lock.py::InfrahubLock.locked`).
+
+Condition 4 covers what the timestamps cannot: a long import, which is not a Git command and has no
+bound, and an attempt that waits behind a synchronisation for the lock.
+
+**The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
+repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
+inside `sync_repository_from_origin` would be skipped whenever one branch fails to synchronise,
+because that function catches the error that a failing branch raises. The check submits
+`GIT_REPOSITORY_DELIVERY_RETRY` with a system context, then moves `last_progress_at`, when:
+
+- the delivery is stale; or
+- held items wait that no live release lease covers, and `last_progress_at` is older than
+  `STALE_AFTER`.
+
+The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. A
+submission that finds an attempt running waits for the lock and then finds nothing to do.
 
 **Why this is not an unbounded retry.** A stale delivery has no failure to retry: its attempt was
 lost to a worker restart, a lost submission or a killed process. The new attempt is a first attempt
 with its own bounded chain. If it fails on policy, the status becomes `action-required` and the
 check stops.
 
-**Manual retry.** The retry mutation is allowed for a stale `pending` as for `action-required`.
+**Manual retry.** The retry mutation is allowed in every status other than `none` (R7).
 
-**Rejected: a liveness heartbeat during the attempt.** The Git timeouts already bound an attempt, so
-a heartbeat would add writes on the hot path for no gain.
+**Rejected: a heartbeat inside the import.** It would need a callback inside
+`import_objects_from_files`, a large unrelated method. The lock condition covers the same case with
+one read.
 
 ---
 
@@ -947,7 +1097,7 @@ a heartbeat would add writes on the hot path for no gain.
 
 ## R22. Rollback
 
-A code revert is safe for the data: the eight attributes are additive, and the old code ignores
+A code revert is safe for the data: the nine attributes are additive, and the old code ignores
 them. Two effects remain after a revert, and the release note says so:
 
 - Entries still queued are never delivered by the old code. An operator delivers them by hand, or
@@ -962,9 +1112,10 @@ test, for a rollback that a code revert already provides (Principle VII).
 
 ## R23. Growth of the stored history
 
-Every transition rewrites the whole `delivery_queue` value, and the temporal history keeps every
-version. N merges during one outage therefore store about N²/2 entries in the history of that
-attribute. An entry is about 250 bytes, so 100 merges store about 1.2 MB, and 1,000 merges about
+Every change of the queue rewrites the whole `delivery_queue` value, and the temporal history keeps
+every version. The progress timestamps live in `delivery_progress`, so a progress write or a
+recovery touch never rewrites the queue. N merges during one outage therefore store about N²/2
+entries in the history of the queue attribute. An entry is about 250 bytes, so 100 merges store about 1.2 MB, and 1,000 merges about
 125 MB. Outages that long are not expected, and the component test of R15 covers a queue of 200
 entries. If it becomes a concern, the entries can move to one attribute per transition, which this
 plan does not need.
