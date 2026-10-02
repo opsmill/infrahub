@@ -36,6 +36,18 @@ export function getHistoryRetry(
   return null;
 }
 
+export function isShowingStaleCommits({
+  hasError,
+  isFetchNextPageError,
+  loadedCommitCount,
+}: {
+  hasError: boolean;
+  isFetchNextPageError: boolean;
+  loadedCommitCount: number;
+}): boolean {
+  return hasError && !isFetchNextPageError && loadedCommitCount > 0;
+}
+
 export interface CommitLogEmptyState {
   title: string;
   message: string;

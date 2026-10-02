@@ -333,6 +333,30 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("boom").query()).toBeNull();
   });
 
+  test("says the rows are stale while a refresh fails, until one succeeds", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    const staleNotice = component.getByText(
+      "Could not refresh the commit log. Showing the last loaded commits."
+    );
+    expect(staleNotice.query()).toBeNull();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(staleNotice).toBeVisible();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await queryClient.refetchQueries();
+    await expect.poll(() => staleNotice.query()).toBeNull();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+  });
+
   test("replaces the not-yet-available state with the rows once a worker answers", async () => {
     // GIVEN
     apiMock

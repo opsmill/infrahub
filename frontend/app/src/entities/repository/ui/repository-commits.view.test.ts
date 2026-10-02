@@ -13,6 +13,7 @@ import {
   getHistoryRetry,
   getLoadedCommits,
   getStateBadges,
+  isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const IMPORTED_HASH = "a".repeat(40);
@@ -327,5 +328,55 @@ describe("getHistoryRetry", () => {
 
     // THEN
     expect(retry).toBeNull();
+  });
+});
+
+describe("isShowingStaleCommits", () => {
+  test("flags loaded commits kept over a failed refresh", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      hasError: true,
+      isFetchNextPageError: false,
+      loadedCommitCount: 3,
+    });
+
+    // THEN
+    expect(result).toBe(true);
+  });
+
+  test("leaves a failed next page to the history retry", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      hasError: true,
+      isFetchNextPageError: true,
+      loadedCommitCount: 3,
+    });
+
+    // THEN
+    expect(result).toBe(false);
+  });
+
+  test("does not flag a failure with nothing loaded", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      hasError: true,
+      isFetchNextPageError: false,
+      loadedCommitCount: 0,
+    });
+
+    // THEN
+    expect(result).toBe(false);
+  });
+
+  test("does not flag loaded commits without an error", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      hasError: false,
+      isFetchNextPageError: false,
+      loadedCommitCount: 3,
+    });
+
+    // THEN
+    expect(result).toBe(false);
   });
 });

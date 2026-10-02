@@ -16,11 +16,13 @@ import {
   getHistoryRetry,
   getLoadedCommits,
   type HistoryRetry,
+  isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
   RepositoryCommitsRefreshButton,
 } from "@/entities/repository/ui/repository-commits-header";
+import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
 export interface RepositoryCommitsManagerProps {
   repositoryId: string;
@@ -104,6 +106,15 @@ export function RepositoryCommitsManager({
   return (
     <Col className="h-full gap-0">
       <RepositoryCommitsHeader log={log} />
+      {isShowingStaleCommits({
+        hasError: error !== null,
+        isFetchNextPageError,
+        loadedCommitCount: commits.length,
+      }) && (
+        <RepositoryCommitsNotice>
+          <p>Could not refresh the commit log. Showing the last loaded commits.</p>
+        </RepositoryCommitsNotice>
+      )}
       <InfiniteScroll
         scrollX
         className="bg-table-frame"
@@ -122,7 +133,7 @@ export function RepositoryCommitsManager({
         />
         {isLoadingMoreOnScroll && <Spinner className="mx-auto my-2" />}
         {historyRetry && !isLoadingMoreOnScroll && (
-          <Row className="items-center justify-center gap-2 p-2 text-foreground-muted text-sm">
+          <RepositoryCommitsNotice>
             <p>Older commits could not be loaded right now.</p>
             <Button
               variant="outline"
@@ -132,7 +143,7 @@ export function RepositoryCommitsManager({
             >
               Retry
             </Button>
-          </Row>
+          </RepositoryCommitsNotice>
         )}
       </InfiniteScroll>
     </Col>
