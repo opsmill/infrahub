@@ -196,12 +196,14 @@ reported": reconciled is the reset, not reported is the missing record.
 
 ### Ancestry gateway
 
+The gateway is bound to one repository when it is built, so neither call takes a repository:
+
 ```text
-is_ancestor(repository, ancestor_commit, descendant_commit) -> bool
+is_ancestor(ancestor_commit, descendant_commit) -> bool
 ```
 
 ```text
-has_commit(repository, commit) -> bool
+has_commit(commit) -> bool
 ```
 
 `is_ancestor` wraps `git merge-base --is-ancestor` through GitPython's `Repo.is_ancestor`. Every
