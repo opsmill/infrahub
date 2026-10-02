@@ -182,10 +182,10 @@ branch-scoped schema must retain the pool companions of its own attributes rathe
 
 **Shape**: a **pure function**, unit-testable without rendering. It takes a `ModelSchema` and returns
 two field sets; the caller builds two derived `ModelSchema` objects from them (D1) and hands each to
-`ObjectDataDisplay` via the local `RepositoryDetailsCard` (see D1's revision).
+`ObjectDetailsCard`.
 
 **Empty-partition rule (FR-022)**: a partition with no attributes **and** no relationships MUST NOT
-render as an empty titled box. The card is not rendered at all when both lists are empty.
+render as an empty titled box. The caller does not render the card at all when both lists are empty.
 
 **Kind gate (FR-020)**: the two-card presentation applies only to the repository kinds, gated by
 `isOfKind(GENERIC_REPOSITORY_KIND, schema)` — which already resolves both concrete kinds through
@@ -283,8 +283,8 @@ and a **card test** over the two `code` values.
 Repository (CoreRepository | CoreReadOnlyRepository)
    │
    ├── ModelSchema ──▶ partitionFieldsByBranchSupport()      (agnostic | aware+local)
-   │                      ├─▶ repositoryWide  ──▶ derived ModelSchema ──▶ RepositoryDetailsCard ("Details")
-   │                      └─▶ branchScoped    ──▶ derived ModelSchema ──▶ RepositoryDetailsCard ("On this branch"
+   │                      ├─▶ repositoryWide  ──▶ derived ModelSchema ──▶ ObjectDetailsCard ("Details")
+   │                      └─▶ branchScoped    ──▶ derived ModelSchema ──▶ ObjectDetailsCard ("On this branch"
    │                            relationships: []                            + branch-name caption)
    └── InfrahubRepositoryBranchStatus(id, limit, offset, name__value, partial_match, status__value)
           │

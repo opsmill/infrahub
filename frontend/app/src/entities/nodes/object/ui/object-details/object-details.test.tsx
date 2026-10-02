@@ -2,18 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
 import { ObjectDetails } from "@/entities/nodes/object/ui/object-details/object-details";
-import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
+import { getRepositoryBranchStatus } from "@/entities/repository/domain/use-cases/get-repository-branch-status";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { render } from "../../../../../../tests/components/render";
 import { generateNodeAttributeWithMetadata } from "../../../../../../tests/fake/node";
 import { generatePermission } from "../../../../../../tests/fake/permission";
-import { generateRepositoryBranchStatusPayloadBefore } from "../../../../../../tests/fake/repository";
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 
-vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
+vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
 
-const apiMock = vi.mocked(getRepositoryBranchStatusFromApi);
+const branchStatusMock = vi.mocked(getRepositoryBranchStatus);
 
 const permission = generatePermission();
 
@@ -60,9 +59,7 @@ const objectData: NodeObjectWithMetadata = {
 };
 
 beforeEach(() => {
-  apiMock.mockResolvedValue({
-    data: { InfrahubRepositoryBranchStatus: generateRepositoryBranchStatusPayloadBefore() },
-  });
+  branchStatusMock.mockResolvedValue({ rows: [], count: 0 });
 });
 
 describe("ObjectDetails repository kind gate", () => {
