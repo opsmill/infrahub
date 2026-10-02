@@ -8,9 +8,11 @@ import pytest
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
+from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.graphql import graphql
@@ -19,6 +21,7 @@ from tests.helpers.schema import load_schema
 if TYPE_CHECKING:
     from collections import Counter
 
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -45,8 +48,10 @@ async def _create_node(db: InfrahubDatabase, branch: Branch, kind: str, **data: 
     return node
 
 
-async def _run_mutation(db: InfrahubDatabase, branch: Branch, query: str) -> WorkflowRecorder:
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
+async def _run_mutation(
+    db: InfrahubDatabase, branch: Branch, query: str, account_session: AccountSession | None = None
+) -> WorkflowRecorder:
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     workflow = WorkflowRecorder()
     gql_params.context.service = await InfrahubServices.new(workflow=workflow)
     result = await graphql(
@@ -84,7 +89,11 @@ REMOVAL_TEST_CASES: list[RemovalTestCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REMOVAL_TEST_CASES])
 async def test_profile_update_refreshes_the_removed_peers(
-    db: InfrahubDatabase, default_branch: Branch, device_schema: None, test_case: RemovalTestCase
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_schema: None,
+    session_admin: AccountSession,
+    test_case: RemovalTestCase,
 ) -> None:
     profile = await _create_node(
         db=db, branch=default_branch, kind="ProfileTestDevice", profile_name="profile-1", profile_priority=10
@@ -109,15 +118,39 @@ async def test_profile_update_refreshes_the_removed_peers(
             }}) {{ ok }}
         }}
         """,
+        account_session=session_admin,
     )
 
     profile = await NodeManager.get_one(db=db, branch=default_branch, id=profile.id, raise_on_error=True)
     relationships = await profile.get_relationship(name=test_case.rel_name).get_relationships(db=db)
     assert [rel.peer_id for rel in relationships] == [peers[0].id]
+    event_context = EventContext(
+        branch=EventBranchContext(name=default_branch.name, id=str(default_branch.uuid)),
+        account_id=session_admin.account_id,
+    )
     assert [
-        (call["workflow"], call["parameters"]["branch_name"], sorted(call["parameters"]["node_ids"]))
+        (
+            call["workflow"],
+            call["parameters"]["branch_name"],
+            sorted(call["parameters"]["node_ids"]),
+            call["parameters"]["context"],
+            call["context"],
+            call["tags"],
+        )
         for call in workflow.submit_calls
-    ] == [(PROFILE_REFRESH_MULTIPLE, default_branch.name, sorted([peers[1].id, peers[2].id]))]
+    ] == [
+        (
+            PROFILE_REFRESH_MULTIPLE,
+            default_branch.name,
+            sorted([peers[1].id, peers[2].id]),
+            event_context,
+            event_context,
+            [
+                WorkflowTag.BRANCH.render(identifier=default_branch.name),
+                WorkflowTag.RELATED_NODE.render(identifier=profile.id),
+            ],
+        )
+    ]
 
 
 @dataclass(frozen=True)
