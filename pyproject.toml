@@ -1417,6 +1417,7 @@ include = [
     "backend/infrahub/graphql/mutations/proposed_change.py",
     "backend/infrahub/graphql/mutations/repository.py",
     "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py",
+    "backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py",
     "backend/infrahub/graphql/mutations/webhook.py",
     "backend/infrahub/graphql/types/node.py",
     "backend/infrahub/graphql/types/standard_node.py",
