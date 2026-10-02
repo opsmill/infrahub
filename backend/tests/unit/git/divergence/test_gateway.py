@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
     from infrahub.git.divergence.gateway import GitPythonAncestryGateway
 
+ABSENT = "0" * 40
+
 
 def test_an_earlier_commit_is_an_ancestor_of_a_later_one(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
     first = commit_file(repo=repo, content="one")
@@ -23,10 +25,9 @@ def test_an_earlier_commit_is_an_ancestor_of_a_later_one(repo: Repo, gateway: Gi
 
 def test_an_unreachable_commit_leaves_as_a_repository_error(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
     present = commit_file(repo=repo, content="one")
-    absent = "0" * 40
 
     with pytest.raises(RepositoryError, match=r"Unable to compare"):
-        gateway.is_ancestor(ancestor_commit=absent, descendant_commit=present)
+        gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=present)
 
 
 def test_a_broken_repository_fails_the_comparison(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
@@ -61,13 +62,13 @@ def test_a_pruned_commit_reads_as_absent_rather_than_raising(repo: Repo, gateway
     assert gateway.has_commit(commit=pruned) is False
 
 
-@pytest.mark.parametrize("identifier", ["not-a-sha", "abcd", "0" * 39, "0" * 41])
-def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
-    gateway: GitPythonAncestryGateway, identifier: str
-) -> None:
-    """An identifier that is not a full sha must not be reported as a pruned commit."""
-    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
-        gateway.has_commit(commit=identifier)
+def test_a_name_that_is_not_a_commit_holds_no_commit(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+    commit_file(repo=repo, content="one")
+    tree = str(repo.head.commit.tree.hexsha)
+    blob = str(repo.head.commit.tree["file.txt"].hexsha)
+
+    assert gateway.has_commit(commit=tree) is False
+    assert gateway.has_commit(commit=blob) is False
 
 
 def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
@@ -77,3 +78,17 @@ def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway
 
     with pytest.raises(RepositoryError, match=r"Unable to read"):
         gateway.has_commit(commit=commit)
+
+
+@pytest.mark.parametrize("identifier", ["not-a-sha", "abcd", "0" * 39, "0" * 41, "A" * 40])
+def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
+    gateway: GitPythonAncestryGateway, identifier: str
+) -> None:
+    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
+        gateway.has_commit(commit=identifier)
+
+
+@pytest.mark.parametrize("identifier", ["not-a-sha", "A" * 40])
+def test_the_comparison_rejects_a_malformed_identifier(gateway: GitPythonAncestryGateway, identifier: str) -> None:
+    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
+        gateway.is_ancestor(ancestor_commit=identifier, descendant_commit="0" * 40)
