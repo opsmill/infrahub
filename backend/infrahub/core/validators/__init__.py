@@ -34,6 +34,7 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_EXCLUDED_VALUES_UPDATE.value: AttributeNumberChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE: AttributeNumberPoolChecker,
     ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE: AttributeNumberPoolChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE.value: AttributeNumberPoolChecker,
     "attribute.unique.update": AttributeUniquenessChecker,
     "attribute.optional.update": AttributeOptionalChecker,
     "attribute.choices.update": AttributeChoicesChecker,

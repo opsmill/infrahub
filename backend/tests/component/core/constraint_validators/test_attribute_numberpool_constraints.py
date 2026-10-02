@@ -7,7 +7,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.attribute.number_pool import (
     AttributeNumberPoolChecker,
@@ -143,6 +143,96 @@ class TestNumberPoolConstraintQueries:
             )
             in all_data_paths
         )
+
+    @staticmethod
+    async def _held_values_outside(
+        db: InfrahubDatabase, branch: Branch, parameters: NumberPoolParameters
+    ) -> list[DataPath]:
+        incident_schema = registry.schema.get(name="SnowIncident")
+        number = incident_schema.get_attribute(name="number")
+        number.parameters = parameters
+        schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="SnowIncident", field_name="number")
+
+        query = await AttributeNumberPoolUpdateValidatorQuery.init(
+            db=db, branch=branch, node_schema=incident_schema, schema_path=schema_path
+        )
+        await query.execute(db=db)
+        grouped_paths = await query.get_paths()
+        return grouped_paths.get_all_data_paths()
+
+    @pytest.mark.parametrize(
+        "ranges",
+        [
+            [(10, 20), (30, 40)],
+            [(-5, 0), (2, 10)],
+        ],
+        ids=["below-every-range", "in-the-gap-between-ranges"],
+    )
+    async def test_query_numberpool_constraints_reports_a_value_outside_every_range(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        snow_incident_01: Node,
+        ranges: list[tuple[int, int]],
+    ) -> None:
+        parameters = NumberPoolParameters(
+            ranges=[NumberPoolRangeParameters(start=start, end=end) for start, end in ranges]
+        )
+
+        all_data_paths = await self._held_values_outside(
+            db=db, branch=default_branch_scope_class, parameters=parameters
+        )
+
+        assert all_data_paths == [
+            DataPath(
+                branch=default_branch_scope_class.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=snow_incident_01.id,
+                kind="SnowIncident",
+                field_name="number",
+                value=1,
+            )
+        ]
+
+    async def test_query_numberpool_constraints_accepts_a_value_inside_any_range(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
+    ) -> None:
+        parameters = NumberPoolParameters(
+            ranges=[NumberPoolRangeParameters(start=-20, end=-10), NumberPoolRangeParameters(start=1, end=5)]
+        )
+
+        all_data_paths = await self._held_values_outside(
+            db=db, branch=default_branch_scope_class, parameters=parameters
+        )
+
+        assert all_data_paths == []
+
+    async def test_query_numberpool_constraints_reports_every_value_when_no_range_is_declared(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
+    ) -> None:
+        all_data_paths = await self._held_values_outside(
+            db=db, branch=default_branch_scope_class, parameters=NumberPoolParameters()
+        )
+
+        assert all_data_paths == [
+            DataPath(
+                branch=default_branch_scope_class.name,
+                path_type=PathType.ATTRIBUTE,
+                node_id=snow_incident_01.id,
+                kind="SnowIncident",
+                field_name="number",
+                value=1,
+            )
+        ]
+
+    async def test_query_numberpool_constraints_accepts_a_value_inside_a_single_bound_shorthand(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_incident_01: Node
+    ) -> None:
+        all_data_paths = await self._held_values_outside(
+            db=db, branch=default_branch_scope_class, parameters=NumberPoolParameters(end_range=5)
+        )
+
+        assert all_data_paths == []
 
 
 @pytest.fixture
