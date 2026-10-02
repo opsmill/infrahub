@@ -130,14 +130,13 @@ path leaves the graph holding a commit the remote never had, so a remote head th
 of the imported commit means a force push, or a ref moved backwards. That discards content exactly
 as a rewrite does, so it classifies `REWRITE`, or `RETARGET` when the tracking target changed.
 
-**An unpushed commit is still safe.** The worktree, not the graph, is what sits ahead of `origin/`
-after a rejected push, and the classification never reads the worktree. The reset table in
-`contracts/internal-interfaces.md` section 1 resets nothing when the remote head is an ancestor of
-the worktree. The graph comparison decides the record. The worktree comparison decides the reset.
+The worktree comparison reaches the same conclusion for the same reason, so a worktree ahead of
+its remote is reset onto it. The graph comparison still decides the record and the worktree
+comparison still decides the reset; what changed is that neither leaves a rewind alone.
 
-That reset rule also closes a documented defect: `dev/knowledge/backend/git-integration.md` lists
-"a branch left ahead of its remote is re-reported every cycle" under Known limitations. Such a
-branch needs no pull, so the once-a-minute log line stops.
+That also closes a documented defect: `dev/knowledge/backend/git-integration.md` lists "a branch
+left ahead of its remote is re-reported every cycle" under Known limitations. The reset moves the
+branch onto the remote head, so the once-a-minute log line stops.
 
 ### `RefDivergence`
 

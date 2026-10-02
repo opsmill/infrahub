@@ -141,9 +141,10 @@ head, the imported objects match the rewritten tree, and the repository reports 
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1, "Two
       comparisons, not one".
 - [ ] T018 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
-      against the remote head**, not from the classification. Reset when neither is an ancestor of
-      the other. Pull as today when the worktree is behind. Do nothing when the worktree is ahead,
-      or when the remote carries no such ref.
+      against the remote head**, not from the classification. Reset whenever the worktree does not
+      lead to the remote head, which covers both a parted history and a worktree left ahead by a
+      rewind. Pull as today when the worktree is behind. Do nothing when the worktree already is
+      the remote head, or when the remote carries no such ref.
       **When the worktree already equals the remote head but the graph commit does not, write the
       commit and queue the import anyway.** Do not fall through to `pull` for this: it returns early
       at `if commit_after == commit_before: return True`, before `update_commit_value`, so a
@@ -621,9 +622,8 @@ read-write repository's configured default branch. Neither writes a record.
       persisted writeback state (IFC-3220). Rewriting those would claim two other fixes shipped.
       Correct the Known limitation in the same file as well, the one that says a branch left ahead
       of its remote is re-reported every cycle because `pull()` returns `True` with no change. The
-      reset now reads the worktree against the remote head and does nothing when the remote head is
-      an ancestor of the worktree, so that branch is no longer pulled and the once-a-minute log
-      line stops.
+      reset reads the worktree against the remote head and moves such a branch onto it, so the
+      once-a-minute log line stops.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
@@ -688,10 +688,10 @@ fails. A rejected push leaves the destination either at its pre-merge state, whe
 re-derives the merge, or trailing the remote, which the periodic synchronisation repairs. That
 ordering arrived with IFC-1449.
 
-The reset rule still earns its place. It reads this worker's worktree against the remote head and
-does nothing when the remote head is an ancestor of the worktree, so a branch merely ahead of its
-remote resets nothing, whatever put it there. Treat that row as a correctness rule in the reset,
-not as cover for the merge path.
+The reset reads this worker's worktree against the remote head, never the classification. It
+resets whenever the worktree does not lead to the remote head, which covers a parted history and a
+worktree the remote was rewound behind. Keeping the two comparisons apart is what lets one worker
+record while every other worker converges.
 
 The Gogs harness, `_push_commit_to_remote` and the two `pre-receive` hook helpers are already on
 `develop`. The force-push helper is not. T012 adds it.
