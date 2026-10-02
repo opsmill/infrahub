@@ -19,6 +19,22 @@ An element can also be configured as:
 | **Agnostic**   | All changes will automatically be available in all branches                          | No   | No    | No     |
 | **Local**      | All changes will be local to the branch and will not be merged to other branches.    | No   | No    | Yes    |
 
+```mermaid
+flowchart LR
+  W["A value changes
+on a branch"] --> Q{"branch setting"}
+  Q -->|agnostic| G["Every branch
+sees it at once
+not in the diff,
+merge or rebase"]
+  Q -->|aware| A["Stays on the branch
+in the diff and the merge
+kept by a rebase"]
+  Q -->|local| L["Stays on the branch
+never in the diff or merge
+kept by a rebase"]
+```
+
 ## Branch agnostic
 
 In the frontend, the API, or the GraphQL endpoint **branch-agnostic** objects can be modified on any branch—no restrictions apply.

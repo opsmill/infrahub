@@ -34,6 +34,32 @@ Infrahub checks the branch before it writes anything, so a refused rebase change
 
 Rebases and merges both take the global graph lock, so they run one at a time.
 
+```mermaid
+flowchart LR
+  S["Rebase
+requested"] --> G1{"Merge in
+progress?"}
+  G1 -->|no| D["Refresh
+the diff"]
+  D --> G2{"Conflict
+needing
+action?"}
+  G2 -->|no| G3{"Constraints
+pass?"}
+  G3 -->|yes| TX["Lock, move
+branched_from,
+status OPEN"]
+  TX --> MI["Schema
+migrations,
+if any"]
+  G1 -->|yes| X1["Refused,
+nothing changes"]
+  G2 -->|yes| X2["Refused, error
+lists each conflict"]
+  G3 -->|no| X3["Refused,
+constraint violation"]
+```
+
 ## What blocks a rebase
 
 Infrahub refuses a rebase in any of these cases:

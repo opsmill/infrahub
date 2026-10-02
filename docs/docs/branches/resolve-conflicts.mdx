@@ -31,6 +31,28 @@ Conflicts can also surface during a [rebase](./rebase.mdx). A rebase can't apply
 - A conflict on a relationship, such as the datacenter a device is assigned to or a property of that assignment, blocks the rebase until you update the data so that both branches agree.
 - A conflict on an attribute that the default branch removed, or between the deletion of an object in one branch and a change to it in the other, also blocks the rebase until you update the data so that both branches agree.
 
+```mermaid
+flowchart TD
+  C{"What changed on both sides"} -->|"an attribute"| AP["Merge: choose a side
+Rebase: resolve
+for the branch;
+blocks if the default
+branch removed it"]
+  C -->|"a relationship"| RE["Merge: choose a side
+Rebase: blocks
+until the data agrees"]
+  C -->|"one side deleted
+the object"| N["Delete versus modify
+blocks merge
+and rebase, whichever
+side you choose"]
+  U["Same value in
+a unique attribute
+on two objects"] --> SI["Constraint violation
+Schema Integrity fails
+change one value"]
+```
+
 This also applies to a branch in the `NEED_UPGRADE_REBASE` status after an upgrade, which only a rebase returns to `OPEN`.
 
 ## Conflicts between parallel branches

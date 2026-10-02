@@ -28,6 +28,21 @@ While a merge is running, Infrahub temporarily blocks writes to keep the data co
 - Creating a new branch, or deleting a branch that is not involved in the merge, is always allowed.
 - Starting another merge or rebase is rejected while a merge is in progress. The error that `BranchRebase` returns depends on where you send it. Sent to `/graphql`, as the web interface sends it, `BranchRebase` fails with `MERGE_IN_PROGRESS`. Sent to the endpoint of a branch that is not part of the merge, it fails with the code `UNDEFINED_ERROR` and the message `Cannot rebase a branch while a merge is in progress.`, so automation that posts there has to match the message.
 
+```mermaid
+flowchart LR
+  MB["Merge of branch A running"] --> MAIN["Write to the default branch
+blocked, 423, retry shortly"]
+  MB --> SRC["Write to branch A
+blocked, 423, read-only"]
+  MB --> OTH["Write to branch B
+allowed"]
+  MB --> RB["Rebase or merge
+of any branch
+refused"]
+  MB --> BC["Create a branch
+allowed"]
+```
+
 A blocked write on the default branch fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` A blocked write on the branch being merged fails with `Branch '<name>' is being merged and is read-only. No modifications are allowed.` Both GraphQL errors include the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in their `extensions`, along with the branch being written and the branch being merged:
 
 ```json

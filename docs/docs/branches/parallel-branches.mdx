@@ -7,6 +7,22 @@ import TabItem from '@theme/TabItem';
 
 When several teams or Generators work on separate branches at the same time, each branch keeps reading the default branch as it was at that branch's `branched_from`. A merge into the default branch does not change the other open branches, and nothing marks them as behind, so Infrahub reports conflicts and duplicate values on a branch only when that branch rebases or merges. To keep each branch ready to merge, allocate unique values from [resource pools](../resource-manager/overview.mdx), [rebase](./rebase.mdx) each branch after another one merges, clear the [conflicts](./resolve-conflicts.mdx) that a refused rebase lists, and [merge](./merge.mdx) once the checks pass.
 
+```mermaid
+flowchart LR
+  F["Create the branch
+branched_from is set"] --> AL["Allocate values
+from pools"]
+  AL --> ED["Change objects
+on the branch"]
+  ED --> RB["Rebase after
+another branch merges"]
+  RB --> RS["Fix what the
+refused rebase lists"]
+  RS --> RB
+  RB --> MG["Merge through a
+Proposed Change"]
+```
+
 ## What changes when another branch merges
 
 Nothing changes on your branch. It keeps reading the default branch as it was at its `branched_from`, plus its own changes, until you rebase it.
