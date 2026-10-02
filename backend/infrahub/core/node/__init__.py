@@ -21,12 +21,24 @@ from infrahub.core.constants import (
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaElementPathType
+from infrahub.core.constants.schema import (
+    DISPLAY_LABEL_ATTRIBUTE_NAME,
+    HFID_ATTRIBUTE_NAME,
+    RESOURCE_POOL_REL_SUFFIX,
+    SchemaElementPathType,
+)
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.protocols_base import CoreNode
-from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
+from infrahub.core.query.node import (
+    NodeCheckIDQuery,
+    NodeCreateAllQuery,
+    NodeDeleteQuery,
+    NodeListGetStoredLabelsQuery,
+    NodeStoredLabels,
+    NodeUpdateMetadataQuery,
+)
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.schema import (
     AttributeSchema,
@@ -1191,8 +1203,31 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 "changelog.hfid_materialized",
                 bool(self._human_friendly_id and self._human_friendly_id.get_value(node=self, at=self._at)),
             )
-            node_changelog.display_label = await self.get_display_label(db=db)
-            node_changelog.hfid = await self.get_hfid(db=db)
+            stored = await self._read_missing_stored_labels(db=db)
+            node_changelog.display_label = (
+                stored.display_label
+                if stored and stored.display_label is not None
+                else await self.get_display_label(db=db)
+            )
+            node_changelog.hfid = stored.hfid if stored and stored.hfid is not None else await self.get_hfid(db=db)
+
+    async def _read_missing_stored_labels(self, db: InfrahubDatabase) -> NodeStoredLabels | None:
+        """Read the stored labels this node was loaded without, since its partial fields cannot compute them."""
+        label_names = [
+            name
+            for name, needs_read in (
+                (DISPLAY_LABEL_ATTRIBUTE_NAME, self.display_label_needs_read()),
+                (HFID_ATTRIBUTE_NAME, self.hfid_needs_read()),
+            )
+            if needs_read
+        ]
+        if not label_names:
+            return None
+        query = await NodeListGetStoredLabelsQuery.init(
+            db=db, branch=self._branch, ids=[self.get_id()], label_names=label_names
+        )
+        await query.execute(db=db)
+        return query.get_stored_labels().get(self.get_id())
 
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
