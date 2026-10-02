@@ -1,5 +1,4 @@
 import { Col, Row } from "@/shared/components/container";
-import Accordion from "@/shared/components/display/accordion";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -11,16 +10,13 @@ import { BranchProposeChangeButton } from "@/entities/branches/ui/branch-propose
 import { BranchRebaseButton } from "@/entities/branches/ui/branch-rebase-button";
 import { BranchValidateButton } from "@/entities/branches/ui/branch-validate-button";
 import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-details.query";
-import {
-  BRANCH_MERGE_WORKFLOW,
-  BRANCH_REBASE_WORKFLOW,
-  BRANCH_VALIDATE_WORKFLOW,
-} from "@/entities/tasks/domain/model/task";
-import { TaskDisplay } from "@/entities/tasks/ui/task-display";
+import { BranchRepositoriesCard } from "@/entities/repository/ui/branch-repositories/branch-repositories-card";
+import { BranchTasksCard } from "@/entities/tasks/ui/branch-tasks/branch-tasks-card";
 
 interface BranchDetailsProps {
   branchName: string;
 }
+
 export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   const { isPending, error, data: branch } = useGetBranchDetails({ branchName });
 
@@ -37,30 +33,24 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
   }
 
   return (
-    <Col>
+    <Col className="p-2">
       <BranchAttributes branch={branch} />
 
       {!branch.is_default && (
-        <Col>
-          <Row className="flex-wrap">
-            <BranchMergeButton branch={branch} />
-            <BranchProposeChangeButton branch={branch} />
-            <BranchRebaseButton branch={branch} />
-            <BranchValidateButton branch={branch} />
-            <BranchDeleteButton branch={branch} />
-          </Row>
-
-          <Accordion
-            title={<div className="py-2 font-normal text-xs">Tasks</div>}
-            data-testid="tasks-accordion"
-          >
-            <TaskDisplay
-              branch={branch.name}
-              workflow={[BRANCH_VALIDATE_WORKFLOW, BRANCH_MERGE_WORKFLOW, BRANCH_REBASE_WORKFLOW]}
-            />
-          </Accordion>
-        </Col>
+        <BranchRepositoriesCard branchName={branch.name} syncWithGit={!!branch.sync_with_git} />
       )}
+
+      {!branch.is_default && (
+        <Row className="flex-wrap">
+          <BranchMergeButton branch={branch} />
+          <BranchProposeChangeButton branch={branch} />
+          <BranchRebaseButton branch={branch} />
+          <BranchValidateButton branch={branch} />
+          <BranchDeleteButton branch={branch} />
+        </Row>
+      )}
+
+      {!branch.is_default && <BranchTasksCard branchName={branch.name} />}
     </Col>
   );
 };

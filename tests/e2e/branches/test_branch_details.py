@@ -36,6 +36,8 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_role("heading", name="main")).to_be_visible()
         await expect(admin_page.get_by_text("default", exact=True)).to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Copy branch name")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Refresh data")).to_be_visible()
 
         # Already working on main, so there is nothing to switch to
         await expect(admin_page.get_by_test_id("branch-working-notice")).to_be_visible()
@@ -58,7 +60,9 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_role("button", name="Validate")).not_to_be_visible()
         await expect(admin_page.get_by_role("button", name="Delete")).not_to_be_visible()
         await expect(admin_page.get_by_role("link", name="Propose change")).not_to_be_visible()
-        await expect(admin_page.get_by_test_id("tasks-accordion")).not_to_be_visible()
+        await expect(admin_page.get_by_test_id("branch-tasks-card")).not_to_be_visible()
+
+        await expect(admin_page.get_by_test_id("branch-repositories-card")).not_to_be_visible()
 
 
 class TestBranchDetailsNonDefaultBranch:
@@ -71,6 +75,8 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_role("heading", name=NON_DEFAULT_BRANCH)).to_be_visible()
         await expect(admin_page.get_by_text("default", exact=True)).not_to_be_visible()
         await expect(admin_page.get_by_role("button", name="View node metadata")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Copy branch name")).to_be_visible()
+        await expect(admin_page.get_by_role("button", name="Refresh data")).to_be_visible()
 
         # Branch attributes
         await expect(admin_page.get_by_text("Name")).to_be_visible()
@@ -93,7 +99,23 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_role("button", name="Rebase")).to_be_visible()
         await expect(admin_page.get_by_role("button", name="Validate")).to_be_visible()
         await expect(admin_page.get_by_role("button", name="Delete", exact=True)).to_be_visible()
-        await expect(admin_page.get_by_test_id("tasks-accordion")).to_be_visible()
+        await expect(admin_page.get_by_test_id("branch-tasks-card")).to_be_visible()
+
+    async def test_git_repositories_card_renders_above_the_merge_button(
+        self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
+    ) -> None:
+        await admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
+
+        repositories_card = admin_page.get_by_test_id("branch-repositories-card")
+        merge_button = admin_page.get_by_role("button", name="Merge")
+        await expect(repositories_card).to_be_visible()
+        await expect(merge_button).to_be_visible()
+
+        card_box = await repositories_card.bounding_box()
+        merge_box = await merge_button.bounding_box()
+        assert card_box is not None
+        assert merge_box is not None
+        assert card_box["y"] + card_box["height"] <= merge_box["y"]
 
     async def test_navigate_between_tabs(
         self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
@@ -143,6 +165,30 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_text("Created by")).to_be_visible()
         await expect(admin_page.get_by_text("Updated at")).to_be_visible()
         await expect(admin_page.get_by_text("Updated by")).to_be_visible()
+
+
+class TestBranchDetailsTasks:
+    @pytest.fixture
+    async def fresh_branch(self, branch_api: BranchAPI) -> AsyncGenerator[str, None]:
+        """A branch created for this test, so validating it leaves the shared demo branches untouched."""
+        name = generate_random_branch_name("tasks-")
+        await branch_api.create(name)
+        yield name
+        with contextlib.suppress(Exception):
+            await branch_api.delete(name)
+
+    async def test_validate_task_row_opens_task_details(self, admin_page: Page, fresh_branch: str) -> None:
+        await admin_page.goto(f"/branches/{quote(fresh_branch, safe='')}")
+
+        await admin_page.get_by_role("button", name="Validate").click()
+        await expect(admin_page.locator("#alert-success")).to_contain_text("Branch validation requested!")
+
+        tasks_card = admin_page.get_by_test_id("branch-tasks-card")
+        validate_row = tasks_card.get_by_role("row").filter(has_text="Validate")
+        await expect(validate_row.first).to_be_visible()
+
+        await validate_row.first.get_by_role("link").click()
+        await expect(admin_page).to_have_url(re.compile(r"/tasks/[0-9a-f-]+"))
 
 
 class TestBranchDetailsSlashName:

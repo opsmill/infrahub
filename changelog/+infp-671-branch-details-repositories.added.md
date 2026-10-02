@@ -1,0 +1,1 @@
+On branches other than the default branch, the branch details page now lists the branch's Git repositories with their Git state and commit, shows the last error line of a failed import when it can find it, and lists the tasks that ran on the branch.
