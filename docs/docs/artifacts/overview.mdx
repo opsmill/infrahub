@@ -97,9 +97,11 @@ An artifact is the cached output of a Transformation. Infrahub regenerates it du
 
 ### What a run regenerates or deletes
 
+A run is either full or limited. A full run covers every current member of the target group and ignores what changed: creating or updating the definition, **Generate**, and the REST call without `nodes` are all full runs. A limited run covers only what it was given: **Re-generate**, and the REST call with `nodes`. The Proposed Change and post-merge paths are the only ones that pick their targets from the branch diff, and the rules below describe those.
+
 - **The target's data changed**: an object read by the artifact's GraphQL query is modified, so that target's artifact is regenerated.
-- **A new target joined the group**: Infrahub generates an artifact for the new member and leaves existing artifacts untouched.
-- **A target left the group**: Infrahub deletes the former member's artifact, so no stale artifact is left behind. Only a full run deletes it; a run limited to specific artifacts leaves artifacts outside that scope alone.
+- **A new target joined the group**: Infrahub generates an artifact for the new member and leaves existing artifacts untouched. A limited run skips the new member entirely, because it has no artifact ID to match.
+- **A target left the group**: Infrahub deletes the former member's artifact, so no stale artifact is left behind. Only a full run deletes it, because only a full run can tell that an artifact has been orphaned; a limited run leaves artifacts outside its scope alone.
 - **The definition's code or configuration changed**: when a Proposed Change commits to a linked repository, Infrahub regenerates an artifact only if the change touches that definition's GraphQL query, its Transformation's [dependency closure](../transformations/overview#dependency-tracking-and-regeneration), or the artifact definition itself. An unrelated commit (a README edit, or a helper no Transformation uses) regenerates nothing, once the Transformation is precise enough to say so: a Python Transformation that has not declared [`watch`](../git-integration/infrahub-yml#declaring-extra-dependencies-with-watch) regenerates on every commit, because Infrahub cannot rule out a dependency it has no way to see.
 
 :::info What does not start a run
@@ -110,7 +112,7 @@ Changing data, or adding and removing group members, does not regenerate an arti
 
 Data a Generator creates during a proposed change is not a reliable trigger for an artifact in that same pipeline: the two run concurrently, so the artifact can render before the data exists. To review artifacts built from Generator output, run the Generator on the branch before the pipeline starts. See [Ordering between Generators and artifacts](../proposed-changes/overview#ordering-between-generators-and-artifacts).
 
-Infrahub does not record whether an artifact is out of date. An artifact's status reports the outcome of the last generation attempt, not whether the data behind it has changed since, so an artifact whose source object was renamed an hour ago still reads `Ready`. To find out whether the content would change, regenerate it: inside a Proposed Change, the artifact check reports which artifacts changed.
+Infrahub does not record whether an artifact is out of date. An artifact's status is not a freshness signal: it reports generation outcomes, not whether the data behind the artifact has changed since, so an artifact whose source object was renamed an hour ago still reads `Ready`. A run that renders content identical to what is already stored stops before it writes a status, so a `Ready` or `Error` value can also outlive the run that set it. To find out whether the content would change, regenerate it: inside a Proposed Change, the artifact check reports which artifacts changed.
 
 Artifacts generated on a branch belong to that branch. Closing a Proposed Change leaves them in place, and deleting the branch deletes the artifacts that were created on it. The rendered files stay in object storage either way, because nothing removes them.
 

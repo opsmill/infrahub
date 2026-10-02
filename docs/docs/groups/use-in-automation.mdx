@@ -24,7 +24,7 @@ artifact_definitions:
     transformation: "switch-config-template"
 ```
 
-Group membership decides which objects an artifact definition covers, not when Infrahub generates them. The next artifact generation run for the definition includes the new members, and a run starts only when a Proposed Change pipeline runs, a branch is merged, the definition changes, or you request one. See [when artifacts regenerate](../artifacts/overview#when-artifacts-regenerate) for what each of those means.
+Group membership decides which objects an artifact definition covers, not when Infrahub generates them. The next full run for the definition includes the new members, and a run starts only when a Proposed Change pipeline runs, a branch is merged, the definition changes, or you request one. A run limited to specific artifacts skips a new member, because it has no artifact to match yet. See [when artifacts regenerate](../artifacts/overview#when-artifacts-regenerate) for what each of those means.
 
 ## Target a group from a Transformation
 
