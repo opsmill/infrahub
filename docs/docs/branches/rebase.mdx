@@ -96,14 +96,20 @@ constraint violation"]
 
 ## What blocks a rebase
 
-Infrahub refuses a rebase in any of these cases:
+Each refusal has its own fix. The message of a refused rebase names the conflicts and what each one needs.
 
-- The branch is being merged (`MERGING`) or is already merged (`MERGED`).
-- A merge of any branch is in progress, or a failed merge is waiting for an administrator to recover it.
-- A conflict with the default branch needs a resolution or a change to the data.
-- The rebased data would violate a constraint, such as a duplicate value in a unique attribute.
+| Blocker | Why | Fix |
+|---|---|---|
+| Branch status `MERGING` or `MERGED` | The branch is being merged, or it is merged and read-only | Wait for the merge to finish. A merged branch cannot change; create a new branch for further work |
+| A merge is running, or a failed merge awaits recovery | Infrahub refuses every rebase, on any branch, until the merge finishes or is recovered. Branches outside the merge stay writable | Retry once the merge finishes. After a failed merge, an administrator runs `infrahub recover merge` |
+| Attribute value conflict | Both branches changed the value. A rebase keeps the branch's side, so it cannot apply a resolution in favor of the default branch | Resolve it in favor of the branch with the picker on the Proposed Change **Data** tab, or with the `ResolveDiffConflict` mutation. Or change the value to match the default branch |
+| Attribute owner or source conflict | Same as an attribute value | Resolve it in favor of the branch with the `ResolveDiffConflict` mutation, using the conflict ID from the `DiffTree` query. The web interface has no picker for it. Or change the data to match |
+| Attribute removed on the default branch | A rebase keeps the branch's side only for an attribute that still exists on the default branch | Update the data so that both branches agree |
+| Relationship conflict | A rebase cannot keep the branch's side of a relationship conflict | Update the data so that both branches agree |
+| Delete versus modify | One branch deleted an object that the other changed. Choosing a side does not clear it | Update the data so that both branches agree, for example by deleting the object on the branch as well |
+| Duplicate unique value | During the rebase, Infrahub checks uniqueness and the other constraints against the data the branch would hold after it | Change the value on one of the branches |
 
-For each conflict type and what clears it, see [Resolve conflicts](./resolve-conflicts.mdx). For every blocker with its fix, in the context of several open branches, see [What blocks a rebase](./parallel-branches.mdx#what-blocks-a-rebase).
+For each conflict type in more detail, see [Resolve conflicts](./resolve-conflicts.mdx).
 
 ## How to rebase
 
@@ -148,4 +154,4 @@ From the command line, `infrahubctl branch rebase` rebases a branch. See the [`i
 - [Branches](./overview.mdx): branch lifecycle, statuses and concepts
 - [Resolve conflicts](./resolve-conflicts.mdx): each conflict type and what clears it during a rebase
 - [Merge a branch](./merge.mdx): what the merge checks again, and how writes are blocked while it runs
-- [Parallel branches](./parallel-branches.mdx): rebasing several open branches as others merge
+- [Parallel branches](./parallel-branches.mdx): when to rebase while other branches are open, and what a merge elsewhere changes
