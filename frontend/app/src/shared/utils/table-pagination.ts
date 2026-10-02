@@ -1,9 +1,14 @@
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-export const TABLE_PAGE_SIZE = 10;
-export const TABLE_ROW_HEIGHT_PX = 40;
+export const PAGE_SIZE = 10;
 
-type PageItem = number | "ellipsis";
+export type PageItem = number | "ellipsis";
+
+export interface PageWindow {
+  firstRow: number;
+  lastRow: number;
+  totalCount: number;
+}
 
 export const toPageNumber = (page: number) =>
   Number.isFinite(page) ? Math.max(1, Math.trunc(page)) : 1;
@@ -14,33 +19,60 @@ export const getTotalPages = (totalCount: number, pageSize: number) =>
 export const clampPage = (page: number, totalPages: number) =>
   Math.min(toPageNumber(page), toPageNumber(totalPages));
 
+export const getOffset = (page: number, pageSize: number) => (toPageNumber(page) - 1) * pageSize;
+
+export const getPageWindow = (page: number, pageSize: number, totalCount: number): PageWindow => {
+  const currentPage = clampPage(page, getTotalPages(totalCount, pageSize));
+  const rows = Math.max(totalCount, 0);
+
+  return {
+    firstRow: rows === 0 ? 0 : (currentPage - 1) * pageSize + 1,
+    lastRow: Math.min(currentPage * pageSize, rows),
+    totalCount: rows,
+  };
+};
+
+export const formatPageWindow = (page: number, pageSize: number, totalCount: number) => {
+  const { firstRow, lastRow, totalCount: rows } = getPageWindow(page, pageSize, totalCount);
+
+  if (firstRow === lastRow) {
+    return `Showing ${formatNumberDisplay(firstRow)} of ${formatNumberDisplay(rows)}`;
+  }
+
+  return `Showing ${formatNumberDisplay(firstRow)} to ${formatNumberDisplay(lastRow)} of ${formatNumberDisplay(rows)}`;
+};
+
 export const getPageItems = (page: number, totalPages: number, siblingCount = 1): PageItem[] => {
   const lastPage = toPageNumber(totalPages);
   const currentPage = clampPage(page, lastPage);
   const rangeStart = Math.max(currentPage - siblingCount, 1);
   const rangeEnd = Math.min(currentPage + siblingCount, lastPage);
-
   const items: PageItem[] = [];
+
   if (rangeStart > 1) {
     items.push(1);
-    if (rangeStart > 2) items.push("ellipsis");
+
+    if (rangeStart > 2) {
+      items.push("ellipsis");
+    }
   }
-  for (let item = rangeStart; item <= rangeEnd; item++) items.push(item);
+
+  for (let candidate = rangeStart; candidate <= rangeEnd; candidate++) {
+    items.push(candidate);
+  }
+
   if (rangeEnd < lastPage) {
-    if (rangeEnd < lastPage - 1) items.push("ellipsis");
+    if (rangeEnd < lastPage - 1) {
+      items.push("ellipsis");
+    }
+
     items.push(lastPage);
   }
+
   return items;
 };
 
-export const formatPageWindow = (page: number, pageSize: number, totalCount: number) => {
-  const rows = Math.max(totalCount, 0);
-  const currentPage = clampPage(page, getTotalPages(rows, pageSize));
-  const firstRow = rows === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const lastRow = Math.min(currentPage * pageSize, rows);
-
-  if (firstRow === lastRow) {
-    return `Showing ${formatNumberDisplay(firstRow)} of ${formatNumberDisplay(rows)}`;
-  }
-  return `Showing ${formatNumberDisplay(firstRow)} to ${formatNumberDisplay(lastRow)} of ${formatNumberDisplay(rows)}`;
-};
+/** The url key a table's page lives on, so the pagination hook and a filter scope agree on it. */
+export function getPageUrlKey(urlKey: string): string {
+  return `${urlKey}_page`;
+}

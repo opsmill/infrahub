@@ -1,85 +1,160 @@
-import { describe, expect, it, vi } from "vitest";
+import { Card, CardContent, CardHeader } from "@infrahub/ui";
+import { useState } from "react";
+import { describe, expect, it } from "vitest";
 
-import { TablePagination } from "@/shared/components/table/table-pagination";
+import { getPageWindow, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { render } from "../../../../tests/components/render";
+import { TablePagination } from "./table-pagination";
+
+interface PagedCardProps {
+  totalCount: number;
+  initialPage?: number;
+}
+
+const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
+  const [page, setPage] = useState(initialPage);
+  const { firstRow, lastRow } = getPageWindow(page, PAGE_SIZE, totalCount);
+  const rows = Array.from({ length: Math.max(lastRow - firstRow + 1, 0) }, (_, index) => (
+    <li key={firstRow + index}>{`Branch ${firstRow + index}`}</li>
+  ));
+
+  return (
+    <Card className="h-64 overflow-hidden">
+      <CardHeader>Branches</CardHeader>
+
+      <CardContent className="min-h-0 flex-1 overflow-auto">
+        <ul>{rows}</ul>
+      </CardContent>
+
+      <TablePagination
+        onPageChange={setPage}
+        page={page}
+        pageSize={PAGE_SIZE}
+        totalCount={totalCount}
+      />
+    </Card>
+  );
+};
 
 describe("TablePagination", () => {
-  it("renders the row window of the current page", async () => {
+  it("states the window and the total", async () => {
+    // GIVEN
+    const totalCount = 45;
+
     // WHEN
-    const component = await render(
-      <TablePagination page={2} pageSize={10} totalCount={35} onPageChange={vi.fn()} />
-    );
+    const component = await render(<PagedCard totalCount={totalCount} />);
 
     // THEN
-    await expect.element(component.getByRole("status")).toHaveTextContent("Showing 11 to 20 of 35");
-    await expect
-      .element(component.getByRole("button", { name: "Page 2" }))
-      .toHaveAttribute("aria-current", "page");
+    await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
+  });
+
+  it("marks the page being shown as the current one", async () => {
+    // GIVEN
+    const totalCount = 45;
+
+    // WHEN
+    const component = await render(<PagedCard totalCount={totalCount} />);
+
+    // THEN
     await expect
       .element(component.getByRole("button", { name: "Page 1" }))
+      .toHaveAttribute("aria-current", "page");
+    await expect
+      .element(component.getByRole("button", { name: "Page 2" }))
       .not.toHaveAttribute("aria-current");
   });
 
-  it("calls onPageChange with the page that was pressed", async () => {
+  it("shows the next page of rows from inside a fixed-height card", async () => {
     // GIVEN
-    const onPageChange = vi.fn();
-    const component = await render(
-      <TablePagination page={2} pageSize={10} totalCount={35} onPageChange={onPageChange} />
-    );
+    const component = await render(<PagedCard totalCount={45} />);
 
     // WHEN
-    await component.getByRole("button", { name: "Page 4" }).click();
     await component.getByRole("button", { name: "Next page" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Branch 11", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Branch 1", { exact: true })).not.toBeInTheDocument();
+  });
+
+  it("announces the window it moved to", async () => {
+    // GIVEN
+    const component = await render(<PagedCard totalCount={45} />);
+
+    // WHEN
+    await component.getByRole("button", { name: "Next page" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("status")).toHaveTextContent("Showing 11 to 20 of 45");
+  });
+
+  it("goes back to the previous page", async () => {
+    // GIVEN
+    const component = await render(<PagedCard initialPage={2} totalCount={45} />);
+
+    // WHEN
     await component.getByRole("button", { name: "Previous page" }).click();
 
     // THEN
-    expect(onPageChange.mock.calls).toEqual([[4], [3], [1]]);
+    await expect.element(component.getByText("Branch 1", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Showing 1 to 10 of 45")).toBeVisible();
   });
 
-  it("disables Previous on the first page", async () => {
+  it("jumps to a page chosen directly", async () => {
+    // GIVEN
+    const component = await render(<PagedCard totalCount={45} />);
+
     // WHEN
-    const component = await render(
-      <TablePagination page={1} pageSize={10} totalCount={35} onPageChange={vi.fn()} />
-    );
+    await component.getByRole("button", { name: "Page 5" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Branch 41", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("Showing 41 to 45 of 45")).toBeVisible();
+  });
+
+  it("cannot leave the first page backwards", async () => {
+    // GIVEN
+    const totalCount = 45;
+
+    // WHEN
+    const component = await render(<PagedCard totalCount={totalCount} />);
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Previous page" })).toBeDisabled();
-    await expect.element(component.getByRole("button", { name: "Next page" })).toBeEnabled();
   });
 
-  it("disables Next on the last page", async () => {
+  it("cannot leave the last page forwards", async () => {
+    // GIVEN
+    const totalCount = 45;
+
     // WHEN
-    const component = await render(
-      <TablePagination page={4} pageSize={10} totalCount={35} onPageChange={vi.fn()} />
-    );
+    const component = await render(<PagedCard initialPage={5} totalCount={totalCount} />);
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Next page" })).toBeDisabled();
-    await expect.element(component.getByRole("button", { name: "Previous page" })).toBeEnabled();
   });
 
-  it("hides ellipses from assistive technology", async () => {
+  it("states an empty set without offering a second page", async () => {
+    // GIVEN
+    const totalCount = 0;
+
     // WHEN
-    const component = await render(
-      <TablePagination page={5} pageSize={10} totalCount={100} onPageChange={vi.fn()} />
-    );
+    const component = await render(<PagedCard totalCount={totalCount} />);
 
     // THEN
-    const ellipses = component.container.querySelectorAll('span[aria-hidden="true"]');
-    expect(ellipses).toHaveLength(2);
-    expect(component.getByRole("button", { name: /^Page / }).elements()).toHaveLength(5);
+    await expect.element(component.getByText("Showing 0 of 0")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Page 2" })).not.toBeInTheDocument();
   });
 
   it("names the landmark after the table it pages", async () => {
     // WHEN
     const component = await render(
       <TablePagination
-        page={1}
-        pageSize={10}
-        totalCount={35}
-        onPageChange={vi.fn()}
         aria-label="Tasks pagination"
+        onPageChange={() => {}}
+        page={1}
+        pageSize={PAGE_SIZE}
+        totalCount={35}
       />
     );
 

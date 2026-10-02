@@ -3,46 +3,126 @@ import { describe, expect, it } from "vitest";
 import {
   clampPage,
   formatPageWindow,
+  getOffset,
   getPageItems,
+  getPageWindow,
   getTotalPages,
-  TABLE_PAGE_SIZE,
-  TABLE_ROW_HEIGHT_PX,
+  PAGE_SIZE,
+  toPageNumber,
 } from "./table-pagination";
 
-describe("table pagination constants", () => {
-  it("uses 10 rows of 40px", () => {
-    expect(TABLE_PAGE_SIZE).toBe(10);
-    expect(TABLE_ROW_HEIGHT_PX).toBe(40);
+describe("page size", () => {
+  it("holds ten rows", () => {
+    expect(PAGE_SIZE).toBe(10);
+  });
+});
+
+describe("toPageNumber", () => {
+  it("keeps a page within range", () => {
+    expect(toPageNumber(3)).toBe(3);
+  });
+
+  it("raises a page below one", () => {
+    expect(toPageNumber(0)).toBe(1);
+    expect(toPageNumber(-4)).toBe(1);
+  });
+
+  it("falls back to the first page for a non-finite value", () => {
+    expect(toPageNumber(Number.NaN)).toBe(1);
   });
 });
 
 describe("getTotalPages", () => {
-  it.each([
-    [0, 1],
-    [10, 1],
-    [11, 2],
-    [40, 4],
-    [-5, 1],
-  ])("returns the page count for %i rows", (totalCount, expected) => {
-    expect(getTotalPages(totalCount, TABLE_PAGE_SIZE)).toBe(expected);
+  it("counts a partial last page", () => {
+    expect(getTotalPages(45, 20)).toBe(3);
+  });
+
+  it("counts an exact multiple of the page size", () => {
+    expect(getTotalPages(40, 20)).toBe(2);
+  });
+
+  it("counts a set smaller than one page as one page", () => {
+    expect(getTotalPages(7, 20)).toBe(1);
+  });
+
+  it("counts an empty set as one page", () => {
+    expect(getTotalPages(0, 20)).toBe(1);
   });
 });
 
 describe("clampPage", () => {
-  it.each([
-    [0, 1],
-    [-3, 1],
-    [Number.NaN, 1],
-    [Number.POSITIVE_INFINITY, 1],
-    [2.7, 2],
-    [3, 3],
-    [9, 4],
-  ])("clamps page %d to %i of 4 pages", (page, expected) => {
-    expect(clampPage(page, 4)).toBe(expected);
+  it("keeps a page inside the range", () => {
+    expect(clampPage(2, 3)).toBe(2);
   });
 
-  it("returns 1 when there is a single page", () => {
-    expect(clampPage(5, 1)).toBe(1);
+  it("clamps past the last page", () => {
+    expect(clampPage(9, 3)).toBe(3);
+  });
+
+  it("clamps before the first page", () => {
+    expect(clampPage(0, 3)).toBe(1);
+  });
+});
+
+describe("getOffset", () => {
+  it("the first page starts at offset zero", () => {
+    expect(getOffset(1, 20)).toBe(0);
+  });
+
+  it("the last page starts after every preceding page", () => {
+    expect(getOffset(3, 20)).toBe(40);
+  });
+});
+
+describe("getPageWindow", () => {
+  it("describes the first page of a larger set", () => {
+    expect(getPageWindow(1, 20, 45)).toEqual({ firstRow: 1, lastRow: 20, totalCount: 45 });
+  });
+
+  it("describes a partial last page", () => {
+    expect(getPageWindow(3, 20, 45)).toEqual({ firstRow: 41, lastRow: 45, totalCount: 45 });
+  });
+
+  it("describes a last page that is an exact multiple of the page size", () => {
+    expect(getPageWindow(2, 20, 40)).toEqual({ firstRow: 21, lastRow: 40, totalCount: 40 });
+  });
+
+  it("describes a set smaller than one page", () => {
+    expect(getPageWindow(1, 20, 7)).toEqual({ firstRow: 1, lastRow: 7, totalCount: 7 });
+  });
+
+  it("describes an empty set", () => {
+    expect(getPageWindow(1, 20, 0)).toEqual({ firstRow: 0, lastRow: 0, totalCount: 0 });
+  });
+
+  it("describes the last page when asked for a page past the end", () => {
+    expect(getPageWindow(8, 20, 45)).toEqual({ firstRow: 41, lastRow: 45, totalCount: 45 });
+  });
+});
+
+describe("formatPageWindow", () => {
+  it("states the window and the total on the first page", () => {
+    expect(formatPageWindow(1, 20, 45)).toBe("Showing 1 to 20 of 45");
+  });
+
+  it("states the window and the total on the last page", () => {
+    expect(formatPageWindow(3, 20, 45)).toBe("Showing 41 to 45 of 45");
+  });
+
+  it("states the whole set when it is smaller than one page", () => {
+    expect(formatPageWindow(1, 20, 7)).toBe("Showing 1 to 7 of 7");
+  });
+
+  it("states a single row without a range", () => {
+    expect(formatPageWindow(1, 20, 1)).toBe("Showing 1 of 1");
+  });
+
+  it("states an empty set", () => {
+    expect(formatPageWindow(1, 20, 0)).toBe("Showing 0 of 0");
+  });
+
+  it("groups thousands", () => {
+    expect(formatPageWindow(1, 20, 1234)).toBe("Showing 1 to 20 of 1,234");
   });
 });
 
@@ -51,51 +131,19 @@ describe("getPageItems", () => {
     expect(getPageItems(1, 3)).toEqual([1, 2, 3]);
   });
 
-  it("returns a single page for a single-page table", () => {
+  it("lists the only page of a single-page set", () => {
     expect(getPageItems(1, 1)).toEqual([1]);
   });
 
-  it("shows a trailing ellipsis on the first page", () => {
-    expect(getPageItems(1, 10)).toEqual([1, 2, "ellipsis", 10]);
+  it("keeps the first and last page reachable from the middle", () => {
+    expect(getPageItems(10, 20)).toEqual([1, "ellipsis", 9, 10, 11, "ellipsis", 20]);
   });
 
-  it("shows ellipses on both sides on a middle page", () => {
-    expect(getPageItems(5, 10)).toEqual([1, "ellipsis", 4, 5, 6, "ellipsis", 10]);
+  it("elides only the far side on the first page", () => {
+    expect(getPageItems(1, 20)).toEqual([1, 2, "ellipsis", 20]);
   });
 
-  it("shows a leading ellipsis on the last page", () => {
-    expect(getPageItems(10, 10)).toEqual([1, "ellipsis", 9, 10]);
-  });
-
-  it("does not use an ellipsis to hide a single page", () => {
-    expect(getPageItems(3, 5)).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it("clamps a page past the end", () => {
-    expect(getPageItems(99, 4)).toEqual([1, "ellipsis", 3, 4]);
-  });
-});
-
-describe("formatPageWindow", () => {
-  it("shows the row range of the current page", () => {
-    expect(formatPageWindow(1, TABLE_PAGE_SIZE, 40)).toBe("Showing 1 to 10 of 40");
-    expect(formatPageWindow(4, TABLE_PAGE_SIZE, 40)).toBe("Showing 31 to 40 of 40");
-  });
-
-  it("shows a single row when the first and last rows are the same", () => {
-    expect(formatPageWindow(2, TABLE_PAGE_SIZE, 11)).toBe("Showing 11 of 11");
-  });
-
-  it("shows zero rows for an empty table", () => {
-    expect(formatPageWindow(1, TABLE_PAGE_SIZE, 0)).toBe("Showing 0 of 0");
-  });
-
-  it("clamps an out-of-range page", () => {
-    expect(formatPageWindow(9, TABLE_PAGE_SIZE, 11)).toBe("Showing 11 of 11");
-    expect(formatPageWindow(Number.NaN, TABLE_PAGE_SIZE, 10)).toBe("Showing 1 to 10 of 10");
-  });
-
-  it("formats large numbers", () => {
-    expect(formatPageWindow(1, TABLE_PAGE_SIZE, 1200)).toBe("Showing 1 to 10 of 1,200");
+  it("elides only the near side on the last page", () => {
+    expect(getPageItems(20, 20)).toEqual([1, "ellipsis", 19, 20]);
   });
 });

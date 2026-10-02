@@ -1,6 +1,6 @@
 import { buttonVariants } from "@infrahub/ui";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 
+import { Icon } from "@/shared/components/display/icon";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import {
@@ -10,7 +10,7 @@ import {
   getTotalPages,
 } from "@/shared/utils/table-pagination";
 
-interface TablePaginationProps {
+export interface TablePaginationProps {
   page: number;
   pageSize: number;
   totalCount: number;
@@ -22,7 +22,7 @@ interface TablePaginationProps {
 const controlStyle = classNames(
   buttonVariants({ variant: "ghost", size: "sm", shape: "square" }),
   focusVisibleStyle,
-  "hover:bg-content-muted disabled:pointer-events-none disabled:opacity-60"
+  "hover:bg-border disabled:pointer-events-none disabled:opacity-60"
 );
 
 const activePageStyle = classNames(
@@ -56,32 +56,36 @@ export function TablePagination({
 
       <div className="flex items-center gap-1">
         <button
-          type="button"
           aria-label="Previous page"
           className={controlStyle}
           disabled={currentPage <= 1}
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => {
+            onPageChange(currentPage - 1);
+          }}
+          type="button"
         >
-          <ChevronLeftIcon className="size-4" />
+          <Icon icon="mdi:chevron-left" />
         </button>
 
         {getPageItems(currentPage, totalPages).map((item, index) =>
           item === "ellipsis" ? (
             <span
-              key={`ellipsis-${index}`}
               aria-hidden="true"
               className="px-1 text-foreground-muted"
+              key={`ellipsis-${index}`}
             >
               …
             </span>
           ) : (
             <button
-              key={item}
-              type="button"
-              aria-label={`Page ${item}`}
               aria-current={item === currentPage ? "page" : undefined}
+              aria-label={`Page ${item}`}
               className={item === currentPage ? activePageStyle : controlStyle}
-              onClick={() => onPageChange(item)}
+              key={item}
+              onClick={() => {
+                onPageChange(item);
+              }}
+              type="button"
             >
               {item}
             </button>
@@ -89,13 +93,15 @@ export function TablePagination({
         )}
 
         <button
-          type="button"
           aria-label="Next page"
           className={controlStyle}
           disabled={currentPage >= totalPages}
-          onClick={() => onPageChange(currentPage + 1)}
+          onClick={() => {
+            onPageChange(currentPage + 1);
+          }}
+          type="button"
         >
-          <ChevronRightIcon className="size-4" />
+          <Icon icon="mdi:chevron-right" />
         </button>
       </div>
     </nav>
