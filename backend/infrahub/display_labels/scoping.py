@@ -35,13 +35,12 @@ def derive_display_label_targets(
 ) -> list[DisplayLabelRecomputeTarget]:
     """Map a changed ``kind`` to the display-label targets it affects.
 
-    ``include_self`` covers the changed node's own display label, used for a
-    creation. ``include_cross`` covers the display labels of other nodes that read
-    this kind across a relationship, used for an update or a deletion. A same-node
-    update needs neither here: the original live edit already refreshed the node's own
-    display label on the branch, and the merge carries that value. ``changed_fields``
-    of ``None`` means every field, which is what a deletion needs because any read of
-    the removed node is now stale.
+    ``include_self`` covers the changed node's own display label, for a node whose
+    stored label may not match what it now reads, such as a created node or an update
+    replayed onto a base that moved. ``include_cross`` covers the display labels of
+    other nodes that read this kind across a relationship, used for an update or a
+    deletion. ``changed_fields`` of ``None`` means every field, which is what a
+    deletion needs because any read of the removed node is now stale.
     """
     fields = None if changed_fields is None else frozenset(changed_fields)
     targets: dict[tuple[str, str], DisplayLabelRecomputeTarget] = {}

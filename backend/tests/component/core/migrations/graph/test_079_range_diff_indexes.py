@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.constants.database import IndexType
 from infrahub.core.migrations.graph.m079_range_diff_indexes import (
     RANGE_INDEXES_TO_ADD,
@@ -5,7 +7,7 @@ from infrahub.core.migrations.graph.m079_range_diff_indexes import (
     Migration079,
 )
 from infrahub.core.migrations.shared import MigrationInput
-from infrahub.database import InfrahubDatabase
+from infrahub.database import DatabaseType, InfrahubDatabase
 from infrahub.database.neo4j import IndexManagerNeo4j
 
 
@@ -16,6 +18,9 @@ async def _existing_indexes(db: InfrahubDatabase) -> set[tuple[str, tuple[str, .
 
 async def test_migration_079(db: InfrahubDatabase) -> None:
     """The TEXT diff indexes are replaced by RANGE ones, and the new root indexes appear."""
+    if db.db_type != DatabaseType.NEO4J:
+        pytest.skip("The migration only manages Neo4j indexes")
+
     # Reproduce the pre-migration state: the TEXT indexes exist and the RANGE ones do not.
     index_manager = IndexManagerNeo4j(db=db)
     index_manager.init(nodes=RANGE_INDEXES_TO_ADD, rels=[])

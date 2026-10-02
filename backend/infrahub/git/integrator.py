@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -61,6 +62,7 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
 )
@@ -243,21 +245,46 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
+    def _has_valid_local_directories(self) -> bool:
+        """Return whether the local clone is usable, without raising when it is simply absent."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return False
+        return True
+
+    def _local_copy_needs_cloning(self) -> bool:
+        """Return whether the local copy has to be cloned, because it is absent or present but unusable."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return True
+        except RepositoryError as exc:
+            get_logger().warning("Replacing an unusable local copy", repository=self.name, reason=exc.message)
+            return True
+        return False
+
     @classmethod
     async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
         self = cls(**kwargs)
         log = get_logger()
-        try:
-            self.validate_local_directories()
-        except RepositoryInvalidFileSystemError:
+        if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
-            await self.create_locally(
-                checkout_ref=await self.resolve_checkout_ref(),
-                infrahub_branch_name=self.infrahub_branch_name,
-                update_commit_value=False,
-            )
-            self.reinitialized = True
-            log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
+            async with lock.registry.get(name=self.name, namespace="repository"):
+                # The copy was absent a moment ago, so a broken one now was left by a failed concurrent clone.
+                if self._local_copy_needs_cloning():
+                    # A Repo opened on the copy being replaced would keep reading its deleted object store.
+                    if self.cache_repo is not None:
+                        self.cache_repo.close()
+                        self.cache_repo = None
+                    await self.create_locally(
+                        checkout_ref=await self.resolve_checkout_ref(),
+                        infrahub_branch_name=self.infrahub_branch_name,
+                        update_commit_value=False,
+                    )
+                    self.reinitialized = True
+                    log.info(f"Initialized the local directory for {self.name}.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
@@ -2164,6 +2191,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
+    async def _stored_content_matches(self, storage_id: str | None, checksum: str) -> bool:
+        """Whether the object storage still holds the content recorded with this checksum.
+
+        A missing object (404) and one the API refuses because it failed its integrity check (409) do not.
+
+        Raises:
+            httpx.HTTPStatusError: If the object cannot be read for another reason.
+
+        """
+        if not storage_id:
+            return False
+        try:
+            content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in {404, 409}:
+                raise
+            return False
+        return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
+
     async def render_artifact(
         self,
         artifact: CoreArtifact,
@@ -2208,7 +2254,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        # Same content: keep the stored file, unless it was asked to be checked and is missing or refused.
+        if artifact.checksum.value == checksum and (
+            not message.check_stored_file
+            or await self._stored_content_matches(storage_id=artifact.storage_id.value, checksum=checksum)
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )

@@ -91,6 +91,9 @@ Key methods:
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
 | Branch merge or rebase | Coalesced | `CoalescedRecomputeBuilder` + `BulkRecomputeWriter` | Affected computed attrs across the whole change set |
+| Template added or changed (schema update), or `InfrahubRecomputeComputedAttribute` without `node_ids` | Coalesced, one flow per chunk of node ids | `trigger_update_jinja2_computed_attributes` | Every node of the kind |
+
+The async and coalesced process flow skips a node whose template raises while rendering: the node keeps its stored value, a warning is logged, and the rest of the flow's nodes are still written.
 
 ## Python Transform Computed Attributes
 
@@ -129,6 +132,7 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has a data-pa
 - Each node's read still runs individually with `update_group=True`, keeping the node subscribed to the transform's query group (the reverse index that routes future source changes to affected readers).
 - The recomputed values persist through the shared bulk recompute writer (bounded transactions), not via per-node GraphQL mutations. The writer's skip-unchanged gating is per node, not per value: a save that produces no effective change emits no event and dispatches no follow-on recompute, which is what keeps a wide fan-out from echoing into further waves. A node whose save changes another of its fields still emits an event.
 - A node whose transform raises or returns a non-string is skipped with its previous value intact and a logged reason; the rest of the batch persists. The flow ends with a `submitted/written/skipped` summary line.
+- A whole-kind recompute reads only the kind's node ids, a page at a time in node uuid order, and submits one batch per submission chunk. Paging in the schema `order_by` would let the submitted batches rewrite a sort field mid-paging and skip nodes.
 - Each submission carries the branch tag at creation so the flow run stays visible in branch-filtered task queries; tags added mid-run do not survive later in-flow tag updates.
 - Crash semantics: the writer commits in bounded chunks, so a mid-batch crash leaves earlier chunks persisted. Recovery is re-running the recompute; skip-unchanged makes redone work no-op-cheap. Rollback of the whole feature is a clean revert (no schema or data migration).
 
