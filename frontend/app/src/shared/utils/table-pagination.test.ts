@@ -27,8 +27,13 @@ describe("toPageNumber", () => {
     expect(toPageNumber(-4)).toBe(1);
   });
 
+  it("drops the fraction of a fractional page", () => {
+    expect(toPageNumber(2.7)).toBe(2);
+  });
+
   it("falls back to the first page for a non-finite value", () => {
     expect(toPageNumber(Number.NaN)).toBe(1);
+    expect(toPageNumber(Number.POSITIVE_INFINITY)).toBe(1);
   });
 });
 
@@ -61,6 +66,18 @@ describe("clampPage", () => {
 
   it("clamps before the first page", () => {
     expect(clampPage(0, 3)).toBe(1);
+  });
+
+  it("truncates a fractional page", () => {
+    expect(clampPage(2.7, 4)).toBe(2);
+  });
+
+  it("keeps every page on the only page of a single-page set", () => {
+    expect(clampPage(5, 1)).toBe(1);
+  });
+
+  it("falls back to the first page for a non-finite page", () => {
+    expect(clampPage(Number.NaN, 3)).toBe(1);
   });
 });
 
@@ -119,6 +136,10 @@ describe("formatPageWindow", () => {
 
   it("states an empty set", () => {
     expect(formatPageWindow(1, 20, 0)).toBe("Showing 0 of 0");
+  });
+
+  it("states the last page's window for a page past the end", () => {
+    expect(formatPageWindow(8, 20, 45)).toBe("Showing 41 to 45 of 45");
   });
 
   it("groups thousands", () => {

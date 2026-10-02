@@ -15,7 +15,7 @@ interface PagedCardProps {
 const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
   const [page, setPage] = useState(initialPage);
   const { firstRow, lastRow } = getPageWindow(page, PAGE_SIZE, totalCount);
-  const rows = Array.from({ length: Math.max(lastRow - firstRow + 1, 0) }, (_, index) => (
+  const rows = Array.from({ length: totalCount === 0 ? 0 : lastRow - firstRow + 1 }, (_, index) => (
     <li key={firstRow + index}>{`Branch ${firstRow + index}`}</li>
   ));
 
@@ -143,6 +143,7 @@ describe("TablePagination", () => {
 
     // THEN
     await expect.element(component.getByText("Showing 0 of 0")).toBeVisible();
+    expect(component.container.querySelectorAll("li")).toHaveLength(0);
     await expect.element(component.getByRole("button", { name: "Page 2" })).not.toBeInTheDocument();
   });
 
