@@ -1,0 +1,19 @@
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_ad3ff5d78595eb::t_e1708009baf778 374-378,384,393,399-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f679514eb1bba4075462a6e93d84e2478303bea3",
+  "prompts": {},
+  "sessions": {
+    "s_ad3ff5d78595eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4bad0f5-6766-42a2-bdd4-0f96787de47a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

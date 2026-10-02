@@ -1,0 +1,23 @@
+backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py
+  s_0d92a50dcb5402::t_6db7ea142d92f3 324
+  s_0d92a50dcb5402::t_a8f8d231a9a4aa 315,325,328
+  s_0d92a50dcb5402::t_2e36dd096b6dcb 417-419,423
+backend/infrahub/core/migrations/graph/m080_number_pool_ranges/migration.py
+  s_0d92a50dcb5402::t_1eeef95d8bf4e1 97,216-218,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94bf8076815f770c235a49b924495a33c9548773",
+  "prompts": {},
+  "sessions": {
+    "s_0d92a50dcb5402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fbecb5ab-e110-4f7f-88ed-b15c0a72cad0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
