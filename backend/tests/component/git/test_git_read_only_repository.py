@@ -71,6 +71,33 @@ async def test_get_commit_value(
     assert repo.get_commit_value(branch_name="branch02", remote=True) == branch01_commit
 
 
+async def test_get_commit_value_follows_a_tag_moved_upstream(
+    git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
+) -> None:
+    """A copy already holding the tag still resolves where it points now, rather than refusing or keeping the old target."""
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream.create_tag("release", ref="main", message="Release")
+    repo = await InfrahubReadOnlyRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        ref="release",
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    tagged_before = repo.get_commit_value(branch_name="release", remote=True)
+
+    upstream.git.checkout("main")
+    new_file = Path(git_upstream_repo_01["path"]) / "tagged_change.txt"
+    new_file.write_text("the release tag moved upstream", encoding="utf-8")
+    upstream.index.add(["tagged_change.txt"])
+    moved_sha = str(upstream.index.commit("Change the release tag now points at"))
+    upstream.create_tag("release", ref=moved_sha, message="Release", force=True)
+    assert tagged_before != moved_sha
+
+    assert repo.get_commit_value(branch_name="release", remote=True) == moved_sha
+
+
 async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
     repo = git_repo_01_read_only
 
