@@ -1,181 +1,184 @@
+import { CombinedError } from "@urql/core";
+import { GraphQLError } from "graphql";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getBranchRepositoriesFromApi } from "@/entities/repository/api/get-branch-repositories-from-api";
+import { getBranchRepositoryHealthFromApi } from "@/entities/repository/api/get-branch-repository-health-from-api";
+import { BranchRepositoriesError } from "@/entities/repository/domain/model/branch-repository";
 import { getBranchRepositories } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import { getBranchRepositoryHealth } from "@/entities/repository/domain/use-cases/get-branch-repository-health";
 
 vi.mock("@/entities/repository/api/get-branch-repositories-from-api");
+vi.mock("@/entities/repository/api/get-branch-repository-health-from-api");
 
-type ApiResult = Awaited<ReturnType<typeof getBranchRepositoriesFromApi>>;
+type PageResult = Awaited<ReturnType<typeof getBranchRepositoriesFromApi>>;
+type HealthResult = Awaited<ReturnType<typeof getBranchRepositoryHealthFromApi>>;
 
-const node = (overrides: Record<string, unknown> = {}) => ({
-  id: "repo-1",
+const node = (id: string, overrides: Record<string, unknown> = {}) => ({
+  id,
   __typename: "CoreRepository",
-  display_label: "infrastructure-templates (label)",
-  name: { value: "infrastructure-templates" },
+  display_label: id,
+  name: { value: id },
   commit: { value: "8f3c2a1" },
-  sync_status: {
-    value: "in-sync",
-    label: "In Sync",
-    color: "#60a5fa",
-    description: "The repository is syncing correctly",
-  },
+  sync_status: { value: "in-sync", label: "In Sync", color: "#60a5fa", description: null },
   operational_status: { value: "online", label: "Online", color: "#86efac" },
   ...overrides,
 });
 
-function mockNodes(nodes: ReturnType<typeof node>[], count = nodes.length) {
-  vi.mocked(getBranchRepositoriesFromApi).mockResolvedValue({
-    data: { count, edges: nodes.map((n) => ({ node: n })) },
-  } as unknown as ApiResult);
-}
+const connection = (nodes: ReturnType<typeof node>[], count = nodes.length) => ({
+  count,
+  edges: nodes.map((n) => ({ node: n })),
+});
 
-function mockErrors(errors: Array<{ message: string; extensions?: unknown }>) {
-  vi.mocked(getBranchRepositoriesFromApi).mockResolvedValue({
-    data: undefined,
-    errors,
-  } as unknown as ApiResult);
-}
+const permissionDenied = () => {
+  const graphQLError = new GraphQLError("You do not have one of the following permissions", {
+    extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
+  });
+  return new Error(graphQLError.message, {
+    cause: new CombinedError({ graphQLErrors: [graphQLError] }),
+  });
+};
 
 describe("getBranchRepositories", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("maps nodes to branch repositories", async () => {
-    mockNodes([node()]);
+  it("returns the page's repositories and the server's total", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoriesFromApi).mockResolvedValue(
+      connection([node("a"), node("b")], 42) as unknown as PageResult
+    );
 
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
-
-    expect(result).toEqual({
-      status: "ok",
-      count: 1,
-      isTruncated: false,
-      repositories: [
-        {
-          id: "repo-1",
-          kind: "CoreRepository",
-          name: "infrastructure-templates",
-          isReadOnly: false,
-          commit: "8f3c2a1",
-          syncStatus: {
-            value: "in-sync",
-            label: "In Sync",
-            color: "#60a5fa",
-            description: "The repository is syncing correctly",
-          },
-          operationalStatus: { value: "online", label: "Online" },
-        },
-      ],
+    // WHEN
+    const result = await getBranchRepositories({
+      branchName: "feature",
+      syncWithGit: true,
+      limit: 10,
+      offset: 10,
     });
+
+    // THEN
+    expect(result.count).toBe(42);
+    expect(result.repositories.map(({ id }) => id)).toEqual(["a", "b"]);
   });
 
-  it("falls back to display_label, then id, for the name", async () => {
-    mockNodes([
-      node({ id: "a", name: { value: null } }),
-      node({ id: "b", name: null, display_label: null }),
-    ]);
+  it.each([
+    [true, "CoreGenericRepository"],
+    [false, "CoreReadOnlyRepository"],
+  ])(
+    "with Sync with Git %s, asks for the %s page on the page's branch",
+    async (syncWithGit, kind) => {
+      // GIVEN
+      vi.mocked(getBranchRepositoriesFromApi).mockResolvedValue(
+        connection([]) as unknown as PageResult
+      );
 
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
+      // WHEN
+      await getBranchRepositories({ branchName: "feature", syncWithGit, limit: 10, offset: 20 });
 
-    expect(result.status === "ok" && result.repositories.map((r) => r.name)).toEqual([
-      "infrastructure-templates (label)",
-      "b",
-    ]);
+      // THEN
+      expect(getBranchRepositoriesFromApi).toHaveBeenCalledWith({
+        branchName: "feature",
+        kind,
+        limit: 10,
+        offset: 20,
+      });
+    }
+  );
+
+  it("rejects with PERMISSION_DENIED when the user can't view repositories", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoriesFromApi).mockRejectedValue(permissionDenied());
+
+    // WHEN
+    const error = await getBranchRepositories({
+      branchName: "feature",
+      syncWithGit: true,
+      limit: 10,
+      offset: 0,
+    }).catch((caught: unknown) => caught);
+
+    // THEN
+    expect(error).toBeInstanceOf(BranchRepositoriesError);
+    expect(error).toMatchObject({ code: "PERMISSION_DENIED" });
   });
 
-  it("marks read-only repositories from __typename", async () => {
-    mockNodes([node({ __typename: "CoreReadOnlyRepository" })]);
+  it("rejects with UNKNOWN on any other error, keeping its message", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoriesFromApi).mockRejectedValue(new Error("Something broke"));
 
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
+    // WHEN
+    const error = await getBranchRepositories({
+      branchName: "feature",
+      syncWithGit: true,
+      limit: 10,
+      offset: 0,
+    }).catch((caught: unknown) => caught);
 
-    expect(result.status === "ok" && result.repositories[0]).toMatchObject({
-      kind: "CoreReadOnlyRepository",
-      isReadOnly: true,
-    });
+    // THEN
+    expect(error).toBeInstanceOf(BranchRepositoriesError);
+    expect(error).toMatchObject({ code: "UNKNOWN", message: "Something broke" });
+  });
+});
+
+describe("getBranchRepositoryHealth", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("maps a missing commit and statuses to null", async () => {
-    mockNodes([node({ commit: { value: null }, sync_status: null, operational_status: null })]);
+  it("asks the server for failed imports, unreachable and syncing repositories", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoryHealthFromApi).mockResolvedValue({
+      importErrors: connection([]),
+      unreachable: connection([]),
+      syncing: { count: 0 },
+    } as unknown as HealthResult);
 
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
+    // WHEN
+    await getBranchRepositoryHealth({ branchName: "feature", syncWithGit: true });
 
-    expect(result.status === "ok" && result.repositories[0]).toMatchObject({
-      commit: null,
-      syncStatus: { value: null, label: null, color: null, description: null },
-      operationalStatus: { value: null, label: null },
-    });
-  });
-
-  it("queries every repository kind on the page's branch when Sync with Git is on", async () => {
-    mockNodes([]);
-
-    await getBranchRepositories({ branchName: "feature", syncWithGit: true });
-
-    expect(getBranchRepositoriesFromApi).toHaveBeenCalledWith({
+    // THEN
+    expect(getBranchRepositoryHealthFromApi).toHaveBeenCalledWith({
       branchName: "feature",
       kind: "CoreGenericRepository",
+      importErrorStatuses: ["error-import"],
+      unreachableStatuses: ["error-cred", "error-connection", "error"],
+      syncingStatuses: ["syncing"],
     });
   });
 
-  it("queries only read-only repositories when Sync with Git is off", async () => {
-    mockNodes([]);
+  it("only looks at read-only repositories when Sync with Git is off", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoryHealthFromApi).mockResolvedValue({
+      importErrors: connection([]),
+      unreachable: connection([]),
+      syncing: { count: 0 },
+    } as unknown as HealthResult);
 
-    await getBranchRepositories({ branchName: "feature", syncWithGit: false });
+    // WHEN
+    await getBranchRepositoryHealth({ branchName: "feature", syncWithGit: false });
 
-    expect(getBranchRepositoriesFromApi).toHaveBeenCalledWith({
-      branchName: "feature",
-      kind: "CoreReadOnlyRepository",
-    });
+    // THEN
+    expect(getBranchRepositoryHealthFromApi).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "CoreReadOnlyRepository" })
+    );
   });
 
-  it("returns denied on a PERMISSION_DENIED error", async () => {
-    mockErrors([
-      {
-        message: "You do not have one of the following permissions",
-        extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
-      },
-    ]);
+  it("maps both failing lists and the syncing count", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoryHealthFromApi).mockResolvedValue({
+      importErrors: connection([node("broken", { sync_status: { value: "error-import" } })]),
+      unreachable: connection([node("offline", { operational_status: { value: "error" } })]),
+      syncing: { count: 3 },
+    } as unknown as HealthResult);
 
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
+    // WHEN
+    const health = await getBranchRepositoryHealth({ branchName: "feature", syncWithGit: true });
 
-    expect(result).toEqual({ status: "denied" });
-  });
-
-  it("throws on any other error", async () => {
-    mockErrors([{ message: "Something broke", extensions: { code: "UNDEFINED_ERROR" } }]);
-
-    await expect(
-      getBranchRepositories({ branchName: "feature", syncWithGit: true })
-    ).rejects.toThrow("Something broke");
-  });
-
-  it("throws with every message when a denial comes with another error", async () => {
-    mockErrors([
-      {
-        message: "You do not have one of the following permissions",
-        extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
-      },
-      { message: "Something broke", extensions: { code: "UNDEFINED_ERROR" } },
-    ]);
-
-    await expect(
-      getBranchRepositories({ branchName: "feature", syncWithGit: true })
-    ).rejects.toThrow("You do not have one of the following permissions; Something broke");
-  });
-
-  it("is truncated when the count exceeds the returned repositories", async () => {
-    mockNodes([node()], 501);
-
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
-
-    expect(result).toMatchObject({ status: "ok", count: 501, isTruncated: true });
-  });
-
-  it("drops nodes without an id", async () => {
-    mockNodes([node({ id: null }), node({ id: "repo-2" })]);
-
-    const result = await getBranchRepositories({ branchName: "feature", syncWithGit: true });
-
-    expect(result.status === "ok" && result.repositories.map((r) => r.id)).toEqual(["repo-2"]);
+    // THEN
+    expect(health.importErrors.map(({ id }) => id)).toEqual(["broken"]);
+    expect(health.unreachable.map(({ id }) => id)).toEqual(["offline"]);
+    expect(health.syncingCount).toBe(3);
   });
 });

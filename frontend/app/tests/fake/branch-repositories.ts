@@ -1,6 +1,7 @@
 import type {
-  BranchRepositoriesResult,
   BranchRepository,
+  BranchRepositoryHealth,
+  BranchRepositoryPage,
   BranchRepositorySyncStatus,
 } from "@/entities/repository/domain/model/branch-repository";
 
@@ -62,14 +63,35 @@ export const generateBranchRepository = (
   };
 };
 
-export const generateBranchRepositoriesResult = (
+export const generateBranchRepositoryHealth = (
+  overrides: Partial<BranchRepositoryHealth> = {}
+): BranchRepositoryHealth => ({
+  importErrors: [],
+  unreachable: [],
+  syncingCount: 0,
+  ...overrides,
+});
+
+// What the server's filtered lists would return for these repositories.
+export const toBranchRepositoryHealth = (
+  repositories: BranchRepository[]
+): BranchRepositoryHealth => ({
+  importErrors: repositories.filter(
+    ({ syncStatus }) => syncStatus.value === SYNC_STATUS.importError.value
+  ),
+  unreachable: repositories.filter(({ operationalStatus }) =>
+    ["error-cred", "error-connection", "error"].includes(operationalStatus.value ?? "")
+  ),
+  syncingCount: repositories.filter(({ syncStatus }) => syncStatus.value === "syncing").length,
+});
+
+// One page of these repositories, as the server would slice it.
+export const toBranchRepositoryPage = (
   repositories: BranchRepository[],
-  count = repositories.length
-): BranchRepositoriesResult => ({
-  status: "ok",
-  repositories,
-  count,
-  isTruncated: count > repositories.length,
+  { offset = 0, limit = 10 }: { offset?: number; limit?: number } = {}
+): BranchRepositoryPage => ({
+  repositories: repositories.slice(offset, offset + limit),
+  count: repositories.length,
 });
 
 const BASE_REPOSITORIES: BranchRepository[] = [
@@ -129,29 +151,25 @@ export type BranchRepositoriesScenario =
 
 export const buildBranchRepositoriesScenario = (
   scenario: BranchRepositoriesScenario
-): BranchRepositoriesResult => {
+): BranchRepository[] => {
   switch (scenario) {
     case "incident":
     case "import-error":
-      return generateBranchRepositoriesResult(updateAt(buildRepositories(4), [2], withImportError));
+      return updateAt(buildRepositories(4), [2], withImportError);
     case "unreachable":
-      return generateBranchRepositoriesResult(
-        updateAt(buildRepositories(4), [3], (repository) => ({
-          ...repository,
-          operationalStatus: OPERATIONAL_STATUS.errorCred,
-        }))
-      );
+      return updateAt(buildRepositories(4), [3], (repository) => ({
+        ...repository,
+        operationalStatus: OPERATIONAL_STATUS.errorCred,
+      }));
     case "many-errors":
-      return generateBranchRepositoriesResult(
-        updateAt(buildRepositories(40), MANY_ERRORS_IMPORT_ERROR_POSITIONS, withImportError)
-      );
+      return updateAt(buildRepositories(40), MANY_ERRORS_IMPORT_ERROR_POSITIONS, withImportError);
     case "all-clear":
-      return generateBranchRepositoriesResult(buildRepositories(4));
+      return buildRepositories(4);
     case "no-repos":
-      return generateBranchRepositoriesResult([]);
+      return [];
     case "exactly-10":
-      return generateBranchRepositoriesResult(buildRepositories(10));
+      return buildRepositories(10);
     case "eleven":
-      return generateBranchRepositoriesResult(buildRepositories(11));
+      return buildRepositories(11);
   }
 };

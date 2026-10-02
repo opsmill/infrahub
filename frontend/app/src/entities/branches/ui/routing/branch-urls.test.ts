@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 
-import { getBranchQspOverride } from "./branch-urls";
+import { getBranchQsp } from "./branch-urls";
 
-const withBranch = (path: string, branchName: string, isDefault: boolean) =>
-  constructPath(path, [getBranchQspOverride(branchName, isDefault)]);
+const withBranch = (path: string, branchName: string) =>
+  constructPath(path, [getBranchQsp(branchName)]);
 
-describe("getBranchQspOverride", () => {
+describe("getBranchQsp", () => {
   let initialUrl: string;
 
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe("getBranchQspOverride", () => {
     window.history.replaceState(null, "", "/branches/feature?branch=main");
 
     // WHEN
-    const url = withBranch("/objects/CoreRepository/123", "feature", false);
+    const url = withBranch("/objects/CoreRepository/123", "feature");
 
     // THEN
     expect(url).toBe("/objects/CoreRepository/123?branch=feature");
@@ -34,22 +34,11 @@ describe("getBranchQspOverride", () => {
     window.history.replaceState(null, "", "/branches/feature?branch=main&at=2026-01-01T00:00:00Z");
 
     // WHEN
-    const url = new URL(withBranch("/tasks", "feature", false), window.location.origin);
+    const url = new URL(withBranch("/tasks", "feature"), window.location.origin);
 
     // THEN
     expect(url.pathname).toBe("/tasks");
     expect(url.searchParams.get("branch")).toBe("feature");
     expect(url.searchParams.get("at")).toBe("2026-01-01T00:00:00Z");
-  });
-
-  it("drops the branch parameter for the default branch", () => {
-    // GIVEN
-    window.history.replaceState(null, "", "/branches/main?branch=feature");
-
-    // WHEN
-    const url = withBranch("/objects/CoreRepository/123", "main", true);
-
-    // THEN
-    expect(url).toBe("/objects/CoreRepository/123");
   });
 });

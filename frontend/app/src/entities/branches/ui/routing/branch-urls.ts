@@ -16,7 +16,7 @@ export function getBranchDetailsUrl(
   return constructPath(path, overrideParams);
 }
 
-export function getBranchQspOverride(branchName: string, isDefault: boolean): overrideQueryParams {
-  if (isDefault) return { name: QSP.BRANCH, exclude: true };
+// Scopes a link to the page's branch rather than the branch selector's.
+export function getBranchQsp(branchName: string): overrideQueryParams {
   return { name: QSP.BRANCH, value: branchName };
 }

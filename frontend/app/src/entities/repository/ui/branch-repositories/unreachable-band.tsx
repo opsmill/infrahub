@@ -2,17 +2,16 @@ import { AlertTriangleIcon } from "lucide-react";
 
 import { Link } from "@/shared/components/ui/link";
 
-import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
+import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
 
 interface UnreachableBandProps {
   repository: BranchRepository;
   branchName: string;
-  isDefaultBranch: boolean;
 }
 
-export function UnreachableBand({ repository, branchName, isDefaultBranch }: UnreachableBandProps) {
+export function UnreachableBand({ repository, branchName }: UnreachableBandProps) {
   const { id, kind, name, operationalStatus } = repository;
 
   return (
@@ -33,7 +32,7 @@ export function UnreachableBand({ repository, branchName, isDefaultBranch }: Unr
         </p>
       </div>
       <Link
-        to={getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])}
+        to={getObjectDetailsUrl(kind, id, [getBranchQsp(branchName)])}
         className="shrink-0 px-2 py-1 font-medium text-warning-strong text-xs"
       >
         Open repository

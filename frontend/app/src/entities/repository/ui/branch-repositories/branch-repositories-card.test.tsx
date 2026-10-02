@@ -1,59 +1,64 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
-import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import {
+  BranchRepositoriesError,
+  type BranchRepository,
+  type BranchRepositoryHealth,
+} from "@/entities/repository/domain/model/branch-repository";
+import { getBranchRepositories } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import { getBranchRepositoryHealth } from "@/entities/repository/domain/use-cases/get-branch-repository-health";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 
 import { render } from "../../../../../tests/components/render";
 import {
   buildBranchRepositoriesScenario,
-  generateBranchRepositoriesResult,
   generateBranchRepository,
   MANY_ERRORS_IMPORT_ERROR_POSITIONS,
-  SYNC_STATUS,
+  toBranchRepositoryHealth,
+  toBranchRepositoryPage,
 } from "../../../../../tests/fake/branch-repositories";
 import { BranchRepositoriesCard } from "./branch-repositories-card";
 
-vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
+vi.mock("@/entities/repository/domain/use-cases/get-branch-repositories");
+vi.mock("@/entities/repository/domain/use-cases/get-branch-repository-health");
 vi.mock("@/entities/repository/ui/queries/get-repository-import-error.query");
 
-type QueryState = { data?: BranchRepositoriesResult; isPending?: boolean; isError?: boolean };
-
-const mockQuery = ({ data, isPending = false, isError = false }: QueryState) => {
-  vi.mocked(useGetBranchRepositories).mockReturnValue({
-    data,
-    isPending,
-    isError,
-  } as unknown as ReturnType<typeof useGetBranchRepositories>);
+const serve = (
+  repositories: BranchRepository[],
+  health: BranchRepositoryHealth = toBranchRepositoryHealth(repositories)
+) => {
+  vi.mocked(getBranchRepositories).mockImplementation(async ({ offset, limit }) =>
+    toBranchRepositoryPage(repositories, { offset, limit })
+  );
+  vi.mocked(getBranchRepositoryHealth).mockResolvedValue(health);
 };
 
-const renderCard = (props: Partial<Parameters<typeof BranchRepositoriesCard>[0]> = {}) =>
-  render(
-    <BranchRepositoriesCard
-      branchName="feature"
-      isDefaultBranch={false}
-      syncWithGit
-      page={1}
-      onPageChange={vi.fn()}
-      {...props}
-    />
-  );
+const renderCard = ({
+  syncWithGit = true,
+  search = "",
+}: {
+  syncWithGit?: boolean;
+  search?: string;
+} = {}) => {
+  window.history.replaceState(null, "", `/branches/feature?branch=main${search}`);
+  return render(<BranchRepositoriesCard branchName="feature" syncWithGit={syncWithGit} />);
+};
 
 const bodyRows = (container: HTMLElement) => [...container.querySelectorAll("tbody tr")];
 
 const rowNames = (container: HTMLElement) =>
   bodyRows(container).map((row) => row.querySelector("a")?.textContent);
 
+const requestedOffsets = () =>
+  vi.mocked(getBranchRepositories).mock.calls.map(([params]) => params.offset);
+
 describe("BranchRepositoriesCard", () => {
   let initialUrl: string;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useGetRepositoryImportError).mockReturnValue({
-      data: undefined,
-    } as unknown as ReturnType<typeof useGetRepositoryImportError>);
+    vi.mocked(useGetRepositoryImportError).mockReturnValue(undefined);
     initialUrl = window.location.href;
-    window.history.replaceState(null, "", "/branches/feature?branch=main");
   });
 
   afterEach(() => {
@@ -62,30 +67,52 @@ describe("BranchRepositoriesCard", () => {
 
   test("lists every repository with its Git state and commit, and the count in the header", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("all-clear") });
+    serve(buildBranchRepositoriesScenario("all-clear"));
 
     // WHEN
     const component = await renderCard();
 
     // THEN
-    await expect.element(component.getByText("Git repositories")).toBeVisible();
-    expect(bodyRows(component.container)).toHaveLength(4);
-    await expect.element(component.getByText("4", { exact: true })).toBeVisible();
     await expect
       .element(component.getByRole("link", { name: "infrastructure-templates" }))
       .toBeVisible();
+    await expect.element(component.getByText("Git repositories")).toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(4);
+    await expect.element(component.getByText("4", { exact: true })).toBeVisible();
     await expect.element(component.getByText("In Sync").first()).toBeVisible();
     await expect.element(component.getByText("8f3c2a1")).toHaveAttribute("title", "8f3c2a1");
   });
 
+  test("asks the server for one page of the branch's repositories", async () => {
+    // GIVEN
+    serve(buildBranchRepositoriesScenario("all-clear"));
+
+    // WHEN
+    const component = await renderCard({ syncWithGit: false });
+
+    // THEN
+    await expect.element(component.getByText("infrastructure-templates")).toBeVisible();
+    expect(getBranchRepositories).toHaveBeenCalledWith({
+      branchName: "feature",
+      syncWithGit: false,
+      limit: 10,
+      offset: 0,
+    });
+    expect(getBranchRepositoryHealth).toHaveBeenCalledWith({
+      branchName: "feature",
+      syncWithGit: false,
+    });
+  });
+
   test("tags read-only repositories", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("all-clear") });
+    serve(buildBranchRepositoriesScenario("all-clear"));
 
     // WHEN
     const component = await renderCard();
 
     // THEN
+    await expect.element(component.getByText("vendor-golden-configs")).toBeVisible();
     const readOnlyRow = bodyRows(component.container).find((row) =>
       row.textContent?.includes("vendor-golden-configs")
     );
@@ -93,97 +120,116 @@ describe("BranchRepositoriesCard", () => {
     expect(component.container.textContent?.match(/Read-only/g)).toHaveLength(1);
   });
 
-  test("puts every import-error repository on page 1, above the healthy ones", async () => {
+  test("keeps the server's order: failing repositories stay where they are, the bands name them", async () => {
     // GIVEN
-    const data = buildBranchRepositoriesScenario("many-errors");
-    mockQuery({ data });
-    const failingNames =
-      data.status === "ok"
-        ? data.repositories
-            .filter((repository) => repository.syncStatus.value === SYNC_STATUS.importError.value)
-            .map((repository) => repository.name)
-        : [];
+    const repositories = buildBranchRepositoriesScenario("many-errors");
+    serve(repositories);
 
     // WHEN
     const component = await renderCard();
 
     // THEN
-    expect(failingNames).toHaveLength(MANY_ERRORS_IMPORT_ERROR_POSITIONS.length);
-    const names = rowNames(component.container);
-    expect(names).toHaveLength(10);
-    expect([...names.slice(0, failingNames.length)].sort()).toEqual([...failingNames].sort());
+    await expect.element(component.getByText(/more repositories with errors/)).toBeVisible();
+    expect(rowNames(component.container)).toEqual(
+      repositories.slice(0, 10).map(({ name }) => name)
+    );
+    const failingCount = MANY_ERRORS_IMPORT_ERROR_POSITIONS.length;
+    expect(
+      component.container.querySelectorAll('[data-testid="repository-error-band"]')
+    ).toHaveLength(3);
+    await expect
+      .element(
+        component.getByText(`${failingCount - 3} more repositories with errors`, { exact: false })
+      )
+      .toBeVisible();
+  });
+
+  test("shows the server's total in the count badge, not the rows on the page", async () => {
+    // GIVEN
+    serve(buildBranchRepositoriesScenario("many-errors"));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("40", { exact: true })).toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(10);
   });
 
   test("keeps the table height on a short last page", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
+    serve(buildBranchRepositoriesScenario("eleven"));
 
     // WHEN
-    const component = await renderCard({ page: 2 });
+    const component = await renderCard({ search: "&repositories_page=2" });
 
     // THEN
+    await expect
+      .element(component.getByRole("navigation", { name: "Repositories pagination" }))
+      .toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(1);
     await expect
       .element(component.getByTestId("branch-repositories-table"))
       .toHaveStyle({ minHeight: "440px" });
-    await expect
-      .element(component.getByRole("navigation", { name: "Repositories pagination" }))
-      .toBeVisible();
   });
 
-  test("asks for the next page through the pager", async () => {
+  test("moves to the next page through the pager and puts it in the url", async () => {
     // GIVEN
-    const onPageChange = vi.fn();
-    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
-    const component = await renderCard({ onPageChange });
+    serve(buildBranchRepositoriesScenario("eleven"));
+    const component = await renderCard();
+    await expect.element(component.getByRole("button", { name: "Next page" })).toBeVisible();
 
     // WHEN
     await component.getByRole("button", { name: "Next page" }).click();
 
     // THEN
-    expect(onPageChange).toHaveBeenCalledWith(2);
-  });
-
-  test("shows the last page and writes it back for a page past the end", async () => {
-    // GIVEN
-    const onPageChange = vi.fn();
-    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
-
-    // WHEN
-    const component = await renderCard({ page: 99, onPageChange });
-
-    // THEN
-    expect(bodyRows(component.container)).toHaveLength(1);
     await expect
       .element(component.getByRole("button", { name: "Page 2" }))
       .toHaveAttribute("aria-current", "page");
-    expect(onPageChange).toHaveBeenCalledWith(2);
+    expect(bodyRows(component.container)).toHaveLength(1);
+    expect(new URL(window.location.href).searchParams.get("repositories_page")).toBe("2");
+    expect(requestedOffsets()).toContain(10);
   });
 
-  test("shows page 1 and writes it back for a page below 1", async () => {
+  test("shows the last page for a page past the end, once the server's count is known", async () => {
     // GIVEN
-    const onPageChange = vi.fn();
-    mockQuery({ data: buildBranchRepositoriesScenario("eleven") });
+    serve(buildBranchRepositoriesScenario("eleven"));
 
     // WHEN
-    const component = await renderCard({ page: 0, onPageChange });
+    const component = await renderCard({ search: "&repositories_page=99" });
 
     // THEN
-    expect(bodyRows(component.container)).toHaveLength(10);
+    await expect
+      .element(component.getByRole("button", { name: "Page 2" }))
+      .toHaveAttribute("aria-current", "page");
+    expect(bodyRows(component.container)).toHaveLength(1);
+    expect(requestedOffsets()).toEqual([980, 10]);
+  });
+
+  test("shows page 1 for a page below 1", async () => {
+    // GIVEN
+    serve(buildBranchRepositoriesScenario("eleven"));
+
+    // WHEN
+    const component = await renderCard({ search: "&repositories_page=0" });
+
+    // THEN
     await expect
       .element(component.getByRole("button", { name: "Page 1" }))
       .toHaveAttribute("aria-current", "page");
-    expect(onPageChange).toHaveBeenCalledWith(1);
+    expect(bodyRows(component.container)).toHaveLength(10);
+    expect(requestedOffsets()).toEqual([0]);
   });
 
   test("shows all 10 rows and no pager for exactly 10 repositories", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("exactly-10") });
+    serve(buildBranchRepositoriesScenario("exactly-10"));
 
     // WHEN
     const component = await renderCard();
 
     // THEN
+    await expect.element(component.getByTestId("branch-repositories-table")).toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(10);
     expect(component.container.querySelector("nav")).toBeNull();
     await expect
@@ -193,7 +239,8 @@ describe("BranchRepositoriesCard", () => {
 
   test("shows placeholder rows and no count while loading", async () => {
     // GIVEN
-    mockQuery({ isPending: true });
+    vi.mocked(getBranchRepositories).mockReturnValue(new Promise(() => {}));
+    vi.mocked(getBranchRepositoryHealth).mockReturnValue(new Promise(() => {}));
 
     // WHEN
     const component = await renderCard();
@@ -209,7 +256,10 @@ describe("BranchRepositoriesCard", () => {
 
   test("says the user has no access, with no rows and no count", async () => {
     // GIVEN
-    mockQuery({ data: { status: "denied" } });
+    vi.mocked(getBranchRepositories).mockRejectedValue(
+      new BranchRepositoriesError("PERMISSION_DENIED", "You do not have one of the permissions")
+    );
+    vi.mocked(getBranchRepositoryHealth).mockReturnValue(new Promise(() => {}));
 
     // WHEN
     const component = await renderCard();
@@ -222,9 +272,23 @@ describe("BranchRepositoriesCard", () => {
     expect(component.container.querySelector(".rounded-full")).toBeNull();
   });
 
-  test("says the branch is not synchronised with Git when Sync with Git is off", async () => {
+  test("says the repositories couldn't be loaded when the query fails", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("no-repos") });
+    vi.mocked(getBranchRepositories).mockRejectedValue(
+      new BranchRepositoriesError("UNKNOWN", "Something broke")
+    );
+    vi.mocked(getBranchRepositoryHealth).mockReturnValue(new Promise(() => {}));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+  });
+
+  test("says the branch is not synchronised with Git when the server counts no repository and Sync with Git is off", async () => {
+    // GIVEN
+    serve(buildBranchRepositoriesScenario("no-repos"));
 
     // WHEN
     const component = await renderCard({ syncWithGit: false });
@@ -234,9 +298,9 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText(/created with Sync with Git off/)).toBeVisible();
   });
 
-  test("says no Git repositories are connected on a synced branch", async () => {
+  test("says no Git repositories are connected when the server counts none on a synced branch", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("no-repos") });
+    serve(buildBranchRepositoriesScenario("no-repos"));
 
     // WHEN
     const component = await renderCard();
@@ -245,20 +309,9 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("No Git repositories")).toBeVisible();
   });
 
-  test("says the repositories couldn't be loaded when the query fails", async () => {
-    // GIVEN
-    mockQuery({ isError: true });
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-  });
-
   test("links repositories on the page's branch, not the selector's", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("all-clear") });
+    serve(buildBranchRepositoriesScenario("all-clear"));
 
     // WHEN
     const component = await renderCard();
@@ -269,22 +322,9 @@ describe("BranchRepositoriesCard", () => {
       .toHaveAttribute("href", "/objects/CoreRepository/repo-2?branch=feature");
   });
 
-  test("drops the branch parameter on the default branch", async () => {
-    // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("all-clear") });
-
-    // WHEN
-    const component = await renderCard({ branchName: "main", isDefaultBranch: true });
-
-    // THEN
-    await expect
-      .element(component.getByRole("link", { name: "infrastructure-templates" }))
-      .toHaveAttribute("href", "/objects/CoreRepository/repo-2");
-  });
-
   test("flags unreachable repositories with an accessible warning icon", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("unreachable") });
+    serve(buildBranchRepositoriesScenario("unreachable"));
 
     // WHEN
     const component = await renderCard();
@@ -295,7 +335,7 @@ describe("BranchRepositoriesCard", () => {
 
   test("shows the unreachable reason in a tooltip on the warning icon", async () => {
     // GIVEN
-    mockQuery({ data: buildBranchRepositoriesScenario("unreachable") });
+    serve(buildBranchRepositoriesScenario("unreachable"));
     const component = await renderCard();
 
     // WHEN
@@ -309,14 +349,12 @@ describe("BranchRepositoriesCard", () => {
 
   test("shows the raw sync status in a neutral tag when the schema has no label or colour", async () => {
     // GIVEN
-    mockQuery({
-      data: generateBranchRepositoriesResult([
-        generateBranchRepository({
-          syncStatus: { value: "mystery", label: null, color: null, description: null },
-          commit: null,
-        }),
-      ]),
-    });
+    serve([
+      generateBranchRepository({
+        syncStatus: { value: "mystery", label: null, color: null, description: null },
+        commit: null,
+      }),
+    ]);
 
     // WHEN
     const component = await renderCard();
@@ -324,39 +362,5 @@ describe("BranchRepositoriesCard", () => {
     // THEN
     await expect.element(component.getByText("mystery")).toBeVisible();
     await expect.element(component.getByText("—")).toBeVisible();
-  });
-
-  test("tells the user when the list is truncated", async () => {
-    // GIVEN
-    mockQuery({
-      data: generateBranchRepositoriesResult([generateBranchRepository()], 600),
-    });
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    await expect.element(component.getByText(/Showing the first 1 of 600/)).toBeVisible();
-    await expect
-      .element(component.getByRole("link", { name: "View all repositories" }))
-      .toHaveAttribute("href", "/objects/CoreGenericRepository?branch=feature");
-  });
-
-  test("links the truncation notice to the read-only list when Sync with Git is off", async () => {
-    // GIVEN
-    mockQuery({
-      data: generateBranchRepositoriesResult(
-        [generateBranchRepository({ kind: "CoreReadOnlyRepository" })],
-        600
-      ),
-    });
-
-    // WHEN
-    const component = await renderCard({ syncWithGit: false });
-
-    // THEN
-    await expect
-      .element(component.getByRole("link", { name: "View all repositories" }))
-      .toHaveAttribute("href", "/objects/CoreReadOnlyRepository?branch=feature");
   });
 });

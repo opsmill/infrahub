@@ -1,42 +1,54 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 
-import type { QueryConfig } from "@/shared/api/types";
+import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
 
-import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
-import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
 import {
   type GetBranchRepositoriesParams,
   getBranchRepositories,
-  getRepositoryListKind,
 } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
-const SYNCING_REFETCH_INTERVAL_MS = 10_000;
-
-function isAnyRepositorySyncing(result: BranchRepositoriesResult | undefined): boolean {
-  return result?.status === "ok" && result.repositories.some(isRepositorySyncing);
+export interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
+  isSyncing: boolean;
 }
 
-export function getBranchRepositoriesQueryOptions(params: GetBranchRepositoriesParams) {
+export function getBranchRepositoriesQueryOptions({
+  isSyncing,
+  ...params
+}: GetBranchRepositoriesQueryParams) {
   return queryOptions({
-    queryKey: repositoryQueryKeys.branch({
-      branchName: params.branchName,
-      kind: getRepositoryListKind(params.syncWithGit),
-    }),
+    queryKey: repositoryQueryKeys.branchRepositories(params),
     queryFn: () => getBranchRepositories(params),
-    refetchInterval: (query) =>
-      isAnyRepositorySyncing(query.state.data) ? SYNCING_REFETCH_INTERVAL_MS : false,
+    refetchInterval: isSyncing ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS : false,
+    // Keeps the previous page on screen while the next one loads, within one branch and list only.
+    placeholderData: (previousData, previousQuery) => {
+      const previousParams = previousQuery?.queryKey.at(-1) as
+        | GetBranchRepositoriesParams
+        | undefined;
+      const isSameList =
+        previousParams?.branchName === params.branchName &&
+        previousParams?.syncWithGit === params.syncWithGit;
+
+      return isSameList ? previousData : undefined;
+    },
   });
 }
 
-export type UseGetBranchRepositoriesOptions = QueryConfig<typeof getBranchRepositoriesQueryOptions>;
+export interface UseGetBranchRepositoriesParams {
+  branchName: string;
+  syncWithGit: boolean;
+  isSyncing: boolean;
+  page: number;
+  pageSize: number;
+}
 
-export function useGetBranchRepositories(
-  params: GetBranchRepositoriesParams,
-  config: UseGetBranchRepositoriesOptions = {}
-) {
-  return useQuery({
-    ...getBranchRepositoriesQueryOptions(params),
-    ...config,
-  });
+export function useGetBranchRepositories({
+  page,
+  pageSize,
+  ...params
+}: UseGetBranchRepositoriesParams) {
+  return useCountClampedQuery({ page, pageSize }, (offset) =>
+    getBranchRepositoriesQueryOptions({ ...params, limit: pageSize, offset })
+  );
 }

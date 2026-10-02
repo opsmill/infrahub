@@ -1,13 +1,17 @@
 import { Card, CardHeader } from "@infrahub/ui";
 
+import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
+import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
-import { Link } from "@/shared/components/ui/link";
+import { useTablePagination } from "@/shared/hooks/use-table-pagination";
+import { PAGE_SIZE } from "@/shared/utils/table-pagination";
 
-import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
-import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
-import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
-import { getRepositoryListKind } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import {
+  BranchRepositoriesError,
+  type BranchRepositoryPage,
+} from "@/entities/repository/domain/model/branch-repository";
+import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/is-any-repository-syncing";
+import { getFailingRepositories } from "@/entities/repository/domain/rules/repository-failures";
 import {
   BranchRepositoriesDenied,
   BranchRepositoriesFailed,
@@ -18,99 +22,113 @@ import {
 import { BranchRepositoriesTable } from "@/entities/repository/ui/branch-repositories/branch-repositories-table";
 import { RepositoryErrorBands } from "@/entities/repository/ui/branch-repositories/repository-error-bands";
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import { useGetBranchRepositoryHealth } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
+
+export const REPOSITORIES_URL_KEY = "repositories";
 
 interface BranchRepositoriesCardProps {
   branchName: string;
-  isDefaultBranch: boolean;
   syncWithGit: boolean;
-  page: number;
-  onPageChange: (page: number) => void;
 }
 
-export function BranchRepositoriesCard({
-  branchName,
-  isDefaultBranch,
-  syncWithGit,
-  page,
-  onPageChange,
-}: BranchRepositoriesCardProps) {
-  const { data, isPending } = useGetBranchRepositories({ branchName, syncWithGit });
-  const count = data?.status === "ok" ? data.count : null;
+export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchRepositoriesCardProps) {
+  const { page, setPage, pageSize } = useTablePagination({ urlKey: REPOSITORIES_URL_KEY });
+  const { data: health } = useGetBranchRepositoryHealth({ branchName, syncWithGit });
+  const isSyncing = isAnyRepositorySyncing(health);
+  const { page: currentPage, query } = useGetBranchRepositories({
+    branchName,
+    syncWithGit,
+    isSyncing,
+    page,
+    pageSize,
+  });
 
   return (
     <Card className="overflow-hidden" data-testid="branch-repositories-card">
       <CardHeader className="flex items-center gap-2">
         <h2>Git repositories</h2>
-        {count !== null && (
+        {query.data && (
           <Badge variant="blue" className="rounded-full font-normal tabular-nums">
-            {count}
+            {query.data.count}
           </Badge>
         )}
       </CardHeader>
 
       <BranchRepositoriesBody
-        data={data}
-        isPending={isPending}
-        branchName={branchName}
-        isDefaultBranch={isDefaultBranch}
+        data={query.data}
+        error={query.error}
+        isPending={query.isPending}
         syncWithGit={syncWithGit}
-        page={page}
-        onPageChange={onPageChange}
+        branchName={branchName}
+        page={currentPage}
+        onPageChange={setPage}
       />
+
+      {query.data && query.data.count > 0 && (
+        <RepositoryErrorBands
+          key={branchName}
+          repositories={getFailingRepositories(health)}
+          branchName={branchName}
+          isSyncing={isSyncing}
+        />
+      )}
     </Card>
   );
 }
 
-interface BranchRepositoriesBodyProps extends BranchRepositoriesCardProps {
-  data: BranchRepositoriesResult | undefined;
+interface BranchRepositoriesBodyProps {
+  data: BranchRepositoryPage | undefined;
+  error: Error | null;
   isPending: boolean;
+  syncWithGit: boolean;
+  branchName: string;
+  page: number;
+  onPageChange: (page: number) => void;
 }
 
 function BranchRepositoriesBody({
   data,
+  error,
   isPending,
-  branchName,
-  isDefaultBranch,
   syncWithGit,
+  branchName,
   page,
   onPageChange,
 }: BranchRepositoriesBodyProps) {
-  if (isPending) return <BranchRepositoriesLoading />;
-  if (!data) return <BranchRepositoriesFailed />;
-  if (data.status === "denied") return <BranchRepositoriesDenied />;
-  if (data.repositories.length === 0) {
+  if (error) {
+    return error instanceof BranchRepositoriesError && error.code === "PERMISSION_DENIED" ? (
+      <BranchRepositoriesDenied />
+    ) : (
+      <BranchRepositoriesFailed />
+    );
+  }
+  if (isPending || !data) return <BranchRepositoriesLoading />;
+  if (data.count === 0) {
     return syncWithGit ? <BranchRepositoriesNone /> : <BranchRepositoriesNotSynced />;
   }
 
-  const { repositories, count, isTruncated } = data;
+  // A short last page would otherwise shrink the card and move everything below it.
+  const hasMultiplePages = data.count > PAGE_SIZE;
 
   return (
     <>
-      <BranchRepositoriesTable
-        repositories={repositories}
-        branchName={branchName}
-        isDefaultBranch={isDefaultBranch}
-        page={page}
-        onPageChange={onPageChange}
-      />
-      <RepositoryErrorBands
-        key={branchName}
-        repositories={repositories}
-        branchName={branchName}
-        isDefaultBranch={isDefaultBranch}
-        isSyncing={repositories.some(isRepositorySyncing)}
-      />
-      {isTruncated && (
-        <p className="border-t px-4 py-2 text-foreground-muted text-xs">
-          Showing the first {repositories.length} of {count} repositories.{" "}
-          <Link
-            to={getObjectDetailsUrl(getRepositoryListKind(syncWithGit), undefined, [
-              getBranchQspOverride(branchName, isDefaultBranch),
-            ])}
-          >
-            View all repositories
-          </Link>
-        </p>
+      <div
+        className="overflow-x-auto"
+        data-testid="branch-repositories-table"
+        style={hasMultiplePages ? { minHeight: (PAGE_SIZE + 1) * CELL_HEIGHT_PX } : undefined}
+      >
+        <BranchRepositoriesTable repositories={data.repositories} branchName={branchName} />
+      </div>
+
+      {hasMultiplePages && (
+        <TablePagination
+          className="border-t"
+          aria-label="Repositories pagination"
+          page={page}
+          pageSize={PAGE_SIZE}
+          totalCount={data.count}
+          onPageChange={onPageChange}
+        />
       )}
     </>
   );

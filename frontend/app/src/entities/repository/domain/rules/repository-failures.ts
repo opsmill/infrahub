@@ -1,4 +1,7 @@
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
+import type {
+  BranchRepository,
+  BranchRepositoryHealth,
+} from "@/entities/repository/domain/model/branch-repository";
 import {
   REPOSITORY_OPERATIONAL_ERRORS,
   REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
@@ -17,22 +20,17 @@ export function isRepositoryUnreachable(repository: BranchRepository): boolean {
   return value !== null && OPERATIONAL_ERRORS.has(value);
 }
 
-export function getRepositoryRank(repository: BranchRepository): 2 | 1 | 0 {
-  if (hasImportError(repository)) return 2;
-  if (isRepositoryUnreachable(repository)) return 1;
-  return 0;
-}
+// A repository both failing to import and unreachable is listed once, as an import error.
+export function getFailingRepositories(
+  health: BranchRepositoryHealth | undefined
+): BranchRepository[] {
+  if (!health) return [];
 
-export function rankRepositories(repositories: BranchRepository[]): BranchRepository[] {
-  return [...repositories].sort(
-    (a, b) =>
-      getRepositoryRank(b) - getRepositoryRank(a) ||
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
-  );
-}
-
-export function getFailingRepositories(repositories: BranchRepository[]): BranchRepository[] {
-  return rankRepositories(repositories).filter((repository) => getRepositoryRank(repository) > 0);
+  const importErrorIds = new Set(health.importErrors.map(({ id }) => id));
+  return [
+    ...health.importErrors,
+    ...health.unreachable.filter(({ id }) => !importErrorIds.has(id)),
+  ];
 }
 
 export function getBandKind(repository: BranchRepository): RepositoryBandKind {

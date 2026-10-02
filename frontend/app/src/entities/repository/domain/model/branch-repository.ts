@@ -32,6 +32,29 @@ export interface BranchRepository {
   operationalStatus: BranchRepositoryOperationalStatus;
 }
 
-export type BranchRepositoriesResult =
-  | { status: "ok"; repositories: BranchRepository[]; count: number; isTruncated: boolean }
-  | { status: "denied" };
+export interface BranchRepositoryPage {
+  repositories: BranchRepository[];
+  count: number;
+}
+
+export interface BranchRepositoryHealth {
+  importErrors: BranchRepository[];
+  unreachable: BranchRepository[];
+  syncingCount: number;
+}
+
+export type BranchRepositoriesErrorCode = "PERMISSION_DENIED" | "UNKNOWN";
+
+export class BranchRepositoriesError extends Error {
+  readonly code: BranchRepositoriesErrorCode;
+
+  constructor(code: BranchRepositoriesErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "BranchRepositoriesError";
+    this.code = code;
+  }
+}
+
+export type RepositoryImportError =
+  | { status: "found"; taskId: string; message: string }
+  | { status: "not-found"; taskId: string | null };

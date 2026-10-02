@@ -1,17 +1,22 @@
-import { CombinedError } from "@urql/core";
-import { GraphQLError } from "graphql";
+import { print } from "graphql";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { graphqlClient } from "@/shared/api/graphql/client";
 
 import { getBranchRepositoriesFromApi } from "./get-branch-repositories-from-api";
+import { getBranchRepositoryHealthFromApi } from "./get-branch-repository-health-from-api";
 
-// `client` also re-exports gql.tada's `graphql` tag, which the module under test uses to build
-// the query. Keep that real and stub only the transport.
+// `client` also re-exports gql.tada's `graphql` tag, which the modules under test use to build
+// their queries. Keep that real and stub only the transport.
 vi.mock("@/shared/api/graphql/client", async () => ({
   graphql: (await import("gql.tada")).graphql,
   graphqlClient: { query: vi.fn() },
 }));
+
+const sentQuery = () => {
+  const args = vi.mocked(graphqlClient.query).mock.lastCall?.[0];
+  return args ? print(args.query as Parameters<typeof print>[0]) : "";
+};
 
 describe("getBranchRepositoriesFromApi", () => {
   const mockQuery = vi.mocked(graphqlClient.query);
@@ -20,50 +25,119 @@ describe("getBranchRepositoriesFromApi", () => {
     mockQuery.mockReset();
   });
 
-  it("returns the connection of the requested kind on the page's branch", async () => {
+  it("asks the server for one page ordered by name, on the page's branch", async () => {
+    // GIVEN
     const connection = { count: 0, edges: [] };
-    mockQuery.mockResolvedValueOnce({ data: { CoreReadOnlyRepository: connection } });
+    mockQuery.mockResolvedValueOnce({ data: { CoreGenericRepository: connection } });
 
-    const result = await getBranchRepositoriesFromApi({
-      branchName: "feature",
-      kind: "CoreReadOnlyRepository",
-    });
-
-    expect(result).toEqual({ data: connection });
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ context: { branch: "feature" } })
-    );
-  });
-
-  it("hands GraphQL errors back with their extensions instead of throwing", async () => {
-    const graphQLError = new GraphQLError("You do not have one of the following permissions", {
-      extensions: { code: "PERMISSION_DENIED", http_status: 403 },
-    });
-    mockQuery.mockRejectedValueOnce(
-      new Error(graphQLError.message, {
-        cause: new CombinedError({ graphQLErrors: [graphQLError] }),
-      })
-    );
-
+    // WHEN
     const result = await getBranchRepositoriesFromApi({
       branchName: "feature",
       kind: "CoreGenericRepository",
+      limit: 10,
+      offset: 20,
     });
 
-    expect(result.data).toBeUndefined();
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors?.[0]).toMatchObject({
-      message: "You do not have one of the following permissions",
-      extensions: { code: "PERMISSION_DENIED", http_status: 403 },
-    });
+    // THEN
+    expect(result).toBe(connection);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { limit: 10, offset: 20 },
+        context: { branch: "feature" },
+      })
+    );
+    expect(sentQuery()).toContain("CoreGenericRepository(");
+    expect(sentQuery()).toMatch(/order: \{by: \[\{field: "name__value", direction: ASC\}\]\}/);
   });
 
-  it("rethrows an error that doesn't come from GraphQL", async () => {
+  it("lists read-only repositories only for the read-only kind", async () => {
+    // GIVEN
+    const connection = { count: 0, edges: [] };
+    mockQuery.mockResolvedValueOnce({ data: { CoreReadOnlyRepository: connection } });
+
+    // WHEN
+    const result = await getBranchRepositoriesFromApi({
+      branchName: "feature",
+      kind: "CoreReadOnlyRepository",
+      limit: 10,
+      offset: 0,
+    });
+
+    // THEN
+    expect(result).toBe(connection);
+    expect(sentQuery()).toContain("CoreReadOnlyRepository(");
+  });
+
+  it("lets a transport error through", async () => {
+    // GIVEN
     const networkError = new TypeError("Failed to fetch");
     mockQuery.mockRejectedValueOnce(networkError);
 
+    // WHEN / THEN
     await expect(
-      getBranchRepositoriesFromApi({ branchName: "feature", kind: "CoreGenericRepository" })
+      getBranchRepositoriesFromApi({
+        branchName: "feature",
+        kind: "CoreGenericRepository",
+        limit: 10,
+        offset: 0,
+      })
     ).rejects.toBe(networkError);
+  });
+});
+
+describe("getBranchRepositoryHealthFromApi", () => {
+  const mockQuery = vi.mocked(graphqlClient.query);
+  const statuses = {
+    importErrorStatuses: ["error-import"],
+    unreachableStatuses: ["error-cred", "error-connection", "error"],
+    syncingStatuses: ["syncing"],
+  };
+
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("filters failing and syncing repositories on the server, on the page's branch", async () => {
+    // GIVEN
+    const data = {
+      importErrors: { count: 0, edges: [] },
+      unreachable: { count: 0, edges: [] },
+      syncing: { count: 2 },
+    };
+    mockQuery.mockResolvedValueOnce({ data });
+
+    // WHEN
+    const result = await getBranchRepositoryHealthFromApi({
+      branchName: "feature",
+      kind: "CoreGenericRepository",
+      ...statuses,
+    });
+
+    // THEN
+    expect(result).toBe(data);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ variables: statuses, context: { branch: "feature" } })
+    );
+    const query = sentQuery();
+    expect(query).toMatch(/importErrors: CoreGenericRepository\(\s*sync_status__values:/);
+    expect(query).toMatch(/unreachable: CoreGenericRepository\(\s*operational_status__values:/);
+    expect(query).toMatch(/syncing: CoreGenericRepository\(sync_status__values:/);
+    expect(query).not.toMatch(/limit|offset/);
+  });
+
+  it("filters read-only repositories only for the read-only kind", async () => {
+    // GIVEN
+    mockQuery.mockResolvedValueOnce({ data: {} });
+
+    // WHEN
+    await getBranchRepositoryHealthFromApi({
+      branchName: "feature",
+      kind: "CoreReadOnlyRepository",
+      ...statuses,
+    });
+
+    // THEN
+    expect(sentQuery()).toMatch(/importErrors: CoreReadOnlyRepository\(/);
+    expect(sentQuery()).not.toContain("CoreGenericRepository");
   });
 });

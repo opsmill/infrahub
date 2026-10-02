@@ -1,43 +1,79 @@
 import { describe, expect, it } from "vitest";
 
-import type { BranchRepositoriesResult } from "@/entities/repository/domain/model/branch-repository";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import { getBranchRepositoryHealthQueryOptions } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 
-import {
-  generateBranchRepositoriesResult,
-  generateBranchRepository,
-  SYNC_STATUS,
-} from "../../../../../tests/fake/branch-repositories";
+import { generateBranchRepositoryHealth } from "../../../../../tests/fake/branch-repositories";
 
-const refetchIntervalFor = (data: BranchRepositoriesResult | undefined) => {
-  const { refetchInterval } = getBranchRepositoriesQueryOptions({
-    branchName: "feature",
-    syncWithGit: true,
+const pageParams = { branchName: "feature", syncWithGit: true, limit: 10, offset: 0 };
+
+describe("getBranchRepositoryHealthQueryOptions", () => {
+  const refetchIntervalFor = (syncingCount: number | undefined) => {
+    const { refetchInterval } = getBranchRepositoryHealthQueryOptions({
+      branchName: "feature",
+      syncWithGit: true,
+    });
+    if (typeof refetchInterval !== "function")
+      throw new Error("refetchInterval must be a function");
+    const data =
+      syncingCount === undefined ? undefined : generateBranchRepositoryHealth({ syncingCount });
+    return refetchInterval({ state: { data } } as unknown as Parameters<typeof refetchInterval>[0]);
+  };
+
+  it("polls every 10 seconds while the server counts a syncing repository", () => {
+    expect(refetchIntervalFor(2)).toBe(10_000);
   });
-  if (typeof refetchInterval !== "function") throw new Error("refetchInterval must be a function");
-  return refetchInterval({ state: { data } } as unknown as Parameters<typeof refetchInterval>[0]);
-};
+
+  it("doesn't poll when none is syncing or nothing has loaded", () => {
+    expect(refetchIntervalFor(0)).toBe(false);
+    expect(refetchIntervalFor(undefined)).toBe(false);
+  });
+});
 
 describe("getBranchRepositoriesQueryOptions", () => {
-  it("polls every 10 seconds while a repository is syncing", () => {
-    const data = generateBranchRepositoriesResult([
-      generateBranchRepository({ id: "a" }),
-      generateBranchRepository({ id: "b", syncStatus: SYNC_STATUS.syncing }),
-    ]);
-
-    expect(refetchIntervalFor(data)).toBe(10_000);
+  it("polls the page only while a repository is syncing", () => {
+    expect(
+      getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: true }).refetchInterval
+    ).toBe(10_000);
+    expect(
+      getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: false }).refetchInterval
+    ).toBe(false);
   });
 
-  it("doesn't poll when no repository is syncing", () => {
-    const data = generateBranchRepositoriesResult([
-      generateBranchRepository({ id: "a", syncStatus: SYNC_STATUS.importError }),
-    ]);
+  it("keys the page on its branch, list and window, not on the polling flag", () => {
+    const syncing = getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: true });
+    const idle = getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: false });
 
-    expect(refetchIntervalFor(data)).toBe(false);
+    expect(syncing.queryKey).toEqual(idle.queryKey);
+    expect(syncing.queryKey).toEqual(["repository", "branch-repositories", pageParams]);
   });
 
-  it("doesn't poll when access is denied or nothing has loaded", () => {
-    expect(refetchIntervalFor({ status: "denied" })).toBe(false);
-    expect(refetchIntervalFor(undefined)).toBe(false);
+  describe("placeholder data", () => {
+    const placeholderFor = (previousParams: typeof pageParams) => {
+      const { placeholderData } = getBranchRepositoriesQueryOptions({
+        ...pageParams,
+        offset: 10,
+        isSyncing: false,
+      });
+      if (typeof placeholderData !== "function")
+        throw new Error("placeholderData must be a function");
+      const previousData = { repositories: [], count: 11 };
+      const previousQuery = {
+        queryKey: ["repository", "branch-repositories", previousParams],
+      };
+      return placeholderData(
+        previousData,
+        previousQuery as unknown as Parameters<typeof placeholderData>[1]
+      );
+    };
+
+    it("keeps the previous page while the same list's next page loads", () => {
+      expect(placeholderFor(pageParams)).toEqual({ repositories: [], count: 11 });
+    });
+
+    it("doesn't show another branch's or another list's rows", () => {
+      expect(placeholderFor({ ...pageParams, branchName: "other" })).toBeUndefined();
+      expect(placeholderFor({ ...pageParams, syncWithGit: false })).toBeUndefined();
+    });
   });
 });

@@ -3,26 +3,22 @@ import { AlertCircleIcon } from "lucide-react";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Link } from "@/shared/components/ui/link";
 
-import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
+import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import type { RepositoryImportError } from "@/entities/repository/domain/use-cases/get-repository-import-error";
+import type {
+  BranchRepository,
+  RepositoryImportError,
+} from "@/entities/repository/domain/model/branch-repository";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 
 interface ImportErrorBandProps {
   repository: BranchRepository;
   branchName: string;
-  isDefaultBranch: boolean;
   isSyncing: boolean;
 }
 
-export function ImportErrorBand({
-  repository,
-  branchName,
-  isDefaultBranch,
-  isSyncing,
-}: ImportErrorBandProps) {
-  const { data } = useGetRepositoryImportError({
+export function ImportErrorBand({ repository, branchName, isSyncing }: ImportErrorBandProps) {
+  const importError = useGetRepositoryImportError({
     branchName,
     repositoryId: repository.id,
     isSyncing,
@@ -39,14 +35,9 @@ export function ImportErrorBand({
         <div className="font-semibold text-danger-strong text-sm">
           <span className="break-all">{repository.name}</span> — import failed
         </div>
-        <ImportErrorDetails importError={data} />
+        <ImportErrorDetails importError={importError} />
       </div>
-      <ImportErrorLink
-        importError={data}
-        repository={repository}
-        branchName={branchName}
-        isDefaultBranch={isDefaultBranch}
-      />
+      <ImportErrorLink importError={importError} repository={repository} branchName={branchName} />
     </div>
   );
 }
@@ -75,15 +66,9 @@ interface ImportErrorLinkProps {
   importError: RepositoryImportError | undefined;
   repository: BranchRepository;
   branchName: string;
-  isDefaultBranch: boolean;
 }
 
-function ImportErrorLink({
-  importError,
-  repository,
-  branchName,
-  isDefaultBranch,
-}: ImportErrorLinkProps) {
+function ImportErrorLink({ importError, repository, branchName }: ImportErrorLinkProps) {
   if (!importError) return null;
 
   const linkClassName = "shrink-0 px-2 py-1 font-medium text-danger-strong text-xs";
@@ -98,9 +83,7 @@ function ImportErrorLink({
 
   return (
     <Link
-      to={getObjectDetailsUrl(repository.kind, repository.id, [
-        getBranchQspOverride(branchName, isDefaultBranch),
-      ])}
+      to={getObjectDetailsUrl(repository.kind, repository.id, [getBranchQsp(branchName)])}
       className={linkClassName}
     >
       Open repository

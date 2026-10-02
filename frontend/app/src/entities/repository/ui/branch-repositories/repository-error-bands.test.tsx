@@ -1,30 +1,33 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import type { RepositoryImportError } from "@/entities/repository/domain/use-cases/get-repository-import-error";
-import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import type {
+  BranchRepository,
+  BranchRepositoryHealth,
+  RepositoryImportError,
+} from "@/entities/repository/domain/model/branch-repository";
+import { getBranchRepositories } from "@/entities/repository/domain/use-cases/get-branch-repositories";
+import { getBranchRepositoryHealth } from "@/entities/repository/domain/use-cases/get-branch-repository-health";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 
 import { render } from "../../../../../tests/components/render";
 import {
   buildBranchRepositoriesScenario,
-  generateBranchRepositoriesResult,
   generateBranchRepository,
   OPERATIONAL_STATUS,
   SYNC_STATUS,
+  toBranchRepositoryHealth,
+  toBranchRepositoryPage,
 } from "../../../../../tests/fake/branch-repositories";
 import { BranchRepositoriesCard } from "./branch-repositories-card";
 import { RepositoryErrorBands } from "./repository-error-bands";
 
-vi.mock("@/entities/repository/ui/queries/get-branch-repositories.query");
+vi.mock("@/entities/repository/domain/use-cases/get-branch-repositories");
+vi.mock("@/entities/repository/domain/use-cases/get-branch-repository-health");
 vi.mock("@/entities/repository/ui/queries/get-repository-import-error.query");
 
 const mockImportErrors = (byRepositoryId: Record<string, RepositoryImportError | undefined>) => {
   vi.mocked(useGetRepositoryImportError).mockImplementation(
-    ({ repositoryId }) =>
-      ({ data: byRepositoryId[repositoryId] }) as unknown as ReturnType<
-        typeof useGetRepositoryImportError
-      >
+    ({ repositoryId }) => byRepositoryId[repositoryId]
   );
 };
 
@@ -36,12 +39,7 @@ const unreachableRepository = (id: string) =>
 
 const renderBands = (repositories: BranchRepository[]) =>
   render(
-    <RepositoryErrorBands
-      repositories={repositories}
-      branchName="feature"
-      isDefaultBranch={false}
-      isSyncing={false}
-    />
+    <RepositoryErrorBands repositories={repositories} branchName="feature" isSyncing={false} />
   );
 
 const bands = (container: HTMLElement) => [
@@ -224,118 +222,122 @@ describe("RepositoryErrorBands", () => {
     });
   });
 
-  test("renders nothing when every repository is healthy", async () => {
+  test("renders nothing when no repository fails", async () => {
     // WHEN
-    const component = await renderBands([generateBranchRepository()]);
+    const component = await renderBands([]);
 
     // THEN
-    expect(bands(component.container)).toHaveLength(0);
+    expect(component.container.textContent).toBe("");
   });
 });
 
 describe("RepositoryErrorBands in the card", () => {
+  let initialUrl: string;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockImportErrors({});
+    initialUrl = window.location.href;
   });
 
-  const mockRepositories = (data: ReturnType<typeof generateBranchRepositoriesResult>) => {
-    vi.mocked(useGetBranchRepositories).mockReturnValue({
-      data,
-      isPending: false,
-    } as unknown as ReturnType<typeof useGetBranchRepositories>);
+  afterEach(() => {
+    window.history.replaceState(null, "", initialUrl);
+  });
+
+  const serve = (
+    repositories: BranchRepository[],
+    health: BranchRepositoryHealth = toBranchRepositoryHealth(repositories)
+  ) => {
+    vi.mocked(getBranchRepositories).mockImplementation(async ({ offset, limit }) =>
+      toBranchRepositoryPage(repositories, { offset, limit })
+    );
+    vi.mocked(getBranchRepositoryHealth).mockResolvedValue(health);
   };
 
-  const card = ({ page = 1, branchName = "feature" } = {}) => (
-    <BranchRepositoriesCard
-      branchName={branchName}
-      isDefaultBranch={false}
-      syncWithGit
-      page={page}
-      onPageChange={vi.fn()}
-    />
+  const card = (branchName = "feature") => (
+    <BranchRepositoriesCard branchName={branchName} syncWithGit />
   );
 
-  const renderCard = (page = 1) => render(card({ page }));
+  const renderCard = (search = "") => {
+    window.history.replaceState(null, "", `/branches/feature${search}`);
+    return render(card());
+  };
 
   test("gives a repository that is both failing and unreachable one import error band", async () => {
     // GIVEN
-    mockRepositories(
-      generateBranchRepositoriesResult([
-        importErrorRepository("both", { operationalStatus: OPERATIONAL_STATUS.errorCred }),
-      ])
-    );
+    serve([importErrorRepository("both", { operationalStatus: OPERATIONAL_STATUS.errorCred })]);
 
     // WHEN
     const component = await renderCard();
 
     // THEN
-    expect(bands(component.container)).toHaveLength(1);
     await expect.element(component.getByText("both — import failed")).toBeVisible();
+    expect(bands(component.container)).toHaveLength(1);
     await expect.element(component.getByRole("img", { name: "Credential Error" })).toBeVisible();
   });
 
   test("keeps the bands for failing repositories while another page of the table is shown", async () => {
     // GIVEN
-    mockRepositories(buildBranchRepositoriesScenario("many-errors"));
+    serve(buildBranchRepositoriesScenario("many-errors"));
 
     // WHEN
-    const component = await renderCard(3);
+    const component = await renderCard("?repositories_page=3");
 
     // THEN
+    await expect.element(component.getByText(/^2 more repositories with errors:/)).toBeVisible();
     const names = [...component.container.querySelectorAll("tbody tr a")].map(
       (link) => link.textContent
     );
     expect(names.some((name) => name?.includes("infrastructure-templates"))).toBe(false);
     expect(bands(component.container)).toHaveLength(3);
-    await expect.element(component.getByText(/^2 more repositories with errors:/)).toBeVisible();
   });
 
-  test("passes the syncing flag to the import error lookup", async () => {
+  test("shows bands for failing repositories the server reports, even when none is on the page", async () => {
     // GIVEN
-    mockRepositories(
-      generateBranchRepositoriesResult([
-        importErrorRepository("a"),
-        generateBranchRepository({ id: "s", name: "s", syncStatus: SYNC_STATUS.syncing }),
-      ])
-    );
+    const healthy = buildBranchRepositoriesScenario("all-clear");
+    serve(healthy, {
+      importErrors: [importErrorRepository("elsewhere")],
+      unreachable: [],
+      syncingCount: 0,
+    });
 
     // WHEN
-    await renderCard();
+    const component = await renderCard();
 
     // THEN
-    expect(useGetRepositoryImportError).toHaveBeenCalledWith(
+    await expect.element(component.getByText("elsewhere — import failed")).toBeVisible();
+    expect(component.container.querySelector("tbody")?.textContent).not.toContain("elsewhere");
+  });
+
+  test("passes the syncing flag from the server's syncing count to the import error lookup", async () => {
+    // GIVEN
+    serve([
+      importErrorRepository("a"),
+      generateBranchRepository({ id: "s", name: "s", syncStatus: SYNC_STATUS.syncing }),
+    ]);
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("a — import failed")).toBeVisible();
+    expect(useGetRepositoryImportError).toHaveBeenLastCalledWith(
       expect.objectContaining({ repositoryId: "a", branchName: "feature", isSyncing: true })
     );
   });
 
   test("collapses the bands again on another branch", async () => {
     // GIVEN
-    mockRepositories(
-      generateBranchRepositoriesResult(["a", "b", "c", "d"].map((id) => importErrorRepository(id)))
-    );
+    serve(["a", "b", "c", "d"].map((id) => importErrorRepository(id)));
     const component = await renderCard();
     await component.getByRole("button", { name: "Show all" }).click();
     expect(bands(component.container)).toHaveLength(4);
 
     // WHEN
-    await component.rerender(card({ branchName: "other-branch" }));
+    await component.rerender(card("other-branch"));
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Show all" })).toBeVisible();
     expect(bands(component.container)).toHaveLength(3);
-  });
-
-  test("puts the truncation notice after the bands", async () => {
-    // GIVEN
-    mockRepositories(generateBranchRepositoriesResult([importErrorRepository("a")], 600));
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    const band = component.getByTestId("repository-error-band").element();
-    const notice = component.getByText(/Showing the first 1 of 600/).element();
-    expect(notice.previousElementSibling).toBe(band);
   });
 });

@@ -3,19 +3,18 @@ import { AlertTriangleIcon, FolderGitIcon } from "lucide-react";
 
 import { Link } from "@/shared/components/ui/link";
 
-import { getBranchQspOverride } from "@/entities/branches/ui/routing/branch-urls";
+import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import { isRepositoryUnreachable } from "@/entities/repository/domain/rules/rank-repositories";
+import { isRepositoryUnreachable } from "@/entities/repository/domain/rules/repository-failures";
 import { GitStatePill } from "@/entities/repository/ui/branch-repositories/git-state-pill";
 
 interface RepositoryRowProps {
   repository: BranchRepository;
   branchName: string;
-  isDefaultBranch: boolean;
 }
 
-export function RepositoryRow({ repository, branchName, isDefaultBranch }: RepositoryRowProps) {
+export function RepositoryRow({ repository, branchName }: RepositoryRowProps) {
   const { id, kind, name, isReadOnly, commit, syncStatus, operationalStatus } = repository;
   const unreachableLabel = isRepositoryUnreachable(repository)
     ? operationalStatus.label || operationalStatus.value
@@ -27,7 +26,7 @@ export function RepositoryRow({ repository, branchName, isDefaultBranch }: Repos
         <div className="flex min-w-0 items-center gap-1.5">
           <FolderGitIcon className="size-3.5 shrink-0 text-foreground-muted" aria-hidden />
           <Link
-            to={getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])}
+            to={getObjectDetailsUrl(kind, id, [getBranchQsp(branchName)])}
             title={name}
             className="truncate"
           >

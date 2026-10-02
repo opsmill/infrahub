@@ -1,34 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getRepositoryImportTaskFromApi } from "@/entities/repository/api/get-repository-import-task-from-api";
+import {
+  getImportTaskLogsFromApi,
+  getRepositoryImportTaskFromApi,
+} from "@/entities/repository/api/get-repository-import-task-from-api";
 import { IMPORT_LOG_LIMIT, IMPORT_WORKFLOWS } from "@/entities/repository/domain/model/repository";
-import { getRepositoryImportError } from "@/entities/repository/domain/use-cases/get-repository-import-error";
+import {
+  getImportTaskErrorMessage,
+  getRepositoryImportTask,
+} from "@/entities/repository/domain/use-cases/get-repository-import-error";
 
 vi.mock("@/entities/repository/api/get-repository-import-task-from-api");
 
-type ApiResult = Awaited<ReturnType<typeof getRepositoryImportTaskFromApi>>;
-
 const params = { branchName: "feature", repositoryId: "repo-1" };
 
-function mockTasks(
-  nodes: Array<{ id: string; logs: Array<{ severity: string; message: string }> }>
-) {
-  vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValue({
-    count: nodes.length,
-    edges: nodes.map(({ id, logs }) => ({
-      node: {
-        id,
-        state: "FAILED",
-        updated_at: "2026-09-29T10:00:00Z",
-        logs: {
-          edges: logs.map((log) => ({ node: { ...log, timestamp: "2026-09-29T10:00:00Z" } })),
-        },
-      },
-    })),
-  } as unknown as ApiResult);
-}
-
-describe("getRepositoryImportError", () => {
+describe("getRepositoryImportTask", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -37,68 +23,91 @@ describe("getRepositoryImportError", () => {
     vi.restoreAllMocks();
   });
 
-  it("queries the latest import task of the repository on the branch", async () => {
-    mockTasks([]);
+  it("asks for the newest failed or crashed import of the repository on the branch", async () => {
+    // GIVEN
+    vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValue("task-1");
 
-    await getRepositoryImportError(params);
+    // WHEN
+    const taskId = await getRepositoryImportTask(params);
 
+    // THEN
+    expect(taskId).toBe("task-1");
     expect(getRepositoryImportTaskFromApi).toHaveBeenCalledWith({
       branch: "feature",
       repositoryId: "repo-1",
       workflows: [...IMPORT_WORKFLOWS],
-      limit: 1,
-      logLimit: IMPORT_LOG_LIMIT,
+      states: ["FAILED", "CRASHED"],
     });
   });
 
-  it("returns the last error line of the task", async () => {
-    mockTasks([
-      {
-        id: "task-1",
-        logs: [
-          { severity: "info", message: "Importing" },
-          { severity: "error", message: "Unable to load the schema" },
-        ],
-      },
-    ]);
+  it("returns null when no failed import matches", async () => {
+    // GIVEN
+    vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValue(null);
 
-    await expect(getRepositoryImportError(params)).resolves.toEqual({
-      status: "found",
-      taskId: "task-1",
-      message: "Unable to load the schema",
-    });
+    // WHEN / THEN
+    await expect(getRepositoryImportTask(params)).resolves.toBeNull();
   });
 
-  it("keeps the task id when the task has no error line", async () => {
-    mockTasks([{ id: "task-1", logs: [{ severity: "info", message: "Importing" }] }]);
-
-    await expect(getRepositoryImportError(params)).resolves.toEqual({
-      status: "not-found",
-      taskId: "task-1",
-    });
-  });
-
-  it("returns not-found without a task id when no task matches", async () => {
-    mockTasks([]);
-
-    await expect(getRepositoryImportError(params)).resolves.toEqual({
-      status: "not-found",
-      taskId: null,
-    });
-  });
-
-  it("returns not-found without a task id when the api fails, and logs the error", async () => {
+  it("returns null when the api fails, and logs the error", async () => {
+    // GIVEN
     const error = new Error("Network error");
     vi.mocked(getRepositoryImportTaskFromApi).mockRejectedValue(error);
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(getRepositoryImportError(params)).resolves.toEqual({
-      status: "not-found",
-      taskId: null,
-    });
+    // WHEN / THEN
+    await expect(getRepositoryImportTask(params)).resolves.toBeNull();
     expect(consoleError).toHaveBeenCalledWith(
       expect.stringContaining("repository repo-1 on branch feature"),
       error
     );
+  });
+});
+
+describe("getImportTaskErrorMessage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the last error line of the task's log", async () => {
+    // GIVEN
+    vi.mocked(getImportTaskLogsFromApi).mockResolvedValue([
+      { severity: "info", message: "Importing" },
+      { severity: "error", message: "Unable to load the schema" },
+    ]);
+
+    // WHEN
+    const message = await getImportTaskErrorMessage("task-1");
+
+    // THEN
+    expect(message).toBe("Unable to load the schema");
+    expect(getImportTaskLogsFromApi).toHaveBeenCalledWith({
+      taskId: "task-1",
+      logLimit: IMPORT_LOG_LIMIT,
+    });
+  });
+
+  it("returns null when the log has no error line", async () => {
+    // GIVEN
+    vi.mocked(getImportTaskLogsFromApi).mockResolvedValue([
+      { severity: "info", message: "Importing" },
+    ]);
+
+    // WHEN / THEN
+    await expect(getImportTaskErrorMessage("task-1")).resolves.toBeNull();
+  });
+
+  it("returns null when the api fails, and logs the error", async () => {
+    // GIVEN
+    const error = new Error("Network error");
+    vi.mocked(getImportTaskLogsFromApi).mockRejectedValue(error);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // WHEN / THEN
+    await expect(getImportTaskErrorMessage("task-1")).resolves.toBeNull();
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("task task-1"), error);
   });
 });
