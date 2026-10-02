@@ -58,3 +58,24 @@ def validate_number_pool_ranges(ranges: Collection[NumberRangeBounds]) -> None:
     """
     for candidate in sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end)):
         validate_number_pool_range(candidate=candidate, others=ranges)
+
+
+def validate_shorthand_target(ranges: Collection[NumberRangeBounds]) -> None:
+    """Refuse the single-range start/end shorthand on a pool holding more than one range.
+
+    Raises:
+        ValidationError: Listing every range of the pool by bounds and id.
+
+    """
+    if len(ranges) <= 1:
+        return
+    range_labels = ", ".join(
+        f"{pool_range.label} ({pool_range.id})"
+        for pool_range in sorted(ranges, key=lambda pool_range: (pool_range.start, pool_range.end))
+    )
+    raise ValidationError(
+        input_value=(
+            "start_range/end_range apply to a pool holding at most one range; "
+            f"this pool holds: {range_labels}. Edit the ranges instead."
+        )
+    )

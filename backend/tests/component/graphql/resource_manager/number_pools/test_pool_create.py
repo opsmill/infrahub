@@ -14,7 +14,7 @@ from infrahub.graphql.mutations.resource_manager.number_pools.pool import BOUNDS
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import CREATE_NUMBER_POOL, CREATE_NUMBER_POOL_WITH_BOUNDS, BoundsCase, execute, range_bounds
+from .helpers import CREATE_NUMBER_POOL, CREATE_NUMBER_POOL_WITH_BOUNDS, BoundsCase, create_pool, execute, range_bounds
 
 UNKNOWN_RANGE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
@@ -51,15 +51,6 @@ query PoolWithRanges($id: ID!) {
 
 
 UNKNOWN_RANGE_MESSAGE = f"Unable to find the node {UNKNOWN_RANGE_ID} / CoreNumberPoolRange in the database."
-
-
-async def _create_pool(db: InfrahubDatabase, branch: Branch, name: str, bounds: str) -> str:
-    result = await execute(
-        db=db, branch=branch, source=CREATE_NUMBER_POOL_WITH_BOUNDS % bounds, variables={"name": name}
-    )
-    assert not result.errors
-    assert result.data
-    return result.data["CoreNumberPoolCreate"]["object"]["id"]
 
 
 async def test_number_pool_creation_errors(
@@ -241,7 +232,7 @@ class TestNumberPoolCreate:
     async def test_create_with_bounds_creates_the_single_range(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
-        pool_id = await _create_pool(
+        pool_id = await create_pool(
             db=db,
             branch=default_branch_scope_class,
             name="one-range-pool",
@@ -302,7 +293,7 @@ async def test_pool_created_with_bounds_hands_out_numbers_from_its_range(
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
-    pool_id = await _create_pool(
+    pool_id = await create_pool(
         db=db,
         branch=default_branch,
         name="allocating-pool",

@@ -87,16 +87,16 @@ Task identifiers are stable references, not an execution order: phases run in th
 
 ### Tests
 
-- [ ] T027 [P] [US2] Component tests in `backend/tests/component/graphql/resource_manager/test_resource_manager.py`: read of a single-range pool returns the shorthand; shorthand write on a 1-range pool rewrites in place (same range id, weight kept); shorthand write on a 0-range pool creates the range; create with neither spelling yields a zero-range pool; update `test_test_number_pool_creation_errors` and `test_test_number_pool_update` for the optional shorthand
+- [X] T027 [P] [US2] Component tests in `backend/tests/component/graphql/resource_manager/test_resource_manager.py`: read of a single-range pool returns the shorthand; shorthand write on a 1-range pool rewrites in place (same range id, weight kept); shorthand write on a 0-range pool creates the range; create with neither spelling yields a zero-range pool; update `test_test_number_pool_creation_errors` and `test_test_number_pool_update` for the optional shorthand
 - [X] T028 [P] [US3] Component tests in `backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py`: create a second range on a live pool (allocated values untouched); remove a range holding an allocated value (succeeds, the value is kept); overlap and backwards range refused with named ranges; two pools on one attribute may overlap; last range removed leaves a legal pool
-- [ ] T029 [P] [US3] Component tests in the same file: shorthand write on a 2-range pool refused with a message listing both ranges by bounds and id, pool untouched; shorthand plus `ranges` in one write refused; `ranges` supplied without shorthand accepted
-- [ ] T030 [P] [US3] Component test asserting the shorthand mirror invariant after range create, update, delete, pool shorthand write and pool `ranges` edit
+- [X] T029 [P] [US3] Component tests in the same file: shorthand write on a 2-range pool refused with a message listing both ranges by bounds and id, pool untouched; shorthand plus `ranges` in one write refused; `ranges` supplied without shorthand accepted
+- [X] T030 [P] [US3] Component test asserting the shorthand mirror invariant after range create, update, delete, pool shorthand write and pool `ranges` edit
 
 ### Implementation
 
 - [X] T032 [US3] Add `InfrahubNumberPoolRangeMutation` in `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool_range.py`: pool lock (`resource_pool.<pool_id>`), parent pool lookup, `start <= end`, overlap check naming clashing ranges, `NumberPoolShorthandMirror.sync` after create/update/delete; register it under `InfrahubKind.NUMBERPOOLRANGE` in the `mutation_map` of `backend/infrahub/graphql/manager.py`
 - [X] T033 [US2] In `InfrahubNumberPoolMutation.mutate_create`: drop the T008 guard; accept shorthand, `ranges`, or neither; refuse shorthand combined with `ranges`; create the single range from the shorthand; keep the existing bound checks; take the pool lock when the shorthand or `ranges` is present
-- [ ] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `NumberPoolShorthandMirror.sync`
+- [X] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `NumberPoolShorthandMirror.sync`
 
 **Checkpoint**: user-created pools fully manageable through GraphQL; a user pool holding one range allocates as before from the mirrored shorthand
 

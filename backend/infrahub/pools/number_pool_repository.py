@@ -48,6 +48,19 @@ class NumberPoolRepository:
         await pool_range.save(db=self.db, at=at, user_id=user_id)
         return pool_range
 
+    async def save_range_bounds(
+        self,
+        pool_range: CoreNumberPoolRange,
+        start: int,
+        end: int,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
+        """Rewrite a range's bounds in place, keeping its identity and weight."""
+        pool_range.start.value = start
+        pool_range.end.value = end
+        await pool_range.save(db=self.db, at=at, user_id=user_id)
+
     async def get_used(self, pool: CoreNumberPool, branch: Branch) -> list[int]:
         """Return the numbers the pool currently accounts for."""
         query = await NumberPoolGetUsed.init(db=self.db, branch=branch, pool=pool, branch_agnostic=True)

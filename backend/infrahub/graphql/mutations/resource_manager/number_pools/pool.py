@@ -12,18 +12,23 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
-from infrahub.pools.number_pool_range_validation import NumberRangeBounds, validate_number_pool_ranges
+from infrahub.pools.number_pool_range_validation import (
+    NumberRangeBounds,
+    validate_number_pool_ranges,
+    validate_shorthand_target,
+)
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ...main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
-from .common import pool_lock, range_bounds, sync_shorthand
+from .common import pool_lock, range_bounds, sync_shorthand, within_transaction
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.database import InfrahubDatabase
 
     from ....initialization import GraphqlContext
@@ -158,28 +163,82 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             if new_node_attr_value and new_node_attr_value != node.get_attribute("node_attribute").value:
                 raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
 
-        async with graphql_context.db.start_transaction() as dbt:
-            number_pool, result = await super().mutate_update(
-                info=info, data=data, branch=branch, database=dbt, node=node
+        return await super().mutate_update(info=info, data=data, branch=branch, node=node)
+
+    @classmethod
+    async def _call_mutate_update(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        db: InfrahubDatabase,
+        obj: Node,
+        skip_uniqueness_check: bool = False,
+    ) -> tuple[Node, Self]:
+        shorthand_supplied = "start_range" in data.keys() or "end_range" in data.keys()
+        ranges_supplied = "ranges" in data.keys()
+        if not shorthand_supplied and not ranges_supplied:
+            return await super()._call_mutate_update(
+                info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
 
-            if number_pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value and (
-                "start_range" in data.keys() or "end_range" in data.keys()
-            ):
-                raise ValidationError(
-                    input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+        if shorthand_supplied and obj.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
+            raise ValidationError(
+                input_value="start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+            )
+        if shorthand_supplied and ranges_supplied:
+            raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
+
+        graphql_context: GraphqlContext = info.context
+        pool_id = obj.get_id()
+        async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
+            # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
+            obj = await NodeManager.get_one_by_id_or_default_filter(
+                db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch
+            )
+            repository = NumberPoolRepository(db=dbt)
+            ranges = await repository.get_ranges(pool_id=pool_id)
+            if shorthand_supplied:
+                validate_shorthand_target(ranges=range_bounds(ranges))
+
+            number_pool, result = await super()._call_mutate_update(
+                info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            )
+
+            if shorthand_supplied:
+                await cls._write_shorthand_range(
+                    repository=repository,
+                    number_pool=number_pool,
+                    current_range=ranges[0] if ranges else None,
+                    user_id=graphql_context.assigned_user_id,
                 )
 
-            if "start_range" in data.keys() or "end_range" in data.keys():
-                start_value = number_pool.get_attribute("start_range").value
-                end_value = number_pool.get_attribute("end_range").value
-                if start_value is None or end_value is None:
-                    raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE)
-
-                if start_value > end_value:
-                    raise ValidationError(input_value="start_range can't be larger than end_range")
+            ranges = await repository.get_ranges(pool_id=pool_id)
+            validate_number_pool_ranges(ranges=range_bounds(ranges))
+            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
 
         return number_pool, result
+
+    @classmethod
+    async def _write_shorthand_range(
+        cls,
+        repository: NumberPoolRepository,
+        number_pool: Node,
+        current_range: CoreNumberPoolRange | None,
+        user_id: str,
+    ) -> None:
+        start = number_pool.get_attribute("start_range").value
+        end = number_pool.get_attribute("end_range").value
+        if not isinstance(start, int) or not isinstance(end, int):
+            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if current_range else BOUNDS_REQUIRED)
+
+        if start > end:
+            raise ValidationError(input_value="start_range can't be larger than end_range")
+
+        if current_range is None:
+            await repository.create_range(pool_id=number_pool.get_id(), start=start, end=end, user_id=user_id)
+        else:
+            await repository.save_range_bounds(pool_range=current_range, start=start, end=end, user_id=user_id)
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")

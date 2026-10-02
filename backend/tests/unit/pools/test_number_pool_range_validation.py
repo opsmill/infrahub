@@ -8,6 +8,7 @@ from infrahub.pools.number_pool_range_validation import (
     NumberRangeBounds,
     validate_number_pool_range,
     validate_number_pool_ranges,
+    validate_shorthand_target,
 )
 
 STORED = [NumberRangeBounds(start=100, end=200, id="low"), NumberRangeBounds(start=300, end=400, id="high")]
@@ -108,3 +109,25 @@ def test_range_set_with_an_overlap_is_refused_from_its_lowest_range() -> None:
         validate_number_pool_ranges(ranges=ranges)
 
     assert exc_info.value.message == "Range 100-200 overlaps 150-320 (middle)"
+
+
+SHORTHAND_TARGET_CASES: list[RangeSetCase] = [
+    RangeSetCase(name="no_range", ranges=[]),
+    RangeSetCase(name="one_range", ranges=STORED[:1]),
+]
+
+
+@pytest.mark.parametrize("case", SHORTHAND_TARGET_CASES, ids=lambda case: case.name)
+def test_shorthand_applies_to_a_pool_holding_at_most_one_range(case: RangeSetCase) -> None:
+    with does_not_raise():
+        validate_shorthand_target(ranges=case.ranges)
+
+
+def test_shorthand_on_a_pool_holding_several_ranges_is_refused_listing_them() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        validate_shorthand_target(ranges=list(reversed(STORED)))
+
+    assert exc_info.value.message == (
+        "start_range/end_range apply to a pool holding at most one range; "
+        "this pool holds: 100-200 (low), 300-400 (high). Edit the ranges instead."
+    )
