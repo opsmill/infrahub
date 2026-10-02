@@ -346,8 +346,11 @@ async def test_changelog_of_a_relationship_missing_from_the_schema(
         kind="TestPerson", action=DiffAction.UPDATED, attributes=set(), relationships={relationship}
     )
 
-    changelogs = DiffChangelogCollector(
-        diff=EnrichedRootFactory.build(nodes={node}), db=db, branch=default_branch
+    changelogs = await DiffChangelogCollector(
+        diff=EnrichedRootFactory.build(nodes={node}),
+        db=db,
+        branch=default_branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=default_branch)),
     ).collect_changelogs()
 
     assert [(action, changelog.node_id) for action, changelog in changelogs] == [(DiffAction.UPDATED, node.uuid)]
