@@ -94,6 +94,6 @@ invoke demo.start
 
 After the `infrahub upgrade` command exits with `Upgrade complete SUCCESS`, run `infrahub db showmigrations` against the same database to confirm every migration shows `[X]` and that the database version matches the target version reported in the header. If any migrations are still pending, re-run `infrahub upgrade`.
 
-If you skipped `--rebase-branches` and the upgrade reported open branches that need rebase, they are left in the `needs-rebase` state. You can rebase them manually later, or re-run with `infrahub upgrade --rebase-branches` (optionally combined with `--interactive` to confirm each branch).
+If you skipped `--rebase-branches` and the upgrade reported open branches that need rebase, they are left in the `NEED_UPGRADE_REBASE` status, which blocks merging them until you rebase them (see [Branch statuses](../../../branches/overview.mdx#branch-statuses)). You can rebase them manually later, or re-run with `infrahub upgrade --rebase-branches` (optionally combined with `--interactive` to confirm each branch).
 
 For details on what each step of the upgrade does, the output you should expect, and what `--verbose` actually controls, see the [upgrade overview](./overview.mdx#what-the-upgrade-does).

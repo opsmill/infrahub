@@ -21,7 +21,7 @@ Infrahub re-checks every branch at each operation that could have removed the fi
 
 - **Deleting the object** on the last branch that still held it live.
 - **Merging the branch the deletion was made on**, which carries that deletion to the target branch. Merging a branch that still *reads* the object releases nothing: the branch survives its own merge and goes on reading the object exactly as before.
-- **Rebasing a branch past the deletion**, which replays it on a base where the object is already gone, so the branch stops reading it.
+- **Rebasing a branch past the deletion**, which replays it on a base where the object is already gone, so the branch stops reading it. If the branch changed that object, the rebase is refused as a delete-versus-modify conflict until you update the data so that both branches agree.
 - **Deleting a branch** that was still reading the object.
 - **Removing the attribute or relationship from the schema**, once no branch declares the field any more.
 

@@ -2,7 +2,7 @@
 title: Create a branch
 ---
 
-Start a new branch from the default branch (typically `main` or `master`). This creates a snapshot of the current state that can be modified independently. Creating a new branch is almost instantaneous because Infrahub uses [copy-on-write semantics](./overview.mdx#copy-on-write-semantics) — no data is duplicated, only a pointer to the base timestamp and the delta of subsequent changes.
+Start a new branch from the default branch (typically `main` or `master`). The branch reads the default branch as it was when you created it, a time recorded as its `branched_from`, plus the changes you make on it. Creating a new branch is almost instantaneous because Infrahub uses [copy-on-write semantics](./overview.mdx#copy-on-write-semantics): no data is duplicated, and Infrahub stores only the `branched_from` timestamp and the changes made on the branch.
 
 ## When you create a branch
 

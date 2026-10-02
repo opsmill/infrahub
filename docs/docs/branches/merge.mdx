@@ -2,7 +2,7 @@
 title: Merge a branch
 ---
 
-Once changes are complete, they merge back into the parent branch through a controlled process — almost always via a [Proposed Change](../proposed-changes/overview.mdx). This ensures that all modifications are validated and conflicts are resolved before integration.
+When the changes on a branch are complete, you merge them into the default branch through a [Proposed Change](../proposed-changes/overview.mdx), where the checks run and reviewers approve the change before the merge. You can also merge a branch directly, with **Merge** on the branch details page or the `BranchMerge` mutation. A direct merge runs the same conflict and constraint checks and skips the Proposed Change pipeline.
 
 The merge process creates a permanent record in the commit history that documents what changed and why.
 
@@ -10,14 +10,13 @@ The merge process creates a permanent record in the commit history that document
 
 Infrahub implements a **"latest-value wins"** merge strategy that optimizes for clarity and efficiency. During a merge, only the most recent value for each changed attribute transfers to the destination branch. The complete change history within the branch doesn't carry over — instead, the final state becomes a single change at the merge point.
 
-This approach provides several benefits:
+When a merge starts, Infrahub blocks writes to the branch and to the default branch, then takes the global graph lock. It refreshes the branch's diff and checks conflicts and constraints again against the current default branch, because another branch may have merged after the Proposed Change ran its checks. Infrahub stops the merge if it finds any of these:
 
-- **Maintains immutability** of the main branch by creating a clean, atomic change
-- **Simplifies conflict resolution** by focusing only on the final state rather than intermediate changes
-- **Provides clear merge points** in history that are straightforward to trace and understand
-- **Reduces storage overhead** by not duplicating the entire change history of the branch
+- A conflict with no resolution selected
+- A delete-versus-modify conflict, which no choice of side can clear
+- A constraint violation, such as a duplicate value in a unique attribute
 
-This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
+A merge is not one database transaction. It either completes or is rolled back; see [When a merge fails](#when-a-merge-fails).
 
 ## During the merge
 
@@ -27,9 +26,9 @@ While a merge is running, Infrahub temporarily blocks writes to keep the data co
 - **The default branch** (the merge target) rejects modifications until the merge finishes, then becomes writable again.
 - **All other branches** remain fully writable.
 - Creating a new branch, or deleting a branch that is not involved in the merge, is always allowed.
-- Starting another merge or rebase is rejected while a merge is in progress.
+- Starting another merge or rebase is rejected while a merge is in progress. The error that `BranchRebase` returns depends on where you send it. Sent to `/graphql`, as the web interface sends it, `BranchRebase` fails with `MERGE_IN_PROGRESS`. Sent to the endpoint of a branch that is not part of the merge, it fails with the code `UNDEFINED_ERROR` and the message `Cannot rebase a branch while a merge is in progress.`, so automation that posts there has to match the message.
 
-A blocked write fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` The GraphQL error carries the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in its `extensions`, along with the branch being written and the branch being merged:
+A blocked write on the default branch fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` A blocked write on the branch being merged fails with `Branch '<name>' is being merged and is read-only. No modifications are allowed.` Both GraphQL errors include the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in their `extensions`, along with the branch being written and the branch being merged:
 
 ```json
 {

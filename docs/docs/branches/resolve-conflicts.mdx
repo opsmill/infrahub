@@ -2,7 +2,7 @@
 title: Resolve conflicts
 ---
 
-Conflicts occur when the same data changes in both a feature branch and the main branch. Infrahub's conflict management system is designed to identify these conflicts with precision and provide tools for effective resolution.
+A conflict occurs when the same data changed on a branch and on the default branch after the branch's `branched_from`.
 
 ## Types of conflicts Infrahub detects
 
@@ -11,24 +11,37 @@ The system automatically detects several types of conflicts:
 - **Attribute conflicts**: The same field of an object has been modified in both branches with different values. For example, the hostname of a device is changed to `router-1` in one branch and `router-primary` in another. For `List` and `JSON`-array attributes marked [`ordered: false`](../reference/schema/attribute.mdx#ordered) in the schema, a difference in element order alone doesn't raise a conflict.
 - **Relationship conflicts**: Conflicting changes to object relationships occur when the connections between objects are modified differently in separate branches. For instance, a device might be assigned to datacenter A in one branch and datacenter B in another.
 - **Schema conflicts**: Incompatible schema modifications between branches can cause structural conflicts. This might happen when a field is removed in one branch but modified in another.
-- **Uniqueness conflicts**: Changes that would violate uniqueness constraints upon merge are flagged to prevent data integrity issues. This occurs when both branches create different objects with the same unique identifier.
+- **Delete versus modify**: An object is deleted on one branch and changed on the other. Choosing a side does not clear this conflict; update the data so that both branches agree.
+
+:::note
+
+A duplicate value in a unique attribute is a constraint violation, not a conflict, so there is no side to choose. A Proposed Change reports it under **Schema Integrity**, and Infrahub refuses a rebase or a merge until you change the value on one of the branches.
+
+:::
 
 ![Branch conflict](../media/branch_conflict.excalidraw.svg)
 
 ## How to resolve conflicts
 
-The [Proposed Change](../proposed-changes/overview.mdx) feature in Infrahub provides comprehensive tools for managing these conflicts with intuitive side-by-side diffs that clearly highlight differences between branches. For step-by-step resolution mechanics during review, see [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx).
+A [Proposed Change](../proposed-changes/overview.mdx) shows each conflict on its **Data** tab. For the steps to resolve them during review, see [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx).
 
-Conflicts can also surface during a [rebase](./rebase.mdx). A rebase can't apply a resolution in favor of the main branch, so it stops on a conflict until you address it, and its error lists what each conflict needs:
+Conflicts can also surface during a [rebase](./rebase.mdx). A rebase can't apply a resolution in favor of the default branch, so it stops on a conflict until you address it, and its error lists what each conflict needs:
 
 - A conflict on an attribute blocks the rebase until you resolve it in favor of the branch. Open a proposed change for the branch to choose the branch for the value of an attribute, as described in [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx). For another property of an attribute, such as its owner or source, use the `ResolveDiffConflict` GraphQL mutation with the conflict ID that the `DiffTree` query returns.
 - A conflict on a relationship, such as the datacenter a device is assigned to or a property of that assignment, blocks the rebase until you update the data so that both branches agree.
-- A conflict on an attribute that the main branch removed, or between the deletion of an object in one branch and a change to it in the other, also blocks the rebase until you update the data so that both branches agree.
+- A conflict on an attribute that the default branch removed, or between the deletion of an object in one branch and a change to it in the other, also blocks the rebase until you update the data so that both branches agree.
 
 This also applies to a branch in the `NEED_UPGRADE_REBASE` status after an upgrade, which only a rebase returns to `OPEN`.
 
+## Conflicts between parallel branches
+
+Two open branches never conflict with each other directly. Infrahub compares each branch with the default branch, not with other open branches, so when you change the same object on two branches, Infrahub reports the conflict on the second branch only after the first one merges. Nothing reserves an object for one branch.
+
+To clear it, rebase the second branch. The refusal lists each conflict and what it needs: resolve it in favor of the branch, or update the data so that both branches agree, then rebase again. For the workflow with several open branches, see [Run parallel branches](./parallel-branches.mdx).
+
 ## Related
 
-- [Branches](./overview.mdx) — branch lifecycle and concepts
-- [Rebase a branch](./rebase.mdx) — surfaces conflicts early before merge
-- [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx) — review-time conflict resolution
+- [Branches](./overview.mdx): branch lifecycle and concepts
+- [Rebase a branch](./rebase.mdx): surfaces conflicts early, before merge
+- [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx): choosing a side during review
+- [Run parallel branches](./parallel-branches.mdx): rebasing and merging several open branches while others merge

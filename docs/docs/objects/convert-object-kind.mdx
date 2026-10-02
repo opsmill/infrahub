@@ -61,11 +61,9 @@ Object conversion integrates deeply with Infrahub's Git-like branching model, bu
 
 **Branch-aware attributes:**
 
-Objects containing branch-aware attributes (fields that can have different values across branches) require special handling. These conversions:
+Converting a branch-agnostic object whose branch-aware attributes carry over to the new kind must run on the default branch, and Infrahub refuses it on any other branch. Infrahub then sets every other open branch to the `NEED_REBASE` status.
 
-- Must occur on the default branch to maintain data consistency
-- Trigger automatic rebase requirements for other branches
-- May result in data loss on non-conversion branches
+On a branch in `NEED_REBASE`, only rebasing the branch, deleting it, creating a branch and opening a Proposed Change work (the `BranchRebase`, `BranchDelete`, `BranchCreate` and `ProposedChangeCreate` mutations). Any other change fails with the `BRANCH_NEEDS_REBASE` error until you [rebase the branch](../branches/rebase.mdx).
 
 **Commit preservation:**
 The conversion process maintains object history and commit lineage, ensuring auditability and rollback capabilities.

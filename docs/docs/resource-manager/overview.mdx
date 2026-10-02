@@ -78,14 +78,16 @@ Key features:
 
 - Define start and end ranges
 - Automatic sequential allocation
-- Skip already-used values
+- Skip values already in use, when the target attribute is `unique`
 - Support for any numeric attribute
 
 ## Allocation methods
 
 ### Direct allocation
 
-Direct allocation creates a standalone resource from a pool. Use this when:
+Direct allocation creates a standalone IP address or IP prefix from a pool, without linking it to another object. It is available for IP address and IP prefix pools only. In the web interface, you create the IP address or IP prefix and choose the pool with the pool button next to its **Address** or **Prefix** field, labelled "select a pool". In the GraphQL API, you call `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`. A number pool has no direct allocation: it fills an attribute, as described in [Attribute allocation](#attribute-allocation).
+
+Use direct allocation when:
 
 - Pre-provisioning resources for future use
 - Creating resources that will be assigned later
@@ -101,18 +103,19 @@ mutation {
     data: {
       description: "Reserved for new web server"
     }
-  })
+  }) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
 }
 ```
 
 ### Relationship resource allocation
 
-Relationship allocation assigns resources during object creation. This method:
-
-- Ensures atomic operations (object and resource created together)
-- Maintains referential integrity
-- Simplifies workflows
-- Reduces manual steps
+Relationship allocation assigns a resource to a relationship while you create an object. Pass `from_pool` with the pool's ID instead of the peer's ID, and Infrahub allocates the value while it creates the object, in the same request.
 
 Example: Creating a device with automatic IP allocation:
 
@@ -125,9 +128,43 @@ mutation {
         id: "<pool-id>"
       }
     }
-  })
+  }) {
+    ok
+    object {
+      id
+    }
+  }
 }
 ```
+
+### Attribute allocation
+
+A number pool fills a `Number` attribute on the object you create. Pass `from_pool` with the pool's ID on the attribute. The pool's `node` setting must name that kind or a generic it inherits from, and its `node_attribute` setting must name that attribute, or Infrahub rejects the request. In the web interface, click the pool button next to the field, labelled "select a pool", and choose the pool.
+
+Example: Creating a VLAN with its VLAN ID taken from a number pool:
+
+```graphql
+mutation {
+  IpamVLANCreate(data: {
+    name: {value: "server-vlan"},
+    vlan_id: {
+      from_pool: {
+        id: "<pool-id>"
+      }
+    }
+  }) {
+    ok
+    object {
+      id
+      vlan_id {
+        value
+      }
+    }
+  }
+}
+```
+
+For an attribute of kind `NumberPool` in the schema, Infrahub creates a pool and fills the attribute from it without `from_pool`. See [Number pools](../schema/number-pool.mdx) for that setup and [Allocate numbers](./allocate-number.mdx) for the full walkthrough.
 
 ## Branch-agnostic allocation
 
@@ -135,16 +172,16 @@ mutation {
   <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
 </center>
 
-One of the most powerful features of Infrahub's Resource Manager is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
+When you allocate a value from a pool on any branch, Infrahub reserves it for every branch at that moment. A request from another branch to the same pool gets a different value, before either branch merges.
 
 Consider this scenario:
 
 1. You create a new branch "datacenter-expansion"
-2. You allocate IP address 10.0.0.50 to a new device in this branch
-3. Another team member working in a different branch "network-refresh" tries to allocate the same IP
-4. Infrahub prevents the duplicate allocation, even though the branches haven't been merged
+2. You allocate IP address 10.0.0.50 from a pool to a new device on this branch
+3. Another team member, working on a different branch "network-refresh", requests an address from the same pool
+4. Infrahub returns a different address, even though neither branch has merged
 
-This behavior guarantees that resources remain unique and conflict-free when branches are eventually merged back to main.
+When both branches merge, their addresses from the pool do not collide. The reservation applies only to values allocated from the pool. A value you type into a unique attribute is not reserved anywhere. If two branches hold the same typed value, then once one of them merges, Infrahub refuses to rebase or merge the other until you change the value on it.
 
 ### Verifying branch-agnostic behavior
 
@@ -204,6 +241,10 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 :::
 
+### Concurrent requests
+
+Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values. Requests to different pools do not wait for each other.
+
 ### Releasing an allocated resource
 
 Because an allocation is reserved across every branch, deleting the object it was allocated to on one branch does not necessarily return the resource to the pool. For a delete to return it, the object has to be gone from **every** branch that can still read it. This includes any branch created while the object was active on the default branch.
@@ -212,21 +253,31 @@ The resource returns to the pool as soon as no branch can reach the object, whet
 
 ## Idempotent allocation
 
-Resource Manager supports idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
+To get the same value back from an IP address pool or an IP prefix pool each time a script or a [Generator](../generators/overview) runs, pass an `identifier` when you allocate through the GraphQL API. For a later request to the same pool with the same identifier, Infrahub returns the value already reserved under it instead of allocating a new one:
 
 ```graphql
 mutation {
   InfrahubIPAddressPoolGetResource(data: {
     id: "<pool-id>",
-    identifier: "web-server-primary-ip",
-  })
+    identifier: "web-01-primary-ip",
+  }) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
 }
 ```
 
-This feature is essential for:
+The same `identifier` field is available on `from_pool` when you allocate through a relationship. How Infrahub treats identifiers:
 
-- Automated workflows that may run multiple times
-- [Generators](../generators/overview) that need consistent results
+- **The web interface never sends one.** When you choose a pool in a form, Infrahub applies its default, described in the next two rules.
+- **Infrahub allocates a new value for every direct allocation without an identifier.**
+- **A relationship `from_pool` without an identifier gets a default one** when the object's kind has an HFID. Infrahub builds it from the object's kind, its HFID and the relationship name. When the kind has no HFID, there is no default, and Infrahub allocates a new value for each request.
+- **Number pools ignore identifiers.** A number pool keys each reservation on the object whose attribute it fills.
+- **Infrahub returns the reserved value only on a branch that can read it.** On another branch that cannot read the allocated object yet, Infrahub allocates a different value for a request with the same identifier, with no error.
+- **Build the identifier from the object it is allocated to**, such as the device and interface names. An identifier built from a run ID or a timestamp changes on every run, so Infrahub allocates a new value on every run.
 
 ## Advanced features
 
@@ -306,7 +357,8 @@ Resource Manager exposes full functionality through GraphQL APIs:
 
 ### Allocation strategies
 
-- **Use identifiers for automation**: Ensure idempotent behavior in scripts
+- **Use one identifier per object in scripts and Generators**: build it from the object the value is allocated to, so a rerun gets the same value back
+- **Mark a number pool's target attribute `unique`**: the pool then skips values already in use on that attribute
 - **Allocate early in workflows**: Reserve resources before lengthy provisioning
 - **Clean up unused allocations**: Implement processes to reclaim resources
 - **Monitor utilization**: Set alerts for pools approaching capacity
@@ -324,3 +376,7 @@ Resource Manager exposes full functionality through GraphQL APIs:
 - [GraphQL Documentation](../development-resources/graphql/overview) - Learn about Infrahub's GraphQL interface
 - [IPAM](../ipam/overview.mdx) - IP address management data model and schema
 - [Branch-agnostic data](../branches/branch-agnostic-data.mdx) - How branch-agnostic values are reserved and released across branches
+- [Allocate IP addresses](./allocate-ip-address.mdx) - Create an IP address pool and allocate from it in the web interface or with GraphQL
+- [Allocate IP prefixes](./allocate-ip-prefix.mdx) - Create an IP prefix pool and allocate subnets from it
+- [Allocate numbers](./allocate-number.mdx) - Create a number pool and fill a `Number` attribute from it
+- [Run parallel branches](../branches/parallel-branches.mdx) - Allocate, rebase and merge when several branches are open at once

@@ -1,0 +1,136 @@
+---
+title: Run parallel branches
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+When several teams or Generators work on separate branches at the same time, each branch keeps reading the default branch as it was at that branch's `branched_from`. A merge into the default branch does not change the other open branches, and nothing marks them as behind, so Infrahub reports conflicts and duplicate values on a branch only when that branch rebases or merges. To keep each branch ready to merge, allocate unique values from [resource pools](../resource-manager/overview.mdx), [rebase](./rebase.mdx) each branch after another one merges, clear the [conflicts](./resolve-conflicts.mdx) that a refused rebase lists, and [merge](./merge.mdx) once the checks pass.
+
+## What changes when another branch merges
+
+Nothing changes on your branch. It keeps reading the default branch as it was at its `branched_from`, plus its own changes, until you rebase it.
+
+No branch status means "behind the default branch", and Infrahub does not require a rebase before a merge, except after an upgrade sets `NEED_UPGRADE_REBASE`. For what a status blocks and what clears it, see [Branch statuses](./overview.mdx#branch-statuses).
+
+To see your branch's `branched_from`, open the branch details page in the web interface, or query it through GraphQL:
+
+```graphql title="List branches with their branched_from time"
+query BranchState {
+  Branch {
+    name
+    status
+    branched_from
+    is_default
+  }
+}
+```
+
+To list what changed on the default branch since then, compare the default branch with itself between your branch's `branched_from` and now, as described in [Compare changes between two timestamps](../immutable-history/query-historical-data.mdx#compare-changes-between-two-timestamps). This comparison runs through the GraphQL API. To apply those changes to your branch, rebase it.
+
+## Allocate values from a pool
+
+A value allocated from a [resource pool](../resource-manager/overview.mdx#branch-agnostic-allocation) is reserved for every branch at the moment you allocate it, so a request from another branch to the same pool gets a different one. Infrahub also locks each pool while it allocates from it, so simultaneous requests from different branches or Generators get different values.
+
+A value you type into a unique attribute is not reserved. Two branches can each hold the same typed value. Once one of them merges, the other is refused at its next rebase or merge, and its Proposed Change reports the duplicate under **Schema Integrity**.
+
+How you request a value depends on where you work:
+
+- **Web interface**: when you create the object, click the pool button next to the field, labelled "select a pool", and choose the pool. On an IP address, the button is next to **Address**.
+- **GraphQL API**: pass `from_pool` on the attribute or relationship. For an IP address pool or an IP prefix pool, you can also call the pool's mutation directly, `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`.
+
+Through the GraphQL API, you can pass an `identifier` when you allocate from an IP address pool or an IP prefix pool, and Infrahub returns the same value for a later request with the same identifier. The web interface sends no identifier, and Infrahub applies its default. Build one identifier per object, from the object it is allocated to, such as a device and its interface. On another branch that cannot yet read the object the value was allocated to, Infrahub allocates a different value for the same identifier, with no error. See [Idempotent allocation](../resource-manager/overview.mdx#idempotent-allocation).
+
+## Rebase after each merge
+
+Rebase each open branch soon after another branch merges. Each rebase then compares fewer new changes from the default branch, and Infrahub reports any conflict on the branch where it has to be fixed, before review.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+On the **Data** tab of the branch or of its Proposed Change, select **Rebase**, next to **Refresh diff**. The web interface waits for the rebase. When the rebase succeeds, it refreshes the diff; when the rebase is refused, it shows the message that lists each conflict and what it needs.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+Send `BranchRebase` to `/graphql`, with no branch in the URL. The mutation waits for the rebase by default and returns a refusal as a GraphQL error.
+
+```graphql title="Rebase a branch"
+mutation RebaseBranch {
+  BranchRebase(data: { name: "add-site-ord1" }) {
+    ok
+    object {
+      name
+      status
+      branched_from
+    }
+  }
+}
+```
+
+</TabItem>
+</Tabs>
+
+For the second **Rebase** button, the order of the checks, and the background-task option, see [Rebase a branch](./rebase.mdx#how-to-rebase). Rebases and merges each take the global graph lock, so they run one at a time.
+
+### Automate the rebase (optional)
+
+You can build a small service that rebases the open branches each time a branch merges. Infrahub's [event actions](../events/event-actions.mdx) add objects to groups or remove them, and run Generators, and none of them rebases a branch, so this approach combines a webhook with the GraphQL API. You build and run the service yourself.
+
+1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service, and set its branch scope to **All Branches**. With the default scope, **Default Branch**, the webhook does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
+2. When your service receives the webhook, list the branches with the `Branch` query shown in [What changes when another branch merges](#what-changes-when-another-branch-merges). Skip the default branch (`is_default`) and any branch with the status `MERGED` or `MERGING`.
+3. For each remaining branch, send `BranchRebase` to `/graphql` and let it wait for the rebase, which is the default, so the response contains the outcome.
+4. Route a refusal by the `code` in the error's `extensions`:
+   - `MERGE_IN_PROGRESS`: another merge is running. Retry after a delay.
+   - `MERGE_RECOVERY_REQUIRED`: a merge failed. Stop and alert an administrator, who runs [`infrahub recover merge`](./merge.mdx#recovering-the-failed-merge).
+   - Any other code: read the message. A conflict refusal lists each conflict and what it needs, so send it to the owner of the branch. The message `Cannot rebase a branch while a merge is in progress.` means a merge started during the request: retry it.
+
+:::warning Do not check a branch with BranchValidate before rebasing
+
+`BranchValidate` reads the branch's stored diff without refreshing it, and it reports conflicts already resolved in favor of the branch, which do not block a rebase. Run the rebase itself instead: a refused rebase changes nothing.
+
+:::
+
+## What blocks a rebase
+
+Each refusal has its own fix. The message of a refused rebase names the conflicts and what each one needs.
+
+| Blocker | Why | Fix |
+|---|---|---|
+| Branch status `MERGING` or `MERGED` | The branch is being merged, or it is merged and read-only | Wait for the merge to finish. A merged branch cannot change; create a new branch for further work |
+| A merge is running, or a failed merge awaits recovery | Infrahub refuses every rebase, on any branch, until the merge finishes or is recovered. Branches outside the merge stay writable | Retry once the merge finishes. After a failed merge, an administrator runs `infrahub recover merge` |
+| Attribute value conflict | Both branches changed the value. A rebase keeps the branch's side, so it cannot apply a resolution in favor of the default branch | Resolve it in favor of the branch with the picker on the Proposed Change **Data** tab, or with the `ResolveDiffConflict` mutation. Or change the value to match the default branch |
+| Attribute owner or source conflict | Same as an attribute value | Resolve it in favor of the branch with the `ResolveDiffConflict` mutation, using the conflict ID from the `DiffTree` query. The web interface has no picker for it. Or change the data to match |
+| Attribute removed on the default branch | A rebase keeps the branch's side only for an attribute that still exists on the default branch | Update the data so that both branches agree |
+| Relationship conflict | A rebase cannot keep the branch's side of a relationship conflict | Update the data so that both branches agree |
+| Delete versus modify | One branch deleted an object that the other changed. Choosing a side does not clear it | Update the data so that both branches agree, for example by deleting the object on the branch as well |
+| Duplicate unique value | During the rebase, Infrahub checks uniqueness and the other constraints against the data the branch would hold after it | Change the value on one of the branches |
+
+For each conflict type in more detail, see [Resolve conflicts](./resolve-conflicts.mdx).
+
+## Merge the branch
+
+Merge the branch through a [Proposed Change](../proposed-changes/overview.mdx). At merge time, Infrahub refreshes the diff and checks conflicts and constraints again against the current default branch, so a Proposed Change whose checks passed can still fail to merge when another branch merged first.
+
+If that check fails, the merge stops and the Proposed Change returns to open. Infrahub records constraint failures, such as a duplicate unique value, under **Schema Integrity**. Rebase the branch, fix what the refused rebase lists, and merge again.
+
+While the merge runs, writes to the default branch and to the branch being merged fail with `MERGE_IN_PROGRESS`, and other branches stay writable. See [During the merge](./merge.mdx#during-the-merge).
+
+You can also merge a branch directly, with **Merge** on the branch details page or the `BranchMerge` mutation. A direct merge runs the same conflict and constraint checks and skips the Proposed Change pipeline.
+
+## Limits
+
+- Infrahub has no indicator that a branch is behind the default branch. To see what changed on the default branch, compare it over time as described in [What changes when another branch merges](#what-changes-when-another-branch-merges).
+- A rebase has no dry run. A refused rebase changes nothing, so running the rebase is the check.
+- Infrahub does not reserve an object for one branch. You can change the same object on two branches, and Infrahub reports the conflict on the second branch after the first one merges.
+
+## Related
+
+- [Rebase a branch](./rebase.mdx): what a rebase does, what blocks it, and both ways to run it
+- [Resolve conflicts](./resolve-conflicts.mdx): each conflict type and what clears it
+- [Merge a branch](./merge.mdx): write blocking during a merge, and recovery from a failed merge
+- [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx): choosing a side during review
+- [Resource Manager](../resource-manager/overview.mdx): pools, allocation across branches, and identifiers
+- [Webhooks](../webhooks/overview.mdx): event types and branch scope
+- [Query historical data](../immutable-history/query-historical-data.mdx): comparing the data at two points in time

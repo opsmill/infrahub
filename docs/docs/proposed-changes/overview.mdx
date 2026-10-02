@@ -39,17 +39,16 @@ This multi-dimensional diffing provides a "single pane of glass" view, enabling 
 Infrahub integrates robust validation capabilities within the proposed change workflow to ensure changes meet quality and policy requirements before implementation. These automated checks provide confidence that modifications won't introduce issues when deployed.
 
 :::important
-Any failing checks will block the merge process, ensuring only validated changes are applied.
+A failing check blocks the merge, except **Data Integrity**: the merge ignores its result and stops only while a conflict has no branch selected, or while a delete-versus-modify conflict remains. When you merge, Infrahub checks conflicts and constraints again against the current default branch. If another branch merged after the checks ran, the merge can fail although every check passed. The proposed change then returns to open, and Infrahub records any constraint failure on the **Schema Integrity** check.
 :::
 
 ### Built-in checks
 
 Infrahub runs several types of automated validations during the review process:
 
-- **Data integrity checks**: Validates that the database remains consistent between branches and that all referential integrity constraints are satisfied.
-- **Merge conflict detection**: Identifies and reports any conflicting changes between the source and target branches that would prevent a clean merge.
+- **Data Integrity**: Records each conflict between the source branch and the default branch. The check stays failed while it lists conflicts, including ones you have already resolved; the merge is blocked only while a conflict has no branch selected, or while a delete-versus-modify conflict remains.
+- **Schema Integrity**: Checks that the schema changes on the branch are valid, and that the branch's data meets uniqueness and other constraints. Infrahub checks these constraints again at merge.
 - **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
-- **Schema validation**: Verifies potential changes made to the schema.
 
 ![Checks tab showing all validation check types](../media/topics/proposed_change/pc_tab_checks.png)
 
@@ -129,6 +128,10 @@ Common conflict scenarios include:
 - Relationship conflicts where the same object is linked to different entities in each branch.
 
 Infrahub prevents merging a proposed change when data conflicts exist between branches to protect the integrity of your infrastructure data. For step-by-step resolution mechanics during review, see [Resolve a proposed-change conflict](./resolve-conflict.mdx).
+
+You cannot clear a delete-versus-modify conflict by choosing a side. Change the data so that both branches agree.
+
+A duplicate value in a unique attribute is a constraint violation, so it has no side to choose. The proposed change reports it under **Schema Integrity**, and the merge stays blocked until you change the value on one of the branches. When several branches are open at once, see [Run parallel branches](../branches/parallel-branches.mdx).
 
 ## Lifecycle and collaborative review
 

@@ -25,7 +25,7 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 | 3/6   | Core schema update |
 | 4/6   | Internal objects — menu and permissions |
 | 5/6   | Task manager — workflow blocks, worker pools, deployments |
-| 6/6   | Branch rebase (only writes when `--rebase-branches` is set) |
+| 6/6   | Branch rebase: marks open branches on an older graph version as `NEED_UPGRADE_REBASE`, and rebases them when `--rebase-branches` is set |
 
 The command logs a header for each step, per-migration timing inside Step 1/6, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
 
@@ -119,10 +119,12 @@ Use this command before and after `infrahub db migrate` (or `infrahub upgrade`) 
 
 The third column of `showmigrations` reports the migration's class. The four types behave differently:
 
-- **GraphMigration** — applies one or more Cypher queries to the graph.
-- **InternalSchemaMigration** — updates the internal schema definition.
-- **ArbitraryMigration** — runs arbitrary Python logic. May print its own progress messages while it works.
-- **MigrationRequiringRebase** — rewrites data that any open branches were built on top of. After this kind of migration, every open branch needs to be rebased before it can be used again — see `infrahub upgrade --rebase-branches`.
+- **GraphMigration**: applies one or more Cypher queries to the graph.
+- **InternalSchemaMigration**: updates the internal schema definition.
+- **ArbitraryMigration**: runs arbitrary Python logic. May print its own progress messages while it works.
+- **MigrationRequiringRebase**: rewrites data that open branches read from the default branch. Rebasing a branch runs the pending migrations on it; see `infrahub upgrade --rebase-branches`.
+
+After any upgrade that changes the graph version, Infrahub marks every open branch on the older graph version as `NEED_UPGRADE_REBASE`, whatever types of migration ran. You can keep writing to such a branch, but you cannot merge it until you rebase it. For what each branch status blocks, see [Branch statuses](../../../branches/overview.mdx#branch-statuses).
 
 ### Inspecting a single migration
 
