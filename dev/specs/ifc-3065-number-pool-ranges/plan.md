@@ -88,7 +88,7 @@ backend/infrahub/
 │   └── schema_number_pool_synchronizer.py        # reconcile ranges
 └── graphql/
     ├── manager.py                                # deprecation_reason propagation, mutation_map entry
-    ├── mutations/resource_manager.py             # pool + range mutation classes
+    ├── mutations/resource_manager/number_pools/ # pool + range mutation classes
     └── queries/resource_manager.py               # per-range utilization edges
 
 backend/tests/
@@ -98,7 +98,7 @@ backend/tests/
 ├── component/core/migrations/graph/m080_number_pool_ranges/
 ├── component/core/constraint_validators/test_attribute_numberpool_constraints.py
 ├── component/pools/test_schema_number_pool_upserter.py, test_schema_number_pool_synchronizer.py
-├── component/graphql/resource_manager/test_resource_manager.py, test_number_pool_range.py
+├── component/graphql/resource_manager/test_resource_manager.py, number_pools/test_pool_ranges.py
 ├── component/graphql/test_manager.py
 ├── functional/pools/test_numberpool_ranges.py
 ├── integration/schema_lifecycle/test_attribute_parameters_update.py
@@ -135,12 +135,12 @@ One `gh stack` of six pull requests, merged bottom to top. Each is green and coh
 |----|---------|------------|----------|
 | 1 | Range kind, `ranges` relationship, deprecated optional shorthand, `@deprecated` propagation in the generator, one utilization entry per range, regenerated protocols / GraphQL schema / frontend GraphQL types | none | Full GraphQL contract available; work starts against this branch |
 | 2 | Migration m080 (one range per pool, kind bootstrap), `GRAPH_VERSION`, shorthand mirror helper | 1 | none |
-| 3 | Calculator, range-list queries, `get_next` over segments, utilization getter, exact per-range figures | 2 | Figures become exact |
-| 4 | Pool mutation shorthand rules by range count, range mutation class, pool lock, overlap refusals, functional test | 3 | Refusal messages final |
-| 5 | `parameters.ranges`, `effective_ranges()`, constraint identifier and checker, upserter, synchronizer, guards on both surfaces, deprecation warnings, SDK contract (separate SDK PR first), openapi / REST types / docs snippet | 4 | REST types and schema parameters |
+| 3 | Pool mutation shorthand rules by range count, range mutation class, pool lock, overlap refusals | 2 | Refusal messages final |
+| 4 | `parameters.ranges`, `effective_ranges()`, constraint identifier and checker, upserter, synchronizer, guards on both surfaces, deprecation warnings, SDK contract (separate SDK PR first), openapi / REST types / docs snippet | 3 | REST types and schema parameters |
+| 5 | Calculator, range-list queries, `get_next` over segments, utilization getter, exact per-range figures, multi-range allocation through GraphQL, the schema and a functional test | 4 | Figures become exact |
 | 6 | Frontend guard, `process_deprecations` log scope, docs, benchmark, changelog fragments, pre-CI on the stack | 5 | Attribute display renders ranges |
 
-PR 1 exposes the generated range mutations without the schema-pool guard until PR 5; pools created before PR 2 hold zero ranges and keep allocating from the shorthand.
+Allocation over ranges (PR 5) reads range nodes only, so it lands after every surface that creates a pool writes its ranges: the migration (PR 2), the pool mutations (PR 3) and the schema pool upserter and synchronizer (PR 4). Until PR 5, allocation reads the shorthand, so a pool holding zero or several ranges, whose mirrored shorthand is empty, hands out no number. PR 1 exposes the generated range mutations without the schema-pool guard until PR 4.
 
 ## Operational notes
 

@@ -32,7 +32,7 @@ from .mutations.proposed_change import (
 )
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
-from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
+from .mutations.resource_manager.ip_pools import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
 from .queries import (
