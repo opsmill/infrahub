@@ -349,7 +349,18 @@ class DisplayLabelNodeIDQuery(NodeIDQuery):
     query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
 ```
 
-Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
+To read only part of a kind, override `extra_filters()`. The query adds the filters it returns to its `@filters`, and the base returns none. Filter on a field that the flows these ids feed do not write: a write that changes which nodes match moves the later pages in the same way.
+
+```python
+class ProfileNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "ProfileFetchNodeIDs"
+    profile_id: str
+
+    def extra_filters(self) -> dict[str, Any]:
+        return {"profiles__ids": [self.profile_id]}
+```
+
+Existing examples: `DisplayLabelNodeIDQuery`, `HFIDNodeIDQuery`, `ComputedAttributeNodeIDQuery` (all-node fan-out); `ProfileNodeIDQuery` (the nodes and templates linked to one profile, read for the profile refresh); `GitRepositoryNodeQuery`, `GeneratorInstanceQuery`, `ComputedAttributeTransformQuery` (multi-field reads).
 
 ## Failure handling
 
