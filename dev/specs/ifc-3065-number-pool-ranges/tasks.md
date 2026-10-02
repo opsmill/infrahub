@@ -20,12 +20,14 @@
 |----|-------|----------|-----------------|
 | 1 | GraphQL contract and core schema | Range kind, `ranges` relationship, deprecated shorthand, `@deprecated` propagation, one utilization entry per range | Full contract available; frontend work can start against this branch |
 | 2 | Migration and shorthand mirror | One range per existing pool, shorthand kept in sync | none |
-| 3 | Allocation over ranges | Calculator, range-list queries, weighted fall-through, effective-space utilization | Utilization figures become exact |
-| 4 | User pool mutations | Shorthand rules by range count, range mutation class, pool lock, overlap refusals | Refusal messages final |
-| 5 | Schema-created pools and published contract | `parameters.ranges`, constraint validation, upserter, synchronizer, guards, warnings, SDK contract | REST types and `parameters.ranges` in the schema |
+| 3 | User pool mutations | Shorthand rules by range count, range mutation class, pool lock, overlap refusals | Refusal messages final |
+| 4 | Schema-created pools and published contract | `parameters.ranges`, constraint validation, upserter, synchronizer, guards, warnings, SDK contract | REST types and `parameters.ranges` in the schema |
+| 5 | Allocation over ranges | Calculator, range-list queries, weighted fall-through, effective-space utilization, multi-range allocation end to end | Utilization figures become exact |
 | 6 | Finishing | Frontend guard, docs, benchmark, changelog | Attribute display renders ranges |
 
-PR 2 must land before PR 3: without the migration, allocation over ranges would see empty pools. PR 1 ships the generated range mutations without the schema-pool guard; the guard arrives in PR 5.
+Allocation over ranges reads range nodes only, so it lands after every surface that creates a pool also writes its ranges: existing pools through the migration (PR 2), user pools through the pool mutations (PR 3), schema pools through the upserter and the synchronizer (PR 4). Until PR 5, allocation reads the shorthand, which the mirror clears when a pool holds zero or several ranges, so such a pool hands out no number before PR 5. PR 1 ships the generated range mutations without the schema-pool guard; the guard arrives in PR 4.
+
+Task identifiers are stable references, not an execution order: phases run in the order of this file.
 
 ---
 
@@ -47,7 +49,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 - [X] T005 Add `InfrahubKind.NUMBERPOOLRANGE = "CoreNumberPoolRange"` in `backend/infrahub/core/constants/infrahubkind.py`
 - [X] T006 Define `core_number_pool_range` (`NumberPoolRange`, `Core`, `AGNOSTIC`, inherits `WEIGHTED_POOL_RESOURCE`, attributes `start`/`end`, relationship `pool` cardinality one kind `PARENT` identifier `numberpool__range`, `include_in_menu=False`, `generate_profile=False`, display labels start/end) in `backend/infrahub/core/schema/definitions/core/resource_pool.py` and register it in `backend/infrahub/core/schema/definitions/core/__init__.py`
 - [X] T007 On `core_number_pool` in `resource_pool.py`: add `ranges` relationship (peer `NUMBERPOOLRANGE`, many, optional, `COMPONENT`, agnostic, identifier `numberpool__range`); set `start_range` and `end_range` `optional=True` with a `deprecation` message pointing at `ranges`
-- [X] T008 In `InfrahubNumberPoolMutation.mutate_create` (`backend/infrahub/graphql/mutations/resource_manager.py`): replace the unconditional `data["start_range"]` reads with a `ValidationError` when either bound is missing, so the now-optional inputs cannot crash the mutation (relaxed in PR 4)
+- [X] T008 In `InfrahubNumberPoolMutation.mutate_create` (`backend/infrahub/graphql/mutations/resource_manager.py`): replace the unconditional `data["start_range"]` reads with a `ValidationError` when either bound is missing, so the now-optional inputs cannot crash the mutation (relaxed in PR 3)
 - [X] T009 [US5] Pass `deprecation_reason=attr.deprecation` / `rel.deprecation` in `generate_graphql_object`, `generate_interface_object`, the relationship field construction in `generate_object_types`, and `generate_graphql_mutation_create_input` / `_update_input` / `_upsert_input` in `backend/infrahub/graphql/manager.py`
 - [X] T010 [US1] Update `resolve_number_pool_utilization` in `backend/infrahub/graphql/queries/resource_manager.py` to return one edge per range with per-range figures computed by filtering the existing allocated values on the range bounds; pool totals as today; `count` = number of ranges; an empty range set returns no edge and the pool totals
 - [X] T011 Regenerate `backend/infrahub/core/protocols.py` (`uv run invoke backend.generate`), `schema/schema.graphql` (`uv run invoke schema.generate-graphqlschema`) and `frontend/app/src/shared/api/graphql/generated/` (`cd frontend/app && pnpm codegen:graphql && pnpm codegen && pnpm codegen:openapi`); confirm `@deprecated` on the shorthand in the object type, interface and inputs
@@ -73,49 +75,22 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 - [X] T015 [US2] Create `backend/infrahub/core/migrations/graph/m080_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind (m073 pattern) and only the `ranges` relationship into the database schema when absent, create one range per live pool that carries a bound and holds no range through the Node API, leaving the shorthand as it is, `validate_migration` counts pools that carry a bound and hold no range, `minimum_version = 79`
 - [X] T016 [US2] Bump `GRAPH_VERSION = 80` in `backend/infrahub/core/graph/__init__.py`
 
-**Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the migration leaves as it is. Until PR 4 (T034) and PR 5 (T038, T039) land, the pool mutations and the schema pool upserter and synchronizer still write the shorthand directly and never call the mirror, and the generated range mutations leave it stale; the mirror is the single writer only from PR 5 onwards
+**Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the migration leaves as it is. Until PR 3 (T034) and PR 4 (T038, T039) land, the pool mutations and the schema pool upserter and synchronizer still write the shorthand directly and never call the mirror, and the generated range mutations leave it stale; the mirror is the single writer only from PR 4 onwards
 
 ---
 
-## Phase 3: PR 3 — Allocation over ranges
-
-**Goal**: allocation, size, utilization and fullness come from the effective space
-
-**Independent Test**: `cd backend && uv run pytest tests/unit/pools/test_number_ranges.py tests/component/core/resource_manager/ -k "ranges or query"`
-
-### Tests
-
-- [ ] T017 [P] [US1] Unit tests for the calculator in `backend/tests/unit/pools/test_number_ranges.py`: ordering by weight then start, `None` weight as 0, clipping, exclusions splitting a range, exclusions outside every range subtract nothing, range clipped to nothing yields no segment, zero ranges gives size 0, `range_for`
-- [ ] T018 [P] [US1] Component tests for the range-list queries in `backend/tests/component/core/resource_manager/test_number_pool_query.py`: used/allocated/taken filtered by a two-range list, values in the gap excluded, empty list never queried
-- [ ] T019 [P] [US1] Component test class `TestNumberPoolRangesAllocation` in `backend/tests/component/core/resource_manager/test_number_pool.py`: pool 100-200 (weight 10) + 205-300, 101 allocations ascending from 100-200, nothing in 201-204, utilization 101 of 197, next is 205, not full until 300; equal weights lowest start first; weight raised on a partially drained pool redirects the next allocation; exhausted space raises `PoolExhaustedError`
-- [ ] T020 [P] [US1] Component test in the same file: excluded values outside every range leave size unchanged; excluded values inside a range are skipped and subtracted; `min_value`/`max_value` clip a range and a range clipped to nothing counts as exhausted; no `ZeroDivisionError`; zero ranges gives 0 of 0
-- [ ] T021 [P] [US1] Component test: hand-set values on a unique attribute are skipped across both ranges (generalised `get_taken`)
-
-### Implementation
-
-- [ ] T022 [P] [US1] Create `backend/infrahub/pools/number_ranges.py` with frozen `PoolRange`, `EffectiveSegment`, and `EffectiveSpace` (clip to `[min_value, max_value]`, subtract excluded singles and ranges, order `(-weight, start)`, `segments`, `size`, `as_query_ranges()`, `contains()`, `range_for()`, `is_empty`) per data-model.md
-- [ ] T023 [P] [US1] Replace `$start_range`/`$end_range` with `$ranges: list[list[int]]` and `any(r IN $ranges WHERE v >= r[0] AND v <= r[1])` in `NumberPoolGetUsed`, `NumberPoolGetAllocated`, `NumberPoolGetTaken` in `backend/infrahub/core/query/resource_manager.py`; make both bounds required on `NumberPoolGetFree`
-- [ ] T024 [US1] Build the `EffectiveSpace` from `NumberPoolRepository.get_ranges` and the attribute, with no persistence method on `CoreNumberPool`; `NumberPoolRepository.get_used`/`get_taken` pass `space.as_query_ranges()` and return early on an empty space; rewrite `get_next` to walk `space.segments` with `NumberPoolGetFree(cursor, segment.end)`, skipping hand-set values by advancing the cursor, falling through on `None`, raising `PoolExhaustedError` when no segment yields; delete the `skip_excluded` closure and `get_attribute_nb_excluded_values`
-- [ ] T025 [US1] Rework `NumberUtilizationGetter` in `backend/infrahub/pools/number.py` to take the `EffectiveSpace`: `total_pool_size = space.size`, ratios return `0.0` on size 0, used values grouped by `space.range_for`
-- [ ] T026 [US1] Replace the bounds filter of T010 in `resolve_number_pool_utilization` with the getter's per-range figures; `weight = allocation_weight or 0`
-
-**Checkpoint**: multi-range allocation and exact utilization on pools created through the Node API
-
----
-
-## Phase 4: PR 4 — User pool mutations
+## Phase 3: PR 3 — User pool mutations
 
 **Goal**: ranges and the shorthand are manageable through GraphQL with the specified refusals
 
-**Independent Test**: `cd backend && uv run pytest tests/component/graphql/resource_manager/ tests/functional/pools/test_numberpool_ranges.py`
+**Independent Test**: `cd backend && uv run pytest tests/component/graphql/resource_manager/`
 
 ### Tests
 
 - [ ] T027 [P] [US2] Component tests in `backend/tests/component/graphql/resource_manager/test_resource_manager.py`: read of a single-range pool returns the shorthand; shorthand write on a 1-range pool rewrites in place (same range id, weight kept); shorthand write on a 0-range pool creates the range; create with neither spelling yields a zero-range pool; update `test_test_number_pool_creation_errors` and `test_test_number_pool_update` for the optional shorthand
-- [ ] T028 [P] [US3] Component tests in `backend/tests/component/graphql/resource_manager/test_number_pool_range.py`: create a second range on a live pool (size grows, allocations untouched); remove 205-300 holding 250 (succeeds, utilization 101 of 101, 250 never handed out); re-add (250 counts, 102 of 197); overlap and backwards range refused with named ranges; two pools on one attribute may overlap; last range removed leaves a legal pool
+- [ ] T028 [P] [US3] Component tests in `backend/tests/component/graphql/resource_manager/test_number_pool_range.py`: create a second range on a live pool (allocated values untouched); remove a range holding an allocated value (succeeds, the value is kept); overlap and backwards range refused with named ranges; two pools on one attribute may overlap; last range removed leaves a legal pool
 - [ ] T029 [P] [US3] Component tests in the same file: shorthand write on a 2-range pool refused with a message listing both ranges by bounds and id, pool untouched; shorthand plus `ranges` in one write refused; `ranges` supplied without shorthand accepted
 - [ ] T030 [P] [US3] Component test asserting the shorthand mirror invariant after range create, update, delete, pool shorthand write and pool `ranges` edit
-- [ ] T031 [P] [US3] Functional test `backend/tests/functional/pools/test_numberpool_ranges.py` (`TestInfrahubApp`): user pool created with two ranges through GraphQL, allocation via the SDK across the fall-through, range removed and re-added, figures checked through the utilization query
 
 ### Implementation
 
@@ -123,11 +98,11 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 - [ ] T033 [US2] In `InfrahubNumberPoolMutation.mutate_create`: drop the T008 guard; accept shorthand, `ranges`, or neither; refuse shorthand combined with `ranges`; create the single range from the shorthand; keep the existing bound checks; take the pool lock when the shorthand or `ranges` is present
 - [ ] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `NumberPoolShorthandMirror.sync`
 
-**Checkpoint**: user-created pools fully manageable through GraphQL
+**Checkpoint**: user-created pools fully manageable through GraphQL; a user pool holding one range allocates as before from the mirrored shorthand
 
 ---
 
-## Phase 5: PR 5 — Schema-created pools and published contract
+## Phase 4: PR 4 — Schema-created pools and published contract
 
 **Goal**: `parameters.ranges` end to end, both write surfaces guarded, deprecation warnings, SDK contract
 
@@ -143,7 +118,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 - [ ] T040 [P] [US4] Component tests in `backend/tests/component/graphql/resource_manager/test_number_pool_range.py`: range create/update/delete on a schema pool refused pointing at the default-branch schema; pool update carrying `ranges` refused; shorthand on a multi-range schema pool gets the schema-pool message first
 - [ ] T041 [P] [US4] Extend `backend/tests/component/core/schema/test_attribute_parameters.py`: both spellings refused at load; single bound loads with the old meaning; `ranges` declaration loads
 - [ ] T042 [P] [US4] Extend `backend/tests/integration/schema_lifecycle/test_attribute_parameters_update.py`: a schema load that moves a range so a held value falls outside is refused; a safe range change reconciles the pool
-- [ ] T043 [P] [US4] Extend `backend/tests/component/core/migrations/schema/test_node_attribute_add.py` with a `ranges` declaration: the pool is materialised with ranges and existing nodes receive values
+- [ ] T043 [P] [US4] Extend `backend/tests/component/core/migrations/schema/test_node_attribute_add.py` with a single-range `ranges` declaration: the pool is materialised with its range and existing nodes receive values
 - [ ] T044 [P] [US5] Extend `backend/tests/unit/core/schema/test_write_json_schema.py`: `start_range` / `end_range` marked `deprecated: true` with a message pointing at `ranges`
 
 ### Implementation
@@ -161,6 +136,35 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 - [ ] T055 Regenerate and commit `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `docs/docs/snippets/attribute-kind-params.mdx` and the reference docs (`uv run invoke schema.generate-jsonschema`, `docs.generate`, `cd frontend/app && pnpm codegen`); run `uv run invoke docs.validate`
 
 **Checkpoint**: schema-created pools carry ranges end to end; published contract regenerated
+
+---
+
+## Phase 5: PR 5 — Allocation over ranges
+
+**Goal**: allocation, size, utilization and fullness come from the effective space
+
+**Independent Test**: `cd backend && uv run pytest tests/unit/pools/test_number_ranges.py tests/component/core/resource_manager/ tests/component/graphql/resource_manager/test_number_pool_range.py tests/functional/pools/test_numberpool_ranges.py -k "ranges or query"`
+
+### Tests
+
+- [ ] T017 [P] [US1] Unit tests for the calculator in `backend/tests/unit/pools/test_number_ranges.py`: ordering by weight then start, `None` weight as 0, clipping, exclusions splitting a range, exclusions outside every range subtract nothing, range clipped to nothing yields no segment, zero ranges gives size 0, `range_for`
+- [ ] T018 [P] [US1] Component tests for the range-list queries in `backend/tests/component/core/resource_manager/test_number_pool_query.py`: used/allocated/taken filtered by a two-range list, values in the gap excluded, empty list never queried
+- [ ] T019 [P] [US1] Component test class `TestNumberPoolRangesAllocation` in `backend/tests/component/core/resource_manager/test_number_pool.py`: pool 100-200 (weight 10) + 205-300, 101 allocations ascending from 100-200, nothing in 201-204, utilization 101 of 197, next is 205, not full until 300; equal weights lowest start first; weight raised on a partially drained pool redirects the next allocation; exhausted space raises `PoolExhaustedError`
+- [ ] T020 [P] [US1] Component test in the same file: excluded values outside every range leave size unchanged; excluded values inside a range are skipped and subtracted; `min_value`/`max_value` clip a range and a range clipped to nothing counts as exhausted; no `ZeroDivisionError`; zero ranges gives 0 of 0
+- [ ] T021 [P] [US1] Component test: hand-set values on a unique attribute are skipped across both ranges (generalised `get_taken`)
+- [ ] T063 [P] [US3] Component tests in `backend/tests/component/graphql/resource_manager/test_number_pool_range.py`: on a pool 100-200 (weight 10) + 205-300 holding 101 allocations in 100-200 and 250, creating a range grows the size; removing 205-300 succeeds, utilization reads 101 of 101 and 250 is never handed out; re-adding it counts 250 again (102 of 197)
+- [ ] T031 [P] [US3] Functional test `backend/tests/functional/pools/test_numberpool_ranges.py` (`TestInfrahubApp`): user pool created with two ranges through GraphQL, allocation via the SDK across the fall-through, range removed and re-added, figures checked through the utilization query
+- [ ] T064 [P] [US4] Extend `backend/tests/component/core/migrations/schema/test_node_attribute_add.py` with a two-range `ranges` declaration: existing nodes receive values from the higher-weight range first
+
+### Implementation
+
+- [ ] T022 [P] [US1] Create `backend/infrahub/pools/number_ranges.py` with frozen `PoolRange`, `EffectiveSegment`, and `EffectiveSpace` (clip to `[min_value, max_value]`, subtract excluded singles and ranges, order `(-weight, start)`, `segments`, `size`, `as_query_ranges()`, `contains()`, `range_for()`, `is_empty`) per data-model.md
+- [ ] T023 [P] [US1] Replace `$start_range`/`$end_range` with `$ranges: list[list[int]]` and `any(r IN $ranges WHERE v >= r[0] AND v <= r[1])` in `NumberPoolGetUsed`, `NumberPoolGetAllocated`, `NumberPoolGetTaken` in `backend/infrahub/core/query/resource_manager.py`; make both bounds required on `NumberPoolGetFree`
+- [ ] T024 [US1] Build the `EffectiveSpace` from `NumberPoolRepository.get_ranges` and the attribute, with no persistence method on `CoreNumberPool`; `NumberPoolRepository.get_used`/`get_taken` pass `space.as_query_ranges()` and return early on an empty space; rewrite `get_next` to walk `space.segments` with `NumberPoolGetFree(cursor, segment.end)`, skipping hand-set values by advancing the cursor, falling through on `None`, raising `PoolExhaustedError` when no segment yields; delete the `skip_excluded` closure and `get_attribute_nb_excluded_values`
+- [ ] T025 [US1] Rework `NumberUtilizationGetter` in `backend/infrahub/pools/number.py` to take the `EffectiveSpace`: `total_pool_size = space.size`, ratios return `0.0` on size 0, used values grouped by `space.range_for`
+- [ ] T026 [US1] Replace the bounds filter of T010 in `resolve_number_pool_utilization` with the getter's per-range figures; `weight = allocation_weight or 0`
+
+**Checkpoint**: multi-range allocation and exact utilization on every pool, whether created by the migration, the pool mutations, the schema or the Node API
 
 ---
 
@@ -190,8 +194,8 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 ### Between PRs
 
 - PR 1 → PR 2 → PR 3 → PR 4 → PR 5 → PR 6, merged bottom to top with `gh stack`
-- PR 2 before PR 3 is mandatory (migration before allocation reads ranges)
-- The SDK PR (T054) is opened during PR 5 and must merge before PR 5's submodule pointer bump
+- PR 2, PR 3 and PR 4 before PR 5 is mandatory: allocation reads range nodes only, so the migration, the pool mutations and the schema pool upserter and synchronizer must all write ranges first
+- The SDK PR (T054) is opened during PR 4 and must merge before PR 4's submodule pointer bump
 
 ### Within a PR
 
@@ -201,7 +205,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 ### Parallel Opportunities
 
 - All `[P]` test tasks of a phase together
-- PR 3: T022 and T023 in parallel, then T024
+- PR 5: T022 and T023 in parallel, then T024
 - PR 6: T056 to T060 in parallel
 
 ---
@@ -210,14 +214,14 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 One sub-task of IFC-3065 per phase, scoped by the task identifiers of that phase:
 
-| Sub-task | Tasks |
-|----------|-------|
-| PR 1 GraphQL contract and core schema | T001 to T011 |
-| PR 2 Migration and shorthand mirror | T012 to T016 |
-| PR 3 Allocation over ranges | T017 to T026 |
-| PR 4 User pool mutations | T027 to T034 |
-| PR 5 Schema-created pools and published contract | T035 to T055 |
-| PR 6 Finishing | T056 to T062 |
+| Sub-task | Jira | Tasks |
+|----------|------|-------|
+| PR 1 GraphQL contract and core schema | IFC-3211 | T001 to T011 |
+| PR 2 Migration and shorthand mirror | IFC-3212 | T012 to T016 |
+| PR 3 User pool mutations | IFC-3214 | T027 to T030, T032 to T034 |
+| PR 4 Schema-created pools and published contract | IFC-3215 | T035 to T055 |
+| PR 5 Allocation over ranges | IFC-3213 | T017 to T026, T031, T063, T064 |
+| PR 6 Finishing | IFC-3216 | T056 to T062 |
 
 ---
 
