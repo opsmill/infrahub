@@ -47,7 +47,7 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 |---|---|
 | Classifier, unchanged | The remote head equals the imported commit, so the result is `UNCHANGED`. |
 | Classifier, fast-forward | The imported commit is an ancestor, so the result is `FAST_FORWARD` and nothing is recorded. |
-| Classifier, locally ahead | The remote head is an ancestor of the imported commit, so the result is `LOCAL_AHEAD`. Nothing is reset and nothing is recorded. |
+| Classifier, rewound remote | The remote head is an ancestor of the imported commit, so the result is `REWRITE`. With the target changed it is `RETARGET`. |
 | Classifier, remote absent | The remote carries no such ref, so the result is `REMOTE_ABSENT`. |
 | Classifier, rewrite | Neither is an ancestor and the target did not change, so the result is `REWRITE`. |
 | Classifier, re-target | Neither is an ancestor and the target changed, so the result is `RETARGET`. |
@@ -62,9 +62,9 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 | Recorder, signal | A rewrite of the configured default branch emits the event once and never twice. Any other branch emits none. |
 | Handler fan-out | N branch-and-commit pairs are reset inside one lock acquisition and one fetch. |
 
-The negative cases carry as much weight as the positive ones. A fast-forward, a locally-ahead
-branch and a deliberate re-target must all come out clean. The locally-ahead case is the one that
-would discard a user's unpushed commit if it were wrong.
+The negative cases carry as much weight as the positive ones. A fast-forward, a deliberate
+re-target and an absent remote ref must all come out clean. The re-target is the one that would
+report an ordinary configuration change as a rewrite if it were wrong.
 
 ---
 
