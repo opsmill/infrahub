@@ -2,8 +2,8 @@
 
 The rebase is never the release trigger. Inside its own transaction, once the branch's fork point
 has moved past the base branch's deletions, it re-runs the same predicate the delete point runs
-over the nodes the base-branch diff records as removed, and acts only on the result. Driven
-through the real rebase flow, because that transaction is where the point lives.
+over the nodes deleted on the base branch within the window the rebase closes, and acts only on the
+result. Driven through the real rebase flow, because that transaction is where the point lives.
 """
 
 from __future__ import annotations
@@ -19,11 +19,19 @@ from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import rebase_branch
+from infrahub.core.constants import SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import (
+    NodeKindUpdateMigration,
+    NodeKindUpdateMigrationQuery01,
+)
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
 from infrahub.core.timestamp import Timestamp
 from infrahub.workers.dependencies import build_cache, build_database
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.workflow_override import override_workflow
 
@@ -42,6 +50,7 @@ from tests.component.core.agnostic_retirement.support import (
 )
 from tests.helpers.agnostic_edges import (
     TEST_ACTOR_ID,
+    actors_closing_at,
     assert_attribute_retired_at,
     assert_relationship_retired_at,
     attribute_global_edges,
@@ -49,17 +58,41 @@ from tests.helpers.agnostic_edges import (
     create_widget,
     edge_summary,
     global_edges_by_vertex_uuid,
+    node_vertex_count,
+    open_active_edges,
     open_edge_types,
     open_edges,
     relationship_global_edges,
     relationship_vertex_uuid,
     to_times,
+    values_reachable_over_open_edges,
 )
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     GADGET_KIND,
     RELATIONSHIP_IDENTIFIER,
+    WIDGET_KIND,
 )
+
+INHERITED_GENERIC = "AgnosticretireInherited"
+
+
+async def _change_widget_inheritance(db: InfrahubDatabase, branch: Branch) -> None:
+    """Add a generic to the widget kind in the graph, leaving a superseded node vertex under every live widget's uuid.
+
+    The kind is unchanged, so the live copy still loads, and it shares the original's field vertices.
+    """
+    previous_schema = registry.schema.get_node_schema(name=WIDGET_KIND, branch=branch, duplicate=False)
+    new_schema = registry.schema.get_node_schema(name=WIDGET_KIND, branch=branch, duplicate=True)
+    new_schema.inherit_from = [INHERITED_GENERIC]
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=previous_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind=new_schema.kind, field_name="inherit_from"),
+    )
+    query = await NodeKindUpdateMigrationQuery01.init(db=db, branch=branch, migration=migration)
+    await query.execute(db=db)
 
 
 async def _rebase_branch(
@@ -152,6 +185,98 @@ class TestAgnosticRetirementOnRebase:
         assert_relationship_retired_at(
             after=relationship_after, before=relationship_before, at=rebase_at, by=TEST_ACTOR_ID
         )
+
+    async def test_rebasing_a_branch_with_changes_of_its_own_past_the_deletion_closes_the_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+        dependency_provider: Provider,
+    ) -> None:
+        """What the branch itself changed does not narrow the base-branch deletions its rebase releases."""
+        widget = await create_widget(db=db, branch=default_branch, name="deleted-under-a-changed-branch", serial=2800)
+        branch = await create_branch(db=db, branch_name="changes-then-rebases-past-the-deletion")
+        unrelated = await Node.init(db=db, schema=GADGET_KIND, branch=branch)
+        await unrelated.new(db=db, name="unrelated-change-on-the-branch")
+        await unrelated.save(db=db)
+        attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+
+        await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        rebased = await _rebase_branch(
+            db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
+        )
+        rebase_at = Timestamp(rebased.get_branched_from())
+
+        assert await NodeManager.get_one(db=db, id=widget.id, branch=rebased) is None
+        assert await NodeManager.get_one(db=db, id=unrelated.id, branch=rebased) is not None
+        attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert_attribute_retired_at(after=attribute_after, before=attribute_before, at=rebase_at, by=TEST_ACTOR_ID)
+
+    async def test_rebasing_past_the_deletion_of_a_node_with_a_superseded_vertex_closes_the_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+        dependency_provider: Provider,
+    ) -> None:
+        """A node whose inheritance changed before the fork is released like any other once rebased past."""
+        widget = await create_widget(db=db, branch=default_branch, name="inheritance-changed-then-deleted", serial=2900)
+        await _change_widget_inheritance(db=db, branch=default_branch)
+        assert await node_vertex_count(db=db, node_id=widget.id) == 2, (
+            "the inheritance change is expected to leave a superseded node vertex sharing the uuid"
+        )
+        branch = await create_branch(db=db, branch_name="rebases-past-a-superseded-vertex")
+
+        await delete_node(db=db, node_id=widget.id, branch=default_branch, at=Timestamp())
+        attribute_before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert await values_reachable_over_open_edges(db=db, node_id=widget.id, attribute_name="serial") == [2900], (
+            "the branch still reads the object, so the default-branch delete released nothing"
+        )
+
+        rebased = await _rebase_branch(
+            db=db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
+        )
+        rebase_at = Timestamp(rebased.get_branched_from())
+
+        assert await NodeManager.get_one(db=db, id=widget.id, branch=rebased) is None
+        attribute_after = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+        assert open_active_edges(attribute_after) == []
+        closed_by_the_rebase = [edge for edge in attribute_after if edge.to_time == rebase_at.to_string()]
+        assert sorted(edge.edge_type for edge in closed_by_the_rebase) == sorted(
+            edge.edge_type for edge in open_active_edges(attribute_before)
+        )
+        assert actors_closing_at(attribute_after, at=rebase_at) == {TEST_ACTOR_ID}
+
+    async def test_rebasing_past_an_inheritance_change_releases_nothing(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        agnostic_schema: None,
+        dependency_provider: Provider,
+    ) -> None:
+        """The vertex an inheritance change supersedes is deleted, but the node lives on and keeps its fields."""
+        widget = await create_widget(db=db, branch=default_branch, name="inheritance-changed-and-kept", serial=3000)
+        branch = await create_branch(db=db, branch_name="rebases-past-an-inheritance-change")
+        await _change_widget_inheritance(db=db, branch=default_branch)
+        assert await node_vertex_count(db=db, node_id=widget.id) == 2, (
+            "the inheritance change is expected to leave a superseded node vertex sharing the uuid"
+        )
+        before = await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")
+
+        counting_db = CountingInfrahubDatabase.from_db(db=db)
+        rebased = await _rebase_branch(
+            db=counting_db, default_branch=default_branch, branch=branch, dependency_provider=dependency_provider
+        )
+
+        assert counting_db.count_for(RetireNodeAgnosticFieldsQuery.name) == 1, (
+            "the superseded vertex's deletion falls in the rebased window, so the node is re-evaluated"
+        )
+        assert edge_summary(await attribute_global_edges(db=db, node_id=widget.id, attribute_name="serial")) == (
+            edge_summary(before)
+        )
+        on_branch = await NodeManager.get_one(db=db, id=widget.id, branch=rebased)
+        assert on_branch is not None
+        assert on_branch.get_attribute(name="serial").value == 3000
 
     async def test_rebasing_releases_nothing_while_another_branch_retains_the_object(
         self,

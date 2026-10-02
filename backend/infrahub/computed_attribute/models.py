@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.graphql import Query
@@ -83,13 +83,13 @@ class ComputedAttributeAutomations(BaseModel):
 class PythonTransformComputedAttribute(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str
+    transform_id: str
     repository_id: str
     repository_name: str
     repository_kind: str
-    query_name: str
+    query_id: str
     query_analyzer: InfrahubGraphQLQueryAnalyzer
     computed_attribute: PythonDefinition
-    default_schema: bool
     branch_name: str
     branch_commit: dict[str, str] = field(default_factory=dict)
 
@@ -101,30 +101,6 @@ class PythonTransformComputedAttribute(BaseModel):
         if repository_data:
             for branch, commit in repository_data.branches.items():
                 self.branch_commit[branch] = commit
-
-    def get_altered_branches(self) -> list[str]:
-        if registry.default_branch in self.branch_commit:
-            default_branch_commit = self.branch_commit[registry.default_branch]
-            return [
-                branch_name for branch_name, commit in self.branch_commit.items() if commit != default_branch_commit
-            ]
-        return list(self.branch_commit.keys())
-
-
-@dataclass
-class PythonTransformTarget:
-    kind: str
-    object_id: str
-
-
-def _restrict_to_live_origin(event_trigger: EventTrigger, *, live_only: bool) -> None:
-    """Leave merge, rebase and recompute replays to the coalesced pass when it owns them.
-
-    Baked into the stored automation, not read when the event arrives, so a change takes effect on
-    the next reconcile of these two trigger types rather than on the next restart.
-    """
-    if live_only:
-        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
 
 class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
@@ -228,7 +204,6 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         cls,
         branch: str,
         computed_attribute: PythonTransformComputedAttribute,
-        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
         # scope = registry.default_branch
@@ -242,7 +217,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        _restrict_to_live_origin(event_trigger, live_only=live_only)
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
 
         update_fields = computed_attribute.query_analyzer.query_report.fields_by_kind(
             kind=computed_attribute.computed_attribute.kind
@@ -292,9 +267,14 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         branch: str,
         kind: str,
         computed_attribute: PythonTransformComputedAttribute,
-        live_only: bool,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
+        """Build the definition that answers a change to ``kind`` for this transform.
+
+        The definition is keyed on the transform and not on one attribute: within one branch the
+        attributes a transform feeds share its query, so they read the same kinds and the same
+        fields of them.
+        """
         # Only matching on node updated events, before nodes are created they won't be a member of the GraphQL query
         # group regardless so it doesn't make sense to trigger the query on node creation. For the initial object
         # where the computed attribute belongs that to will need to be created first which will trigger its own initial
@@ -313,11 +293,11 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         if branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        _restrict_to_live_origin(event_trigger, live_only=live_only)
+        event_trigger.match[NODE_ORIGIN_LABEL] = NodeMutationOrigin.LIVE.value
         event_trigger.exclude_branches(branches_out_of_scope or [])
 
         return cls(
-            name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
+            name=f"transform{NAME_SEPARATOR}{computed_attribute.name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
             actions=[
@@ -327,6 +307,12 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                         "branch_name": jinja_parameter("{{ event.resource['infrahub.branch.name'] }}"),
                         "node_kind": jinja_parameter("{{ event.resource['infrahub.node.kind'] }}"),
                         "object_id": jinja_parameter("{{ event.resource['infrahub.node.id'] }}"),
+                        # The flow reads no attribute name from the event, so it is told which
+                        # query matched and which transform runs it: that pair is what narrows the
+                        # groups and the attributes it recomputes.
+                        "graphql_query_id": computed_attribute.query_id,
+                        "transform_name": computed_attribute.name,
+                        "transform_id": computed_attribute.transform_id,
                         "context": {
                             "__prefect_kind": "json",
                             "value": {

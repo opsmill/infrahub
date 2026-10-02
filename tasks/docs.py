@@ -12,6 +12,7 @@ from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 if TYPE_CHECKING:
     from pydantic import BaseModel
+    from pydantic.fields import FieldInfo
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
@@ -297,6 +298,32 @@ def _generate_infrahub_schema_documentation() -> None:
         print(f"Docs saved to: {output_label}")
 
 
+def _model_fields_for(definition_name: str | None) -> dict:
+    """The ``model_fields`` of the settings model a JSON-schema definition was generated from.
+
+    Every nested settings model lives in ``infrahub.config``; a definition that is not a model
+    there (an enum, an inline object) has no fields to offer, so factory defaults stay unrendered.
+    """
+    from infrahub import config
+
+    if not definition_name:
+        return {}
+    return getattr(getattr(config, definition_name, None), "model_fields", {})
+
+
+def _scalar_type_from_any_of(schema: dict) -> str | None:
+    """Return the JSON type of an optional scalar field, or None when the schema is not one.
+
+    Pydantic renders ``str | None`` as ``anyOf: [{type: string}, {type: null}]`` with no ``type`` key,
+    so callers reading ``schema["type"]`` see nothing. Only a single non-null option qualifies; unions
+    of several scalar types and object references are left to the caller.
+    """
+    types = [option["type"] for option in schema.get("anyOf", []) if option.get("type") not in (None, "null")]
+    if len(types) == 1:
+        return types[0]
+    return None
+
+
 def _extract_nested_parameters(
     prop_schema: dict,
     model_fields: dict,
@@ -304,6 +331,7 @@ def _extract_nested_parameters(
     defs: dict[str, object],
     parent_default: dict | None = None,
     env_prefix: str | None = None,
+    object_model_fields: dict | None = None,
 ) -> list["ConfigurationSectionParameter"]:
     """Recursively extract nested parameters for object-type config fields.
 
@@ -314,6 +342,8 @@ def _extract_nested_parameters(
         defs: The schema definitions.
         parent_default: The default value for the parent property, if any.
         env_prefix: The environment variable prefix.
+        object_model_fields: The model fields of the object ``prop_schema`` describes, used to
+            render factory-built defaults of its direct fields.
 
     Returns:
         List of ConfigurationSectionParameter objects for nested fields.
@@ -322,16 +352,20 @@ def _extract_nested_parameters(
     from infrahub import config
 
     nested_params: list[ConfigurationSectionParameter] = []
+    object_fields = dict(object_model_fields or {})
 
     # Resolve $ref at the top level if present
     if "$ref" in prop_schema:
         ref_name = prop_schema["$ref"].split("/")[-1]
         prop_schema = defs[ref_name]
+        object_fields = object_fields or _model_fields_for(ref_name)
 
     for nested_name, orig_nested_schema in prop_schema.get("properties", {}).items():
         nested_schema = orig_nested_schema
+        nested_ref_name: str | None = None
 
-        # Handle anyOf for optional nested objects
+        # Handle anyOf: an optional nested object is resolved through its $ref, an optional scalar
+        # (``str | None``) keeps its row with the type of the non-null option.
         if "anyOf" in nested_schema:
             for option in nested_schema["anyOf"]:
                 if "$ref" in option:
@@ -341,9 +375,13 @@ def _extract_nested_parameters(
                     env_prefix = section_class.model_config.get("env_prefix")
                     env_source = EnvSettingsSource(section_class, env_prefix=env_prefix)
                     nested_schema = ref_schema
+                    nested_ref_name = ref_name
                     break
             else:
-                continue
+                scalar_type = _scalar_type_from_any_of(nested_schema)
+                if scalar_type is None:
+                    continue
+                nested_schema = {**nested_schema, "type": scalar_type}
 
         # Resolve $ref inside the property if present
         nested_type = nested_schema.get("type")
@@ -351,13 +389,14 @@ def _extract_nested_parameters(
             ref_name = nested_schema["$ref"].split("/")[-1]
             nested_schema = defs[ref_name]
             nested_type = nested_schema.get("type")
+            nested_ref_name = ref_name
 
         # If the nested type is object, flatten by recursing into _process_section_parameters
         if nested_type == "object":
             nested_params.extend(
                 _process_section_parameters(
                     section_schema=nested_schema,
-                    model_fields={},
+                    model_fields=_model_fields_for(nested_ref_name),
                     env_source=env_source,
                     defs=defs,
                     env_prefix=env_prefix,
@@ -379,6 +418,8 @@ def _extract_nested_parameters(
             default_value = parent_default[nested_name]
         else:
             default_value = nested_schema.get("default")
+        if default_value is None and nested_name in object_fields:
+            default_value = _factory_default(object_fields[nested_name])
 
         param = ConfigurationSectionParameter(
             name=nested_schema.get("title", nested_name).lower(),
@@ -400,6 +441,21 @@ def _extract_nested_parameters(
 
         nested_params.append(param)
     return nested_params
+
+
+def _factory_default(field: "FieldInfo") -> str | None:
+    """Render a ``default_factory`` result when it is a plain collection.
+
+    The JSON schema carries no default for a factory-built field, so the reference showed ``None``
+    for lists whose shipped default is not empty. Only collections are rendered: a factory such as
+    ``generate_uuid`` yields a fresh value on every call and must not be documented as a default.
+    """
+    if field.default_factory is None:
+        return None
+    value = field.get_default(call_default_factory=True)
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return ", ".join(str(item) for item in value) if value else "[]"
+    return None
 
 
 def _process_section_parameters(
@@ -424,7 +480,7 @@ def _process_section_parameters(
     """
     parameters = []
     for param_name, param_schema in section_schema["properties"].items():
-        param_type = param_schema.get("type")
+        param_type = param_schema.get("type") or _scalar_type_from_any_of(param_schema)
         if param_type == "array":
             items = param_schema.get("items", {})
             array_type = items.get("type")
@@ -440,6 +496,8 @@ def _process_section_parameters(
 
         nested_parameters = []
         default = param_schema.get("default")
+        if default is None and param_name in model_fields:
+            default = _factory_default(model_fields[param_name])
         ref = param_schema.get("$ref")
         definition = None
 
@@ -452,7 +510,12 @@ def _process_section_parameters(
                 param_type = "object"
                 default = "Check nested parameters"
                 nested_parameters = _extract_nested_parameters(
-                    definition, model_fields, env_source, defs, parent_default=definition.get("default")
+                    definition,
+                    model_fields,
+                    env_source,
+                    defs,
+                    parent_default=definition.get("default"),
+                    object_model_fields=_model_fields_for(ref.split("/")[-1] if ref else None),
                 )
             elif definition:
                 param_type = definition.get("type")
@@ -471,7 +534,7 @@ def _process_section_parameters(
                 default = "Check nested parameters"
                 nested_parameters = _process_section_parameters(
                     section_schema=items_def,
-                    model_fields={},
+                    model_fields=_model_fields_for(items_ref.split("/")[-1] if items_ref else None),
                     env_source=env_source,
                     defs=defs,
                     env_prefix=None,

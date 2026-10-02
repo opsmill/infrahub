@@ -8,16 +8,18 @@ per affected attribute instead of one per changed node.
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub import config, lock
+from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.scoping import ChangedElementSet
+from infrahub.computed_attribute.tasks import trigger_update_python_computed_attributes
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.tasks import rebase_branch
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
@@ -37,6 +39,7 @@ from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
 )
+from tests.adapters.python_target_sources import FailingPythonTargetResolver
 from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
     ScopedRecomputeTestBase,
@@ -50,6 +53,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.protocols import CoreAccount
     from infrahub.core.schema import SchemaRoot
     from infrahub.database import InfrahubDatabase
@@ -168,16 +172,9 @@ async def _seed(
 
 
 class CoalescedPythonTestBase(ScopedRecomputeTestBase):
-    """Runs the coalesced pass with the switch on and reports the submissions it produced."""
+    """Runs the coalesced pass and reports the submissions it produced."""
 
     WORKFLOW = COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM
-
-    @pytest.fixture(autouse=True)
-    def coalesce_python_switch(self) -> Generator[None, None, None]:
-        original = config.SETTINGS.main.coalesce_python_recompute_after_merge
-        config.SETTINGS.main.coalesce_python_recompute_after_merge = True
-        yield
-        config.SETTINGS.main.coalesce_python_recompute_after_merge = original
 
     async def _run_pass(
         self,
@@ -188,13 +185,14 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
         admin_account: CoreAccount,
         changes: Iterable[MergeChange],
         schema_changed_elements: ChangedElementSet | None = None,
+        python_resolver: PythonTargetResolver | None = None,
     ) -> dict[str, list[str] | str]:
         """Run the pass and report one entry per attribute it submitted."""
         branch = default_branch
         coordinator = MergeRecomputeCoordinator(
             builder=CoalescedRecomputeBuilder(schema_branch=registry.schema.get_schema_branch(name=branch.name)),
             submitter=CoalescedRecomputeSubmitter(workflow=recorder),
-            python_resolver=await build_python_target_resolver(db=db),
+            python_resolver=python_resolver or await build_python_target_resolver(db=db),
         )
 
         await coordinator.run(
@@ -217,6 +215,8 @@ class CoalescedPythonTestBase(ScopedRecomputeTestBase):
             attribute_name = call["parameters"]["computed_attribute_name"]
             assert attribute_name not in submissions, f"{attribute_name} was submitted more than once"
             assert call["parameters"]["coalesced"] is True
+            # Only this shape carries it, which is what lets the run skip what it cannot compute.
+            assert call["parameters"]["widened"] is True
             submissions[attribute_name] = WHOLE_KIND
         return submissions
 
@@ -342,6 +342,25 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(dataset.car_ids)}
 
+    async def test_passes_resolving_at_once_on_one_database_each_narrow(
+        self,
+        dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        """A worker runs its flows concurrently over one database object, so no pass may read through a shared session."""
+        resolvers = [await build_python_target_resolver(db=db) for _ in range(8)]
+        change = MergeChange(
+            node_id=dataset.person_id, kind=PERSON_KIND, action="updated", changed_fields=frozenset({"name"})
+        )
+
+        results = await asyncio.gather(
+            *(resolver.resolve(changes=[change], branch=default_branch.name) for resolver in resolvers)
+        )
+
+        for targets in results:
+            assert [(target.attribute_name, target.whole_kind) for target in targets] == [(OWNER_ATTRIBUTE, False)]
+
     async def test_a_pair_the_schema_pass_refreshes_is_dropped(
         self,
         dataset: PythonRecomputeDataset,
@@ -424,7 +443,8 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
 
     A repository that has not been loaded yet is the ordinary way to reach this. Nothing can
     compute the attribute until the transform arrives, and the recompute that follows the transform
-    being created covers it then. Submitting for it here only produces flow runs that raise.
+    being created covers it then. A narrowed pass leaves it out; a widened run skips it with a
+    warning.
     """
 
     @pytest.fixture(scope="class")
@@ -462,6 +482,69 @@ class TestCoalescedRecomputePythonMissingTransform(CoalescedPythonTestBase):
         )
 
         assert submissions == {OWNER_ATTRIBUTE: sorted(missing_transform_dataset.car_ids)}
+
+    async def test_a_failed_resolution_widens_the_attribute_and_the_fan_out_skips_it(
+        self,
+        missing_transform_dataset: PythonRecomputeDataset,
+        db: InfrahubDatabase,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+    ) -> None:
+        """A failed resolution widens from the schema, so the attribute names a transform nothing holds.
+
+        Its fan-out then stops before it lists the kind, while the attributes whose transform is in
+        the database still fan out to every car.
+        """
+        submissions = await self._run_pass(
+            db=db,
+            recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+            changes=[
+                MergeChange(
+                    node_id=missing_transform_dataset.person_id,
+                    kind=PERSON_KIND,
+                    action="updated",
+                    changed_fields=frozenset({"name"}),
+                )
+            ],
+            python_resolver=FailingPythonTargetResolver(),
+        )
+
+        assert submissions == {
+            NAME_ATTRIBUTE: WHOLE_KIND,
+            OWNER_ATTRIBUTE: WHOLE_KIND,
+            MISSING_TRANSFORM_ATTRIBUTE: WHOLE_KIND,
+        }
+
+        context = self._context(admin_account, default_branch)
+        workflow_recorder.reset()
+        await trigger_update_python_computed_attributes(
+            branch_name=default_branch.name,
+            computed_attribute_name=MISSING_TRANSFORM_ATTRIBUTE,
+            computed_attribute_kind=CAR_KIND,
+            context=context,
+            coalesced=True,
+            widened=True,
+        )
+        assert workflow_recorder.submit_calls == []
+
+        workflow_recorder.reset()
+        await trigger_update_python_computed_attributes(
+            branch_name=default_branch.name,
+            computed_attribute_name=OWNER_ATTRIBUTE,
+            computed_attribute_kind=CAR_KIND,
+            context=context,
+            coalesced=True,
+            widened=True,
+        )
+        chunk_calls = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+        # Every chunk inherits the flag, which is what covers a transform deleted after the widening.
+        assert {call["parameters"]["widened"] for call in chunk_calls} == {True}
+        fanned_out = [object_id for call in chunk_calls for object_id in call["parameters"]["object_ids"]]
+        assert sorted(fanned_out) == sorted(missing_transform_dataset.car_ids)
 
 
 class TestCoalescedRecomputePythonDerivedRead(CoalescedPythonTestBase):
@@ -641,31 +724,35 @@ class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
         default_branch: Branch,
         client: InfrahubClient,
         admin_account: CoreAccount,
-    ) -> tuple[PythonRecomputeDataset, str]:
-        """A branch forked before the owner is renamed on the default branch.
+    ) -> tuple[PythonRecomputeDataset, str, str]:
+        """Two branches forked before the owner is renamed on the default branch.
 
-        The rename is what the rebase replays, and the cars read the owner, so a narrowed pass
-        selects exactly those two.
+        The first changes nothing. The second holds a value of its own for the first car's
+        owner-reading attribute, derived from the owner's old name.
         """
         lock.initialize_lock(local_only=True)
         dataset = await _seed(db=db, branch=default_branch, schema=_schema_with_an_owner_reading_transform())
-        branch_name = "rebase_python"
-        await create_branch(branch_name=branch_name, db=db)
+        unchanged_branch = await create_branch(branch_name="rebase_python_unchanged", db=db)
+        derived_branch = await create_branch(branch_name="rebase_python_derived", db=db)
+
+        car = await NodeManager.get_one(db=db, id=dataset.car_ids[0], branch=derived_branch, raise_on_error=True)
+        car.get_attribute(name=OWNER_ATTRIBUTE).value = "owner01"
+        await car.save(db=db)
 
         person = await NodeManager.get_one(db=db, id=dataset.person_id, raise_on_error=True)
         person.name.value = "owner02"
         await person.save(db=db)
-        return dataset, branch_name
+        return dataset, unchanged_branch.name, derived_branch.name
 
-    async def test_the_rebase_flow_narrows_the_python_family(
+    async def _rebase(
         self,
-        rebase_dataset: tuple[PythonRecomputeDataset, str],
-        db: InfrahubDatabase,
+        *,
+        branch_name: str,
         workflow_recorder: WorkflowRecorder,
         default_branch: Branch,
         admin_account: CoreAccount,
-    ) -> None:
-        dataset, branch_name = rebase_dataset
+    ) -> tuple[dict[str, list[str]], list[dict[str, Any]]]:
+        """Rebase the branch and report the scoped submissions by attribute, and the widened ones."""
         context = InfrahubContext.init(
             branch=default_branch,
             account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=admin_account.id),
@@ -673,10 +760,48 @@ class TestCoalescedRecomputePythonRebase(CoalescedPythonTestBase):
 
         await rebase_branch(branch=branch_name, context=context, send_events=True)
 
-        scoped = workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
-        widened = workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
+        scoped = {
+            call["parameters"]["computed_attribute_name"]: sorted(call["parameters"]["object_ids"])
+            for call in workflow_recorder.get_submit_calls_for(COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM)
+        }
+        return scoped, workflow_recorder.get_submit_calls_for(TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES)
 
+    async def test_a_rebase_without_changes_of_its_own_recomputes_no_python_attribute(
+        self,
+        rebase_dataset: tuple[PythonRecomputeDataset, str, str],
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The branch reads the values the default branch recomputed after the rename."""
+        _, branch_name, _ = rebase_dataset
+
+        scoped, widened = await self._rebase(
+            branch_name=branch_name,
+            workflow_recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+        )
+
+        assert scoped == {}
         assert widened == []
-        assert len(scoped) == 1
-        assert scoped[0]["parameters"]["computed_attribute_name"] == OWNER_ATTRIBUTE
-        assert sorted(scoped[0]["parameters"]["object_ids"]) == sorted(dataset.car_ids)
+
+    async def test_a_rebase_refreshes_every_python_value_of_an_updated_node(
+        self,
+        rebase_dataset: tuple[PythonRecomputeDataset, str, str],
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        """The car's only changed field is one no query reads, and its value still read the old owner name."""
+        dataset, _, branch_name = rebase_dataset
+
+        scoped, widened = await self._rebase(
+            branch_name=branch_name,
+            workflow_recorder=workflow_recorder,
+            default_branch=default_branch,
+            admin_account=admin_account,
+        )
+
+        assert scoped == {NAME_ATTRIBUTE: [dataset.car_ids[0]], OWNER_ATTRIBUTE: [dataset.car_ids[0]]}
+        assert widened == []

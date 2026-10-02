@@ -3,8 +3,13 @@ from prefect import flow
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
-from infrahub.git.remote_refs import ensure_branch_exists, list_remote_refs
+from infrahub.exceptions import (
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+    RepositoryPermissionError,
+)
+from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
@@ -35,13 +40,18 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
                 repository_name=message.repository_name,
                 location=message.repository_location,
             )
+        if message.requires_write:
+            ensure_write_access(name=message.repository_name, url=message.repository_location)
     except RepositoryError as exc:
-        log.exception("Repository connectivity or branch check failed", repository=message.repository_name)
+        log.exception(
+            "Repository connectivity, branch or write-access check failed", repository=message.repository_name
+        )
         response_data.success = False
         response_data.message = exc.message
         response_data.operational_status = {
             RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
             RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
+            RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
         }.get(type(exc), RepositoryOperationalStatus.ERROR).value
 
     if message.reply_requested:

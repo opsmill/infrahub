@@ -82,10 +82,12 @@ def _resolver(
     *,
     read_sets: list[PythonAttributeReadSet],
     subscriber_source: PythonSubscriberSource,
+    refresh_updated_nodes: bool = False,
 ) -> IndexedPythonTargetResolver:
     return IndexedPythonTargetResolver(
         read_set_source=StaticPythonReadSetSource(read_sets=read_sets),
         subscriber_source=subscriber_source,
+        refresh_updated_nodes=refresh_updated_nodes,
     )
 
 
@@ -312,6 +314,32 @@ async def test_an_updated_node_of_the_target_kind_is_its_own_target() -> None:
 
     assert _identities(targets) == [(DEVICE, "label")]
     assert _ids(targets[0]) == frozenset({"d1"})
+
+
+async def test_a_replayed_update_refreshes_the_node_itself_whichever_fields_changed() -> None:
+    """A rebase moves the base under every value the updated node derived, including one it reads no changed field for.
+
+    Only the node itself is refreshed this way: the readers of another kind keep the field filter.
+    """
+    subscribers = RecordingSubscriberSource(subscribers={"d1": [("d9", DEVICE)], "s1": [("d9", DEVICE)]})
+    resolver = _resolver(read_sets=[SUMMARY, LABEL], subscriber_source=subscribers, refresh_updated_nodes=True)
+
+    targets = await resolver.resolve(
+        branch=BRANCH,
+        changes=[
+            MergeChange(node_id="d1", kind=DEVICE, action="updated", changed_fields=frozenset({"location"})),
+            MergeChange(node_id="s1", kind=SITE, action="updated", changed_fields=frozenset({"location"})),
+        ],
+    )
+
+    assert _identities(targets) == [(DEVICE, "label"), (DEVICE, "summary")]
+    for target in targets:
+        assert target.precise is True
+        assert target.whole_kind is False
+        assert target.reader_lookups == frozenset(
+            {ReaderLookup(source_kind=DEVICE, filter_key=SELF_FILTER, source_node_ids=frozenset({"d1"}))}
+        )
+    assert subscribers.calls == []
 
 
 async def test_a_deleted_id_is_resolved_apart_from_the_live_ids() -> None:

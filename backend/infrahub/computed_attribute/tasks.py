@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, MutationAction
@@ -38,9 +41,9 @@ from .models import (
     ComputedAttrJinja2GraphQL,
     ComputedAttrJinja2GraphQLResponse,
     ComputedAttrJinja2TriggerDefinition,
-    PythonTransformTarget,
 )
 from .read_sets import transform_read_set_from_query_report
+from .recompute_resolution import RecomputeResolver
 from .scoping import (
     ChangedElementSet,
     ComputedAttributeRef,
@@ -51,9 +54,16 @@ from .scoping import (
 from .transform_recompute import TransformRecomputeSubmitter
 
 if TYPE_CHECKING:
+    from logging import Logger, LoggerAdapter
+
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.schema.schema_branch_computed import TransformReadSet
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+
+    from .graphql_queries.queries import TransformNode
 
 
 async def _reconcile_python_computed_attribute_automations(db: InfrahubDatabase) -> None:
@@ -130,7 +140,7 @@ async def _transform_value_for_node(
         branch_name=branch_name,
         commit=commit,
         location=f"{file_path}::{class_name}",
-        data=data,
+        data=quote(data),
         convert_query_response=convert_query_response,
     )  # type: ignore[call-overload]
 
@@ -157,6 +167,127 @@ def _partition_transform_results(
     return writes, skipped
 
 
+async def _fetch_transform(*, client: InfrahubClient, transform_id: str, branch_name: str) -> TransformNode | None:
+    """The Python transform a computed attribute names, or ``None`` when the branch holds none.
+
+    Raises:
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for.
+
+    """
+    transform_query = ComputedAttributeTransformQuery(transform_id=transform_id)
+    transform_response = await client.execute_graphql(
+        query=transform_query.render_query(),
+        variables=transform_query.get_variables(),
+        branch_name=branch_name,
+    )
+    return transform_query.parse_response(response=transform_response)
+
+
+_NO_TRANSFORM_CONFIGURED = "no transform is configured for it"
+
+
+def _transform_absent(transform_id: str) -> str:
+    return f"transform '{transform_id}' is not in the database"
+
+
+def _warn_widened_skip(
+    *,
+    log: Logger | LoggerAdapter[Logger],
+    branch_name: str,
+    computed_attribute_name: str,
+    reason: str,
+) -> None:
+    """One warning shape for the two states a widened run can do nothing about."""
+    log.warning(
+        f"Skipping the widened recompute of '{computed_attribute_name}' on branch '{branch_name}': "
+        f"{reason}, so nothing can compute the attribute yet"
+    )
+
+
+async def _widened_skip_reason(
+    *,
+    client: InfrahubClient,
+    schema_branch: SchemaBranch,
+    branch_name: str,
+    computed_attribute_kind: str,
+    computed_attribute_name: str,
+) -> str | None:
+    """Why a widened run can produce no value, or ``None`` when it can.
+
+    A whole-kind target names an attribute the database may have nothing to run for: one with no
+    transform configured, and one whose transform is not in the branch. Both hold until the schema
+    or the repository changes, and the recompute that follows covers them then. Every whole-kind
+    target reaches this, the ones a failed resolution rebuilt from the schema and the ones a
+    successful one widened on its own. The verdict is only as good as the schema branch it is
+    given, so a caller acting on a reason has to be sure of it.
+
+    Raises:
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for. Both are faults on every path rather than
+            states to wait out.
+
+    """
+    attribute = schema_branch.computed_attributes.get_python_transform_attribute(
+        computed_attribute_kind, computed_attribute_name
+    )
+    # A registry that does not name the attribute yet decides nothing, so the run goes ahead.
+    if attribute is None:
+        return None
+    if not attribute.transform:
+        return _NO_TRANSFORM_CONFIGURED
+    if await _fetch_transform(client=client, transform_id=attribute.transform, branch_name=branch_name):
+        return None
+    return _transform_absent(attribute.transform)
+
+
+async def _widened_run_must_skip(
+    *,
+    log: Logger | LoggerAdapter[Logger],
+    client: InfrahubClient,
+    branch_name: str,
+    computed_attribute_kind: str,
+    computed_attribute_name: str,
+) -> bool:
+    """Whether a widened run must stop before it lists the kind, warning when it must.
+
+    The verdict covers the whole kind and no chunk revisits it, so a reason read off the schema
+    this worker happens to hold is confirmed against a converged one before the run stops.
+
+    Raises:
+        ValueError: if the transform is in the database but cannot be run, or if the response does
+            not have the shape the query asked for.
+
+    """
+
+    async def skip_reason() -> str | None:
+        return await _widened_skip_reason(
+            client=client,
+            schema_branch=registry.schema.get_schema_branch(name=branch_name),
+            branch_name=branch_name,
+            computed_attribute_kind=computed_attribute_kind,
+            computed_attribute_name=computed_attribute_name,
+        )
+
+    reason = await skip_reason()
+    if reason:
+        # Only the skip path waits, and it was about to save a whole-kind read anyway.
+        database = await get_database()
+        async with database.start_session() as db:
+            await wait_for_schema_to_converge(branch_name=branch_name, component=await get_component(), db=db, log=log)
+        reason = await skip_reason()
+    if not reason:
+        return False
+
+    _warn_widened_skip(
+        log=log,
+        branch_name=branch_name,
+        computed_attribute_name=computed_attribute_name,
+        reason=reason,
+    )
+    return True
+
+
 @flow(
     name="computed_attribute_process_transform",
     flow_run_name="Process computed attribute for {computed_attribute_kind}.{computed_attribute_name}",
@@ -171,6 +302,7 @@ async def process_transform(
     object_ids: list[str] | None = None,
     updated_fields: list[str] | None = None,  # noqa: ARG001
     coalesced: bool = False,
+    widened: bool = False,
     recompute_depth: int = 0,
 ) -> None:
     """Recompute one Python computed attribute for a batch of nodes.
@@ -180,8 +312,15 @@ async def process_transform(
     blocking its siblings. A coalesced pass stamps its writes with the recompute origin
     and drives the next level through the bounded chain.
 
+    ``widened`` marks a batch the resolution could not narrow, which is the only batch allowed to
+    wait out the two states nothing can compute: no transform configured, and a transform the
+    branch does not hold. A batch of resolved ids came from a resolution that found the transform,
+    so either state is a fault there.
+
     Raises:
-        ValueError: if a computed attribute has no transform configured or the transform cannot be fetched.
+        ValueError: on anything but a widened batch, if the attribute has no transform configured
+            or its transform is absent; on every batch, if the transform cannot be run or the
+            response does not have the shape the query asked for.
 
     """
     log = get_run_logger()
@@ -201,20 +340,33 @@ async def process_transform(
         return
 
     if not transform_attribute.transform:
-        raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
-    transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
-    transform_response = await client.execute_graphql(
-        query=transform_query.render_query(),
-        variables=transform_query.get_variables(),
-        branch_name=branch_name,
-    )
-    transform = transform_query.parse_response(response=transform_response)
-
-    if not transform:
-        raise ValueError(
-            f"Unable to fetch transform '{transform_attribute.transform}' "
-            f"for computed attribute '{computed_attribute_name}'"
+        if not widened:
+            raise ValueError(f"No transform configured for computed attribute '{computed_attribute_name}'")
+        _warn_widened_skip(
+            log=log,
+            branch_name=branch_name,
+            computed_attribute_name=computed_attribute_name,
+            reason=_NO_TRANSFORM_CONFIGURED,
         )
+        return
+
+    transform = await _fetch_transform(
+        client=client, transform_id=transform_attribute.transform, branch_name=branch_name
+    )
+    if not transform:
+        if not widened:
+            raise ValueError(
+                f"Unable to fetch transform '{transform_attribute.transform}' "
+                f"for computed attribute '{computed_attribute_name}'"
+            )
+        # A transform deleted between the widening and this run lands here.
+        _warn_widened_skip(
+            log=log,
+            branch_name=branch_name,
+            computed_attribute_name=computed_attribute_name,
+            reason=_transform_absent(transform_attribute.transform),
+        )
+        return
 
     # Built first: resolving it after the transforms would discard a completed batch.
     # `coalesced` stays a parameter; a live whole-kind refresh sends ids too.
@@ -276,32 +428,51 @@ async def trigger_update_python_computed_attributes(
     computed_attribute_kind: str,
     context: EventContext,
     coalesced: bool = False,
+    widened: bool = False,
     recompute_depth: int = 0,
 ) -> None:
-    """Recompute one Python computed attribute over every node of its kind."""
+    """Recompute one Python computed attribute over every node of its kind.
+
+    ``widened`` marks a run the resolution could not narrow. Only that run weighs whether anything
+    can compute the attribute before listing the kind, and only it may stop without submitting.
+
+    Raises:
+        ValueError: if a widened run finds a transform it cannot run, or one whose response does
+            not have the shape the query asked for.
+
+    """
+    log = get_run_logger()
     await add_tags(branches=[branch_name])
 
     client = get_client()
     client.request_context = context.to_request_context()
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-    object_ids = [node.id for node in nodes]
 
-    if not object_ids:
+    if widened and await _widened_run_must_skip(
+        log=log,
+        client=client,
+        branch_name=branch_name,
+        computed_attribute_kind=computed_attribute_kind,
+        computed_attribute_name=computed_attribute_name,
+    ):
         return
 
-    chunk_size = get_submission_chunk_size()
-    for chunk in chunked(object_ids, chunk_size):
-        await get_workflow().submit_workflow(
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    workflow = get_workflow()
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_kind": computed_attribute_kind,
-                "object_ids": chunk,
+                "object_ids": node_ids,
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
                 "coalesced": coalesced,
+                "widened": widened,
                 "recompute_depth": recompute_depth,
             },
             # Must be a creation tag: in-flow tag updates drop tags added mid-run.
@@ -324,11 +495,11 @@ async def process_jinja2(
     object_ids: list[str] | None = None,
     recompute_depth: int = 0,
 ) -> None:
-    """Recompute a single Jinja2 computed attribute in response to a node mutation.
+    """Recompute a Jinja2 computed attribute on one node (``object_id``) or on a set of nodes (``object_ids``).
 
-    The live trigger passes a single ``object_id``; the coalesced merge/rebase recompute passes
-    the union of changed node ids in ``object_ids``. ``computed_attribute_kind`` differs from
-    ``node_kind`` when the dependency crosses a relationship.
+    Passing ``object_ids`` makes it a coalesced pass (writes stamped ``recompute``), as the merge and
+    rebase recompute, the chained recompute and a whole-kind backfill do. ``computed_attribute_kind``
+    differs from ``node_kind`` when the dependency crosses a relationship.
     """
     log = get_run_logger()
     client = get_client()
@@ -383,7 +554,11 @@ async def process_jinja2(
             log.debug("No nodes found that requires updates")
 
         for node in found:
-            value = await jinja_template.render(variables=node.variables)
+            try:
+                value = await jinja_template.render(variables=node.variables)
+            except JinjaTemplateError as exc:
+                log.warning(f"Skipping recompute of '{attribute.name}' for node {node.node_id}: template raised {exc}")
+                continue
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
@@ -413,20 +588,23 @@ async def trigger_update_jinja2_computed_attributes(
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
-    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node_id in node_batch:
-            await workflow.submit_workflow(
-                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": computed_attribute_name,
-                    "computed_attribute_kind": computed_attribute_kind,
-                    "node_kind": computed_attribute_kind,
-                    "object_id": node_id,
-                    "context": context,
-                },
-            )
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
+            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "node_kind": computed_attribute_kind,
+                "object_ids": node_ids,
+                "context": context,
+            },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
+        )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
@@ -568,15 +746,22 @@ async def computed_attribute_setup_python(
             # database session is available, so that the scoping decision itself stays pure. A
             # derived read is checked against the schema of the trigger's own branch, whose derived
             # definitions are what decide the read can be held against a single kind.
+            # Attributes that share a transform on one branch share its analyzer, so the read set
+            # is derived once per transform. Deriving it again parses the Jinja2 of every derived
+            # field the query reads.
             read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
+            read_sets_by_transform: dict[tuple[str, str], TransformReadSet] = {}
             for trigger in triggers_python:
                 definition = trigger.computed_attribute.computed_attribute
-                read_sets[trigger.branch, definition.kind, definition.attribute.name] = (
-                    transform_read_set_from_query_report(
+                transform_key = (trigger.branch, trigger.computed_attribute.name)
+                if transform_key not in read_sets_by_transform:
+                    read_sets_by_transform[transform_key] = transform_read_set_from_query_report(
                         report=trigger.computed_attribute.query_analyzer.query_report,
                         schema_branch=registry.schema.get_schema_branch(name=trigger.branch),
                     )
-                )
+                read_sets[trigger.branch, definition.kind, definition.attribute.name] = read_sets_by_transform[
+                    transform_key
+                ]
 
             # Since we can have multiple trigger per NodeKind
             # we need to extract the list of unique node that should be processed
@@ -667,6 +852,31 @@ async def process_transform_lifecycle(
             await _reconcile_python_computed_attribute_automations(db=db)
 
 
+def _attributes_fed_by_transform(
+    *, schema_branch: SchemaBranch, transform_name: str, transform_id: str
+) -> dict[str, list[str]]:
+    """The Python computed attributes one transform feeds, per kind that owns them.
+
+    An attribute wires its transform by name or by id, so both keys answer here. Empty when the
+    schema feeds no attribute from this transform.
+    """
+    definitions = RecomputeResolver.from_schema_branch(schema_branch).resolve(
+        transform_name=transform_name, transform_id=transform_id
+    )
+    attributes_by_kind: dict[str, list[str]] = defaultdict(list)
+    for definition in definitions:
+        attributes_by_kind[definition.kind].append(definition.attribute.name)
+    return attributes_by_kind
+
+
+def _every_python_attribute(schema_branch: SchemaBranch) -> dict[str, list[str]]:
+    """Every Python computed attribute of the branch, per kind that owns them."""
+    return {
+        kind: [attribute.name for attribute in attributes]
+        for kind, attributes in schema_branch.computed_attributes.get_python_attributes_per_node().items()
+    }
+
+
 @flow(
     name="query-computed-attribute-transform-targets",
     flow_run_name="Query for potential targets of computed attributes for {node_kind}",
@@ -676,27 +886,60 @@ async def query_transform_targets(
     node_kind: str,  # noqa: ARG001
     object_id: str,
     context: EventContext,
+    graphql_query_id: str | None = None,
+    transform_name: str | None = None,
+    transform_id: str | None = None,
 ) -> None:
+    """Recompute the readers of a node that a transform's GraphQL query reads.
+
+    The parameters identify the automation's own query and transform. They are optional, so an
+    automation stored before they existed keeps working.
+    """
+    log = get_run_logger()
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)
     client = get_client()
     client.request_context = context.to_request_context()
-    refs = await fetch_subscriber_refs(client=client, node_ids=[object_id], branch=branch_name)
-    subscribers = [PythonTransformTarget(object_id=ref.id, kind=ref.kind) for ref in refs]
+    subscribers = await fetch_subscriber_refs(
+        client=client,
+        node_ids=[object_id],
+        branch=branch_name,
+        query_ids={graphql_query_id} if graphql_query_id else None,
+    )
+    if not subscribers:
+        log.info(
+            f"No subscriber to recompute on {branch_name}: no group holding {object_id} was reported "
+            f"for the query {graphql_query_id} of the transform {transform_name}"
+        )
+        return
 
-    nodes_with_computed_attributes = schema_branch.computed_attributes.get_python_attributes_per_node()
+    if transform_name is None or transform_id is None:
+        log.info(
+            "Recomputing every Python computed attribute of the subscriber kinds: this automation "
+            f"names no transform, on {branch_name}"
+        )
+        attributes_by_kind = _every_python_attribute(schema_branch)
+    else:
+        attributes_by_kind = _attributes_fed_by_transform(
+            schema_branch=schema_branch, transform_name=transform_name, transform_id=transform_id
+        )
+        if not attributes_by_kind:
+            log.info(
+                "Recomputing every Python computed attribute of the subscriber kinds: the schema of "
+                f"{branch_name} feeds no attribute from the transform {transform_name} ({transform_id})"
+            )
+            attributes_by_kind = _every_python_attribute(schema_branch)
 
-    # Group by (kind, attribute_name) so each attribute gets one batch workflow submission
-    batches: dict[tuple[str, str], list[str]] = {}
+    # One batch per (kind, attribute), with the ids deduplicated: a subscriber is reported once
+    # per group holding the changed node, and processing it twice writes the same value twice.
+    batches: dict[tuple[str, str], set[str]] = defaultdict(set)
     for subscriber in subscribers:
-        if subscriber.kind in nodes_with_computed_attributes:
-            for computed_attribute in nodes_with_computed_attributes[subscriber.kind]:
-                key = (subscriber.kind, computed_attribute.name)
-                batches.setdefault(key, []).append(subscriber.object_id)
+        for attribute_name in attributes_by_kind.get(subscriber.kind, []):
+            batches[subscriber.kind, attribute_name].add(subscriber.id)
 
     chunk_size = get_submission_chunk_size()
     for (kind, attribute_name), batch_object_ids in batches.items():
-        for chunk in chunked(batch_object_ids, chunk_size):
+        for chunk in chunked(sorted(batch_object_ids), chunk_size):
             await get_workflow().submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
                 context=context,

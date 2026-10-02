@@ -1,18 +1,15 @@
 """Port of frontend/app/tests/e2e/theme.spec.ts.
 
 Covers the dark-theme rollout behavior: a fresh visitor follows the desktop
-color scheme when the deployment enables the flag, an explicit choice applies
-instantly and survives a reload without flashing (the pre-paint script), and a
-deployment with the flag off renders light regardless of desktop preference
-while retaining any stored choice.
+color scheme when the deployment enables the flag, including a desktop that
+changes appearance between visits, an explicit choice from the theme submenu
+applies instantly and survives a reload without flashing (the pre-paint script),
+and a deployment with the flag off renders light regardless of desktop
+preference while retaining any stored choice.
 
 Every test is a fresh anonymous visitor (the plain ``page`` fixture, no storage
 state): the coldest cache the pre-paint script can meet and the least
-privileged surface the switch must still be reachable on. The tests need a
-built frontend, which is what the docker stack serves — a Vite dev server
-overrides the default to dark so that whoever is working on the theme has it on
-screen, and pointing INFRAHUB_ADDRESS at one would fail the two
-desktop-following tests for that reason alone.
+privileged surface the switch must still be reachable on.
 """
 
 from __future__ import annotations
@@ -56,6 +53,14 @@ async def _open_account_menu(page: Page) -> None:
     await page.get_by_test_id("unauthenticated-menu-trigger").click()
 
 
+async def _open_theme_submenu(page: Page) -> Locator:
+    """Open the account menu's theme submenu and return its "Theme" trigger item."""
+    await _open_account_menu(page)
+    theme_item = page.get_by_role("menuitem", name="Theme", exact=True)
+    await theme_item.click()
+    return theme_item
+
+
 class TestTheme:
     async def test_fresh_visitor_on_dark_desktop_lands_dark_when_deployment_enables_it(self, page: Page) -> None:
         await _set_dark_theme_flag(page, enabled=True)
@@ -66,13 +71,15 @@ class TestTheme:
 
         await expect(_html(page)).to_contain_class("dark")
 
-        await _open_account_menu(page)
-        # Offers the way back out, untagged — only the step *into* the pre-release theme is tagged.
-        switch_item = page.get_by_role("menuitem", name="Light theme")
-        await expect(switch_item).to_be_visible()
-        await expect(switch_item).not_to_contain_text("alpha")
+        # The dark page comes from following the desktop, not from a choice of dark, and the menu
+        # says so. Only the pre-release theme is tagged.
+        theme_item = await _open_theme_submenu(page)
+        await expect(theme_item).to_contain_text("System")
+        await expect(page.get_by_role("menuitemradio", name="System")).to_have_attribute("aria-checked", "true")
+        await expect(page.get_by_role("menuitemradio", name="Light")).not_to_contain_text("alpha")
+        await expect(page.get_by_role("menuitemradio", name="Dark")).to_contain_text("alpha")
 
-    async def test_fresh_visitor_on_light_desktop_stays_light_and_is_offered_the_way_in(self, page: Page) -> None:
+    async def test_fresh_visitor_on_light_desktop_stays_light_with_system_selected(self, page: Page) -> None:
         await _set_dark_theme_flag(page, enabled=True)
         await page.emulate_media(color_scheme="light")
 
@@ -81,8 +88,8 @@ class TestTheme:
 
         await expect(_html(page)).not_to_contain_class("dark")
 
-        await _open_account_menu(page)
-        await expect(page.get_by_role("menuitem", name="Dark theme")).to_contain_text("alpha")
+        await _open_theme_submenu(page)
+        await expect(page.get_by_role("menuitemradio", name="System")).to_have_attribute("aria-checked", "true")
 
     async def test_switching_to_light_applies_instantly_and_survives_a_reload_without_flashing(
         self, page: Page
@@ -93,8 +100,8 @@ class TestTheme:
         await page.goto("/")
         await expect(page.get_by_test_id("sidebar")).to_be_visible()
 
-        await _open_account_menu(page)
-        await page.get_by_role("menuitem", name="Light theme").click()
+        await _open_theme_submenu(page)
+        await page.get_by_role("menuitemradio", name="Light").click()
         await expect(_html(page)).not_to_contain_class("dark")
 
         # The pre-paint script must deliver the choice before the app boots, so the document is
@@ -108,8 +115,34 @@ class TestTheme:
         await expect(page.get_by_test_id("sidebar")).to_be_visible()
         await expect(_html(page)).not_to_contain_class("dark")
 
-        await _open_account_menu(page)
-        await expect(page.get_by_role("menuitem", name="Dark theme")).to_contain_text("alpha")
+        theme_item = await _open_theme_submenu(page)
+        await expect(theme_item).to_contain_text("Light")
+        await expect(page.get_by_role("menuitemradio", name="Light")).to_have_attribute("aria-checked", "true")
+
+    async def test_following_the_desktop_tracks_it_live_and_across_visits_without_flashing(self, page: Page) -> None:
+        await _set_dark_theme_flag(page, enabled=True)
+        await page.emulate_media(color_scheme="dark")
+
+        await page.goto("/")
+        await expect(page.get_by_test_id("sidebar")).to_be_visible()
+        await expect(_html(page)).to_contain_class("dark")
+
+        # A desktop flipped while the page is open is followed without a reload.
+        await page.emulate_media(color_scheme="light")
+        await expect(_html(page)).not_to_contain_class("dark")
+        await page.emulate_media(color_scheme="dark")
+        await expect(_html(page)).to_contain_class("dark")
+
+        # Each reload below is sampled once on purpose: only the pre-paint script can have set the
+        # class this early, and it has to ask the desktop to resolve "system". A desktop still dark
+        # reloads dark...
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "dark"
+
+        # ...and one that turned light since the last visit must not reload into that stale dark.
+        await page.emulate_media(color_scheme="light")
+        await page.goto("/", wait_until="domcontentloaded")
+        assert await _html_theme(page) == "light"
 
     async def test_deployment_with_the_theme_off_renders_light_and_offers_no_switch(self, page: Page) -> None:
         await _set_dark_theme_flag(page, enabled=False)
@@ -117,20 +150,11 @@ class TestTheme:
         # permission, and must not reach past an operator who turned the theme off.
         await page.emulate_media(color_scheme="dark")
 
-        # GIVEN a user who chose dark while the feature was on, after one visit has re-mirrored
-        # the resolved theme (the first load after the flag flips may still paint one stale dark
-        # frame; the mirror is what heals it)
+        # GIVEN a user who chose dark while the feature was on
         await page.goto("/")
-        await page.evaluate(
-            """() => {
-                localStorage.setItem("infrahub.theme.choice", "dark");
-                localStorage.setItem("infrahub.theme.resolved", "light");
-            }"""
-        )
+        await page.evaluate('() => localStorage.setItem("infrahub.theme.choice", "dark")')
 
-        await page.goto("/", wait_until="domcontentloaded")
-        assert await _html_theme(page) == "light"
-
+        await page.goto("/")
         await expect(page.get_by_test_id("sidebar")).to_be_visible()
         await expect(_html(page)).not_to_contain_class("dark")
 

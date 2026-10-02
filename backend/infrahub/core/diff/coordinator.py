@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from opentelemetry import trace
 from prefect import flow
+from prefect.utilities.annotations import quote
 
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
@@ -338,6 +339,40 @@ class DiffCoordinator:
                 self.logger.info(f"Arbitrary diff update complete for {base_branch.name} - {diff_branch.name}")
             return enriched_diffs.diff_branch_diff
 
+    async def calculate_arbitrary_timeframe_diff(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        node_kinds: list[str] | None = None,
+    ) -> EnrichedDiffRoot:
+        """Calculate and enrich the diff of a time range without storing it.
+
+        No diff lock is taken: a diff that is never stored cannot race another update of the same pair.
+
+        Args:
+            node_kinds: Calculate the changes of the diff branch for nodes of these kinds only.
+
+        """
+        self.logger.info(f"Calculating unstored diff for {base_branch.name} - {diff_branch.name}")
+        enriched_diffs = await self._calculate_enriched_diff(
+            diff_request=EnrichedDiffRequest(
+                base_branch=base_branch,
+                diff_branch=diff_branch,
+                from_time=from_time,
+                to_time=to_time,
+                tracking_id=NameTrackingId(name=str(uuid4())),
+            ),
+            is_incremental_diff=False,
+            node_kinds=node_kinds,
+        )
+        await self.conflicts_enricher.add_conflicts_to_branch_diff(
+            base_diff_root=enriched_diffs.base_branch_diff, branch_diff_root=enriched_diffs.diff_branch_diff
+        )
+        await self.labels_enricher.enrich(enriched_diff_root=enriched_diffs.diff_branch_diff, conflicts_only=True)
+        return enriched_diffs.diff_branch_diff
+
     async def recalculate(
         self,
         base_branch: Branch,
@@ -362,7 +397,10 @@ class DiffCoordinator:
                         f"Diff {diff_id} for branch {diff_branch.name} no longer exists, skipping recalculation"
                     )
                     return None
-                current_base_diff = await self.diff_repo.get_one(
+                if not current_branch_diff.partner_uuid:
+                    raise ResourceNotFoundError(f"Diff {diff_id} for branch {diff_branch.name} has no partner diff")
+                # a recalculation replaces the partner and reads only its uuid and proposed change
+                current_base_diff = await self.diff_repo.get_one_metadata(
                     diff_branch_name=base_branch.name, diff_id=current_branch_diff.partner_uuid
                 )
                 if current_branch_diff.tracking_id and isinstance(current_branch_diff.tracking_id, BranchTrackingId):
@@ -480,11 +518,6 @@ class DiffCoordinator:
         force_branch_refresh: Literal[False] = ...,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]: ...
 
-    @flow(  # type: ignore[misc]
-        name="update-diff",
-        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
-        validate_parameters=False,
-    )
     async def _update_diffs(
         self,
         base_branch: Branch,
@@ -494,6 +527,41 @@ class DiffCoordinator:
         tracking_id: TrackingId,
         force_branch_refresh: bool = False,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
+        quoted = await self._update_diffs_flow(  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
+            base_branch=base_branch,
+            diff_branch=diff_branch,
+            from_time=from_time,
+            to_time=to_time,
+            tracking_id=tracking_id,
+            force_branch_refresh=force_branch_refresh,
+        )
+        # mypy types a tuple[T] subclass as a plain tuple, so the payload type is restored by narrowing
+        enriched_diffs, node_identifiers_to_drop = quoted.unquote()
+        if not isinstance(enriched_diffs, EnrichedDiffsMetadata) or not isinstance(node_identifiers_to_drop, set):
+            raise TypeError(
+                f"expected (EnrichedDiffsMetadata, set) from the update-diff flow, got"
+                f" ({type(enriched_diffs).__name__}, {type(node_identifiers_to_drop).__name__})"
+            )
+        return enriched_diffs, node_identifiers_to_drop
+
+    # The enriched diff can hold millions of objects. Prefect would otherwise walk every one of
+    # them looking for futures when the flow returns, and the task worker would pickle the whole
+    # tree into its Redis result store, so the result is returned inside quote() and not persisted.
+    @flow(
+        name="update-diff",
+        flow_run_name="Update diff for {base_branch.name} - {diff_branch.name}: ({from_time}-{to_time}),tracking_id={tracking_id}",
+        validate_parameters=False,
+        persist_result=False,
+    )
+    async def _update_diffs_flow(
+        self,
+        base_branch: Branch,
+        diff_branch: Branch,
+        from_time: Timestamp,
+        to_time: Timestamp,
+        tracking_id: TrackingId,
+        force_branch_refresh: bool = False,
+    ) -> quote:
         # start with empty diffs b/c we only care about their metadata for now, hydrate them with data as needed
         diff_pairs_metadata = await self.diff_repo.get_diff_pairs_metadata(
             base_branch_names=[base_branch.name],
@@ -536,7 +604,7 @@ class DiffCoordinator:
         # this is an EnrichedDiffsMetadata, so there are no nodes to enrich
         if not isinstance(aggregated_enriched_diffs, EnrichedDiffs):
             aggregated_enriched_diffs.update_metadata(from_time=from_time, to_time=to_time, tracking_id=tracking_id)
-            return aggregated_enriched_diffs, set()
+            return quote((aggregated_enriched_diffs, set()))
 
         await self.conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=aggregated_enriched_diffs.base_branch_diff,
@@ -546,7 +614,7 @@ class DiffCoordinator:
             enriched_diff_root=aggregated_enriched_diffs.diff_branch_diff, conflicts_only=True
         )
 
-        return aggregated_enriched_diffs, node_identifiers_to_drop
+        return quote((aggregated_enriched_diffs, node_identifiers_to_drop))
 
     @overload
     async def _aggregate_enriched_diffs(
@@ -743,7 +811,7 @@ class DiffCoordinator:
         return await self.data_check_synchronizer.synchronize(enriched_diff=enriched_diff)
 
     async def _calculate_enriched_diff(
-        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool
+        self, diff_request: EnrichedDiffRequest, is_incremental_diff: bool, node_kinds: list[str] | None = None
     ) -> EnrichedDiffs:
         self.logger.info(f"Calculating diff for {diff_request!r}, include_unchanged={is_incremental_diff}")
         calculated_diff_pair = await self.diff_calculator.calculate_diff(
@@ -753,6 +821,7 @@ class DiffCoordinator:
             to_time=diff_request.to_time,
             include_unchanged=is_incremental_diff,
             previous_node_specifiers=diff_request.node_field_specifiers,
+            node_kinds=node_kinds,
         )
         self.logger.info("Calculation complete. Enriching diff...")
         enriched_diff_pair = await self.diff_enricher.enrich(

@@ -29,8 +29,9 @@ Two doubles are worth writing for an injected collaborator: a `Recording*` one t
 Acceptable exceptions only:
 
 - External HTTP APIs with no test mode: use `httpx_mock` or `responses`
-- Time-dependent behavior: `freezegun`
 - Prefect's `get_run_logger`: when calling a Prefect-decorated function via `.fn` outside a flow context, patch `get_run_logger` to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See `dev/knowledge/backend/testing.md` for the full pattern.
+
+Time-dependent logic takes its clock as a `Callable[[], float]` defaulting to `time.monotonic`, and the test passes a fake it advances; never reach for `freezegun`, which is not a project dependency. Full guidance in `dev/guidelines/backend/testing.md` §"Time: inject a clock, don't freeze one".
 
 ## Parametrized tests
 
@@ -70,7 +71,11 @@ Skip tests that only exercise library behavior: plain `Enum` value/round-trip ch
 
 ## Pick the cheapest test tier
 
-If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there.
+If the logic needs only in-memory inputs (a `SchemaBranch`, a dataclass, a pure function), write a unit test without DB fixtures — don't default to a component test because a neighbor uses one. Use the database or containers only when behavior genuinely depends on them. When the changed logic seems to need the full integration fixture, first check whether it can be extracted as a pure function over directly-constructible data and unit-tested there. The converse holds for a `Query` subclass: the rows it reads back are database behavior, so it is covered at the component layer against the real database — directly or through its caller — never by a unit test that hand-builds `QueryResult` rows.
+
+## Check existing coverage before adding a test
+
+Trace the code's callers to the test that asserts their output; a grep for the class or method name is not a coverage check, because the component suite drives most core classes through the resolver or manager that calls them. If that test already asserts the behavior, do not add a second test for it; if it leaves a case unasserted, add the case there. See `dev/guidelines/backend/testing.md` §"What not to test".
 
 ## Wiring tests parse source, never instrument it
 
@@ -80,6 +85,10 @@ Never add a marker, attribute, or `type: ignore` to production code so a test ca
 
 Every test in an xdist worker shares one interpreter. Change `logging` levels/handlers/filters, `structlog` config, module-level registries/singletons, class attributes (your own or a third-party library's), `sys.path`/`sys.modules` or env vars only through a save/restore fixture (change it, `yield`, restore it), or `monkeypatch` where it applies. Never call an application startup routine such as `infrahub.log.configure_logging` from a test — it owns the whole process and undoes nothing, so it reconfigures every later test in the worker. Install only the piece under test and remove it after the `yield`. Never call `dependency_provider.scope` around code that may raise: it skips its cleanup on an exception, so a `pytest.raises` around the call leaks the double to every later test on the worker. Use `backend/tests/helpers/dependency_override.py::override_dependency`, or `backend/tests/helpers/workflow_override.py::override_workflow` for a workflow double; both restore in a `finally`. See `dev/guidelines/backend/testing.md` §"Leave process-global state as you found it".
 
+## One database session per concurrent path
+
+A Neo4j session carries a single connection and cannot serve two coroutines at once, and the module-scoped `db` fixture hands the same session to every test in a module. Give each racing call its own `db.start_session()`. Sharing one wedges the connection, and every later test in the module then dies on `read() called while another coroutine is already waiting for incoming data`. Flows and GraphQL open their own session, so racing those is safe; a component a test calls directly is not. Full guidance in `dev/guidelines/backend/testing.md` §"One database session per concurrent path".
+
 ## Prefect task manager setup
 
 Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.task_manager.setup_task_manager_once()`. The raw setup re-registers every block, pool, deployment and trigger against the worker's Prefect server with no timeout, and under CI load that hangs until pytest-timeout kills the whole class. The helper runs it once per server URL, bounded, and fails fast for that server afterwards. The only test allowed to call the raw function is the one that tests the setup itself. Mechanism in `dev/knowledge/backend/testing.md` §"Prefect Testing Patterns".
@@ -87,6 +96,10 @@ Never call `setup_task_manager()` from a test or fixture; call `tests.helpers.ta
 ## A regression guard must be shown to bite
 
 Before trusting a test that pins a fix or an optimization, run it against the code without the change (revert it, or reintroduce the old call) and watch it fail — a guard that passes on both sides asserts nothing, and several have. State the check in the PR ("fails with X when the fix is reverted"). A `strict=True` xfail swallows every assertion in its body, so it holds only the expected failure; invariants that must hold today go in a passing test.
+
+## Never assert on elapsed time
+
+No `assert elapsed_seconds < N`, and no assertion on wall-clock gaps between events: the threshold encodes the speed of the machine that wrote it, so it passes on a fast runner with the regression present and flakes on a loaded one without it. Guard a complexity fix by counting the work (calls, queries, comparisons) instead, and put the measurement in the commit message or PR rather than the suite. When the behavior really is a schedule, inject the clock. Full guidance in `dev/guidelines/backend/testing.md` §"Never assert on elapsed time".
 
 ## Test file placement
 

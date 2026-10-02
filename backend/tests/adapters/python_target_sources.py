@@ -52,7 +52,7 @@ class RecordingSubscriberSource:
         if self.empties_lookup & set(node_ids):
             return []
         return [
-            SubscriberRef(id=subscriber_id, kind=kind)
+            SubscriberRef(id=subscriber_id, kind=kind, query_id=None)
             for node_id in node_ids
             for subscriber_id, kind in self.subscribers_by_node.get(node_id, [])
         ]

@@ -8,6 +8,7 @@ from git.exc import GitCommandError
 
 from infrahub.exceptions import RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
+from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 
 HEAD_SYMREF_PREFIX = "ref: refs/heads/"
 BRANCH_REF_PREFIX = "refs/heads/"
@@ -73,3 +74,30 @@ def ensure_branch_exists(refs: RemoteRefs, *, branch_name: str, repository_name:
         location=location,
         message=f"Branch '{branch_name}' does not exist on the remote repository {repository_name}; {detail}",
     )
+
+
+def ensure_write_access(name: str, url: str) -> None:
+    """Confirm the credentials can push to the remote, not only read from it.
+
+    Authorization to ``receive-pack`` is checked before refs are advertised, so a dry-run
+    delete of a throwaway ref reaches the write-gated service while ``--dry-run`` sends no
+    ref update and no pack. The remote is never mutated, even when the probe ref happens to
+    exist on it. ``git push`` needs a repository to run from - unlike ``ls-remote`` - so the
+    probe runs from a throwaway ``git init``-ed directory.
+
+    Raises:
+        RepositoryPermissionError: When the credentials authenticate but are not allowed to push.
+        RepositoryCredentialsError: When the push service rejects the credentials.
+        RepositoryConnectionError: When the remote is unreachable.
+        RepositoryError: For any other git failure.
+
+    """
+    with tempfile.TemporaryDirectory() as probe_dir:
+        cmd = git.cmd.Git(working_dir=probe_dir)
+        try:
+            cmd.init()
+            cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
+        except GitCommandError as exc:
+            InfrahubRepositoryBase._raise_enriched_error_static(
+                name=name, location=url, error=exc, is_write_operation=True
+            )

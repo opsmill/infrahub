@@ -15,6 +15,9 @@ class GitRepositoryConnectivity(InfrahubMessage):
     default_branch: str | None = Field(
         default=None, description="The branch that must exist on the remote; when unset, only connectivity is checked"
     )
+    requires_write: bool = Field(
+        default=False, description="Whether the check must also confirm write (push) access to the remote"
+    )
 
 
 class GitRepositoryConnectivityResponseData(InfrahubResponseData):
