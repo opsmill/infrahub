@@ -107,12 +107,13 @@ export function RepositoryCommitsManager({
     <Col className="h-full gap-0">
       <RepositoryCommitsHeader log={log} />
       {isShowingStaleCommits({
+        firstPage: log,
         hasError: error !== null,
         isFetchNextPageError,
         loadedCommitCount: commits.length,
       }) && (
         <RepositoryCommitsNotice>
-          <p>Could not refresh the commit log. Showing the last loaded commits.</p>
+          <p>Couldn't refresh the commit log right now. Showing the last loaded commits.</p>
         </RepositoryCommitsNotice>
       )}
       <InfiniteScroll

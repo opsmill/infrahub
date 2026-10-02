@@ -38,15 +38,18 @@ export function getHistoryRetry(
 }
 
 export function isShowingStaleCommits({
+  firstPage,
   hasError,
   isFetchNextPageError,
   loadedCommitCount,
 }: {
+  firstPage: Pick<RepositoryCommitLog, "condition">;
   hasError: boolean;
   isFetchNextPageError: boolean;
   loadedCommitCount: number;
 }): boolean {
-  return hasError && !isFetchNextPageError && loadedCommitCount > 0;
+  if (loadedCommitCount === 0) return false;
+  return (hasError && !isFetchNextPageError) || !isGitStateAvailable(firstPage);
 }
 
 export interface CommitLogEmptyState {

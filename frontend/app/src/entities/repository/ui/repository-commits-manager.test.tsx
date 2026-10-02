@@ -55,6 +55,8 @@ const formatDate = (date: string) =>
 const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
+const STALE_NOTICE = "Couldn't refresh the commit log right now. Showing the last loaded commits.";
+
 let queryClient: QueryClient;
 
 function CaptureQueryClient() {
@@ -332,6 +334,28 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("says the rows are stale while polls answer unavailable, until one answers with the log", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    const staleNotice = component.getByText(STALE_NOTICE);
+    expect(staleNotice.query()).toBeNull();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(staleNotice).toBeVisible();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await queryClient.refetchQueries();
+    await expect.poll(() => staleNotice.query()).toBeNull();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+  });
+
   test("keeps the loaded rows when a later poll fails", async () => {
     // GIVEN
     apiMock
@@ -358,9 +382,7 @@ describe("RepositoryCommitsManager", () => {
       .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    const staleNotice = component.getByText(
-      "Could not refresh the commit log. Showing the last loaded commits."
-    );
+    const staleNotice = component.getByText(STALE_NOTICE);
     expect(staleNotice.query()).toBeNull();
 
     // WHEN

@@ -386,6 +386,7 @@ describe("isShowingStaleCommits", () => {
   test("flags loaded commits kept over a failed refresh", () => {
     // WHEN
     const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
       hasError: true,
       isFetchNextPageError: false,
       loadedCommitCount: 3,
@@ -398,6 +399,7 @@ describe("isShowingStaleCommits", () => {
   test("leaves a failed next page to the history retry", () => {
     // WHEN
     const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
       hasError: true,
       isFetchNextPageError: true,
       loadedCommitCount: 3,
@@ -410,6 +412,7 @@ describe("isShowingStaleCommits", () => {
   test("does not flag a failure with nothing loaded", () => {
     // WHEN
     const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
       hasError: true,
       isFetchNextPageError: false,
       loadedCommitCount: 0,
@@ -422,9 +425,36 @@ describe("isShowingStaleCommits", () => {
   test("does not flag loaded commits without an error", () => {
     // WHEN
     const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
       hasError: false,
       isFetchNextPageError: false,
       loadedCommitCount: 3,
+    });
+
+    // THEN
+    expect(result).toBe(false);
+  });
+
+  test("flags loaded commits kept over an unavailable first page", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.UNAVAILABLE },
+      hasError: false,
+      isFetchNextPageError: false,
+      loadedCommitCount: 3,
+    });
+
+    // THEN
+    expect(result).toBe(true);
+  });
+
+  test("does not flag an unavailable first page with nothing loaded", () => {
+    // WHEN
+    const result = isShowingStaleCommits({
+      firstPage: { condition: RepositoryGitCondition.UNAVAILABLE },
+      hasError: false,
+      isFetchNextPageError: false,
+      loadedCommitCount: 0,
     });
 
     // THEN

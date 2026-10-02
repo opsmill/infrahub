@@ -1,0 +1,1 @@
+export const REPOSITORY_COMMITS_PAGE_SIZE = 20;

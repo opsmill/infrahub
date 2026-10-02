@@ -24,27 +24,39 @@ import {
   REPOSITORY_COMMITS_POLL_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+import { REPOSITORY_COMMITS_PAGE_SIZE } from "@/entities/repository/ui/queries/repository-commits.constants";
 
-export const REPOSITORY_COMMITS_PAGE_SIZE = 20;
 export const REPOSITORY_COMMITS_STALE_TIME_MS = 60_000;
 
 type GetRepositoryCommitsQueryParams = Omit<GetRepositoryCommitsParams, keyof PaginationParams>;
 
 type RepositoryCommitPages = InfiniteData<RepositoryCommitLog, number>;
 
-function firstPageHasGitState({ pages: [firstPage] }: RepositoryCommitPages) {
-  return firstPage !== undefined && isGitStateAvailable(firstPage);
+function hasLoadedCommits({ pages }: RepositoryCommitPages) {
+  return pages.some((page) => page.commits.length > 0);
 }
 
 // A same-key refetch replaces data outright, so without this a cold poll would blank loaded pages.
-function keepLoadedPagesOverColdAnswer(
+function keepLoadedCommitsWithLatestAvailability(
   oldData: RepositoryCommitPages | undefined,
   newData: RepositoryCommitPages
 ): RepositoryCommitPages {
-  if (oldData && firstPageHasGitState(oldData) && !firstPageHasGitState(newData)) {
-    return oldData;
+  const [newFirstPage] = newData.pages;
+  const [oldFirstPage, ...olderPages] = oldData?.pages ?? [];
+  if (
+    !oldData ||
+    !oldFirstPage ||
+    !hasLoadedCommits(oldData) ||
+    !newFirstPage ||
+    isGitStateAvailable(newFirstPage)
+  ) {
+    return replaceEqualDeep(oldData, newData);
   }
-  return replaceEqualDeep(oldData, newData);
+  const { condition, unavailable, pending_count } = newFirstPage;
+  return replaceEqualDeep(oldData, {
+    ...oldData,
+    pages: [{ ...oldFirstPage, condition, unavailable, pending_count }, ...olderPages],
+  });
 }
 
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
@@ -73,12 +85,7 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _, lastPageParam) => {
-      if (
-        !isGitStateAvailable(lastPage) ||
-        lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE
-      ) {
-        return;
-      }
+      if (lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE) return;
       return lastPageParam + REPOSITORY_COMMITS_PAGE_SIZE;
     },
     refetchInterval: (query) => {
@@ -89,7 +96,7 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
     },
     // TanStack types structuralSharing's arguments as unknown.
     structuralSharing: (oldData, newData) =>
-      keepLoadedPagesOverColdAnswer(
+      keepLoadedCommitsWithLatestAvailability(
         oldData as RepositoryCommitPages | undefined,
         newData as RepositoryCommitPages
       ),

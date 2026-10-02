@@ -12,10 +12,10 @@ import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get
 import { REPOSITORY_COMMITS_POLL_INTERVAL_MS } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
 import {
   getRepositoryCommitsQueryOptions,
-  REPOSITORY_COMMITS_PAGE_SIZE,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+import { REPOSITORY_COMMITS_PAGE_SIZE } from "@/entities/repository/ui/queries/repository-commits.constants";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-commits");
 
@@ -83,7 +83,8 @@ function resolveStructuralSharing(
   });
   const oldData = oldPages && toData(oldPages);
   const newData = toData(newPages);
-  return { oldData, newData, result: structuralSharing(oldData, newData) };
+  const result = structuralSharing(oldData, newData) as typeof newData;
+  return { newData, result };
 }
 
 describe("getRepositoryCommitsQueryOptions", () => {
@@ -92,19 +93,83 @@ describe("getRepositoryCommitsQueryOptions", () => {
     vi.resetAllMocks();
   });
 
-  test("keeps the loaded pages when a refetch answers unavailable", () => {
+  test("keeps the loaded commits but records the unavailable answer when a refetch answers unavailable", () => {
     // GIVEN
     const loaded = [
-      buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE),
-      buildLog(RepositoryGitCondition.IN_SYNC, 2),
+      {
+        ...buildLog(RepositoryGitCondition.BEHIND, REPOSITORY_COMMITS_PAGE_SIZE),
+        fetched_at: "2026-01-01T00:00:00Z",
+        checked_at: "2026-01-02T00:00:00Z",
+        imported_commit: buildCommit(3).hash,
+        remote_head: buildCommit(0).hash,
+        pending_count: 3,
+      },
+      buildLog(RepositoryGitCondition.BEHIND, 2),
     ];
-    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
+    const coldPage = buildLog(RepositoryGitCondition.UNAVAILABLE, 0);
 
     // WHEN
-    const { oldData, result } = resolveStructuralSharing(loaded, cold);
+    const { result } = resolveStructuralSharing(loaded, [coldPage]);
 
     // THEN
-    expect(result).toBe(oldData);
+    expect(result.pages).toEqual([
+      {
+        ...loaded[0],
+        condition: RepositoryGitCondition.UNAVAILABLE,
+        unavailable: coldPage.unavailable,
+        pending_count: null,
+      },
+      loaded[1],
+    ]);
+  });
+
+  test("still keeps the loaded commits when a second refetch answers unavailable", () => {
+    // GIVEN
+    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
+    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
+    const { result: afterFirstCold } = resolveStructuralSharing(loaded, cold);
+
+    // WHEN
+    const { result } = resolveStructuralSharing(afterFirstCold.pages, cold);
+
+    // THEN
+    expect(result.pages[0]?.commits).toEqual(loaded[0]?.commits);
+    expect(result.pages[0]?.condition).toBe(RepositoryGitCondition.UNAVAILABLE);
+  });
+
+  test("replaces the kept commits once a refetch answers with a git state again", () => {
+    // GIVEN
+    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
+    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
+    const { result: afterCold } = resolveStructuralSharing(loaded, cold);
+    const fresh = [buildLog(RepositoryGitCondition.BEHIND, 5)];
+
+    // WHEN
+    const { newData, result } = resolveStructuralSharing(afterCold.pages, fresh);
+
+    // THEN
+    expect(result).toEqual(newData);
+  });
+
+  test.each([
+    {
+      reason: RepositoryGitUnavailableReason.NOT_CLONED,
+      interval: REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+    },
+    { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, interval: false },
+  ])("polls as for $reason after that answer arrives over loaded commits", ({
+    reason,
+    interval,
+  }) => {
+    // GIVEN
+    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
+    const { result } = resolveStructuralSharing(loaded, [buildUnavailableLog(reason)]);
+
+    // WHEN
+    const nextInterval = resolveRefetchInterval(result.pages);
+
+    // THEN
+    expect(nextInterval).toBe(interval);
   });
 
   test("takes the new pages when a refetch carries a git state", () => {
