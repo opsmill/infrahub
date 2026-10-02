@@ -295,7 +295,7 @@ For a relationship that holds a single peer, only the current peer includes labe
 
 Node events emitted by a branch merge or rebase contain the same fields as those emitted by a mutation.
 
-Treat the label fields as optional. A peer's labels are `null` when Infrahub could not read them, for example because the peer was deleted by the same operation, and the event is still delivered. To match an object against your own records, use `hfid`, which follows the naming your schema defines. The `hfid` changes when the attributes it is built from change, while `node_id` never changes.
+Treat the label fields as optional. A peer's labels are `null` when Infrahub could not read them, for example because the peer was deleted by the same operation, and the event is still delivered. The event Infrahub sends for such a peer carries the placeholder `n/a` as its `display_label`. To match an object against your own records, use `hfid`, which follows the naming your schema defines. The `hfid` changes when the attributes it is built from change, while `node_id` never changes.
 
 ## Custom headers
 
