@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Protocol
 
 from git import BadName
 from git.exc import GitCommandError, GitError
-from gitdb.exc import ODBError
 
 from infrahub.exceptions import RepositoryError
 
@@ -13,6 +12,9 @@ if TYPE_CHECKING:
     from git import Repo
 
 COMMIT_SHA_PATTERN = re.compile(r"[0-9a-fA-F]{40}")
+
+OBJECT_ABSENT_STATUS = 1
+"""What `git cat-file -e` returns for a well-formed name no object answers to."""
 
 
 class AncestryGateway(Protocol):
@@ -65,8 +67,8 @@ class GitPythonAncestryGateway:
         a git call that could not run both surface as the same error from the ancestry check.
 
         Raises:
-            RepositoryError: When the identifier is not a full object name, or when the object
-                database could not be read.
+            RepositoryError: When the identifier is not a full object name, or when git could not
+                be asked.
 
         """
         if not COMMIT_SHA_PATTERN.fullmatch(commit):
@@ -75,15 +77,18 @@ class GitPythonAncestryGateway:
             )
 
         try:
-            self.repo.odb.info(bytes.fromhex(commit))
-        except ValueError:
-            # The object database reports an absent object by refusing to resolve its sha.
-            return False
-        except (OSError, GitError, ODBError) as exc:
-            # The reader is a long-lived `git cat-file` process, so the pipe and the spawn fail
-            # separately from the object being missing.
-            raise RepositoryError(
-                identifier=self.repository_name,
-                message=f"Unable to read {commit} from the object database: {exc}",
-            ) from exc
+            # A dedicated process, so a broken shared reader cannot be read as a missing object.
+            self.repo.git.cat_file("-e", commit)
+        except GitCommandError as exc:
+            if exc.status == OBJECT_ABSENT_STATUS:
+                return False
+            raise self._read_failed(commit=commit, detail=exc.stderr or str(exc)) from exc
+        except (OSError, GitError) as exc:
+            raise self._read_failed(commit=commit, detail=str(exc)) from exc
         return True
+
+    def _read_failed(self, commit: str, detail: str) -> RepositoryError:
+        return RepositoryError(
+            identifier=self.repository_name,
+            message=f"Unable to read {commit} from the object database: {detail}",
+        )

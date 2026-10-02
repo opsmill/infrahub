@@ -1,34 +1,16 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from git import Repo
 
 from infrahub.exceptions import RepositoryError
-from infrahub.git.divergence.gateway import GitPythonAncestryGateway
+from tests.unit.git.divergence.conftest import break_object_database, commit_file
 
+if TYPE_CHECKING:
+    from git import Repo
 
-def commit_file(repo: Repo, content: str) -> str:
-    working_tree = repo.working_tree_dir
-    assert working_tree is not None
-    Path(working_tree, "file.txt").write_text(content, encoding="utf-8")
-    repo.index.add(["file.txt"])
-    return str(repo.index.commit(f"commit {content}").hexsha)
-
-
-@pytest.fixture
-def repo(tmp_path: Path) -> Repo:
-    created = Repo.init(tmp_path / "repository")
-    with created.config_writer() as config:
-        config.set_value("user", "email", "test@example.com")
-        config.set_value("user", "name", "Test")
-    return created
-
-
-@pytest.fixture
-def gateway(repo: Repo) -> GitPythonAncestryGateway:
-    return GitPythonAncestryGateway(repository_name="test-repository", repo=repo)
+    from infrahub.git.divergence.gateway import GitPythonAncestryGateway
 
 
 def test_an_earlier_commit_is_an_ancestor_of_a_later_one(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
@@ -78,3 +60,12 @@ def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
     """An identifier that is not a full sha must not be reported as a pruned commit."""
     with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
         gateway.has_commit(commit=identifier)
+
+
+def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+    """A reader that cannot answer must not be read as a pruned commit."""
+    commit = commit_file(repo=repo, content="one")
+    break_object_database(repo=repo)
+
+    with pytest.raises(RepositoryError, match=r"Unable to read"):
+        gateway.has_commit(commit=commit)
