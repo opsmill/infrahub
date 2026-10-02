@@ -1,0 +1,21 @@
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_ad3ff5d78595eb::t_432749e8d2593d 249-250
+backend/tests/component/core/resource_manager/test_number_pool_attribute_rename.py
+  s_ad3ff5d78595eb::t_2cb6755b667c72 374-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ccdf02ba314db6bcfeeb742ba9446d03b29ef9b",
+  "prompts": {},
+  "sessions": {
+    "s_ad3ff5d78595eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4bad0f5-6766-42a2-bdd4-0f96787de47a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
