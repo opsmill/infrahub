@@ -44,9 +44,9 @@ from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
+from prefect.utilities.annotations import quote
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.auth.session import AnonymousSession
@@ -60,10 +60,12 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.git.fingerprint.composer import (
     ArtifactDefinitionFingerprintInput,
@@ -79,10 +81,12 @@ from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
 
 if TYPE_CHECKING:
+    import builtins
     import types
 
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.ctl.utils import YamlFileVar
+    from infrahub_sdk.schema import MainSchemaTypesAPI
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
 
@@ -241,21 +245,51 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     class that uses an "InfrahubRepository" or "InfrahubReadOnlyRepository" as input
     """
 
-    @classmethod
-    async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
-        self = cls(**kwargs)
-        log = get_logger()
+    def _has_valid_local_directories(self) -> bool:
+        """Return whether the local clone is usable, without raising when it is simply absent."""
         try:
             self.validate_local_directories()
         except RepositoryInvalidFileSystemError:
+            return False
+        return True
+
+    def _local_copy_needs_cloning(self) -> bool:
+        """Return whether the local copy has to be cloned, because it is absent or present but unusable."""
+        try:
+            self.validate_local_directories()
+        except RepositoryInvalidFileSystemError:
+            return True
+        except RepositoryError as exc:
+            get_logger().warning("Replacing an unusable local copy", repository=self.name, reason=exc.message)
+            return True
+        return False
+
+    async def initialize_local(self, commit: str | None = None) -> None:
+        """Bring this worker's local copy in line with the repository, cloning it if it is missing.
+
+        Raises:
+            CommitNotFoundError: When the requested commit is absent from the local clone and cannot
+                be fetched from the remote.
+
+        """
+        log = get_logger()
+        if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
-            await self.create_locally(
-                checkout_ref=await self.resolve_checkout_ref(),
-                infrahub_branch_name=self.infrahub_branch_name,
-                update_commit_value=False,
-            )
-            self.reinitialized = True
-            log.info(f"Initialized the local directory for {self.name} because it was missing.")
+            # Cloning deletes and rebuilds the shared on-disk copy, so it has to be serialized.
+            async with lock.registry.get(name=self.name, namespace="repository"):
+                # The copy was absent a moment ago, so a broken one now was left by a failed concurrent clone.
+                if self._local_copy_needs_cloning():
+                    # A Repo opened on the copy being replaced would keep reading its deleted object store.
+                    if self.cache_repo is not None:
+                        self.cache_repo.close()
+                        self.cache_repo = None
+                    await self.create_locally(
+                        checkout_ref=await self.resolve_checkout_ref(),
+                        infrahub_branch_name=self.infrahub_branch_name,
+                        update_commit_value=False,
+                    )
+                    self.reinitialized = True
+                    log.info(f"Initialized the local directory for {self.name}.")
 
         # An existing clone keeps whatever origin URL it was first cloned with, so re-point it when the
         # configured location has since changed, so subsequent fetches target the current remote.
@@ -281,7 +315,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log.debug(
             f"Initiated the object on an existing directory for {self.name}",
         )
-        return self
 
     async def ensure_location_is_defined(self) -> None:
         if self.location:
@@ -409,6 +442,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 local_artifact_defs=plan.artifact_definitions,
                 fingerprint_composer=fingerprint_composer,
             )
+            # Generator actions and trigger rules are imported last: they reference the definitions
+            # created above, which in turn reference groups imported as objects, forming a cycle a
+            # single objects pass cannot satisfy on a first import.
+            await self.import_deferred_objects(
+                branch_name=plan.infrahub_branch_name,
+                commit=plan.commit,
+                config_file=plan.config_file,
+            )  # type: ignore[call-overload]
 
         # Any import failure must stamp the repository sync status as errored before being re-raised
         except Exception as exc:  # noqa: BLE001
@@ -1239,6 +1280,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies_complete=definition.closure.complete,
                     watch=definition.config.watch,
                     parameters=definition.config.parameters,
+                    file_path=canonicalize_path(str(definition.config.file_path)),
                     class_name=definition.config.class_name,
                     convert_query_response=definition.config.convert_query_response,
                     target_group_id=await self._resolve_target_group_id(
@@ -1401,7 +1443,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transforms.extend(
                 await self.get_python_transforms(
                     module=module,
-                    file_path=file_info.relative_path_file,
                     transform=transform,
                     dependencies=list(closure.dependencies),
                     dependencies_complete=closure.complete,
@@ -1434,6 +1475,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     dependencies=tuple(transform.dependencies),
                     dependencies_complete=transform.dependencies_complete,
                     watch=transform.watch,
+                    file_path=canonicalize_path(transform.file_path),
                     class_name=transform.class_name,
                     convert_query_response=transform.convert_query_response,
                 )
@@ -1486,7 +1528,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"TransformPython {transform_name!r} not found locally, deleting")
             await transform_definition_in_graph[transform_name].delete()
 
-    async def _load_yamlfile_from_disk(self, paths: list[Path], file_type: type[YamlFileVar]) -> list[YamlFileVar]:
+    async def _load_yamlfile_from_disk(
+        self, paths: list[Path], file_type: builtins.type[YamlFileVar]
+    ) -> list[YamlFileVar]:
         data_files = file_type.load_from_disk(paths=paths)
 
         for data_file in data_files:
@@ -1495,13 +1539,35 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return data_files
 
+    @staticmethod
+    def _object_depends_on_definitions(schema: MainSchemaTypesAPI) -> bool:
+        """Whether an object of this kind references a definition created later in the import.
+
+        Generator actions point at a generator definition that the import creates from a
+        dedicated config section, so they must be reconciled after those definitions rather
+        than alongside the groups the definitions target. Trigger rules are deferred as a
+        whole because the action they point at is only known once the document is resolved;
+        the ones bound to another action kind are deferred without needing to be.
+
+        Other action kinds, ``CoreGroupAction`` today, only reference objects imported in the
+        regular pass and stay there.
+        """
+        kinds = {schema.kind, *schema.inherit_from}
+        return bool({InfrahubKind.GENERATORACTION, InfrahubKind.TRIGGERRULE}.intersection(kinds))
+
     async def _load_objects(
         self,
         paths: list[Path],
         branch: str,
-        file_type: type[InfrahubFile],
+        file_type: builtins.type[InfrahubFile],
+        defer: bool | None = None,
     ) -> None:
         """Load one or multiple objects files into Infrahub.
+
+        ``defer`` selects which documents to load by their reconciliation ordering: ``False``
+        loads the documents that do not depend on repository-defined definitions, ``True`` loads
+        the generator actions and trigger rules that may reference such a definition, and ``None``
+        loads every document.
 
         Raises:
             ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
@@ -1510,7 +1576,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
+        selected = []
         for file in files:
+            if defer is not None:
+                file.validate_content()
+                schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
+                if self._object_depends_on_definitions(schema=schema) is not defer:
+                    continue
+            selected.append(file)
+
+        for file in selected:
             await file.validate_format(client=self.sdk, branch=branch)
             schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
             if not schema.human_friendly_id and not schema.default_filter:
@@ -1519,19 +1594,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     "should have a `human_friendly_id` defined to avoid creating duplicated objects."
                 )
 
-        for file in files:
+        for file in selected:
             log.info(f"Loading objects defined in {file.location}")
             await file.process(client=self.sdk, branch=branch)
 
     async def _import_file_paths(
-        self, branch_name: str, commit: str, files_pathes: list[Path], object_type: RepositoryObjects
+        self,
+        branch_name: str,
+        commit: str,
+        files_pathes: list[Path],
+        object_type: RepositoryObjects,
+        defer: bool | None = None,
+        tracking_suffix: str = "",
     ) -> None:
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
+        # A tracking_suffix isolates a subset of the same object_type in its own group so its
+        # delete_unused reconciliation does not remove members tracked by the other subset.
         # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
         async with self.sdk.start_tracking(
-            identifier=f"group-repo-{object_type.value}-{self.id}",
+            identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
             delete_unused_nodes=True,
             branch=branch_name,
             group_type="CoreRepositoryGroup",
@@ -1542,6 +1625,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 paths=file_pathes,
                 branch=branch_name,
                 file_type=file_type,
+                defer=defer,
             )
 
     @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)
@@ -1556,12 +1640,36 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             commit=commit,
             files_pathes=config_file.objects,
             object_type=RepositoryObjects.OBJECT,
+            defer=False,
         )
         await self._import_file_paths(
             branch_name=branch_name,
             commit=commit,
             files_pathes=config_file.menus,
             object_type=RepositoryObjects.MENU,
+        )
+
+    @task(name="import-deferred-objects", task_run_name="Import Deferred Objects", cache_policy=NONE)
+    async def import_deferred_objects(
+        self,
+        branch_name: str,
+        commit: str,
+        config_file: InfrahubRepositoryConfig,
+    ) -> None:
+        """Import the objects that reference definitions created earlier in the import.
+
+        Generator actions and trigger rules resolve mandatory relationships to definitions the
+        import creates from dedicated config sections, so they are reconciled here, after those
+        definitions exist, in a tracking group of their own so reconciling them does not delete
+        the objects imported before the definitions.
+        """
+        await self._import_file_paths(
+            branch_name=branch_name,
+            commit=commit,
+            files_pathes=config_file.objects,
+            object_type=RepositoryObjects.OBJECT,
+            defer=True,
+            tracking_suffix="-deferred",
         )
 
     @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
@@ -1604,7 +1712,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def get_python_transforms(
         self,
         module: types.ModuleType,
-        file_path: str,
         transform: InfrahubPythonTransformConfig,
         dependencies: list[str],
         dependencies_complete: bool,
@@ -1612,6 +1719,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log = get_run_logger()
         if transform.class_name not in dir(module):
             return []
+
+        # The manifest-declared path is the only source for `file_path`: the dependency closure
+        # and the fingerprint are both keyed on it, and a path derived from the filesystem
+        # instead can resolve outside the worktree and turn absolute.
+        file_path = str(transform.file_path)
 
         transforms = []
         transform_class = getattr(module, transform.class_name)
@@ -1856,6 +1968,16 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="jinja2-template-render", task_run_name="Render Jinja2 template", cache_policy=NONE)
     async def render_jinja2_template(self, commit: str, location: str, data: dict) -> str:
+        """Render a Jinja2 template from the repository with ``data`` as its context.
+
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
+        Raises:
+            TransformError: When the template cannot be rendered.
+
+        """
         log = get_run_logger()
         commit_worktree = self.get_commit_worktree(commit=commit)
 
@@ -1952,6 +2074,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     ) -> Any:
         """Execute A Python Transform stored in the repository.
 
+        Callers wrap ``data`` in Prefect's ``quote()``: Prefect otherwise walks every element of a
+        task argument twice before the task starts, which costs seconds on a large query response.
+        The task body always receives the plain value.
+
         Raises:
             ValueError: When ``location`` does not contain the expected ``module::class`` separator.
             TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
@@ -2036,7 +2162,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             transformation_location = transformation.template_path.value
             artifact_content = await self.render_jinja2_template.with_options(
                 timeout_seconds=transformation.timeout.value
-            )(commit=commit, location=transformation_location, data=response)  # type: ignore[call-overload]
+            )(commit=commit, location=transformation_location, data=quote(response))  # type: ignore[call-overload]
         elif transformation.typename == InfrahubKind.TRANSFORMPYTHON:
             transformation_location = f"{transformation.file_path.value}::{transformation.class_name.value}"
             artifact_content = await self.execute_python_transform.with_options(
@@ -2046,7 +2172,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=branch_name,
                 commit=commit,
                 location=transformation_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=transformation.convert_query_response.value,
             )  # type: ignore[call-overload]
 
@@ -2099,7 +2225,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if message.transform_type == InfrahubKind.TRANSFORMJINJA2:
             artifact_content = await self.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
-                commit=message.commit, location=message.transform_location, data=response
+                commit=message.commit, location=message.transform_location, data=quote(response)
             )  # type: ignore[call-overload]
         elif message.transform_type == InfrahubKind.TRANSFORMPYTHON:
             artifact_content = await self.execute_python_transform.with_options(timeout_seconds=message.timeout)(
@@ -2107,7 +2233,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=message.branch_name,
                 commit=message.commit,
                 location=message.transform_location,
-                data=response,
+                data=quote(response),
                 convert_query_response=message.convert_query_response,
             )  # type: ignore[call-overload]
 

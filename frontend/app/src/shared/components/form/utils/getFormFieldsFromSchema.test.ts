@@ -9,6 +9,7 @@ import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormF
 
 import type { AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 import { generateNodeAttributeWithMetadata } from "../../../../../tests/fake/node";
@@ -711,5 +712,28 @@ describe("getFormFieldsFromSchema", () => {
     // THEN
     expect(fields.length).to.equal(1);
     expect(fields[0]?.name).to.equal("ip_address");
+  });
+
+  it("leaves a number field's pool options unset when no pools are supplied", () => {
+    const attribute = generateAttributeSchema({
+      name: "weight",
+      kind: ATTRIBUTE_KIND.NUMBER,
+    });
+    const poolRelationship = generateRelationshipSchema({
+      name: `weight${FROM_RESOURCE_POOL_SUFFIX}`,
+      peer: "CoreNumberPool",
+      cardinality: "one",
+      optional: true,
+    });
+
+    const schema = {
+      kind: "TestTemplate",
+      attributes: [attribute],
+      relationships: [poolRelationship],
+    } as ModelSchema;
+
+    const fields = getFormFieldsFromSchema({ schema });
+
+    expect(fields[0]?.pool?.options).to.equal(undefined);
   });
 });

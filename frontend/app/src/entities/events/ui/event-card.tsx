@@ -94,7 +94,7 @@ export const EventCard = (props: EventType) => {
 
           <div className="flex items-center gap-4">
             {!PROPOSED_CHANGE_EVENTS.includes(props.event) && props.branch && (
-              <div className="flex max-w-[200px] items-center gap-1 font-medium text-foreground-muted text-xs">
+              <div className="flex max-w-50 items-center gap-1 font-medium text-foreground-muted text-xs">
                 <Icon icon={"mdi:source-branch"} className="shrink-0" />
 
                 <span className="truncate">{props.branch}</span>

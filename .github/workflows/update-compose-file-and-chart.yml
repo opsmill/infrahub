@@ -25,17 +25,17 @@ jobs:
     needs: prepare-environment
     steps:
       - name: "Check out repository code"
-        uses: "actions/checkout@v7"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
         with:
           token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           submodules: true
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
@@ -68,7 +68,7 @@ jobs:
       - name: "Update Infrahub Image Version in docker-compose.yml file"
         run: "uv run invoke release.update-docker-compose --version '${{ inputs.version }}'"
       - name: Commit docker-compose.yml
-        uses: github-actions-x/commit@v2.9
+        uses: github-actions-x/commit@722d56b8968bf00ced78407bbe2ead81062d8baa # v2.9
         with:
           github-token: ${{ secrets.GH_INFRAHUB_BOT_TOKEN }}
           push-branch: ${{ github.ref_name }}
@@ -80,7 +80,7 @@ jobs:
           rebase: true
 
       - name: Checkout infrahub-helm
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: opsmill/infrahub-helm
           path: helm

@@ -8,13 +8,24 @@ Git workflow and commit conventions for the project.
 
 - **Main branches:** `stable` (production), `develop` (development), `release-*` (releases)
 - **Feature branches:** Create from `develop`, merge back via PR
-- **Bug fixes:** target the oldest branch that needs the fix — `stable` when the bug is in released
-  code and the fix should ship in a patch release, `develop` when the code only exists there or the
-  fix can wait for the next minor
+- **Bug fixes, performance and test-reliability improvements:** target the oldest maintained branch
+  that should ship the change — `stable` when the affected code is released and the change can ship
+  in a patch release, `develop` when the code only exists there or the change can wait for the next
+  minor. A fix that changes observable behavior (which branch an event fires on, a value that is no
+  longer accepted) defaults to `develop` with a changelog fragment — shipping it in a patch release
+  is a deliberate call for an urgent fix, not the default
 - **Repo-tooling/lint/CI-config changes:** target `develop` if the diff also edits runtime source —
   converting call sites, changing behavior a new lint rule now gates — since what the code emits at
-  runtime changed regardless of how enabling it was triggered. Target `stable` only when the diff has
-  no source-code changes at all (pure config, docs, CI).
+  runtime changed regardless of how enabling it was triggered. Target `stable` when the diff has no
+  runtime source changes (pure config, docs, CI, test-only).
+- **Internal docs and specs follow what they describe.** The docs half of the rule above holds only
+  when the content is true on both branches; it then reaches `develop` through the stable→develop
+  merge. A doc describing behavior that exists only on `develop`, an edit to files only `develop`
+  carries, or a spec set for work building on `develop` targets `develop` — on `stable` it would
+  describe a system that branch does not have.
+- **Wide mechanical churn** (a reformat, a rename sweep): the category rules above yield to conflict
+  cost — land it on the branch where the touched files diverge least from the other main branch, and
+  say so in the PR description, or every forward merge pays for the churn again
 - **Verify the base before cutting:** check that the code the ticket references actually exists on
   the chosen base (`git ls-tree <base> -- <path>`); follow-up tickets often reference modules that
   are only on `develop`
@@ -131,6 +142,26 @@ the change generated them by default.
 annotating, don't fix the bug in the same PR — keep the diff limited to the annotation and file
 the bug separately. The justification comment may record what you found (see
 [Exception Handling](backend/exceptions.md)), but the fix belongs in its own PR.
+
+## Stacked Pull Requests
+
+When a change ships as a
+[stack of pull requests](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/optimizing-ci-for-stacked-pull-requests),
+CI runs the GitHub-hosted checks (lint, unit tests, generated-file validation) on every pull
+request of the stack, but the huge-runner jobs (component, integration, functional, docker and
+e2e tests, version upgrade, benchmarks) only on the top pull request. The top contains every
+commit of the stack, so one run there covers all levels.
+
+- **Mechanism:** the `huge-runner-gate` job in `.github/workflows/ci.yml`, which every
+  huge-runner job depends on, is skipped when the pull request is in a stack and not its top.
+  Skipped jobs count as passing for required status checks.
+- **Adding a level:** pushing a new pull request on top of a stack turns the previous top into an
+  intermediate pull request; its next CI run skips the huge-runner jobs.
+- **Override:** to run the huge-runner jobs on an intermediate pull request, add the
+  `ci/run-huge-runners` label, then push a commit: adding the label does not start a run, and
+  re-running an existing run does not see it.
+- **Scope:** only pull requests GitHub created as a stack carry stack metadata; a pull request
+  that merely targets another feature branch runs the huge-runner jobs.
 
 ## Critical Rules
 

@@ -6,9 +6,6 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
-      fontSize: {
-        xxs: "0.625rem",
-      },
       colors: {
         "custom-blue": {
           1: "#E4F3F7",

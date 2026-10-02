@@ -7,7 +7,6 @@ import {
   MenuTrigger,
   Popover,
   Spinner,
-  ThemeSwitchMenuItem,
 } from "@infrahub/ui";
 import {
   CircleUserIcon,
@@ -37,6 +36,8 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
+import { useFeatureFlag } from "@/entities/config/ui/hooks/use-feature-flag";
+import { ThemeMenuItem } from "@/entities/config/ui/theme-menu-item";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
@@ -57,41 +58,50 @@ export const AccountMenu = () => {
   );
 };
 
-const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
-  <>
-    <ThemeSwitchMenuItem />
+const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => {
+  const isDarkThemeEnabled = useFeatureFlag("dark_theme");
 
-    <MenuItem onAction={onAboutClick}>
-      <InfoIcon /> About Infrahub
-    </MenuItem>
+  return (
+    <>
+      {isDarkThemeEnabled && (
+        <>
+          <ThemeMenuItem />
+          <MenuSeparator />
+        </>
+      )}
 
-    <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
-      <FileTextIcon /> Infrahub documentation
-    </MenuItem>
+      <MenuItem onAction={onAboutClick}>
+        <InfoIcon /> About Infrahub
+      </MenuItem>
 
-    <MenuItem href={constructPath("/graphql")}>
-      <Icon icon="mdi:graphql" className="text-base" />
-      GraphQL Sandbox
-    </MenuItem>
+      <MenuItem href={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
+        <FileTextIcon /> Infrahub documentation
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:code-json" className="text-base" />
-      Swagger documentation
-    </MenuItem>
+      <MenuItem href={constructPath("/graphql")}>
+        <Icon icon="mdi:graphql" className="text-base" />
+        GraphQL Sandbox
+      </MenuItem>
 
-    <MenuSeparator />
+      <MenuItem href={INFRAHUB_SWAGGER_DOC_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:code-json" className="text-base" />
+        Swagger documentation
+      </MenuItem>
 
-    <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:github" className="text-base" />
-      GitHub Repository
-    </MenuItem>
+      <MenuSeparator />
 
-    <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
-      <Icon icon="mdi:discord" className="text-base" />
-      Join our Discord server
-    </MenuItem>
-  </>
-);
+      <MenuItem href={INFRAHUB_GITHUB_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:github" className="text-base" />
+        GitHub Repository
+      </MenuItem>
+
+      <MenuItem href={INFRAHUB_DISCORD_URL} target="_blank" rel="noreferrer">
+        <Icon icon="mdi:discord" className="text-base" />
+        Join our Discord server
+      </MenuItem>
+    </>
+  );
+};
 
 const AppInfoFooter = () => (
   <div className="border-border-strong border-t px-2.5 py-1">
@@ -202,8 +212,6 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
               <SlidersHorizontalIcon /> Global preferences
             </MenuItem>
           )}
-
-          <MenuSeparator />
 
           <CommonMenuItems onAboutClick={onAboutClick} />
 

@@ -8,7 +8,10 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 
 from infrahub import config
+from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.node import Node
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, RepositoryBranchInfo, RepositoryData, TrackedRef
 from infrahub.git.refs_check.checker import RefNameValidator
@@ -22,6 +25,7 @@ from infrahub.git.refs_check.gateway import (
     select_remote_head,
 )
 from infrahub.git.refs_check.models import RefHeads
+from tests.helpers.schema.tag import TAG
 
 LIST_KILL_AFTER_SECONDS = 110
 FETCH_KILL_AFTER_SECONDS = 900
@@ -339,14 +343,14 @@ def build_repository_data(
     *,
     location: str | None = "https://example.com/repo.git",
     branch_info: dict[str, RepositoryBranchInfo],
-    branches: dict[str, str | None],
+    branches: dict[str, str],
 ) -> RepositoryData:
-    # model_construct: the declared repository union validates against node classes a unit test has
-    # no way to build, and nothing here reads that field.
+    # model_construct: the declared repository union validates against protocol classes a unit
+    # test has no way to build. Nothing here reads that field, so any in-memory Node stands in.
     return RepositoryData.model_construct(
         repository_id="8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
         repository_name="readonly-repo",
-        repository=None,
+        repository=Node(schema=TAG, branch=Branch(name="main"), at=Timestamp()),
         location=location,
         branches=branches,
         branch_info=branch_info,

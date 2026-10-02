@@ -87,7 +87,7 @@ export function GeneratorDefinitionRunButton({
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent className="min-w-[200px] max-w-sm p-1" align="end">
+      <PopoverContent className="min-w-50 max-w-sm p-1" align="end">
         {showTargetForm ? (
           <GeneratorTargetSelectionForm
             generatorId={generatorId}

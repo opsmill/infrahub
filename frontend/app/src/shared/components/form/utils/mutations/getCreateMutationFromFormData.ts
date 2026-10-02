@@ -28,11 +28,17 @@ export const getCreateMutationFromFormData = (
       }
       const fromPoolField = field.pool?.fromPoolRelationshipName;
       if ("from_pool" in fieldData.value) {
-        const fromPool = buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind);
         if (fromPoolField) {
-          return { ...acc, [fromPoolField]: fromPool };
+          // `<rel>_from_resource_pool` is typed as a plain RelatedNodeInput: sending `prefixlen` or
+          // `address_type` there is rejected by GraphQL, so the overrides ride on the payload below.
+          return { ...acc, [fromPoolField]: { id: fieldData.value.from_pool.id } };
         }
-        return { ...acc, [field.name]: { from_pool: fromPool } };
+        return {
+          ...acc,
+          [field.name]: {
+            from_pool: buildFromPoolPayload(fieldData.value.from_pool, fieldData.source.kind),
+          },
+        };
       }
       return { ...acc, [field.name]: fieldData.value };
     }

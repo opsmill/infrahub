@@ -62,7 +62,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     _validate_feature_selection(configuration=config.SETTINGS.active_settings)
 
     # Build the admission controller once here, at startup, and publish it (with the kill-switch)
-    # on app.state for the outermost AdmissionMiddleware to read. Constructing it at the app entry
+    # on app.state for AdmissionMiddleware to read. Constructing it at the app entry
     # point keeps settings resolution and the controller's object graph out of the middleware, and
     # naming the metric sinks here keeps them out of the admission internals' import chain.
     application.state.admission_controller = build_admission_controller(
@@ -223,7 +223,6 @@ app.add_middleware(
     buckets=[0.1, 0.25, 0.5],
     skip_paths=["/health"],
 )
-app.add_middleware(InfrahubCORSMiddleware)
 app.add_middleware(
     ConditionalGZipMiddleware,
     minimum_size=100_000,
@@ -236,10 +235,15 @@ app.add_middleware(
     ),
 )
 
-# Registered last so it is the outermost middleware: load is shed before any downstream work
-# runs. Its controller and kill-switch are built during startup (see app_initialization) and read
-# from app.state per request, so the middleware itself builds nothing and depends on no settings.
+# The gate: load is shed before any downstream work runs, and only CORS is registered after (so
+# outside) it. Its controller and kill-switch are built during startup and read from app.state per
+# request, so the middleware itself builds nothing and depends on no settings.
 app.add_middleware(AdmissionMiddleware)
+
+# Outside admission so a shed 429 still passes back through CORS; without those headers a
+# cross-origin browser blocks the response and the client sees an opaque network error. Rationale:
+# dev/knowledge/backend/api-backpressure.md, "The request path".
+app.add_middleware(InfrahubCORSMiddleware)
 
 app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)

@@ -1,7 +1,5 @@
 # AGENTS.md - Documentation
 
-> See [root AGENTS.md](../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 Infrahub documentation is organized using the [Diataxis framework](https://diataxis.fr/), separating documentation into four categories:
@@ -77,6 +75,7 @@ For the complete style guide including terminology, see `docs/development/style-
 - **Present tense**: "Infrahub uses branches to isolate changes"
 - **Professional but approachable**: Avoid "simple", "easy", or "just"
 - **Literal words**: much of the audience reads English as a second or third language. Avoid figurative phrasing — "carry" (for have), "lives on" (for is stored on), "walk" (for traverse), "reach for" (for use). Say the literal thing.
+- **FAQ answers stay short**: a couple of sentences plus a link to the topical page; detail that needs paragraphs (constraints, edition caveats, step-by-step procedure) belongs on the linked page, not in the FAQ. Never present a capability as the default when it requires explicit deployment or configuration.
 
 ### Infrahub Terminology
 
@@ -125,7 +124,7 @@ The `migrate-feature-page` skill documents the full workflow.
 - Include language tags on code blocks
 - Choose the appropriate documentation type (guide vs. topic)
 - Define technical terms on first use
-- Verify factual claims (attribute kinds, GraphQL fields, defaults) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist". For `infrahubctl`/SDK features, the reference is the commit the `python_sdk` submodule pins (`git -C python_sdk show $(git rev-parse HEAD:python_sdk):<path>`), not an SDK branch tip — and never bump the pin just to make docs resolve
+- Verify factual claims (attribute kinds, GraphQL fields, defaults, UI button and label text) against the code on the branch the PR targets — docs PRs frequently target a release branch whose features differ from the development branch; this applies doubly before acting on a bot review claim that something "does not exist". For `infrahubctl`/SDK features, the reference is the commit the `python_sdk` submodule pins (`git -C python_sdk show $(git rev-parse HEAD:python_sdk):<path>`), not an SDK branch tip — and never bump the pin just to make docs resolve
 - When documenting marketplace items, verify each item actually resolves in the live catalog at <https://marketplace.infrahub.app>; if an item is planned but unpublished, get an explicit decision on release timing before referencing it
 - Prefer plain Markdown/MDX over custom React components in doc pages; before adding anything to `docs/src/components/`, check the existing components for reuse, and give a genuinely new component typed props (the docs package typechecks with `tsc`)
 

@@ -1,11 +1,9 @@
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "react-aria-components";
-import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
+import { getChangeKey } from "react-diff-view";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
-import sha from "sha1";
-import { diffLines, formatLines } from "unidiff";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -13,6 +11,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { ContentDiff } from "@/entities/diff/ui/content-diff/content-diff";
 import { useGetArtifactContentDiff } from "@/entities/diff/ui/queries/get-artifact-content-diff.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
@@ -23,22 +22,6 @@ import {
 } from "@/entities/proposed-changes/domain/model/proposed-change-thread";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-
-import "react-diff-view/style/index.css";
-
-const fakeIndex = () => {
-  return sha(Math.random() * 100_000).slice(0, 9);
-};
-
-const appendGitDiffHeaderIfNeeded = (diffText: string) => {
-  if (diffText.startsWith("diff --git")) {
-    return diffText;
-  }
-
-  const segments = ["diff --git a/a b/b", `index ${fakeIndex()}..${fakeIndex()} 100644`, diffText];
-
-  return segments.join("\n");
-};
 
 const shouldDisplayAddComment = (state: any, change: any) => {
   const { side, newLineNumber, oldLineNumber, lineNumber, isInsert, isDelete } = state;
@@ -298,16 +281,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     );
   };
 
-  const diff = formatLines(diffLines(previousFile, newFile), {
-    context: 3,
-    aname: itemPrevious?.storage_id,
-    bname: itemNew?.storage_id,
-  });
-
-  const [fileContent] = parseDiff(appendGitDiffHeaderIfNeeded(diff), {
-    nearbySequences: "zip",
-  });
-
   return (
     <div className={"pr-2 pb-2"}>
       <div className="flex">
@@ -325,17 +298,12 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
       </div>
 
       <div className="ml-2 bg-content-muted">
-        <Diff
-          key={`${sha(diff)}${previousFile ? sha(previousFile) : ""}`}
-          hunks={fileContent.hunks}
-          viewType="split"
-          diffType={fileContent.type}
+        <ContentDiff
+          previousContent={previousFile}
+          newContent={newFile}
           renderGutter={renderGutter}
-          widgets={getWidgets(fileContent.hunks)}
-          optimizeSelection
-        >
-          {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
-        </Diff>
+          getWidgets={getWidgets}
+        />
       </div>
     </div>
   );

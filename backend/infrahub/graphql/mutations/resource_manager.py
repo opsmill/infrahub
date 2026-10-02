@@ -91,6 +91,8 @@ class IPPrefixPoolGetResource(Mutation):
             prefixlen=data.get("prefix_length", None),
             member_type=member_type,
             prefix_type=data.get("prefix_type", None),
+            # No relationship context here, so the broadest legal peer is the builtin IP prefix generic.
+            peer_kind=InfrahubKind.IPPREFIX,
             data=data.get("data", None),
             user_id=graphql_context.assigned_user_id,
         )
@@ -140,6 +142,8 @@ class IPAddressPoolGetResource(Mutation):
             identifier=data.get("identifier"),
             prefixlen=data.get("prefix_length"),
             address_type=data.get("address_type"),
+            # No relationship context here, so the broadest legal peer is the builtin IP address generic.
+            peer_kind=InfrahubKind.IPADDRESS,
             data=data.get("data"),
             user_id=graphql_context.assigned_user_id,
         )

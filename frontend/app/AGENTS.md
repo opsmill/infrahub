@@ -1,7 +1,5 @@
 # AGENTS.md - Frontend
 
-> See [root AGENTS.md](../../AGENTS.md) for project-wide commands and guidelines.
-
 ## Overview
 
 React TypeScript frontend built with Vite, using Tailwind CSS for styling.
@@ -14,7 +12,7 @@ cd frontend/app && pnpm install    # Install app dependencies only (submodule mu
 cd frontend/app && pnpm dev        # Start dev server
 cd frontend/app && pnpm build      # Production build
 cd frontend/app && pnpm test       # Run unit tests
-cd frontend/app && pnpm biome:fix  # Format and lint
+cd frontend && pnpm biome:fix      # Format and lint the whole workspace (app + packages/*)
 cd frontend/app && pnpm codegen    # Generate GraphQL types
 ```
 
@@ -22,10 +20,11 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 
 `pnpm biome:fix` alone is **not** the CI gate. The `frontend-lint` job runs three checks and
 `frontend-tests` runs the browser test suite. Run all of them before pushing — they each fail CI
-independently:
+independently. Note that Biome runs from `frontend/`, the pnpm workspace root, so that one
+config and one command cover `app` and `packages/*` together:
 
 ```bash
-cd frontend/app && pnpm exec biome ci .   # format + lint (same as CI)
+cd frontend && pnpm exec biome ci .       # format + lint, whole workspace (same as CI)
 cd frontend/app && pnpm knip              # unused exports/files/deps
 cd frontend/app && pnpm exec betterer ci  # TypeScript-regression gate (NOT plain tsc)
 cd frontend/app && pnpm test              # vitest (browser mode)
@@ -46,7 +45,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 
 ### Knowledge (How the system works)
 
-- `dev/knowledge/frontend/react.md` - React 19 and React Compiler patterns
+- `dev/knowledge/frontend/react.md` - React 19, React Compiler, and effect/retry patterns — load before writing a `useEffect` that drives a fetch or redirect
 - `dev/knowledge/frontend/architecture.md` - Project organization
 - `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, backend authority
 - `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
@@ -55,6 +54,9 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 - `dev/knowledge/frontend/auth-methods.md` - Auth method registry, picker, token persistence boundaries
 - `dev/knowledge/frontend/branches.md` - Read before writing code that depends on which branch is current, or on the default branch — the default branch name is deployment-configurable
+- `dev/knowledge/frontend/column-visibility.md` - Show/hide columns on schema-driven tables: the `hide_columns`/`show_columns` URL contract, `ColumnSurface`, and which surfaces can reveal a hidden field
+- `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
+- `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
 
 ### Guides (How to do X)
 

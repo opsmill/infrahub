@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -19,6 +20,10 @@ class WorkflowRecorder(InfrahubWorkflow):
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
         self.execute_results: dict[str, Any] = {}
+        self.created_during = os.environ.get("PYTEST_CURRENT_TEST")
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__} created during {self.created_during}>"
 
     def reset(self) -> None:
         # execute_calls/submit_calls are derived views, so clearing them leaves the backing store

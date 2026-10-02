@@ -36,16 +36,17 @@ from infrahub.workers.dependencies import (
     build_client,
     build_database,
     build_message_bus,
-    build_workflow,
     clear_singletons,
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.task_manager import setup_task_manager_once
+from tests.helpers.workflow_override import override_workflow
 
 from .test_client import InfrahubTestClient
 
@@ -103,7 +104,7 @@ class TestInfrahubAppBase(TestInfrahub):
         _ = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution(), message_bus=bus)
         config.OVERRIDE.message_bus = bus
         try:
-            with dependency_provider.scope(build_message_bus, lambda: bus):
+            with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
                 yield bus
         finally:
             config.OVERRIDE.message_bus = original
@@ -116,7 +117,7 @@ class TestInfrahubAppBase(TestInfrahub):
         cache = MemoryCache()
         config.OVERRIDE.cache = cache
         try:
-            with dependency_provider.scope(build_cache, lambda: cache):
+            with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
                 yield cache
         finally:
             config.OVERRIDE.cache = original
@@ -162,7 +163,7 @@ class TestInfrahubAppBase(TestInfrahub):
         # rebuilds them against the current db_class.
         clear_singletons()
 
-        with dependency_provider.scope(build_database, _db):
+        with override_dependency(build_database, _db, dependency_provider=dependency_provider):
             try:
                 async with lifespan(app):
                     yield InfrahubTestClient(app=app, base_url="http://testserver")
@@ -200,7 +201,7 @@ class TestInfrahubAppBase(TestInfrahub):
         )
 
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
+        with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
             yield sdk_client
 
     @pytest.fixture(scope="class")
@@ -311,16 +312,15 @@ class TestInfrahubApp(TestInfrahubAppBase):
     async def workflow_local(
         self, prefect: Generator[str, None, None], dependency_provider: Provider
     ) -> AsyncGenerator[WorkflowLocalExecution, None]:
-        original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager_once()
-        config.OVERRIDE.workflow = workflow
-        with dependency_provider.scope(build_workflow, lambda: workflow):
+        with override_workflow(workflow, dependency_provider=dependency_provider):
             yield workflow
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
 
@@ -329,13 +329,10 @@ class TestInfrahubAppWithoutLocalWorkflow(TestInfrahubAppBase):
     async def workflow_local(
         self, prefect: Generator[str, None, None], dependency_provider: Provider
     ) -> AsyncGenerator[WorkflowLocalExecution, None]:
-        original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
         await setup_task_manager_once()
-        config.OVERRIDE.workflow = workflow
-        with dependency_provider.scope(build_workflow, lambda: workflow):
+        with override_workflow(workflow, dependency_provider=dependency_provider):
             yield workflow
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class")
     async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:

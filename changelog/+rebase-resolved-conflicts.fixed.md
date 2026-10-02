@@ -1,0 +1,1 @@
+Fixed a branch with conflicts against the default branch being unable to leave the `NEED_UPGRADE_REBASE` status: a rebase now accepts a conflict on an attribute once it is resolved in favor of the branch, and its error says, for each conflict that still blocks it, whether to resolve it in favor of the branch or to update the data.

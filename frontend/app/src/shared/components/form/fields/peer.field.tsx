@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 
 import { LabelFormField } from "@/shared/components/form/fields/common";
-import type { PoolValue } from "@/shared/components/form/pool-selector";
 import type {
   DynamicRelationshipFieldProps,
   FormRelationshipValue,
+  PoolValue,
 } from "@/shared/components/form/type";
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { PeerInput } from "@/shared/components/inputs/peer";

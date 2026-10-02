@@ -47,8 +47,10 @@ Mark deprecated docs clearly. Don't delete—update with pointers to replacement
 
 - **Repository Organization**: [guidelines/repository-organization.md](guidelines/repository-organization.md) - How to organize content in dev/
 - **Python Backend**: [guidelines/backend/python.md](guidelines/backend/python.md)
+- **Python Typing**: [guidelines/backend/typing.md](guidelines/backend/typing.md)
 - **Python Exception Handling**: [guidelines/backend/exceptions.md](guidelines/backend/exceptions.md)
 - **ASGI Middleware**: [guidelines/backend/asgi-middleware.md](guidelines/backend/asgi-middleware.md)
+- **Prefect Flow and Task Payloads**: [guidelines/backend/prefect-payloads.md](guidelines/backend/prefect-payloads.md) - What flows return, what tasks receive
 - **TypeScript Frontend**: [guidelines/frontend/typescript.md](guidelines/frontend/typescript.md)
 - **Git Workflow**: [guidelines/git-workflow.md](guidelines/git-workflow.md)
 - **Markdown Formatting**: [guidelines/markdown.md](guidelines/markdown.md)
@@ -66,6 +68,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
+- [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it
 
 Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/):
 
@@ -97,6 +100,8 @@ Architecture Decision Records in [adr/](adr/):
 - [0018-static-transform-lifecycle-triggers.md](adr/0018-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
 - [0019-transform-lifecycle-owns-node-input-reconciliation.md](adr/0019-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
 
+Start a new ADR from [template.md](adr/template.md).
+
 ## Current Guides
 
 Backend guides in [guides/backend/](guides/backend/):
@@ -107,15 +112,17 @@ Backend guides in [guides/backend/](guides/backend/):
 
 ## Current Commands
 
-Available agent commands in [../.agents/commands/](../.agents/commands/):
+Agent commands live in [../.agents/commands/](../.agents/commands/); run one by its name:
 
-- [_shared.md](../.agents/commands/_shared.md) - Shared instructions for all flows
-- [new-component.md](../.agents/commands/new-component.md) - React component creation flow
-- [guided-task.md](../.agents/commands/guided-task.md) - General task flow
-- [add-docs.md](../.agents/commands/add-docs.md) - Documentation flow
-- [bug-analyze.md](../.agents/commands/bug-analyze.md) - Root cause analysis (`/bug-analyze <issue>`)
-- [bug-tdd.md](../.agents/commands/bug-tdd.md) - Failing test from analysis (`/bug-tdd <issue>`)
-- [bug-fix.md](../.agents/commands/bug-fix.md) - Fix implementation (`/bug-fix <issue>`)
-- [fix-github-issue.md](../.agents/commands/fix-github-issue.md) - GitHub issue fixing
-- [fix-mypy-module.md](../.agents/commands/fix-mypy-module.md) - Mypy type fixes
-- [fix-ruff-rule.md](../.agents/commands/fix-ruff-rule.md) - Ruff linting fixes
+- `/new-component` - React component creation flow
+- `/guided-task` - General task flow
+- `/add-docs` - Documentation flow
+- `/bug-analyze <issue>` - Root cause analysis
+- `/bug-tdd <issue>` - Failing test from analysis
+- `/bug-fix <issue>` - Fix implementation
+- `/fix-github-issue` - GitHub issue fixing
+- `/fix-mypy-module` - Mypy type fixes
+- `/fix-ruff-rule` - Ruff linting fixes
+
+The flows read their shared testing options and execution checklist from `_shared.md` in the same
+folder, which is not a command.

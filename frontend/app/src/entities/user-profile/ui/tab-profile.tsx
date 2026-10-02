@@ -44,7 +44,7 @@ function TabProfileContent({ schema }: { schema: ModelSchema }) {
   useTitle(objectData ? `${getNodeLabel(objectData)} details` : "Profile");
 
   if (isObjectPending || isPermissionPending) {
-    return <LoadingIndicator className="h-[244px]" />;
+    return <LoadingIndicator className="h-61" />;
   }
 
   if (objectError || permissionError) {

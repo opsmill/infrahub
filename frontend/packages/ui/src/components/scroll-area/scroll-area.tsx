@@ -1,6 +1,5 @@
-import type * as React from "react";
-
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import type * as React from "react";
 import { cn } from "tailwind-variants";
 
 interface ScrollBarProps extends ScrollAreaPrimitive.ScrollAreaScrollbarProps {}
@@ -10,10 +9,10 @@ function ScrollBar({ className, orientation = "vertical", ...props }: ScrollBarP
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       orientation={orientation}
       className={cn(
-        "flex touch-none rounded-full bg-background/50 transition-colors select-none",
+        "flex touch-none select-none rounded-full bg-background/50 transition-colors",
         orientation === "vertical" && "h-full w-1",
         orientation === "horizontal" && "h-1 flex-col",
-        className,
+        className
       )}
       {...props}
     >

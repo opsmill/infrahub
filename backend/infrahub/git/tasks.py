@@ -84,8 +84,18 @@ from .refs_check.factory import build_check_refs_model, build_refs_checker, buil
 from .refs_check.models import RefsCheckCycleSummary, RefsCheckOutcome, RefsCheckResult
 from .refs_check.tracked_commit import GraphTrackedCommitReader
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-from .sync import RepositoryAdder, RepositoryFileImporter, RepositorySyncer
+from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+
+
+def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
+    """Record every skipped remote branch of the run as a warning in the current flow run's log."""
+    log = get_run_logger()
+    for branch_name in report.skipped_branches:
+        log.warning(
+            f"Skipped remote branch '{branch_name}' of repository {repo.name}: its name collides with the "
+            f"Infrahub default branch, which is mapped to this repository's default branch '{repo.default_branch}'."
+        )
 
 
 def format_check_log_entry(entry: dict[str, Any]) -> str:
@@ -116,7 +126,12 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
         return
 
-    await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    try:
+        report = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    except RepositoryBranchesFailedError as exc:
+        log_skipped_branches(repo=repo, report=exc.report)
+        raise
+    log_skipped_branches(repo=repo, report=report)
 
     try:
         pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -232,32 +247,60 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     repository_id: str,
     repository_name: str,
     repository_location: str,
-    internal_status: str,
-    default_branch_name: str,
     operational_status: str,
+    infrahub_branch: str,
     staging_branch: str | None = None,
-    infrahub_branch: str | None = None,
 ) -> None:
-    repo = await InfrahubRepository.init(
-        id=repository_id,
-        name=repository_name,
-        location=repository_location,
-        client=client,
-        internal_status=internal_status,
-        default_branch_name=default_branch_name,
-    )
+    """Synchronize one repository, linking the run to it when there is something to see there.
 
+    A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
+    the repository is online. A successful run where nothing moved on the remote is not linked.
+
+    Raises:
+        RepositoryBranchesFailedError: When at least one branch failed to synchronize.
+        RepositoryError: When the repository cannot be read or synchronized.
+        CommitNotFoundError: When a commit the sync needs cannot be found.
+
+    """
     syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
+    online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
-        await syncer.sync(repo, staging_branch=staging_branch)
+        # Constructed inside the handler: it reads the repository node, so a failing read has to be
+        # tagged with the repository like any other sync failure.
+        repo = await InfrahubRepository.init(
+            id=repository_id,
+            name=repository_name,
+            location=repository_location,
+            client=client,
+            infrahub_branch_name=infrahub_branch,
+        )
     except (RepositoryError, CommitNotFoundError):
-        if operational_status == RepositoryOperationalStatus.ONLINE.value:
-            params: dict[str, Any] = {
-                "branches": [infrahub_branch] if infrahub_branch else [],
-                "nodes": [str(repository_id)],
-            }
-            await add_tags(**params)
+        if online:
+            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
         raise
+
+    try:
+        report = await syncer.sync(repo, staging_branch=staging_branch)
+    except RepositoryBranchesFailedError as exc:
+        await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
+        raise
+    except (RepositoryError, CommitNotFoundError):
+        if online:
+            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+        raise
+    await report_sync_run(repo=repo, report=report, infrahub_branch=infrahub_branch, link_run=False)
+
+
+async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
+    """Log the run's skipped branches when it moved something, and link the run when there is a reason to.
+
+    Every tag update is rebuilt from the tags the run started with, so the call carries the branches
+    the imports tagged the run with as well, or it would drop them.
+    """
+    if report.reports_skipped_branches:
+        log_skipped_branches(repo=repo, report=report)
+    if report.reports_skipped_branches or link_run:
+        await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
 
 
 def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:
@@ -276,7 +319,6 @@ def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -
 async def bootstrap_local_repository(
     repo_name: str,
     repository: CoreRepository,
-    active_internal_status: str,
     infrahub_branch: str,
     client: InfrahubClient,
 ) -> InfrahubRepository | None:
@@ -296,8 +338,7 @@ async def bootstrap_local_repository(
                 name=repository.name.value,
                 location=repository.location.value,
                 client=client,
-                internal_status=active_internal_status,
-                default_branch_name=repository.default_branch.value,
+                infrahub_branch_name=infrahub_branch,
             )
         except RepositoryError as exc:
             get_logger().error(str(exc))
@@ -310,8 +351,7 @@ async def bootstrap_local_repository(
                     name=repository.name.value,
                     location=repository.location.value,
                     client=client,
-                    internal_status=active_internal_status,
-                    default_branch_name=repository.default_branch.value,
+                    infrahub_branch_name=infrahub_branch,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
@@ -343,7 +383,6 @@ async def bootstrap_local_repository(
 async def sync_repository_from_origin(
     repository: CoreRepository,
     repo: InfrahubRepository,
-    active_internal_status: str,
     staging_branch: str | None,
     infrahub_branch: str,
     infrahub_branch_id: str,
@@ -357,8 +396,6 @@ async def sync_repository_from_origin(
             repository_id=repository.id,
             repository_name=repository.name.value,
             repository_location=repository.location.value,
-            internal_status=active_internal_status,
-            default_branch_name=repository.default_branch.value,
             operational_status=repository.operational_status.value,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
@@ -401,11 +438,9 @@ async def sync_remote_repositories() -> None:
     for repo_name, repository_data in repositories.items():
         repository: CoreRepository = repository_data.repository
 
-        active_internal_status = RepositoryInternalStatus.ACTIVE.value
         default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
         staging_branch = None
         if default_internal_status != RepositoryInternalStatus.ACTIVE.value:
-            active_internal_status = RepositoryInternalStatus.STAGING.value
             staging_branch = repository_data.get_staging_branch()
 
         infrahub_branch = staging_branch or registry.default_branch
@@ -413,7 +448,6 @@ async def sync_remote_repositories() -> None:
         repo = await bootstrap_local_repository(
             repo_name=repo_name,
             repository=repository,
-            active_internal_status=active_internal_status,
             infrahub_branch=infrahub_branch,
             client=client,
         )
@@ -423,7 +457,6 @@ async def sync_remote_repositories() -> None:
         await sync_repository_from_origin(
             repository=repository,
             repo=repo,
-            active_internal_status=active_internal_status,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
             infrahub_branch_id=branches[infrahub_branch].id,
@@ -446,9 +479,19 @@ async def git_branch_create(
     message_bus: InfrahubMessageBus,
 ) -> None:
     log = get_run_logger()
-    repo = await InfrahubRepository.init(
-        id=repository_id, name=repository_name, location=repository_location, client=client
-    )
+    # Read on the default branch: the branch being created is not guaranteed to be visible to this
+    # worker's client yet.
+    try:
+        repo = await InfrahubRepository.init(
+            id=repository_id,
+            name=repository_name,
+            location=repository_location,
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+    except RepositoryError as exc:
+        log.warning(f"Skipping branch creation for repository '{repository_name}' - {exc.message}")
+        return
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
@@ -487,9 +530,20 @@ async def git_branch_delete(
 ) -> None:
     log = get_run_logger()
     await add_branch_tag(branch_name=branch)
-    repo = await InfrahubRepository.init(
-        id=repository_id, name=repository_name, location=repository_location, client=client
-    )
+    # Read on the default branch: this fan-out runs after the Infrahub branch has been deleted, so
+    # reading the node on it would raise.
+    try:
+        repo = await InfrahubRepository.init(
+            id=repository_id,
+            name=repository_name,
+            location=repository_location,
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+    except RepositoryError as exc:
+        log.warning(f"Skipping branch deletion for repository '{repository_name}' - {exc.message}")
+        return
+
     async with lock.registry.get(name=repository_name, namespace="repository"):
         if not repo.origin_has_branch(branch):
             return
@@ -542,6 +596,7 @@ async def generate_artifact(model: RequestArtifactGenerate) -> None:
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
 
@@ -747,27 +802,10 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
     client = get_client()
 
-    repo = await InfrahubRepository.init(
-        id=model.repository_id, name=model.repository_name, client=client, default_branch_name=model.default_branch
-    )
-
-    if (
-        model.internal_status == RepositoryInternalStatus.STAGING.value
-        and model.repository_kind == InfrahubKind.REPOSITORY
-    ):
-        log.info(f"Merging {model.repository_kind}")
-        repo_source = await client.get(kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch)
-        repo_main = await client.get(kind=CoreGenericRepository, id=model.repository_id)
-        repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
-        repo_main.sync_status.value = repo_source.sync_status.value
-
-        commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-        repo_main.commit.value = commit
-
-        await repo_main.save()
-        log.info(f"Finished merging {model.repository_kind}")
-
-    elif model.repository_kind == InfrahubKind.READONLYREPOSITORY:
+    # A read-only repository merges by copying two attributes between branches and never touches a
+    # local clone, so it must not build a read-write repository object: its node is not a
+    # CoreRepository, and resolving one would raise.
+    if model.repository_kind == InfrahubKind.READONLYREPOSITORY:
         repo_source = await client.get(kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch)
         repo_destination = await client.get(
             kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.destination_branch
@@ -784,6 +822,29 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             await repo_destination.save()
 
             log.info(f"Finished merging {model.repository_kind}")
+        return
+
+    # The merge lands on the destination branch, and the staging decision below comes from the model
+    # rather than from the object, so the destination is the branch to resolve on.
+    repo = await InfrahubRepository.init(
+        id=model.repository_id,
+        name=model.repository_name,
+        client=client,
+        infrahub_branch_name=model.destination_branch,
+    )
+
+    if model.internal_status == RepositoryInternalStatus.STAGING.value:
+        log.info(f"Merging {model.repository_kind}")
+        repo_source = await client.get(kind=CoreGenericRepository, id=model.repository_id, branch=model.source_branch)
+        repo_main = await client.get(kind=CoreGenericRepository, id=model.repository_id)
+        repo_main.internal_status.value = RepositoryInternalStatus.ACTIVE.value
+        repo_main.sync_status.value = repo_source.sync_status.value
+
+        commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+        repo_main.commit.value = commit
+
+        await repo_main.save()
+        log.info(f"Finished merging {model.repository_kind}")
 
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
@@ -822,6 +883,7 @@ async def import_objects_from_git_repository(model: GitRepositoryImportObjects) 
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.infrahub_branch_name,
         commit=model.commit,
     )
     plan = await repo.build_import_plan(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)
@@ -992,6 +1054,7 @@ async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffName
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.infrahub_branch_name,
     )
     files_changed: list[str] = []
     files_removed: list[str] = []
@@ -1064,6 +1127,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
                 check_execution_id=check_execution_id,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
+                repository_kind=model.repository_kind,
                 commit=model.commit,
                 file_path=model.file_path,
                 class_name=model.class_name,
@@ -1086,6 +1150,7 @@ async def trigger_repository_user_checks_definitions(model: UserCheckDefinitionD
                 check_execution_id=check_execution_id,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
+                repository_kind=model.repository_kind,
                 commit=model.commit,
                 file_path=model.file_path,
                 class_name=model.class_name,
@@ -1146,6 +1211,7 @@ async def trigger_user_checks(model: TriggerRepositoryUserChecks, context: Infra
             check_definition_id=check_definition.id,
             repository_id=repository.id,
             repository_name=repository.name.value,
+            repository_kind=model.repository_kind,
             commit=repository.commit.value,
             file_path=check_definition.file_path.value,
             class_name=check_definition.class_name.value,
@@ -1254,6 +1320,9 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=InfrahubKind.REPOSITORY,
+        # Merge-conflict checks only run for active read-write repositories, so the node is readable
+        # on the proposed change's source branch.
+        infrahub_branch_name=model.source_branch,
     )
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         conflicts = await repo.get_conflicts(source_branch=model.source_branch, dest_branch=model.target_branch)
@@ -1315,8 +1384,9 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
         await check.save()
 
     database = await get_database()
-    async with database.start_session() as db:
-        await NodeManager.delete(db=db, nodes=list(existing_checks.values()))
+    for check in existing_checks.values():
+        async with database.start_transaction() as dbt:
+            await NodeManager.delete(db=dbt, nodes=[check])
 
     return validator_conclusion
 
@@ -1335,7 +1405,8 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
         client=client,
         repository_id=model.repository_id,
         name=model.repository_name,
-        repository_kind=InfrahubKind.REPOSITORY,
+        repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
     conclusion = ValidatorConclusion.FAILURE
