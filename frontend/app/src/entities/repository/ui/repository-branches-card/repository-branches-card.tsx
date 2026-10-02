@@ -11,6 +11,7 @@ import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
 import { clampPage, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { FilterScopeProvider } from "@/entities/nodes/filters/ui/filter-scope-context";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
@@ -153,7 +154,8 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   const queryArguments = toRepositoryBranchArguments(filters, appliedSort);
   const querySignature = JSON.stringify(queryArguments);
 
-  const { data, error, isPending } = useGetRepositoryBranchStatus({
+  const { currentBranch } = useCurrentBranch();
+  const { data, error, isPending, isPlaceholderData } = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
     offset,
@@ -163,7 +165,9 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   // The server's own total is the only thing that can say which page is the last real one, so a url
   // asking for a page past the end is answered once and then written back to the last real page,
   // which re-keys the one request rather than leaving the out-of-range one observed beside it.
-  const currentPage = data ? clampPage(page, getTotalPages(data.count, pageSize)) : page;
+  // A placeholder count belongs to the row set before this one, so it cannot judge this page.
+  const canClamp = data !== undefined && !isPlaceholderData;
+  const currentPage = canClamp ? clampPage(page, getTotalPages(data.count, pageSize)) : page;
 
   useEffect(() => {
     if (currentPage === page) return;
@@ -186,7 +190,9 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
 
       <RepositoryBranchesToolbar />
 
-      <RepositoryBranchesCardBoundary resetKeys={[repositoryId, currentPage, querySignature]}>
+      <RepositoryBranchesCardBoundary
+        resetKeys={[repositoryId, currentBranch.name, currentPage, querySignature]}
+      >
         <RepositoryBranchesBody
           data={data}
           error={error}

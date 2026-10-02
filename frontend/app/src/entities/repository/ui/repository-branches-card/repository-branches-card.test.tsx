@@ -406,6 +406,27 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
+  it("does not clamp the page against the count of the row set it is replacing", async () => {
+    // GIVEN a card settled on a filtered set small enough to hold one page
+    const narrow = generateRepositoryBranchStatusPage({
+      rows: [generateRepositoryBranchStatus({ name: { value: "release-candidate" } })],
+      count: 1,
+    });
+    apiMock.mockResolvedValue(toApiResult(narrow));
+    const component = await renderCard();
+    await expect.element(component.getByText("release-candidate", { exact: true })).toBeVisible();
+
+    // WHEN a wider set is asked for at a page only that wider set has, and has not answered yet
+    apiMock.mockImplementation(() => new Promise(() => {}));
+    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=3`);
+    await component.rerender(
+      <RepositoryBranchesCard repositoryId={REPOSITORY_ID} schema={repositorySchema} />
+    );
+
+    // THEN the one-page count left over from the narrow set must not rewrite that page to 1
+    expect(new URLSearchParams(window.location.search).get(`${BRANCHES_URL_KEY}_page`)).toBe("3");
+  });
+
   it("falls back to the last real page when the url asks for one past the end", async () => {
     // GIVEN a url pointing beyond the end of a set that does hold branches
     const count = 45;

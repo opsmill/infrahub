@@ -1,6 +1,7 @@
 import React from "react";
 
 import { QSP } from "@/shared/config/qsp";
+import { getPageUrlKey } from "@/shared/utils/table-pagination";
 
 export interface FilterScope {
   filterKey: string;
@@ -36,7 +37,7 @@ export function FilterScopeProvider({ urlKey, children }: FilterScopeProviderPro
   const scope: FilterScope = {
     filterKey: `${urlKey}_${QSP.FILTER}`,
     sortKey: `${urlKey}_${QSP.SORT}`,
-    pageKey: `${urlKey}_page`,
+    pageKey: getPageUrlKey(urlKey),
   };
 
   return <FilterScopeContext value={scope}>{children}</FilterScopeContext>;

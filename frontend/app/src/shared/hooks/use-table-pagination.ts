@@ -1,7 +1,7 @@
 import { parseAsInteger, useQueryStates } from "nuqs";
 import { useEffect } from "react";
 
-import { getOffset, PAGE_SIZE, toPageNumber } from "@/shared/utils/table-pagination";
+import { getOffset, getPageUrlKey, PAGE_SIZE, toPageNumber } from "@/shared/utils/table-pagination";
 
 export interface UseTablePaginationOptions {
   urlKey: string;
@@ -49,7 +49,7 @@ export function useTablePagination({ urlKey }: UseTablePaginationOptions): Table
 
   const [params, setParams] = useQueryStates(
     { page: parseAsInteger.withDefault(1) },
-    { urlKeys: { page: `${urlKey}_page` } }
+    { urlKeys: { page: getPageUrlKey(urlKey) } }
   );
 
   const page = toPageNumber(params.page);
