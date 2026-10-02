@@ -104,6 +104,8 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 **Rationale**: verified derivation in `_process_node_fields`; without the registration a change to `ranges` fails every schema load with "Validator ... is not available yet".
 
+The schema-load flow does not read `CONSTRAINT_VALIDATOR_MAP`: `schema_path_validate` resolves the `AggregatedConstraintChecker` through `AggregatedSchemaConstraintsDependency` (`dependencies/builder/constraint/schema/aggregated.py`), which enumerates its checkers explicitly. `SchemaAttributeNumberPoolConstraintDependency` is in that list, so both the legacy bound identifiers and `ranges` refuse a load that leaves a held value outside the declared ranges. Shorthand-only declarations go through the same check.
+
 ### D10. Upserter and synchronizer own the range nodes of schema pools
 
 **Decision**: `SchemaNumberPoolUpserter.upsert_number_pool` creates the range nodes from `effective_ranges()` right after the pool, under the same lock and timestamp, then calls `NumberPoolShorthandMirror.sync`. `SchemaNumberPoolSynchronizer._update_pool_from_schema` reconciles: desired ranges sorted by start are matched positionally to existing ranges sorted by start; matched ranges are updated in place (bounds and weight), extra ranges are deleted, missing ranges are created; then the shorthand is synced. The `pool_type == Schema` gate is unchanged.
