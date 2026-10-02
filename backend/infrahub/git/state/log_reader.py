@@ -275,7 +275,7 @@ def _to_entry(
         authored_at=commit.authored_datetime,
         committed_at=commit.committed_datetime,
         state=classify_commit(
-            hash=commit.hexsha, is_pending=commit.hexsha in pending, facts=facts, condition=condition
+            commit_hash=commit.hexsha, is_pending=commit.hexsha in pending, facts=facts, condition=condition
         ),
     )
 

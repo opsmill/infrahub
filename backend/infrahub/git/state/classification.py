@@ -18,9 +18,8 @@ CONDITIONS_UNRELATED_TO_IMPORTED = frozenset(
 def classify(facts: GitStateFacts) -> RepositoryGitCondition:
     """Return how the remote head relates to the imported commit.
 
-    An imported hash the clone cannot resolve is decided first, so no ancestry answer is ever
-    consulted for it. A configured ref with no head is an error to act on, so it is decided before
-    a branch that merely has nothing imported.
+    An imported commit the clone cannot resolve is ORPHANED whatever else was measured, and a
+    configured ref with no head is REF_MISSING even when nothing is imported.
     """
     if facts.imported is not None and facts.imported_resolvable is False:
         return RepositoryGitCondition.ORPHANED
@@ -36,21 +35,18 @@ def classify(facts: GitStateFacts) -> RepositoryGitCondition:
 
 
 def classify_commit(
-    hash: str,  # noqa: A002
-    is_pending: bool,
-    facts: GitStateFacts,
-    condition: RepositoryGitCondition,
+    commit_hash: str, is_pending: bool, facts: GitStateFacts, condition: RepositoryGitCondition
 ) -> RepositoryCommitState:
     """Return the state of one listed commit.
 
     ``is_pending`` says whether the commit is reachable from the head but not from the imported
-    commit. The condition decides first: a rewritten ref usually shares most of its history with the
-    old one, and those shared ancestors must not read as already imported.
+    commit. Under a condition unrelated to the imported commit, every commit but the head is
+    UNRELATED, since a rewritten ref shares ancestors that must not read as imported.
     """
     if condition in CONDITIONS_UNRELATED_TO_IMPORTED:
-        return RepositoryCommitState.HEAD if hash == facts.head else RepositoryCommitState.UNRELATED
-    if hash == facts.imported:
+        return RepositoryCommitState.HEAD if commit_hash == facts.head else RepositoryCommitState.UNRELATED
+    if commit_hash == facts.imported:
         return RepositoryCommitState.IMPORTED
-    if hash == facts.head:
+    if commit_hash == facts.head:
         return RepositoryCommitState.HEAD
     return RepositoryCommitState.PENDING if is_pending else RepositoryCommitState.HISTORY

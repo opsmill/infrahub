@@ -152,12 +152,13 @@ clone (`get_git_repo_main()`), read-only and with no fetch:
   so testing ancestry first would turn the PRD's "imported commit no longer reachable at all" edge
   case into an exception instead of a reported state.
 - relationship: `Repo.is_ancestor(imported, head)`; `False` means `REWRITTEN`.
-- pending count: `git rev-list --count <imported>..<head>`, only when `BEHIND` and selected.
+- pending range: under `BEHIND` only, one `git rev-list <imported>..<head>`. Its membership places
+  every listed commit and its length is the pending count when selected.
 - page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. No total: FR-024 drops it from the
   contract, so no counting pass over the whole history exists in the read path at all.
 - per-commit state: `IMPORTED` if hash equals imported, else `HEAD` if hash equals head, else
-  `PENDING` when the commit is not an ancestor of imported (`Repo.is_ancestor(commit, imported)` is
-  false) and the condition is `BEHIND`, else `HISTORY`; under `REWRITTEN` and `ORPHANED` every
+  `PENDING` when the commit is in the pending range and the condition is `BEHIND`, else `HISTORY`;
+  under `REWRITTEN` and `ORPHANED` every
   non-head commit is `UNRELATED`, and under `ORPHANED` the imported commit does not appear in the
   page at all, only in the top-level `imported_commit`. When head equals imported, that commit is `IMPORTED` and the top-level `condition`
   is `IN_SYNC`; the two hashes at the top level let the UI draw both markers.
@@ -168,13 +169,19 @@ unit-tested without a repository.
 
 **Rationale**: No commit listing or ancestry code exists in `backend/infrahub/` today
 (`iter_commits` appears only in one integration test). GitPython 3.1.61 provides `is_ancestor`,
-`merge_base` and `iter_commits`; per-page ancestry is at most `limit` cheap `merge-base` calls,
-which stays constant as history grows. Non-linear history is why state is computed rather than
-inferred from list position (FR-005).
+`merge_base` and `iter_commits`. Non-linear history is why state is computed rather than inferred
+from list position (FR-005).
 
-**Alternatives considered**: materialising `rev-list imported..head` as a set for membership
-(rejected: unbounded for a long-neglected repository); `git log --format` parsing (rejected: GitPython
-already exposes typed commits).
+Revised during the PR 5 review: the first design placed each listed commit with its own
+`Repo.is_ancestor(commit, imported)`, up to `limit` `merge-base` subprocesses per page, and counted
+the range in a separate `rev-list --count`. One `rev-list imported..head` answers both, so it
+replaced them. Its cost grows with the range not yet imported rather than with the page, which is
+what a long-neglected read-only repository makes large; a walk bounded to the page can mislabel
+commits whose dates tie, so a bounded form is deferred to T106.
+
+**Alternatives considered**: a `merge-base` per listed commit plus a separate count (the first
+design, replaced as above); `git log --format` parsing (rejected: GitPython already exposes typed
+commits).
 
 ## Freshness
 

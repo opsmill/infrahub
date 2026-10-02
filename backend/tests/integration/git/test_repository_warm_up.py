@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,7 @@ from git import Repo
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreRepository
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.core.registry import registry
 from infrahub.git.models import GitRepositoryWarmUp
 from infrahub.git.repository import (
@@ -51,6 +52,32 @@ def _clone_request(repository: CoreRepository, initiator: str) -> messages.Refre
     )
 
 
+@contextmanager
+def _without_local_copy(repos_dir: Path, repository_id: str) -> Iterator[None]:
+    """Leave this worker without a local copy, as a worker scaled up after the repository was added."""
+    shutil.rmtree(repos_dir / repository_id, ignore_errors=True)
+    # The initialized repository is memoized per process, and would otherwise stand in for the deleted copy.
+    _get_initialized_repo.cache_clear()
+    try:
+        yield
+    finally:
+        _get_initialized_repo.cache_clear()
+
+
+@asynccontextmanager
+async def _without_imported_commit(
+    db: InfrahubDatabase, repository: CoreRepository | CoreReadOnlyRepository
+) -> AsyncIterator[None]:
+    imported = repository.commit.value
+    repository.commit.value = None
+    await repository.save(db=db)
+    try:
+        yield
+    finally:
+        repository.commit.value = imported
+        await repository.save(db=db)
+
+
 def _advance(upstream: Repo) -> None:
     """Move the remote past the imported commit."""
     Path(upstream.working_dir, "not-imported.txt").write_text("not imported", encoding="utf-8")
@@ -69,6 +96,7 @@ class TestRepositoryWarmUp(TestInfrahubApp):
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
         FileRepo(name="car-dealership", sources_directory=git_repos_source_dir_module_scope)
+        FileRepo(name="read-only-repo", sources_directory=git_repos_source_dir_module_scope)
         # The repository declares a check targeting this group, so the import fails without it.
         people = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
         await people.new(db=db, name="people")
@@ -90,14 +118,39 @@ class TestRepositoryWarmUp(TestInfrahubApp):
 
         return await NodeManager.get_one(db=db, id=client_repository.id, kind=CoreRepository, raise_on_error=True)
 
+    @pytest.fixture(scope="class")
+    async def read_only_repository(
+        self,
+        db: InfrahubDatabase,
+        initial_dataset: None,
+        git_repos_source_dir_module_scope: Path,
+        client: InfrahubClient,
+    ) -> CoreReadOnlyRepository:
+        client_repository = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            data={
+                "name": "read-only-repo",
+                "location": f"{git_repos_source_dir_module_scope}/read-only-repo",
+                "ref": "main",
+            },
+        )
+        await client_repository.save()
+
+        return await NodeManager.get_one(
+            db=db, id=client_repository.id, kind=CoreReadOnlyRepository, raise_on_error=True
+        )
+
     @pytest.fixture
     def cold_worker(self, repository: CoreRepository, git_repos_dir_module_scope: Path) -> Iterator[None]:
-        """Leave this worker without a local copy, as a worker scaled up after the repository was added."""
-        shutil.rmtree(git_repos_dir_module_scope / repository.id, ignore_errors=True)
-        # The initialized repository is memoized per process, and would otherwise stand in for the deleted copy.
-        _get_initialized_repo.cache_clear()
-        yield
-        _get_initialized_repo.cache_clear()
+        with _without_local_copy(repos_dir=git_repos_dir_module_scope, repository_id=repository.id):
+            yield
+
+    @pytest.fixture
+    def cold_read_only_worker(
+        self, read_only_repository: CoreReadOnlyRepository, git_repos_dir_module_scope: Path
+    ) -> Iterator[None]:
+        with _without_local_copy(repos_dir=git_repos_dir_module_scope, repository_id=read_only_repository.id):
+            yield
 
     @pytest.fixture
     def advanced_upstream(self, repository: CoreRepository, git_repos_source_dir_module_scope: Path) -> Iterator[str]:
@@ -111,12 +164,15 @@ class TestRepositoryWarmUp(TestInfrahubApp):
 
     @pytest.fixture
     async def nothing_imported(self, db: InfrahubDatabase, repository: CoreRepository) -> AsyncIterator[None]:
-        imported = repository.commit.value
-        repository.commit.value = None
-        await repository.save(db=db)
-        yield
-        repository.commit.value = imported
-        await repository.save(db=db)
+        async with _without_imported_commit(db=db, repository=repository):
+            yield
+
+    @pytest.fixture
+    async def read_only_nothing_imported(
+        self, db: InfrahubDatabase, read_only_repository: CoreReadOnlyRepository
+    ) -> AsyncIterator[None]:
+        async with _without_imported_commit(db=db, repository=read_only_repository):
+            yield
 
     @pytest.fixture
     async def existing_copy(self, client: InfrahubClient, repository: CoreRepository) -> None:
@@ -143,11 +199,16 @@ class TestRepositoryWarmUp(TestInfrahubApp):
             worker_identity=WORKER_IDENTITY,
         )
 
-    def _model(self, repository: CoreRepository, default_branch: Branch) -> GitRepositoryWarmUp:
+    def _model(
+        self,
+        repository: CoreRepository | CoreReadOnlyRepository,
+        default_branch: Branch,
+        repository_kind: str = InfrahubKind.REPOSITORY,
+    ) -> GitRepositoryWarmUp:
         return GitRepositoryWarmUp(
             repository_id=repository.id,
             repository_name=repository.name.value,
-            repository_kind=InfrahubKind.REPOSITORY,
+            repository_kind=repository_kind,
             location=repository.location.value,
             infrahub_branch_name=default_branch.name,
         )
@@ -202,6 +263,39 @@ class TestRepositoryWarmUp(TestInfrahubApp):
 
         assert not (git_repos_dir_module_scope / repository.id).exists()
         assert bus.messages == []
+
+    async def test_warm_up_clones_a_read_only_repository_with_nothing_imported_and_broadcasts_a_clone(
+        self,
+        default_branch: Branch,
+        read_only_repository: CoreReadOnlyRepository,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
+        cold_read_only_worker: None,
+        read_only_nothing_imported: None,
+        bus: BusRecorder,
+        warm_up: RepositoryWarmUp,
+    ) -> None:
+        """With no commit to pin other workers to, they are asked to clone without checking anything out."""
+        await warm_up.warm_up(
+            model=self._model(
+                repository=read_only_repository,
+                default_branch=default_branch,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+            )
+        )
+
+        upstream_head = Repo(git_repos_source_dir_module_scope / "read-only-repo").head.commit.hexsha
+        local_copy = Repo(git_repos_dir_module_scope / read_only_repository.id / "main")
+        assert local_copy.commit("origin/main").hexsha == upstream_head
+        assert bus.messages == [
+            messages.RefreshGitClone(
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+                repository_id=read_only_repository.id,
+                repository_name=read_only_repository.name.value,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+                infrahub_branch_name=default_branch.name,
+            )
+        ]
 
     async def test_a_worker_receiving_the_clone_request_creates_its_copy(
         self, client: InfrahubClient, repository: CoreRepository, git_repos_dir_module_scope: Path, cold_worker: None

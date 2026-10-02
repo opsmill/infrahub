@@ -112,93 +112,103 @@ def test_classify(case: ConditionCase) -> None:
 @dataclass(frozen=True)
 class CommitCase:
     name: str
-    hash: str
+    commit_hash: str
     is_pending: bool
     facts: GitStateFacts
     expected: RepositoryCommitState
 
 
 COMMIT_CASES = [
-    CommitCase(name="behind_head", hash=HEAD, is_pending=True, facts=BEHIND_FACTS, expected=RepositoryCommitState.HEAD),
+    CommitCase(
+        name="behind_head", commit_hash=HEAD, is_pending=True, facts=BEHIND_FACTS, expected=RepositoryCommitState.HEAD
+    ),
     CommitCase(
         name="behind_commit_between_imported_and_head_is_pending",
-        hash=MIDDLE,
+        commit_hash=MIDDLE,
         is_pending=True,
         facts=BEHIND_FACTS,
         expected=RepositoryCommitState.PENDING,
     ),
     CommitCase(
         name="behind_imported",
-        hash=IMPORTED,
+        commit_hash=IMPORTED,
         is_pending=False,
         facts=BEHIND_FACTS,
         expected=RepositoryCommitState.IMPORTED,
     ),
     CommitCase(
         name="behind_ancestor_of_imported_is_history",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=BEHIND_FACTS,
         expected=RepositoryCommitState.HISTORY,
     ),
     CommitCase(
         name="in_sync_imported_wins_over_head",
-        hash=IMPORTED,
+        commit_hash=IMPORTED,
         is_pending=False,
         facts=IN_SYNC_FACTS,
         expected=RepositoryCommitState.IMPORTED,
     ),
     CommitCase(
         name="in_sync_older_commit_is_history",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=IN_SYNC_FACTS,
         expected=RepositoryCommitState.HISTORY,
     ),
     CommitCase(
-        name="rewritten_head", hash=HEAD, is_pending=False, facts=REWRITTEN_FACTS, expected=RepositoryCommitState.HEAD
+        name="rewritten_head",
+        commit_hash=HEAD,
+        is_pending=False,
+        facts=REWRITTEN_FACTS,
+        expected=RepositoryCommitState.HEAD,
     ),
     CommitCase(
         name="rewritten_shared_ancestor_of_imported_is_unrelated",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=REWRITTEN_FACTS,
         expected=RepositoryCommitState.UNRELATED,
     ),
     CommitCase(
-        name="orphaned_head", hash=HEAD, is_pending=False, facts=ORPHANED_FACTS, expected=RepositoryCommitState.HEAD
+        name="orphaned_head",
+        commit_hash=HEAD,
+        is_pending=False,
+        facts=ORPHANED_FACTS,
+        expected=RepositoryCommitState.HEAD,
     ),
     CommitCase(
         name="orphaned_other_commit_is_unrelated",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=ORPHANED_FACTS,
         expected=RepositoryCommitState.UNRELATED,
     ),
     CommitCase(
         name="not_tracked_head",
-        hash=HEAD,
+        commit_hash=HEAD,
         is_pending=False,
         facts=NOT_TRACKED_FACTS,
         expected=RepositoryCommitState.HEAD,
     ),
     CommitCase(
         name="not_tracked_other_commit_is_unrelated",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=NOT_TRACKED_FACTS,
         expected=RepositoryCommitState.UNRELATED,
     ),
     CommitCase(
         name="ref_missing_imported",
-        hash=IMPORTED,
+        commit_hash=IMPORTED,
         is_pending=False,
         facts=REF_MISSING_FACTS,
         expected=RepositoryCommitState.IMPORTED,
     ),
     CommitCase(
         name="ref_missing_ancestor_of_imported_is_history",
-        hash=ROOT,
+        commit_hash=ROOT,
         is_pending=False,
         facts=REF_MISSING_FACTS,
         expected=RepositoryCommitState.HISTORY,
@@ -209,7 +219,10 @@ COMMIT_CASES = [
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in COMMIT_CASES])
 def test_classify_commit(case: CommitCase) -> None:
     state = classify_commit(
-        hash=case.hash, is_pending=case.is_pending, facts=case.facts, condition=classify(facts=case.facts)
+        commit_hash=case.commit_hash,
+        is_pending=case.is_pending,
+        facts=case.facts,
+        condition=classify(facts=case.facts),
     )
 
     assert state is case.expected
@@ -226,7 +239,7 @@ def test_non_linear_history_is_classified_by_membership_not_position() -> None:
 
     states = [
         classify_commit(
-            hash=commit_hash, is_pending=is_pending, facts=BEHIND_FACTS, condition=RepositoryGitCondition.BEHIND
+            commit_hash=commit_hash, is_pending=is_pending, facts=BEHIND_FACTS, condition=RepositoryGitCondition.BEHIND
         )
         for commit_hash, is_pending in listed
     ]
