@@ -58,6 +58,7 @@ jobs:
       error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
       observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
+      dependabot_autopilot: ${{ steps.changes.outputs.dependabot_autopilot_files }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
@@ -340,6 +341,32 @@ jobs:
       - name: "Validate component test shards"
         run: "uv run invoke backend.validate-component-shards"
 
+  dependabot-autopilot-tests:
+    if: needs.files-changed.outputs.dependabot_autopilot == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 10
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7.0.1
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Unit tests: dependabot autopilot"
+        run: "uv run pytest .github/scripts/dependabot_autopilot/tests"
+
   markdown-lint:
     if: |
       needs.files-changed.outputs.documentation == 'true' ||
@@ -560,6 +587,7 @@ jobs:
       - frontend-validate-graphql-types
       - validate-observability-standalone
       - python-lint
+      - dependabot-autopilot-tests
       - markdown-lint
       - action-lint
       - infrahub-uv-check

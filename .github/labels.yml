@@ -263,3 +263,22 @@
 - name: "stale"
   description: "Marks stale issues and pull requests"
   color: "ffffff"
+
+# ----------------------------------
+# DEPENDABOT AUTOPILOT
+# ----------------------------------
+- name: "autopilot/safe"
+  description: "Effective verdict safe-to-merge for the current head"
+  color: "0e8a16"
+
+- name: "autopilot/needs-code-changes"
+  description: "Blocked; see the blocking review"
+  color: "e34918"
+
+- name: "autopilot/review-required"
+  description: "Escalated to owners"
+  color: "fbca04"
+
+- name: "autopilot/hold"
+  description: "Human hold; the autopilot does not approve or merge"
+  color: "5319e7"
