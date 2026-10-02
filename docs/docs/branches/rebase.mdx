@@ -20,7 +20,41 @@ A branch reads the default branch as it was at its `branched_from`. Infrahub doe
 - **See what other branches merged**: after the rebase, the branch reads every change merged into the default branch since its previous `branched_from`.
 - **Find conflicts before review**: during the rebase, Infrahub compares the branch with the current default branch and stops on any conflict that still needs your input, so you fix it on the branch before a reviewer sees it.
 
-![Branch rebase diagram](../media/branch_rebase_no_conflict.excalidraw.svg)
+The example below follows two attributes. `branch-a` changes `A`, and meanwhile another branch merges a change to `B` into the default branch.
+
+**1. Before the rebase.** `branch-a` was created while `A` and `B` were both `1`. It has since set `A` to `2`, then to `3`. The default branch has since received `B: 2`, but `branch-a` still reads `B: 1`, because it reads the default branch as of its `branched_from`.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: " " tag: "A: 1, B: 1, branched_from"
+  branch branch-a
+  checkout branch-a
+  commit id: "A: 2"
+  commit id: "A: 3"
+  checkout main
+  commit id: "B: 2"
+```
+
+</div>
+
+**2. After the rebase.** `branched_from` moves to the latest state of the default branch, so `branch-a` now reads `B: 2`. It keeps its own change, `A: 3`, and drops the history of that change from before the new `branched_from`, so `A: 2` is no longer in the branch's history.
+
+<div style={{zoom: 1.3, textAlign: 'center'}}>
+
+```mermaid
+%%{init: {"gitGraph": {"rotateCommitLabel": false}, "themeVariables": {"fontSize": "14px", "git0": "#2f9e44", "git1": "#3b5bdb", "gitBranchLabel0": "#ffffff", "gitBranchLabel1": "#ffffff", "gitInv0": "#ffffff", "gitInv1": "#ffffff", "tagLabelColor": "#1a1a1a", "tagLabelBackground": "#ffffff", "tagLabelBorder": "#868e96", "tagLabelFontSize": "13px", "commitLabelBackground": "transparent", "commitLabelFontSize": "13px"}}}%%
+gitGraph
+  commit id: "A: 1, B: 1"
+  commit id: " " tag: "B: 2, new branched_from"
+  branch branch-a
+  checkout branch-a
+  commit id: "A: 3, kept"
+```
+
+</div>
 
 ## How rebase works
 
