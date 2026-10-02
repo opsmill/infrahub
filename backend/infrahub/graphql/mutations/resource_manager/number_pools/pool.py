@@ -125,7 +125,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                 repository = NumberPoolRepository(db=dbt)
                 if shorthand is not None:
                     await repository.create_range(
-                        pool_id=pool_id,
+                        pool=number_pool,
                         start=shorthand.start,
                         end=shorthand.end,
                         user_id=graphql_context.assigned_user_id,
@@ -236,7 +236,7 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
         if current_range is None:
-            await repository.create_range(pool_id=number_pool.get_id(), start=start, end=end, user_id=user_id)
+            await repository.create_range(pool=number_pool, start=start, end=end, user_id=user_id)
         else:
             await repository.save_range_bounds(pool_range=current_range, start=start, end=end, user_id=user_id)
 

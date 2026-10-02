@@ -40,11 +40,11 @@ class NumberPoolRepository:
         return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
 
     async def create_range(
-        self, pool_id: str, start: int, end: int, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+        self, pool: Node, start: int, end: int, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> CoreNumberPoolRange:
         """Add a range without weight to the pool."""
         pool_range = await Node.init(db=self.db, schema=CoreNumberPoolRange)
-        await pool_range.new(db=self.db, start=start, end=end, pool=pool_id)
+        await pool_range.new(db=self.db, start=start, end=end, pool=pool)
         await pool_range.save(db=self.db, at=at, user_id=user_id)
         return pool_range
 
