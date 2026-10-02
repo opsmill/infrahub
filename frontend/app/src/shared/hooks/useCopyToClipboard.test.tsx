@@ -140,4 +140,28 @@ describe("useCopyToClipboard", () => {
     await advance(1);
     expect(button).toHaveAttribute("data-copied", "false");
   });
+
+  it("schedules no feedback when the copy settles after unmount", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal("isSecureContext", true);
+    let settleWrite: () => void = () => {};
+    const writeText = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          settleWrite = resolve;
+        })
+    );
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const component = await render(<CopyButton value="test-value" />);
+    const button = component.getByTestId("copy-btn").element();
+    await act(() => button.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await component.unmount();
+
+    // WHEN
+    await act(async () => settleWrite());
+
+    // THEN
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
