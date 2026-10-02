@@ -54,10 +54,11 @@ a changelog. The diff already carries the display labels of nodes and peers; it 
 attribute changes, so `ChangelogHfidResolver` (`hfid_resolver.py`) fills them afterwards:
 
 - a node whose diff carries its current HFID (created, or HFID changed) takes it from the diff
-- a removed node, gone by the time labels are read, takes the previous value the diff recorded
+- a removed node, gone by the time labels are read, takes the previous value the diff recorded, also
+  where it appears as a peer
 - every other node, and every peer outside the diff, is loaded in one batch
-- a node or peer whose kind was dropped by a schema migration stays unresolved instead of joining the
-  batch, so it cannot fail the load for the others
+- a node or peer whose kind was dropped by a schema migration stays unresolved, even when the diff
+  records its HFID, and never joins the batch, so it cannot fail the load for the others
 
 ## Reading labels
 
