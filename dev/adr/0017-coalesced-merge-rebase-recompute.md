@@ -34,8 +34,9 @@ affected derived value, reusing the existing per-family process flows and chunki
 A shared coordinator serves both operations; only the branch differs, merge recomputing on the
 destination branch and rebase on the user branch. The pass covers Jinja2 computed attributes,
 display labels, and human-friendly ids; Python transform computed attributes joined later
-([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records. It reuses the computed-attribute deriver and adds
-display-label and HFID derivers built from the dependency metadata already recorded on those
+([ADR 0020](0020-python-transform-recompute-targets.md)), as the Neutral section records. It
+reuses the computed-attribute deriver and adds display-label and HFID derivers built from the
+dependency metadata already recorded on those
 definitions. It recomputes all affected readers on the correct branch, which never
 under-recomputes, and defers any source-branch redundancy skip.
 
