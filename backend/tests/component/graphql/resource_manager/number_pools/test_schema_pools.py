@@ -26,121 +26,128 @@ mutation UpsertNumberPoolBounds($id: String!, $start_range: BigInt!, $end_range:
 """
 
 
-@pytest.fixture
-async def snow_ticket_schema_with_pools(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
-    await snps.run()
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-    graphql_registry.clear_cache()
+class TestSchemaNumberPools:
+    """Mutations on a pool the schema created.
 
+    The schema and its pools are loaded once for the class; every test leaves the pool as it found it.
+    """
 
-async def test_delete_number_pool_in_use_by_numberpool_attribute(
-    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
-) -> None:
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
-    number_pool_attribute = node_schema.get_attribute(name="number")
-    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    query_before_creation = await graphql(
-        schema=gql_params.schema,
-        source=QUERY_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": number_pool_attribute.parameters.number_pool_id,
-        },
-    )
+    @pytest.fixture(scope="class")
+    async def snow_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
+        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        await snps.run()
+        registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+        graphql_registry.clear_cache()
+        default_branch_scope_class.update_schema_hash()
 
-    assert not query_before_creation.errors
-    assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
+    async def test_delete_number_pool_in_use_by_numberpool_attribute(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_schema: None
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        node_schema = registry.schema.get(name="SnowTask", branch=default_branch_scope_class)
+        number_pool_attribute = node_schema.get_attribute(name="number")
+        assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+        query_before_creation = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": number_pool_attribute.parameters.number_pool_id,
+            },
+        )
 
-    delete_fail = await graphql(
-        schema=gql_params.schema,
-        source=DELETE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": number_pool_attribute.parameters.number_pool_id,
-        },
-    )
+        assert not query_before_creation.errors
+        assert query_before_creation.data
+        assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
-    assert delete_fail.errors
-    assert "Unable to delete number pool SnowTask.number is in use (branches: main)" in str(delete_fail.errors)
+        delete_fail = await graphql(
+            schema=gql_params.schema,
+            source=DELETE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": number_pool_attribute.parameters.number_pool_id,
+            },
+        )
 
+        assert delete_fail.errors
+        assert "Unable to delete number pool SnowTask.number is in use (branches: main)" in str(delete_fail.errors)
 
-async def test_update_schema_number_pool_range(
-    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
-) -> None:
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
-    number_pool_attribute = node_schema.get_attribute(name="number")
-    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    query_before_creation = await graphql(
-        schema=gql_params.schema,
-        source=QUERY_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": number_pool_attribute.parameters.number_pool_id,
-        },
-    )
+    async def test_update_schema_number_pool_range(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_schema: None
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        node_schema = registry.schema.get(name="SnowTask", branch=default_branch_scope_class)
+        number_pool_attribute = node_schema.get_attribute(name="number")
+        assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+        query_before_creation = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": number_pool_attribute.parameters.number_pool_id,
+            },
+        )
 
-    assert not query_before_creation.errors
-    assert query_before_creation.data
-    assert query_before_creation.data["CoreNumberPool"]["count"] == 1
+        assert not query_before_creation.errors
+        assert query_before_creation.data
+        assert query_before_creation.data["CoreNumberPool"]["count"] == 1
 
-    update_forbidden = await graphql(
-        schema=gql_params.schema,
-        source=UPDATE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": number_pool_attribute.parameters.number_pool_id,
-            "start_range": 1,
-            "end_range": 10,
-        },
-    )
+        update_forbidden = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": number_pool_attribute.parameters.number_pool_id,
+                "start_range": 1,
+                "end_range": 10,
+            },
+        )
 
-    assert update_forbidden.errors
-    assert (
-        "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
-        in str(update_forbidden.errors)
-    )
+        assert update_forbidden.errors
+        assert (
+            "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+            in str(update_forbidden.errors)
+        )
 
+    async def test_upsert_of_schema_number_pool_bounds_is_refused_and_leaves_the_pool_untouched(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, snow_schema: None
+    ) -> None:
+        default_branch_scope_class.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+        node_schema = registry.schema.get(name="SnowTask", branch=default_branch_scope_class)
+        number_pool_attribute = node_schema.get_attribute(name="number")
+        assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
+        pool_id = number_pool_attribute.parameters.number_pool_id
+        pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        bounds_before = (pool.start_range.value, pool.end_range.value)
+        ranges_before = await range_details(db=db, pool_id=pool_id)
+        assert bounds_before[0] is not None
+        assert bounds_before[1] is not None
 
-async def test_upsert_of_schema_number_pool_bounds_is_refused_and_leaves_the_pool_untouched(
-    db: InfrahubDatabase, default_branch: Branch, snow_ticket_schema_with_pools: None
-) -> None:
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-    node_schema = registry.schema.get(name="SnowTask", branch=default_branch)
-    number_pool_attribute = node_schema.get_attribute(name="number")
-    assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
-    pool_id = number_pool_attribute.parameters.number_pool_id
-    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
-    bounds_before = (pool.start_range.value, pool.end_range.value)
-    ranges_before = await range_details(db=db, pool_id=pool_id)
-    assert bounds_before[0] is not None
-    assert bounds_before[1] is not None
+        result = await graphql(
+            schema=gql_params.schema,
+            source=UPSERT_NUMBER_POOL_BOUNDS_BY_ID,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"id": pool_id, "start_range": bounds_before[0] + 1, "end_range": bounds_before[1]},
+        )
 
-    result = await graphql(
-        schema=gql_params.schema,
-        source=UPSERT_NUMBER_POOL_BOUNDS_BY_ID,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": pool_id, "start_range": bounds_before[0] + 1, "end_range": bounds_before[1]},
-    )
-
-    assert [error.message for error in result.errors or []] == [
-        "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
-    ]
-    pool_after = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
-    assert (pool_after.start_range.value, pool_after.end_range.value) == bounds_before
-    assert await range_details(db=db, pool_id=pool_id) == ranges_before
+        assert [error.message for error in result.errors or []] == [
+            "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
+        ]
+        pool_after = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        assert (pool_after.start_range.value, pool_after.end_range.value) == bounds_before
+        assert await range_details(db=db, pool_id=pool_id) == ranges_before
