@@ -63,6 +63,15 @@ export function BranchRepositoriesNone() {
   );
 }
 
+export function BranchRepositoryHealthFailed() {
+  return (
+    <div role="alert" className="flex items-center gap-2 border-t px-4 py-2 text-danger text-xs">
+      <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
+      Repository health couldn't be checked. Retrying…
+    </div>
+  );
+}
+
 export function BranchRepositoriesFailed() {
   return (
     <div role="alert" className="flex items-center gap-2 px-4 py-4 text-danger text-sm">

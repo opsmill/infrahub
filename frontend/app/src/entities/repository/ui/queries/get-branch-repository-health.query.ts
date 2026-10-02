@@ -14,7 +14,9 @@ export function getBranchRepositoryHealthQueryOptions(params: GetBranchRepositor
     queryKey: repositoryQueryKeys.branchHealth(params),
     queryFn: () => getBranchRepositoryHealth(params),
     refetchInterval: (query) =>
-      isAnyRepositorySyncing(query.state.data) ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS : false,
+      query.state.status === "error" || isAnyRepositorySyncing(query.state.data)
+        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
+        : false,
   });
 }
 

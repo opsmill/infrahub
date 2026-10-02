@@ -8,7 +8,10 @@ import { generateBranchRepositoryHealth } from "../../../../../tests/fake/branch
 const pageParams = { branchName: "feature", syncWithGit: true, limit: 10, offset: 0 };
 
 describe("getBranchRepositoryHealthQueryOptions", () => {
-  const refetchIntervalFor = (syncingCount: number | undefined) => {
+  const refetchIntervalFor = (
+    syncingCount: number | undefined,
+    status: "success" | "error" = "success"
+  ) => {
     const { refetchInterval } = getBranchRepositoryHealthQueryOptions({
       branchName: "feature",
       syncWithGit: true,
@@ -17,7 +20,9 @@ describe("getBranchRepositoryHealthQueryOptions", () => {
       throw new Error("refetchInterval must be a function");
     const data =
       syncingCount === undefined ? undefined : generateBranchRepositoryHealth({ syncingCount });
-    return refetchInterval({ state: { data } } as unknown as Parameters<typeof refetchInterval>[0]);
+    return refetchInterval({ state: { data, status } } as unknown as Parameters<
+      typeof refetchInterval
+    >[0]);
   };
 
   it("polls every 10 seconds while the server counts a syncing repository", () => {
@@ -27,6 +32,11 @@ describe("getBranchRepositoryHealthQueryOptions", () => {
   it("doesn't poll when none is syncing or nothing has loaded", () => {
     expect(refetchIntervalFor(0)).toBe(false);
     expect(refetchIntervalFor(undefined)).toBe(false);
+  });
+
+  it("keeps polling while the health check fails, so it recovers on its own", () => {
+    expect(refetchIntervalFor(undefined, "error")).toBe(10_000);
+    expect(refetchIntervalFor(0, "error")).toBe(10_000);
   });
 });
 

@@ -287,6 +287,24 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
   });
 
+  test("says the repository health couldn't be checked, in place of the bands, while the table still shows", async () => {
+    // GIVEN
+    serve(buildBranchRepositoriesScenario("all-clear"));
+    vi.mocked(getBranchRepositoryHealth).mockRejectedValue(new Error("Network error"));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect
+      .element(component.getByText("Repository health couldn't be checked. Retrying…"))
+      .toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(4);
+    expect(
+      component.container.querySelectorAll('[data-testid="repository-error-band"]')
+    ).toHaveLength(0);
+  });
+
   test("says the branch is not synchronised with Git when the server counts no repository and Sync with Git is off", async () => {
     // GIVEN
     serve(buildBranchRepositoriesScenario("no-repos"));

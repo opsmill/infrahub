@@ -21,6 +21,7 @@ import {
   BranchRepositoriesLoading,
   BranchRepositoriesNone,
   BranchRepositoriesNotSynced,
+  BranchRepositoryHealthFailed,
 } from "@/entities/repository/ui/branch-repositories/branch-repositories-states";
 import { BranchRepositoriesTable } from "@/entities/repository/ui/branch-repositories/branch-repositories-table";
 import { RepositoryErrorBands } from "@/entities/repository/ui/branch-repositories/repository-error-bands";
@@ -36,7 +37,10 @@ interface BranchRepositoriesCardProps {
 
 export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchRepositoriesCardProps) {
   const { page, setPage, pageSize } = useTablePagination({ urlKey: REPOSITORIES_URL_KEY });
-  const { data: health } = useGetBranchRepositoryHealth({ branchName, syncWithGit });
+  const { data: health, isError: isHealthError } = useGetBranchRepositoryHealth({
+    branchName,
+    syncWithGit,
+  });
   const isSyncing = isAnyRepositorySyncing(health);
   const { page: currentPage, query } = useGetBranchRepositories({
     branchName,
@@ -67,15 +71,19 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
         onPageChange={setPage}
       />
 
-      {query.data && query.data.count > 0 && (
-        <RepositoryErrorBands
-          key={branchName}
-          repositories={getFailingRepositories(health)}
-          unlistedCount={countUnlistedFailures(health)}
-          branchName={branchName}
-          isSyncing={isSyncing}
-        />
-      )}
+      {query.data &&
+        query.data.count > 0 &&
+        (!health && isHealthError ? (
+          <BranchRepositoryHealthFailed />
+        ) : (
+          <RepositoryErrorBands
+            key={branchName}
+            repositories={getFailingRepositories(health)}
+            unlistedCount={countUnlistedFailures(health)}
+            branchName={branchName}
+            isSyncing={isSyncing}
+          />
+        ))}
     </Card>
   );
 }
