@@ -371,18 +371,17 @@ async def test_an_older_branch_keeps_the_old_is_reserved_edge_open_until_it_is_d
     )
 
 
-async def test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved_edge_open(
+@pytest.mark.xfail(
+    strict=True,
+    reason="the rebase re-evaluates only the nodes the base branch removed, and a rename removes none",
+)
+async def test_rebasing_the_last_older_branch_past_a_rename_closes_the_old_is_reserved_edge(
     db: InfrahubDatabase,
     default_branch: Branch,
     serial_pool: CoreNumberPool,
     dependency_provider: Provider,
 ) -> None:
-    """Pins a known gap rather than the goal.
-
-    The rebase re-evaluates only the nodes the base branch removed, and a rename removes none. After
-    the rebase the branch forks after the default branch closed its owning edge to the old vertex and
-    holds no edges of its own there, so a later branch delete never considers the IS_RESERVED edge either.
-    """
+    """Once the only branch still reading the old vertex rebases past the rename, no branch reaches it."""
     holder = await pooled_widget(
         db=db, default_branch=default_branch, pool=serial_pool, support=BranchSupportType.AWARE
     )
@@ -391,25 +390,14 @@ async def test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved
     await rename_the_attribute(
         db=db, branch=default_branch, schema=registry.schema.get_schema_branch(name=default_branch.name)
     )
-    rebased = await _rebase_branch(
-        db=db, default_branch=default_branch, branch=older, dependency_provider=dependency_provider
-    )
+    await _rebase_branch(db=db, default_branch=default_branch, branch=older, dependency_provider=dependency_provider)
 
     assert (
         await is_reserved_edge_on(
             db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME
         )
-        == IsReservedEdge.OPEN
-    ), "the rebase does not re-evaluate a rename"
-
-    await delete_branch(db=db, branch=rebased)
-
-    assert (
-        await is_reserved_edge_on(
-            db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=PREVIOUS_ATTRIBUTE_NAME
-        )
-        == IsReservedEdge.OPEN
-    ), "the rebased branch holds nothing on the old vertex, so its delete does not reach the IS_RESERVED edge"
+        == IsReservedEdge.CLOSED
+    ), "no branch reaches the old vertex once the last older branch has rebased past the rename"
     assert (
         await is_reserved_edge_on(db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME)
         == IsReservedEdge.OPEN
