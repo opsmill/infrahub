@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class ResolvedPeerLabels:
-    """The labels of the peers one changelog references, resolved in a single load."""
+    """The labels of the nodes one changelog references, resolved in a single load."""
 
     def __init__(self, labels: dict[str, NodeLabels], referenced_count: int) -> None:
         self._labels = labels
@@ -19,12 +19,12 @@ class ResolvedPeerLabels:
 
     @property
     def referenced_count(self) -> int:
-        """How many distinct peers were asked for."""
+        """How many distinct nodes were asked for."""
         return self._referenced_count
 
     @property
     def resolved_count(self) -> int:
-        """How many distinct peers were resolved."""
+        """How many distinct nodes were resolved."""
         return len(self._labels)
 
     def labels_of(self, peer_id: str) -> NodeLabels:
@@ -32,10 +32,12 @@ class ResolvedPeerLabels:
         return self._labels.get(peer_id, PLACEHOLDER_LABELS)
 
     def enrich(self, changelog: NodeChangelog) -> None:
-        """Fill each relationship peer of a changelog with its display label and HFID.
+        """Fill each relationship peer of a changelog with its display label and HFID, and the changelog's HFID when unset.
 
         A peer that could not be resolved keeps both unset.
         """
+        if changelog.hfid is None and (node_labels := self._labels.get(changelog.node_id)):
+            changelog.hfid = node_labels.hfid
         for relationship in changelog.relationships.values():
             for peer in relationship.peer_entries():
                 peer_labels = self._labels.get(peer.peer_id) if peer.peer_id else None
@@ -46,15 +48,22 @@ class ResolvedPeerLabels:
 
 
 class PeerLabelResolver:
-    """Resolves the labels of every peer a changelog's relationships reference, in one batched load."""
+    """Resolves the labels of every peer a changelog's relationships reference, in one batched load.
+
+    The changelog's own node can join the same load, so a changelog saved without its HFID gets it
+    from storage at no extra read when the changelog has peers.
+    """
 
     def __init__(self, label_loader: NodeLabelLoader) -> None:
         self._label_loader = label_loader
 
-    async def resolve(self, changelog: NodeChangelog) -> ResolvedPeerLabels:
-        referenced_peer_ids = self.referenced_peer_ids(changelog=changelog)
-        labels = await self._label_loader.load_labels(referenced_peer_ids)
-        return ResolvedPeerLabels(labels=labels, referenced_count=len(referenced_peer_ids))
+    async def resolve(self, changelog: NodeChangelog, include_node: bool = False) -> ResolvedPeerLabels:
+        """Resolve the labels of the changelog's peers, and of its own node when ``include_node`` is set."""
+        node_ids = self.referenced_peer_ids(changelog=changelog)
+        if include_node:
+            node_ids.add(changelog.node_id)
+        labels = await self._label_loader.load_labels(node_ids)
+        return ResolvedPeerLabels(labels=labels, referenced_count=len(node_ids))
 
     def referenced_peer_ids(self, changelog: NodeChangelog) -> set[str]:
         """Collect the IDs of every peer referenced by this changelog's relationships."""

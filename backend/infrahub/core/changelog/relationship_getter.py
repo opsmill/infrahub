@@ -30,7 +30,8 @@ class RelationshipChangelogGetter:
     A relationship change on the mutated node also changes the reciprocal relationship on each
     peer, so one secondary changelog is emitted per affected peer. The mutated node's own
     relationships and each secondary are filled with the peer's display label and HFID, resolved
-    for every referenced peer in a single batched load.
+    for every referenced peer in a single batched load, which also reads the mutated node's HFID
+    when its save left it unset.
     """
 
     def __init__(
@@ -58,8 +59,7 @@ class RelationshipChangelogGetter:
             The secondary changelogs, one per affected peer.
 
         """
-        peer_labels = await self._peer_label_resolver.resolve(changelog=primary_changelog)
-        peer_labels.enrich(changelog=primary_changelog)
+        peer_labels = await self.enrich(primary_changelog=primary_changelog)
 
         with trace.get_tracer(__name__).start_as_current_span("changelog.build_secondaries") as span:
             span.set_attribute("changelog.referenced_peer_count", peer_labels.referenced_count)
@@ -67,6 +67,22 @@ class RelationshipChangelogGetter:
             secondaries = self._build_secondaries(primary_changelog=primary_changelog, peer_labels=peer_labels)
             span.set_attribute("changelog.secondary_count", len(secondaries))
         return secondaries
+
+    async def enrich(self, primary_changelog: NodeChangelog) -> ResolvedPeerLabels:
+        """Fill the mutated node's relationship peers with their labels, and its HFID when the save left it unset.
+
+        Returns:
+            The labels resolved for the peers, to build the secondaries from.
+
+        """
+        schema_branch = self._db.schema.get_schema_branch(name=self._branch.name)
+        node_schema = schema_branch.get(name=primary_changelog.node_kind, duplicate=False)
+        peer_labels = await self._peer_label_resolver.resolve(
+            changelog=primary_changelog,
+            include_node=primary_changelog.hfid is None and bool(node_schema.human_friendly_id),
+        )
+        peer_labels.enrich(changelog=primary_changelog)
+        return peer_labels
 
     def _build_secondaries(
         self, primary_changelog: NodeChangelog, peer_labels: ResolvedPeerLabels

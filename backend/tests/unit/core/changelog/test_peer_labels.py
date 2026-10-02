@@ -118,3 +118,30 @@ async def test_a_peer_referenced_twice_is_counted_and_resolved_once() -> None:
     assert ids == {"shared"}
     assert peer_labels.referenced_count == 1
     assert peer_labels.resolved_count == 1
+
+
+async def test_resolve_includes_the_changelog_node_only_when_asked() -> None:
+    changelog = _changelog_with_both_cardinalities()
+    resolver = PeerLabelResolver(
+        label_loader=_label_loader({"source": NodeLabels(display_label="Source", hfid=["source"])})
+    )
+
+    without_node = await resolver.resolve(changelog=changelog)
+    with_node = await resolver.resolve(changelog=changelog, include_node=True)
+
+    assert (without_node.referenced_count, without_node.resolved_count) == (3, 0)
+    assert (with_node.referenced_count, with_node.resolved_count) == (4, 1)
+    assert with_node.labels_of(peer_id="source") == NodeLabels(display_label="Source", hfid=["source"])
+
+
+def test_enrich_fills_the_changelog_hfid_only_when_unset() -> None:
+    labels = {"source": NodeLabels(display_label="Source", hfid=["stored"])}
+    unset = NodeChangelog(node_id="source", node_kind="TestPerson", display_label="label")
+    held = NodeChangelog(node_id="source", node_kind="TestPerson", display_label="label", hfid=["held"])
+
+    ResolvedPeerLabels(labels=labels, referenced_count=1).enrich(changelog=unset)
+    ResolvedPeerLabels(labels=labels, referenced_count=1).enrich(changelog=held)
+
+    assert unset.hfid == ["stored"]
+    assert held.hfid == ["held"]
+    assert (unset.display_label, held.display_label) == ("label", "label")

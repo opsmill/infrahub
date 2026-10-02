@@ -193,8 +193,9 @@ async def _enrich_source_changelog(
     A relationship the HFID or display label reads changes the labels without updating their stored
     values, so both are computed from the node as reloaded after the write. The profiles relationship
     rewrites the attributes the labels read and stores the new labels, so both are read from storage.
-    Otherwise the labels the loaded node holds are current and its materialized HFID fills the
-    changelog with no read. A read failure leaves the changelog values unchanged and does not raise.
+    Otherwise the labels the loaded node holds are current: the changelog takes the HFID the node
+    holds, and an HFID it does not hold is read with the peers' labels when the event is built. A
+    read failure leaves the changelog values unchanged and does not raise.
     """
     if source.has_label_depending_on_relationship(name=relationship_name):
         with log_exception_guard(log, "Changelog label enrichment failed; changelog will omit labels"):
@@ -204,14 +205,14 @@ async def _enrich_source_changelog(
                 node_changelog.hfid = await refreshed.get_hfid(db=db)
                 node_changelog.display_label = await refreshed.get_display_label(db=db)
         return
-    if relationship_name != PROFILES_RELATIONSHIP_NAME and not source.hfid_needs_read():
-        node_changelog.hfid = await source.get_hfid(db=db)
+    if relationship_name == PROFILES_RELATIONSHIP_NAME:
+        loader = build_node_label_loader(db=db, branch=branch)
+        labels = await loader.load_labels([source.get_id()])
+        if source_labels := labels.get(source.get_id()):
+            node_changelog.hfid = source_labels.hfid
+            node_changelog.display_label = source_labels.display_label
         return
-    loader = build_node_label_loader(db=db, branch=branch)
-    labels = await loader.load_labels([source.get_id()])
-    if source_labels := labels.get(source.get_id()):
-        node_changelog.hfid = source_labels.hfid
-        node_changelog.display_label = source_labels.display_label
+    node_changelog.hfid = source.get_materialized_hfid()
 
 
 class RelationshipAdd(Mutation):

@@ -15,10 +15,12 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.query.node import NodeListGetStoredLabelsQuery
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.schema import TICKET
 
 
@@ -864,3 +866,30 @@ async def test_secondary_changelog_records_the_parent_its_reciprocal_relationshi
     assert list(secondary.relationships) == ["site"]
     assert secondary.parent == ChangelogRelatedNode(node_id=new_site.id, node_kind="YyySite")
     assert secondary.root_node_id == new_site.id
+
+
+async def test_partial_save_leaves_the_hfid_for_the_event_enrichment_to_read_from_storage(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """A node loaded without its HFID saves without computing or reading it; the enrichment reads the stored one."""
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="Jack")
+    await owner.save(db=db)
+    dog = await Node.init(db=db, schema="TestDog", branch=default_branch)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=owner)
+    await dog.save(db=db)
+    partial = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, fields={"color": None})
+    assert partial is not None
+    partial.color.value = "#123456"
+
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+    await partial.save(db=counting_db, fields=["color"])
+
+    assert partial.node_changelog.hfid is None
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 0
+
+    getter = build_relationship_changelog_getter(db=counting_db, branch=default_branch)
+    await getter.enrich(primary_changelog=partial.node_changelog)
+
+    assert partial.node_changelog.hfid == ["Jack", "Rocky"]
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1

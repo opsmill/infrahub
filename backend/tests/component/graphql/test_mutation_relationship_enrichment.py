@@ -253,25 +253,25 @@ async def test_enrich_source_changelog_rereads_labels_on_a_profiles_mutation(
     }
 
 
-async def test_enrich_source_changelog_reads_through_the_loader_when_the_hfid_is_not_materialized(
+async def test_enrich_source_changelog_leaves_an_hfid_the_node_does_not_hold_unset(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
 ) -> None:
-    """A node loaded without its stored HFID takes the guarded loader path, not the read-free one."""
+    """A node loaded without its stored HFID leaves it unset, for the event enrichment to read, without a read here."""
     dog = await _create_owned_dog(db, default_branch, animal_person_schema)
     partial = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, fields={"name": None})
     assert partial is not None
-    assert partial.hfid_needs_read()
+    assert partial.get_materialized_hfid() is None
 
     counting_db = CountingInfrahubDatabase.from_db(db=db)
-    changelog = NodeChangelog(node_id=dog.id, node_kind="TestDog", display_label="stale", hfid=None)
+    changelog = NodeChangelog(node_id=dog.id, node_kind="TestDog", display_label="kept", hfid=None)
     await _enrich_source_changelog(
         node_changelog=changelog, source=partial, relationship_name="best_friend", db=counting_db, branch=default_branch
     )
 
-    assert changelog.hfid == await dog.get_hfid(db=db)
-    assert changelog.display_label == await dog.get_display_label(db=db)
+    assert changelog.hfid is None
+    assert changelog.display_label == "kept"
     assert _read_counts(counting_db) == {
-        NodeListGetStoredLabelsQuery.name: 1,
+        NodeListGetStoredLabelsQuery.name: 0,
         NodeListGetInfoQuery.name: 0,
         NodeListGetAttributeQuery.name: 0,
         NodeListGetRelationshipsQuery.name: 0,

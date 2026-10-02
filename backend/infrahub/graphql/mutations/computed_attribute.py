@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from graphene import Boolean, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.account import ObjectPermission
+from infrahub.core.changelog.builder import build_relationship_changelog_getter
 from infrahub.core.constants import ComputedAttributeKind, PermissionAction, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreTransformPython
@@ -104,6 +105,11 @@ class UpdateComputedAttribute(Mutation):
             attribute_field.value = str(data.value)
             async with graphql_context.db.start_transaction() as dbt:
                 await target_node.save(db=dbt, fields=[str(data.attribute)], user_id=graphql_context.assigned_user_id)
+
+            # The node is loaded without the fields its HFID reads, so the save leaves the HFID for storage to give.
+            await build_relationship_changelog_getter(db=graphql_context.db, branch=graphql_context.branch).enrich(
+                primary_changelog=target_node.node_changelog
+            )
 
             log_data = get_log_data()
             request_id = log_data.get("request_id", "")

@@ -337,9 +337,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def hfid_needs_read(self) -> bool:
         """Whether returning the HFID resolves its schema paths instead of returning the stored value."""
-        if not self._schema.human_friendly_id:
-            return False
-        return not (self._human_friendly_id and self._human_friendly_id.get_value(node=self, at=self._at))
+        return bool(self._schema.human_friendly_id) and self.get_materialized_hfid() is None
+
+    def get_materialized_hfid(self) -> list[str] | None:
+        """Return the HFID this node holds, as loaded from storage or computed by a save, without reading or computing it.
+
+        None when the node was loaded without its HFID, holds an empty one, or its kind defines none.
+        """
+        if not self._schema.human_friendly_id or not self._human_friendly_id:
+            return None
+        return self._human_friendly_id.get_value(node=self, at=self._at) or None
 
     async def add_display_label(self, db: InfrahubDatabase) -> None:
         if self._display_label:
@@ -1254,16 +1261,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return node_changelog
 
     async def _set_changelog_labels(self, db: InfrahubDatabase, node_changelog: NodeChangelog) -> None:
-        """Fill the changelog with this node's display label and HFID."""
+        """Fill the changelog with this node's display label and the HFID it holds.
+
+        The HFID is never computed here, since a node loaded with only some of its fields would compute
+        it from values it does not hold; an HFID the node does not hold is left unset for the event
+        enrichment to read from storage.
+        """
         with trace.get_tracer(__name__).start_as_current_span("changelog.primary_labels") as span:
             span.set_attribute("changelog.node_kind", self.get_kind())
             span.set_attribute("changelog.display_label_materialized", self._display_label is not None)
-            span.set_attribute(
-                "changelog.hfid_materialized",
-                bool(self._human_friendly_id and self._human_friendly_id.get_value(node=self, at=self._at)),
-            )
+            node_changelog.hfid = self.get_materialized_hfid()
+            span.set_attribute("changelog.hfid_materialized", node_changelog.hfid is not None)
             node_changelog.display_label = await self.get_display_label(db=db)
-            node_changelog.hfid = await self.get_hfid(db=db)
 
     async def _update(
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None

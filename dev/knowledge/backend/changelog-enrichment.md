@@ -19,7 +19,7 @@ The previous peer of a cardinality-one relationship carries only `peer_id_previo
 
 | Path | Entry point | Where the labels come from |
 |------|-------------|----------------------------|
-| Node and relationship mutations | `build_relationship_changelog_getter()` (`core/changelog/builder.py`) | the mutated node's own labels come from the loaded node; the peers' labels are resolved in one batched load |
+| Node and relationship mutations | `build_relationship_changelog_getter()` (`core/changelog/builder.py`) | the mutated node's display label, and its HFID when the node holds it, come from the saved node; the peers' labels, and an HFID the node does not hold, are resolved in one batched load |
 | Branch merge and rebase | `build_diff_changelog_collector()` (`core/changelog/builder.py`) | display labels come from the enriched diff; HFIDs are resolved by `ChangelogHfidResolver` |
 
 Build both through `builder.py`: it is the only place that wires the label loader, so every consumer
@@ -34,7 +34,7 @@ event. A one-way relationship (a tag never lists what points at it) produces no 
 components do the work, injected by `builder.py`:
 
 - `PeerLabelResolver` (`peer_labels.py`) collects every peer id the changelog references and resolves
-  them in one load
+  them in one load, adding the mutated node's id when its changelog has no HFID
 - `ReciprocalRelationshipBuilder` (`reciprocal.py`) builds the peer-side relationship changelog for
   either cardinality, including the parent it names
 - `SecondaryChangelogMerger` (`secondary_merger.py`) folds the secondaries by peer, so a peer reached
@@ -43,9 +43,22 @@ components do the work, injected by `builder.py`:
 A secondary whose peer could not be resolved (for example a peer deleted in the same cascade) still
 names its node, with the placeholder display label `n/a` and no HFID.
 
+A save puts on the changelog only the HFID the node holds, as loaded from storage or computed by the
+save itself, and never computes it from the node's fields: a node loaded with only some of its fields
+would compute it from values it does not hold. A node loaded without its HFID leaves it unset, and
+`RelationshipChangelogGetter.enrich()` reads the stored one when the event is built. The display
+label and computed attribute mutations load only some fields and emit their event without building
+secondaries, so they call `enrich()` themselves. The HFID mutation (`graphql/mutations/hfid.py`) and
+the recompute bulk write (`core/recompute/bulk_write.py`) emit without `enrich()`: the first loads the
+node's HFID and the second loads the whole node, so their changelogs already hold it.
+
+The events emitted for nodes deleted in the same cascade, and for nodes a mutation creates as a side
+effect, carry the changelog their own save built and do not go through `enrich()`. Their relationship
+peers have no `peer_display_label` or `peer_hfid`.
+
 After a `RelationshipAdd` or `RelationshipRemove`, the source node's labels are read again only when
 the mutated relationship feeds its display label or HFID, or is the profiles relationship. Otherwise
-the labels the loaded node holds are current.
+the labels the loaded node holds are current, and an HFID it does not hold is read by `enrich()`.
 
 ### Merge and rebase
 
