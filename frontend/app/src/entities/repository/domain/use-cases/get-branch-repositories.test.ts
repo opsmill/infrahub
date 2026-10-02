@@ -30,14 +30,15 @@ const connection = (nodes: ReturnType<typeof node>[], count = nodes.length) => (
   edges: nodes.map((n) => ({ node: n })),
 });
 
-const permissionDenied = () => {
-  const graphQLError = new GraphQLError("You do not have one of the following permissions", {
+const permissionDenial = () =>
+  new GraphQLError("You do not have one of the following permissions", {
     extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
   });
-  return new Error(graphQLError.message, {
-    cause: new CombinedError({ graphQLErrors: [graphQLError] }),
-  });
-};
+
+const thrownByTransport = (...graphQLErrors: GraphQLError[]) =>
+  new Error(graphQLErrors[0]?.message, { cause: new CombinedError({ graphQLErrors }) });
+
+const permissionDenied = () => thrownByTransport(permissionDenial(), permissionDenial());
 
 describe("getBranchRepositories", () => {
   beforeEach(() => {
@@ -102,6 +103,24 @@ describe("getBranchRepositories", () => {
     // THEN
     expect(error).toBeInstanceOf(BranchRepositoriesError);
     expect(error).toMatchObject({ code: "PERMISSION_DENIED" });
+  });
+
+  it("rejects with UNKNOWN when a permission denial comes with another error", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositoriesFromApi).mockRejectedValue(
+      thrownByTransport(permissionDenial(), new GraphQLError("Database unavailable"))
+    );
+
+    // WHEN
+    const error = await getBranchRepositories({
+      branchName: "feature",
+      syncWithGit: true,
+      limit: 10,
+      offset: 0,
+    }).catch((caught: unknown) => caught);
+
+    // THEN
+    expect(error).toMatchObject({ code: "UNKNOWN" });
   });
 
   it("rejects with UNKNOWN on any other error, keeping its message", async () => {
