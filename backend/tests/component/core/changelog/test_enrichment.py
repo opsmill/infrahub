@@ -101,6 +101,17 @@ async def _create_person_and_dog(db: InfrahubDatabase, branch: Branch, schema: S
     return person, dog
 
 
+async def _merge_and_get_diff(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> EnrichedDiffRoot:
+    """Merge the branch into the default branch and return the enriched diff of the merge."""
+    component_registry = get_component_registry()
+    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await merger.merge_graph(at=Timestamp())
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    return await diff_repository.get_one(diff_branch_name=branch.name)
+
+
 async def _merge_car_owned_by_person(
     db: InfrahubDatabase, default_branch: Branch, branch_name: str
 ) -> tuple[EnrichedDiffRoot, Branch, Node, Node]:
@@ -113,13 +124,7 @@ async def _merge_car_owned_by_person(
     await car.new(db=db, name="Volvo", nbr_seats=5, is_electric=False, owner={"id": owner.id})
     await car.save(db=db)
 
-    component_registry = get_component_registry()
-    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    await merger.merge_graph(at=Timestamp())
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
     return diff, branch, owner, car
 
 
@@ -398,13 +403,7 @@ async def test_merge_changelog_reports_deleted_node_hfid(
     to_delete = await NodeManager.get_one(db=db, id=car.id, kind="TestCar", branch=branch)
     await to_delete.delete(db=db)
 
-    component_registry = get_component_registry()
-    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    await merger.merge_graph(at=Timestamp())
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
 
     changelogs = await DiffChangelogCollector(
         diff=diff,
@@ -433,13 +432,7 @@ async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
     await item.new(db=db, name="Gadget", owner={"id": owner.id})
     await item.save(db=db)
 
-    component_registry = get_component_registry()
-    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    await merger.merge_graph(at=Timestamp())
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
 
     changelogs = await DiffChangelogCollector(
         diff=diff,
@@ -472,13 +465,7 @@ async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
     await item.new(db=db, name="Gadget", owner={"id": owner.id})
     await item.save(db=db)
 
-    component_registry = get_component_registry()
-    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
-    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
-    await merger.merge_graph(at=Timestamp())
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
 
     # A schema migration drops the item's kind; its owner is unchanged and so absent from the diff.
     registry.schema.get_schema_branch(name=branch.name).delete(name="ZzzItem")
