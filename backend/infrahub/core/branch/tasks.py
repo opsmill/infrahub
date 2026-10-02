@@ -70,6 +70,7 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
+from infrahub.profiles.submission import submit_profile_refresh
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
@@ -83,7 +84,6 @@ from infrahub.workflows.catalogue import (
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
     IPAM_RECONCILIATION,
-    PROFILE_REFRESH_MULTIPLE,
 )
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.utils import add_tags
@@ -463,10 +463,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
     if profile_refresh_node_ids:
         with log_exception_guard(log, "Failed to submit the post-rebase profile refresh"):
-            await workflow.submit_workflow(
-                workflow=PROFILE_REFRESH_MULTIPLE,
-                context=low_context,
-                parameters={"branch_name": user_branch.name, "node_ids": profile_refresh_node_ids},
+            await submit_profile_refresh(
+                workflow=workflow,
+                branch_name=user_branch.name,
+                node_ids=profile_refresh_node_ids,
+                context=low_context.to_event_context(),
             )
 
 
