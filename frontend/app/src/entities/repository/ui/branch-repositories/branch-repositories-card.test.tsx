@@ -10,7 +10,6 @@ import {
   generateBranchRepositoriesResult,
   generateBranchRepository,
   MANY_ERRORS_IMPORT_ERROR_POSITIONS,
-  OPERATIONAL_STATUS,
   SYNC_STATUS,
 } from "../../../../../tests/fake/branch-repositories";
 import { BranchRepositoriesCard } from "./branch-repositories-card";
@@ -359,30 +358,5 @@ describe("BranchRepositoriesCard", () => {
     await expect
       .element(component.getByRole("link", { name: "View all repositories" }))
       .toHaveAttribute("href", "/objects/CoreReadOnlyRepository?branch=feature");
-  });
-
-  test("uses no hard-coded hex colour in class names", async () => {
-    // GIVEN
-    mockQuery({
-      data: generateBranchRepositoriesResult([
-        generateBranchRepository({ id: "a", name: "a", syncStatus: SYNC_STATUS.importError }),
-        generateBranchRepository({
-          id: "b",
-          name: "b",
-          isReadOnly: true,
-          operationalStatus: OPERATIONAL_STATUS.errorCred,
-        }),
-      ]),
-    });
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    await expect.element(component.getByText("Import Error")).toBeVisible();
-    const classes = [...component.container.querySelectorAll("[class]")].map(
-      (element) => element.getAttribute("class") ?? ""
-    );
-    expect(classes.filter((value) => /#[0-9a-f]{3,8}\b/i.test(value))).toEqual([]);
   });
 });

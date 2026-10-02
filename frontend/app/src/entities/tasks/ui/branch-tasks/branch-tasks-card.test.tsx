@@ -385,19 +385,4 @@ describe("BranchTasksCard", () => {
       { name: "state__value", value: "FAILED" },
     ]);
   });
-
-  test("uses no hard-coded hex colour in class names", async () => {
-    // GIVEN
-    mockQueries({ data: generatePage(2, [generateTask(1, { state: "FAILED" }), generateTask(2)]) });
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    await expect.element(component.getByText("FAILED")).toBeVisible();
-    const classes = [...component.container.querySelectorAll("[class]")].map(
-      (element) => element.getAttribute("class") ?? ""
-    );
-    expect(classes.filter((value) => /#[0-9a-f]{3,8}\b/i.test(value))).toEqual([]);
-  });
 });

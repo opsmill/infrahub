@@ -104,8 +104,8 @@ Not walked one by one by hand. `verify.mjs` covered the seeded pages (see "Live 
   `branch-details-header.test.tsx` ("refreshes branches, repositories and tasks") and
   `refresh-button.test.tsx` (several query keys).
 - [ ] 8. Dark theme. Covered by `repository-error-bands.test.tsx` ("switches both band colours
-  with the dark theme", computed colours), the "no hard-coded hex colour" tests in both cards, and
-  the FR-050 grep. Pills and tables not checked visually.
+  with the dark theme", computed colours) and the FR-050 grep. Pills and tables not checked
+  visually.
 - [ ] 9. No repository view permission. Covered by `branch-repositories-card.test.tsx` ("says the
   user has no access"). The tasks-still-list half has no test.
 - [ ] 10. Sync with Git off. Covered by `branch-repositories-card.test.tsx` ("not synchronised
