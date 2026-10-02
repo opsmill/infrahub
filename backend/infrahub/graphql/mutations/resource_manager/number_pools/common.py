@@ -1,30 +1,34 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from infrahub import lock
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
+from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import NumberRangeBounds
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Sequence
+    from collections.abc import Sequence
 
+    from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.database import InfrahubDatabase
 
 
-@asynccontextmanager
-async def within_transaction(db: InfrahubDatabase) -> AsyncIterator[InfrahubDatabase]:
-    if db.is_transaction:
-        yield db
-        return
-    async with db.start_transaction() as dbt:
-        yield dbt
+SCHEMA_POOL_EDIT_HINT = "update the schema in the default branch instead"
+SCHEMA_POOL_SHORTHAND_REFUSED = (
+    f"start_range or end_range can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
+)
+SCHEMA_POOL_RANGES_REFUSED = f"ranges can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
+
+
+def refuse_schema_pool(pool: Node, message: str) -> None:
+    if pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
+        raise ValidationError(input_value=message)
 
 
 def pool_lock(pool_id: str) -> lock.InfrahubLock:

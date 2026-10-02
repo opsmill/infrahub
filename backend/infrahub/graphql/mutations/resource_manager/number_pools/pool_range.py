@@ -6,13 +6,19 @@ from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.database import retry_db_transaction
+from infrahub.database import retry_db_transaction, within_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import validate_number_pool_range
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 from ...main import InfrahubMutation
-from .common import pool_lock, range_bounds, sync_shorthand, within_transaction
+from .common import (
+    SCHEMA_POOL_RANGES_REFUSED,
+    pool_lock,
+    range_bounds,
+    refuse_schema_pool,
+    sync_shorthand,
+)
 
 if TYPE_CHECKING:
     from graphene import InputObjectType
@@ -23,6 +29,9 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
     from ....initialization import GraphqlContext
+
+
+RANGE_WITHOUT_POOL = "A number pool range must belong to a number pool"
 
 
 class InfrahubNumberPoolRangeMutation(InfrahubMutation):
@@ -51,6 +60,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
             hfid=pool_input.get("hfid"),
             branch=branch,
         )
+        refuse_schema_pool(pool=pool, message=SCHEMA_POOL_RANGES_REFUSED)
         pool_id = pool.get_id()
 
         async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
@@ -74,7 +84,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
-        pool_id = await cls._get_pool_id(db=db, range_node=obj)
+        pool_id = await cls._get_editable_pool_id(db=db, range_node=obj)
 
         async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
             range_node, result = await super()._call_mutate_update(
@@ -90,7 +100,7 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
 
     @classmethod
     async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:
-        pool_id = await cls._get_pool_id(db=graphql_context.db, range_node=obj)
+        pool_id = await cls._get_editable_pool_id(db=graphql_context.db, range_node=obj)
 
         async with pool_lock(pool_id=pool_id), graphql_context.db.start_transaction() as dbt:
             deleted = await NodeManager.delete(
@@ -109,8 +119,16 @@ class InfrahubNumberPoolRangeMutation(InfrahubMutation):
     async def _get_pool_id(cls, db: InfrahubDatabase, range_node: Node) -> str:
         pool_id = await range_node.get_relationship("pool").get_peer_id(db=db)
         if pool_id is None:
-            raise ValidationError(input_value="A number pool range must belong to a number pool")
+            raise ValidationError(input_value=RANGE_WITHOUT_POOL)
         return pool_id
+
+    @classmethod
+    async def _get_editable_pool_id(cls, db: InfrahubDatabase, range_node: Node) -> str:
+        pool = await range_node.get_relationship("pool").get_peer(db=db)
+        if pool is None:
+            raise ValidationError(input_value=RANGE_WITHOUT_POOL)
+        refuse_schema_pool(pool=pool, message=SCHEMA_POOL_RANGES_REFUSED)
+        return pool.get_id()
 
     @classmethod
     async def _validate_and_sync(cls, db: InfrahubDatabase, pool_id: str, range_id: str, user_id: str) -> None:
