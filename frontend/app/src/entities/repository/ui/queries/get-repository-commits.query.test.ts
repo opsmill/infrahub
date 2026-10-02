@@ -172,6 +172,19 @@ describe("getRepositoryCommitsQueryOptions", () => {
     expect(nextInterval).toBe(interval);
   });
 
+  test("appends a page fetched after a refetch answered unavailable", () => {
+    // GIVEN
+    const loaded = buildLog(RepositoryGitCondition.BEHIND, REPOSITORY_COMMITS_PAGE_SIZE);
+    const keptAfterColdPoll = { ...loaded, condition: RepositoryGitCondition.UNAVAILABLE };
+    const nextPage = buildLog(RepositoryGitCondition.BEHIND, 3);
+
+    // WHEN
+    const { result } = resolveStructuralSharing([keptAfterColdPoll], [keptAfterColdPoll, nextPage]);
+
+    // THEN
+    expect(result.pages).toHaveLength(2);
+  });
+
   test("takes the new pages when a refetch carries a git state", () => {
     // GIVEN
     const loaded = [buildLog(RepositoryGitCondition.IN_SYNC)];

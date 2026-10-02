@@ -43,8 +43,11 @@ function keepLoadedCommitsWithLatestAvailability(
 ): RepositoryCommitPages {
   const [newFirstPage] = newData.pages;
   const [oldFirstPage, ...olderPages] = oldData?.pages ?? [];
+  const isNextPageFetch =
+    oldData !== undefined && newData.pageParams.length > oldData.pageParams.length;
   if (
     !oldData ||
+    isNextPageFetch ||
     !oldFirstPage ||
     !hasLoadedCommits(oldData) ||
     !newFirstPage ||
