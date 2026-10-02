@@ -310,20 +310,22 @@ branch and assert only the second card's values change.
 
 ### Work unit 7 — the details split
 
-- [x] T043 [US2] Implement `RepositoryDetailsCard` in
-      `frontend/app/src/entities/repository/ui/repository-details-card.tsx` — a thin wrapper composing
-      `Card` + `CardHeader` + the **existing, unchanged** `ObjectDataDisplay`, taking `title`,
-      `caption` and `testId` props. **Do not reuse `ObjectDetailsCard`**: it hardcodes the literal
-      `Details` in its `CardHeader` and hardcodes `data-testid="object-details"`, with no title prop,
-      so it cannot render "On this branch" and two instances would collide on test id.
+- [x] T043 [US2] Give `ObjectDetailsCard` optional `title` (default `Details`), `caption` and
+      `testId` (default `object-details`) props, plus the `<h2>` and `aria-labelledby` the caption
+      needs. The default on `testId` is load-bearing: `tests/e2e` reaches for `object-details` by
+      that exact string and the unit suite asserts it nowhere, so any other default passes every
+      local gate and fails in CI. Superseded the local `RepositoryDetailsCard` this task first
+      specified — see [plan.md](plan.md)'s D1.
 - [x] T044 [US2] Implement `RepositoryObjectDetails` in
       `frontend/app/src/entities/repository/ui/repository-object-details.tsx`: build two derived
-      `ModelSchema` objects from T040's partition and render each through `RepositoryDetailsCard` —
+      `ModelSchema` objects from T040's partition and render each through `ObjectDetailsCard` —
       repository-wide first, then `On this branch` with **the branch name as a caption beneath the
-      title**. Pass it as `RepositoryDetailsCard`'s `caption` prop; there is no `description` slot to
+      title**. Pass it as the card's `caption` prop; there is no `description` slot to
       look for — that belongs to `Content.CardTitle`, which no card on this page uses (T028).
       Covers FR-018.
-- [x] T045 [US2] Render nothing at all for a partition with no attributes **and** no relationships — a
+- [x] T045 [US2] Render nothing at all for a partition with no attributes **and** no relationships.
+      The check lives in `RepositoryObjectDetails`, which computes the partition and so is what knows
+      a side is empty; the card renders whatever it is handed. Originally a
       card with nothing to show must not appear as an empty titled box (FR-022).
 - [x] T046 [US2] Add the kind gate in
       `frontend/app/src/entities/nodes/object/ui/object-details/object-details.tsx` using

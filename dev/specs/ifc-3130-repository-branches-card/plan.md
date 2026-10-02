@@ -133,7 +133,7 @@ Result: **PASS**, with four justified complexity entries.*
 | **IV. Test Discipline** | Yes — **with one recorded deviation** | Unit tests for the pure pagination arithmetic and the partition rule (one case per `BranchSupportType` value); component tests (Vitest browser mode) for every FR carrying a component-test verification; E2E at `tests/e2e/repository/` with the `shard_branches_repo` marker against `demo_edge_repo` (FR-026). The backend slice deferred the epic's E2E requirement to this card, so it lands here. Test files mirror source structure. **Two requirements are honestly recorded as verified by review rather than by test** — see [below](#verified-by-review-not-by-test). **The deviation**: the constitution says E2E "MUST be included for all user-facing features"; FR-027 knowingly ships `CoreReadOnlyRepository` without it. Defensible, but Governance requires a deviation be recorded in Complexity Tracking — it now is. |
 | **V. Query Performance & Efficiency** | Yes | One request per page (SC-003). Server-side count, filters and ordering; no client-side narrowing (FR-015). `node_metadata` is **not selected at all** — the cheapest possible guarantee for FR-006. Row transfer bounded by page size. |
 | **VI. Security & Input Boundaries** | Partial (N/A by shape) | No user input reaches a query language here — the filter values are bound as typed GraphQL variables. Authorization is the server's: the resolver raises `PermissionDeniedError` (a `ForwardableError`, HTTP 403) and the card renders `UnauthorizedScreen` for it (FR-023), distinct from the empty state, so a denial is never mistaken for "no branches" (SC-007). No error message exposes internal detail. |
-| **VII. Simplicity & Maintainability** | Yes, with one justified entry | Reuses the existing `ObjectDetailsCard` and `DataTable` rather than adding parallel ones. D1 was decided **against** the more elegant refactor precisely to avoid touching a file every object-detail page depends on. One new shared primitive (`CommitHash`) and one new pagination trio — both justified in [Complexity Tracking](#complexity-tracking). |
+| **VII. Simplicity & Maintainability** | Yes, with one justified entry | Reuses the existing `ObjectDetailsCard` and `DataTable` rather than adding parallel ones. D1 reuses that card through three defaulted props rather than forking it, so no existing call site changes. One new shared primitive (`CommitHash`) and one new pagination trio — both justified in [Complexity Tracking](#complexity-tracking). |
 
 **Documentation requirement** (Governance → Documentation Requirements): frontend architecture
 changes must update `dev/knowledge/frontend/`. FR-028 requires a note on the new pagination
@@ -177,27 +177,33 @@ are authoritative and override `research.md` wherever it disagrees:
 
 Four decisions where the three framings diverged. Settled; not to be revisited during implementation.
 
-### D1 — Two derived `ModelSchema` objects, rendered through a local `RepositoryDetailsCard`
+### D1 — Two derived `ModelSchema` objects, rendered through `ObjectDetailsCard`
 
-Two derived `ModelSchema` objects with partitioned fields, each rendered through a **thin local
-`RepositoryDetailsCard`** in `entities/repository/ui/` that composes `Card` + `CardHeader` + the
-existing **`ObjectDataDisplay`**.
+Two derived `ModelSchema` objects with partitioned fields, each rendered through the existing
+**`ObjectDetailsCard`**, which gained three optional props: `title` (default `Details`), `caption`,
+and `testId` (default `object-details`).
 
 *Rejected*: adding an optional `fieldFilter` predicate to `ObjectDataDisplay` (~8 lines, default =
-today's behaviour). Both reach the same place, but the derived-schema route **touches no file that
-every object-detail page depends on** — the one change in this feature that could break unrelated
-pages, and the refactor framing's own risk register ranked that edit as its highest-blast-radius item.
+today's behaviour). Both reach the same place, but the derived-schema route keeps the partition in
+one pure rule that can be unit-tested without rendering anything.
 
-*Why not `ObjectDetailsCard`*: it **hardcodes the literal `Details`** in its `CardHeader` and
-hardcodes `data-testid="object-details"`, exposing no title, caption or test-id prop. It cannot
-produce FR-018's "On this branch" card, and two instances would collide on test id.
+*Also rejected — a local `RepositoryDetailsCard`.* This is where the plan first landed, on the
+grounds that `ObjectDetailsCard` hardcoded the literal `Details` and `data-testid="object-details"`,
+and that a local wrapper kept **zero shared-file edits**. It shipped and then drifted: the copy never
+gained `excludeRelationships`, and it silently lost the extra-field toggle until review caught it.
+Three optional props cost less than a fork that has to be kept in step by hand, and every existing
+call site is unchanged because all three are defaulted.
 
-*Why the local card*: `ObjectDataDisplay` is the genuinely reusable part and is reused unchanged. The
-wrapper is ~15 lines. It keeps **zero shared-file edits** — D1's whole point — while freeing both
-titles, the caption slot and distinct test ids.
+*Consequence accepted*: every object details card in the app is now a labelled `region` named by its
+own `<h2>`, not only the repository ones. The labelling cannot live anywhere but the card, and a card
+that states what it is reads as an improvement wherever it appears.
 
 *Cost accepted*: two `ObjectDataDisplay` instances mount two metadata `Sheet`s, both default closed —
 a duplicated dialog in the tree, not a behaviour change.
+
+*Where the empty-card rule lives*: FR-022 is enforced by `RepositoryObjectDetails`, which computes
+the partition and is therefore what knows a side is empty. `ObjectDetailsCard` renders whatever it is
+handed.
 
 *Consequence for the partition*: `ObjectDataDisplay` renders **relationships as well as attributes**,
 so the partition must cover both or every relationship renders twice. See
@@ -329,7 +335,6 @@ frontend/app/src/
     │       │   ├── repository-branches-toolbar.tsx             # work unit 5b — search, order, filter
     │       │   ├── branch-row-fields.ts                        # the two filterable fields + the sort schema
     │       │   └── to-repository-branch-arguments.ts           # filters and order → query arguments
-    │       ├── repository-details-card.tsx                     # Card + CardHeader + ObjectDataDisplay
     │       └── repository-object-details.tsx                   # the two-card split
     │
     ├── branches/ui/branch-list-item/branch-status-badge.tsx  # edited — MERGING, MERGE_FAILED
@@ -412,7 +417,7 @@ each assumed more had to be built than actually does.
 | Need | Use | Verdict |
 |---|---|---|
 | Branches card header: title + count pill | **Not `Content.CardTitle`.** `Card` + `CardHeader` with an `<h2 id>` the card's `aria-labelledby` points at, and a sibling `Badge` carrying the count | **LOCAL COMPOSITION** — `Content.CardTitle` is a page-level title component that renders its title as `<h1>`, so several cards on one page would each claim a top-level heading. The count is a sibling badge either way and never part of the heading's accessible name, so it carries its own — poll **the badge's** name, never the heading's |
-| Details card header: title + branch-name caption | **Not `Content.CardTitle`.** The local `RepositoryDetailsCard` composes `Card` + `CardHeader` with an `<h2>` title and an optional `caption` paragraph beneath it, both referenced from the card's `aria-labelledby` | **LOCAL WRAPPER (D1)** — `Content.CardTitle` is a page-level title inside a card, and neither of its slots is the caption slot this needs: `end` renders right-aligned *beside* the title, `description` is styled as page-level lede. The `caption` prop puts the branch name beneath the title and inside the card's accessible name, which FR-018 and FR-025 both require |
+| Details card header: title + branch-name caption | **Not `Content.CardTitle`.** `ObjectDetailsCard` renders an `<h2>` title and an optional `caption` paragraph beneath it, both referenced from the card's `aria-labelledby` | **EXTENDED (D1)** — `Content.CardTitle` is a page-level title inside a card, and neither of its slots is the caption slot this needs: `end` renders right-aligned *beside* the title, `description` is styled as page-level lede. The `caption` prop puts the branch name beneath the title and inside the card's accessible name, which FR-018 and FR-025 both require |
 | `default` row marker | `BranchDefaultBadge` (`entities/branches/ui/branch-list-item/branch-default-badge.tsx`) — already renders the literal `default` | **USE AS-IS** |
 | Branch link target | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` (`entities/branches/ui/routing/branch-urls.ts`) | **USE AS-IS** |
 | Branch link cell | Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`, following `branches-table/cells/branch-name-cell.tsx` | **EXTEND, do not reuse** — that cell hard-depends on `useAuth()`, `StickyLeftCell` and a selection checkbox |
@@ -624,7 +629,7 @@ dependency.
 | 5 | Columns, cells, filters, order | `…/repository-branches-card/columns.tsx`, `cells/`, `…/repository-branches-toolbar.tsx`, `…/branch-row-fields.ts`, `…/to-repository-branch-arguments.ts` | 002, 003, 003a, 004, 005, 006, 012, 012a, 013, 014, 015 | Delivered |
 | ─── | | | | |
 | 6 | The branches card **+ its ErrorBoundary** | `…/repository-branches-card.tsx`, `…/repository-branches-card-boundary.tsx` | 007, 011a, 023, 027 | Delivered |
-| 7 | The details split | `…/repository-details-card.tsx`, `…/repository-object-details.tsx` + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022, 024, 025 | Delivered |
+| 7 | The details split | `…/repository-object-details.tsx` + `ObjectDetailsCard`'s title/caption/testId props + the kind gate in `object-details.tsx` | 018, 018a, 020, 021, 022, 024, 025 | Delivered |
 | ─── | | | | |
 | 8 | E2E | `tests/e2e/repository/test_repository_branches_card.py` | 026 | Outstanding |
 | 9 | Knowledge note + `shared-components.md` + changelog fragment | `dev/knowledge/frontend/table-pagination.md`, `dev/knowledge/frontend/shared-components.md`, `changelog/` | 028 | Outstanding |
@@ -709,7 +714,7 @@ Each argued and then cut by the refactor-friendly framing:
 |---|---|---|
 | **A second pagination mechanism** alongside the legacy `Pagination` / `usePagination` | The legacy component is hard-wired to a single global `QSP.PAGINATION` key, so two paginated tables on one route move together — which this card would immediately break (FR-011). It also assumes the table is the page-level scroll area, which is false inside a card (FR-011a). | Generalising the legacy component in place would put this feature's regression risk on **three unrelated pages that have no tests at all**. The duplication is temporary and signposted: FR-028's knowledge note names the new component as the intended successor, and migrating the three call sites is tracked as follow-on work. |
 | **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. | Inlining the mono/truncate/short-form logic would put the hash-shortening rule at the call site, which is the thing that drifts once a second caller appears. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is **not** met — the card's table cells are the only call site, and the `copyable` branch exists for the full-hash presentation the design places in the details card, which renders through `ObjectDataDisplay` and does not reach this primitive. Accepted as a small, self-contained primitive whose alternative is the rule inlined in a cell renderer. |
-| **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, inside a new local `RepositoryDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
+| **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, through `ObjectDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
 | **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or the chip cell handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
 | **No E2E for `CoreReadOnlyRepository`** (FR-027) | The e2e data set contains no `CoreReadOnlyRepository`; the fixture is shared with IFC-3153 and is not budgeted here. The kind differs from the read-write one only by title, row set and one column — all presentation over the same query, with the row-set rule enforced server-side. | Adding the fixture here duplicates work IFC-3153 owns. Component tests cover the three differences. Recorded rather than silent, and flagged to IFC-3153 so the fixture owner inherits the gap. |
 
