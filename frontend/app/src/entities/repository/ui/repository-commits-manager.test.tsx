@@ -485,6 +485,32 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
   });
 
+  test("drops a retry still in flight for the previous branch when the branch changes", async () => {
+    // GIVEN
+    useBranch("main");
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockReturnValueOnce(new Promise<ApiResult>(() => {}))
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await component.getByRole("button", { name: "Retry" }).click();
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .toHaveAttribute("data-pending");
+
+    // WHEN
+    useBranch("feature");
+    await component.rerender(tab());
+
+    // THEN
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
+    expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
+  });
+
   test("hides the retry notice while a scroll-triggered page load is in flight", async () => {
     // GIVEN
     let answerNextPage: (result: ApiResult) => void = () => {};

@@ -8,6 +8,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -26,6 +27,12 @@ export interface RepositoryCommitsManagerProps {
   repositoryLocation: string | null;
 }
 
+interface RetryInFlight {
+  retry: HistoryRetry;
+  repositoryId: string;
+  branchName: string;
+}
+
 const gridTemplateColumns = () =>
   "fit-content(8rem) minmax(16rem, 1fr) fit-content(14rem) fit-content(12rem) fit-content(16rem) 2.5rem";
 
@@ -42,7 +49,12 @@ export function RepositoryCommitsManager({
     isFetchNextPageError,
     refetch,
   } = useGetRepositoryCommits({ repositoryId });
-  const [retryInFlight, setRetryInFlight] = useState<HistoryRetry | null>(null);
+  const { currentBranch } = useCurrentBranch();
+  const [startedRetry, setStartedRetry] = useState<RetryInFlight | null>(null);
+  const retryInFlight =
+    startedRetry?.repositoryId === repositoryId && startedRetry.branchName === currentBranch.name
+      ? startedRetry.retry
+      : null;
   const pages = data?.pages ?? [];
   const [log] = pages;
   const commits = getLoadedCommits(pages);
@@ -51,11 +63,12 @@ export function RepositoryCommitsManager({
   const isLoadingMoreOnScroll = isFetchingNextPage && !retryInFlight;
 
   const retryHistory = async (retry: HistoryRetry) => {
-    setRetryInFlight(retry);
+    const started = { retry, repositoryId, branchName: currentBranch.name };
+    setStartedRetry(started);
     try {
       await (retry === "fetch-next-page" ? fetchNextPage() : refetch());
     } finally {
-      setRetryInFlight(null);
+      setStartedRetry((current) => (current === started ? null : current));
     }
   };
 
