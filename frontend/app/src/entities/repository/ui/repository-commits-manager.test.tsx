@@ -524,6 +524,28 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
+  test("keeps offering the retry after a later poll succeeds without the missing page", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockResolvedValue(apiResult(generateFirstCommitsPage()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect
+      .element(component.getByText("Older commits could not be loaded right now."))
+      .toBeVisible();
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
+    expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
+  });
+
   test("settles the retry and offers it again when the retry fails too", async () => {
     // GIVEN
     apiMock
