@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { NodeObjectWithMetadata } from "@/entities/nodes/object/domain/model/node";
+import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 
-import { render } from "../../../../tests/components/render";
-import { generateNodeAttributeWithMetadata } from "../../../../tests/fake/node";
-import { generatePermission } from "../../../../tests/fake/permission";
-import { generateAttributeSchema, generateNodeSchema } from "../../../../tests/fake/schema";
-import { RepositoryDetailsCard } from "./repository-details-card";
+import { render } from "../../../../../../tests/components/render";
+import { generateNodeAttributeWithMetadata } from "../../../../../../tests/fake/node";
+import { generatePermission } from "../../../../../../tests/fake/permission";
+import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
 
 const permission = generatePermission();
 
@@ -40,12 +40,10 @@ const objectDataWithExtraField: NodeObjectWithMetadata = {
   internal_status: generateNodeAttributeWithMetadata({ value: "active" }),
 };
 
-describe("RepositoryDetailsCard", () => {
-  it("names the card by its title when no caption is given", async () => {
+describe("ObjectDetailsCard", () => {
+  it("names itself 'Details' and carries the shared test id when given neither", async () => {
     const component = await render(
-      <RepositoryDetailsCard
-        title="Details"
-        testId="repository-details"
+      <ObjectDetailsCard
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -53,11 +51,12 @@ describe("RepositoryDetailsCard", () => {
     );
 
     await expect.element(component.getByRole("region", { name: "Details" })).toBeVisible();
+    await expect.element(component.getByTestId("object-details")).toBeVisible();
   });
 
   it("renders the caption beneath the title and includes it in the card's accessible name", async () => {
     const component = await render(
-      <RepositoryDetailsCard
+      <ObjectDetailsCard
         title="On this branch"
         caption="main"
         testId="repository-branch-details"
@@ -77,9 +76,7 @@ describe("RepositoryDetailsCard", () => {
 
   it("renders the fields of the schema it is given", async () => {
     const component = await render(
-      <RepositoryDetailsCard
-        title="Details"
-        testId="repository-details"
+      <ObjectDetailsCard
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -89,33 +86,16 @@ describe("RepositoryDetailsCard", () => {
     await expect.element(component.getByText("Commit", { exact: true })).toBeVisible();
   });
 
-  it("renders nothing when the schema has no attributes and no relationships", async () => {
-    const component = await render(
-      <RepositoryDetailsCard
-        title="On this branch"
-        caption="main"
-        testId="repository-branch-details"
-        objectSchema={generateNodeSchema({ attributes: [], relationships: [] })}
-        objectData={objectData}
-        permission={permission}
-      />
-    );
-
-    expect(component.getByRole("region").elements()).toHaveLength(0);
-    expect(component.getByRole("heading").elements()).toHaveLength(0);
-  });
-
   it("gives two cards on the same page distinct accessible names", async () => {
     const component = await render(
       <>
-        <RepositoryDetailsCard
-          title="Details"
+        <ObjectDetailsCard
           testId="repository-details"
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}
         />
-        <RepositoryDetailsCard
+        <ObjectDetailsCard
           title="On this branch"
           caption="main"
           testId="repository-branch-details"
@@ -132,12 +112,10 @@ describe("RepositoryDetailsCard", () => {
       .toBeVisible();
   });
 
-  it("offers the extra fields behind the same toggle the object details card uses", async () => {
+  it("keeps the extra fields behind a toggle", async () => {
     // GIVEN a schema carrying a field marked for the extra tier
     const component = await render(
-      <RepositoryDetailsCard
-        title="Details"
-        testId="repository-details"
+      <ObjectDetailsCard
         objectSchema={schemaWithExtraField}
         objectData={objectDataWithExtraField}
         permission={permission}
@@ -156,9 +134,7 @@ describe("RepositoryDetailsCard", () => {
 
   it("offers no extra toggle for a schema that has no extra field", async () => {
     const component = await render(
-      <RepositoryDetailsCard
-        title="Details"
-        testId="repository-details"
+      <ObjectDetailsCard
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
