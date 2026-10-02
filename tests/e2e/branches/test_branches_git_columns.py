@@ -53,6 +53,7 @@ class TestBranchesGitColumns:
         branch, repository_name, _ = await broken_repository(sync_with_git=True)
 
         await admin_page.goto("/branches")
+        await admin_page.get_by_role("searchbox", name="Search").fill(branch)
 
         identifier_cell = _identifier_cell(admin_page, branch)
         await expect(identifier_cell).to_have_count(1)
@@ -71,6 +72,7 @@ class TestBranchesGitColumns:
         self, admin_page: Page, branch_without_git_sync: str
     ) -> None:
         await admin_page.goto("/branches")
+        await admin_page.get_by_role("searchbox", name="Search").fill(branch_without_git_sync)
 
         identifier_cell = _identifier_cell(admin_page, branch_without_git_sync)
         await expect(identifier_cell).to_have_count(1)
