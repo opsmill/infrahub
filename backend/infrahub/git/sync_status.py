@@ -28,7 +28,8 @@ class RepositoryBranchSyncStatusReader:
 
         A value the branch wrote is at least as recent as `branched_from`: a rebase moves both the branch's
         own edges and `branched_from` to the rebase time, so the two are equal afterwards and the comparison
-        must not be strict. An inherited value is frozen before `branched_from`.
+        must not be strict. An inherited value is frozen before `branched_from`. A value whose update time
+        is unknown is reported, so the check fails closed rather than passing on missing metadata.
         """
         repository = await NodeManager.get_one(
             db=self.db,
@@ -41,6 +42,6 @@ class RepositoryBranchSyncStatusReader:
             return None
 
         updated_at = repository.sync_status._get_updated_at()
-        if updated_at is None or updated_at < Timestamp(branch.get_branched_from()):
+        if updated_at is not None and updated_at < Timestamp(branch.get_branched_from()):
             return None
         return repository.sync_status.value
