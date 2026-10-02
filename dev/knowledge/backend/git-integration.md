@@ -182,8 +182,8 @@ conflict. That is why nobody has ever had to resolve a conflict on `sync_status`
 the repository validator fails the pipeline when the source branch recorded `error-import`.
 
 Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
-isolated by default (`Branch.is_isolated`), so a branch that never imported a repository reads the
-value its base branch held at `branched_from`, frozen there: a branch created while the default
+isolated, so a branch that never imported a repository reads the value its base branch held at
+`branched_from`, frozen there: a branch created while the default
 branch was in `error-import` keeps reading `error-import` after the default branch recovers, until
 it is rebased. The import check therefore only counts a value the source branch wrote
 (`git/sync_status.py::RepositoryBranchSyncStatusReader`), recognised by the attribute's `updated_at`
