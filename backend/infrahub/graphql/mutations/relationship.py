@@ -33,8 +33,10 @@ from infrahub.exceptions import NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
 from infrahub.groups.ancestors import collect_ancestors
+from infrahub.log import get_logger
 from infrahub.permissions import get_global_permission_for_kind
 from infrahub.profiles.node_applier import NodeProfilesApplier
+from infrahub.utils import log_exception_guard
 
 from ..types import RelatedNodeInput
 
@@ -47,6 +49,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema.relationship_schema import RelationshipSchema
 
     from ..initialization import GraphqlContext
+
+log = get_logger()
 
 
 RELATIONSHIP_PEERS_TO_IGNORE = [InfrahubKind.NODE]
@@ -160,21 +164,46 @@ async def _emit_relationship_add_events(
         graphql_context.background.add_task(graphql_context.active_service.event.send, event)
 
 
+async def _enrich_emitted_changelog(
+    group_event_type: GroupUpdateType,
+    node_changelog: NodeChangelog,
+    source: Node,
+    relationship_name: str,
+    graphql_context: GraphqlContext,
+) -> None:
+    """Fill the labels of the source changelog when the mutation emits it as a node event."""
+    # Group mutations emit group events, which carry no node changelog.
+    if group_event_type != GroupUpdateType.NONE or not node_changelog.has_changes:
+        return
+    await _enrich_source_changelog(
+        node_changelog=node_changelog,
+        source=source,
+        relationship_name=relationship_name,
+        db=graphql_context.db,
+        branch=graphql_context.branch,
+    )
+
+
 async def _enrich_source_changelog(
     node_changelog: NodeChangelog, source: Node, relationship_name: str, db: InfrahubDatabase, branch: Branch
 ) -> None:
     """Fill the source node's HFID and display label on its changelog.
 
-    Both labels are read after the write when the mutated relationship can change them: a
-    relationship the HFID or display label reads, or the profiles relationship, since a profile
-    change rewrites the attributes the labels read. Otherwise the labels the loaded node
-    holds are current and its materialized HFID fills the changelog with no read. A read failure
-    leaves the changelog values unchanged and does not raise.
+    A relationship the HFID or display label reads changes the labels without updating their stored
+    values, so both are computed from the node as reloaded after the write. The profiles relationship
+    rewrites the attributes the labels read and stores the new labels, so both are read from storage.
+    Otherwise the labels the loaded node holds are current and its materialized HFID fills the
+    changelog with no read. A read failure leaves the changelog values unchanged and does not raise.
     """
-    labels_may_change = relationship_name == PROFILES_RELATIONSHIP_NAME or source.has_label_depending_on_relationship(
-        name=relationship_name
-    )
-    if not labels_may_change and not source.hfid_needs_read():
+    if source.has_label_depending_on_relationship(name=relationship_name):
+        with log_exception_guard(log, "Changelog label enrichment failed; changelog will omit labels"):
+            refreshed = await NodeManager.get_one(db=db, id=source.get_id(), branch=branch)
+            if refreshed is not None:
+                await refreshed.compute_labels(db=db)
+                node_changelog.hfid = await refreshed.get_hfid(db=db)
+                node_changelog.display_label = await refreshed.get_display_label(db=db)
+        return
+    if relationship_name != PROFILES_RELATIONSHIP_NAME and not source.hfid_needs_read():
         node_changelog.hfid = await source.get_hfid(db=db)
         return
     loader = build_node_label_loader(db=db, branch=branch)
@@ -257,15 +286,13 @@ class RelationshipAdd(Mutation):
                 user_id=graphql_context.assigned_user_id,
             )
 
-        # Only the non-group path emits the node changelog; skip the read for group mutations.
-        if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
-            await _enrich_source_changelog(
-                node_changelog=node_changelog,
-                source=source,
-                relationship_name=relationship_name,
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-            )
+        await _enrich_emitted_changelog(
+            group_event_type=group_event_type,
+            node_changelog=node_changelog,
+            source=source,
+            relationship_name=relationship_name,
+            graphql_context=graphql_context,
+        )
 
         await _emit_relationship_add_events(
             graphql_context=graphql_context,
@@ -356,15 +383,13 @@ class RelationshipRemove(Mutation):
                 user_id=graphql_context.assigned_user_id,
             )
 
-        # Only the non-group path emits the node changelog; skip the read for group mutations.
-        if group_event_type == GroupUpdateType.NONE and node_changelog.has_changes:
-            await _enrich_source_changelog(
-                node_changelog=node_changelog,
-                source=source,
-                relationship_name=relationship_name,
-                db=graphql_context.db,
-                branch=graphql_context.branch,
-            )
+        await _enrich_emitted_changelog(
+            group_event_type=group_event_type,
+            node_changelog=node_changelog,
+            source=source,
+            relationship_name=relationship_name,
+            graphql_context=graphql_context,
+        )
 
         if (
             graphql_context.background

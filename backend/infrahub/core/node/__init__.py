@@ -289,6 +289,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
         return any(name in definition.node_relationships for definition in label_definitions)
 
+    async def compute_labels(self, db: InfrahubDatabase) -> None:
+        """Recompute the display label and HFID from the node's current fields, without saving them."""
+        if self._display_label:
+            await self._display_label.compute(db=db, node=self)
+        if self._human_friendly_id:
+            await self._human_friendly_id.compute(db=db, node=self)
+
     def display_label_needs_read(self) -> bool:
         """Whether returning the display label computes it from the node's fields instead of the stored value."""
         return bool(self._schema.display_label) and self._display_label is None
