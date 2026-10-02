@@ -411,9 +411,8 @@ class NumberPoolChangeReserved(Query):
 
     The IS_RESERVED edges are moved from the `:Attribute` vertices of the old object to the
     `:Attribute` vertices of the replacement object. Handles multiple pools for different Attributes.
-    This query does not close the IS_RESERVED edge on the old attribute: a branch created before the
-    conversion may still hold the replaced object. The retirement run by the conversion's object
-    delete, and later by a branch delete, closes that edge once no branch reaches the old attribute.
+    The IS_RESERVED edge on the old attribute is left as it is: it stays open while any branch can
+    still reach the old attribute and is closed once none can.
     """
 
     name = "number_pool_change_reserved"

@@ -142,7 +142,8 @@ class BranchDataDeleter:
         )
         if edges_removed:
             self.log.info(
-                f"Deleted agnostic peers of nodes only on branch '{branch_name}', {edges_removed} edge(s) removed"
+                f"Deleted agnostic peers of nodes only on branch '{branch_name}' and pool-reserved "
+                f"attributes only on branch '{branch_name}', {edges_removed} edge(s) removed"
             )
         return edges_removed
 
