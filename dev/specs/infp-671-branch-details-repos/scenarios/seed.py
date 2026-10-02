@@ -378,6 +378,9 @@ def add_unreachable(api: Api) -> bool:
         if not imported:
             log(f"FAILED: {missing} never imported while reachable, so they can't be made unreachable")
             return False
+    else:
+        # A run that crashed while serving leaves the remotes reachable.
+        stop_http("serve")
     start_http("deny", [CRED_PORT])
 
     hidden = bare_path(HIDDEN_REPO)
