@@ -1,8 +1,8 @@
 """Git repositories card on the branch details page: the import error band.
 
-The repository is added on a throwaway branch from a fixture repo without an `.infrahub.yml`, so
-its initial import (`git-repository-add-read-write`) fails deterministically and leaves it in
-Import Error on that branch.
+The repository is added on a throwaway Sync-with-Git branch from a fixture repo without an
+`.infrahub.yml`, so its initial import (`git-repository-add-read-write`) fails deterministically and
+leaves it in Import Error on that branch.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 POLL_ATTEMPTS = 30
 POLL_INTERVAL_SECONDS = 5
+BAND_TIMEOUT_MS = 30_000
 
 FAILED_IMPORT_TASK_QUERY = """
 query FailedImportTask($branch: String!, $repositoryId: String!) {
@@ -96,7 +97,8 @@ class TestBranchDetailsRepositoryImportError:
         remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
         GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
 
-        await branch_api.create(branch)
+        # With Sync with Git off the card lists read-only repositories only, which would hide this one.
+        await branch_api.create(branch, sync_with_git=True)
         try:
             mutation = Mutation(
                 mutation="CoreRepositoryCreate",
@@ -131,10 +133,18 @@ class TestBranchDetailsRepositoryImportError:
 
         await admin_page.goto(f"/branches/{quote(branch, safe='')}")
 
+        # The table is paged and ordered by name on the server, so the repository's row may sit on
+        # another page; its band comes from a separate failing-repositories query and is always shown.
         repositories_card = admin_page.get_by_test_id("branch-repositories-card")
-        await expect(repositories_card.get_by_role("row").filter(has_text=repository_name)).to_be_visible()
+        bands = repositories_card.get_by_test_id("repository-error-band")
+        await expect(bands.first).to_be_visible(timeout=BAND_TIMEOUT_MS)
+        # Only the first three bands show until "Show all"; other tests may leave failing repositories.
+        show_all = repositories_card.get_by_role("button", name="Show all")
+        if await show_all.is_visible():
+            await show_all.click()
 
-        band = repositories_card.get_by_test_id("repository-error-band").filter(has_text=repository_name)
+        band = bands.filter(has_text=repository_name)
+        await expect(band).to_be_visible(timeout=BAND_TIMEOUT_MS)
         await expect(band).to_contain_text("import failed")
         await expect(band).to_contain_text("is missing a configuration file")
 
