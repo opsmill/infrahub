@@ -17,8 +17,8 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { render } from "../../../../../tests/components/render";
 import { generateBranch } from "../../../../../tests/fake/branch";
 import {
-  generateBranchRepositoriesResult,
   generateBranchRepository,
+  toBranchRepositoryPage,
 } from "../../../../../tests/fake/branch-repositories";
 import {
   generateRepositoryBranchStatus,
@@ -51,11 +51,14 @@ const alpha = generateBranch({ id: "branch-alpha", name: "alpha", status: "NEED_
 const zulu = generateBranch({ id: "branch-zulu", name: "zulu" });
 const yankee = generateBranch({ id: "branch-yankee", name: "yankee" });
 
-const REPOSITORIES = generateBranchRepositoriesResult([
-  generateBranchRepository({ id: "repo-1", name: "repo-one" }),
-  generateBranchRepository({ id: "repo-2", name: "repo-two" }),
-  generateBranchRepository({ id: "repo-3", name: "repo-three" }),
-]);
+const REPOSITORIES = toBranchRepositoryPage(
+  [
+    generateBranchRepository({ id: "repo-1", name: "repo-one" }),
+    generateBranchRepository({ id: "repo-2", name: "repo-two" }),
+    generateBranchRepository({ id: "repo-3", name: "repo-three" }),
+  ],
+  { limit: 500 }
+);
 
 const statusPage = (...branchNames: string[]) =>
   mapRepositoryBranchStatusPage(
@@ -164,7 +167,7 @@ describe("BranchesTable", () => {
     await expect.element(component.getByRole("link", { name: "+2 more" }).nth(2)).toBeVisible();
     await expect.element(component.getByText("3/3", { exact: true }).nth(2)).toBeVisible();
     expect(vi.mocked(getBranchRepositories).mock.calls).toEqual([
-      [{ branchName: "main", syncWithGit: true }],
+      [{ branchName: "main", syncWithGit: true, limit: 500, offset: 0 }],
     ]);
     expect(vi.mocked(getRepositoryBranchStatus).mock.calls.map(([params]) => params.id)).toEqual([
       "repo-1",

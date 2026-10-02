@@ -148,7 +148,7 @@ describe("getBranchTableColumns", () => {
     expect(component.getByRole("link", { name: "alpha-repo" }).query()).toBeNull();
   });
 
-  test("adds no branch parameter to the repository link on the default branch's row", async () => {
+  test("scopes the repository link to the default branch on the default branch's row", async () => {
     // WHEN
     const component = await renderTable(threeRepositories, [
       generateBranch({ id: "branch-main", name: "main", is_default: true }),
@@ -158,7 +158,7 @@ describe("getBranchTableColumns", () => {
     const link = component.getByRole("link", { name: "beta-repo" });
     await expect.element(link).toBeVisible();
     const href = new URL(link.element().getAttribute("href") ?? "", window.location.origin);
-    expect(href.searchParams.has("branch")).toBe(false);
+    expect(href.searchParams.get("branch")).toBe("main");
   });
 
   test("shows the Git state label and the short commit in the repository pill's tooltip", async () => {

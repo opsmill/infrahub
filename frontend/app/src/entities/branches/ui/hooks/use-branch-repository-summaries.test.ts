@@ -16,8 +16,8 @@ import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 import {
-  generateBranchRepositoriesResult,
   generateBranchRepository,
+  toBranchRepositoryPage,
 } from "../../../../../tests/fake/branch-repositories";
 import { generateDropdown } from "../../../../../tests/fake/dropdown";
 import { generateRepositoryBranchStatus } from "../../../../../tests/fake/repository";
@@ -62,10 +62,13 @@ describe("useBranchRepositorySummaries", () => {
       data: [feature, primary],
     } as unknown as ReturnType<typeof useGetBranches>);
     vi.mocked(getBranchRepositories).mockResolvedValue(
-      generateBranchRepositoriesResult([
-        generateBranchRepository({ id: "repo-1", name: "repo-one" }),
-        generateBranchRepository({ id: "repo-2", name: "repo-two" }),
-      ])
+      toBranchRepositoryPage(
+        [
+          generateBranchRepository({ id: "repo-1", name: "repo-one" }),
+          generateBranchRepository({ id: "repo-2", name: "repo-two" }),
+        ],
+        { limit: 500 }
+      )
     );
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue(pageOf("primary", "feature"));
   });
@@ -81,7 +84,7 @@ describe("useBranchRepositorySummaries", () => {
     // THEN
     await expect.poll(() => result.current.feature?.status).toBe("ok");
     expect(vi.mocked(getBranchRepositories).mock.calls).toEqual([
-      [{ branchName: "primary", syncWithGit: true }],
+      [{ branchName: "primary", syncWithGit: true, limit: 500, offset: 0 }],
     ]);
     expect(vi.mocked(getRepositoryBranchStatus).mock.calls.map(([params]) => params)).toEqual([
       { id: "repo-1", branchName: "primary", limit: 500 },
@@ -204,10 +207,8 @@ describe("getRepositoryBranchStatusQueryOptions", () => {
   test("reports an error on every branch when the repository list itself was cut short", async () => {
     // GIVEN
     vi.mocked(getBranchRepositories).mockResolvedValue({
-      status: "ok",
       repositories: [generateBranchRepository({ id: "repo-1", name: "one" })],
       count: 501,
-      isTruncated: true,
     });
 
     // WHEN

@@ -8,10 +8,7 @@ import { LinkPill } from "@/shared/components/ui/link-pill";
 
 import { formatRepositoryState } from "@/entities/branches/domain/rules/format-repository-summary";
 import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
-import {
-  getBranchDetailsUrl,
-  getBranchQspOverride,
-} from "@/entities/branches/ui/routing/branch-urls";
+import { getBranchDetailsUrl, getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 
 interface BranchRepositoriesCellProps {
@@ -57,9 +54,7 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
   }
 
   const { repository } = first;
-  const href = getObjectDetailsUrl(repository.kind, repository.id, [
-    getBranchQspOverride(branch.name, Boolean(branch.is_default)),
-  ]);
+  const href = getObjectDetailsUrl(repository.kind, repository.id, [getBranchQsp(branch.name)]);
 
   return (
     <Row className="flex-wrap">

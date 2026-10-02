@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
   REPOSITORY_SYNC_STATUS_IN_SYNC,
 } from "@/entities/repository/domain/model/repository";
 import { mapRepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
@@ -15,7 +15,7 @@ import {
 } from "./summarize-branch-repositories";
 
 const IMPORT_ERROR = generateDropdown({
-  value: REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,
   label: "Import Error",
 });
 const IN_SYNC = generateDropdown({ value: REPOSITORY_SYNC_STATUS_IN_SYNC, label: "In Sync" });

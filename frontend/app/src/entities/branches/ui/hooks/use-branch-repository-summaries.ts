@@ -1,4 +1,4 @@
-import { type UseQueryResult, useQueries } from "@tanstack/react-query";
+import { type UseQueryResult, useQueries, useQuery } from "@tanstack/react-query";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type {
@@ -11,27 +11,38 @@ import {
   summarizeBranchRepositories,
 } from "@/entities/branches/domain/rules/summarize-branch-repositories";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { REPOSITORY_BRANCH_STATUS_LIMIT } from "@/entities/repository/domain/model/repository";
+import {
+  BranchRepositoriesError,
+  type BranchRepositoryPage,
+} from "@/entities/repository/domain/model/branch-repository";
+import {
+  REPOSITORY_BRANCH_STATUS_LIMIT,
+  REPOSITORY_FETCH_LIMIT,
+} from "@/entities/repository/domain/model/repository";
 import {
   RepositoryBranchStatusError,
   type RepositoryBranchStatusPage,
 } from "@/entities/repository/domain/model/repository-branch-status";
-import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
+import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
 
-type RepositoryListQuery = ReturnType<typeof useGetBranchRepositories>;
-
-function toRepositoryListFetch(list: RepositoryListQuery): RepositoryStatusFetch | null {
-  if (list.data?.status === "denied") return { status: "denied" };
-  if (list.data?.status === "ok" && list.data.isTruncated) {
+// Data first: a failed background refetch keeps the list that was already loaded.
+function toRepositoryListFetch(
+  list: UseQueryResult<BranchRepositoryPage>
+): RepositoryStatusFetch | null {
+  if (list.data) {
+    const { repositories, count } = list.data;
+    if (count <= repositories.length) return null;
     return {
       status: "error",
-      message: `Only the first ${list.data.repositories.length} of ${list.data.count} repositories were read. Open a branch for its full list.`,
+      message: `Only the first ${repositories.length} of ${count} repositories were read. Open a branch for its full list.`,
     };
   }
-  if (list.data) return null;
-  if (list.error) return { status: "error", message: list.error.message };
-  return { status: "pending" };
+  if (!list.error) return { status: "pending" };
+  if (list.error instanceof BranchRepositoriesError && list.error.code === "PERMISSION_DENIED") {
+    return { status: "denied" };
+  }
+  return { status: "error", message: list.error.message };
 }
 
 // Data first: a failed background refetch keeps the rows that were already loaded.
@@ -59,16 +70,22 @@ export function useBranchRepositorySummaries(
   const defaultBranch = allBranches ? findSelectedBranch(allBranches, null) : null;
   const defaultBranchName = defaultBranch?.name ?? "";
 
-  const repositoryList = useGetBranchRepositories(
-    { branchName: defaultBranchName, syncWithGit: true },
-    { enabled: Boolean(defaultBranch) }
-  );
+  const repositoryList = useQuery({
+    ...getBranchRepositoriesQueryOptions({
+      branchName: defaultBranchName,
+      syncWithGit: true,
+      isSyncing: false,
+      limit: REPOSITORY_FETCH_LIMIT,
+      offset: 0,
+    }),
+    enabled: Boolean(defaultBranch),
+  });
   const listFetch =
     branchesError && !allBranches
       ? { status: "error" as const, message: branchesError.message }
       : toRepositoryListFetch(repositoryList);
   const repositories: BranchRepositoryRef[] =
-    listFetch === null && repositoryList.data?.status === "ok"
+    listFetch === null && repositoryList.data
       ? repositoryList.data.repositories.map(({ id, name, kind, isReadOnly }) => ({
           id,
           name,

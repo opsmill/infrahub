@@ -1,5 +1,5 @@
 import {
-  REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  REPOSITORY_SYNC_STATUS_ERROR_VALUE,
   REPOSITORY_SYNC_STATUS_IN_SYNC,
   REPOSITORY_SYNC_STATUS_SYNCING,
 } from "@/entities/repository/domain/model/repository";
@@ -9,7 +9,7 @@ type SyncStatusValue = string | null | undefined;
 const UNKNOWN_SEVERITY = 2;
 
 const SEVERITY = new Map<string, number>([
-  [REPOSITORY_SYNC_STATUS_IMPORT_ERROR, 3],
+  [REPOSITORY_SYNC_STATUS_ERROR_VALUE, 3],
   [REPOSITORY_SYNC_STATUS_SYNCING, 1],
   [REPOSITORY_SYNC_STATUS_IN_SYNC, 0],
 ]);
