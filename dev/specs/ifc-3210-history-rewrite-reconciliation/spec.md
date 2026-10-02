@@ -232,7 +232,8 @@ either case.
   remote does not. The remote head is then an ancestor of the imported commit. This is not a
   rewrite. The branch MUST NOT be reset, because the reset would discard a commit that exists on
   one worker only. The push-ordering work of IFC-1449 removes the merge path's version of that
-  state at its source. This row keeps the detector from recreating it. See "Dependencies".
+  state at its source. This classification is what stops the reconciliation from resetting such a
+  branch, whatever else left it ahead. See "Dependencies".
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
