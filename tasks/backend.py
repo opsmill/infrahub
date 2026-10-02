@@ -800,8 +800,6 @@ class SdkSchemaGenerator:
     """
 
     def __init__(self, context: Context) -> None:
-        import sys
-
         from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
         from infrahub.core.constants import ComputedAttributeKind, UpdateSupport, Visibility
@@ -872,15 +870,30 @@ class SdkSchemaGenerator:
                 regex=r"^(\d+(?:-\d+)?)(?:,\d+(?:-\d+)?)*$",
             ),
         ]
+        self.number_pool_range_fields = [
+            self._field("start", "Number", "First number of the range"),
+            self._field("end", "Number", "Last number of the range"),
+            self._field("weight", "Number", "Ranges with a higher weight are allocated from first", optional=True),
+        ]
         self.number_pool_parameters_fields = [
             self._field(
                 "end_range",
                 "Number",
-                "End range for numbers for the associated NumberPool",
-                default_value=sys.maxsize,
+                "Deprecated, use ranges instead. End of the single range, "
+                "defaults to the largest supported number when only start_range is set",
+                optional=True,
             ),
             self._field(
-                "start_range", "Number", "Start range for numbers for the associated NumberPool", default_value=1
+                "start_range",
+                "Number",
+                "Deprecated, use ranges instead. Start of the single range, defaults to 1 when only end_range is set",
+                optional=True,
+            ),
+            _sdk_extension_field(
+                "ranges",
+                "list[NumberPoolRange__VARIANT__]",
+                "default_factory=list",
+                "Ranges of numbers the associated NumberPool allocates from, they must not overlap",
             ),
             self._field(
                 "number_pool_id",
@@ -1091,6 +1104,11 @@ class SdkSchemaGenerator:
                 "attributes": self.number_parameters_fields,
             },
             {
+                "class_name": f"NumberPoolRange{suffix}",
+                "parent": "BaseModel",
+                "attributes": self.number_pool_range_fields,
+            },
+            {
                 "class_name": f"NumberPoolParameters{suffix}",
                 "parent": base,
                 "attributes": self.number_pool_parameters_fields,
@@ -1208,6 +1226,7 @@ class SdkSchemaGenerator:
         suffix = "Write"
         internal_counterparts: dict[str, Any] = {
             f"DropdownChoice{suffix}": DropdownChoice,
+            f"NumberPoolRange{suffix}": parameters_module.NumberPoolRangeParameters,
             f"SchemaExtension{suffix}": SchemaExtension,
             f"NodeExtension{suffix}": NodeExtensionSchema,
         }
