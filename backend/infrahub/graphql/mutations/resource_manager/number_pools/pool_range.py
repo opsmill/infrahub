@@ -2,21 +2,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import InputObjectType, Mutation
 from typing_extensions import Self
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_range_validation import validate_number_pool_range
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
-from ...main import InfrahubMutationMixin, InfrahubMutationOptions
+from ...main import InfrahubMutation
 from .common import pool_lock, range_bounds, sync_shorthand, within_transaction
 
 if TYPE_CHECKING:
+    from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
@@ -26,24 +25,12 @@ if TYPE_CHECKING:
     from ....initialization import GraphqlContext
 
 
-class InfrahubNumberPoolRangeMutation(InfrahubMutationMixin, Mutation):
+class InfrahubNumberPoolRangeMutation(InfrahubMutation):
     """Range writes run under the pool lock allocation holds, so a range check never races another write."""
 
-    @classmethod
-    def __init_subclass_with_meta__(
-        cls,
-        schema: NodeSchema | None = None,
-        _meta: InfrahubMutationOptions | None = None,
-        **options: Any,
-    ) -> None:
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
+    class Meta:
+        # Abstract so the inherited schema check runs on the generated subclasses only.
+        abstract = True
 
     @classmethod
     @retry_db_transaction(name="number_pool_range_create")
