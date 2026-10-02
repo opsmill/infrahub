@@ -864,3 +864,23 @@ async def test_secondary_changelog_records_the_parent_its_reciprocal_relationshi
     assert list(secondary.relationships) == ["site"]
     assert secondary.parent == ChangelogRelatedNode(node_id=new_site.id, node_kind="YyySite")
     assert secondary.root_node_id == new_site.id
+
+
+async def test_node_changelog_partial_update_reports_the_full_labels(
+    db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaBranch
+) -> None:
+    """A node loaded without the fields its labels read still reports its complete labels on update."""
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="Jack")
+    await owner.save(db=db)
+    dog = await Node.init(db=db, schema="TestDog", branch=default_branch)
+    await dog.new(db=db, name="Rocky", breed="Labrador", owner=owner)
+    await dog.save(db=db)
+
+    partial = await NodeManager.get_one(db=db, id=dog.id, branch=default_branch, fields={"color": None})
+    assert partial is not None
+    partial.color.value = "#123456"
+    await partial.save(db=db, fields=["color"])
+
+    assert partial.node_changelog.hfid == ["Jack", "Rocky"]
+    assert partial.node_changelog.display_label == "Rocky Labrador"
