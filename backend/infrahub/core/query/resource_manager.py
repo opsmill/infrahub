@@ -528,8 +528,10 @@ class NumberPoolChangeReserved(Query):
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
 
-def reserved_values_query() -> str:
-    """Cypher fragment to find all Attributes reserved for a given NumberPool
+def reserved_values_query(
+    pool_id: str, attribute_name: str, at: str, default_branch_name: str
+) -> tuple[str, dict[str, Any]]:
+    """Cypher fragment to find all Attributes reserved for a given NumberPool, with the parameters it reads.
 
     Finds every value some non-deleting branch holds on each reserved Attribute. A value counts when
     its HAS_VALUE edge is open now, or when a branch forked from the edge's branch while the edge was
@@ -537,7 +539,13 @@ def reserved_values_query() -> str:
 
     Final values are res (IS_RESERVED edge) and value (an active Attribute value).
     """
-    return """
+    params: dict[str, Any] = {
+        "pool_id": pool_id,
+        "attribute_name": attribute_name,
+        "at": at,
+        "default_branch_name": default_branch_name,
+    }
+    query = """
     // --------------
     // Read the branches once: the ones being deleted, and the fork window of every other user branch
     // --------------
@@ -596,6 +604,7 @@ def reserved_values_query() -> str:
     }
     WITH DISTINCT res, value
     """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+    return query, params
 
 
 class NumberPoolGetUsed(Query):
@@ -618,19 +627,22 @@ class NumberPoolGetUsed(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
         self.params["start_range"] = self.pool.start_range.value
         self.params["end_range"] = self.pool.end_range.value
 
-        self.params["attribute_name"] = self.pool.node_attribute.value
-        self.params["at"] = self.at.to_string()
-        self.params["default_branch_name"] = registry.default_branch
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
 
         query = """
         %(reserved_values)s
         WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
         """ % {
-            "reserved_values": reserved_values_query(),
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
@@ -675,15 +687,18 @@ class NumberPoolGetFree(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["pool_id"] = self.pool.get_id()
         # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
         self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
         self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
         self.limit = 1  # Query only works at returning a single, free entry
 
-        self.params["attribute_name"] = self.pool.node_attribute.value
-        self.params["at"] = self.at.to_string()
-        self.params["default_branch_name"] = registry.default_branch
+        reserved_values, reserved_values_params = reserved_values_query(
+            pool_id=self.pool.get_id(),
+            attribute_name=self.pool.node_attribute.value,
+            at=self.at.to_string(),
+            default_branch_name=registry.default_branch,
+        )
+        self.params.update(reserved_values_params)
 
         query = """
         %(reserved_values)s
@@ -700,7 +715,7 @@ class NumberPoolGetFree(Query):
         WHERE is_free = true OR is_last = true
         WITH number AS free_number, is_free, is_last
         """ % {
-            "reserved_values": reserved_values_query(),
+            "reserved_values": reserved_values,
         }
 
         self.add_to_query(query)
