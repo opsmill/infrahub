@@ -2,6 +2,9 @@ import { type QueryKey, type UseQueryOptions, useQuery } from "@tanstack/react-q
 
 import { clampPage, getOffset, getTotalPages } from "@/shared/utils/table-pagination";
 
+const isPastEnd = (page: number, pageSize: number, count: number | undefined) =>
+  count !== undefined && clampPage(page, getTotalPages(count, pageSize)) !== page;
+
 interface CountClampedQueryParams {
   page: number;
   pageSize: number;
@@ -10,13 +13,21 @@ interface CountClampedQueryParams {
 /**
  * Asks for the requested page and, when the server's count puts it past the end, for the last real
  * page instead. Only the server's count can say which page is the last one, so the clamp follows
- * the first answer; the url is left alone and the next page change overwrites it.
+ * the first answer; the url is left alone and the next page change overwrites it. Once the
+ * requested page is known to be past the end, it stops being fetched.
  */
 export function useCountClampedQuery<TData extends { count: number }, TKey extends QueryKey>(
   { page, pageSize }: CountClampedQueryParams,
   getQueryOptions: (offset: number) => UseQueryOptions<TData, Error, TData, TKey>
 ) {
-  const requested = useQuery(getQueryOptions(getOffset(page, pageSize)));
+  const requestedOptions = getQueryOptions(getOffset(page, pageSize));
+  const { enabled = true } = requestedOptions;
+  const requested = useQuery({
+    ...requestedOptions,
+    enabled: (query) =>
+      (typeof enabled === "function" ? enabled(query) : enabled) &&
+      !isPastEnd(page, pageSize, query.state.data?.count),
+  });
   // A placeholder count belongs to the row set before this one, so it cannot judge this page.
   const count = requested.isPlaceholderData ? undefined : requested.data?.count;
   const currentPage = count === undefined ? page : clampPage(page, getTotalPages(count, pageSize));
