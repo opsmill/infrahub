@@ -130,13 +130,10 @@ def _make_repository() -> InfrahubRepository:
         id=REPOSITORY_ID,
         name="test-repo",
         location="git@github.com:mock/test-repo.git",
-        default_branch_name="main",
+        default_branch="main",
         has_origin=True,
-        cache_repo=None,
-        is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-        infrahub_branch_name=None,
-        reinitialized=False,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
     )
 
 

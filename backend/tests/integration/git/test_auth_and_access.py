@@ -107,6 +107,7 @@ class TestAuthAndAccess(TestInfrahubApp):
                 name=bad_credentials_dataset["repo_name"],
                 location=bad_credentials_dataset["bad_url"],
                 client=client,
+                infrahub_branch_name="main",
             )
 
     async def test_push_without_write_access_raises_permission_error(
@@ -132,6 +133,7 @@ class TestAuthAndAccess(TestInfrahubApp):
             name=repo_name,
             location=readonly_url,
             client=client,
+            infrahub_branch_name="main",
         )
 
         repo_before: CoreRepository = await NodeManager.get_one(

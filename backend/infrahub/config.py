@@ -373,6 +373,10 @@ class StorageSettings(BaseSettings):
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
+    verify_artifact_checksum: bool = Field(
+        default=True,
+        description="Refuse to serve an artifact file that does not match the checksum recorded for the artifact",
+    )
 
 
 class DatabaseSettings(BaseSettings):

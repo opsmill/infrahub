@@ -645,6 +645,7 @@ async def repository_checks(model: RequestProposedChangeRepositoryChecks, contex
             proposed_change=model.proposed_change,
             repository_id=repository.repository_id,
             repository_name=repository.repository_name,
+            repository_kind=InfrahubKind.READONLYREPOSITORY if repository.read_only else InfrahubKind.REPOSITORY,
             source_branch=model.source_branch,
             source_branch_sync_with_git=model.source_branch_sync_with_git,
             target_branch=model.destination_branch,
@@ -737,6 +738,7 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
                 repository_id=repository.repository_id,
                 name=repository.repository_name,
                 repository_kind=repository.kind,
+                infrahub_branch_name=model.source_branch,
             )
             commit = repo.get_commit_value(proposed_change.source_branch.value)
             worktree_directory = Path(repo.get_commit_worktree(commit=commit).directory)
@@ -821,9 +823,10 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             every_target=list(artifacts_by_member.values()),
         )
     impacted_artifacts = selection.ids
-    if selection.widened:
+    if selection.widening is not None:
         log.warning(
-            f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
+            f"Artifact definition {artifact_definition.name.value}: {selection.widening.detail}. "
+            "All targets will be processed."
         )
     elif not impacted_artifacts:
         log.info(
@@ -916,6 +919,7 @@ async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: Infra
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
 
@@ -1114,9 +1118,9 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         )
     definition_name = model.generator_definition.definition_name
     impacted_instances = selection.ids
-    if selection.widened:
+    if selection.widening is not None:
         log.warning(
-            f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
+            f"Generator definition {definition_name}: {selection.widening.detail}. All targets will be processed."
         )
     elif not impacted_instances:
         log.info(
@@ -1573,7 +1577,12 @@ async def _validate_repository_merge_conflicts(
     conflicts = False
     for repo in repositories:
         if repo.has_diff and not repo.is_staging:
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
+            git_repo = await InfrahubRepository.init(
+                id=repo.repository_id,
+                name=repo.repository_name,
+                client=client,
+                infrahub_branch_name=repo.source_branch,
+            )
             async with lock.registry.get(name=repo.repository_name, namespace="repository"):
                 repo.conflicts = await git_repo.get_conflicts(
                     source_branch=repo.source_branch, dest_branch=repo.destination_branch

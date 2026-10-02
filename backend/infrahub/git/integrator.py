@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
@@ -47,7 +48,6 @@ from prefect.logging import get_run_logger
 from prefect.utilities.annotations import quote
 from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
-from typing_extensions import Self
 
 from infrahub import config, lock
 from infrahub.auth.session import AnonymousSession
@@ -265,9 +265,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return True
         return False
 
-    @classmethod
-    async def init(cls, commit: str | None = None, **kwargs: Any) -> Self:
-        self = cls(**kwargs)
+    async def initialize_local(self, commit: str | None = None) -> None:
+        """Bring this worker's local copy in line with the repository, cloning it if it is missing.
+
+        Raises:
+            CommitNotFoundError: When the requested commit is absent from the local clone and cannot
+                be fetched from the remote.
+
+        """
         log = get_logger()
         if not self._has_valid_local_directories():
             await self.ensure_location_is_defined()
@@ -311,7 +316,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         log.debug(
             f"Initiated the object on an existing directory for {self.name}",
         )
-        return self
 
     async def ensure_location_is_defined(self) -> None:
         if self.location:
@@ -2200,6 +2204,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         return ArtifactGenerateResult(changed=True, checksum=checksum, storage_id=storage_id, artifact_id=artifact.id)
 
+    async def _stored_content_matches(self, storage_id: str | None, checksum: str) -> bool:
+        """Whether the object storage still holds the content recorded with this checksum.
+
+        A missing object (404) and one the API refuses because it failed its integrity check (409) do not.
+
+        Raises:
+            httpx.HTTPStatusError: If the object cannot be read for another reason.
+
+        """
+        if not storage_id:
+            return False
+        try:
+            content = await self.sdk.object_store.get(identifier=storage_id, tracker="artifact-verify-content")
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in {404, 409}:
+                raise
+            return False
+        return hashlib.md5(bytes(content, encoding="utf-8"), usedforsecurity=False).hexdigest() == checksum
+
     async def render_artifact(
         self,
         artifact: CoreArtifact,
@@ -2244,7 +2267,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         checksum = hashlib.md5(bytes(artifact_content_str, encoding="utf-8"), usedforsecurity=False).hexdigest()
 
-        if artifact.checksum.value == checksum:
+        # Same content: keep the stored file, unless it was asked to be checked and is missing or refused.
+        if artifact.checksum.value == checksum and (
+            not message.check_stored_file
+            or await self._stored_content_matches(storage_id=artifact.storage_id.value, checksum=checksum)
+        ):
             return ArtifactGenerateResult(
                 changed=False, checksum=checksum, storage_id=artifact.storage_id.value, artifact_id=artifact.id
             )

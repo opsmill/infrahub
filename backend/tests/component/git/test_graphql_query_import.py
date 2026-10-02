@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -18,10 +19,13 @@ from infrahub_sdk.exceptions import FragmentFileNotFoundError, FragmentNotFoundE
 from infrahub_sdk.schema.repository import InfrahubRepositoryFragmentConfig, InfrahubRepositoryGraphQLConfig
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.git import InfrahubRepository
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from tests.constants import FIXTURE_REPOS_DIR
+from tests.helpers.git import clone_repository
 from tests.helpers.test_client import dummy_async_request
+
+if TYPE_CHECKING:
+    from infrahub.git import InfrahubRepository
 
 FRAGMENT_INLINING_FIXTURE = FIXTURE_REPOS_DIR / "fragment-inlining"
 
@@ -84,7 +88,7 @@ async def fragment_repo(
     empty list (simulating a fresh graph with no existing queries).
     """
     upstream_path = _create_upstream_repo(tmp_path)
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name="fragment_repo",
         location=str(upstream_path),
@@ -176,7 +180,7 @@ async def test_resync_after_fragment_update_reflects_new_definition(
 
     """
     upstream_path = _create_upstream_repo(tmp_path)
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name="resync_repo",
         location=str(upstream_path),
@@ -256,13 +260,13 @@ queries:
     upstream_a = _make_upstream(tmp_path, "a")
     upstream_b = _make_upstream(tmp_path, "b")
 
-    repo_a = await InfrahubRepository.new(
+    repo_a = await clone_repository(
         id=UUIDT.new(),
         name="repo_a",
         location=str(upstream_a),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    repo_b = await InfrahubRepository.new(
+    repo_b = await clone_repository(
         id=UUIDT.new(),
         name="repo_b",
         location=str(upstream_b),

@@ -87,6 +87,7 @@ from tests.helpers.constants import (
 )
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.git import clone_repository
 from tests.helpers.prefect_diagnostics import register_prefect_test_server, timeout_diagnostics_section
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
@@ -246,7 +247,7 @@ def reset_graphql_schema_between_tests() -> Generator:
 async def git_fixture_repo(git_sources_dir: Path, git_repos_dir: Path) -> InfrahubRepository:
     FileRepo(name="test_base", sources_directory=git_sources_dir)
 
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name="test_basename",
         location=str(git_sources_dir / "test_base"),
