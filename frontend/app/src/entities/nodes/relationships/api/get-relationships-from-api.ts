@@ -1,11 +1,10 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 
 type GenerateRelationshipListQueryParams = PaginationParams & {
   peer: string;
-  parent?: { name: string; value: string };
   search?: string;
   filterQuery?: Record<string, string | number | boolean | string[]>;
   // Extra node fields to select (json-to-graphql-query form), so callers request
@@ -13,28 +12,44 @@ type GenerateRelationshipListQueryParams = PaginationParams & {
   additionalFields?: Record<string, unknown>;
 };
 
+const isIdFilter = (filterName: string): boolean =>
+  filterName === "ids" || filterName.endsWith("__ids");
+
 const generateRelationshipListQuery = ({
   peer,
-  parent,
-  limit = 0,
-  offset = 0,
-  search = "",
   filterQuery = {},
   additionalFields = {},
-}: GenerateRelationshipListQueryParams): string => {
-  const defaultArgs = { limit, offset, any__value: search, partial_match: true };
-
-  const args = parent?.value
-    ? { ...defaultArgs, [`${parent.name}__ids`]: [parent.value] }
-    : { ...defaultArgs };
+}: Pick<
+  GenerateRelationshipListQueryParams,
+  "peer" | "filterQuery" | "additionalFields"
+>): string => {
+  const filterArgs = Object.fromEntries(
+    Object.entries(filterQuery).map(([filterName, value]) => [
+      filterName,
+      isIdFilter(filterName) ? new VariableType(filterName) : value,
+    ])
+  );
 
   const request = {
     query: {
       __name: "GetRelationshipList" + peer,
+      __variables: {
+        limit: "Int",
+        offset: "Int",
+        search: "String",
+        ...Object.fromEntries(
+          Object.keys(filterQuery)
+            .filter(isIdFilter)
+            .map((filterName) => [filterName, "[ID]"])
+        ),
+      },
       [peer]: {
         __args: {
-          ...args,
-          ...filterQuery,
+          limit: new VariableType("limit"),
+          offset: new VariableType("offset"),
+          any__value: new VariableType("search"),
+          partial_match: true,
+          ...filterArgs,
         },
         edges: {
           node: {
@@ -52,25 +67,28 @@ const generateRelationshipListQuery = ({
   return jsonToGraphQLQuery(request);
 };
 
-export type getRelationshipsFromApiParams = ContextParams &
-  Omit<GenerateRelationshipListQueryParams, "parent">;
+export type getRelationshipsFromApiParams = ContextParams & GenerateRelationshipListQueryParams;
 
 export const getRelationshipsFromApi = async ({
   peer,
-  limit,
-  offset,
-  search,
+  // Omitted bounds are sent as explicit zeroes and an empty search rather than null.
+  limit = 0,
+  offset = 0,
+  search = "",
   branchName,
   atDate,
   filterQuery,
   additionalFields,
 }: getRelationshipsFromApiParams) => {
-  const query = graphql(
-    generateRelationshipListQuery({ peer, limit, offset, search, filterQuery, additionalFields })
+  const query = graphql(generateRelationshipListQuery({ peer, filterQuery, additionalFields }));
+
+  const idFilterVariables = Object.fromEntries(
+    Object.entries(filterQuery ?? {}).filter(([filterName]) => isIdFilter(filterName))
   );
 
   return graphqlClient.query({
     query,
+    variables: { limit, offset, search, ...idFilterVariables },
     context: {
       branch: branchName,
       date: atDate,

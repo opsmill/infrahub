@@ -1,4 +1,4 @@
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
@@ -10,14 +10,16 @@ export interface GetObjectAncestorsFromApiParams extends ContextParams {
 
 function getObjectAncestorsQuery({
   objectKind,
-  objectId,
-}: Pick<GetObjectAncestorsFromApiParams, "objectKind" | "objectId">): string {
+}: Pick<GetObjectAncestorsFromApiParams, "objectKind">): string {
   return jsonToGraphQLQuery({
     query: {
       __name: `Get${objectKind}Ancestors`,
+      __variables: {
+        ids: "[ID]",
+      },
       [objectKind]: {
         __args: {
-          ids: [objectId],
+          ids: new VariableType("ids"),
         },
         edges: {
           node: {
@@ -64,10 +66,11 @@ export const getObjectAncestorsFromApi = async ({
   branchName,
   atDate,
 }: GetObjectAncestorsFromApiParams) => {
-  const query = getObjectAncestorsQuery({ objectKind, objectId });
+  const query = getObjectAncestorsQuery({ objectKind });
 
   return graphqlClient.query({
     query: graphql(query),
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,
