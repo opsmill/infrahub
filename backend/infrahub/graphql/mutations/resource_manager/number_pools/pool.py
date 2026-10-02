@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import InputObjectType, Mutation
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
-from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
@@ -20,10 +18,11 @@ from infrahub.pools.number_pool_range_validation import (
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
-from ...main import DeleteResult, InfrahubMutationMixin, InfrahubMutationOptions
+from ...main import DeleteResult, InfrahubMutation
 from .common import pool_lock, range_bounds, sync_shorthand, within_transaction
 
 if TYPE_CHECKING:
+    from graphene import InputObjectType
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
@@ -41,23 +40,10 @@ BOUNDS_NOT_CLEARABLE = f"{BOUNDS_DESCRIBE_ONE_RANGE}, neither can be cleared"
 SHORTHAND_WITH_RANGES = "start_range/end_range cannot be combined with ranges"
 
 
-class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
-    @classmethod
-    def __init_subclass_with_meta__(
-        cls,
-        schema: NodeSchema | None = None,
-        _meta: InfrahubMutationOptions | None = None,
-        **options: Any,
-    ) -> None:
-        # Make sure schema is a valid NodeSchema Node Class
-        if not isinstance(schema, NodeSchema):
-            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
-        if not _meta:
-            _meta = InfrahubMutationOptions(cls)
-
-        _meta.schema = schema
-
-        super().__init_subclass_with_meta__(_meta=_meta, **options)
+class InfrahubNumberPoolMutation(InfrahubMutation):
+    class Meta:
+        # Abstract so the inherited schema check runs on the generated subclasses only.
+        abstract = True
 
     @classmethod
     @retry_db_transaction(name="resource_manager_create")
