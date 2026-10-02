@@ -80,6 +80,21 @@ def test_enrich_fills_resolved_peers_and_leaves_the_others_unset() -> None:
     assert (owner.peer_id, owner.peer_id_previous) == ("current", "previous")
 
 
+def test_enrich_leaves_a_removed_single_peer_unlabeled_even_when_resolved() -> None:
+    changelog = NodeChangelog(node_id="source", node_kind="TestPerson", display_label="label")
+    changelog.relationships["owner"] = RelationshipCardinalityOneChangelog(name="owner", peer_id_previous="previous")
+    peer_labels = ResolvedPeerLabels(
+        labels={"previous": NodeLabels(display_label="Previous", hfid=["previous"])}, referenced_count=1
+    )
+
+    peer_labels.enrich(changelog=changelog)
+
+    owner = changelog.relationships["owner"]
+    assert isinstance(owner, RelationshipCardinalityOneChangelog)
+    assert (owner.peer_id, owner.peer_id_previous) == (None, "previous")
+    assert (owner.peer_display_label, owner.peer_hfid) == (None, None)
+
+
 def test_labels_of_falls_back_to_the_placeholder_for_an_unresolved_peer() -> None:
     peer_labels = ResolvedPeerLabels(labels={}, referenced_count=1)
 
