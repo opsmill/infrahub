@@ -113,11 +113,11 @@ This also applies to a branch in the `NEED_UPGRADE_REBASE` status after an upgra
 
 Two open branches never conflict with each other directly. Infrahub compares each branch with the default branch, not with other open branches, so when you change the same object on two branches, Infrahub reports the conflict on the second branch only after the first one merges. Nothing reserves an object for one branch.
 
-To clear it, rebase the second branch. The refusal lists each conflict and what it needs: resolve it in favor of the branch, or update the data so that both branches agree, then rebase again. For the workflow with several open branches, see [Run parallel branches](./parallel-branches.mdx).
+To clear it, rebase the second branch. The refusal lists each conflict and what it needs: resolve it in favor of the branch, or update the data so that both branches agree, then rebase again. For the workflow with several open branches, see [Parallel branches](./parallel-branches.mdx).
 
 ## Related
 
 - [Branches](./overview.mdx): branch lifecycle and concepts
 - [Rebase a branch](./rebase.mdx): surfaces conflicts early, before merge
 - [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx): choosing a side during review
-- [Run parallel branches](./parallel-branches.mdx): rebasing and merging several open branches while others merge
+- [Parallel branches](./parallel-branches.mdx): rebasing and merging several open branches while others merge

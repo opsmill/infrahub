@@ -106,7 +106,7 @@ To get the most out of Infrahub's branching capabilities, consider these recomme
 
 - **Use descriptive branch names**: Name branches in a way that clearly identifies their purpose, such as `feature-network-redesign` or `fix-datacenter-connectivity`.
 - **Keep branches short-lived**: Complete work and merge branches promptly. Infrahub does not mark a branch as behind the default branch, so a long-lived branch keeps reading the default branch as it was at its `branched_from` until you rebase it. Enable `delete_branch_after_merge` in the [configuration](../reference/configuration.mdx) to automate cleanup of merged branches.
-- **Rebase before creating a Proposed Change**: Update your branch with the latest changes from the default branch to identify and resolve conflicts early. See [Rebase a branch](./rebase.mdx). When several branches are open at once, see [Run parallel branches](./parallel-branches.mdx).
+- **Rebase before creating a Proposed Change**: Update your branch with the latest changes from the default branch to identify and resolve conflicts early. See [Rebase a branch](./rebase.mdx). When several branches are open at once, see [Parallel branches](./parallel-branches.mdx).
 - **Use data-only branches for quick fixes**: When changes don't require infrastructure code updates, data-only branches provide a streamlined workflow.
 - **Set branch permissions**: Restrict who can create branches and merge to the default branch to maintain quality control in production environments.
 - **Document branch purpose**: Add clear descriptions to branches to help team members understand their purpose and scope.
@@ -166,7 +166,7 @@ This approach means creating a branch has minimal overhead, and storage grows on
 - [Rebase a branch](./rebase.mdx): what a rebase does, what blocks it, and both ways to run it
 - [Merge a branch](./merge.mdx): what the merge checks again, write blocking, and recovery from a failed merge
 - [Resolve conflicts](./resolve-conflicts.mdx): each conflict type and what clears it
-- [Run parallel branches](./parallel-branches.mdx): rebasing and merging several open branches while others merge
+- [Parallel branches](./parallel-branches.mdx): rebasing and merging several open branches while others merge
 - [Branching blog post](https://opsmill.com/blog/infrastructure-change-management-workflow/): a change management workflow built on branches and Proposed Changes
 - [Git Integration](../git-integration/overview.mdx): how branches synchronize with connected Git repositories
 - [Proposed Changes](../proposed-changes/overview.mdx): review, checks, and merge for a branch
