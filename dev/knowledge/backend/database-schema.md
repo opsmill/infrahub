@@ -222,7 +222,9 @@ that have not taken the rename, and nothing retires it once no branch uses the o
 `IS_RESERVED` edge stays open. A rename on the default branch followed by a rebase
 of an older branch also leaves the old `IS_RESERVED` edge open for good: the rebase re-evaluates only
 nodes the base branch removed, and the rebased branch holds no edges on the old vertex, so its later
-delete never reaches that edge.
+delete never reaches that edge. A rename also leaves the pool's `node_attribute` naming the old
+attribute, and the pool's used and free reads match its reserved attributes by that name, so a value
+held through the renamed vertex is unaccounted for until the pool is pointed at the new name.
 
 ## Determining Edge Activity
 

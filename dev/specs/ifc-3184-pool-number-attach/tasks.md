@@ -239,7 +239,14 @@ where nothing else has moved the numbers.
       left out:** a rename on the default branch followed by a rebase of an older branch leaves the
       old `IS_RESERVED` edge open for good, because the rebase only re-evaluates nodes the base branch
       removed and the rebased branch holds no edges on the old vertex, so its later delete never
-      reaches that edge; a test pins that too, and T017b fixes it.
+      reaches that edge; a strict `xfail` pins the goal, and T017b fixes it. **Also left out:** a
+      rename leaves the pool's `node_attribute` naming the old attribute, and both pool reads
+      (`reserved_values_query`, used by `get_used` and `get_free`) match the reserved attributes by
+      that name. Verified 2026-10-02: after a rename on the default branch, `get_used` reports the
+      number only while an older branch still reads the old vertex and reports nothing once that
+      branch is deleted, until the pool is pointed at the new name by hand; and a number set on the
+      attribute renamed on a branch is reported on no branch at all, so the pool can hand it out
+      again. Pre-existing, and it belongs with the follow-up on renaming pooled attributes.
 
 - [ ] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
       **Blocked:** bring the pending changes on `develop` forward first; do not start before they
@@ -264,10 +271,10 @@ where nothing else has moved the numbers.
         fork, not only renamed ones; if that is too broad, look up nodes with a removed attribute
         through a field-level diff query instead, which the node-level lookup cannot do today.
 
-      Flip
-      `test_number_pool_attribute_rename.py::test_rebasing_an_older_branch_past_a_rename_leaves_the_old_is_reserved_edge_open`
-      to assert the old `IS_RESERVED` edge is closed after the rebase, and drop the rebase-past-rename
-      gap from T017a's *Left out* and from `dev/knowledge/backend/database-schema.md`.
+      Drop the `xfail` marker from
+      `test_number_pool_attribute_rename.py::test_rebasing_the_last_older_branch_past_a_rename_closes_the_old_is_reserved_edge`,
+      which already asserts the old `IS_RESERVED` edge is closed after the rebase, and drop the
+      rebase-past-rename gap from T017a's *Left out* and from `dev/knowledge/backend/database-schema.md`.
 
 - [X] T018 [US1] Implement cross-branch liveness as a **union** (FR-036a) in the queries from T007,
       reusing the *shape* of `UNRETAINED_AGNOSTIC_FIELD_PREDICATE`: per-branch window
