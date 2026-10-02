@@ -166,7 +166,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_display_label_backing_change_selects_subscriber(
         self,
@@ -195,7 +195,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=SUBSCRIBER_KIND,
             every_target=[dataset["subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_related_node_change_narrows_to_the_owning_member(
         self,
@@ -224,7 +224,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])
 
     async def test_unread_related_field_change_selects_nothing(
         self,
@@ -252,7 +252,7 @@ class TestFieldLevelImpact(TestInfrahubApp):
                 )
             ],
         )
-        assert resolved == TargetSelection(ids=[], widened=False)
+        assert resolved == TargetSelection(ids=[])
 
 
 QUERY_RACK_WITH_CARD = """
@@ -383,4 +383,4 @@ class TestGenericOwnerFieldLevelImpact(TestInfrahubApp):
             subscriber_kind=TestKind.TAG,
             every_target=[dataset["subscriber_id"], dataset["other_subscriber_id"]],
         )
-        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]], widened=False)
+        assert resolved == TargetSelection(ids=[dataset["subscriber_id"]])

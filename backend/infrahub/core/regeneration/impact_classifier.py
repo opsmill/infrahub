@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from .models import Widening, WideningReason
 from .predicates import relevant_node_changes
 
 if TYPE_CHECKING:
@@ -15,9 +16,11 @@ if TYPE_CHECKING:
 class EveryTarget:
     """The changed nodes cannot be traced back to specific targets, so every one must be processed.
 
-    Carries no ids because there are none to carry: the affected targets are unknown at this point,
-    which is why the caller has to fall back to its own full set.
+    Carries why, but no ids because there are none to carry: the affected targets are unknown at this
+    point, which is why the caller has to fall back to its own full set.
     """
+
+    widening: Widening
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,15 +93,14 @@ class QueryImpactClassifier:
             # The read surface cannot be pinned to specific kinds: the change that moves the derived
             # value can land on a peer the read set never names. Widen unconditionally rather than
             # risk leaving the reader stale.
-            return EveryTarget()
+            return EveryTarget(widening=Widening(reason=WideningReason.UNSCOPABLE_DERIVED_READ))
 
         if not self.only_has_unique_targets:
             # A changed node cannot be traced back to the targets reading it: the query answers from
             # an unbounded set.
-            has_relevant_change = bool(
-                self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind)
-            )
-            return EveryTarget() if has_relevant_change else ChangedNodes(node_ids=[])
+            if self._changed_node_ids(diff_summary=diff_summary, kinds=self.readable_fields_by_kind):
+                return EveryTarget(widening=Widening(reason=WideningReason.NON_UNIQUE_TARGETS))
+            return ChangedNodes(node_ids=[])
 
         root_fields_by_kind = {
             kind: fields for kind, fields in self.readable_fields_by_kind.items() if kind not in self.traversed_kinds
@@ -106,6 +108,7 @@ class QueryImpactClassifier:
         member_node_ids = self._changed_node_ids(diff_summary=diff_summary, kinds=root_fields_by_kind)
 
         reached: list[ReachedChange] = []
+        unmapped_kinds: list[str] = []
         for kind in sorted(self.traversed_kinds):
             fields = self.readable_fields_by_kind.get(kind)
             if not fields:
@@ -117,9 +120,14 @@ class QueryImpactClassifier:
             if paths is None:
                 # A change on this related kind cannot be mapped back to specific members, so every
                 # target has to run rather than risk leaving one stale.
-                return EveryTarget()
+                unmapped_kinds.append(kind)
+                continue
             reached.append(ReachedChange(node_ids=changed_ids, paths=paths))
 
+        if unmapped_kinds:
+            return EveryTarget(
+                widening=Widening(reason=WideningReason.RELATIONSHIP_REACHED_CHANGE, kinds=tuple(unmapped_kinds))
+            )
         if reached:
             return RelationshipReachedChanges(direct_member_node_ids=member_node_ids, reached=reached)
         return ChangedNodes(node_ids=member_node_ids)

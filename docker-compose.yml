@@ -184,6 +184,7 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_STORAGE_TLS_CA_FILE:
   INFRAHUB_STORAGE_TLS_INSECURE: ${INFRAHUB_STORAGE_TLS_INSECURE:-false}
   INFRAHUB_STORAGE_USE_SSL: ${INFRAHUB_STORAGE_USE_SSL:-true}
+  INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM: ${INFRAHUB_STORAGE_VERIFY_ARTIFACT_CHECKSUM:-true}
   INFRAHUB_TELEMETRY_ENDPOINT: ${INFRAHUB_TELEMETRY_ENDPOINT:-https://telemetry.opsmill.cloud/infrahub}
   INFRAHUB_TELEMETRY_INTERVAL:
   INFRAHUB_TELEMETRY_OPTOUT: ${INFRAHUB_TELEMETRY_OPTOUT:-false}
@@ -281,7 +282,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -314,7 +315,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -360,7 +361,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.3}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.11.4}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:
