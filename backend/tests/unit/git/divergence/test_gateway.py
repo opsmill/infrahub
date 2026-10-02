@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -26,7 +27,7 @@ def test_an_earlier_commit_is_an_ancestor_of_a_later_one(repo: Repo, gateway: Gi
 def test_an_unreachable_commit_leaves_as_a_repository_error(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
     present = commit_file(repo=repo, content="one")
 
-    with pytest.raises(RepositoryError, match=r"Unable to compare"):
+    with pytest.raises(RepositoryError, match=r"^Unable to compare 0{40} against [0-9a-f]{40}: "):
         gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=present)
 
 
@@ -34,7 +35,7 @@ def test_a_broken_repository_fails_the_comparison(repo: Repo, gateway: GitPython
     commit = commit_file(repo=repo, content="one")
     break_object_database(repo=repo)
 
-    with pytest.raises(RepositoryError, match=r"Unable to compare"):
+    with pytest.raises(RepositoryError, match=r"^Unable to compare [0-9a-f]{40} against [0-9a-f]{40}: "):
         gateway.is_ancestor(ancestor_commit=commit, descendant_commit=commit)
 
 
@@ -76,7 +77,7 @@ def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway
     commit = commit_file(repo=repo, content="one")
     break_object_database(repo=repo)
 
-    with pytest.raises(RepositoryError, match=r"Unable to read"):
+    with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
         gateway.has_commit(commit=commit)
 
 
@@ -84,11 +85,18 @@ def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway
 def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
     gateway: GitPythonAncestryGateway, identifier: str
 ) -> None:
-    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
+    expected = re.escape(f"{identifier!r} is not a valid commit identifier")
+
+    with pytest.raises(RepositoryError, match=rf"^{expected}$"):
         gateway.has_commit(commit=identifier)
 
 
 @pytest.mark.parametrize("identifier", ["not-a-sha", "A" * 40])
 def test_the_comparison_rejects_a_malformed_identifier(gateway: GitPythonAncestryGateway, identifier: str) -> None:
-    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
-        gateway.is_ancestor(ancestor_commit=identifier, descendant_commit="0" * 40)
+    expected = re.escape(f"{identifier!r} is not a valid commit identifier")
+
+    with pytest.raises(RepositoryError, match=rf"^{expected}$"):
+        gateway.is_ancestor(ancestor_commit=identifier, descendant_commit=ABSENT)
+
+    with pytest.raises(RepositoryError, match=rf"^{expected}$"):
+        gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=identifier)

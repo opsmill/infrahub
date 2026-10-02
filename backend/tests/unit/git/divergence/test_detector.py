@@ -184,7 +184,7 @@ def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo) -> 
 def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(repo: Repo) -> None:
     imported = commit_file(repo=repo, content="one")
 
-    with pytest.raises(RepositoryError, match=r"Unable to compare"):
+    with pytest.raises(RepositoryError, match=r"^Unable to compare [0-9a-f]{40} against 0{40}: "):
         detect(repo, imported=imported, remote="0" * 40)
 
 
@@ -193,5 +193,5 @@ def test_a_broken_object_database_reaches_the_caller(repo: Repo) -> None:
     remote = commit_file(repo=repo, content="two")
     break_object_database(repo=repo)
 
-    with pytest.raises(RepositoryError, match=r"Unable to read"):
+    with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
         detect(repo, imported=imported, remote=remote)
