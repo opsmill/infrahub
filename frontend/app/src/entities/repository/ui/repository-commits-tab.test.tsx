@@ -157,7 +157,7 @@ describe("RepositoryCommitsTab", () => {
     expect(apiMock).not.toHaveBeenCalled();
   });
 
-  test("refreshes the commit log without a separate status read", async () => {
+  test("refreshing the open Commits tab makes no separate status read", async () => {
     // GIVEN
     commitsApiMock.mockResolvedValue(commitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTabWithCommitLog();

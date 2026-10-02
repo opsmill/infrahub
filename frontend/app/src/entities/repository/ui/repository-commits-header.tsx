@@ -28,7 +28,7 @@ export function RepositoryCommitsRefreshButton() {
   return (
     <RefreshButton
       className="rounded-md border-border-strong"
-      queryKey={repositoriesQueryKeys.allCommits()}
+      queryKey={repositoriesQueryKeys.all}
     />
   );
 }
