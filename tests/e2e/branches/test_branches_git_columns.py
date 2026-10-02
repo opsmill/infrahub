@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable
 
     from helpers import BranchAPI
+    from infrahub_sdk import InfrahubClient
     from playwright.async_api import Locator, Page
 
 # The table is a flat CSS grid with no row element, so a row's cells are the siblings that follow
@@ -68,12 +69,20 @@ class TestBranchesGitColumns:
             _row_cell(identifier_cell, GIT_STATE_OFFSET).get_by_text("Import Error", exact=True)
         ).to_be_visible()
 
-    async def test_branch_without_git_sync_reads_not_synced(
-        self, admin_page: Page, branch_without_git_sync: str
+    async def test_branch_without_git_sync_lists_read_only_repositories_only(
+        self, admin_page: Page, infrahub_client: InfrahubClient, branch_without_git_sync: str
     ) -> None:
+        # Read-only repositories list every branch, and other tests in this shard may leave one behind.
+        read_only = await infrahub_client.all(kind="CoreReadOnlyRepository")
+
         await admin_page.goto("/branches")
         await admin_page.get_by_role("searchbox", name="Search").fill(branch_without_git_sync)
 
         identifier_cell = _identifier_cell(admin_page, branch_without_git_sync)
         await expect(identifier_cell).to_have_count(1)
-        await expect(_row_cell(identifier_cell, REPOSITORIES_OFFSET)).to_have_text("Not synced with Git")
+        repositories_cell = _row_cell(identifier_cell, REPOSITORIES_OFFSET)
+        if not read_only:
+            await expect(repositories_cell).to_have_text("Not synced with Git")
+            return
+        names = sorted((repository.name.value for repository in read_only), key=str.lower)
+        await expect(repositories_cell.get_by_role("link").first).to_have_text(names[0])
