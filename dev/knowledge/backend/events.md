@@ -227,5 +227,6 @@ Events can be queried through:
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
 - [Mutations](mutations.md) - How mutations record the nodes they write besides their main node
+- [Changelog Enrichment](changelog-enrichment.md) - how node event changelogs get their display labels and HFIDs
 - [Merge/Rebase Recompute](merge-recompute.md) - node mutation origin and how it suppresses recompute triggers
 - [Backend Architecture](architecture.md) - Overall backend structure
