@@ -59,7 +59,7 @@ gitGraph
 
 </div>
 
-**3. Resolve it in a rebase: keep the branch value.** Choose `branch-a` for `A`, and the rebase moves `branched_from` to the latest state of the default branch. `branch-a` then starts from `A: 3` and keeps its own `A: 4`. To take the default branch value instead, set `A` to `3` on `branch-a`: both branches agree, the conflict goes away and the rebase goes through. Choosing the default branch for `A` refuses the rebase.
+**3. Resolve it in a rebase: keep the branch value.** Choose `branch-a` for `A`, and the rebase moves `branched_from` to the latest state of the default branch. `branch-a` then starts from `A: 3` and keeps its own `A: 4`. To take the default branch value instead, set `A` to `3` on `branch-a`: both branches agree, the conflict is cleared and the rebase succeeds. Choosing the default branch for `A` refuses the rebase.
 
 <div style={{zoom: 1.3, textAlign: 'center'}}>
 
@@ -79,7 +79,7 @@ gitGraph
 
 A [Proposed Change](../proposed-changes/overview.mdx) shows each conflict on its **Data** tab. For the steps to resolve them during review, see [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx).
 
-Conflicts can also surface during a [rebase](./rebase.mdx). A rebase can't apply a resolution in favor of the default branch, so it stops on a conflict until you address it, and its error lists what each conflict needs:
+Infrahub also reports conflicts during a [rebase](./rebase.mdx). A rebase can't apply a resolution in favor of the default branch, so it stops on a conflict until you address it, and its error lists what each conflict needs:
 
 - A conflict on an attribute blocks the rebase until you resolve it in favor of the branch. Open a proposed change for the branch to choose the branch for the value of an attribute, as described in [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx). For another property of an attribute, such as its owner or source, use the `ResolveDiffConflict` GraphQL mutation with the conflict ID that the `DiffTree` query returns.
 - A conflict on a relationship, such as the datacenter a device is assigned to or a property of that assignment, blocks the rebase until you update the data so that both branches agree.
@@ -118,6 +118,6 @@ To clear it, rebase the second branch. The refusal lists each conflict and what 
 ## Related
 
 - [Branches](./overview.mdx): branch lifecycle and concepts
-- [Rebase a branch](./rebase.mdx): surfaces conflicts early, before merge
+- [Rebase a branch](./rebase.mdx): reports conflicts before review, rather than at merge
 - [Resolve a proposed-change conflict](../proposed-changes/resolve-conflict.mdx): choosing a side during review
-- [Parallel branches](./parallel-branches.mdx): what a merge elsewhere does to your branch, and what Infrahub does not tell you
+- [Parallel branches](./parallel-branches.mdx): Why merging one branch does not change the others, and when to rebase

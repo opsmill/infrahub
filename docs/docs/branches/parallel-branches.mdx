@@ -2,7 +2,9 @@
 title: Parallel branches
 ---
 
-When several teams or Generators work on separate branches at the same time, each branch keeps reading the default branch as it was at that branch's `branched_from`. A merge into the default branch does not change the other open branches, and nothing marks them as behind, so Infrahub reports conflicts and duplicate values on a branch only when that branch rebases or merges. To keep each branch ready to merge, allocate unique values from [resource pools](../resource-manager/overview.mdx), [rebase](./rebase.mdx) each branch after another one merges, clear the [conflicts](./resolve-conflicts.mdx) that a refused rebase lists, and [merge](./merge.mdx) once the checks pass.
+Several teams or Generators can work on separate branches at the same time. When you query one of those branches, Infrahub returns the default branch's data as of that branch's `branched_from`, plus the changes made on that branch. Merging one branch into the default branch changes nothing on the others, and no status indicates that the default branch has changed, so Infrahub reports conflicts and duplicate values only when you rebase or merge a branch.
+
+On each branch: allocate unique values from [resource pools](../resource-manager/overview.mdx), [rebase](./rebase.mdx) after another branch merges, resolve the [conflicts](./resolve-conflicts.mdx) a refused rebase lists, then [merge](./merge.mdx).
 
 ```mermaid
 flowchart LR
@@ -22,9 +24,9 @@ Proposed Change"]
 
 ## What changes when another branch merges
 
-Nothing changes on your branch. It keeps reading the default branch as it was at its `branched_from`, plus its own changes, until you rebase it.
+Nothing changes on your branch. Query it and Infrahub still returns the default branch's data as of your `branched_from`, plus your own changes, until you rebase.
 
-No branch status means "behind the default branch", and Infrahub does not require a rebase before a merge, except after an upgrade sets `NEED_UPGRADE_REBASE`. For what a status blocks and what clears it, see [Branch statuses](./overview.mdx#branch-statuses).
+Infrahub blocks some actions on a branch while a merge is running, after a merge has failed, or when the branch needs a rebase. It marks each of these with a branch status. `OPEN` does not mean a branch is up to date with the default branch, and Infrahub does not require a rebase before a merge, except after an upgrade sets `NEED_UPGRADE_REBASE`. [Branch statuses](./overview.mdx#branch-statuses) lists each status with what it stops you doing and what you have to do next.
 
 To see your branch's `branched_from`, open the branch details page in the web interface, or query it through GraphQL:
 
@@ -71,7 +73,7 @@ You can build a small service that rebases the open branches each time a branch 
 1. Create a [webhook](../webhooks/overview.mdx) for the `infrahub.branch.merged` event that points at your service, and set its branch scope to **All Branches**. With the default scope, **Default Branch**, the webhook does not fire on a merge. See [Configuring branch types](../webhooks/overview.mdx#configuring-branch-types).
 2. When your service receives the webhook, list the branches with the `Branch` query shown in [What changes when another branch merges](#what-changes-when-another-branch-merges). Skip the default branch (`is_default`) and any branch with the status `MERGED` or `MERGING`.
 3. For each remaining branch, send `BranchRebase` to `/graphql` and let it wait for the rebase, which is the default, so the response contains the outcome.
-4. Route a refusal by the `code` in the error's `extensions`:
+4. Handle a refusal according to the `code` in the error's `extensions`:
    - `MERGE_IN_PROGRESS`: another merge is running. Retry after a delay.
    - `MERGE_RECOVERY_REQUIRED`: a merge failed. Stop and alert an administrator, who runs [`infrahub recover merge`](./merge.mdx#recovering-the-failed-merge).
    - Any other code: read the message. A conflict refusal lists each conflict and what it needs, so send it to the owner of the branch. The message `Cannot rebase a branch while a merge is in progress.` means a merge started during the request: retry it.
@@ -94,7 +96,7 @@ For what the merge checks, how writes are blocked while it runs, and merging a b
 
 ## Limits
 
-- Infrahub has no indicator that a branch is behind the default branch. To see what changed on the default branch, compare it over time as described in [What changes when another branch merges](#what-changes-when-another-branch-merges).
+- Infrahub does not indicate when the default branch has changed since you created or last rebased your branch. To see what changed on the default branch, compare it over time as described in [What changes when another branch merges](#what-changes-when-another-branch-merges).
 - A rebase has no dry run. A refused rebase changes nothing, so running the rebase is the check.
 - Infrahub does not reserve an object for one branch. You can change the same object on two branches, and Infrahub reports the conflict on the second branch after the first one merges.
 
