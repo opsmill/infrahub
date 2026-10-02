@@ -30,6 +30,7 @@ Internal documentation for contributors. For user-facing docs, see `/docs/`.
   - `frontend/` - Frontend-specific guides
 - **adr/**: Architecture Decision Records. Why we chose what we chose.
 - **prompts/**: Prompt templates for common thinking tasks.
+- **REVIEWERS.yml**: Who is requested to review a pull request; read by the pull request reviewer workflow.
 
 Agent commands and skills now live under [`../.agents/`](../.agents/) (the canonical
 source of truth): `../.agents/commands/` and `../.agents/skills/`.

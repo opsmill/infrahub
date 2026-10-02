@@ -1,0 +1,75 @@
+# Who is requested to review a pull request, on top of the CODEOWNERS teams.
+# Read by .github/workflows/pr-reviewer.yml through .github/scripts/select_reviewer.py.
+#
+# When a pull request is opened or marked ready and has no individual reviewer yet, one person
+# is requested:
+#   1. the first matching override below, whatever their load;
+#   2. otherwise the listed reviewer with the most recent commits and reviews on the changed
+#      files, skipping the author, anyone away and anyone with `load_cap` open review requests;
+#   3. if nobody has history on those files, the first matching fallback list, least loaded first.
+# The next two candidates are listed as backups in the workflow run summary.
+#
+# Validate after editing (changes apply once merged, from the base branch):
+#   python3 .github/scripts/select_reviewer.py --check
+
+---
+version: 1
+
+# People the score and the fallback may pick.
+reviewers:
+  - ajtmccarty
+  - bilalabbad
+  - dgarros
+  - fatih-acar
+  - gmazoyer
+  - ogenstad
+  - pa-lem
+  - polmichel
+  - saltas888
+
+# Deliberate exceptions to the score: keep this list short, and give every entry a reason.
+# An entry matches when the author is `author` (if set) and the pull request changes at least one
+# file matching `paths` (if set). The first matching entry wins, and its first reviewer who is not
+# the author and not away is requested even above the load cap.
+overrides:
+  - name: Frontend changes by pa-lem
+    reason: bilalabbad reviews pa-lem's frontend work.
+    author: pa-lem
+    paths: ["frontend/**"]
+    reviewers: [bilalabbad]
+
+# Used when nobody has recent history on the changed files: the first list with a pattern
+# matching a changed file.
+fallback:
+  - paths: ["frontend/**"]
+    reviewers: [pa-lem, bilalabbad, saltas888]
+  - paths: ["**"]
+    reviewers: [ajtmccarty, ogenstad, gmazoyer, polmichel, fatih-acar, dgarros, saltas888]
+
+# Never counted, neither to match overrides nor to score people.
+ignore:
+  - "**/*.lock"
+  - "**/*-lock.json"
+  - "**/*-lock.yaml"
+  - "**/*.lock.yml"
+  - "**/generated/**"
+  - "**/*.generated.*"
+  - "**/.betterer.results"
+  - "schema/schema.graphql"
+  - "changelog/**"
+  - "backend/tests/fixtures/**"
+  - "python_sdk"
+
+# Pull requests opened by these bots get a reviewer too; other bots are skipped.
+bot_authors:
+  - opsmill-bug-pipeline[bot]
+  - infrahub-github-bot-app[bot]
+
+away: []  # logins temporarily unavailable
+
+# Open individual review requests in this repository above which someone is skipped by the score
+# and the fallback; if everyone is at the cap, the least loaded is requested.
+load_cap: 3
+
+# Share of the score coming from review history; the rest comes from commit history.
+review_weight: 0.5
