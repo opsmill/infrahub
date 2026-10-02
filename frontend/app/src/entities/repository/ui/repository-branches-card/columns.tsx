@@ -22,8 +22,8 @@ function findAttribute(schema: ModelSchema, name: string): AttributeSchema | und
   return schema.attributes?.find((attribute) => attribute.name === name);
 }
 
-// Sync status, commit and ref have no filter argument on the contract and no place in its order
-// input, so their headers are disabled rather than offering a menu that could not be honoured.
+// None of these can be ordered by, and only sync status can be narrowed on — a filter the card does
+// not offer yet — so their headers are disabled rather than offering a menu that goes nowhere.
 
 function getSyncStatusColumn(
   columnSchema: AttributeSchema

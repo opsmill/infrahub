@@ -30,8 +30,8 @@ const BRANCH_STATUS_FIELD_SCHEMA: AttributeSchema = {
   enum: [...FILTERABLE_BRANCH_STATUSES],
 };
 
-// Branch name and branch status are the only two the contract can narrow on; a row's sync status,
-// commit and ref have no filter argument at all.
+// Commit and ref have no filter argument on the contract. Sync status has one, but the card does not
+// offer it yet; see the follow-up task.
 export const BRANCH_ROW_FILTER_DEFINITIONS: FilterDefinition[] = [
   { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.name },
   { type: "attribute", schema: BRANCH_STATUS_FIELD_SCHEMA },

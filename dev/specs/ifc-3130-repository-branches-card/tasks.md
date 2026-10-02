@@ -13,7 +13,7 @@ every FR carries a stated verification method.
 **Status**: T001–T064 (there is no T007), T034a, T078 and T080–T084 are on the branch — work units
 1–7 complete, US3 filters and ordering included.
 Outstanding: T065–T066 (e2e), T067–T069 (documentation) and T071–T077 (gates).
-T079 and T085 are follow-ups blocked on backend work.
+T085 is a follow-up blocked on backend work; T079 is unblocked but deliberately out of this slice.
 A ticked box means the file exists at the path named.
 
 ---
@@ -133,8 +133,8 @@ page, and that moving to page 2 returns different rows.
       force an `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
       Declare **only** `id`, `limit`, `offset`, `name__value`, `partial_match`, `status__value`.
       **Do not declare `sync_status__value`, `internal_status__value` or `own_values_only`** — that
-      omission *is* FR-016's enforcement; the backend rejects all three with a `ValidationError`
-      during the preview window. **Do not select `node_metadata`** — not asking for it is the
+      omission *is* FR-016's enforcement, and it keeps holding now that the backend applies all three
+      rather than rejecting them. **Do not select `node_metadata`** — not asking for it is the
       structural guarantee behind FR-006 and FR-008. Select `sync_status { value label color
       description }` so FR-004's label and colour come from the schema.
 - [x] T016 [P] [US1] Define the row model and `RepositoryBranchStatusError` (with
@@ -382,7 +382,7 @@ total** narrow — proving the narrowing happened before the page boundary, not 
       (`Rebase needed`, `need_rebase`) must not be sent in place of `NEED_REBASE`.
       **Correction, 2026-09-18**: this task also required the **hyphenated `sync_status` wire values**
       (`in-sync`, `error-import`). That half was stale — it described the deferred sync-status filter,
-      which FR-016 keeps out of this feature and the backend rejects until IFC-3127 lands. There is no
+      which FR-016 keeps out of this feature. There is no
       `sync_status` filter to send a wire value for, so only the `BranchStatus` half applies.
 - [x] T060 [US3] Component-test FR-012 with `expectServerDrivenChange`: the request carries the
       fragment **and** `partial_match: true`, **and** the rendered rows change to a second payload's
@@ -463,17 +463,18 @@ ownership".
       [contracts/repository-branch-status-ui.md](contracts/repository-branch-status-ui.md) §4, and
       extend T038's state test to assert the read-only string on the read-only kind.
 
-### Work unit 5b follow-up — the sync-status filter · **BLOCKED on IFC-3127**
+### Work unit 5b follow-up — the sync-status filter · **UNBLOCKED, not built**
 
-- [ ] T079 Add the sync-status filter to the branches card, once **IFC-3127** lifts the backend's
-      rejection of `sync_status__value`. Today the resolver raises a `ValidationError` for it while
-      the stub serves placeholder attribute values, so the gql.tada document deliberately does not
-      declare it and FR-016 asserts it is never sent. **This is the filter the feature most wants** —
-      "show me the branches that failed to import" is the job the card exists for, and the two
-      shipped filters (branch name, branch lifecycle status) cannot express it.
+- [ ] T079 Add the sync-status filter to the branches card. **The blocker has lifted**: IFC-3127
+      landed on the base branch (`2db4b622ff`), and the resolver now declares `sync_status__value`
+      and applies it when paging rather than rejecting it. The card still does not offer it — the
+      gql.tada document does not declare it and FR-016 keeps it out of every request — so this stays
+      follow-on work, but it is now buildable rather than waiting on anyone. **This is the filter the
+      feature most wants** — "show me the branches that failed to import" is the job the card exists
+      for, and the two shipped filters (branch name, branch lifecycle status) cannot express it.
 
       **No contract change is needed.** `sync_status__value` is already an argument on
-      `InfrahubRepositoryBranchStatus`; it is only rejected. When IFC-3127 lands, the work is:
+      `InfrahubRepositoryBranchStatus` and the resolver applies it. The work is:
       declare the variable in
       `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts`; add a third
       entry to `BRANCH_ROW_FILTER_DEFINITIONS` in
@@ -683,4 +684,4 @@ assigned, including the three the 5b rework supersedes (T056–T058, struck thro
 so the reversal stays legible).
 
 **70 done** (T001–T064 less T007, plus T034a, T078 and T080–T084) · **15 open** (T065–T077, plus T079
-blocked on IFC-3127 and T085 blocked on a contract change).
+unblocked but out of this slice and T085 blocked on a contract change).

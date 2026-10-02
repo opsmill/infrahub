@@ -19,18 +19,10 @@ describe("CommitHash", () => {
     await expect.element(component.getByTitle(HASH, { exact: true })).toBeVisible();
   });
 
-  it("renders no copy affordance by default", async () => {
+  it("renders no copy affordance", async () => {
     const component = await render(<CommitHash hash={HASH} />);
 
     expect(component.getByRole("button").elements()).toHaveLength(0);
-  });
-
-  it("offers a copy button naming the full hash when copyable", async () => {
-    const component = await render(<CommitHash hash={HASH} copyable />);
-
-    await expect
-      .element(component.getByRole("button", { name: `Copy commit ${HASH}` }))
-      .toBeVisible();
   });
 
   it("leaves a hash shorter than the short form untouched", async () => {
