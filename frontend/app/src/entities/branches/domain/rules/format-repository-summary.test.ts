@@ -25,7 +25,7 @@ describe("formatRepositoryState", () => {
     expect(text).toBe("Import Error · 1234567 · read-only");
   });
 
-  it("omits the commit when it is null and read-only for a read/write repository", () => {
+  it("omits the commit and the read-only tag for a read/write repository", () => {
     expect(formatRepositoryState(state({ commit: null }))).toBe("Import Error");
   });
 

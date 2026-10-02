@@ -36,7 +36,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **Performance Goals**: The branch cells render as fast as today (SC-004). One row per branch keeps the DOM at today's size plus two cells per row. Requests: 1 + R per page load (16 on the dev stack), none on scroll, none within 60 s of a refocus (SC-007). Structural sharing in `combine` keeps untouched branches' summaries by reference. No `useMemo`.
 
-**Constraints**: Only data the backend returns today. No Commit column, Upstream, "behind by N", Last import or operational status (FR-016). No column filter, sort or hide (FR-015, FR-017). `count` of the status page is ignored; `limit: 500` is far above real branch counts. Page size still counts branches (FR-010).
+**Constraints**: Only data the backend returns today. No Commit column, Upstream, "behind by N", Last import or operational status (FR-016). No column filter, sort or hide (FR-015, FR-017). `count` of the status page marks a cut page (branches past the cut read an error, never a guess); `limit: 500` is far above real branch counts. Page size still counts branches (FR-010).
 
 **Scale/Scope**: the lifted #10658 status read (model, API, use case, tests), a severity rule, a query-options factory and key, a branches-domain model and two rules, one hook, one row view-model, two rewritten pure cells and their column wiring, their tests, and the E2E files under `tests/e2e/branches/` (see Constitution Check IV).
 
@@ -150,7 +150,7 @@ Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md`; `doc
 |---|---|
 | One status denial or failure blanks the whole column. | Spec consequence, accepted by the owner (spec Session 2026-10-01, architecture review). The branch cells always render; the message stays reachable on "Could not load repositories". |
 | A non-permission GraphQL error toasts through the shared client (`error-handling.ts::handleGraphQLErrors`) unless the request opts out. | The status use case maps errors to `RepositoryBranchStatusError` (`code`, `message`); the rendered failure is "Could not load repositories" with that message. `branches-table.test.tsx` asserts no toast on a status error. |
-| `limit: 500` truncates a list of more than 500 branches per repository. | Far above real counts; the page's `count` is ignored. |
+| `limit: 500` (`REPOSITORY_BRANCH_STATUS_LIMIT`) truncates a list of more than 500 branches per repository. | Far above real counts; `count > rows.length` is detected and the branches the cut could hide read "Could not load repositories" with the reason. |
 | The branches page reload button refreshes branch queries only. | The 10 s poll covers syncing repositories; refocus after 60 s and remount refresh. |
 | The PR rebases whenever #10779 changes. | The base is a double stack (#10779 on the epic branch), so a squash-merge of #10779 requires `git rebase --onto` (`pr-notes.md`). |
 | The lifted #10658 files drift before #10658 merges. | SHAs and `cmp` results in `pr-notes.md`; the `branchStatus` key is the one deliberate conflict. |

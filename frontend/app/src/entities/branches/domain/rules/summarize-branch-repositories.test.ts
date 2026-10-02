@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  REPOSITORY_SYNC_STATUS_IN_SYNC,
+} from "@/entities/repository/domain/model/repository";
 import { mapRepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
@@ -10,8 +14,11 @@ import {
   summarizeBranchRepositories,
 } from "./summarize-branch-repositories";
 
-const IMPORT_ERROR = generateDropdown({ value: "error-import", label: "Import Error" });
-const IN_SYNC = generateDropdown({ value: "in-sync", label: "In Sync" });
+const IMPORT_ERROR = generateDropdown({
+  value: REPOSITORY_SYNC_STATUS_IMPORT_ERROR,
+  label: "Import Error",
+});
+const IN_SYNC = generateDropdown({ value: REPOSITORY_SYNC_STATUS_IN_SYNC, label: "In Sync" });
 const UNKNOWN = generateDropdown({ value: "unknown", label: "Unknown" });
 
 const main = generateBranch({ id: "b-main", name: "main", is_default: true, sync_with_git: true });

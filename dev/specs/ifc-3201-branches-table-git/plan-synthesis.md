@@ -1,5 +1,7 @@
 # IFC-3201 plan synthesis
 
+> **Historical.** This synthesis planned the fan-out (one row per branch and repository). `plan.md` and research R14, R15 supersede it; it is kept as the record of the phase 2 decisions.
+
 Paths are relative to `frontend/app/`. I checked every claim below against the worktree at `f3e1676654`.
 
 ## 1. Decisions
@@ -17,14 +19,14 @@ Paths are relative to `frontend/app/`. I checked every claim below against the w
 - **Testability:** add `aria-label={`Select ${branch.name}`}` to the row `Checkbox` in `cells/branch-name-cell.tsx`. Tests then use `getByRole("checkbox", { name: "Select feature" }).nth(1)`.
 
 ### b. Fan-out rule lives in `branches/domain/rules`, fan-out only, with the ordering injected
-- The layering table (`entities-structure.md` l.89) says `domain/rules` may import only its own `domain/model`, `shared/` and generated types. It may not import another entity's rules, so `rankRepositories` is off-limits there.
+- The `domain/rules` row of the Layer Rules table in `dev/knowledge/frontend/entities-structure.md` says `domain/rules` may import only its own `domain/model`, `shared/` and generated types. It may not import another entity's rules, so `rankRepositories` is off-limits there.
 - `domain/model` *may* import other entities' `domain/model`. So `branches/domain/model/branch-table-row.ts` defines `BranchTableRow` and `BranchRepositoriesFetch = BranchRepositoriesResult | {status:"pending"} | {status:"error"}` on top of the repository model types. The rule then imports only its own model.
 - **Signature:** `toBranchTableRows({ branches, fetchByBranchId, orderRepositories }): BranchTableRow[]`. A missing map entry means pending. The hook and the tests both pass `rankRepositories`, so FR-006a is asserted on the rule's output.
 - **Cost:** one extra parameter, for a pure fan-out test that respects layering. A `ui/` helper would work but breaks "pure helpers → `domain/rules`".
 
 ### c. Grid template: keep it positional
 
-> **Superseded by plan.md (Summary, Layout) and research R4 after the 2026-09-30 critique (X1):** the three new columns get fixed tracks, so SC-004 holds.
+> **Superseded by plan.md (Summary, Layout) and research R4 after the 2026-09-30 critique (X1):** the three new columns get fixed tracks, so SC-004 holds. The bullets below are the original decision, kept as history.
 - With 11 columns, the three new ones land inside `repeat(n-4, fit-content(COLUMN_MAX_WIDTH))`, so no existing track moves. The spec accepts either option.
 - Move to a per-column tracks map when Upstream and Last import (IFC-3146/3147) arrive; doing it now is YAGNI (VII). Test: `style.gridTemplateColumns` contains `repeat(7,`.
 
@@ -55,7 +57,7 @@ Paths are relative to `frontend/app/`. I checked every claim below against the w
 
 ## 3. Ordered tasks
 
-**T0.** Lift `src/shared/components/display/commit-hash.tsx` and `.test.tsx` byte-identical from `baecf35c7d` (`git -C /Users/paul/Projects/infrahub show baecf35c7d:frontend/app/…`). Test: the lifted test itself. Mention the lift in the PR body.
+**T0.** Lift `src/shared/components/display/commit-hash.tsx` and `.test.tsx` byte-identical from `baecf35c7d` (`git show ple-branches-card-ifc-3130:<path>` for `frontend/app/src/shared/components/display/commit-hash.tsx` and `frontend/app/src/shared/components/display/commit-hash.test.tsx`). Test: the lifted test itself. Mention the lift in the PR body.
 
 **T1.** Model, rule and fakes.
 - `src/entities/branches/domain/model/branch-table-row.ts`:

@@ -254,13 +254,13 @@ The **Branches** page shows the Git repositories on each branch next to the bran
 | **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository with an unknown status, then any repository that is syncing, then the rest, each group in alphabetical order. Hover the name to read its Git state, the first seven characters of the commit that branch has imported, and whether the repository is read-only. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
 | **Git state** | The worst sync status among the branch's repositories, with the label and color the schema defines for it, such as **In Sync** or **Import Error**. When the branch has several repositories, a count such as **1/3** gives how many of them share that status. Hover the count to see how many repositories have each status. |
 
-The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every branch.
+The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every open branch.
 
 A branch with no repository to show reads one of these texts in its **Repositories** cell, and its **Git state** cell stays empty:
 
 | Repositories cell | Meaning |
 |---|---|
-| **Not synced with Git** | The branch does not sync with Git, and no read-only repository lists it. Merged and deleting branches are listed by no repository. |
+| **Not synced with Git** | The branch does not sync with Git, and no read-only repository lists it. |
 | **No repositories** | The branch syncs with Git, but no repository lists it: none is connected to Infrahub, or the branch is merged or deleting. |
 | **No permission** | Your account cannot view any repository kind on every branch, so every branch reads this text. If you can view one kind but not the other, the repositories you cannot view are left out silently. |
 | **Could not load repositories** | The branch list, the repository list or a repository's status could not be read, or the repository list was cut short, so every branch reads this text; or one repository's status list was cut short before this branch, so only this branch reads it. Hover the text to read the reason. |

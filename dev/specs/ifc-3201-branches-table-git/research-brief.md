@@ -1,5 +1,7 @@
 # IFC-3201 spec brief: Repository, Git state and Commit columns on the branches table
 
+> **Historical.** This is the phase 1 research brief. The owner decisions in section 0 override its recommendations, and the later reworks (research R14, R15) supersede parts of both.
+
 ## 0. Decisions taken by the owner at the phase 1 checkpoint (2026-09-30) — these override the recommendations below where they differ
 - **Base:** stack on PR #10779's branch `ple-branch-details-repos-infp-671` (branch details: Git repositories and tasks). The run branch `ple-branches-table-git-ifc-3201` is reset onto it; the PR targets `ple-branch-details-repos-infp-671`. Reuse its `entities/repository` data layer (`getBranchRepositoriesQueryOptions`, `BranchRepository`, `GitStatePill`, fakes) as-is; never fork it.
 - **Row model:** fan out to one row per branch × repository, repeating every branch cell (checkbox, name, status, proposed changes, actions) on each repository row. Selection keyed by branch id so the toolbar and delete list count a branch once.

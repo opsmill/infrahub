@@ -28,7 +28,7 @@ export type RepositoryStatusFetch =
   | { status: "pending" }
   | { status: "denied" }
   | { status: "error"; message: string }
-  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[] };
+  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[]; count: number };
 ```
 
 Mapping: a result with `data` is `ok` even when `isError` is set (a failed background refetch keeps the last loaded rows); else `error.code === "PERMISSION_DENIED"` → `denied`; else an error → `error` with its message; else `pending`. The repository list pending counts as `pending`.
@@ -53,7 +53,7 @@ export type BranchRepositorySummary =
 
 ## `summarizeBranchRepositories(branches, fetches)` invariants
 
-`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[]): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own model and `entities/repository/domain/rules/sync-status-severity.ts`.
+`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[]): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own models (`entities/branches/domain/model/branch.ts`, `branch-repository-summary.ts`), `BranchStatus` from `shared/api/graphql/generated/types`, the status row types from `entities/repository/domain/model/repository-branch-status.ts`, and `entities/repository/domain/rules/sync-status-severity.ts`.
 
 1. Every fetch `denied` (and at least one fetch) → every branch `denied`. Permission is checked per repository kind, so a denied kind among others is left out silently.
 2. Else any `pending` fetch → every branch `pending`.
@@ -86,8 +86,8 @@ Neither is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids match t
 ## Superseded
 
 - 2026-10-01 (rework A): "Derived per cell": each cell calling `useGetBranchRepositories` for its row's branch and ranking with `rankRepositories`. `BranchRepository.operationalStatus` no longer affects order. The list no longer reads `BranchRepositoriesResult`.
-- 2026-10-01 (rework): `BranchRepositoriesFetch`, the fan-out `BranchTableRow` and `BranchTableRowState`, `isBranchAnchorRow`, the fan-out `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `tests/fake/branch-table-rows.ts` fakes. Git history keeps them.
+- 2026-10-01 (rework): `BranchRepositoriesFetch`, the fan-out `BranchTableRow` and `BranchTableRowState`, `isBranchAnchorRow`, the fan-out `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `frontend/app/tests/fake/branch-table-rows.ts` fakes. Git history keeps them.
 
 ## Test fakes
 
-Reused: `tests/fake/branch.ts::generateBranch` and `tests/fake/branch-repositories.ts`. A colourless status `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: null, color: null, description: null }` is a constant local to `get-branch-table-columns.test.tsx`.
+Reused: `frontend/app/tests/fake/branch.ts::generateBranch` and `frontend/app/tests/fake/branch-repositories.ts` (outside `src/`). A colourless status `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: null, color: null, description: null }` is a constant local to `get-branch-table-columns.test.tsx`.

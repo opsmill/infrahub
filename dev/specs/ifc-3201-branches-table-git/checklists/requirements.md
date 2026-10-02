@@ -6,7 +6,7 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs) — requirements are behavioural; the only technical names are the schema attribute `sync_status` (the user-visible data being shown) and the sibling PRs the work builds on, kept to the header, Clarifications and Assumptions
+- [x] No implementation details (languages, frameworks, APIs) — requirements are behavioural; the only technical names are the schema attribute `sync_status` (the user-visible data being shown) and the sibling PRs the work builds on, kept to the header, Clarifications and Assumptions. Deliberate exceptions: the backend query names in the architecture Clarifications, and the `text-foreground-muted` token for the state texts (an accessibility decision, FR-007, FR-013)
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
@@ -16,7 +16,7 @@
 - [x] No [NEEDS CLARIFICATION] markers remain — the four open decisions were settled by the owner at the phase 1 checkpoint and recorded under Clarifications
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
-- [x] Success criteria are technology-agnostic (no implementation details)
+- [x] Success criteria are technology-agnostic (no implementation details), except SC-006, which deliberately names the frontend CI gates as its completeness bar
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
 - [x] Scope is clearly bounded (FR-015, FR-016, Assumptions "Out of scope")

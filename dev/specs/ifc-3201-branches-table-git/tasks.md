@@ -211,7 +211,7 @@
 - **E2E (Phase 6)**: T032 first; T035 and T036 need US2 and US3 in place.
 - **Polish (Phase 7)**: after all stories; T043 last.
 - **Rework (Phase 8)**: after Phase 7; supersedes the fan-out tasks marked "superseded by Phase 8". T044 and T046 before T051–T052; T058 last.
-- **Rework A (Phase 9)**: after Phase 8; supersedes T048–T050. T059–T062 (lift) and T063–T067 (rules) before T068 (hook); T069 before the cells; T077 last.
+- **Rework A (Phase 9)**: after Phase 8; supersedes T047–T050 (T072 rewrites the T047 test). T059–T062 (lift) and T063–T067 (rules) before T068 (hook); T069 before the cells; T077 last.
 
 ### Story order
 
@@ -327,4 +327,5 @@ The table above maps the 2026-09-30 requirements. The rewritten spec maps to Pha
 | FR-012, FR-013 denied, failed on every row, no toast | T066, T068, T073, T074 |
 | FR-014 poll while syncing, 60 s stale time | T068 |
 | SC-005 branch cells always render | T074 |
+| SC-006 a test per state, gates pass | T063, T065, T067, T072, T073, T074, T077 |
 | SC-007 1 + R, none on scroll, none within 60 s of refocus | T068, T074 |
