@@ -65,7 +65,7 @@ class TestGetKindsLock(TestInfrahubApp):
         await graphql_query.save()
 
         # Test create
-        with patch("infrahub.core.node.create.InfrahubMultiLock") as mock_infrahub_multi_lock:
+        with patch("infrahub.lock.InfrahubMultiLock") as mock_infrahub_multi_lock:
             group = await client.create(kind=GRAPHQLQUERYGROUP, name="a_gql_group", query=graphql_query)
             await group.save()
             mock_infrahub_multi_lock.assert_called_once()
@@ -131,7 +131,7 @@ class TestGetKindsLock(TestInfrahubApp):
 
         # Test lock on another branch
         other_branch = await create_branch(branch_name="other_branch", db=db)
-        with patch("infrahub.core.node.create.InfrahubMultiLock") as mock_infrahub_multi_lock:
+        with patch("infrahub.lock.InfrahubMultiLock") as mock_infrahub_multi_lock:
             group = await client.create(
                 kind=GRAPHQLQUERYGROUP, name="one_more_group", query=graphql_query, branch=other_branch.name
             )
