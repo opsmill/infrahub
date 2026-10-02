@@ -19,6 +19,7 @@ export function UnreachableBand({ repository, branchName, isDefaultBranch }: Unr
     <div
       className="flex items-start gap-2.5 border-warning-border border-t bg-warning-surface px-4 py-3"
       data-testid="repository-error-band"
+      role="status"
     >
       <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
       <div className="min-w-0 flex-1">

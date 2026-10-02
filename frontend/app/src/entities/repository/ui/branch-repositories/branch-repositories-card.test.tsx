@@ -294,6 +294,20 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByRole("img", { name: "Credential Error" })).toBeVisible();
   });
 
+  test("shows the unreachable reason in a tooltip on the warning icon", async () => {
+    // GIVEN
+    mockQuery({ data: buildBranchRepositoriesScenario("unreachable") });
+    const component = await renderCard();
+
+    // WHEN
+    await component.getByRole("img", { name: "Credential Error" }).hover();
+
+    // THEN
+    await expect
+      .element(component.getByRole("tooltip", { name: "Credential Error" }))
+      .toBeVisible();
+  });
+
   test("shows the raw sync status in a neutral tag when the schema has no label or colour", async () => {
     // GIVEN
     mockQuery({

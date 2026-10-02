@@ -1,3 +1,4 @@
+import { Tooltip } from "@infrahub/ui";
 import { AlertTriangleIcon, FolderGitIcon } from "lucide-react";
 
 import { Link } from "@/shared/components/ui/link";
@@ -43,11 +44,15 @@ export function RepositoryRow({ repository, branchName, isDefaultBranch }: Repos
         <span className="flex items-center gap-1.5">
           <GitStatePill syncStatus={syncStatus} />
           {unreachableLabel && (
-            <AlertTriangleIcon
-              role="img"
-              className="size-3.5 shrink-0 text-warning"
-              aria-label={unreachableLabel}
-            />
+            <Tooltip message={unreachableLabel} nonInteractiveTrigger>
+              <span className="inline-flex">
+                <AlertTriangleIcon
+                  role="img"
+                  className="size-3.5 shrink-0 text-warning"
+                  aria-label={unreachableLabel}
+                />
+              </span>
+            </Tooltip>
           )}
         </span>
       </td>

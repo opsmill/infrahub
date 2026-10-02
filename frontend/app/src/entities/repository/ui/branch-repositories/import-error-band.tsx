@@ -32,6 +32,7 @@ export function ImportErrorBand({
     <div
       className="flex items-start gap-2.5 border-danger/30 border-t bg-danger-surface px-4 py-3"
       data-testid="repository-error-band"
+      role="status"
     >
       <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
       <div className="min-w-0 flex-1">
