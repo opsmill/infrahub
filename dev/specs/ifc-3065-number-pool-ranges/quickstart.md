@@ -39,7 +39,7 @@ Expected: every pre-existing pool holds one range with its old bounds, figures u
 ## User Story 3: grow and shrink a live pool
 
 ```bash
-cd backend && uv run pytest tests/component/graphql/resource_manager/test_number_pool_range.py tests/component/graphql/resource_manager/test_resource_manager.py -k "range or shorthand"
+cd backend && uv run pytest tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py tests/component/graphql/resource_manager/test_resource_manager.py -k "range or shorthand"
 ```
 
 Expected: removal of a range holding allocations succeeds and hides them; re-adding restores them; overlap and backwards ranges refused with named ranges; shorthand on a multi-range pool refused with the range list; zero ranges legal.

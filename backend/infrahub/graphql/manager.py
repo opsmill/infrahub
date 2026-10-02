@@ -40,9 +40,7 @@ from .mutations.main import InfrahubMutation
 from .mutations.menu import InfrahubCoreMenuMutation
 from .mutations.proposed_change import InfrahubProposedChangeMutation
 from .mutations.repository import InfrahubRepositoryMutation
-from .mutations.resource_manager import (
-    InfrahubNumberPoolMutation,
-)
+from .mutations.resource_manager.number_pools.pool import InfrahubNumberPoolMutation
 from .mutations.webhook import InfrahubWebhookMutation
 from .registry import registry
 from .resolvers.account_metadata import account_metadata_resolver

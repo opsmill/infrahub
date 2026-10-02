@@ -88,7 +88,7 @@ backend/infrahub/
 │   └── schema_number_pool_synchronizer.py        # reconcile ranges
 └── graphql/
     ├── manager.py                                # deprecation_reason propagation, mutation_map entry
-    ├── mutations/resource_manager.py             # pool + range mutation classes
+    ├── mutations/resource_manager/number_pools/ # pool + range mutation classes
     └── queries/resource_manager.py               # per-range utilization edges
 
 backend/tests/
@@ -98,7 +98,7 @@ backend/tests/
 ├── component/core/migrations/graph/m080_number_pool_ranges/
 ├── component/core/constraint_validators/test_attribute_numberpool_constraints.py
 ├── component/pools/test_schema_number_pool_upserter.py, test_schema_number_pool_synchronizer.py
-├── component/graphql/resource_manager/test_resource_manager.py, test_number_pool_range.py
+├── component/graphql/resource_manager/test_resource_manager.py, number_pools/test_pool_ranges.py
 ├── component/graphql/test_manager.py
 ├── functional/pools/test_numberpool_ranges.py
 ├── integration/schema_lifecycle/test_attribute_parameters_update.py
