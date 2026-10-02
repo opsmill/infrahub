@@ -51,104 +51,6 @@ mutation UpsertNumberPool(
 """
 
 
-async def test_number_pool_update(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    default_branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-
-    create_ok = await graphql(
-        schema=gql_params.schema,
-        source=CREATE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "name": "pool1",
-            "node": "TestingTicket",
-            "node_attribute": "ticket_id",
-            "start_range": 10,
-            "end_range": 20,
-        },
-    )
-
-    assert create_ok.data
-    assert not create_ok.errors
-
-    pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
-    update_forbidden = await graphql(
-        schema=gql_params.schema,
-        source=UPDATE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": pool_id,
-            "node": "TestingIncident",
-            "node_attribute": "ticket_id",
-            "start_range": 1,
-            "end_range": 10,
-        },
-    )
-
-    update_invalid_range = await graphql(
-        schema=gql_params.schema,
-        source=UPDATE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": pool_id,
-            "start_range": 30,
-        },
-    )
-
-    update_ok = await graphql(
-        schema=gql_params.schema,
-        source=UPDATE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": pool_id,
-            "name": "pool1b",
-        },
-    )
-
-    assert update_forbidden.errors
-    assert "The fields 'node' or 'node_attribute' can't be changed." in str(update_forbidden.errors[0])
-    assert update_invalid_range.errors
-    assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
-    assert update_ok.data
-    assert not update_ok.errors
-    assert await shorthand(db=db, pool_id=pool_id) == (10, 20)
-    assert await range_bounds(db=db, pool_id=pool_id) == [(10, 20)]
-
-    # Validate that we can delete a number pool that isn't tied to an attribute of kind NumberPool
-    delete_ok = await graphql(
-        schema=gql_params.schema,
-        source=DELETE_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": pool_id,
-        },
-    )
-    assert not delete_ok.errors
-    assert delete_ok.data
-    assert delete_ok.data["CoreNumberPoolDelete"]["ok"]
-
-    query_after_delete = await graphql(
-        schema=gql_params.schema,
-        source=QUERY_NUMBER_POOL,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={
-            "id": pool_id,
-        },
-    )
-    assert not query_after_delete.errors
-    assert query_after_delete.data
-    assert query_after_delete.data["CoreNumberPool"]["count"] == 0
-
-
 class TestNumberPoolUpsertImmutableFields:
     """Tests for the immutable-field guard across CoreNumberPool update and upsert mutations.
 
@@ -442,3 +344,98 @@ class TestNumberPoolUpsertImmutableFields:
         )
         assert update_changed_node.errors
         assert str(update_changed_node.errors[0].message) == "The fields 'node' or 'node_attribute' can't be changed."
+
+    async def test_number_pool_update(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
+    ) -> None:
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "updated-pool",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+
+        assert create_ok.data
+        assert not create_ok.errors
+
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+        update_forbidden = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "node": "TestingIncident",
+                "node_attribute": "ticket_id",
+                "start_range": 1,
+                "end_range": 10,
+            },
+        )
+
+        update_invalid_range = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "start_range": 30,
+            },
+        )
+
+        update_ok = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "name": "updated-pool-renamed",
+            },
+        )
+
+        assert update_forbidden.errors
+        assert "The fields 'node' or 'node_attribute' can't be changed." in str(update_forbidden.errors[0])
+        assert update_invalid_range.errors
+        assert "start_range can't be larger than end_range" in str(update_invalid_range.errors[0])
+        assert update_ok.data
+        assert not update_ok.errors
+        assert await shorthand(db=db, pool_id=pool_id) == (10, 20)
+        assert await range_bounds(db=db, pool_id=pool_id) == [(10, 20)]
+
+        # Validate that we can delete a number pool that isn't tied to an attribute of kind NumberPool
+        delete_ok = await graphql(
+            schema=gql_params.schema,
+            source=DELETE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+            },
+        )
+        assert not delete_ok.errors
+        assert delete_ok.data
+        assert delete_ok.data["CoreNumberPoolDelete"]["ok"]
+
+        query_after_delete = await graphql(
+            schema=gql_params.schema,
+            source=QUERY_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+            },
+        )
+        assert not query_after_delete.errors
+        assert query_after_delete.data
+        assert query_after_delete.data["CoreNumberPool"]["count"] == 0
