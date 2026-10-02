@@ -1,5 +1,7 @@
 # Phase 4 review synthesis: IFC-3201 branches table Git columns
 
+> **Historical.** This is the 2026-09-30 review of the fan-out implementation (one row per branch and repository). The must-fix and should-fix items were applied in the review-pass commit; the advisory items are tracked as follow-ups in `pr-notes.md`. The fan-out was later replaced (research R14, R15), so file and symbol names below may no longer exist.
+
 Eight reports (code, tests, UI, errors, types, comments, simplify, coderabbit-manual). Every item below was checked against the worktree source. No blockers. `n` = how many reviewers raised it independently. Paths are relative to `frontend/app/src/entities/` unless they start with `tests/` or `dev/`.
 
 ## (A) Must fix before PR

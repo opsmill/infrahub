@@ -120,9 +120,9 @@ Superseded by R15 for the per-branch part: pending, denied and error now apply t
 
 `get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repositories cell shows that message as the tooltip of "Could not load repositories" (and as visually hidden text). The card's failed state renders the same server message and is asserted to render without a toast.
 
-## R11 — `isTruncated` ignored
+## R11 — `isTruncated` ignored (superseded 2026-10-01)
 
-**Decision**: when `status === "ok"`, only `repositories` is used (N = `repositories.length`). `count` and `isTruncated` are not rendered. **Rationale**: spec Assumptions ("no more marker"). `REPOSITORY_FETCH_LIMIT = 500` is far above realistic per-branch counts.
+Superseded by rework A: the repository list's `isTruncated` and each status page's `count` are both read. A cut repository list reads "Could not load repositories" on every row; a cut status page reads it on the branches that page could have listed (see data-model invariant 4).
 
 ## R12 — Remove `React.useMemo`; local fakes
 
@@ -155,7 +155,7 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 
 **Single-request finding**: one request for every branch is not available today. Aliasing 16 `InfrahubRepositoryBranchStatus` fields (one per repository) into one GraphQL document returns HTTP 500 `read() called while another coroutine is already waiting for incoming data`, and `Branch` has no repositories field. The backend follow-up is either a `repository_ids` list argument on `InfrahubRepositoryBranchStatus` or a fix to the concurrent-resolver path that the aliased document hits.
 
-**Consequences**: R1, R3, R4, R8 and R13 are superseded; R2 and R6 (the fan-out rule and the table hook) have no code left; R5's per-branch strategy stands, now measured.
+**Consequences**: R1, R3, R4, R8 and R13 are superseded; R2 and R6 (the fan-out rule and the table hook) have no code left; R5's per-branch strategy stood, now measured, until R15 replaced it.
 
 **Alternatives considered**: a stacked cell listing every repository, which the ticket rules out ("no stacking inside a cell") and whose height grows with the repository count. The roll-up follows the Proposed changes cell's existing "first item + N more" pattern instead.
 
@@ -169,7 +169,7 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 2. The roll-up reused the details card's band ordering (`rankRepositories`), which ranks an unreachable remote above every other non-failed repository. An unreachable repository whose last import succeeded therefore came first, and the Git state cell read "In Sync" while another repository on the branch was syncing or unknown. Severity on `sync_status` alone fixes it.
 3. The per-branch query mirrored the backend's row-set rule on the client (`getRepositoryListKind`: `CoreGenericRepository` when synced, `CoreReadOnlyRepository` otherwise), the rule the epic's query exists to keep server-side (FR-003).
 
-**Consequences**: one denial or failure blanks the column for every row (the status query needs view permission on all branches); merged branches read "No repositories"; the cache is no longer shared with the branch details page; the commit of a fresh synced branch is the fork-point commit. R5's option (b) is now chosen, and its rejection reasons (ALLOW_ALL, whole-column denial, join by name) are accepted as spec consequences.
+**Consequences**: one failure blanks the column for every row; a denial does so only when every repository kind is denied (permission is checked per kind on all branches, and a denied kind among others is left out silently); merged branches read "No repositories"; the cache is no longer shared with the branch details page; the commit of a fresh synced branch is the fork-point commit. R5's option (b) is now chosen, and its rejection reasons (ALLOW_ALL, whole-column denial, join by name) are accepted as spec consequences.
 
 **Alternatives considered**: keeping per-branch requests but lifting them into a table hook (fixes defect 1 only); one aliased document over every repository (HTTP 500 today, R14). The backend `repository_ids` follow-up collapses 1 + R to 2 requests without touching cells or rules.
 

@@ -9,6 +9,7 @@ import { rebaseBranch } from "@/entities/branches/domain/use-cases/rebase-branch
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 vi.mock("@/entities/branches/domain/use-cases/rebase-branch");
 
@@ -20,7 +21,7 @@ afterEach(() => {
 });
 
 describe("useRebaseBranch", () => {
-  test("invalidates branches and repository status once the branch operation succeeds", async () => {
+  test("invalidates branches, tasks and repository status once the branch operation succeeds", async () => {
     // GIVEN
     vi.mocked(rebaseBranch).mockResolvedValue({} as Awaited<ReturnType<typeof rebaseBranch>>);
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
@@ -36,5 +37,6 @@ describe("useRebaseBranch", () => {
       .poll(() => invalidateSpy)
       .toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: tasksQueryKeys.all });
   });
 });

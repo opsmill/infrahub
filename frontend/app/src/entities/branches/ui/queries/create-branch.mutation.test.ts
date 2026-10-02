@@ -54,7 +54,7 @@ describe("useCreateBranchMutation", () => {
     await result.current.mutateAsync(branchInput);
 
     // THEN
-    expect(refetchSpy).not.toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
-    expect(invalidateSpy).not.toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
+    expect(refetchSpy).not.toHaveBeenCalled();
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

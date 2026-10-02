@@ -65,19 +65,23 @@ export type BranchRepositorySummary =
 ```ts
 export type RepositoryStatusFetch =
   | { status: "pending" } | { status: "denied" } | { status: "error"; message: string }
-  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[] };
+  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[]; count: number };
 export function summarizeBranchRepositories(
   branches: readonly BranchListItem[],
   fetches: readonly RepositoryStatusFetch[],
 ): Record<string /* branch name */, BranchRepositorySummary>;
 ```
 
-Rules: any `denied` → every branch `denied`; else any `pending` → every branch `pending` (the
+Rules: every fetch `denied` (and at least one fetch) → every branch `denied`; permission is checked
+per repository kind, so a denied kind among others is left out silently; else any `pending` → every branch `pending` (the
 repository list pending counts as pending); else any `error` → every branch `error` with the first
 message; else ok: for each branch collect the rows whose `name === branch.name`, build
 `BranchRepositoryState`s, sort by severity then repository name (case-insensitive), count by
 `syncStatus.value` (label = `label || value || "Unknown"`). A branch with no rows → `ok` with
 empty `repositories` and `counts` (the cell decides the text from `branch.sync_with_git`).
+Cut page: when an `ok` fetch was cut short (`count > rows.length`), a branch absent from its rows
+that the repository could list (read-only repositories list every branch, read/write ones only
+synced branches, none lists a merged or deleting branch) → `error` naming the cut repositories.
 
 Severity: `entities/repository/domain/rules/sync-status-severity.ts` (new, repository entity):
 `compareSyncStatusSeverity(a, b)` ordering `error-import` > `unknown` > `syncing` > `in-sync`;

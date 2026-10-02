@@ -71,5 +71,5 @@ interface BranchGitStateCellProps { summary: BranchRepositorySummary }
 
 ## Superseded
 
-- 2026-10-01 (rework A): cells taking `{ branch: BranchListItem }` and calling `useGetBranchRepositories` per row, `rankRepositories` in the cells, and the tooltip wrapping both the Git state pill and the count.
+- The one-row-per-branch rework (2026-10-01, before rework A), replaced by rework A: cells taking `{ branch: BranchListItem }` and calling `useGetBranchRepositories` per row, `rankRepositories` in the cells, and the tooltip wrapping both the Git state pill and the count.
 - 2026-10-01 (rework): `BranchRepositoryCell`, `BranchCommitCell` (and `CommitHash`), `useBranchTableRows`, the anchor-row selection contract and the three-track grid template.

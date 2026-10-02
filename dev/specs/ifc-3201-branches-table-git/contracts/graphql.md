@@ -39,8 +39,8 @@ query REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int, $offset: Int, $name__v
 
 | Response | Use-case result | Table cells |
 |---|---|---|
-| data | `{ rows, count }` (`count` ignored) | pivoted per branch: pill + "+N more", Git state roll-up; or an empty text |
-| `PERMISSION_DENIED` (`hasThrownCatalogueCode`) | throws `RepositoryBranchStatusError` with `code: "PERMISSION_DENIED"` | "No permission" on every row |
+| data | `{ rows, count }`; `count > rows.length` marks the page as cut | pivoted per branch: pill + "+N more", Git state roll-up; or an empty text. A branch the repository could list but that is absent from a cut page reads "Could not load repositories" with the cut named in the reason |
+| `PERMISSION_DENIED` (`hasThrownCatalogueCode`) | throws `RepositoryBranchStatusError` with `code: "PERMISSION_DENIED"` | "No permission" on every row when every repository is denied; a denied repository among readable ones is left out silently |
 | any other error | throws `RepositoryBranchStatusError` with `code: "UNKNOWN"` and the message | "Could not load repositories" on every row, message as tooltip and `sr-only` text |
 
 A result holding `data` stays `ok` when a background refetch fails.

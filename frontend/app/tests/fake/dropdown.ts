@@ -4,8 +4,8 @@ export type DropdownSelection = Pick<Dropdown, "value" | "label" | "color" | "de
 
 export const generateDropdown = (overrides?: Partial<DropdownSelection>): DropdownSelection => ({
   value: "in-sync",
-  label: "In sync",
-  color: "#7fbf7f",
-  description: "The imported commit matches the remote",
+  label: "In Sync",
+  color: "#60a5fa",
+  description: "The repository is syncing correctly",
   ...overrides,
 });

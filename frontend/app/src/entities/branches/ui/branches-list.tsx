@@ -1,4 +1,5 @@
-import { queryClient } from "@/shared/api/rest/client";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+
 import { Col, Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
@@ -15,6 +16,8 @@ import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository
 function BranchesListHeader() {
   const [filters] = useFilters();
   const { data: count, isPending, isRefetching, isError } = useGetBranchesCount(filters);
+  const repositoriesFetching = useIsFetching({ queryKey: repositoryQueryKeys.all });
+  const queryClient = useQueryClient();
 
   const refetchBranches = async () => {
     await Promise.all([
@@ -27,7 +30,7 @@ function BranchesListHeader() {
     <Content.CardTitle
       title="Branches"
       badgeContent={isPending ? "..." : isError ? "-" : count}
-      isReloadLoading={isRefetching}
+      isReloadLoading={isRefetching || repositoriesFetching > 0}
       reload={refetchBranches}
     />
   );
