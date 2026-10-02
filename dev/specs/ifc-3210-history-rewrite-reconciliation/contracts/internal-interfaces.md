@@ -635,11 +635,11 @@ reaches it. This guard closes that.
 
 ### Why it refuses instead of reconciling
 
-`InfrahubRepository.merge` calls `update_commit_value` on the destination **before** it pushes. So
-a reset-then-merge writes the merge commit to the graph, the next cycle finds the graph and the
-remote in agreement, and the branch classifies `UNCHANGED`. The rewrite is then never recorded,
-the trunk signal never fires, and the rewritten content is never re-imported. Resetting the source
-is worse: it merges objects the graph never imported.
+`InfrahubRepository.merge` pushes the merge commit **before** it records it on the destination. So
+a reset-then-merge puts the merge commit on the remote and in the graph, the next cycle finds the
+graph and the remote in agreement, and the branch classifies `UNCHANGED`. The rewrite is then never
+recorded, the trunk signal never fires, and the rewritten content is never re-imported. Resetting
+the source is worse: it merges objects the graph never imported.
 
 Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
 under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry
