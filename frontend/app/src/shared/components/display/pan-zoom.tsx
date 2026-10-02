@@ -46,8 +46,8 @@ export function PanZoom({ children, className }: PanZoomProps) {
               </Button>
             </div>
             <TransformComponent
-              wrapperClass="!w-full grow"
-              contentClass="!h-full !w-full items-start justify-center"
+              wrapperClass="w-full! grow cursor-grab active:cursor-grabbing"
+              contentClass="h-full! w-full! items-center justify-center"
             >
               {children}
             </TransformComponent>
