@@ -207,7 +207,8 @@ which ends with `CLOSE_UNRETAINED_AGNOSTIC_FIELDS`) also take as candidates the 
 (`core/query/agnostic_retention.py`). They close every open `-global-` edge on an unretained field; on
 a branch-aware attribute the `IS_RESERVED` edge is the only one. They run where an attribute can
 become unreachable: an object delete (a conversion included, since it deletes the converted object),
-a merge or rebase that carries a delete across, an attribute rename, and a branch delete.
+a merge that carries a delete across, a rebase that carries a delete or a default-branch attribute
+rename across, an attribute rename, and a branch delete.
 
 A branch delete removes only the branch's own edges, so an attribute whose every other edge is on the
 deleted branch would be left holding nothing but its `-global-` `IS_RESERVED` edge: an object created
@@ -219,10 +220,7 @@ deleted branch; a `-global-` owning or value edge is data on every branch and ke
 Renaming a
 branch-agnostic attribute is not handled yet: the old vertex's global edges stay open for branches
 that have not taken the rename, and nothing retires it once no branch uses the old name, so its
-`IS_RESERVED` edge stays open. A rename on the default branch followed by a rebase
-of an older branch also leaves the old `IS_RESERVED` edge open for good: the rebase re-evaluates only
-nodes the base branch removed, and the rebased branch holds no edges on the old vertex, so its later
-delete never reaches that edge. A rename also leaves the pool's `node_attribute` naming the old
+`IS_RESERVED` edge stays open. A rename also leaves the pool's `node_attribute` naming the old
 attribute, and the pool's used and free reads match its reserved attributes by that name, so a value
 held through the renamed vertex is unaccounted for until the pool is pointed at the new name.
 
@@ -369,7 +367,7 @@ A `branch_support="agnostic"` Attribute or Relationship writes all of its edges 
 
 The predicate lives once, in `core/query/agnostic_retention.py` (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`) — reuse it, don't re-derive it. It reads the branches itself, so a query that evaluates candidates in batches (`CALL … IN TRANSACTIONS`) reads them once outside the batches into a `branch_windows` list and runs `UNRETAINED_AGNOSTIC_FIELD_EVALUATION` — the predicate without its branch read — inside each — otherwise every batch re-reads the branches, and collecting every candidate first to call the whole predicate once is what exhausted the transaction memory pool on a large branch delete. Current call sites: `Node.delete`, `AttributeRemoveQuery`, `node_relationship_remove`, `DiffMerger.merge_graph`, branch rebase (`core/branch/tasks.py`), branch delete (`core/branch/data_deleter.py`), plus migration `m078` for the pre-existing backlog. Adding a seventh deletion path means adding a seventh call site.
 
-Take a call site's candidates from the graph unless it applies a diff: merge re-evaluates the removals its own diff carries; rebase queries the nodes whose default-branch `IS_PART_OF` edge turned `deleted` between the branch's previous fork point and the rebase; branch delete queries the nodes live on the deleted branch, plus those it read from the default branch at its fork point whose existence edge has closed since. The base-branch diff is scoped to the fields the branch changed, so it omits the default-branch deletions of any node the branch did not touch.
+Take a call site's candidates from the graph unless it applies a diff: merge re-evaluates the removals its own diff carries; rebase queries the nodes whose default-branch `IS_PART_OF` edge turned `deleted` between the branch's previous fork point and the rebase, plus those owning an attribute with an open `IS_RESERVED` edge whose default-branch `HAS_ATTRIBUTE` edge a schema migration closed in the same window (`NodesToCheckForGlobalEdgesQuery`), since a rename closes that edge in place and deletes no node; branch delete queries the nodes live on the deleted branch, plus those it read from the default branch at its fork point whose existence edge has closed since. The base-branch diff is scoped to the fields the branch changed, so it omits the default-branch deletions of any node the branch did not touch.
 
 Every call site closes edges on the global branch — that is where the field's edges live. `DiffMerger.merge_graph` is the merge-specific call site: it re-evaluates fields for nodes whose deletions the merge carries to the target and closes their global edges at the merge's `$at`. Schema-removal migrations can make the same global-branch closures during the merge window. That is why merge-failure recovery has to roll back the global branch as well as the target, and why it matches the exact `$at` there rather than the merge-start range it uses on the target branch — see [merge-failure-recovery.md](merge-failure-recovery.md).
 

@@ -58,6 +58,41 @@ async def test_allocate_from_number_pool(
     assert await np1.get_free(db=db, branch=default_branch) == 3
 
 
+async def test_allocation_records_reservation_whether_pool_is_named_or_identified(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A pool referenced by name records its reservation exactly as one referenced by id does."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
+    await pool.save(db=db)
+
+    created_by_id = await Node.init(db=db, schema=TICKET.kind)
+    await created_by_id.new(db=db, title="by-id", ticket_id={"from_pool": {"id": pool.get_id()}})
+    await created_by_id.save(db=db)
+
+    created_by_name = await Node.init(db=db, schema=TICKET.kind)
+    await created_by_name.new(db=db, title="by-name", ticket_id={"from_pool": {"id": "pool1"}})
+    await created_by_name.save(db=db)
+
+    updated_by_name = await Node.init(db=db, schema=TICKET.kind)
+    await updated_by_name.new(db=db, title="updated-by-name", ticket_id=None)
+    await updated_by_name.save(db=db)
+    await updated_by_name.from_graphql(db=db, data={"ticket_id": {"from_pool": {"id": "pool1"}}})
+    await updated_by_name.save(db=db)
+
+    tickets = {"created by id": created_by_id, "created by name": created_by_name, "updated by name": updated_by_name}
+    for label, ticket in tickets.items():
+        attribute_id = ticket.get_attribute("ticket_id").id
+        assert attribute_id is not None
+        records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
+        assert [record.is_open for record in records] == [True], f"no reservation record for the ticket {label}"
+
+    assert await pool.get_used(db=db, branch=default_branch) == [1, 2, 3]
+
+
 async def test_allocate_reuses_value_when_attribute_not_globally_unique(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:

@@ -12,12 +12,17 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core import registry
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, HashableModelState, SchemaPathType
+from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from tests.helpers.schema.agnostic_retirement import GADGET_KIND, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.migrations.shared import MigrationResult
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -376,6 +381,36 @@ async def tombstone_relationship_peer_edge(
         },
     )
     assert results[0]["tombstoned"] == 1
+
+
+async def remove_attribute_from_schema(
+    db: InfrahubDatabase,
+    branch: Branch,
+    at: Timestamp,
+    kind: str = WIDGET_KIND,
+    attribute_name: str = "serial",
+    user_id: str = TEST_ACTOR_ID,
+) -> MigrationResult:
+    """Run the attribute-removal migration on `branch` the way a schema update would.
+
+    The attribute is marked absent in the registered schema first, which is what the schema update
+    pipeline has already done by the time migrations run.
+    """
+    schema_branch = registry.schema.get_schema_branch(name=branch.name)
+    previous_node = schema_branch.get(name=kind)
+
+    candidate = schema_branch.duplicate()
+    node_schema = candidate.get(name=kind)
+    node_schema.get_attribute(name=attribute_name).state = HashableModelState.ABSENT
+    candidate.set(name=kind, schema=node_schema)
+    registry.schema.set_schema_branch(name=branch.name, schema=candidate)
+
+    migration = NodeAttributeRemoveMigration(
+        previous_node_schema=previous_node,
+        new_node_schema=node_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=kind, field_name=attribute_name),
+    )
+    return await migration.execute(migration_input=MigrationInput(db=db, at=at, user_id=user_id), branch=branch)
 
 
 async def remove_attribute_on_branch(
