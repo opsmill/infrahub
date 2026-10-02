@@ -32,7 +32,7 @@ The prototype's `rev-06` files are the visual reference; code is re-written into
 
 **Constraints**: Only data the backend returns today (no Upstream, "N behind", Last import). Merge not gated. Task manager page cap 200 (we use 10). `log_limit` counts across all runs in a request (one task per log request). Sort, pagination and failure filtering are the server's (page-architecture, "backend is authoritative").
 
-**Scale/Scope**: Tens of repositories per branch (prototype worst case 40); tasks unbounded (server-paginated). ~20 new/changed frontend files, 1 e2e file changed/extended.
+**Scale/Scope**: Tens of repositories per branch (prototype worst case 40); tasks unbounded (server-paginated). ~20 new/changed frontend files, 2 e2e files (1 changed, 1 new).
 
 ## Constitution Check
 

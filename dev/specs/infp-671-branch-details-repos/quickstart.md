@@ -36,11 +36,12 @@ Pagination (10/11 boundaries, fixed height, URL `repositories_page`/`tasks_page`
 ## Automated checks (before pushing)
 
 ```bash
-cd frontend/app && pnpm exec biome ci .
-cd frontend/app && pnpm knip
-cd frontend/app && pnpm exec betterer ci
-cd frontend/app && pnpm test
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py   # with the e2e stack up, see dev/guides/frontend/writing-e2e-tests.md
+# from the repository root; the subshells keep each line there
+(cd frontend/app && pnpm exec biome ci .)
+(cd frontend/app && pnpm knip)
+(cd frontend/app && pnpm exec betterer ci)
+(cd frontend/app && pnpm test)
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py tests/e2e/branches/test_branch_details_repositories.py   # with the e2e stack up, see dev/guides/frontend/writing-e2e-tests.md
 ```
 
 ## R2 verification (import task lookup)
