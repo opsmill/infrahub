@@ -373,6 +373,63 @@ async def test_an_older_branch_keeps_the_old_is_reserved_edge_open_until_it_is_d
 
 @pytest.mark.xfail(
     strict=True,
+    reason="a rename leaves the pool naming the old attribute, and the pool reads its reserved attributes by name",
+)
+async def test_the_pool_keeps_accounting_for_a_renamed_attribute_once_the_last_older_branch_is_deleted(
+    db: InfrahubDatabase, default_branch: Branch, serial_pool: CoreNumberPool
+) -> None:
+    """Without the old vertex, the pool has to find the number through the renamed one on its own."""
+    await pooled_widget(db=db, default_branch=default_branch, pool=serial_pool, support=BranchSupportType.AWARE)
+    older = await create_branch(db=db, branch_name="predates-the-rename")
+
+    await rename_the_attribute(
+        db=db, branch=default_branch, schema=registry.schema.get_schema_branch(name=default_branch.name)
+    )
+    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+        "the older branch still reads the number through the old vertex"
+    )
+
+    await delete_branch(db=db, branch=older)
+
+    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+        "the renamed attribute still holds the number on the default branch"
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="a rename leaves the pool naming the old attribute, and the pool reads its reserved attributes by name",
+)
+async def test_a_number_set_on_an_attribute_renamed_on_a_branch_is_accounted_for(
+    db: InfrahubDatabase, default_branch: Branch, serial_pool: CoreNumberPool
+) -> None:
+    """The branch changes the number through the renamed vertex, so the pool must not offer it again."""
+    holder = await pooled_widget(
+        db=db, default_branch=default_branch, pool=serial_pool, support=BranchSupportType.AWARE
+    )
+    branch = await create_branch(db=db, branch_name="renames-then-changes-the-number")
+    await rename_the_attribute(db=db, branch=branch, schema=registry.schema.get_schema_branch(name=branch.name))
+    renamed_schema = widget_schema(serial_branch_support=BranchSupportType.AWARE)
+    next(node for node in renamed_schema.nodes if node.kind == WIDGET_KIND).get_attribute(
+        name=PREVIOUS_ATTRIBUTE_NAME
+    ).name = NEW_ATTRIBUTE_NAME
+    registry.schema.register_schema(schema=renamed_schema, branch=branch.name)
+    changed_number = SERIAL_POOL_START + 4
+
+    on_branch = await registry.manager.get_one(db=db, id=holder.id, branch=branch, raise_on_error=True)
+    on_branch.get_attribute(name=NEW_ATTRIBUTE_NAME).value = changed_number
+    await on_branch.save(db=db)
+
+    assert await serial_pool.get_used(db=db, branch=branch) == [changed_number], (
+        "the branch holds the changed number through the renamed attribute"
+    )
+    assert changed_number in await serial_pool.get_used(db=db, branch=default_branch), (
+        "the pool accounts for every number any branch holds"
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
     reason="the rebase re-evaluates only the nodes the base branch removed, and a rename removes none",
 )
 async def test_rebasing_the_last_older_branch_past_a_rename_closes_the_old_is_reserved_edge(

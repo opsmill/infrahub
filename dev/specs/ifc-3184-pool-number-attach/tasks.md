@@ -246,7 +246,8 @@ where nothing else has moved the numbers.
       number only while an older branch still reads the old vertex and reports nothing once that
       branch is deleted, until the pool is pointed at the new name by hand; and a number set on the
       attribute renamed on a branch is reported on no branch at all, so the pool can hand it out
-      again. Pre-existing, and it belongs with the follow-up on renaming pooled attributes.
+      again. Pre-existing, and it belongs with the follow-up on renaming pooled attributes; two
+      strict `xfail` tests in `test_number_pool_attribute_rename.py` pin the goal.
 
 - [ ] T017b [US1] **Close the old `IS_RESERVED` edge when an older branch rebases past a rename.**
       **Blocked:** bring the pending changes on `develop` forward first; do not start before they
