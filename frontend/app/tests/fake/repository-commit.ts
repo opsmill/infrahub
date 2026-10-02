@@ -151,6 +151,15 @@ export const generateNotClonedCommitsResponse = () =>
     unavailable: { reason: "NOT_CLONED", message: NOT_CLONED_MESSAGE },
   });
 
+export const NOT_IMPLEMENTED_MESSAGE = "Reading commits is not implemented on this deployment.";
+
+export const generateNotImplementedCommitsResponse = () =>
+  generateRepositoryCommitsResponse({
+    condition: "UNAVAILABLE",
+    fetched_at: null,
+    unavailable: { reason: "NOT_IMPLEMENTED", message: NOT_IMPLEMENTED_MESSAGE },
+  });
+
 export const JUST_CHECKED_AT = "2025-03-11T08:30:00Z";
 
 export const generateJustCheckedCommitsResponse = () =>

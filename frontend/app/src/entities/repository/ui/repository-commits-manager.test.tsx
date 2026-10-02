@@ -20,6 +20,7 @@ import {
   generateInSyncCommitsResponse,
   generateJustCheckedCommitsResponse,
   generateNotClonedCommitsResponse,
+  generateNotImplementedCommitsResponse,
   generateOrphanedCommitsResponse,
   generateReadOnlyCommitsResponse,
   generateRepositoryCommitsResponse,
@@ -28,6 +29,7 @@ import {
   IN_SYNC_HEAD,
   JUST_CHECKED_AT,
   NOT_CLONED_MESSAGE,
+  NOT_IMPLEMENTED_MESSAGE,
   PAGE_ONE_HEAD,
   PAGE_ONE_LAST,
   PAGE_TWO_FIRST,
@@ -204,6 +206,21 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
     await expect.element(component.getByText(NOT_CLONED_MESSAGE)).toBeVisible();
     expect(component.getByText("Sorry, something went wrong.").query()).toBeNull();
+  });
+
+  test("renders a settled not-available message when reading commits is not implemented", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(apiResult(generateNotImplementedCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect
+      .element(component.getByText("Commit log not available", { exact: true }))
+      .toBeVisible();
+    await expect.element(component.getByText(NOT_IMPLEMENTED_MESSAGE)).toBeVisible();
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
   test.each<{ condition: RepositoryGitCondition; response: RepositoryCommitsWire }>([

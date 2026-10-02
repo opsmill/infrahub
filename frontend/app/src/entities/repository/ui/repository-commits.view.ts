@@ -7,6 +7,7 @@ import {
   type RepositoryCommitLog,
   RepositoryCommitState,
   RepositoryGitCondition,
+  RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
 import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
 
@@ -59,6 +60,13 @@ export function getEmptyState({
 }: Pick<RepositoryCommitLog, "condition" | "unavailable">): CommitLogEmptyState | null {
   switch (condition) {
     case RepositoryGitCondition.UNAVAILABLE:
+      if (unavailable?.reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
+        return {
+          title: "Commit log not available",
+          message:
+            unavailable.message || "Reading commits is not available in this version of Infrahub.",
+        };
+      }
       return {
         title: "Commit log not available yet",
         message: unavailable?.message ?? "Waiting for a worker to answer.",

@@ -61,6 +61,57 @@ describe("getEmptyState", () => {
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Not cloned" });
   });
 
+  test("says the log is not available, without a yet, when reading commits is not implemented", () => {
+    // GIVEN
+    const log = {
+      condition: RepositoryGitCondition.UNAVAILABLE,
+      unavailable: {
+        reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
+        message: "Reading commits is not implemented",
+      },
+    };
+
+    // WHEN
+    const emptyState = getEmptyState(log);
+
+    // THEN
+    expect(emptyState).toEqual({
+      title: "Commit log not available",
+      message: "Reading commits is not implemented",
+    });
+  });
+
+  test("falls back to a version message when not implemented carries an empty message", () => {
+    // GIVEN
+    const log = {
+      condition: RepositoryGitCondition.UNAVAILABLE,
+      unavailable: { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, message: "" },
+    };
+
+    // WHEN
+    const emptyState = getEmptyState(log);
+
+    // THEN
+    expect(emptyState).toEqual({
+      title: "Commit log not available",
+      message: "Reading commits is not available in this version of Infrahub.",
+    });
+  });
+
+  test("still says not available yet when the read timed out", () => {
+    // GIVEN
+    const log = {
+      condition: RepositoryGitCondition.UNAVAILABLE,
+      unavailable: { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
+    };
+
+    // WHEN
+    const emptyState = getEmptyState(log);
+
+    // THEN
+    expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Timed out" });
+  });
+
   test("falls back to a waiting message when the unavailable log has no reason", () => {
     // GIVEN
     const log = { condition: RepositoryGitCondition.UNAVAILABLE, unavailable: null };
