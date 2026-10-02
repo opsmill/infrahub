@@ -29,7 +29,7 @@ export function useDeleteBranchMutation() {
         };
       });
       await queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
-      await queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
     },
   });
 }

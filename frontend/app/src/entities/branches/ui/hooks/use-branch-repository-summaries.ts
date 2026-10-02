@@ -68,7 +68,7 @@ export function useBranchRepositorySummaries(
       ? { status: "error" as const, message: branchesError.message }
       : toRepositoryListFetch(repositoryList);
   const repositories: BranchRepositoryRef[] =
-    repositoryList.data?.status === "ok"
+    listFetch === null && repositoryList.data?.status === "ok"
       ? repositoryList.data.repositories.map(({ id, name, kind, isReadOnly }) => ({
           id,
           name,
