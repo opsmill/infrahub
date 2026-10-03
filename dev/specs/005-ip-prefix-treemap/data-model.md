@@ -82,7 +82,7 @@ Common fields on every tile:
 |-------|------|-------|
 | `key` | `string` | stable React key (CIDR, or the aggregate kind) |
 | `addressCount` | `bigint` | exact |
-| `weight` | `number` | `addressCount / parent.addressCount` as a six-digit fraction, sums to 1 across tiles within 1e-6 |
+| `weight` | `number` | `Number(addressCount) / Number(parent.addressCount)`, exact for single-prefix tiles, sums to 1 across tiles within 1e-6 |
 | `label` | `string` | CIDR, "N smaller prefixes", "N smaller free blocks", or "N more children" |
 
 Invariants enforced by the rule and asserted in its tests:

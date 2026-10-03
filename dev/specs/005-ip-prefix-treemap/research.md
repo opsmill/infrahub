@@ -94,16 +94,18 @@ fixed CSS aspect ratio, so no resize observation is needed.
 ## R4. Exact area arithmetic with BigInt, float only at layout time
 
 **Decision**: Parse each CIDR into `{ family, prefixLength }` and compute address counts as
-`BigInt` (`1n << BigInt(maxLength - prefixLength)`). Sums, the capped remainder and the
-aggregation threshold are computed in `BigInt`. Each tile's weight becomes a `number` fraction of
-the parent only after aggregation, via `Number(count * SCALE / parentCount) / SCALE` with
-`SCALE = 1_000_000n`, which keeps six significant digits for layout.
+`BigInt` (`2n ** BigInt(maxLength - prefixLength)`; the shift form is ruled out by the lint
+rule on bitwise operators). Sums, the capped remainder and the aggregation threshold are computed
+in `BigInt`. Each tile's weight becomes a `number` fraction of the parent only after aggregation,
+via `Number(count) / Number(parentCount)`.
 
 **Rationale**: A /32 holds 2^96 addresses, past `Number.MAX_SAFE_INTEGER`. Powers of two are exact
 as doubles, but sums and differences of mixed powers are not once exponents differ by more than 53,
 which is exactly the IPv6 case. BigInt makes FR-002 and FR-003 provable in unit tests across prefix
-lengths 0 to 128. Converting to a fraction after aggregation (R5) means every surviving tile is at
-least 1/4096 of the parent, so six digits are more than enough.
+lengths 0 to 128. For the weight, plain double division is exact for every single-prefix tile
+(both operands are powers of two) and accurate to about 1e-16 for aggregated tiles. A fixed
+six-digit scale was considered and rejected: 1/256 (a /16 in a /8) is not representable at six
+digits, so the demo case would have summed to 0.999999 and failed its own invariant.
 
 **Alternatives considered**: `Number` throughout with a tolerance. Rejected: FR-003's "sums to the
 parent" would be approximate and the IPv6 edge tests would be flaky.
