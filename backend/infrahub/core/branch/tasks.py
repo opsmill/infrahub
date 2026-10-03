@@ -307,30 +307,31 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             registry.branch[user_branch.name] = user_branch
 
             if migration_baseline_schema is not None and pre_rebase_schema is not None:
-                # Update the registry and run migrations after the rebase, with rollback on failure.
-                # Schema nodes were already written by the rebase, so load that schema and apply only
-                # the migrations it implies.
-                log.info("Running migrations")
-                rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
-                migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
-                # The schema migrations need a unique timestamp so that a rollback on failure will
-                # not try to erase changes made during the graph rebase and destroy the branch.
-                migration_at = rebase_at.add(microseconds=1)
-                await schema_update_coordinator.execute(
-                    branch=user_branch,
-                    origin_schema=migration_baseline_schema,
-                    rollback_schema=pre_rebase_schema,
-                    candidate_schema=rebased_schema,
-                    at=migration_at,
-                    context=context,
-                    migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
-                    migrations=migrations,
-                    update_db=False,
-                    update_registry=True,
-                    user_id=user_id,
-                    manage_rollback=True,
-                )
-                log.info("Migrations completed")
+                async with lock.registry.local_schema_lock():
+                    # Update the registry and run migrations after the rebase, with rollback on failure.
+                    # Schema nodes were already written by the rebase, so load that schema and apply only
+                    # the migrations it implies.
+                    log.info("Running migrations")
+                    rebased_schema = await registry.schema.load_schema_from_db(db=db, branch=user_branch)
+                    migrations = await schema_analyzer.calculate_migrations(target_schema=rebased_schema)
+                    # The schema migrations need a unique timestamp so that a rollback on failure will
+                    # not try to erase changes made during the graph rebase and destroy the branch.
+                    migration_at = rebase_at.add(microseconds=1)
+                    await schema_update_coordinator.execute(
+                        branch=user_branch,
+                        origin_schema=migration_baseline_schema,
+                        rollback_schema=pre_rebase_schema,
+                        candidate_schema=rebased_schema,
+                        at=migration_at,
+                        context=context,
+                        migration_executor=MigrationExecutor.WORKFLOW if send_events else MigrationExecutor.DIRECT,
+                        migrations=migrations,
+                        update_db=False,
+                        update_registry=True,
+                        user_id=user_id,
+                        manage_rollback=True,
+                    )
+                    log.info("Migrations completed")
 
         # Replay the default branch's changes to the kinds whose schema this branch changed, so their derived values
         # are computed again with the branch's schema.
