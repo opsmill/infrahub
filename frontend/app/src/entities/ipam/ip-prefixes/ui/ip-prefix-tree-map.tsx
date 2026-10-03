@@ -5,6 +5,7 @@ import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
+import { formatNumberDisplay } from "@/shared/utils/number";
 
 import {
   TREE_MAP_ASPECT_RATIO,
@@ -89,6 +90,13 @@ export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTr
 
   return (
     <Col className="gap-3 p-2.5">
+      {data.isCapped && (
+        <p role="status" className="text-foreground-muted text-xs">
+          Showing the first {formatNumberDisplay(data.children.length)} of{" "}
+          {formatNumberDisplay(data.totalChildCount)} children
+        </p>
+      )}
+
       <div
         role="group"
         aria-label={`Tree map of ${parent.cidr}`}

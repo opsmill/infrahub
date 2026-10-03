@@ -39,6 +39,19 @@ export const generateTreeMapChild = (overrides: Partial<TreeMapChild> = {}): Tre
   };
 };
 
+const SLASH_18_ADDRESS_COUNT = 2n ** 14n;
+const IPV4_OCTET_RADIX = 256n;
+
+/** Sequential /18 children of 10.0.0.0/8 in address order, 1,024 at most. */
+export const generateSlash18ChildrenOfDemoSupernet = (count: number): TreeMapChild[] =>
+  Array.from({ length: count }, (_, index) => {
+    const start = 0x0a000000n + BigInt(index) * SLASH_18_ADDRESS_COUNT;
+    const octets = [3n, 2n, 1n, 0n].map((position) =>
+      ((start / IPV4_OCTET_RADIX ** position) % IPV4_OCTET_RADIX).toString()
+    );
+    return generateTreeMapChild({ cidr: `${octets.join(".")}/18` });
+  });
+
 export const generateTreeMapFreeBlock = (
   overrides: Partial<TreeMapFreeBlock> = {}
 ): TreeMapFreeBlock => {

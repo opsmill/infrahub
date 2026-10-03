@@ -9,7 +9,9 @@ tile on a throwaway branch and checks the map refreshes in place; a read-only us
 the free tile disabled. The address-prefix scenario opens the seeded 10.0.0.0/16, whose
 members are IP addresses, and checks the Tree Map tab shows the empty state with the
 utilisation meter and a link to the IP Addresses tab, both when opened from the IPAM tree
-and when reached by drilling down from the supernet's map.
+and when reached by drilling down from the supernet's map. The IPv6 scenario opens the
+seeded 2001:db8::/100 and checks its six /110 children render as allocated tiles next to
+at least one free block without any uncaught page error.
 """
 
 from __future__ import annotations
@@ -37,6 +39,9 @@ ADDRESS_PREFIX = "10.0.0.0/16"
 BRANCH_ONLY_CHILD = "10.5.0.0/16"
 FIRST_FREE_BLOCK = "10.3.0.0/16"
 FIRST_FREE_BLOCK_ALLOCATED_TILE = re.compile(r"^10\.3\.0\.0\/16, ")
+IPV6_SUPERNET = "2001:db8::/100"
+IPV6_CHILD_TILE = re.compile(r"^2001:db8::")
+FREE_TILE = re.compile(r" available$")
 
 
 async def open_tree_map(page: Page) -> None:
@@ -208,3 +213,23 @@ class TestIpPrefixTreeMapAddressPrefix:
         await expect(page.get_by_role("heading", name=ADDRESS_PREFIX)).to_be_visible()
         await expect(page.get_by_role("link", name="Tree Map")).to_have_attribute("aria-current", "page")
         await expect(page.get_by_test_id("ip-prefix-tree-map-empty")).to_be_visible()
+
+
+class TestIpPrefixTreeMapIpv6:
+    async def test_shows_ipv6_children_and_free_blocks_without_page_errors(
+        self, page: Page, data_ipam_pools: IpamPoolsHandle
+    ) -> None:
+        page_errors: list[str] = []
+        page.on("pageerror", lambda error: page_errors.append(str(error)))
+
+        await page.goto("/ipam")
+        await page.get_by_role("treegrid", name="IPAM tree").get_by_text(IPV6_SUPERNET).click()
+        await expect(page.get_by_role("heading", name=IPV6_SUPERNET)).to_be_visible()
+
+        await page.get_by_role("link", name="Tree Map").click()
+
+        tree_map = page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map).to_be_visible()
+        await expect(tree_map.get_by_role("link", name=IPV6_CHILD_TILE)).to_have_count(6)
+        await expect(tree_map.get_by_role("button", name=FREE_TILE).first).to_be_visible()
+        assert not page_errors
