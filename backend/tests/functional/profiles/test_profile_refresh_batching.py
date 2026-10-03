@@ -71,6 +71,13 @@ READER_SCHEMA = {
 }
 
 
+RELATIONSHIP_MUTATION = """
+mutation Relationship($id: String!, $name: String!, $nodes: [RelatedNodeInput]!) {
+    %(mutation)s(data: {id: $id, name: $name, nodes: $nodes}) { ok }
+}
+"""
+
+
 @dataclass(frozen=True)
 class ProfileDataset:
     profile_id: str
@@ -394,3 +401,40 @@ class TestProfileRefreshBatching(TestInfrahubApp):
             "port-1 on role-2",
             "port-1 uses role-2",
         )
+
+    async def test_relationship_add_and_remove_on_a_profile_refresh_the_changed_nodes_and_templates(
+        self, load_schema: None, default_branch: Branch, client: InfrahubClient
+    ) -> None:
+        profile = await client.create(
+            kind=DEVICE_PROFILE_KIND, profile_name="relationship-profile", profile_priority=900, part_number="part-rel"
+        )
+        await profile.save()
+        device = await client.create(
+            kind=TestKind.DEVICE, name="device-rel", manufacturer="manufacturer", weight=1, airflow="Front to rear"
+        )
+        await device.save()
+        template = await client.create(kind=DEVICE_TEMPLATE_KIND, template_name="template-rel")
+        await template.save()
+
+        for rel_name, peer_id in (("related_nodes", device.id), ("related_templates", template.id)):
+            await client.execute_graphql(
+                query=RELATIONSHIP_MUTATION % {"mutation": "RelationshipAdd"},
+                variables={"id": profile.id, "name": rel_name, "nodes": [{"id": peer_id}]},
+            )
+        added = [
+            await self._part_numbers(client=client, kind=TestKind.DEVICE, node_ids=[device.id]),
+            await self._part_numbers(client=client, kind=DEVICE_TEMPLATE_KIND, node_ids=[template.id]),
+        ]
+
+        for rel_name, peer_id in (("related_nodes", device.id), ("related_templates", template.id)):
+            await client.execute_graphql(
+                query=RELATIONSHIP_MUTATION % {"mutation": "RelationshipRemove"},
+                variables={"id": profile.id, "name": rel_name, "nodes": [{"id": peer_id}]},
+            )
+        removed = [
+            await self._part_numbers(client=client, kind=TestKind.DEVICE, node_ids=[device.id]),
+            await self._part_numbers(client=client, kind=DEVICE_TEMPLATE_KIND, node_ids=[template.id]),
+        ]
+
+        assert added == [["part-rel"], ["part-rel"]]
+        assert removed == [[None], [None]]
