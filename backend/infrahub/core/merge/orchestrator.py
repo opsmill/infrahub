@@ -170,7 +170,7 @@ class BranchMergeOrchestrator:
         # Point of no return: merge fully succeeded. Advance to MERGED.
         self.source_branch.status = BranchStatus.MERGED
         await self.source_branch.save(db=self.db, user_id=user_id)
-        registry.branch[self.source_branch.name] = self.source_branch
+        await self._publish_source_branch()
 
         # Lift the write protection now that the merge has fully succeeded.
         await self.merge_write_blocker.delete()
@@ -206,8 +206,14 @@ class BranchMergeOrchestrator:
         self.source_branch.merge_started_at = merge_at.to_string()
         self.source_branch.pre_merge_destination_schema_changed_at = self.destination_branch.schema_changed_at
         await self.source_branch.save(db=self.db, user_id=user_id)
-        # A registry refresh in flight holds this lock, so publishing under it keeps that refresh from
-        # overwriting the merging branch with the one it read before the save.
+        await self._publish_source_branch()
+
+    async def _publish_source_branch(self) -> None:
+        """Replace this worker's cached source branch with the one just saved.
+
+        A registry refresh in flight holds this process's schema lock, so publishing under it keeps that refresh
+        from overwriting the branch with the copy it read before the save.
+        """
         async with lock.registry.local_schema_lock():
             registry.branch[self.source_branch.name] = self.source_branch
 
