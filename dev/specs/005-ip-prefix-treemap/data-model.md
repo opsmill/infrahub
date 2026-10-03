@@ -10,7 +10,7 @@ existing `BuiltinIPPrefix` query. Module: `frontend/app/src/entities/ipam/ip-pre
 | Name | Value | Used by |
 |------|-------|---------|
 | `TREE_MAP_CHILD_LIMIT` | `1000` | query variable `limit`, cap notice |
-| `TREE_MAP_MIN_TILE_FRACTION` | `1 / 4096` (applied as `parentCount / 4096n` in BigInt) | aggregation rule |
+| `TREE_MAP_MIN_TILE_DIVISOR` | `4096n` (threshold is `parentCount / 4096n` in BigInt, i.e. 1/4096 of the parent) | aggregation rule |
 | `TREE_MAP_ASPECT_RATIO` | `2` (width over height) | layout and container CSS |
 
 ## Types

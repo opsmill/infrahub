@@ -112,7 +112,7 @@ parent" would be approximate and the IPv6 edge tests would be flaky.
 
 **Decision**: A tile whose address count is below `parentCount / 4096` is aggregated. Allocated
 tiles below the threshold collapse into one "N smaller prefixes" tile, free tiles into one "N
-smaller free blocks" tile. The constant lives with the model as `TREE_MAP_MIN_TILE_FRACTION`.
+smaller free blocks" tile. The constant lives with the model as `TREE_MAP_MIN_TILE_DIVISOR` (`4096n`).
 
 **Rationale**: A fraction keeps tile preparation a pure function of the data, so it is unit
 testable and deterministic. At the container size the tab gives (full content width, 2:1 aspect),
