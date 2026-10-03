@@ -6,7 +6,10 @@ child tile and checks the child's own Tree Map opens with the namespace query pa
 The branch scenario creates a child prefix on a throwaway branch and checks it shows up
 only when that branch is selected. The create scenario allocates a free block from its
 tile on a throwaway branch and checks the map refreshes in place; a read-only user sees
-the free tile disabled.
+the free tile disabled. The address-prefix scenario opens the seeded 10.0.0.0/16, whose
+members are IP addresses, and checks the Tree Map tab shows the empty state with the
+utilisation meter and a link to the IP Addresses tab, both when opened from the IPAM tree
+and when reached by drilling down from the supernet's map.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
     from playwright.async_api import Page
 
 SUPERNET = "10.0.0.0/8"
+ADDRESS_PREFIX = "10.0.0.0/16"
 BRANCH_ONLY_CHILD = "10.5.0.0/16"
 FIRST_FREE_BLOCK = "10.3.0.0/16"
 FIRST_FREE_BLOCK_ALLOCATED_TILE = re.compile(r"^10\.3\.0\.0\/16, ")
@@ -167,3 +171,40 @@ class TestIpPrefixTreeMapCreate:
         await expect(tree_map).to_be_visible()
 
         await expect(tree_map.get_by_role("button", name=f"{FIRST_FREE_BLOCK} available")).to_be_disabled()
+
+
+class TestIpPrefixTreeMapAddressPrefix:
+    async def test_shows_empty_state_with_meter_and_link_to_addresses(
+        self, page: Page, data_ipam_pools: IpamPoolsHandle
+    ) -> None:
+        await page.goto("/ipam")
+        ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
+        await ipam_tree.get_by_role("button", name=f"Expand {SUPERNET}").click()
+        await ipam_tree.get_by_text(ADDRESS_PREFIX).click()
+        await expect(page.get_by_role("heading", name=ADDRESS_PREFIX)).to_be_visible()
+
+        await page.get_by_role("link", name="Tree Map").click()
+
+        empty_state = page.get_by_test_id("ip-prefix-tree-map-empty")
+        await expect(empty_state).to_be_visible()
+        await expect(empty_state.get_by_role("meter", name="Utilization")).to_be_visible()
+        await expect(page.get_by_test_id("ip-prefix-tree-map")).to_have_count(0)
+
+        await empty_state.get_by_role("link", name="IP Addresses").click()
+
+        await expect(page).to_have_url(re.compile(r".*/ip_addresses(\?.*)?$"))
+        await expect(page.get_by_test_id("ip-address-table")).to_be_visible()
+
+    async def test_drill_down_into_address_prefix_shows_empty_state(
+        self, page: Page, data_ipam_pools: IpamPoolsHandle
+    ) -> None:
+        supernet_id = data_ipam_pools.prefixes[SUPERNET]
+        await page.goto(f"/ipam/IpamIPPrefix/{supernet_id}/tree-map")
+        tree_map = page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map).to_be_visible()
+
+        await tree_map.get_by_role("link", name=f"{ADDRESS_PREFIX}, 0% utilised").click()
+
+        await expect(page.get_by_role("heading", name=ADDRESS_PREFIX)).to_be_visible()
+        await expect(page.get_by_role("link", name="Tree Map")).to_have_attribute("aria-current", "page")
+        await expect(page.get_by_test_id("ip-prefix-tree-map-empty")).to_be_visible()
