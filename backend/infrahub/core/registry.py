@@ -171,6 +171,15 @@ class Registry:
         if branch.name in self.branch:
             self.branch[branch.name] = branch
 
+    async def publish_branch(self, branch: Branch) -> None:
+        """Replace this worker's cached copy of a branch with the one just saved to the database.
+
+        A registry refresh in flight holds this process's schema lock, so publishing under it keeps that refresh
+        from overwriting the branch with the copy it read before the save.
+        """
+        async with lock.registry.local_schema_lock():
+            self.branch[branch.name] = branch
+
     async def get_branch(
         self,
         db: InfrahubDatabase,
