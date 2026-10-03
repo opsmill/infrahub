@@ -1,25 +1,24 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from infrahub_sdk.exceptions import GraphQLError
 from prefect import flow
 from prefect.logging import get_run_logger
 
+from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.recompute.dispatch import build_recompute_chain
+from infrahub.core.registry import registry
 from infrahub.events.limits import get_submission_chunk_size
-from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
-from infrahub.exceptions import ProfileRefreshError
+from infrahub.events.models import EventBranchContext, EventContext
+from infrahub.exceptions import BranchNotFoundError, ProfileRefreshError
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
-from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
+from infrahub.workers.dependencies import get_client, get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_profile_refresh
 from .graphql_queries import ProfileNodeIDQuery
+from .node_applier import ChunkProfilesApplier
+from .refresh import NodeProfilesRefresher
 from .submission import submit_profile_refresh
-
-if TYPE_CHECKING:
-    from infrahub_sdk.client import InfrahubClient
 
 REFRESH_PROFILES_MUTATION = """
 mutation RefreshProfiles(
@@ -34,10 +33,6 @@ mutation RefreshProfiles(
 """
 
 
-async def _refresh_node_profiles(client: InfrahubClient, branch_name: str, node_id: str) -> None:
-    await client.execute_graphql(query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name)
-
-
 @flow(name="object-profiles-refresh", flow_run_name="Refresh profiles for {node_id}")
 async def object_profiles_refresh(branch_name: str, node_id: str) -> None:
     """Refresh the profiles of one node.
@@ -48,7 +43,7 @@ async def object_profiles_refresh(branch_name: str, node_id: str) -> None:
     client = get_client()
 
     await add_tags(branches=[branch_name], nodes=[node_id], db_change=True)
-    await _refresh_node_profiles(client=client, branch_name=branch_name, node_id=node_id)
+    await client.execute_graphql(query=REFRESH_PROFILES_MUTATION, variables={"id": node_id}, branch_name=branch_name)
     log.info(f"Profiles refreshed for {node_id}")
 
 
@@ -59,25 +54,34 @@ async def objects_profiles_refresh_multiple(
     # None lets the runs queued before an upgrade, which carry no context, still start.
     context: EventContext | None = None,
 ) -> None:
-    """Refresh the profiles of a chunk of nodes, one node after the other.
+    """Refresh the profiles of a chunk of nodes and templates, then recompute the values that read them.
 
     Raises:
-        ProfileRefreshError: If the refresh of one or more nodes returns a GraphQL error, after the refresh of
-            all the other nodes of the chunk.
+        ProfileRefreshError: If the refresh of one or more nodes fails, after the refresh of all the other
+            nodes of the chunk.
 
     """
     log = get_run_logger()
-    client = get_client()
-    if context is not None:
-        client.request_context = context.to_request_context()
+    database = await get_database()
+    try:
+        branch = await registry.get_branch(db=database, branch=branch_name)
+    except BranchNotFoundError:
+        log.info(f"Branch {branch_name} does not exist, no profile to refresh")
+        return
 
-    failed_node_ids: list[str] = []
-    for node_id in node_ids:
-        try:
-            await _refresh_node_profiles(client=client, branch_name=branch_name, node_id=node_id)
-        except GraphQLError as exc:
-            log.warning(f"Profile refresh failed for {node_id}: {exc.errors}")
-            failed_node_ids.append(node_id)
+    event_context = context or EventContext(
+        branch=EventBranchContext(name=branch.name, id=str(branch.uuid)), account_id=SYSTEM_USER_ID
+    )
+    schema_name = branch_name if branch_name in registry.get_altered_schema_branches() else registry.default_branch
+    refresher = NodeProfilesRefresher(
+        db=database,
+        event_service=await get_event_service(),
+        chain=await build_recompute_chain(
+            schema_branch=registry.schema.get_schema_branch(name=schema_name), db=database
+        ),
+        applier_class=ChunkProfilesApplier,
+    )
+    failed_node_ids = await refresher.refresh(branch=branch, node_ids=node_ids, context=event_context)
 
     log.info(f"Profiles refreshed for {len(node_ids) - len(failed_node_ids)} of {len(node_ids)} nodes")
     if failed_node_ids:

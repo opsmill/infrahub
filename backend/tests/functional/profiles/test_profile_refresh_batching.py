@@ -32,6 +32,43 @@ if TYPE_CHECKING:
 DEVICE_PROFILE_KIND = f"Profile{TestKind.DEVICE}"
 DEVICE_TEMPLATE_KIND = f"Template{TestKind.DEVICE}"
 INTERFACE_PROFILE_KIND = f"Profile{TestKind.INTERFACE}"
+SERVER_KIND = "TestingServer"
+PORT_KIND = "TestingPort"
+
+READER_SCHEMA = {
+    "version": "1.0",
+    "nodes": [
+        {
+            "name": "Server",
+            "namespace": "Testing",
+            "default_filter": "name__value",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {"name": "role", "kind": "Text", "optional": True},
+            ],
+        },
+        {
+            "name": "Port",
+            "namespace": "Testing",
+            "default_filter": "name__value",
+            "display_label": "{{ name__value }} on {{ server__role__value }}",
+            "attributes": [
+                {"name": "name", "kind": "Text", "unique": True},
+                {
+                    "name": "summary",
+                    "kind": "Text",
+                    "optional": True,
+                    "read_only": True,
+                    "computed_attribute": {
+                        "kind": "Jinja2",
+                        "jinja2_template": "{{ name__value }} uses {{ server__role__value }}",
+                    },
+                },
+            ],
+            "relationships": [{"name": "server", "peer": SERVER_KIND, "cardinality": "one", "optional": False}],
+        },
+    ],
+}
 
 
 @dataclass(frozen=True)
@@ -40,6 +77,13 @@ class ProfileDataset:
     linked_device_ids: list[str]
     unlinked_device_id: str
     template_id: str
+
+
+@dataclass(frozen=True)
+class ReaderDataset:
+    profile_id: str
+    server_id: str
+    port_id: str
 
 
 @dataclass(frozen=True)
@@ -66,6 +110,24 @@ class TestProfileRefreshBatching(TestInfrahubApp):
         device_schema["version"] = "1.0"
         response = await client.schema.load(schemas=[device_schema])
         assert not response.errors
+
+    @pytest.fixture(scope="class")
+    async def reader_dataset(self, client: InfrahubClient, load_schema: None) -> ReaderDataset:
+        response = await client.schema.load(schemas=[READER_SCHEMA])
+        assert not response.errors
+        profile = await client.create(
+            kind=f"Profile{SERVER_KIND}", profile_name="server-profile", profile_priority=1000, role="role-1"
+        )
+        await profile.save()
+        server = await client.create(kind=SERVER_KIND, name="server-1", profiles=[profile.id])
+        await server.save()
+        port = await client.create(kind=PORT_KIND, name="port-1", server=server.id)
+        await port.save()
+        return ReaderDataset(profile_id=profile.id, server_id=server.id, port_id=port.id)
+
+    async def _port_readers(self, db: InfrahubDatabase, port_id: str) -> tuple[str, str | None]:
+        port = await NodeManager.get_one(db=db, id=port_id, raise_on_error=True)
+        return await port.get_display_label(db=db), port.get_attribute(name="summary").value
 
     @pytest.fixture(scope="class")
     async def dataset(self, client: InfrahubClient, load_schema: None) -> ProfileDataset:
@@ -301,3 +363,34 @@ class TestProfileRefreshBatching(TestInfrahubApp):
             "part-3",
             "part-3",
         ]
+
+    async def test_profile_attribute_change_recomputes_the_readers_on_other_nodes(
+        self,
+        db: InfrahubDatabase,
+        reader_dataset: ReaderDataset,
+        default_branch: Branch,
+        client: InfrahubClient,
+        context: EventContext,
+    ) -> None:
+        """The display label and the computed attribute of a port read the role that a profile sets on its server."""
+        assert await self._port_readers(db=db, port_id=reader_dataset.port_id) == (
+            "port-1 on role-1",
+            "port-1 uses role-1",
+        )
+        profile = await client.get(kind=f"Profile{SERVER_KIND}", id=reader_dataset.profile_id)
+        profile.role.value = "role-2"
+        await profile.save()
+
+        await profile_refresh_process(
+            branch_name=default_branch.name,
+            profile_kind=f"Profile{SERVER_KIND}",
+            profile_id=reader_dataset.profile_id,
+            context=context,
+        )
+
+        server = await client.get(kind=SERVER_KIND, id=reader_dataset.server_id)
+        assert server.role.value == "role-2"
+        assert await self._port_readers(db=db, port_id=reader_dataset.port_id) == (
+            "port-1 on role-2",
+            "port-1 uses role-2",
+        )

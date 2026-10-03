@@ -4,7 +4,7 @@
 
 A live edit recomputes derived values one node at a time (see [computed-attributes.md](computed-attributes.md)). A merge or rebase can change many nodes at once, so it uses a different path: one coalesced recompute for the whole change set, written in bulk, then chained to any value that reads what was written.
 
-This covers four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids, and Python-transform computed attributes. The Python family is described in [The Python transform family](#the-python-transform-family) below. Profile refresh is not part of the pass; it is dispatched by its own automations. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
+This covers four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids, and Python-transform computed attributes. The Python family is described in [The Python transform family](#the-python-transform-family) below. Profile refresh is not part of the pass; it is dispatched by its own automations. Its writes chain into it, as the profile refresh row of the table under [Live path vs coalesced path](#live-path-vs-coalesced-path) shows. Generator and artifact regeneration on merge takes its own selective path, described in [selective-merge-regeneration.md](selective-merge-regeneration.md).
 
 ## Why a separate path
 
@@ -113,6 +113,7 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | Merge or rebase | coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
 | Whole-kind backfill: a Jinja2, display-label or HFID template change, or `InfrahubRecomputeComputedAttribute` without `node_ids` | coalesced pass per chunk of node ids, `coalesced=True` | `recompute` | `RecomputeChainSubmitter` |
 | A recompute write feeding a reader | chained coalesced pass, `coalesced=True` | `recompute` | `RecomputeChainSubmitter`, depth-bounded |
+| Profile refresh of a chunk of nodes and templates | `NodeProfilesRefresher` applies the profiles in the database | `recompute` | `RecomputeChainSubmitter`, with the fields the profiles changed, relationships included |
 
 ## Key Files
 
@@ -122,8 +123,9 @@ An empty write set dispatches nothing, which is the normal stop: an acyclic depe
 | `core/merge/python_target_resolution.py` | `IndexedPythonTargetResolver`: maps a change signature to the affected Python `(kind, attribute)` pairs and their node ids |
 | `core/merge/python_target_sources.py` | The read-set and subscriber sources behind that resolver, and the factory that builds it |
 | `display_labels/scoping.py`, `hfid/scoping.py` | `derive_display_label_targets` / `derive_hfid_targets`: the builder's derivation step, mapping a changed `(kind, field)` set to the display-label and HFID values it affects (computed attributes use `computed_attribute/scoping.py`) |
-| `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode` |
-| `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass) |
+| `core/recompute/bulk_write.py` | `BulkRecomputeWriter`, `AttributeValueWrite`, `WrittenNode`, `send_node_updated_event` |
+| `core/recompute/dispatch.py` | `BulkRecomputeDispatcher`, `build_bulk_recompute_dispatcher` (bulk write, then chain on a coalesced pass), `build_recompute_chain` |
+| `profiles/refresh.py` | `NodeProfilesRefresher`: applies the profiles of a chunk in transactions, then chains the readers of the writes |
 | `core/merge/post_merge.py` | Merge: stamp `merge` origin, build and submit on the destination branch |
 | `core/branch/tasks.py` | Rebase: stamp `rebase` origin, build and submit on the user branch |
 | `events/constants.py` | `NodeMutationOrigin`, `NODE_ORIGIN_LABEL` |
