@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from infrahub.core.branch import Branch
-from infrahub.core.changelog.diff import DiffChangelogCollector
+from infrahub.core.changelog.builder import build_diff_changelog_collector
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog, RelationshipCardinalityOneChangelog
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -40,8 +40,8 @@ async def test_events_from_diff(
     await diff_merger.merge_graph(at=at)
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch1)
     diff = await diff_repository.get_one(diff_branch_name=branch1.name)
-    diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch1)
-    changelogs = diff_events.collect_changelogs()
+    diff_events = build_diff_changelog_collector(diff=diff, db=db, branch=branch1)
+    changelogs = await diff_events.collect_changelogs()
     assert len(changelogs) == 2
 
 
@@ -105,8 +105,8 @@ async def test_merge_diff_changelogs(
     await diff_merger.merge_graph(at=at)
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch5)
     diff = await diff_repository.get_one(diff_branch_name=branch5.name)
-    diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch5)
-    events = diff_events.collect_changelogs()
+    diff_events = build_diff_changelog_collector(diff=diff, db=db, branch=branch5)
+    events = await diff_events.collect_changelogs()
     assert len(events) == 5
     changelogs = [changelog[1] for changelog in events]
     p1_changelog = [node for node in changelogs if node.node_id == p1.id][0]
@@ -234,8 +234,8 @@ class TestConflict:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
         diff = await diff_repository.get_one(diff_branch_name=branch2.name)
-        diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
-        events = diff_events.collect_changelogs()
+        diff_events = build_diff_changelog_collector(diff=diff, db=db, branch=branch2)
+        events = await diff_events.collect_changelogs()
 
         match conflict_selection:
             case ConflictSelection.BASE_BRANCH:
@@ -292,8 +292,8 @@ class TestConflict:
         diff_merger = await self._get_diff_merger(db=db, branch=branch2)
         await diff_merger.merge_graph(at=at)
         diff = await diff_repository.get_one(diff_branch_name=branch2.name)
-        diff_events = DiffChangelogCollector(diff=diff, db=db, branch=branch2)
-        events = diff_events.collect_changelogs()
+        diff_events = build_diff_changelog_collector(diff=diff, db=db, branch=branch2)
+        events = await diff_events.collect_changelogs()
         match conflict_selection:
             case ConflictSelection.BASE_BRANCH:
                 # When we want to keep the conflict in the base branch we don't expect to see any updates after the merge
@@ -324,7 +324,7 @@ async def test_changelog_of_a_relationship_missing_from_the_schema(
         kind="TestPerson", action=DiffAction.UPDATED, attributes=set(), relationships={relationship}
     )
 
-    changelogs = DiffChangelogCollector(
+    changelogs = await build_diff_changelog_collector(
         diff=EnrichedRootFactory.build(nodes={node}), db=db, branch=default_branch
     ).collect_changelogs()
 

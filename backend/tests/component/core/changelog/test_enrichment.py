@@ -1,0 +1,553 @@
+"""Changelog enrichment: every node changelog carries its own and its relationship peers' labels.
+
+Node mutations and branch merge/rebase both feed the changelog that becomes a webhook payload.
+These tests run the real save / diff-collect paths against a live database and assert the
+human-friendly identifiers that land on the changelog.
+"""
+
+from collections.abc import AsyncGenerator
+from typing import Any
+
+import pytest
+
+from infrahub.core import registry
+from infrahub.core.branch import Branch
+from infrahub.core.changelog.builder import build_node_label_loader, build_relationship_changelog_getter
+from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
+from infrahub.core.changelog.enrichment import NodeLabelLoader, NodeLabels
+from infrahub.core.changelog.hfid_resolver import ChangelogHfidResolver
+from infrahub.core.changelog.models import (
+    RelationshipCardinalityManyChangelog,
+    RelationshipCardinalityOneChangelog,
+)
+from infrahub.core.changelog.peer_labels import PeerLabelResolver
+from infrahub.core.changelog.reciprocal import ReciprocalRelationshipBuilder
+from infrahub.core.changelog.relationship_getter import RelationshipChangelogGetter
+from infrahub.core.changelog.secondary_merger import SecondaryChangelogMerger
+from infrahub.core.constants import RelationshipDeleteBehavior, SchemaPathType
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.merger.merger import DiffMerger
+from infrahub.core.diff.model.path import EnrichedDiffRoot
+from infrahub.core.diff.repository.repository import DiffRepository
+from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.models import SchemaUpdateMigrationInfo
+from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
+from infrahub.core.query.node import (
+    NodeListGetAttributeQuery,
+    NodeListGetInfoQuery,
+    NodeListGetRelationshipsQuery,
+    NodeListGetStoredLabelsQuery,
+)
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
+from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
+from tests.constants import TestKind
+from tests.helpers.db_query_counter import CountingInfrahubDatabase
+from tests.helpers.schema import CAR_SCHEMA
+
+# A relationship only ZzzItem declares, so pointing it at a ZzzOwner leaves that owner unchanged.
+_ONE_DIRECTIONAL_SCHEMA: dict[str, Any] = {
+    "nodes": [
+        {
+            "name": "Owner",
+            "namespace": "Zzz",
+            "default_filter": "name__value",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        },
+        {
+            "name": "Item",
+            "namespace": "Zzz",
+            "default_filter": "name__value",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            "relationships": [
+                {
+                    "name": "owner",
+                    "peer": "ZzzOwner",
+                    "cardinality": "one",
+                    "optional": True,
+                    "direction": "outbound",
+                    "identifier": "zzz_item_owner_oneway",
+                }
+            ],
+        },
+    ],
+}
+
+
+class _RaisingLabelReader:
+    """A NodeLabelReader that always fails, standing in for an unavailable label backend."""
+
+    async def load_labels(self, node_ids: list[str]) -> dict[str, NodeLabels]:
+        raise RuntimeError("label backend unavailable")
+
+    async def load_hfids(self, node_ids: list[str]) -> dict[str, list[str] | None]:
+        raise RuntimeError("label backend unavailable")
+
+
+async def _create_person_and_dog(db: InfrahubDatabase, branch: Branch, schema: SchemaBranch) -> tuple[Node, Node]:
+    person = await Node.init(db=db, schema=schema.get(name="TestPerson"), branch=branch)
+    await person.new(db=db, name={"value": "Jack", "is_protected": True})
+    await person.save(db=db)
+
+    dog = await Node.init(db=db, schema=schema.get(name="TestDog"), branch=branch)
+    await dog.new(db=db, name={"value": "Rocky", "owner": person.id}, breed="Labrador", owner=person)
+    await dog.save(db=db)
+    return person, dog
+
+
+async def _merge_and_get_diff(db: InfrahubDatabase, default_branch: Branch, branch: Branch) -> EnrichedDiffRoot:
+    """Merge the branch into the default branch and return the enriched diff of the merge."""
+    component_registry = get_component_registry()
+    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    merger = await component_registry.get_component(DiffMerger, db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    await merger.merge_graph(at=Timestamp())
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    return await diff_repository.get_one(diff_branch_name=branch.name)
+
+
+async def _merge_car_owned_by_person(
+    db: InfrahubDatabase, default_branch: Branch, branch_name: str
+) -> tuple[EnrichedDiffRoot, Branch, Node, Node]:
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="John", height=180)
+    await owner.save(db=db)
+
+    branch = await create_branch(db=db, branch_name=branch_name)
+    car = await Node.init(db=db, schema="TestCar", branch=branch)
+    await car.new(db=db, name="Volvo", nbr_seats=5, is_electric=False, owner={"id": owner.id})
+    await car.save(db=db)
+
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
+    return diff, branch, owner, car
+
+
+@pytest.fixture
+async def cascade_delete_cars(default_branch: Branch, car_person_schema: SchemaBranch) -> AsyncGenerator[None, None]:
+    """Make the person-to-cars relationship cascade on delete for the test, then restore it."""
+    cars = (
+        registry.schema.get_schema_branch(name=default_branch.name)
+        .get(name="TestPerson", duplicate=False)
+        .get_relationship("cars")
+    )
+    original_on_delete = cars.on_delete
+    cars.on_delete = RelationshipDeleteBehavior.CASCADE
+    yield
+    cars.on_delete = original_on_delete
+
+
+@pytest.fixture
+async def one_directional_schema(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, data_schema: None
+) -> AsyncGenerator[None, None]:
+    """Register the one-directional schema on the default branch and restore the prior schema afterward."""
+    snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    registry.schema.register_schema(schema=SchemaRoot(**_ONE_DIRECTIONAL_SCHEMA), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+    yield
+    registry.schema.set_schema_branch(name=default_branch.name, schema=snapshot)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+
+@pytest.fixture
+async def restore_default_schema(default_branch: Branch, car_person_schema: None) -> AsyncGenerator[None, None]:
+    """Restore the default branch schema after a test drops a kind from it in place."""
+    snapshot = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+    yield
+    registry.schema.set_schema_branch(name=default_branch.name, schema=snapshot)
+
+
+async def test_mutation_enriches_the_mutated_nodes_own_relationships(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+
+    # The mutated node carries its own materialized HFID.
+    assert dog.node_changelog.hfid == await dog.get_hfid(db=db)
+    assert dog.node_changelog.hfid
+
+    await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=dog.node_changelog
+    )
+
+    owner_rel = dog.node_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+    assert owner_rel.peer_id == person.id
+    assert owner_rel.peer_display_label == await person.get_display_label(db=db)
+    assert owner_rel.peer_hfid == await person.get_hfid(db=db)
+
+
+async def test_label_load_reads_the_stored_labels_without_loading_the_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """A label read returns the real labels from one stored-labels query, loading no node."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([person.id, dog.id])
+
+    assert labels == {
+        person.id: NodeLabels(display_label=await person.get_display_label(db=db), hfid=await person.get_hfid(db=db)),
+        dog.id: NodeLabels(display_label=await dog.get_display_label(db=db), hfid=await dog.get_hfid(db=db)),
+    }
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_hfid_load_reads_the_stored_hfids_without_loading_the_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    """An HFID-only read returns the real HFIDs from one stored-labels query, loading no node."""
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    hfids = await build_node_label_loader(db=counting_db, branch=default_branch).load_hfids([person.id, dog.id])
+
+    assert hfids == {person.id: await person.get_hfid(db=db), dog.id: await dog.get_hfid(db=db)}
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.count_for(NodeListGetInfoQuery.name) == 0
+    assert counting_db.count_for(NodeListGetAttributeQuery.name) == 0
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_label_load_of_a_kind_without_display_label_reads_only_the_two_label_attributes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+) -> None:
+    """A kind without a display label has nothing stored to read, so its node is loaded.
+
+    Only the two label attributes are read, and no edge.
+    """
+    registry.schema.register_schema(schema=CAR_SCHEMA, branch=default_branch.name)
+    manufacturer = await Node.init(db=db, schema=TestKind.MANUFACTURER, branch=default_branch)
+    await manufacturer.new(db=db, name="Omnicorp")
+    await manufacturer.save(db=db)
+    counting_db = CountingInfrahubDatabase.from_db(db=db)
+
+    labels = await build_node_label_loader(db=counting_db, branch=default_branch).load_labels([manufacturer.id])
+
+    assert labels == {
+        manufacturer.id: NodeLabels(display_label=f"{TestKind.MANUFACTURER}(ID: {manufacturer.id})", hfid=None)
+    }
+    assert counting_db.count_for(NodeListGetStoredLabelsQuery.name) == 1
+    assert counting_db.rows_for(NodeListGetAttributeQuery.name) == 2
+    assert counting_db.count_for(NodeListGetRelationshipsQuery.name) == 0
+
+
+async def test_mutation_enriches_secondary_peer_changelogs(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+
+    secondaries = await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=dog.node_changelog
+    )
+    person_secondary = next(secondary for secondary in secondaries if secondary.node_id == person.id)
+
+    # The peer node's real label and HFID are resolved, not the placeholder.
+    assert person_secondary.display_label == await person.get_display_label(db=db)
+    assert person_secondary.display_label != "n/a"
+    assert person_secondary.hfid == await person.get_hfid(db=db)
+
+    # The reciprocal relationship points back to the mutated node with its label and HFID.
+    animals = person_secondary.relationships["animals"]
+    assert isinstance(animals, RelationshipCardinalityManyChangelog)
+    assert animals.peers[0].peer_id == dog.id
+    assert animals.peers[0].peer_display_label == dog.node_changelog.display_label
+    assert animals.peers[0].peer_hfid == dog.node_changelog.hfid
+
+
+async def test_mutation_changelog_survives_label_reader_failure(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    animal_person_schema: SchemaBranch,
+) -> None:
+    person, dog = await _create_person_and_dog(db, default_branch, animal_person_schema)
+
+    secondaries = await RelationshipChangelogGetter(
+        db=db,
+        branch=default_branch,
+        peer_label_resolver=PeerLabelResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
+        reciprocal_builder=ReciprocalRelationshipBuilder(),
+        merger=SecondaryChangelogMerger(),
+    ).get_changelogs(primary_changelog=dog.node_changelog)
+
+    # The label read failed, so the secondaries carry placeholder labels rather than the failure
+    # propagating to the already-committed mutation.
+    person_secondary = next(secondary for secondary in secondaries if secondary.node_id == person.id)
+    assert person_secondary.display_label == "n/a"
+    assert person_secondary.hfid is None
+
+
+async def test_unresolvable_peer_falls_back_to_placeholder(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    cascade_delete_cars: None,
+    car_accord_main: Node,
+    car_prius_main: Node,
+    person_john_main: Node,
+) -> None:
+    car_ids = {car_accord_main.id, car_prius_main.id}
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[person_john_main])
+    assert {node.id for node in deleted} == {person_john_main.id, *car_ids}
+
+    secondaries = await build_relationship_changelog_getter(db=db, branch=default_branch).get_changelogs(
+        primary_changelog=person_john_main.node_changelog
+    )
+    car_secondaries = [secondary for secondary in secondaries if secondary.node_id in car_ids]
+    assert len(car_secondaries) == len(car_ids)
+
+    # The cascaded peers are already gone when their labels are resolved: their own changelog falls
+    # back to the placeholder label, while as peers of the deleted person they carry no label at all.
+    assert all(secondary.display_label == "n/a" for secondary in car_secondaries)
+    assert all(secondary.hfid is None for secondary in car_secondaries)
+    cars_rel = person_john_main.node_changelog.relationships["cars"]
+    assert isinstance(cars_rel, RelationshipCardinalityManyChangelog)
+    assert {peer.peer_id for peer in cars_rel.peers} == car_ids
+    assert all(peer.peer_display_label is None for peer in cars_rel.peers)
+    assert all(peer.peer_hfid is None for peer in cars_rel.peers)
+
+
+async def test_merge_enriches_node_hfid_and_peer_label(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
+    diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_enrich")
+
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+    ).collect_changelogs()
+
+    car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
+    owner_rel = car_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+
+    # The node's HFID is absent from the diff, so it is resolved with a load.
+    reloaded_car = await NodeManager.get_one(db=db, id=car.id, kind="TestCar", branch=branch)
+    assert car_changelog.hfid == await reloaded_car.get_hfid(db=db)
+    assert car_changelog.hfid
+
+    # The peer's display label is carried by the diff itself.
+    assert owner_rel.peer_id == owner.id
+    assert owner_rel.peer_display_label == await owner.get_display_label(db=db)
+    assert owner_rel.peer_display_label != "n/a"
+    # The peer's HFID comes from the batch: the owner is a changed node too on this merge.
+    assert owner_rel.peer_hfid == await owner.get_hfid(db=db)
+    assert owner_rel.peer_hfid
+
+
+async def test_merge_changelog_survives_label_reader_failure(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
+    diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_label_failure")
+
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=NodeLabelLoader(reader=_RaisingLabelReader())),
+    ).collect_changelogs()
+
+    # The collection completes despite the label read failing. The created car's HFID is carried by
+    # the diff, so it needs no read; the owner's HFID is not in the diff and degrades to None.
+    car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
+    assert car_changelog.hfid == ["Volvo"]
+    owner_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == owner.id)
+    assert owner_changelog.hfid is None
+
+
+async def test_merge_changelog_reports_deleted_node_hfid(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
+    owner = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await owner.new(db=db, name="John", height=180)
+    await owner.save(db=db)
+    car = await Node.init(db=db, schema="TestCar", branch=default_branch)
+    await car.new(db=db, name="Volvo", nbr_seats=5, is_electric=False, owner={"id": owner.id})
+    await car.save(db=db)
+    expected_hfid = await car.get_hfid(db=db)
+    assert expected_hfid
+
+    branch = await create_branch(db=db, branch_name="merge_delete_hfid")
+    to_delete = await NodeManager.get_one(db=db, id=car.id, kind="TestCar", branch=branch)
+    await to_delete.delete(db=db)
+
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
+
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+    ).collect_changelogs()
+
+    # The car is gone when the batch load runs, but its HFID is recovered from the diff.
+    car_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == car.id)
+    assert car_changelog.hfid == expected_hfid
+
+
+async def test_merge_fills_peer_hfid_for_a_peer_that_did_not_change(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    one_directional_schema: None,
+) -> None:
+    owner = await Node.init(db=db, schema="ZzzOwner", branch=default_branch)
+    await owner.new(db=db, name="Alice")
+    await owner.save(db=db)
+    owner_hfid = await owner.get_hfid(db=db)
+
+    branch = await create_branch(db=db, branch_name="oneway_merge")
+    item = await Node.init(db=db, schema="ZzzItem", branch=branch)
+    await item.new(db=db, name="Gadget", owner={"id": owner.id})
+    await item.save(db=db)
+
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
+
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+    ).collect_changelogs()
+
+    # The owner has no reciprocal relationship, so it is not a changed node, yet its HFID is still
+    # resolved for the item's changelog.
+    assert owner.id not in {changelog.node_id for _, changelog in changelogs}
+    item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
+    owner_rel = item_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+    assert owner_rel.peer_id == owner.id
+    assert owner_rel.peer_hfid == owner_hfid
+
+
+async def test_merge_tolerates_dropped_kind_referencing_an_unchanged_peer(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    one_directional_schema: None,
+) -> None:
+    owner = await Node.init(db=db, schema="ZzzOwner", branch=default_branch)
+    await owner.new(db=db, name="Alice")
+    await owner.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="oneway_drop")
+    item = await Node.init(db=db, schema="ZzzItem", branch=branch)
+    await item.new(db=db, name="Gadget", owner={"id": owner.id})
+    await item.save(db=db)
+
+    diff = await _merge_and_get_diff(db=db, default_branch=default_branch, branch=branch)
+
+    # A schema migration drops the item's kind; its owner is unchanged and so absent from the diff.
+    registry.schema.get_schema_branch(name=branch.name).delete(name="ZzzItem")
+    registry.schema.get_schema_branch(name=default_branch.name).delete(name="ZzzItem")
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+    ).collect_changelogs()
+
+    item_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == item.id)
+    owner_rel = item_changelog.relationships["owner"]
+    assert isinstance(owner_rel, RelationshipCardinalityOneChangelog)
+    assert owner_rel.peer_id == owner.id
+    # The dropped kind cannot resolve the unchanged peer's kind, so it degrades instead of failing.
+    assert owner_rel.peer_kind == "n/a"
+
+
+async def test_merge_tolerates_kind_deleted_in_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    restore_default_schema: None,
+) -> None:
+    diff, branch, owner, car = await _merge_car_owned_by_person(db, default_branch, "merge_kind_deleted")
+
+    owner_hfid = await owner.get_hfid(db=db)
+    # A schema migration in the merge drops the car's kind, so its schema no longer resolves on either branch.
+    registry.schema.get_schema_branch(name=branch.name).delete(name="TestCar")
+    registry.schema.get_schema_branch(name=default_branch.name).delete(name="TestCar")
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        db=db,
+        branch=branch,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+    ).collect_changelogs()
+
+    by_id = {changelog.node_id: changelog for _, changelog in changelogs}
+    # The node whose kind is gone still yields a changelog, only without its HFID.
+    assert by_id[car.id].hfid is None
+    # A node whose kind survives keeps its HFID: the load degrades per node, not per batch.
+    assert by_id[owner.id].hfid == owner_hfid
+
+
+async def test_collector_applies_a_rename_migration_to_the_changelog(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_simplified_proposed_change_schema: SchemaBranch,
+    car_person_schema: None,
+) -> None:
+    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
+    await person.new(db=db, name="John", height=180)
+    await person.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="rebase_rename")
+    person_on_branch = await NodeManager.get_one(db=db, id=person.id, kind="TestPerson", branch=branch)
+    person_on_branch.height.value = 190
+    await person_on_branch.save(db=db)
+
+    component_registry = get_component_registry()
+    coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    diff = await diff_repository.get_one(diff_branch_name=branch.name)
+
+    # The migration a rebase would produce when an attribute is renamed on the destination branch.
+    rename = SchemaUpdateMigrationInfo(
+        migration_name="attribute.name.update",
+        path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", property_name="height", field_name="stature"
+        ),
+    )
+    changelogs = await DiffChangelogCollector(
+        diff=diff,
+        branch=branch,
+        db=db,
+        hfid_resolver=ChangelogHfidResolver(label_loader=build_node_label_loader(db=db, branch=branch)),
+        migration_tracker=MigrationTracker(migrations=[rename]),
+    ).collect_changelogs()
+
+    person_changelog = next(changelog for _, changelog in changelogs if changelog.node_id == person.id)
+    # The rename migration remaps the attribute, so the changelog reports the new name.
+    assert "stature" in person_changelog.attributes
+    assert "height" not in person_changelog.attributes
