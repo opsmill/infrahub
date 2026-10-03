@@ -67,7 +67,8 @@ class GitPythonAncestryGateway:
         A caller needs this separately from is_ancestor because a commit that is merely absent and
         a git call that could not run both surface as the same error from the ancestry check.
 
-        A name that answers to a tree or a blob holds no commit, so it reports absent.
+        A name that answers to a tree, a blob or an annotated tag holds no commit, so it reports
+        absent.
 
         Raises:
             RepositoryError: When the identifier is not a full object name, or when git could not
@@ -78,14 +79,17 @@ class GitPythonAncestryGateway:
 
         try:
             # Peeling to a commit answers presence and kind together, in one process.
-            self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
+            resolved = self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
         except GitCommandError as exc:
             if exc.status == OBJECT_ABSENT_STATUS:
                 return False
             raise self._read_failed(commit=commit, detail=exc.stderr or str(exc)) from exc
         except (OSError, GitError) as exc:
             raise self._read_failed(commit=commit, detail=str(exc)) from exc
-        return True
+
+        # Peeling walks an annotated tag through to its commit, so a name that resolves to
+        # another object is not a commit itself.
+        return str(resolved).strip() == commit
 
     def _require_full_sha(self, commit: str) -> None:
         if not COMMIT_SHA_PATTERN.fullmatch(commit):

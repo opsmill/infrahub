@@ -62,12 +62,16 @@ def test_a_pruned_commit_reads_as_absent_rather_than_raising(repo: Repo, gateway
 
 
 def test_a_name_that_is_not_a_commit_holds_no_commit(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+    """An annotated tag carries a commit, and its own object must still not read as one."""
     commit_file(repo=repo, content="one")
     tree = str(repo.head.commit.tree.hexsha)
     blob = str(repo.head.commit.tree["file.txt"].hexsha)
+    annotated = repo.create_tag("v1", message="annotated").tag
+    assert annotated is not None
 
     assert gateway.has_commit(commit=tree) is False
     assert gateway.has_commit(commit=blob) is False
+    assert gateway.has_commit(commit=str(annotated.hexsha)) is False
 
 
 def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
