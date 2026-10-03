@@ -312,6 +312,8 @@ describe("TaskStatus", () => {
 
 ## Test Isolation
 
+Isolation is each file's own job: do not register a global `setupFiles` hook in `vitest.config.ts` to reset state for everyone — a test that needs an initial condition sets it up and restores it in its own file, as below.
+
 If a test mutates shared global state — a Jotai atom in `store` (e.g. `nodeSchemasAtom`), `window.history`/query params, or a module-level mock reused across `test` blocks in the same file — restore it so later tests (in this file, or run in the same worker) don't inherit leftover state:
 
 ```tsx

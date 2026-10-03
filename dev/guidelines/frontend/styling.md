@@ -55,8 +55,8 @@ Use when component has 2+ predefined visual variants.
 const buttonVariants = cva("inline-flex items-center rounded-md", {
   variants: {
     variant: {
-      primary: "bg-custom-blue-700 text-white",
-      secondary: "bg-gray-100 text-gray-900",
+      primary: "bg-accent text-accent-foreground",
+      secondary: "bg-surface text-foreground",
     },
     size: { sm: "h-8 px-3", md: "h-10 px-4" },
   },

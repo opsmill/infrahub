@@ -110,6 +110,10 @@ Include a verification section that shows:
 - Screenshots of expected results
 - Potential failure points and solutions
 
+A verification step must be able to fail. Have the reader change an input first, then check the
+output reflects it — "click **Generate** and confirm the content changed" passes and fails for the
+wrong reasons unless something the feature reads changed before the click.
+
 ### 6. Link to Related Resources
 
 - Link to related guides for alternative approaches
@@ -155,7 +159,7 @@ Before submitting your guide:
 - [ ] Prerequisites are clearly listed
 - [ ] Each step has a clear action verb
 - [ ] Steps follow a logical sequence
-- [ ] Verification steps are included
+- [ ] Verification steps are included, and each one changes an input before checking the output
 - [ ] No words like "easy", "simple", or "just"
 - [ ] Links to related topics/references are provided
 - [ ] Technical terms are defined on first use

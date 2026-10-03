@@ -6,7 +6,7 @@ Applies when creating a new backend component or making significant changes to a
 
 ## Use modular components with dependency injection
 
-New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
+New logic lives in components that receive their collaborators through constructor injection rather than instantiating them internally, which keeps them composable, swappable, and testable without patching. A dataclass is data — inputs and outputs of functions; the moment it needs a collaborator to do work, it is a component: make it a plain class with the collaborator injected at construction. Construction is the same boundary in disguise: a `from_*` classmethod that pairs, groups or filters its inputs to build the object is component logic, and it belongs in the component that retrieves those inputs and returns the data object — the dataclass keeps its fields and trivial derived properties. Every collaborator is a **required** parameter — not `collaborator: Collaborator | None = None` with an internal default, and not a defaulted factory (`cache_factory: CacheFactory = build_heartbeat_cache`) whose default reaches into settings: either shape hides that the dependency exists and lets a caller silently skip wiring it.
 
 The single exception is editing existing code where adding a required parameter would force a large change across many call sites. There, an optional parameter is a transitional compromise to keep the change small - not the target shape for new components.
 
@@ -44,6 +44,8 @@ The boundary is: long-lived collaborators go in the constructor; transient work 
 ## Single Responsibility Principle
 
 Each component should have one reason to change. If a class is doing two unrelated things, split it. Prefer composition of small components over large multi-purpose ones.
+
+Two phases of one workflow are still two responsibilities when the caller decides between them — a confirmation, a report, a dry run. Split a plan-then-act flow into a planner that returns a plan object and an actor whose entry method takes the whole plan; the caller composes them, and no combining class is needed when the caller is the only composition point.
 
 ## Reset means reset everything derived
 

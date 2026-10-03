@@ -78,11 +78,19 @@ except Exception as exc:
     key = None                        # explicit, safe (over-executing) fallback signal
 ```
 
+The mirror case is cleanup running while another exception propagates — a reset or release in an
+`except`/`finally` recovery path. Catch `Exception` broadly there and log, because anything the
+cleanup raises replaces the failure being recovered from with a less useful one. State the contract
+in the helper's docstring ("this never raises").
+
 ## `# noqa: BLE001`
 
-Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
-knowable set of types (see above). Suppress the rule only when catching everything is deliberate, and
-name which case it is in the comment above it:
+ruff's blind-except rules (`BLE`) are currently in the global `ignore` list in `pyproject.toml`, so a
+broad `except Exception` passes lint with no `# noqa` at all. Lint silence is not approval — the
+narrowing rules above are enforced in review. Narrowing is the default answer for a broad
+`except Exception` — most call sites raise a knowable set of types (see above). If `BLE` is ever
+enabled, suppress it only when catching everything is deliberate, and name which case it is in the
+comment above it:
 
 - a top-level boundary (worker loop, request handler) that must not let one failure take down the process
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run

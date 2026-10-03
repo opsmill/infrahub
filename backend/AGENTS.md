@@ -126,6 +126,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups; read when touching login, SSO, or LDAP
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration); read when touching branch lifecycle or write-protection
 - `dev/knowledge/backend/merge-failure-recovery.md` - Failed-merge detection and range rollback, and the invariants that make a blind range revert correct; read before changing merge locking, write scoping, timestamping, or vertex metadata handling
+- `dev/knowledge/backend/diff-conflicts.md` - What `resolvable` means on a diff conflict and which resolutions a rebase honors; read before gating a merge or rebase on conflict state
 - `dev/knowledge/backend/events.md` - Events system; read when adding or changing an event
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
