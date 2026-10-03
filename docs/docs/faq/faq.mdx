@@ -147,9 +147,9 @@ We recommend a full database backup before every upgrade and validation in a sta
 
 ### What monitoring and observability does Infrahub provide?
 
-Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provides Prometheus-format scraping and OTLP push to monitoring systems such as Prometheus and OpenTelemetry collectors. Workflow orchestration runs on Prefect, which provides task-level observability.
+The API server and each task worker expose Prometheus metrics on `/metrics`. Task manager metrics, such as flow runs that start later than scheduled, come from the Prefect exporter included in the [observability stack](../deploy-manage/install-configure/install/observability-stack.mdx). The [Infrahub Exporter](https://docs.infrahub.app/exporter) is a separate service that publishes metrics built from the objects stored in Infrahub.
 
-In production, the most commonly monitored signals are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
+In production, the most commonly monitored signals are API request latency, late flow runs in the task manager, database connection pool usage, and disk utilisation. See [Metrics](../deploy-manage/run-observe/metrics.mdx) for where each one is exposed.
 
 ### Does the web interface have a dark theme?
 
