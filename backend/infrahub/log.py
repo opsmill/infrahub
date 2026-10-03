@@ -112,7 +112,10 @@ def configure_logging(production: bool, log_level: str) -> None:
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
     ]
+    # httpx logs through both the httpx and httpcore namespaces; a DEBUG root level would
+    # otherwise flood the logs with httpcore's per-round-trip transport tracing.
     logging.getLogger("httpx").setLevel(logging.ERROR)
+    logging.getLogger("httpcore").setLevel(logging.ERROR)
 
     if production:
         shared_processors.append(structlog.processors.format_exc_info)
