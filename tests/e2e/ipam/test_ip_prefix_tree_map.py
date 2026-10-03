@@ -1,0 +1,101 @@
+"""Tree Map tab on an IP prefix detail page.
+
+Opens the seeded 10.0.0.0/8 supernet, switches to the Tree Map tab and checks the
+allocated /16 tiles, the first free block and the legend. The branch scenario creates a
+child prefix on a throwaway branch and checks it shows up only when that branch is selected.
+"""
+
+from __future__ import annotations
+
+import contextlib
+from typing import TYPE_CHECKING
+
+import pytest
+from helpers import generate_random_branch_name
+from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_foundation
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
+    from data.handles import IpamPoolsHandle
+    from helpers import BranchAPI
+    from infrahub_sdk import InfrahubClient
+    from playwright.async_api import Page
+
+SUPERNET = "10.0.0.0/8"
+BRANCH_ONLY_CHILD = "10.5.0.0/16"
+
+
+async def open_tree_map(page: Page) -> None:
+    await page.goto("/ipam")
+    await page.get_by_test_id("identifier-cell").get_by_role("link", name=SUPERNET).click()
+    await page.get_by_role("link", name="Tree Map").click()
+    await expect(page.get_by_test_id("ip-prefix-tree-map")).to_be_visible()
+
+
+class TestIpPrefixTreeMapView:
+    async def test_shows_allocated_and_free_tiles(self, page: Page, data_ipam_pools: IpamPoolsHandle) -> None:
+        await open_tree_map(page)
+
+        tree_map = page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map.get_by_role("link", name="10.0.0.0/16, 0% utilised")).to_be_visible()
+        await expect(tree_map.get_by_role("link", name="10.1.0.0/16, 0% utilised")).to_be_visible()
+        await expect(tree_map.get_by_role("link", name="10.2.0.0/16, 0% utilised")).to_be_visible()
+        await expect(tree_map.get_by_role("button", name="10.3.0.0/16 available")).to_be_visible()
+
+    async def test_shows_legend(self, page: Page, data_ipam_pools: IpamPoolsHandle) -> None:
+        await open_tree_map(page)
+
+        await expect(page.get_by_text("Allocated", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Free", exact=True)).to_be_visible()
+        await expect(page.get_by_text("Smaller than 1/4096 of the prefix")).to_be_visible()
+
+
+class TestIpPrefixTreeMapBranch:
+    @pytest.fixture
+    async def branch(self, branch_api: BranchAPI, data_ipam_pools: IpamPoolsHandle) -> AsyncGenerator[str, None]:
+        name = generate_random_branch_name("ip-prefix-tree-map-")
+        await branch_api.create(name)
+        yield name
+        with contextlib.suppress(Exception):
+            await branch_api.delete(name)
+
+    @pytest.fixture
+    async def supernet_id(self, infrahub_client: InfrahubClient, data_ipam_pools: IpamPoolsHandle) -> str:
+        supernet = await infrahub_client.get(
+            kind="IpamIPPrefix", prefix__value=SUPERNET, ip_namespace__name__value="default"
+        )
+        return supernet.id
+
+    @pytest.fixture
+    async def branch_only_child(self, infrahub_client: InfrahubClient, branch: str, supernet_id: str) -> str:
+        child = await infrahub_client.create(
+            kind="IpamIPPrefix",
+            branch=branch,
+            prefix=BRANCH_ONLY_CHILD,
+            member_type="prefix",
+            parent=supernet_id,
+        )
+        await child.save()
+        return BRANCH_ONLY_CHILD
+
+    async def test_branch_only_child_appears_on_its_branch_only(
+        self, admin_page: Page, branch: str, supernet_id: str, branch_only_child: str
+    ) -> None:
+        tree_map_path = f"/ipam/IpamIPPrefix/{supernet_id}/tree-map"
+        child_tile_name = f"{branch_only_child}, 0% utilised"
+
+        # On the branch the new child is an allocated tile
+        await admin_page.goto(f"{tree_map_path}?branch={branch}")
+        tree_map = admin_page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map).to_be_visible()
+        await expect(tree_map.get_by_role("link", name=child_tile_name)).to_be_visible()
+
+        # On the default branch the same block is still free
+        await admin_page.goto(tree_map_path)
+        tree_map = admin_page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map.get_by_role("link", name="10.0.0.0/16, 0% utilised")).to_be_visible()
+        await expect(tree_map.get_by_role("link", name=child_tile_name)).to_have_count(0)
+        await expect(tree_map.get_by_role("button", name=f"{branch_only_child} available")).to_be_visible()
