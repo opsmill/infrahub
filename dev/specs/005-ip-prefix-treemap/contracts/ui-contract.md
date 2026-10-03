@@ -51,7 +51,7 @@ Common:
 | Container | `data-testid="ip-prefix-tree-map-empty"` | |
 | Meter | `get_by_role("meter", name="Utilization")` | parent utilisation, same `Meter` as the Children table |
 | Text | | "This prefix holds IP addresses. The tree map shows child prefixes." |
-| Link | `get_by_role("link", name="IP Addresses")` | `constructPathForIpam("ip_addresses")` |
+| Link | `get_by_role("link", name="IP Addresses")` | `constructPathForIpam("../ip_addresses")` (parent-relative, because the link renders inside the `tree-map` child route) |
 
 ## Create sheet
 
