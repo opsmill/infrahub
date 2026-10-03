@@ -75,12 +75,17 @@ from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
+from .types.repository_branch_status import InfrahubRepositoryBranchStatusEdge
 from .types.task import TASK_TYPES
 
 if TYPE_CHECKING:
     from graphql import GraphQLSchema
 
     from infrahub.core.schema.schema_branch import SchemaBranch
+
+
+STATIC_EDGES_WITH_NODE_METADATA = (InfrahubBranchEdge, InfrahubRepositoryBranchStatusEdge)
+"""Statically defined edges whose `node_metadata` field must be repointed at the dynamic type."""
 
 
 class DeleteInput(graphene.InputObjectType):
@@ -274,15 +279,17 @@ class GraphQLSchemaManager:
     def _patch_static_types(self, node_metadata: type[InfrahubObject]) -> None:
         """Patch statically defined GraphQL types to use dynamically generated types.
 
-        Some GraphQL types like InfrahubBranchEdge are defined statically but need to
-        reference dynamically generated types (like node_metadata with GenericAccount).
-        This method patches those static types after the dynamic types are created.
+        Statically defined edges carry a `node_metadata` field, but the metadata type that resolves
+        `created_by` and `updated_by` against the account interface only exists once the dynamic
+        types are built. Every such edge is repointed here; an edge left out keeps the static type
+        and silently serves metadata without those two fields.
 
         The method checks if the patch has already been applied to avoid redundant updates.
         """
-        current_field = InfrahubBranchEdge._meta.fields.get("node_metadata")
-        if current_field is None or current_field.type != node_metadata:
-            InfrahubBranchEdge._meta.fields["node_metadata"] = graphene.Field(node_metadata, required=True)
+        for edge in STATIC_EDGES_WITH_NODE_METADATA:
+            current_field = edge._meta.fields.get("node_metadata")
+            if current_field is None or current_field.type != node_metadata:
+                edge._meta.fields["node_metadata"] = graphene.Field(node_metadata, required=True)
 
     def _load_all_enum_types(self, node_schemas: Iterable[MainSchemaTypes]) -> None:
         for node_schema in node_schemas:
