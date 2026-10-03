@@ -70,7 +70,10 @@ Record the result here:
 
 | Date | Children | Median render time | Pass (under 3 s) |
 |------|----------|--------------------|------------------|
-| | 256 | | |
+| 2026-10-03 | 256 | deferred | deferred |
+
+The measurement needs a stack with Docker and the demo data, which the implementation environment
+did not have, and it must be taken before the PR is marked ready.
 
 If it fails, the follow-up is a batched utilisation lookup raised as its own gated change, not an
 amendment to this feature.
