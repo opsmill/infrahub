@@ -12,10 +12,6 @@ class RefClassification(StrEnum):
     REMOTE_ABSENT = "remote-absent"
 
 
-ALLOWED_WITHOUT_IMPORTED_COMMIT = frozenset({RefClassification.UNCHANGED, RefClassification.FAST_FORWARD})
-ALLOWED_WITHOUT_REMOTE_HEAD = frozenset({RefClassification.REMOTE_ABSENT, RefClassification.UNCHANGED})
-
-
 @dataclass(frozen=True)
 class RefDivergence:
     """What one classification decided for one tracked ref."""
@@ -31,10 +27,13 @@ class RefDivergence:
     classification: RefClassification
 
     def __post_init__(self) -> None:
-        if self.imported_commit is None and self.classification not in ALLOWED_WITHOUT_IMPORTED_COMMIT:
+        if self.imported_commit is None and self.classification not in (
+            RefClassification.UNCHANGED,
+            RefClassification.FAST_FORWARD,
+        ):
             raise ValueError(f"A branch with no imported commit cannot be {self.classification}")
         if self.remote_head is None:
-            if self.classification not in ALLOWED_WITHOUT_REMOTE_HEAD:
+            if self.classification not in (RefClassification.REMOTE_ABSENT, RefClassification.UNCHANGED):
                 raise ValueError(f"A branch with no remote head cannot be {self.classification}")
             if self.classification is RefClassification.UNCHANGED and self.imported_commit is not None:
                 raise ValueError("An imported branch whose remote head is gone is REMOTE_ABSENT, not UNCHANGED")

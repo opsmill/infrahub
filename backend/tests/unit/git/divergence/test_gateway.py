@@ -6,14 +6,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.exceptions import RepositoryError
-from tests.unit.git.divergence.conftest import break_object_database, commit_file
+from tests.unit.git.divergence.conftest import ABSENT, break_object_database, commit_file
 
 if TYPE_CHECKING:
     from git import Repo
 
     from infrahub.git.divergence.gateway import GitPythonAncestryGateway
-
-ABSENT = "0" * 40
 
 
 def test_an_earlier_commit_is_an_ancestor_of_a_later_one(repo: Repo, gateway: GitPythonAncestryGateway) -> None:

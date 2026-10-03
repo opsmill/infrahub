@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 OBJECT_ABSENT_STATUS = 1
-"""What `git cat-file -e` returns for a well-formed name no object answers to."""
+"""What `git rev-parse --verify` returns for a name that answers to no commit."""
 
 NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
@@ -47,8 +47,7 @@ class GitPythonAncestryGateway:
         self._require_full_sha(commit=descendant_commit)
 
         try:
-            # Run as a plain command rather than through a resolved object: resolving one first
-            # goes through the shared reader, which fails on its own terms.
+            # The shared object reader fails on its own terms, so ask git directly.
             self.repo.git.merge_base("--is-ancestor", ancestor_commit, descendant_commit)
         except GitCommandError as exc:
             if exc.status == NOT_AN_ANCESTOR_STATUS:
@@ -78,21 +77,15 @@ class GitPythonAncestryGateway:
         self._require_full_sha(commit=commit)
 
         try:
-            self.repo.git.cat_file("-e", commit)
+            # Peeling to a commit answers presence and kind together, in one process.
+            self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
         except GitCommandError as exc:
             if exc.status == OBJECT_ABSENT_STATUS:
                 return False
             raise self._read_failed(commit=commit, detail=exc.stderr or str(exc)) from exc
         except (OSError, GitError) as exc:
             raise self._read_failed(commit=commit, detail=str(exc)) from exc
-
-        return self._object_type(commit=commit) == "commit"
-
-    def _object_type(self, commit: str) -> str:
-        try:
-            return str(self.repo.git.cat_file("-t", commit)).strip()
-        except (OSError, GitError) as exc:
-            raise self._read_failed(commit=commit, detail=str(exc)) from exc
+        return True
 
     def _require_full_sha(self, commit: str) -> None:
         if not COMMIT_SHA_PATTERN.fullmatch(commit):
