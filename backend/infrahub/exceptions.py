@@ -66,6 +66,17 @@ class RPCError(Error):
         self.message = message
 
 
+class WorkerTimeoutError(Error):
+    HTTP_CODE: int = 504
+    DESCRIPTION: str = "No worker answered within the allowed time"
+
+    def __init__(self, operation: str, timeout_seconds: float) -> None:
+        self.operation = operation
+        self.timeout_seconds = timeout_seconds
+        self.message = f"No worker answered {operation} within {timeout_seconds:g} seconds"
+        super().__init__(self.message)
+
+
 class InitializationError(Error):
     DESCRIPTION: str = "The application hasn't been initialized properly"
 

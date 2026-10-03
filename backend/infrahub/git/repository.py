@@ -25,6 +25,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryError,
 )
+from infrahub.git.branch_mapping import get_mapped_remote_branch
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_run_logger
@@ -187,9 +188,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return self.default_branch
 
     def _get_mapped_remote_branch(self, branch_name: str) -> str:
-        if branch_name != self.default_branch and branch_name == registry.default_branch:
-            return self.default_branch
-        return branch_name
+        return get_mapped_remote_branch(
+            branch_name=branch_name,
+            repository_default_branch=self.default_branch,
+            infrahub_default_branch=registry.default_branch,
+        )
 
     def _get_mapped_target_branch(self, branch_name: str) -> str:
         if branch_name == self.default_branch and branch_name != registry.default_branch:
