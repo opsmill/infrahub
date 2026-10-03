@@ -95,8 +95,17 @@ class InfrahubMultiLock:
         await self.release()
 
     async def acquire(self) -> None:
-        for lock in self.locks:
-            await self.registry.get(name=lock, metrics=self.metrics).acquire()
+        acquired: list[InfrahubLock] = []
+        try:
+            for lock_name in self.locks:
+                lock = self.registry.get(name=lock_name, metrics=self.metrics)
+                await lock.acquire()
+                acquired.append(lock)
+        except BaseException:
+            # The context exit never runs when entering fails, so a partial acquisition is undone here.
+            for lock in reversed(acquired):
+                await lock.release()
+            raise
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
