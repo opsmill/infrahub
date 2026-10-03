@@ -1,15 +1,18 @@
 import contextlib
 import logging
 import os
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import typer
 from anyio.abc import TaskStatus
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import Error as SdkError
 from prefect import settings as prefect_settings
-from prefect.client.schemas.objects import FlowRun
+from prefect.client.schemas.objects import Flow, FlowRun
+from prefect.client.schemas.responses import DeploymentResponse
 from prefect.context import AsyncClientContext
 from prefect.flow_engine import run_flow_async
 from prefect.logging.handlers import APILogHandler
@@ -40,6 +43,7 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
+from infrahub.workers.read_cache import ExpiringModelCache
 from infrahub.workers.submission import FlowRunReservations, SubmissionWindow, UnreservedFlowRuns
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
@@ -52,6 +56,8 @@ WORKER_DEFAULT_RESULT_STORAGE_BLOCK = f"redisstoragecontainer/{TASK_RESULT_STORA
 DEFAULT_TASK_LOGGERS = ["infrahub.tasks"]
 # Half of the Prefect client's connection pool, so that polls and state proposals never queue behind submissions.
 SUBMISSION_WINDOW_CAPACITY = 8
+# Bounds how long the claim path keeps using a deployment after it has been re-saved or deleted.
+DEFINITION_READ_TTL_SECONDS = 60.0
 
 
 def build_worker_client_config(log: Any | None = None) -> Config:
@@ -145,6 +151,7 @@ class InfrahubWorkerAsync(BaseWorker):
             start_http_server(metric_port)
 
         await super().setup(**kwargs)
+        self._cache_definition_reads()
 
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
@@ -204,6 +211,23 @@ class InfrahubWorkerAsync(BaseWorker):
             await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
+
+    def _cache_definition_reads(self) -> None:
+        # Prefect 3.8 reads every claimed run's deployment and flow through this client, without a hook to supply them.
+        client = self.client
+        deployments = ExpiringModelCache(
+            read=client.read_deployment, ttl_seconds=DEFINITION_READ_TTL_SECONDS, clock=time.monotonic
+        )
+        flows = ExpiringModelCache(read=client.read_flow, ttl_seconds=DEFINITION_READ_TTL_SECONDS, clock=time.monotonic)
+
+        async def read_deployment(deployment_id: UUID | str) -> DeploymentResponse:
+            return await deployments.read(key=deployment_id)
+
+        async def read_flow(flow_id: UUID) -> Flow:
+            return await flows.read(key=flow_id)
+
+        client.read_deployment = read_deployment  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
+        client.read_flow = read_flow  # type: ignore[method-assign]  # ty: ignore[invalid-assignment]
 
     def _build_flow_run_reservations(self) -> FlowRunReservations:
         return UnreservedFlowRuns()

@@ -15,7 +15,8 @@ in the pool, and gets back up to 200 of them, ordered by queue precedence and th
 A poll changes nothing on the server: a run stays `SCHEDULED` until a worker claims it.
 
 Claiming and starting one run takes seven sequential calls to the Prefect API, all through the
-worker's own Prefect client, which holds 16 connections for the whole worker:
+worker's own Prefect client, which holds 16 connections for the whole worker; the deployment and
+flow reads are mostly answered from memory (see [Deployment and flow reads](#deployment-and-flow-reads)):
 
 1. read the deployment, to check that it still exists;
 2. propose `Pending` — this is the claim, and the server rejects it if another worker got there first;
@@ -27,6 +28,24 @@ worker's own Prefect client, which holds 16 connections for the whole worker:
 
 A run that has been claimed (`Pending` or later) belongs to one worker and is never reordered: queue
 precedence orders runs only while they are still `SCHEDULED` on the server.
+
+## Deployment and flow reads
+
+Serve the deployment and flow reads of a claim from memory: the worker keeps each deployment and
+flow it reads for 60 seconds (`InfrahubWorkerAsync._cache_definition_reads`,
+`infrahub/workers/read_cache.py::ExpiringModelCache`). Prefect issues those three reads for every
+claimed run, through the worker's client and with no way to hand them in, while Infrahub saves its
+deployments only when the task manager is set up and never changes a flow; under a backlog the
+reads made up about a sixth of all Prefect API requests. Each read returns a copy, concurrent reads
+of a missing entry share one request, and a failed read is not kept.
+
+The 60 seconds bound how long a worker goes on using a deployment after it changes on the server:
+
+- a re-saved deployment reaches the claims of each worker within 60 seconds;
+- deleting a deployment deletes its scheduled runs with it, so a worker still holding one of them
+  from a poll fails to claim it and never starts it. A run the deletion leaves scheduled, such as
+  one awaiting a retry, can still start within those 60 seconds instead of being cancelled; once
+  the entry expires, the read fails and Prefect cancels the run.
 
 ## Bounded submission
 

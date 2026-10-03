@@ -3,11 +3,12 @@ from uuid import UUID
 
 import pytest
 from prefect.client.orchestration import PrefectClient
+from prefect.client.schemas.actions import DeploymentUpdate
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterId
 from prefect.client.schemas.objects import StateType, WorkPool
 
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
+from infrahub.tasks.dummy import DUMMY_FLOW, DUMMY_FLOW_BROKEN, DummyInput
 from infrahub.tls.registry import TlsContextRegistry
 from infrahub.workers.infrahub_async import SUBMISSION_WINDOW_CAPACITY, InfrahubWorkerAsync
 from infrahub.workflows.catalogue import INFRAHUB_WORKER_POOL
@@ -58,3 +59,21 @@ class TestSubmissionWindow(TestWorkerInfrahubAsync):
                 if all(run.state_type == StateType.COMPLETED for run in runs):
                     break
                 await asyncio.sleep(1)
+
+    async def test_worker_keeps_serving_a_deployment_it_read_after_the_server_changes_it(
+        self,
+        dummy_deployment_in_priority_queues: None,
+        prefect_client: PrefectClient,
+        prefect_worker: InfrahubWorkerAsync,
+    ) -> None:
+        deployment_id = await DUMMY_FLOW_BROKEN.save(client=prefect_client, work_pool=INFRAHUB_WORKER_POOL)
+        read_by_worker = await prefect_worker.client.read_deployment(deployment_id=deployment_id)
+
+        await prefect_client.update_deployment(
+            deployment_id=deployment_id, deployment=DeploymentUpdate(description="re-saved")
+        )
+
+        assert (await prefect_client.read_deployment(deployment_id=deployment_id)).description == "re-saved"
+        assert (
+            await prefect_worker.client.read_deployment(deployment_id=deployment_id)
+        ).description == read_by_worker.description
