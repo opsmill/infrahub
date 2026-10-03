@@ -71,6 +71,7 @@ AND NOT EXISTS {
 // ----------------
 CALL (pool) {
     MATCH (pool)-[:HAS_ATTRIBUTE]->(:Attribute { name: "node_attribute" })-[hv:HAS_VALUE]->(av:AttributeValue)
+    WHERE hv.status = "active" AND hv.to IS NULL
     RETURN av.value AS attribute_name
     ORDER BY hv.from DESC
     LIMIT 1

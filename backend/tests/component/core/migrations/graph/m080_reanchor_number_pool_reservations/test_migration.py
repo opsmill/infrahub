@@ -590,7 +590,7 @@ class TestMigration080:
         ]
         assert len(after) == 1
 
-    async def test_a_record_naming_no_object_is_dropped(self, db: InfrahubDatabase) -> None:
+    async def test_a_record_naming_no_object_is_dropped(self, db: InfrahubDatabase, migrated: MigratedDatabase) -> None:
         records = await reservation_records(db=db)
         assert [record for record in records if record.properties["identifier"] == ORPHAN_IDENTIFIER] == []
 

@@ -185,11 +185,13 @@ async def rewrite_records_to_legacy_shape(
         query="""
         MATCH (pool:%(number_pool)s)-[res:IS_RESERVED]->(attr:Attribute)
         WHERE $node_ids IS NULL OR res.identifier IN $node_ids
-        CALL (attr) {
+        // The save that reserved the number writes its value at or just after the reservation, on whichever
+        // branch it ran, so that is the value the reservation was made for.
+        CALL (attr, res) {
             MATCH (attr)-[hv:HAS_VALUE]->(av:AttributeValue)
-            WHERE hv.status = "active"
+            WHERE hv.status = "active" AND hv.from >= res.from
             RETURN av
-            ORDER BY hv.branch_level DESC, hv.from DESC
+            ORDER BY hv.from ASC
             LIMIT 1
         }
         CREATE (pool)-[legacy:IS_RESERVED]->(av)
