@@ -1,0 +1,1 @@
+Reduced the load on the task manager by no longer requesting a CSRF token for every task; if you enable CSRF protection on the task manager, also set `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` on the Infrahub server and task workers.

@@ -149,17 +149,19 @@ class InfrahubWorkerAsync(BaseWorker):
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
-        await super().setup(**kwargs)
-
+        # Entered before the base setup so that the polling client it creates also skips the CSRF token request,
+        # which the task manager refuses since it runs without CSRF protection.
         self._exit_stack.enter_context(
             prefect_settings.temporary_settings(
                 updates={
                     prefect_settings.PREFECT_WORKER_QUERY_SECONDS: config.SETTINGS.workflow.worker_polling_interval,
                     prefect_settings.PREFECT_RESULTS_PERSIST_BY_DEFAULT: True,
                     prefect_settings.PREFECT_DEFAULT_RESULT_STORAGE_BLOCK: WORKER_DEFAULT_RESULT_STORAGE_BLOCK,
-                }
+                },
+                set_defaults={prefect_settings.PREFECT_CLIENT_CSRF_SUPPORT_ENABLED: False},
             )
         )
+        await super().setup(**kwargs)
 
         set_component_type(component_type=self.component_type)
         await self.set_git_global_config()
