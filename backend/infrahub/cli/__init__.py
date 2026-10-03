@@ -11,6 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
+from infrahub.task_manager.client_settings import prefect_client_defaults
 
 from ..workers.dependencies import (
     get_cache,
@@ -36,6 +37,7 @@ app = AsyncTyper(name="Infrahub CLI", pretty_exceptions_enable=False)
 def common(ctx: typer.Context) -> None:
     """Infrahub CLI."""
     ctx.obj = CliContext()
+    ctx.with_resource(prefect_client_defaults())
 
 
 app.add_typer(server_app, name="server")

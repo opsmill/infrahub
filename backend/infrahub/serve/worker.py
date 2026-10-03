@@ -6,6 +6,8 @@ from typing import Any
 
 from uvicorn.workers import UvicornWorker
 
+from infrahub.task_manager.client_settings import prefect_client_defaults
+
 log_config = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -38,3 +40,7 @@ class InfrahubUvicorn(UvicornWorker):
         if os.getenv("PROMETHEUS_MULTIPROC_DIR", None):
             for file_path in Path(os.environ["PROMETHEUS_MULTIPROC_DIR"]).iterdir():
                 file_path.unlink()
+
+    def run(self) -> None:
+        with prefect_client_defaults():
+            super().run()

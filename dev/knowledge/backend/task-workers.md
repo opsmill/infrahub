@@ -65,6 +65,16 @@ The reservation must outlive a claim. With unbounded claiming a claim took longe
 expiry under load, the reservation lapsed while the first worker was still claiming, and the second
 worker claimed the same run.
 
+## Prefect client defaults
+
+Start every Infrahub process that talks to the task manager inside
+`backend/infrahub/task_manager/client_settings.py::prefect_client_defaults`, as the worker setup, the API
+server's gunicorn worker and the `infrahub` CLI do. The defaults turn off Prefect's CSRF token handling:
+the task manager runs without CSRF protection, so every new Prefect client would otherwise spend one
+refused request fetching a token, and the worker opens one for every flow run it starts. A value
+configured explicitly still wins, so a task manager with CSRF protection enabled needs
+`PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` on the Infrahub server and task workers.
+
 ## Known gaps
 
 - A worker that dies between claiming a run and starting its flow leaves the run `Pending` for good.

@@ -28,6 +28,7 @@ from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
+from infrahub.task_manager.client_settings import prefect_client_defaults
 from infrahub.trace import configure_trace
 from infrahub.workers.dependencies import (
     get_cache,
@@ -144,6 +145,7 @@ class InfrahubWorkerAsync(BaseWorker):
             self._logger.info(f"Starting metric endpoint on port {metric_port}")
             start_http_server(metric_port)
 
+        self._exit_stack.enter_context(prefect_client_defaults())
         await super().setup(**kwargs)
 
         self._exit_stack.enter_context(
