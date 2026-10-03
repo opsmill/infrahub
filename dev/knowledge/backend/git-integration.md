@@ -101,8 +101,8 @@ guarantees which of the two flows the scheduler reaches first.
 
 > **Volatile section.** The intended fix for this ordering gap is a persisted writeback state,
 > recorded before the merge workflow is submitted, that holds regeneration for repository-owned
-> definitions until that repository's commit on the destination branch is final. Update this section
-> when that lands.
+> definitions until that repository's commit on the destination branch is final. It is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 ## Pushing back to the remote
 
@@ -121,29 +121,28 @@ while the merge still reported success; sending HEAD is what closed that gap.
 
 ### The writeback direction has no reconciliation
 
-The pull direction has the once-a-minute loop. The push direction has nothing equivalent, and three
-properties compound:
+The pull direction has the once-a-minute loop. The push direction has nothing equivalent.
 
-- `InfrahubRepository.merge` writes the new commit to the graph **before** pushing (the
-  `update_commit_value` call precedes the `push` call), so a rejected push leaves the graph naming a
-  commit the remote never received.
-- Nothing ever re-pushes. `push()` is reachable only from branch creation and `merge()`; the periodic
-  sync only pulls.
-- Re-running the merge no-ops. `merge()` returns `False` when `commit_after == commit_before`,
-  computed from local git state, and `merge_git_repository` ignores the return value, so once the
-  local merge has happened a re-triggered merge never reaches `push()`.
+`InfrahubRepository.merge` merges into the destination worktree, pushes, and only then creates the
+commit worktree and writes the new commit to the graph. A rejected push therefore records nothing:
+the destination worktree is reset to its pre-merge commit, so a re-run of the merge re-derives it
+instead of finding nothing to merge. A failure to record after a successful push also resets the
+worktree, which leaves it behind the remote, and the periodic sync then pulls and records the pushed
+commit.
 
-A merge commit created this way also exists on exactly one worker's disk: the `RefreshGitFetch`
-broadcast is sent after `merge()` returns, so a failed push aborts the flow before any other worker
-hears about it. With `git.use_explicit_merge_commit` at its default of `False` the merge
-fast-forwards where it can and the resulting SHA is the source commit, which the remote already has.
-When the destination has diverged, or when that setting is enabled, git creates a real merge commit
-whose SHA embeds a timestamp and is therefore not reproducible.
+What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
+`merge()`, the periodic sync only pulls, and `merge_git_repository` has no retry. A rejected push
+stays undelivered until a later merge into the same destination, and nothing on the repository
+records that it failed: the only trace is the failed flow run.
 
-> **Volatile section.** The intended fix reorders this so the push precedes the graph write and the
-> destination worktree is reset on failure, which makes the discarded merge commit harmless and lets
-> any worker re-derive the merge from `(source_branch, source_commit, dest_branch)`. Update this
-> section when that lands.
+With `git.use_explicit_merge_commit` at its default of `False` the merge fast-forwards where it can
+and the resulting SHA is the source commit, which the remote already has. When the destination has
+diverged, or when that setting is enabled, git creates a real merge commit whose SHA embeds a
+timestamp and is therefore not reproducible. The reset on failure discards it, so a later attempt
+re-derives the merge from `(source_branch, source_commit, dest_branch)` on any worker.
+
+> **Volatile section.** A delivery queue with retry and abandon actions is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 `push_info.summary`, not by raising `GitCommandError`, so `push()` inspects `push_info.flags` and
