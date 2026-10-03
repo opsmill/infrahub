@@ -9,7 +9,7 @@ tests will use, so they are part of the contract.
 
 | Path | Shim | Notes |
 |------|------|-------|
-| `/ipam/:objectKind/:objectId/tree-map` | `pages/ipam/ipam-details-tree-map-page.tsx` (`Component`) | declared before `:relationshipName`; keeps the `ipam-namespace` and `kind` query params through `constructPathForIpam("tree-map")` |
+| `/ipam/:objectKind/:objectId/tree-map` | `pages/ipam/ipam-details-tree-map-page.tsx` (`Component`) | declared before `:relationshipName`; keeps the `namespace` and `kind` query params through `constructPathForIpam("tree-map")` |
 
 ## Tab
 

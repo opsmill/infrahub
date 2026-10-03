@@ -43,7 +43,7 @@ Expected, against the `data_ipam_pools` slice:
    named `10.0.0.0/16`, `10.1.0.0/16` and `10.2.0.0/16` and a free button named
    `10.3.0.0/16 available`.
 2. Clicking the `10.1.0.0/16` tile lands on a page whose heading is `10.1.0.0/16` with the Tree Map
-   tab active and the `ipam-namespace` query param unchanged.
+   tab active and the `namespace` query param unchanged.
 3. Opening `10.0.0.0/16` (member type address) shows the empty state with the meter and the
    **IP Addresses** link.
 4. On a throwaway branch, clicking a free tile opens the create form prefilled with its CIDR;
