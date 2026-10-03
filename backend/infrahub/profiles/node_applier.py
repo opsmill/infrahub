@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any
 
 from infrahub.core.attribute import BaseAttribute
@@ -259,3 +260,55 @@ class NodeProfilesApplier:
                 updated_field_names.append(node_rel.name)
 
         return updated_field_names
+
+
+class ChunkProfilesApplier(NodeProfilesApplier):
+    """Applies profile values to many nodes, with the data of all their profiles read in one query.
+
+    Call `load_profile_data` with the nodes before applying. A profile that this read did not cover is
+    read again for each node, as the base class does.
+    """
+
+    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+        super().__init__(db=db, branch=branch)
+        self._profile_data: dict[str, ProfileData] = {}
+        self._read_profile_ids: set[str] = set()
+
+    async def load_profile_data(self, nodes: Sequence[Node]) -> None:
+        """Read the data of every profile assigned to ``nodes``, for every field that a profile can set on them."""
+        profile_ids: set[str] = set()
+        attr_names: set[str] = set()
+        rel_filters: set[RelationshipFilter] = set()
+        for node in nodes:
+            profile_ids.update(await self._get_profile_ids(node=node))
+            node_schema = node.get_schema()
+            attr_names.update(node_schema.attribute_names)
+            rel_names = [rel_schema.name for rel_schema in node_schema.relationships if rel_schema.support_profiles]
+            rel_filters.update(await self._get_rel_filters_for_profiles(node=node, rel_names=rel_names))
+
+        # A node only takes the fields it can receive from the data below, so reading more fields is safe.
+        profile_data = await super()._get_sorted_profile_data(
+            profile_ids=sorted(profile_ids),
+            attr_names_for_profiles=sorted(attr_names),
+            include_relationships=list(rel_filters),
+        )
+        self._profile_data.update({data.uuid: data for data in profile_data})
+        self._read_profile_ids.update(profile_ids)
+
+    async def _get_sorted_profile_data(
+        self,
+        profile_ids: list[str],
+        attr_names_for_profiles: list[str],
+        include_relationships: list[RelationshipFilter] | None = None,
+    ) -> list[ProfileData]:
+        if not self._read_profile_ids.issuperset(profile_ids):
+            return await super()._get_sorted_profile_data(
+                profile_ids=profile_ids,
+                attr_names_for_profiles=attr_names_for_profiles,
+                include_relationships=include_relationships,
+            )
+        # The query returns no data for an inactive profile, so such a profile is left out here too.
+        return sorted(
+            (self._profile_data[profile_id] for profile_id in profile_ids if profile_id in self._profile_data),
+            key=lambda x: (x.priority, x.uuid),
+        )
