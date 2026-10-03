@@ -27,8 +27,8 @@
 
 **Purpose**: The domain model and the query-key factory every later task imports
 
-- [ ] T001 Create the domain model and constants in `FE/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map.ts`: export the types `PrefixSize`, `TreeMapChild`, `TreeMapFreeBlock`, `TreeMapData`, `TreeMapTile` (discriminated union on `kind`: `allocated`, `free`, `aggregate-allocated`, `aggregate-free`, `remainder`) and `TreeMapRect` exactly as data-model.md defines them, plus the constants `TREE_MAP_CHILD_LIMIT = 1000`, `TREE_MAP_MIN_TILE_DIVISOR = 4096n` and `TREE_MAP_ASPECT_RATIO = 2`. No functions in this file.
-- [ ] T002 [P] Create the query-key factory in `FE/entities/ipam/ip-prefixes/ui/queries/ip-prefix.query-keys.ts` exporting `ipPrefixesQueryKeys` with one entry, `treeMap: (params: IpPrefixTreeMapKeysParams) => [...objectQueryKeys.allWithContext(params), "ip-prefix-tree-map", params] as const`, where the params interface extends `ContextParams` with `parentId: string` and `limit: number`. Rooting under `objectQueryKeys` is what lets existing mutations invalidate the map.
+- [X] T001 Create the domain model and constants in `FE/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map.ts`: export the types `PrefixSize`, `TreeMapChild`, `TreeMapFreeBlock`, `TreeMapData`, `TreeMapTile` (discriminated union on `kind`: `allocated`, `free`, `aggregate-allocated`, `aggregate-free`, `remainder`) and `TreeMapRect` exactly as data-model.md defines them, plus the constants `TREE_MAP_CHILD_LIMIT = 1000`, `TREE_MAP_MIN_TILE_DIVISOR = 4096n` and `TREE_MAP_ASPECT_RATIO = 2`. No functions in this file.
+- [X] T002 [P] Create the query-key factory in `FE/entities/ipam/ip-prefixes/ui/queries/ip-prefix.query-keys.ts` exporting `ipPrefixesQueryKeys` with one entry, `treeMap: (params: IpPrefixTreeMapKeysParams) => [...objectQueryKeys.allWithContext(params), "ip-prefix-tree-map", params] as const`, where the params interface extends `ContextParams` with `parentId: string` and `limit: number`. Rooting under `objectQueryKeys` is what lets existing mutations invalidate the map.
 
 ---
 
