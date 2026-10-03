@@ -3,16 +3,13 @@
 **Feature**: `dev/specs/ifc-3210-history-rewrite-reconciliation`
 **Branch**: `history-rewrite-reconciliation-ifc-3210`
 **Branches from**: `develop`
-**Prerequisite**: PR #10465, on `pog-fix-merge-push-ordering-IFC-1449`, not yet on `develop`
-**Date**: 2026-09-29, re-checked against `develop` on 2026-09-30
+**Date**: 2026-09-29, re-checked against `develop` on 2026-10-01
 
-Every claim below was first checked against PR #10465's branch, because that branch was the
-starting point while the design was written. This spec branch has since been rebased onto
-`develop`, so the facts were re-checked there.
+Every claim below is checked against `develop`.
 
-Only the merge path differs between the two, and the difference matters: on `develop`
-`git/repository.py::InfrahubRepository.merge` writes the commit to the graph **before** it pushes.
-#10465 reverses that. Each claim below says which code it describes where it matters.
+The merge path matters most to this design. `git/repository.py::InfrahubRepository.merge` pushes
+the merge commit before it records it, and resets the destination worktree to its pre-merge commit
+when either step fails. That ordering arrived with IFC-1449.
 
 ---
 
@@ -70,22 +67,29 @@ classification is:
 |---|---|
 | Equal | `UNCHANGED` |
 | Imported is an ancestor of remote head | `FAST_FORWARD` |
-| **Remote head is an ancestor of imported** | **`LOCAL_AHEAD`** |
-| Neither is an ancestor, tracking target unchanged | `REWRITE` |
-| Neither is an ancestor, tracking target changed | `RETARGET` |
+| The remote head does not contain the imported commit, tracking target unchanged | `REWRITE` |
+| The remote head does not contain the imported commit, tracking target changed | `RETARGET` |
 | The remote carries no such ref | `REMOTE_ABSENT` |
 | Imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
 | Imported commit is not present locally, tracking target changed | `RETARGET` |
 
-**`LOCAL_AHEAD` is not symmetry for its own sake.** After a rejected push the local branch sits ahead of
-`origin/`; `git-integration.md` lists it under Known limitations, and `compare_local_remote` flags
-the branch every cycle. Collapse that into "not an ancestor" and the branch classifies `REWRITE`,
-the sync resets it, and the unpushed commit is gone — which is precisely the loss PR #10465 exists
-to prevent, reintroduced by the detection layer rather than the merge layer.
+**A remote head behind the imported commit is a rewound remote.** The imported commit comes from
+the graph, and an audit of every `update_commit_value` write site found no path that records a
+commit the remote lacks. `create_locally` records straight after a clone. `pull` records a commit
+the fetch brought in. `reset_to_commit` records the SHA it pinned. The synchronisation's
+new-branch path pushes first, and a rejected push raises into `failed_imports` before the record
+is reached. `merge` pushes before it records and resets the worktree when either step fails. The
+read-only paths record what they read from the remote. So the remote head sitting on an ancestor
+of the imported commit has one cause: the remote was rewound, by a force push or a ref moved
+backwards. It discards content exactly as a rewrite does, so it is reconciled and recorded.
 
-With the row, a locally-ahead branch resets nothing and records nothing, so today's behaviour is
-preserved. It also removes the once-a-minute "update was detected but the commit remained the same
-after pull()" log line, because no pull is attempted.
+**The worktree comparison reaches the same conclusion.** A worktree ahead of `origin/` used to
+mean a commit a rejected push had left behind, which `git-integration.md` lists under Known
+limitations and `compare_local_remote` flags every cycle. `merge` now pushes before it records and
+resets the destination when either step fails, and `rebase` delegates to `merge`, so that state no
+longer arises and such a worktree has been rewound. The reset moves it onto the remote head, which
+also removes the once-a-minute "update was detected but the commit remained the same after
+pull()" log line.
 
 **The missing-object case.** If the imported commit is no longer in the local object database, the
 ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
@@ -134,14 +138,13 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 ## R3. Where the self-healing reset runs
 
-**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call. When
-**neither** the worktree head nor the remote head is an ancestor of the other, hard-reset onto the
-remote head instead of pulling. When the remote head is an ancestor of the worktree head, do
-nothing: the worktree is ahead, not diverged.
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call.
+Hard-reset onto the remote head unless the worktree head already is it, is an ancestor of it, or
+the remote carries no such ref.
 
-The "neither is an ancestor" wording is load-bearing. A rule keyed on "the worktree head is not an
-ancestor of the remote head" also fires on a locally-ahead branch, and the reset would discard the
-unpushed commit. FR-001a forbids exactly that.
+A worktree ahead of its remote resets too. The state that argued against it, a commit left behind
+by a rejected push, no longer arises: `merge` pushes before it records and resets the destination
+when either step fails, and `rebase` delegates to `merge`.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
 path that advances a branch worktree **from the remote** goes through `pull`: the sync collector,
@@ -169,11 +172,11 @@ FR-005a therefore covers both worktrees. **It refuses the merge rather than reco
 FR-005c says why that distinction matters.
 
 Reconciling inside the merge path looks tempting and destroys the evidence.
-`InfrahubRepository.merge` calls `update_commit_value` on the destination before it pushes, so a
-reset-then-merge writes the merge commit to the graph. The next cycle then compares the graph
-against the remote, finds them equal, and classifies `UNCHANGED`. No record, no trunk signal, no
-re-import of the rewritten content. Resetting the source is worse still: it pulls in the rewritten
-history and merges objects the graph never imported.
+`InfrahubRepository.merge` pushes the merge commit before it records it on the destination, so a
+reset-then-merge puts the merge commit on the remote and in the graph. The next cycle then compares
+the graph against the remote, finds them equal, and classifies `UNCHANGED`. No record, no trunk
+signal, no re-import of the rewritten content. Resetting the source is worse still: it pulls in
+the rewritten history and merges objects the graph never imported.
 
 Refusing keeps one owner for reconciliation. The synchronisation cycle resets, records, signals and
 re-imports, in that order, under the repository lock. The merge fails with a typed error, the next
@@ -191,14 +194,11 @@ not write the rewrite record, and must not emit the signal. `pull` already takes
 `update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
 record and the signal are written by the recorder in the sync path, never here.
 
-**Why #10465 is a prerequisite.** On `develop`, `InfrahubRepository.merge` writes the commit to
-the graph before it pushes, so a rejected push leaves a merge commit that exists on one worker's
-disk and nowhere else. A reset would discard it silently.
-
-**That is the ordering on `develop` today, and therefore on this branch**, which is rebased onto
-it. #10465 reverses it: `merge` pushes first, records second, and resets the destination worktree
-when either step fails. Until that lands on `develop`, the unpushed-merge-commit state is
-reachable, so the pull-path reset and the sync-path reset both stay gated on it.
+**Why an unconditional reset is safe.** `InfrahubRepository.merge` pushes the merge commit first,
+records it second, and resets the destination worktree to its pre-merge commit when either step
+fails. A rejected push therefore leaves no merge commit that exists on one worker's disk and
+nowhere else, which is the one state a reset onto the remote head would have discarded. That
+ordering arrived with IFC-1449 and it is what makes the pull-path and sync-path resets safe.
 
 ---
 
@@ -504,7 +504,7 @@ precondition are identical either way. The tasks name both attachment points.
 |---|---|---|
 | #10667 | IFC-3147, one status row per branch | None. It reads per-branch repository values for a GraphQL query. It does not touch the sync or pull paths. It is a natural reader of the four new attributes later, which is INFP-671's job, not this epic's. |
 | #10530 | IFC-3101, commit visibility spec | None directly. It introduces `git/state/` and a bounded worker RPC. The four attributes are readable through its query surface once INFP-671 exposes them. |
-| #10542 | IFC-3105, honour the default branch | **Adjacent and important.** It makes the repository trunk a resolved value rather than a silent fallback, changes `git/base.py` heavily, adds `git/remote_refs.py`, and rewrites `get_initialized_repo`. It removes the "warm path falls back to Infrahub's default branch" defect this epic's trunk handling would otherwise inherit. It is not a prerequisite, but a rebase conflict in `git/base.py` is likely. Flagged in the plan's risk list. |
+| #10542 | IFC-3105, honour the default branch | **Merged into `develop`.** It makes the repository trunk a resolved value rather than a silent fallback. It rewrote 193 lines of `git/base.py`, removing `default_branch` and adding `_get_mapped_remote_branch`, `_get_mapped_target_branch` and `_resolve_worktree_identifier`; rewrote `get_initialized_repo`; and added `git/remote_refs.py` and `git/graph_settings.py`. This epic builds on it, and the "warm path falls back to Infrahub's default branch" defect is gone. |
 | #10513 | INFP-671, cross-branch repository status | None. It is the display surface this epic's record will eventually feed. Explicitly out of scope here. |
 
 ---
@@ -512,8 +512,7 @@ precondition are identical either way. The tasks name both attachment points.
 ## R11. The test harness
 
 **Decision**: extend the Gogs-backed live-remote harness, which is already on `develop`. Add one
-force-push helper beside the existing `_push_commit_to_remote`. Only the two `pre-receive` hook
-helpers come from #10465, and nothing here needs them.
+force-push helper beside the existing `_push_commit_to_remote`.
 
 **What exists on `develop`** (`backend/tests/integration/git/conftest.py`,
 `test_git_live_remote.py`):
@@ -521,9 +520,8 @@ helpers come from #10465, and nothing here needs them.
 - A Gogs container fixture with an API token and repository creation.
 - `_push_commit_to_remote`: makes a commit inside the remote container and pushes it.
 - `_install_remote_branch_rejection_hook` / `_remove_remote_branch_rejection_hook`: a server-side
-  `pre-receive` hook that rejects updates, used to simulate branch protection. **These two come
-  from #10465 and are not on `develop`.** Nothing in this design needs them, but a task that wants
-  to simulate remote-side policy does, and must wait for that PR.
+  `pre-receive` hook that rejects updates, used to simulate branch protection. Nothing in this
+  design needs them, but a task that wants to simulate remote-side policy has them.
 - Config-reset fixtures for merge and branch-name settings.
 
 **What is missing**: a force-push helper. A rewrite is a force-push, and the Gogs bare repository
@@ -550,8 +548,15 @@ feature. Tasks cover all three.
 3. `merge-failure-recovery.md`, "Key Files": it attributes the merge-start logic to
    `core/branch/tasks.py::_do_merge_branch`. That logic now lives in `core/merge/orchestrator.py`.
 
-One of the four "Volatile section" notes in `git-integration.md` describes this feature as planned:
-the one under "How git errors are classified". It has to be rewritten to describe what shipped.
-**Leave the other three alone.** They cover the trunk fallback (PR #10542), the persisted writeback
-state (IFC-3220) and push-before-graph-write (PR #10465). Rewriting those would claim three other
-fixes shipped.
+Two of the four "Volatile section" notes in `git-integration.md` need rewriting. The one under
+"How git errors are classified" describes this feature as planned. The one on the merge ordering
+describes push-before-graph-write as intended, and it shipped with IFC-1449, so the section it sits
+in, "The writeback direction has no reconciliation", is stale around it. Its first bullet still
+states that `InfrahubRepository.merge` writes the new commit to the graph before pushing. Its third
+bullet, "Re-running the merge no-ops", still describes a local merge commit that stays on disk
+after a rejected push, which the reset now removes, so a retry re-derives the merge and reaches the
+push again. The paragraph below the bullets still says a merge commit "exists on exactly one
+worker's disk". Only the second bullet, "Nothing ever re-pushes", stays accurate.
+There are three such notes, not four: PR #10542 removed the trunk-fallback one when it landed.
+**Leave the remaining one alone.** It covers the persisted writeback state (IFC-3220). Rewriting
+it would claim another fix shipped.
