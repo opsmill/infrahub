@@ -99,7 +99,7 @@ class TestBranchCreateRaceCondition:
                 await release_graph_lock.wait()
 
         merge_task = asyncio.create_task(merge())
-        await graph_lock_held.wait()
+        await asyncio.wait_for(graph_lock_held.wait(), timeout=30)
         try:
             creator = BranchCreator(
                 db=db,
