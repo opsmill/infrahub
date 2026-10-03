@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from infrahub.git.divergence.models import RefClassification, RefDivergence
-
-IMPORTED = "a" * 40
-REMOTE = "b" * 40
+from tests.unit.git.divergence.conftest import IMPORTED, REMOTE
 
 
 def build(
@@ -20,48 +20,44 @@ def build(
     )
 
 
-@pytest.mark.parametrize("classification", [RefClassification.REWRITE, RefClassification.RETARGET])
-def test_a_lineage_decision_needs_the_commit_it_compared(classification: RefClassification) -> None:
-    with pytest.raises(ValueError, match=rf"^A branch with no imported commit cannot be {classification}$"):
-        build(classification, imported=None)
+@pytest.mark.parametrize(
+    ("classification", "imported", "remote", "message"),
+    [
+        (RefClassification.REWRITE, None, REMOTE, "A branch with no imported commit cannot be rewrite"),
+        (RefClassification.RETARGET, None, REMOTE, "A branch with no imported commit cannot be retarget"),
+        (
+            RefClassification.REMOTE_ABSENT,
+            None,
+            None,
+            "A branch with no imported commit cannot be remote-absent",
+        ),
+        (RefClassification.REWRITE, IMPORTED, None, "A branch with no remote head cannot be rewrite"),
+        (RefClassification.RETARGET, IMPORTED, None, "A branch with no remote head cannot be retarget"),
+        (RefClassification.FAST_FORWARD, IMPORTED, None, "A branch with no remote head cannot be fast-forward"),
+        (
+            RefClassification.UNCHANGED,
+            IMPORTED,
+            None,
+            "An imported branch whose remote head is gone is REMOTE_ABSENT, not UNCHANGED",
+        ),
+    ],
+)
+def test_a_rejected_combination_raises(
+    classification: RefClassification, imported: str | None, remote: str | None, message: str
+) -> None:
+    with pytest.raises(ValueError, match=rf"^{re.escape(message)}$"):
+        build(classification, imported=imported, remote=remote)
 
 
-@pytest.mark.parametrize("classification", [RefClassification.REWRITE, RefClassification.RETARGET])
-def test_a_lineage_decision_needs_the_remote_head_it_compared(classification: RefClassification) -> None:
-    with pytest.raises(ValueError, match=rf"^A branch with no remote head cannot be {classification}$"):
-        build(classification, remote=None)
-
-
-def test_a_never_imported_branch_cannot_be_remote_absent() -> None:
-    with pytest.raises(ValueError, match=r"^A branch with no imported commit cannot be remote-absent$"):
-        build(RefClassification.REMOTE_ABSENT, imported=None, remote=None)
-
-
-def test_a_missing_remote_head_cannot_be_a_fast_forward() -> None:
-    with pytest.raises(ValueError, match=r"^A branch with no remote head cannot be fast-forward$"):
-        build(RefClassification.FAST_FORWARD, remote=None)
-
-
-def test_an_imported_branch_whose_remote_ref_is_gone_is_not_unchanged() -> None:
-    with pytest.raises(
-        ValueError, match=r"^An imported branch whose remote head is gone is REMOTE_ABSENT, not UNCHANGED$"
-    ):
-        build(RefClassification.UNCHANGED, remote=None)
-
-
-def test_a_branch_absent_from_both_sides_is_unchanged() -> None:
-    result = build(RefClassification.UNCHANGED, imported=None, remote=None)
-
-    assert result.classification is RefClassification.UNCHANGED
-
-
-def test_a_never_imported_branch_can_fast_forward() -> None:
-    result = build(RefClassification.FAST_FORWARD, imported=None)
-
-    assert result.imported_commit is None
-
-
-def test_an_imported_branch_can_lose_its_remote_ref() -> None:
-    result = build(RefClassification.REMOTE_ABSENT, remote=None)
-
-    assert result.classification is RefClassification.REMOTE_ABSENT
+@pytest.mark.parametrize(
+    ("classification", "imported", "remote"),
+    [
+        pytest.param(RefClassification.UNCHANGED, None, None, id="absent-from-both-sides"),
+        pytest.param(RefClassification.FAST_FORWARD, None, REMOTE, id="never-imported-branch"),
+        pytest.param(RefClassification.REMOTE_ABSENT, IMPORTED, None, id="remote-ref-is-gone"),
+    ],
+)
+def test_an_accepted_combination_builds(
+    classification: RefClassification, imported: str | None, remote: str | None
+) -> None:
+    build(classification, imported=imported, remote=remote)

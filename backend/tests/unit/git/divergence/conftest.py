@@ -8,14 +8,14 @@ from git import Repo
 
 from infrahub.git.divergence.gateway import GitPythonAncestryGateway
 
+IMPORTED = "a" * 40
+REMOTE = "b" * 40
+ABSENT = "0" * 40
+
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Repo:
-    created = Repo.init(tmp_path / "repository")
-    with created.config_writer() as config:
-        config.set_value("user", "email", "test@example.com")
-        config.set_value("user", "name", "Test")
-    return created
+    return Repo.init(tmp_path / "repository")
 
 
 @pytest.fixture

@@ -30,12 +30,11 @@ class RemoteDivergenceDetector:
         """Decide what happened to one tracked ref.
 
         Args:
-            imported_commit: The commit recorded in the graph, never the local worktree head.
             target_changed: Whether the repository was re-pointed at a different tracking target.
-                The caller owns the suppression marker and supplies the answer.
 
         Raises:
-            RepositoryError: When git could not answer the ancestry question.
+            RepositoryError: When the graph holds a malformed commit identifier, or when git could
+                not answer the ancestry question.
 
         """
         return RefDivergence(
@@ -60,12 +59,7 @@ class RemoteDivergenceDetector:
         if remote_head == imported_commit:
             return RefClassification.UNCHANGED
 
-        return self._classify_by_ancestry(
-            imported_commit=imported_commit, remote_head=remote_head, target_changed=target_changed
-        )
-
-    def _classify_by_ancestry(self, imported_commit: str, remote_head: str, target_changed: bool) -> RefClassification:
-        # Asked before the ancestry questions because those cannot be answered once the object is
+        # Asked before the ancestry question because it cannot be answered once the object is
         # gone: the ancestry call raises instead.
         if not self.gateway.has_commit(commit=imported_commit):
             return self._diverged(target_changed=target_changed)
