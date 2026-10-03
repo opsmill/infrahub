@@ -77,11 +77,14 @@ async def build_bulk_recompute_dispatcher(*, schema_branch: SchemaBranch, coales
     """
     db = await get_database()
     writer = BulkRecomputeWriter(db=db, event_service=await get_event_service())
-    chain = None
-    if coalesced:
-        chain = RecomputeChainSubmitter(
-            builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
-            submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
-            python_resolver=await build_python_target_resolver(db=db),
-        )
+    chain = await build_recompute_chain(schema_branch=schema_branch, db=db) if coalesced else None
     return BulkRecomputeDispatcher(db=db, writer=writer, chain=chain)
+
+
+async def build_recompute_chain(*, schema_branch: SchemaBranch, db: InfrahubDatabase) -> RecomputeChainSubmitter:
+    """Wire the submitter that recomputes, as one coalesced pass, the values that read a set of writes."""
+    return RecomputeChainSubmitter(
+        builder=CoalescedRecomputeBuilder(schema_branch=schema_branch),
+        submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
+        python_resolver=await build_python_target_resolver(db=db),
+    )
