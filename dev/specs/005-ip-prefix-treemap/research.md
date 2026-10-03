@@ -195,8 +195,13 @@ path today (they answer `null`), which the Children tab already pays for.
 - Allocated tile: `bg-accent-surface`, `border-border`, label `text-foreground`; inner fill is a
   child element with `width: <utilisation>%` and
   `background: color-mix(in oklch, var(--accent-strong) 55%, transparent)`.
-- Free tile: `bg-subtle`, `border-dashed border-border-strong`, label `text-foreground-muted`.
-- Aggregated tile: `bg-content-muted`, solid border, label `text-foreground-muted`.
+- Free tile: `bg-content`, `border-dashed border-border-strong`, label `text-foreground-muted`.
+  (`bg-subtle` was considered and rejected: the `subtle` token is a foreground colour and renders
+  as dark grey.)
+- Aggregated tile: `bg-content-strong`, solid border, label `text-foreground-muted`
+  (`bg-content-muted` is indistinguishable from the page background).
+- The container's aspect ratio is an inline style derived from the shared constant rather than an
+  arbitrary Tailwind value, so the CSS box and the layout maths cannot drift apart.
 - Unknown utilisation: no inner fill, tooltip says "Utilisation unknown".
 - Label hidden with CSS when the tile is narrower than the label needs (`overflow-hidden` plus a
   minimum size class on the label), with the CIDR always in the tooltip and `aria-label`.
