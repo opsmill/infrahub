@@ -1,7 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+import { store } from "@/shared/stores";
 
 import { IpPrefixTreeMapTile } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile";
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../tests/components/render";
 import {
@@ -12,12 +15,75 @@ import {
   generateRemainderTile,
   generateTreeMapRect,
 } from "../../../../../tests/fake/ip-prefix-tree-map";
+import { generateNodeSchema } from "../../../../../tests/fake/schema";
 
 const PARENT = { id: "parent-id", kind: "IpamIPPrefix", cidr: "10.0.0.0/8" };
 
 const noop = () => {};
 
+const initialNodeSchemas = store.get(nodeSchemasAtom);
+
+beforeAll(() => {
+  store.set(nodeSchemasAtom, [
+    generateNodeSchema({ kind: "IpamIPPrefix", inherit_from: ["BuiltinIPPrefix"] }),
+  ]);
+});
+
+afterAll(() => {
+  store.set(nodeSchemasAtom, initialNodeSchemas);
+});
+
+afterEach(() => {
+  window.history.replaceState(null, "", window.location.pathname);
+});
+
 describe("IpPrefixTreeMapTile", () => {
+  it("links an allocated tile to the child's tree map in the current namespace", async () => {
+    // GIVEN
+    window.history.replaceState(null, "", "?namespace=abc");
+    const rect = generateTreeMapRect({
+      tile: generateAllocatedTile({
+        child: { id: "child-id", kind: "IpamIPPrefix", cidr: "10.1.0.0/16" },
+      }),
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={rect}
+        parent={PARENT}
+        permission={PERMISSION_ALLOW_ALL}
+        onCreateFromFreeBlock={noop}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilised" }))
+      .toHaveAttribute("href", "/ipam/IpamIPPrefix/child-id/tree-map?namespace=abc");
+  });
+
+  it("links an aggregate tile to the parent's children in the current namespace", async () => {
+    // GIVEN
+    window.history.replaceState(null, "", "?namespace=abc");
+    const rect = generateTreeMapRect({ tile: generateAggregateAllocatedTile() });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={rect}
+        parent={PARENT}
+        permission={PERMISSION_ALLOW_ALL}
+        onCreateFromFreeBlock={noop}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "1 smaller prefix" }))
+      .toHaveAttribute("href", "/ipam/IpamIPPrefix/parent-id/children?namespace=abc");
+  });
+
   it.each([0, 50, 100])("names an allocated tile at %d percent utilised", async (utilization) => {
     // GIVEN
     const rect = generateTreeMapRect({

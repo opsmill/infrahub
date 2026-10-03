@@ -84,12 +84,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T020 [P] [US2] Extend `FE/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile.test.tsx`: with `window.history.replaceState` setting `?ipam-namespace=abc` before render, an allocated tile's link `href` ends with `/ipam/<kind>/<id>/tree-map?ipam-namespace=abc`; an `aggregate-allocated` tile's `href` ends with `/children?ipam-namespace=abc`. Reset history after each test.
+- [X] T020 [P] [US2] Extend `FE/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile.test.tsx`: with `window.history.replaceState` setting `?ipam-namespace=abc` before render, an allocated tile's link `href` ends with `/ipam/<kind>/<id>/tree-map?ipam-namespace=abc`; an `aggregate-allocated` tile's `href` ends with `/children?ipam-namespace=abc`. Reset history after each test.
 
 ### Implementation for User Story 2
 
-- [ ] T021 [US2] Verify in `FE/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile.tsx` that the allocated tile uses `getObjectDetailsUrl` with the `tree-map` tab segment and that `IP_PREFIX_GENERIC` kinds resolve to the `/ipam/` family (see `FE/entities/nodes/object/ui/routing/object-urls.ts::getObjectDetailsUrl`); adjust only if T020 fails. No other code change is expected.
-- [ ] T022 [US2] Add `TestIpPrefixTreeMapDrillDown` to `tests/e2e/ipam/test_ip_prefix_tree_map.py`: open 10.0.0.0/8's Tree Map, click the `10.1.0.0/16` tile link, assert `get_by_role("heading", name="10.1.0.0/16")`, assert the `Tree Map` link has `aria-current="page"` (or the active class `LinkTab` applies; check `FE/shared/components/ui/link.tsx::LinkTab` for the attribute it sets), and assert the URL still contains the `ipam-namespace` param it had before the click. Scenario 2 (drilling into the address-type 10.0.0.0/16) is added in US4's E2E task because it depends on the empty state.
+- [X] T021 [US2] Verify in `FE/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile.tsx` that the allocated tile uses `getObjectDetailsUrl` with the `tree-map` tab segment and that `IP_PREFIX_GENERIC` kinds resolve to the `/ipam/` family (see `FE/entities/nodes/object/ui/routing/object-urls.ts::getObjectDetailsUrl`); adjust only if T020 fails. No other code change is expected.
+- [X] T022 [US2] Add `TestIpPrefixTreeMapDrillDown` to `tests/e2e/ipam/test_ip_prefix_tree_map.py`: open 10.0.0.0/8's Tree Map, click the `10.1.0.0/16` tile link, assert `get_by_role("heading", name="10.1.0.0/16")`, assert the `Tree Map` link has `aria-current="page"` (or the active class `LinkTab` applies; check `FE/shared/components/ui/link.tsx::LinkTab` for the attribute it sets), and assert the URL still contains the `ipam-namespace` param it had before the click. Scenario 2 (drilling into the address-type 10.0.0.0/16) is added in US4's E2E task because it depends on the empty state.
 
 **Checkpoint**: US1 and US2 E2E classes pass.
 

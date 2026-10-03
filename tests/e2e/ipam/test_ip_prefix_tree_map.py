@@ -1,13 +1,16 @@
 """Tree Map tab on an IP prefix detail page.
 
 Opens the seeded 10.0.0.0/8 supernet, switches to the Tree Map tab and checks the
-allocated /16 tiles, the first free block and the legend. The branch scenario creates a
-child prefix on a throwaway branch and checks it shows up only when that branch is selected.
+allocated /16 tiles, the first free block and the legend. The drill-down scenario clicks a
+child tile and checks the child's own Tree Map opens with the namespace query param kept.
+The branch scenario creates a child prefix on a throwaway branch and checks it shows up
+only when that branch is selected.
 """
 
 from __future__ import annotations
 
 import contextlib
+import re
 from typing import TYPE_CHECKING
 
 import pytest
@@ -51,6 +54,28 @@ class TestIpPrefixTreeMapView:
         await expect(page.get_by_text("Allocated", exact=True)).to_be_visible()
         await expect(page.get_by_text("Free", exact=True)).to_be_visible()
         await expect(page.get_by_text("Smaller than 1/4096 of the prefix")).to_be_visible()
+
+
+class TestIpPrefixTreeMapDrillDown:
+    @pytest.fixture
+    async def default_namespace_id(self, infrahub_client: InfrahubClient, data_ipam_pools: IpamPoolsHandle) -> str:
+        namespace = await infrahub_client.get(kind="IpamNamespace", name__value="default")
+        return namespace.id
+
+    async def test_child_tile_opens_child_tree_map_in_same_namespace(
+        self, page: Page, data_ipam_pools: IpamPoolsHandle, default_namespace_id: str
+    ) -> None:
+        supernet_id = data_ipam_pools.prefixes[SUPERNET]
+        namespace_param = f"namespace={default_namespace_id}"
+        await page.goto(f"/ipam/IpamIPPrefix/{supernet_id}/tree-map?{namespace_param}")
+        tree_map = page.get_by_test_id("ip-prefix-tree-map")
+        await expect(tree_map).to_be_visible()
+
+        await tree_map.get_by_role("link", name="10.1.0.0/16, 0% utilised").click()
+
+        await expect(page.get_by_role("heading", name="10.1.0.0/16")).to_be_visible()
+        await expect(page.get_by_role("link", name="Tree Map")).to_have_attribute("aria-current", "page")
+        await expect(page).to_have_url(re.compile(rf".*/tree-map\?.*{re.escape(namespace_param)}"))
 
 
 class TestIpPrefixTreeMapBranch:
