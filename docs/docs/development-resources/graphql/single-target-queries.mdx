@@ -158,11 +158,29 @@ query DeviceConfig($device_name: String!) {
 
 ## Ensuring your query is single-target
 
-There is currently no automated way to verify that a query is single-target. The best way to verify is to review the query and ensure it meets all the criteria outlined above.
+Check a query before you use it in an artifact definition or a Generator definition with `infrahubctl graphql query-report`:
 
-When loaded into the system, Infrahub will analyze the query and determine if it is single-target or not. If it is not single-target, Infrahub will log a warning.
+```bash
+infrahubctl graphql query-report device_config
+```
 
-It's planned to add more integrated checks in the future to streamline the development process and ensure that queries are correctly structured directly during development.
+The command reads the query named `device_config` from the `queries` section of your `.infrahub.yml` file. Add `--online` to check the query stored on the Infrahub server instead, and `--branch <name>` to check it against the schema of a branch. Uniqueness constraints come from the schema, so the result can differ between branches.
+
+The report shows `Targets unique nodes: true` when every query in the file returns a single object, and `Targets unique nodes: false` otherwise.
+
+## Why every target is regenerated
+
+When a change in a proposed change or a merge affects an artifact definition or a Generator definition, Infrahub regenerates only the targets whose data changed. When it cannot trace the change back to specific targets, it regenerates every target of the definition, so that no artifact or Generator output is left out of date.
+
+The task log states the reason with one of the following messages, followed by `All targets will be processed.` After a merge, the same reason is logged, followed by `All artifacts will be processed.` or `All instances will be processed.`
+
+| Message in the task log | When it applies |
+| --- | --- |
+| `the query does not guarantee unique targets` | The query is not single-target. Fix it with the requirements on this page and check it with `infrahubctl graphql query-report`. |
+| `the query reads <kinds> through a relationship, and a change there cannot be traced back to specific targets` | The change is on one of the listed kinds, and the query reads that kind through a relationship in a way Infrahub cannot follow back to the target. This happens when the path to the kind goes through a fragment (`... on <Kind>`), or when the query also reads the same kind at its root. |
+| `the query reads a human_friendly_id or display_label whose value cannot be traced back to specific targets` | The query reads the `human_friendly_id` or `display_label` of an object, and Infrahub cannot determine from the schema which attributes of which related objects that value is built from, or the query also reads that related kind at its root. |
+
+A change reached through a relationship regenerates only the affected targets unless one of the conditions above applies. For example, when an artifact for each device reads the description of its interfaces, changing the description of one interface regenerates only the artifact of the device that has that interface.
 
 ## When single-target queries are required
 
