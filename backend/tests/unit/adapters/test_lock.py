@@ -4,7 +4,6 @@ from infrahub.lock import (
     GLOBAL_INIT_LOCK,
     GLOBAL_SCHEMA_LOCK,
     GLOBAL_TASKMGR_INIT_LOCK,
-    LOCAL_SCHEMA_LOCK,
 )
 from tests.adapters.lock import LockAction, LockTimeline, RecordingLockRegistry
 
@@ -49,7 +48,7 @@ async def test_multi_lock_records_each_member(recording_lock_timeline: LockTimel
     async with lock.registry.global_graph_lock():
         held = recording_lock_timeline.currently_held()
 
-    assert held == {LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK}
+    assert held == {GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK}
     assert recording_lock_timeline.currently_held() == set()
 
 
