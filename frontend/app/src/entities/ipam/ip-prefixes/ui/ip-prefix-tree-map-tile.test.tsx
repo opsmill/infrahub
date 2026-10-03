@@ -2,17 +2,24 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { store } from "@/shared/stores";
 
+import type { TreeMapFreeBlock } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
 import { IpPrefixTreeMapTile } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile";
-import { PERMISSION_ALLOW_ALL } from "@/entities/permission/domain/model/permission";
+import {
+  PERMISSION_ALLOW_ALL,
+  PERMISSION_DENY_ALL,
+  type Permission,
+} from "@/entities/permission/domain/model/permission";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import { render } from "../../../../../tests/components/render";
+import { initPointerTracking } from "../../../../../tests/components/utils";
 import {
   generateAggregateAllocatedTile,
   generateAggregateFreeTile,
   generateAllocatedTile,
   generateFreeTile,
   generateRemainderTile,
+  generateTreeMapFreeBlock,
   generateTreeMapRect,
 } from "../../../../../tests/fake/ip-prefix-tree-map";
 import { generateNodeSchema } from "../../../../../tests/fake/schema";
@@ -195,6 +202,100 @@ describe("IpPrefixTreeMapTile", () => {
     await expect
       .element(component.getByRole("button", { name: "10.3.0.0/16 available" }))
       .toBeVisible();
+  });
+
+  it("calls the create handler with the free block when its button is clicked", async () => {
+    // GIVEN
+    const block = generateTreeMapFreeBlock({ cidr: "10.3.0.0/16" });
+    const createdFrom: TreeMapFreeBlock[] = [];
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={generateTreeMapRect({ tile: generateFreeTile({ block }) })}
+        parent={PARENT}
+        permission={PERMISSION_ALLOW_ALL}
+        onCreateFromFreeBlock={(selected) => createdFrom.push(selected)}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "10.3.0.0/16 available" }).click();
+
+    // THEN
+    expect(createdFrom).toEqual([block]);
+  });
+
+  it("disables the free tile button when creating prefixes is not allowed", async () => {
+    // GIVEN
+    const rect = generateTreeMapRect({
+      tile: generateFreeTile({ block: { cidr: "10.3.0.0/16" } }),
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={rect}
+        parent={PARENT}
+        permission={PERMISSION_DENY_ALL}
+        onCreateFromFreeBlock={noop}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "10.3.0.0/16 available" }))
+      .toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("does not call the create handler from a disabled free tile", async () => {
+    // GIVEN
+    const createdFrom: TreeMapFreeBlock[] = [];
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={generateTreeMapRect({ tile: generateFreeTile({ block: { cidr: "10.3.0.0/16" } }) })}
+        parent={PARENT}
+        permission={PERMISSION_DENY_ALL}
+        onCreateFromFreeBlock={(selected) => createdFrom.push(selected)}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "10.3.0.0/16 available" }).click({ force: true });
+
+    // THEN
+    expect(createdFrom).toEqual([]);
+  });
+
+  it("shows the permission message when hovering a disabled free tile", async () => {
+    // GIVEN
+    const permission: Permission = {
+      ...PERMISSION_DENY_ALL,
+      create: { isAllowed: false, message: "You need the create permission on IP prefixes" },
+    };
+    // A sized map container gives the pointer warm-up click a visible target.
+    const component = await render(
+      <div className="relative h-64 w-96">
+        <IpPrefixTreeMapTile
+          rect={generateTreeMapRect({ tile: generateFreeTile({ block: { cidr: "10.3.0.0/16" } }) })}
+          parent={PARENT}
+          permission={permission}
+          onCreateFromFreeBlock={noop}
+        />
+      </div>
+    );
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByRole("button", { name: "10.3.0.0/16 available" }).hover();
+
+    // THEN
+    await expect
+      .element(
+        component.getByRole("tooltip", {
+          name: "You need the create permission on IP prefixes",
+        })
+      )
+      .toBeVisible();
+    await initPointerTracking(component.locator);
   });
 
   it.each([

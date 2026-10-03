@@ -1,20 +1,26 @@
-import type React from "react";
+import React from "react";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
-import { TREE_MAP_ASPECT_RATIO } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
+import {
+  TREE_MAP_ASPECT_RATIO,
+  type TreeMapFreeBlock,
+} from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
 import { buildTreeMapTiles } from "@/entities/ipam/ip-prefixes/domain/rules/build-tree-map-tiles";
 import type { TreeMapParent } from "@/entities/ipam/ip-prefixes/domain/rules/get-tree-map-parent";
 import { layoutTreeMap } from "@/entities/ipam/ip-prefixes/domain/rules/layout-tree-map";
+import { IpPrefixCreateSheet } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-create-sheet";
 import {
   IpPrefixTreeMapTile,
   TREE_MAP_FILL_BACKGROUND,
   TREE_MAP_TILE_CLASSES,
 } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile";
 import { useGetIpPrefixTreeMap } from "@/entities/ipam/ip-prefixes/ui/queries/get-ip-prefix-tree-map.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -23,9 +29,6 @@ export interface IpPrefixTreeMapProps {
   parentSchema: ModelSchema;
   permission: Permission;
 }
-
-// Creating a prefix from a free tile is wired by the create sheet, which lands separately.
-const noopCreateFromFreeBlock = () => {};
 
 function LegendSwatch({
   className,
@@ -64,8 +67,9 @@ function IpPrefixTreeMapLegend() {
   );
 }
 
-export function IpPrefixTreeMap({ parent, permission }: IpPrefixTreeMapProps) {
+export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTreeMapProps) {
   const { isPending, error, data } = useGetIpPrefixTreeMap({ parentId: parent.id });
+  const [selectedFreeBlock, setSelectedFreeBlock] = React.useState<TreeMapFreeBlock | null>(null);
 
   if (isPending) {
     return <LoadingIndicator className="h-full" />;
@@ -98,12 +102,25 @@ export function IpPrefixTreeMap({ parent, permission }: IpPrefixTreeMapProps) {
             rect={rect}
             parent={parent}
             permission={permission}
-            onCreateFromFreeBlock={noopCreateFromFreeBlock}
+            onCreateFromFreeBlock={setSelectedFreeBlock}
           />
         ))}
       </div>
 
       <IpPrefixTreeMapLegend />
+
+      <IpPrefixCreateSheet
+        schema={parentSchema}
+        prefix={selectedFreeBlock?.cidr}
+        isOpen={selectedFreeBlock !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSelectedFreeBlock(null);
+        }}
+        onSuccess={() => {
+          setSelectedFreeBlock(null);
+          queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+        }}
+      />
     </Col>
   );
 }
