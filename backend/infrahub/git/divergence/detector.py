@@ -33,8 +33,10 @@ class RemoteDivergenceDetector:
             target_changed: Whether the repository was re-pointed at a different tracking target.
 
         Raises:
-            RepositoryError: When the graph holds a malformed commit identifier, or when git could
-                not answer the ancestry question.
+            RepositoryError: When a comparison is needed and git cannot complete it, either
+                because the imported commit is a malformed identifier or because the presence or
+                ancestry check failed. A ref the remote still carries unchanged needs no
+                comparison and raises nothing.
 
         """
         return RefDivergence(
