@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -26,6 +27,8 @@ from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
+    RepositorySyncStatus,
+    Severity,
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
@@ -43,6 +46,7 @@ from ..core.validators.checks_runner import run_checks_and_update_validator
 from ..log import get_log_data, get_logger
 from ..tasks.artifact import define_artifact
 from ..workflows.catalogue import (
+    GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
     GIT_REPOSITORY_USER_CHECK_RUN,
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,
@@ -50,7 +54,9 @@ from ..workflows.catalogue import (
     REQUEST_ARTIFACT_GENERATE,
 )
 from ..workflows.utils import add_branch_tag, add_tags
+from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME
 from .models import (
+    CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
     GitDiffNamesOnly,
     GitDiffNamesOnlyResponse,
@@ -69,6 +75,7 @@ from .models import (
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
+from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
@@ -95,6 +102,35 @@ def format_check_log_entry(entry: dict[str, Any]) -> str:
             details.append(f"object_id={object_id}")
         parts.append(f"({', '.join(details)})")
     return " ".join(parts)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ImportStatusOutcome:
+    """The check result derived from the synchronization status of a repository on a branch."""
+
+    conclusion: ValidatorConclusion
+    severity: Severity
+    message: str
+
+
+def evaluate_import_status(*, sync_status: str | None, repository_name: str, branch_name: str) -> ImportStatusOutcome:
+    """Decide whether the objects of a repository are usable on a branch.
+
+    `sync_status` is the status written on the branch itself, or None when the branch only inherits one.
+    """
+    if sync_status != RepositorySyncStatus.ERROR_IMPORT.value:
+        return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+
+    return ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            f"The last import of the objects from repository '{repository_name}' on branch '{branch_name}' failed, "
+            f"so the objects registered for this repository do not match the content of the branch. Merging would "
+            f"apply the rest of the branch without them. Review the latest 'Import objects' task for this "
+            f"repository, resolve the cause and run the checks again."
+        ),
+    )
 
 
 @flow(
@@ -1124,11 +1160,9 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 
     check_execution_id = str(UUIDT())
     check_execution_ids.append(check_execution_id)
-    log.info("Adding check for merge conflict")
-    checks_in_execution = ",".join(check_execution_ids)
-    log.info(f"Checks in execution {checks_in_execution}")
+    log.info("Adding check for import status")
 
-    check_merge_conflict_model = CheckRepositoryMergeConflicts(
+    check_import_status_model = CheckRepositoryImportStatus(
         validator_id=validator.id,
         validator_execution_id=validator_execution_id,
         check_execution_id=check_execution_id,
@@ -1136,24 +1170,113 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
         repository_id=model.repository,
         repository_name=repository.name.value,
         source_branch=model.source_branch,
-        target_branch=model.target_branch,
     )
+    check_coroutines = [
+        get_workflow().execute_workflow(
+            workflow=GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
+            context=context,
+            parameters={"model": check_import_status_model},
+            expected_return=ValidatorConclusion,
+        )
+    ]
 
-    check_coroutine = get_workflow().execute_workflow(
-        workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
-        context=context,
-        parameters={"model": check_merge_conflict_model},
-        expected_return=ValidatorConclusion,
-    )
+    if model.check_merge_conflicts:
+        check_execution_id = str(UUIDT())
+        check_execution_ids.append(check_execution_id)
+        log.info("Adding check for merge conflict")
+
+        check_merge_conflict_model = CheckRepositoryMergeConflicts(
+            validator_id=validator.id,
+            validator_execution_id=validator_execution_id,
+            check_execution_id=check_execution_id,
+            proposed_change=model.proposed_change,
+            repository_id=model.repository,
+            repository_name=repository.name.value,
+            source_branch=model.source_branch,
+            target_branch=model.target_branch,
+        )
+        check_coroutines.append(
+            get_workflow().execute_workflow(
+                workflow=GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
+                context=context,
+                parameters={"model": check_merge_conflict_model},
+                expected_return=ValidatorConclusion,
+            )
+        )
+
+    checks_in_execution = ",".join(check_execution_ids)
+    log.info(f"Checks in execution {checks_in_execution}")
 
     event_service = await get_event_service()
     await run_checks_and_update_validator(
         event_service=event_service,
-        checks=[check_coroutine],
+        checks=check_coroutines,
         validator=validator,
         context=context,
         proposed_change_id=model.proposed_change,
     )
+
+
+@flow(
+    name="git-repository-check-import-status",
+    flow_run_name="Check the import status of {model.repository_name} on {model.source_branch}",
+)
+async def run_check_repository_import_status(model: CheckRepositoryImportStatus) -> ValidatorConclusion:
+    """Runs a check to see if the last import of the objects of a repository on a branch failed."""
+    await add_tags(branches=[model.source_branch], nodes=[model.proposed_change])
+
+    log = get_run_logger()
+    client = get_client()
+    database = await get_database()
+
+    validator = await client.get(kind=CoreRepositoryValidator, id=model.validator_id)
+    await validator.checks.fetch()
+
+    async with database.start_session(read_only=True) as db:
+        source_branch = await registry.get_branch(db=db, branch=model.source_branch)
+        sync_status = await RepositoryBranchSyncStatusReader(db=db).get_status_written_on_branch(
+            repository_id=model.repository_id, branch=source_branch
+        )
+
+    outcome = evaluate_import_status(
+        sync_status=sync_status,
+        repository_name=model.repository_name,
+        branch_name=model.source_branch,
+    )
+    if outcome.conclusion is ValidatorConclusion.FAILURE:
+        log.warning(outcome.message)
+    else:
+        log.info(f"No import error reported for {model.repository_name} on {model.source_branch}")
+
+    existing_check = None
+    for relationship in validator.checks.peers:
+        check_peer = relationship.peer
+        if check_peer.typename == InfrahubKind.STANDARDCHECK and check_peer.kind.value == IMPORT_STATUS_CHECK_KIND:
+            existing_check = check_peer
+
+    if existing_check:
+        existing_check.created_at.value = Timestamp().to_string()
+        existing_check.message.value = outcome.message
+        existing_check.conclusion.value = outcome.conclusion.value
+        existing_check.severity.value = outcome.severity.value
+        await existing_check.save()
+    else:
+        check = await client.create(
+            kind=CoreStandardCheck,
+            data={
+                "name": IMPORT_STATUS_CHECK_NAME,
+                "origin": model.repository_id,
+                "kind": IMPORT_STATUS_CHECK_KIND,
+                "validator": model.validator_id,
+                "created_at": Timestamp().to_string(),
+                "message": outcome.message,
+                "conclusion": outcome.conclusion.value,
+                "severity": outcome.severity.value,
+            },
+        )
+        await check.save()
+
+    return outcome.conclusion
 
 
 @flow(
