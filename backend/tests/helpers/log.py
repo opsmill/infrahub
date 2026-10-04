@@ -75,3 +75,12 @@ def find_logged_event(caplog: pytest.LogCaptureFixture, *, event: str, **fields:
     """Return the structured payload of the first matching log entry, or ``None`` when none was captured."""
     matches = find_logged_events(caplog, event=event, **fields)
     return matches[0] if matches else None
+
+
+def infrahub_log_payloads(caplog: pytest.LogCaptureFixture) -> list[dict[str, Any]]:
+    """Return the infrahub logger's structured payloads in order, without timestamps, so each compares whole."""
+    return [
+        {name: value for name, value in record.msg.items() if name != "timestamp"}
+        for record in caplog.records
+        if record.name == "infrahub" and isinstance(record.msg, dict)
+    ]

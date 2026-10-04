@@ -113,7 +113,7 @@ The daily telemetry snapshot reports the license state and identifiers next to t
 
 ### User Story 6 - The upgrade command reminds operators about the license (Priority: P3)
 
-Operators who run the upgrade command, with or without its check option, see the license state at the end of the output and what to set if a license is missing or has a problem.
+Operators who run the upgrade command, with or without its check option, see the license state near the end of the output and what to set if a license is missing or has a problem.
 
 **Why this priority**: Operators run this command at every upgrade, so it is where they learn to set the license before the second licensing release. It is a reminder, not a gate.
 
@@ -121,8 +121,8 @@ Operators who run the upgrade command, with or without its check option, see the
 
 **Acceptance Scenarios**:
 
-1. **Given** no license in the first licensing release, **When** the operator runs the upgrade check, **Then** the output ends with "License: not set", says to set the license key on the servers and task workers, and names the release in which every user will see the banner.
-2. **Given** a valid license, **When** the operator runs the upgrade check, **Then** the output ends with one line naming the customer, the type and the end date.
+1. **Given** no license in the first licensing release, **When** the operator runs the upgrade check, **Then** the license section, printed just before the closing instruction to run the upgrade, starts with "License: not set", says to set the license key on the servers and task workers, and names the release in which every user will see the banner.
+2. **Given** a valid license, **When** the operator runs the upgrade check, **Then** the license section, printed just before the closing instruction to run the upgrade, is one line naming the customer, the type and the end date.
 3. **Given** an invalid, expired or not yet valid license, **When** the operator runs the upgrade command, **Then** the output states the state, the reason and what to do, the command never prompts, and the exit code is the same as it would be without a license problem.
 
 ---
@@ -184,7 +184,7 @@ Operators who run the upgrade command, with or without its check option, see the
 - **FR-020**: The About dialog MUST show every signed-in user the customer name, license type, product tier, support tier, end date and days left; an evaluation license reads "Evaluation license, N days left". It MUST show no license information to an anonymous visitor.
 - **FR-021**: In the second licensing release, every REST and GraphQL response MUST carry the license status header with the state when the state needs attention (FR-013), whether or not the caller is signed in; other paths, such as static assets and documentation, MUST NOT carry it. A request shed under load and an error with no registered handler are answered outside the application and carry no header ([contracts/response-header.md](contracts/response-header.md)).
 - **FR-022**: The daily telemetry snapshot MUST include a license block with the state, license ID, license type, product tier, support tier, start, end and issuer, and MUST NOT include the customer name. The block MUST be empty when no license is required. The telemetry data format version MUST change accordingly.
-- **FR-023**: The upgrade command, with and without its check option, MUST end with a license section that states the license state and, when it needs attention, what to set. It MUST print nothing about the license when no license is required, MUST NOT prompt, and MUST NOT change the exit code because of the license.
+- **FR-023**: The upgrade command, with and without its check option, MUST print a license section that states the license state and, when it needs attention, what to set: last in the upgrade command's output, after the upgrade completes, and with the check option just before the closing instruction to run the upgrade. It MUST print nothing about the license when no license is required, MUST NOT prompt, and MUST NOT change the exit code because of the license.
 
 #### Dependencies
 
