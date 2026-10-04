@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 
 import pytest
 
@@ -20,44 +21,130 @@ def build(
     )
 
 
-@pytest.mark.parametrize(
-    ("classification", "imported", "remote", "message"),
-    [
-        (RefClassification.REWRITE, None, REMOTE, "A branch with no imported commit cannot be rewrite"),
-        (RefClassification.RETARGET, None, REMOTE, "A branch with no imported commit cannot be retarget"),
-        (
-            RefClassification.REMOTE_ABSENT,
-            None,
-            None,
-            "A branch with no imported commit cannot be remote-absent",
-        ),
-        (RefClassification.REWRITE, IMPORTED, None, "A branch with no remote head cannot be rewrite"),
-        (RefClassification.RETARGET, IMPORTED, None, "A branch with no remote head cannot be retarget"),
-        (RefClassification.FAST_FORWARD, IMPORTED, None, "A branch with no remote head cannot be fast-forward"),
-        (
-            RefClassification.UNCHANGED,
-            IMPORTED,
-            None,
-            "An imported branch whose remote head is gone is REMOTE_ABSENT, not UNCHANGED",
-        ),
-    ],
-)
-def test_a_rejected_combination_raises(
-    classification: RefClassification, imported: str | None, remote: str | None, message: str
-) -> None:
-    with pytest.raises(ValueError, match=rf"^{re.escape(message)}$"):
-        build(classification, imported=imported, remote=remote)
+@dataclass
+class CombinationTestCase:
+    name: str
+    classification: RefClassification
+    imported: str | None
+    remote: str | None
+    message: str | None = None
+    """The whole expected message, or None when the combination is accepted."""
+
+
+COMBINATION_TEST_CASES: list[CombinationTestCase] = [
+    CombinationTestCase(
+        name="rewrite_without_an_imported_commit",
+        classification=RefClassification.REWRITE,
+        imported=None,
+        remote=REMOTE,
+        message="A branch with no imported commit cannot be rewrite",
+    ),
+    CombinationTestCase(
+        name="retarget_without_an_imported_commit",
+        classification=RefClassification.RETARGET,
+        imported=None,
+        remote=REMOTE,
+        message="A branch with no imported commit cannot be retarget",
+    ),
+    CombinationTestCase(
+        name="remote_absent_without_an_imported_commit",
+        classification=RefClassification.REMOTE_ABSENT,
+        imported=None,
+        remote=None,
+        message="A branch with no imported commit cannot be remote-absent",
+    ),
+    CombinationTestCase(
+        name="rewrite_without_a_remote_head",
+        classification=RefClassification.REWRITE,
+        imported=IMPORTED,
+        remote=None,
+        message="A branch with no remote head cannot be rewrite",
+    ),
+    CombinationTestCase(
+        name="retarget_without_a_remote_head",
+        classification=RefClassification.RETARGET,
+        imported=IMPORTED,
+        remote=None,
+        message="A branch with no remote head cannot be retarget",
+    ),
+    CombinationTestCase(
+        name="fast_forward_without_a_remote_head",
+        classification=RefClassification.FAST_FORWARD,
+        imported=IMPORTED,
+        remote=None,
+        message="A branch with no remote head cannot be fast-forward",
+    ),
+    CombinationTestCase(
+        name="rewrite_whose_commits_match",
+        classification=RefClassification.REWRITE,
+        imported=IMPORTED,
+        remote=IMPORTED,
+        message=f"A branch whose commits both read {IMPORTED} is unchanged, not rewrite",
+    ),
+    CombinationTestCase(
+        name="retarget_whose_commits_match",
+        classification=RefClassification.RETARGET,
+        imported=IMPORTED,
+        remote=IMPORTED,
+        message=f"A branch whose commits both read {IMPORTED} is unchanged, not retarget",
+    ),
+    CombinationTestCase(
+        name="fast_forward_whose_commits_match",
+        classification=RefClassification.FAST_FORWARD,
+        imported=IMPORTED,
+        remote=IMPORTED,
+        message=f"A branch whose commits both read {IMPORTED} is unchanged, not fast-forward",
+    ),
+    CombinationTestCase(
+        name="unchanged_whose_commits_differ",
+        classification=RefClassification.UNCHANGED,
+        imported=IMPORTED,
+        remote=REMOTE,
+        message=f"A branch is not unchanged when {IMPORTED} was imported and the remote reads {REMOTE}",
+    ),
+    CombinationTestCase(
+        name="unchanged_that_was_never_imported",
+        classification=RefClassification.UNCHANGED,
+        imported=None,
+        remote=REMOTE,
+        message=f"A branch is not unchanged when None was imported and the remote reads {REMOTE}",
+    ),
+    CombinationTestCase(
+        name="unchanged_whose_remote_head_is_gone",
+        classification=RefClassification.UNCHANGED,
+        imported=IMPORTED,
+        remote=None,
+        message=f"A branch is not unchanged when {IMPORTED} was imported and the remote reads None",
+    ),
+    CombinationTestCase(
+        name="unchanged_absent_from_both_sides",
+        classification=RefClassification.UNCHANGED,
+        imported=None,
+        remote=None,
+    ),
+    CombinationTestCase(
+        name="fast_forward_of_a_branch_never_imported",
+        classification=RefClassification.FAST_FORWARD,
+        imported=None,
+        remote=REMOTE,
+    ),
+    CombinationTestCase(
+        name="remote_absent_after_the_ref_was_dropped",
+        classification=RefClassification.REMOTE_ABSENT,
+        imported=IMPORTED,
+        remote=None,
+    ),
+]
 
 
 @pytest.mark.parametrize(
-    ("classification", "imported", "remote"),
-    [
-        pytest.param(RefClassification.UNCHANGED, None, None, id="absent-from-both-sides"),
-        pytest.param(RefClassification.FAST_FORWARD, None, REMOTE, id="never-imported-branch"),
-        pytest.param(RefClassification.REMOTE_ABSENT, IMPORTED, None, id="remote-ref-is-gone"),
-    ],
+    "test_case",
+    [pytest.param(tc, id=tc.name) for tc in COMBINATION_TEST_CASES],
 )
-def test_an_accepted_combination_builds(
-    classification: RefClassification, imported: str | None, remote: str | None
-) -> None:
-    build(classification, imported=imported, remote=remote)
+def test_only_a_coherent_combination_is_accepted(test_case: CombinationTestCase) -> None:
+    if test_case.message is None:
+        build(test_case.classification, imported=test_case.imported, remote=test_case.remote)
+        return
+
+    with pytest.raises(ValueError, match=rf"^{re.escape(test_case.message)}$"):
+        build(test_case.classification, imported=test_case.imported, remote=test_case.remote)

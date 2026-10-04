@@ -243,7 +243,9 @@ Returns whether a record was written.
 
 1. Writes nothing unless `divergence.classification` is `REWRITE`. `RETARGET` arrives already
    classified, so the recorder needs no precondition of its own and never reads the cache.
-2. Rejects a divergence whose `imported_commit` equals its `remote_head`. That is a classifier bug.
+2. Needs no precondition about the two commits matching. `RefDivergence` rejects at construction
+   any classification other than `UNCHANGED` whose commits are equal, so a divergence that reaches
+   the recorder has already differed.
 3. Reads the current `rewrite_count` on that branch, writes `count + 1`, treating an absent value
    as zero.
 4. Writes all four attributes in one mutation, on the Infrahub branch named.

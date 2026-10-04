@@ -32,11 +32,24 @@ class RefDivergence:
             RefClassification.FAST_FORWARD,
         ):
             raise ValueError(f"A branch with no imported commit cannot be {self.classification}")
-        if self.remote_head is None:
-            if self.classification not in (RefClassification.REMOTE_ABSENT, RefClassification.UNCHANGED):
-                raise ValueError(f"A branch with no remote head cannot be {self.classification}")
-            if self.classification is RefClassification.UNCHANGED and self.imported_commit is not None:
-                raise ValueError("An imported branch whose remote head is gone is REMOTE_ABSENT, not UNCHANGED")
+        if self.remote_head is None and self.classification not in (
+            RefClassification.REMOTE_ABSENT,
+            RefClassification.UNCHANGED,
+        ):
+            raise ValueError(f"A branch with no remote head cannot be {self.classification}")
+
+        # Nothing moved and something moved are the same question asked twice, so the two commits
+        # matching decides unchanged on its own.
+        commits_match = self.imported_commit == self.remote_head
+        if commits_match and self.classification is not RefClassification.UNCHANGED:
+            raise ValueError(
+                f"A branch whose commits both read {self.remote_head} is unchanged, not {self.classification}"
+            )
+        if not commits_match and self.classification is RefClassification.UNCHANGED:
+            raise ValueError(
+                f"A branch is not unchanged when {self.imported_commit} was imported and the remote "
+                f"reads {self.remote_head}"
+            )
 
 
 @dataclass(frozen=True)
