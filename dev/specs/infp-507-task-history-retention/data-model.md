@@ -6,12 +6,12 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 
 | Field | Type | Default | Validation |
 |---|---|---|---|
-| `task_history` | duration | 30 days | ≥ 1 day |
-| `activity_log` | duration | 7 days | ≥ 1 day |
-| `prefect_own_events` | duration | 7 days | ≥ 1 day; above `activity_log`, capped to it with a warning |
+| `task_history` | duration | 30 days | ≥ 1 day, ≤ 36,500 days |
+| `activity_log` | duration | 7 days | ≥ 1 day, ≤ 36,500 days |
+| `prefect_own_events` | duration | 7 days | ≥ 1 day, ≤ 36,500 days; above `activity_log`, capped to it with a warning |
 
 - Owned by the Infrahub configuration, as a section of the main settings with its own environment prefix (names final in the configuration contract).
-- Same values in every edition, no upper limit.
+- Same values in every edition, with no edition limit. The 36,500-day (100-year) maximum is technical: a cutoff further back cannot be computed.
 - Validated when the task manager or the background-services command starts; an invalid value stops the process with an error naming the setting.
 
 ### Derived Prefect settings
