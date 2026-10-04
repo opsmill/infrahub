@@ -23,6 +23,12 @@ In Infrahub 1.2 and later, the upgrade process has been streamlined with a unifi
 For earlier versions, please refer to the [release notes](/release-notes/infrahub) for specific upgrade instructions.
 :::
 
+:::warning Task history older than the retention is deleted
+
+The task manager deletes finished task runs older than the task history retention, 30 days by default, together with their logs and artifacts. Once you upgrade an instance that holds older runs, Infrahub deletes them, and this cannot be undone. If you need them, set a longer retention on the task manager before you upgrade, for example `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=90d` in the `.env` file of a Docker Compose deployment or in the environment of the task manager on Helm. The upgrade also needs time and free disk space for this cleanup; see [Task history cleanup](./overview.mdx#task-history-cleanup).
+
+:::
+
 ## Upgrading to Infrahub Enterprise 1.2 and after
 
 <Tabs groupId="deployment" queryString>
@@ -57,13 +63,32 @@ You can do this with: `docker image prune -a`
 # Upgrade the Helm release
 helm upgrade
 
-# Run the unified upgrade command inside the server pod
-kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+# Run the unified upgrade command inside the server pod, without the task history cleanup
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade --no-task-history-cleanup
 
 # Restart deployments to apply changes
 kubectl rollout restart deployment/prefect-server
 kubectl rollout restart deployment/infrahub-infrahub-server
 ```
+
+The instance keeps serving requests during a Helm upgrade, so the upgrade command leaves out the [task history cleanup](./overview.mdx#task-history-cleanup), which locks the task history tables while it rewrites them. If you run `infrahub upgrade` through the chart's upgrade hook job instead, make sure the job passes `--no-task-history-cleanup`, for example with the `infrahub.upgrade.extraArgs` value.
+
+After the rollout, the new task manager deletes finished task runs older than the task history retention every hour, but the disk space they used returns only when the task history tables are rewritten. Rewrite them in a maintenance window:
+
+1. Stop the Infrahub server and the task workers, and leave the task manager and its database running:
+
+   ```bash
+   kubectl scale deployment/infrahub-infrahub-server deployment/infrahub-infrahub-task-worker --replicas=0
+   ```
+
+2. Run `infrahub tasks flush flow-runs --rewrite` from a container that uses the Infrahub image and the environment of the Infrahub server. The command connects to the task manager at the address in `PREFECT_API_URL`, which is `http://prefect-server:4200/api` in the chart's default values.
+3. Check that the summary of the command includes `Task history tables rewritten`. If it prints `The task manager does not provide the task history cleanup yet; skipped.`, it reached a task manager without the cleanup and deleted nothing.
+4. Start the Infrahub server and the task workers again with their usual number of replicas:
+
+   ```bash
+   kubectl scale deployment/infrahub-infrahub-server --replicas=<server-replicas>
+   kubectl scale deployment/infrahub-infrahub-task-worker --replicas=<task-worker-replicas>
+   ```
 
 </TabItem>
 </Tabs>
