@@ -1964,6 +1964,14 @@ class LDAPSettings(BaseSettings):
         return []
 
 
+class LicenseSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LICENSE_")
+    key: str | None = Field(
+        default=None,
+        description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.",
+    )
+
+
 @dataclass
 class Override:
     message_bus: InfrahubMessageBus | None = None
@@ -2084,6 +2092,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def license(self) -> LicenseSettings:
+        return self.active_settings.license
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2113,6 +2125,7 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    license: LicenseSettings = LicenseSettings()
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:

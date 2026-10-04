@@ -211,7 +211,7 @@ Operators who run the upgrade command, with or without its check option, see the
 
 - The Enterprise package (opsmill/infrahub-private) supplies the real license service: reading the license key, verifying the signature offline against the accepted issuers, translating vendor fields, the daily license log, and the license command. It registers its service only once a production issuer exists, so this feature merges with no visible effect.
 - The release mode is set by the Enterprise package as a constant per release, not as a setting.
-- The Helm chart and compose changes that set the license key on the servers and task workers, the install page and the upgrade guide step belong to the first licensing release, not to this feature.
+- The Helm chart change that sets the license key on the servers and task workers, the install page and the upgrade guide step belong to the first licensing release, not to this feature. This feature only declares `INFRAHUB_LICENSE_KEY` as a pass-through in the shared environment of both compose files, so a key set on the host reaches the servers and task workers; Community ignores it.
 - The resource-allocation telemetry change ([PR #10003](https://github.com/opsmill/infrahub/pull/10003)) lands before the telemetry data format change in this feature, so the cloud telemetry processor handles one format change at a time.
 - **Release gate**: the telemetry data format change affects every deployment's snapshot, Community included. This feature may merge to the development branch, but the release that contains it ships only once the cloud telemetry processor accepts the new format.
 - Super-admin means a user holding the existing super-admin global permission.

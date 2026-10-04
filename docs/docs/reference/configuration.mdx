@@ -432,6 +432,12 @@ LDAP authentication configuration.
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
 
+## License
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_LICENSE_KEY` | License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it. | string | None |
+
 ## Logging
 
 These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.

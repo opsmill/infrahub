@@ -39,34 +39,34 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **⚠️ CRITICAL**: No user story work starts before this phase is complete.
 
-- [ ] T003 [P] Write `backend/tests/unit/license/test_models.py`:
+- [X] T003 [P] Write `backend/tests/unit/license/test_models.py`:
   - `License` accepts timezone-aware datetimes and normalizes them to UTC;
   - it rejects a naive `starts_at`, `ends_at` or `issued_at` with `ValueError`;
   - an unknown `license_type` value is kept as received;
   - `is_evaluation` is true only for `"evaluation"`.
-- [ ] T004 [P] Write `backend/tests/unit/license/test_status.py` for `evaluate` (data-model.md "State derivation"):
+- [X] T004 [P] Write `backend/tests/unit/license/test_status.py` for `evaluate` (data-model.md "State derivation"):
   - `None` → unlicensed;
   - each `LicenseFailureReason` → invalid with that reason;
   - for evaluation, commercial and an unknown type, at one second before `starts_at`, at `starts_at`, one second before `ends_at - 30 days`, at `ends_at - 30 days`, one second before `ends_at`, and at `ends_at`;
   - `days_remaining` rounds up and `days_since_expiry` rounds down (11.5 days left → 12; 3.9 days expired → 3).
-- [ ] T005 [P] Write `backend/tests/unit/license/test_notices.py` for `notice_for`: every one of the 7 states × 2 `NoticeMode` values returns the audience, dismissibility and `send_header` from the data-model.md Notice table
-- [ ] T006 Implement `backend/infrahub/license/models.py`:
+- [X] T005 [P] Write `backend/tests/unit/license/test_notices.py` for `notice_for`: every one of the 7 states × 2 `NoticeMode` values returns the audience, dismissibility and `send_header` from the data-model.md Notice table
+- [X] T006 Implement `backend/infrahub/license/models.py`:
   - the enums `LicenseState`, `LicenseFailureReason`, `LicenseType`, `NoticeMode` and `NoticeAudience`;
   - the frozen dataclasses `License` (with the aware-datetime validation in `__post_init__`), `LicenseFailure`, `LicenseStatus` and `Notice`, as in data-model.md.
 
   Make T003 pass.
-- [ ] T007 Implement `evaluate(outcome, now)` and `notice_for(status, mode)` in `backend/infrahub/license/status.py`, both pure, with the 30-day expiring window as a module constant; make T004 and T005 pass
-- [ ] T008 [P] Write `backend/tests/unit/license/test_service.py`:
+- [X] T007 Implement `evaluate(outcome, now)` and `notice_for(status, mode)` in `backend/infrahub/license/status.py`, both pure, with the 30-day expiring window as a module constant; make T004 and T005 pass
+- [X] T008 [P] Write `backend/tests/unit/license/test_service.py`:
   - `LicenseServiceCommunity.status()` returns `not_required` with no license, `notice_mode` is `QUIET`, `enforcing_release` is `None`;
   - `read_license_status(service, now=...)` returns the service's status, and converts any exception from `service.status()` into `invalid` / `internal_error` with an ERROR log entry that includes the traceback.
-- [ ] T009 Implement in `backend/infrahub/license/service.py`:
+- [X] T009 Implement in `backend/infrahub/license/service.py`:
   - the abstract `LicenseService` (`notice_mode`, `enforcing_release`, `status(now: datetime | None = None)`) and `LicenseServiceCommunity`, as in contracts/license-service.md;
-  - `read_license_status(service, now=None) -> LicenseStatus`, the single failure-containment boundary every surface uses (`except Exception` with `# noqa: BLE001` and a comment naming the top-level-boundary reason from `dev/guidelines/backend/exceptions.md`).
+  - `read_license_status(service, now=None) -> LicenseStatus`, the single failure-containment boundary every surface uses (`except Exception` with a comment naming the top-level-boundary reason from `dev/guidelines/backend/exceptions.md`; no `# noqa: BLE001`, because ruff does not flag a handler that logs with `log.exception` and rejects the unused suppression).
 
   Make T008 pass.
-- [ ] T010 Add `build_license_service()` (cached in `_singletons` under `"license_service"`) and `get_license_service()` (with `@inject` and `Depends(build_license_service)`) to `backend/infrahub/workers/dependencies.py`, mirroring `build_ldap_auth_service` / `get_ldap_auth_service`
-- [ ] T011 [P] Write `backend/tests/unit/license/test_settings.py`: `LicenseSettings().key` is `None` by default and reads `INFRAHUB_LICENSE_KEY` from the environment; `Settings().license` exists; setting the key does not add anything to `Settings.enterprise_features`
-- [ ] T012 Add `LicenseSettings` (`env_prefix="INFRAHUB_LICENSE_"`, `key: str | None = Field(default=None, description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.")`) and register it as `license: LicenseSettings = LicenseSettings()` on `Settings` in `backend/infrahub/config.py`; make T011 pass
+- [X] T010 Add `build_license_service()` (cached in `_singletons` under `"license_service"`) and `get_license_service()` (with `@inject` and `Depends(build_license_service)`) to `backend/infrahub/workers/dependencies.py`, mirroring `build_ldap_auth_service` / `get_ldap_auth_service`
+- [X] T011 [P] Write `backend/tests/unit/license/test_settings.py`: `LicenseSettings().key` is `None` by default and reads `INFRAHUB_LICENSE_KEY` from the environment; `Settings().license` exists; setting the key does not add anything to `Settings.enterprise_features`
+- [X] T012 Add `LicenseSettings` (`env_prefix="INFRAHUB_LICENSE_"`, `key: str | None = Field(default=None, description="License for Infrahub Enterprise, as a signed token. Infrahub Community ignores it.")`) and register it as `license: LicenseSettings = LicenseSettings()` on `Settings` in `backend/infrahub/config.py`; make T011 pass
 
 **Checkpoint**: The contract exists, the rules are fully tested, and nothing calls it yet.
 
@@ -237,7 +237,7 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
   - the `/api/info` and `/api/config` responses;
   - the stored telemetry snapshot;
   - the upgrade license lines.
-- [ ] T048 [P] Regenerate `docs/docs/reference/configuration.mdx` with `uv run invoke docs.generate` and check the only change is the license key setting
+- [X] T048 [P] Regenerate `docs/docs/reference/configuration.mdx` with `uv run invoke docs.generate` and check the only change is the license key setting
 - [ ] T049 [P] Write `dev/knowledge/backend/licensing.md`:
   - the service contract and how Enterprise overrides it;
   - the state table and the banner table;

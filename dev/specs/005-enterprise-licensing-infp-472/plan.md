@@ -113,6 +113,7 @@ frontend/app/src/
 └── pages/app-layout.tsx                                # renders the banner above AppHeader
 
 pyproject.toml, uv.lock                                 # pyjwt -> pyjwt[crypto]
+docker-compose.yml, development/docker-compose.yml      # INFRAHUB_LICENSE_KEY pass-through
 schema/openapi.json                                     # regenerated
 frontend/app/src/shared/api/rest/types.generated.ts     # regenerated
 docs/docs/reference/configuration.mdx                   # regenerated
@@ -135,7 +136,7 @@ dev/knowledge/backend/telemetry.md                      # license block
   8. generated files and docs.
 
   The pure functions come first because every surface depends on them.
-- **Failure containment**: every call site that reads the service wraps the call so a raised exception becomes `invalid` / `internal_error` with an ERROR log (spec FR-010). This is the one place a broad `except Exception` is justified: a top-level boundary that must not take the process down (`dev/guidelines/backend/exceptions.md`, `# noqa: BLE001` with that reason).
+- **Failure containment**: every call site that reads the service wraps the call so a raised exception becomes `invalid` / `internal_error` with an ERROR log (spec FR-010). This is the one place a broad `except Exception` is justified: a top-level boundary that must not take the process down (`dev/guidelines/backend/exceptions.md`; a comment names that reason, and no `# noqa: BLE001` is needed because the handler logs with `log.exception`).
 - **Days arithmetic**: `days_remaining` rounds up and `days_since_expiry` rounds down, so a license with 11.5 days left reads "12 days" and one expired 3.9 days ago reads "3 days ago".
 - **Path eligibility for the header**: `/api`, `/api/…`, `/graphql`, `/graphql/…`; never `/api-static`.
 - **Telemetry format**: bump `TELEMETRY_VERSION`; if the resource-allocation telemetry PR (#10003) lands first, bump again on rebase.

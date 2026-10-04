@@ -10,6 +10,7 @@ from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
+from infrahub.license.service import LicenseService, LicenseServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
 from infrahub.services.adapters.event import InfrahubEventService
@@ -207,3 +208,16 @@ def get_ldap_auth_service(
     ldap_auth_service: LDAPAuthService = Depends(build_ldap_auth_service),  # noqa: B008
 ) -> LDAPAuthService:
     return ldap_auth_service
+
+
+def build_license_service() -> LicenseService:
+    if "license_service" not in _singletons:
+        _singletons["license_service"] = LicenseServiceCommunity()
+    return _singletons["license_service"]
+
+
+@inject
+def get_license_service(
+    license_service: LicenseService = Depends(build_license_service),  # noqa: B008
+) -> LicenseService:
+    return license_service
