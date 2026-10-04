@@ -101,6 +101,10 @@ An operator sets how long task history, the activity log and the task manager's 
 - **Upgrade interrupted** (stopped session, timeout, crash): the cleanup keeps running or can be re-run, and a re-run continues where the first one stopped, because it commits one day at a time and logs its progress.
 - **Upgrade run against a task manager that is still the previous version** (Helm pre-upgrade): the command reports that the cleanup is not available and the upgrade continues instead of failing.
 - **Nothing to delete** (retention longer than all task history): the upgrade deletes nothing and skips the rewrite.
+- **The task manager's own cleanup of old runs runs at the same time** (it is on, and runs during the upgrade): both finish and leave the same runs; neither fails.
+- **Several task-manager replicas**: only one cleanup runs at a time; the command waits and continues when another replica runs one.
+- **A table is locked by something else during the rewrite**: the rewrite of that table is skipped after a short wait and reported, and the upgrade completes.
+- **Existing scripts call the command for old runs with its current options**: they keep working.
 - **Rewrite during operation**: the rewrite option is off by default, because each table is locked until its rewrite ends; running it while the instance is up is the operator's choice.
 - **Not enough free disk for the rewrite**: the rewrite needs free space for a copy of the remaining rows (under 0.5 GB for 25 GB of task history); the upgrade guide states this.
 - **PENDING runs that never started**: the command for stuck runs does not catch them; they stay until a follow-up fixes the command.

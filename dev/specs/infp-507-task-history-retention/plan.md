@@ -46,7 +46,7 @@ Research and code locations: [research.md](research.md).
 | III. Type Safety & Explicit Contracts | Pass | Pydantic settings section and request/response models for the new routes; contracts written before implementation (contracts/). |
 | IV. Test Discipline | Pass | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; functional test for the event-type list; Vitest for paging; an E2E test for Activities "load more" without the count. |
 | V. Query Performance | Pass | SQL built with SQLAlchemy Core, parameterized. Plans validated with EXPLAIN in the design-doc benchmark; regression covered by private performance tests. |
-| VI. Security & Input Boundaries | **Deviation (justified)** | The new cleanup route mutates without authentication. See Complexity Tracking. Settings input is validated at start. |
+| VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite` and an optional `days_to_keep` ≥ 1, never a timestamp. See Complexity Tracking. Settings input is validated at start. |
 | VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during a long upgrade does not stop the cleanup. See Complexity Tracking. |
 
 **Post-design re-check**: unchanged. No new dependency, no new abstraction with fewer than two callers (the settings translation serves the task manager and the background-services command; the cleanup job serves the CLI and the upgrade).
@@ -110,10 +110,10 @@ changelog/                             # fragments per part
 
 ## Delivery Order
 
-1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes, `flush flow-runs` rewrite, upgrade step and flag, background-services command, stale-runs documentation, cleanup equivalence test.
+1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order, retry on deadlock, rewrite lock timeout), `flush flow-runs` reimplementation with `--days-to-keep` kept and `--batch-size` deprecated, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time and no count (frontend change waits for Q2); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
-4. **Part 4, documentation**: ships with parts 1 and 3.
+4. **Part 4, documentation**: ships with parts 1 and 3. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
 
 ## Risks
 
@@ -125,11 +125,15 @@ changelog/                             # fragments per part
 | New Prefect event type not in the list | Functional guard test in CI; a missed type only costs disk. |
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
 | Helm hook rewrites tables on a live instance | Chart passes `--no-task-history-cleanup`; 404 path covers older charts against the first release. |
-| Operators already set PREFECT_* variables by hand | Explicit values win, with a warning. |
+| Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
+| Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
+| The cleanup and Prefect's now-enabled vacuum deadlock on the same runs | Delete in Prefect's order (logs and artifacts, then runs); retry a day up to 3 times; concurrency test. |
+| A table rewrite waits forever on a lock | 60 s lock timeout per table; skipped tables are reported. |
+| Existing cleanup scripts break on removed flags | `--days-to-keep` kept as an override, `--batch-size` deprecated. |
 
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
-| Unauthenticated mutating route on the task manager (Principle VI) | The cleanup must run inside the task manager, the only process connected to Prefect's database; Infrahub's existing task-manager route has no authentication either. | Adding authentication to the task manager is out of scope (decided 2026-10-04): the route is reachable only on the internal network, like Prefect's own API, which already allows deleting runs. |
+| Unauthenticated mutating route on the task manager (Principle VI) — needs maintainer approval at PR review | The cleanup must run inside the task manager, the only process connected to Prefect's database; Infrahub's existing task-manager route has no authentication either. | Adding authentication to the task manager is out of scope (decided by the tech owner, 2026-10-04): the route is reachable only on the internal network, like Prefect's own API, which already allows deleting runs. |
 | Background job with status polling instead of a single request (Principle VII) | The cleanup can run for over an hour; a request-bound cleanup stops when the session or a proxy drops the connection. | A single blocking request fails on any HTTP timeout during the upgrade. |
