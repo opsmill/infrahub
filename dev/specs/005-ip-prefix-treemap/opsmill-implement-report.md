@@ -214,3 +214,14 @@ marker next to the CIDR, the tooltip always carrying the full text. The query se
 the child model carries `isPool`, and FR-004 gained the pool colour and a new FR-004a for the
 description. Verified on 10.0.0.0/8 of the `add-dc3` branch in both themes (106 frontend tests
 pass).
+
+## Erratum 5 (2026-10-04, E2E results from CI)
+
+The nine E2E tests deferred in section 4 ran in the pull request's `E2E-testing-pytest-playwright
+(foundation)` shard. The first run failed on every allocated-tile locator: Playwright 1.60 does not
+escape `/` inside a regex embedded in a selector, so the CIDR patterns ended the selector early.
+The CI monitor reproduced it locally against an image built from the branch, escaped the slashes in
+the selector helper, and corrected one expectation (on `main` the free space below 10.0.0.0/8
+aggregates to 10.4.0.0/14, so no `10.5.0.0/16 available` tile exists). After that fix the module
+passed 9/9 in CI on three consecutive runs, and every other non-skipped job was green. The SC-001
+measurement is recorded in quickstart.md.
