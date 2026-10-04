@@ -682,6 +682,7 @@ class WorkflowSettings(BaseSettings):
 
 
 _RETENTION_IN_DAYS = re.compile(r"(\d+)d")
+_ISO_8601_DURATION = re.compile(r"P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?")
 _MINIMUM_RETENTION = timedelta(days=1)
 # Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
 _MAXIMUM_RETENTION = timedelta(days=36500)
@@ -710,7 +711,8 @@ def _parse_retention(value: Any) -> timedelta | None:
     try:
         return _TIMEDELTA_ADAPTER.validate_python(text)
     except ValidationError:
-        return None
+        # A well-formed duration too large to read is refused by the upper bound rather than as an unreadable value.
+        return timedelta.max if _ISO_8601_DURATION.fullmatch(text) else None
 
 
 class TaskManagerRetentionSettings(BaseSettings):
