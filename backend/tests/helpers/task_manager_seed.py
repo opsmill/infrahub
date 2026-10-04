@@ -5,8 +5,8 @@ import sqlite3
 import subprocess  # noqa: S404 - Prefect migrates only the database of its process
 import sys
 from contextlib import closing
-from dataclasses import dataclass
-from datetime import UTC, datetime
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -17,11 +17,10 @@ from prefect.server.database.orm_models import AioSqliteORMConfiguration
 from prefect.server.database.query_components import AioSqliteQueryComponents
 from prefect.server.events.schemas.events import ReceivedEvent, RelatedResource, Resource
 from prefect.server.events.storage.database import write_events
+from prefect.server.schemas.states import StateType
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from prefect.server.schemas.states import StateType
 
     from infrahub.events.models import InfrahubEvent
 
@@ -207,3 +206,137 @@ async def seed_artifact(db: PrefectDBInterface, flow_run_id: UUID, task_run_id: 
             )
         )
     return artifact_id
+
+
+@dataclass
+class TaskHistoryIds:
+    flow_runs: set[UUID] = field(default_factory=set)
+    flow_run_states: set[UUID] = field(default_factory=set)
+    task_runs: set[UUID] = field(default_factory=set)
+    task_run_states: set[UUID] = field(default_factory=set)
+    logs: set[UUID] = field(default_factory=set)
+    artifacts: set[UUID] = field(default_factory=set)
+
+    def to_json(self) -> dict[str, list[str]]:
+        return {name: sorted(str(item) for item in ids) for name, ids in asdict(self).items()}
+
+
+@dataclass
+class SeededTaskHistory:
+    kept: TaskHistoryIds = field(default_factory=TaskHistoryIds)
+    deleted: TaskHistoryIds = field(default_factory=TaskHistoryIds)
+
+
+def days_ago(days: int, hour: int = 12) -> datetime:
+    """Return the given hour, in UTC, of the day that many days before today."""
+    start_of_today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    return start_of_today - timedelta(days=days) + timedelta(hours=hour)
+
+
+async def _seed_run(
+    db: PrefectDBInterface,
+    ids: TaskHistoryIds,
+    state_type: StateType,
+    start_time: datetime | None,
+    end_time: datetime | None,
+    parent_task_run_id: UUID | None = None,
+) -> SeededFlowRun:
+    run = await seed_flow_run(
+        db=db, state_type=state_type, start_time=start_time, end_time=end_time, parent_task_run_id=parent_task_run_id
+    )
+    ids.flow_runs.add(run.id)
+    ids.flow_run_states.add(run.state_id)
+    ids.task_runs.update(run.task_run_ids)
+    ids.task_run_states.update(run.task_run_state_ids)
+    ids.logs.add(await seed_log(db=db, flow_run_id=run.id))
+    ids.logs.add(await seed_log(db=db, flow_run_id=run.id, task_run_id=run.task_run_ids[0]))
+    ids.artifacts.add(await seed_artifact(db=db, flow_run_id=run.id, task_run_id=run.task_run_ids[1]))
+    return run
+
+
+async def seed_task_history(db: PrefectDBInterface, old_runs: int = 0) -> SeededTaskHistory:
+    """Store runs that a cleanup with a 30-day retention deletes, and runs it keeps, each with its children.
+
+    Deleted: top-level runs in each terminal state that ended over 30 days ago, and the subflows of one of them.
+    Kept: a recent run, a run still running, a pending run, a finished run with no end time, and old subflows of
+    the running and the recent run.
+
+    Args:
+        old_runs: More completed runs, ended 35 days ago, that the cleanup deletes.
+
+    """
+    seeded = SeededTaskHistory()
+    deleted, kept = seeded.deleted, seeded.kept
+
+    for _ in range(old_runs):
+        await _seed_run(
+            db=db, ids=deleted, state_type=StateType.COMPLETED, start_time=days_ago(35, hour=10), end_time=days_ago(35)
+        )
+
+    for days, state_type in [
+        (40, StateType.COMPLETED),
+        (41, StateType.FAILED),
+        (42, StateType.CANCELLED),
+        (43, StateType.CRASHED),
+    ]:
+        await _seed_run(
+            db=db, ids=deleted, state_type=state_type, start_time=days_ago(days, hour=10), end_time=days_ago(days)
+        )
+
+    parent = await _seed_run(
+        db=db, ids=deleted, state_type=StateType.COMPLETED, start_time=days_ago(47), end_time=days_ago(45)
+    )
+    await _seed_run(
+        db=db,
+        ids=deleted,
+        state_type=StateType.COMPLETED,
+        start_time=days_ago(45, hour=10),
+        end_time=days_ago(45, hour=11),
+        parent_task_run_id=parent.task_run_ids[0],
+    )
+    earlier_subflow = await _seed_run(
+        db=db,
+        ids=deleted,
+        state_type=StateType.COMPLETED,
+        start_time=days_ago(47, hour=13),
+        end_time=days_ago(46),
+        parent_task_run_id=parent.task_run_ids[1],
+    )
+    await _seed_run(
+        db=db,
+        ids=deleted,
+        state_type=StateType.FAILED,
+        start_time=days_ago(47, hour=14),
+        end_time=days_ago(47, hour=15),
+        parent_task_run_id=earlier_subflow.task_run_ids[0],
+    )
+
+    recent = await _seed_run(
+        db=db, ids=kept, state_type=StateType.COMPLETED, start_time=days_ago(5, hour=10), end_time=days_ago(5)
+    )
+    running = await _seed_run(db=db, ids=kept, state_type=StateType.RUNNING, start_time=days_ago(60), end_time=None)
+    await _seed_run(db=db, ids=kept, state_type=StateType.PENDING, start_time=None, end_time=None)
+    await _seed_run(db=db, ids=kept, state_type=StateType.COMPLETED, start_time=days_ago(50), end_time=None)
+    for parent_task_run_id in (running.task_run_ids[0], recent.task_run_ids[0]):
+        await _seed_run(
+            db=db,
+            ids=kept,
+            state_type=StateType.COMPLETED,
+            start_time=days_ago(40, hour=10),
+            end_time=days_ago(40),
+            parent_task_run_id=parent_task_run_id,
+        )
+    return seeded
+
+
+async def read_task_history_ids(db: PrefectDBInterface) -> TaskHistoryIds:
+    """Return the ids of every run, task run, state, log and artifact in the database."""
+    async with db.session_context() as session:
+        return TaskHistoryIds(
+            flow_runs=set(await session.scalars(sa.select(db.FlowRun.id))),
+            flow_run_states=set(await session.scalars(sa.select(db.FlowRunState.id))),
+            task_runs=set(await session.scalars(sa.select(db.TaskRun.id))),
+            task_run_states=set(await session.scalars(sa.select(db.TaskRunState.id))),
+            logs=set(await session.scalars(sa.select(db.Log.id))),
+            artifacts=set(await session.scalars(sa.select(db.Artifact.id))),
+        )

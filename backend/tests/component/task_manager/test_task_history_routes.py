@@ -90,13 +90,13 @@ async def test_a_second_start_returns_the_running_cleanup(app: FastAPI, db: Pref
 
     async with _client(app) as client:
         async with _sqlite_write_lock(db=db):
-            first = await client.post(CLEANUP_URL, json={"rewrite": False})
-            second = await client.post(CLEANUP_URL, json={"rewrite": True})
+            first = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+            second = await client.post(CLEANUP_URL, json={"rewrite": "always"})
         finished = await _finished_job(client=client, job_id=first.json()["id"])
 
     assert (first.status_code, second.status_code) == (202, 202)
     assert second.json()["id"] == first.json()["id"]
-    assert (first.json()["state"], second.json()["state"], second.json()["rewrite"]) == ("running", "running", False)
+    assert (first.json()["state"], second.json()["state"], second.json()["rewrite"]) == ("running", "running", "never")
     assert (finished["state"], finished["deleted_runs"]) == ("completed", 1)
     assert await _flow_run_ids(db=db) == set()
 
@@ -110,7 +110,7 @@ async def test_start_is_refused_while_another_task_manager_holds_the_cleanup_loc
 
     try:
         async with _client(app) as client:
-            response = await client.post(CLEANUP_URL, json={"rewrite": False})
+            response = await client.post(CLEANUP_URL, json={"rewrite": "never"})
     finally:
         await cleanup_lock.release()
 
@@ -127,12 +127,12 @@ async def test_an_unknown_cleanup_is_not_found(app: FastAPI) -> None:
 
 
 async def test_cleanup_on_sqlite_reports_that_it_rewrites_nothing(app: FastAPI, db: PrefectDBInterface) -> None:
-    """On SQLite a cleanup asked to rewrite the tables deletes the old runs and reports neither a rewrite nor sizes."""
+    """On SQLite a cleanup asked to always rewrite the tables deletes the old runs and reports neither a rewrite nor sizes."""
     await _seed_old_run(db=db)
     before = datetime.now(UTC)
 
     async with _client(app) as client:
-        started = await client.post(CLEANUP_URL, json={"rewrite": True})
+        started = await client.post(CLEANUP_URL, json={"rewrite": "always"})
         after = datetime.now(UTC)
         job = started.json()
         finished = await _finished_job(client=client, job_id=job["id"])
@@ -142,7 +142,8 @@ async def test_cleanup_on_sqlite_reports_that_it_rewrites_nothing(app: FastAPI, 
     assert finished == {
         "id": job["id"],
         "state": "completed",
-        "rewrite": False,
+        "rewrite": "always",
+        "rewritten": False,
         "cutoff": job["cutoff"],
         "deleted_runs": 1,
         "current_day": "2026-01-15",

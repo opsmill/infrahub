@@ -13,10 +13,11 @@ Validation scenarios for each part. Settings and commands are defined in [contra
 2. Set `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=0d` and restart. Expect the task manager to refuse to start, naming `task_history`.
 3. Seed finished runs with end times older than 1 day, recent runs, and one RUNNING run (component test fixtures do this). Run `infrahub tasks flush flow-runs`. Expect only the old finished runs, their logs and artifacts gone, and the RUNNING run kept.
 4. On the Compose stack (Postgres), seed finished runs older than the retention that are more than half of the runs in the task history tables, then run `infrahub tasks flush flow-runs --rewrite`. Expect the reported size after to be smaller than before.
-5. Run `infrahub upgrade` on a Compose stack with old runs. Expect a "Task history cleanup" step with progress lines, then the summary.
+5. Run `infrahub upgrade` on a Compose stack with old runs. Expect a "Task history cleanup" step with progress lines, then the summary, with the tables rewritten when the old runs were more than half of the runs.
 6. Run `infrahub upgrade --no-task-history-cleanup`. Expect the step to be reported as skipped.
 7. Point `infrahub tasks flush flow-runs` at a task manager from the previous release. Expect the "does not provide the task history cleanup yet" message and exit code 0.
 8. Start the background services through `infrahub tasks background-services` with the test compose file and confirm the derived settings in its log.
+9. Lower `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY`, restart the task manager and let its hourly cleanup delete the older runs, then run `infrahub tasks flush flow-runs --rewrite`. Expect few or no runs deleted, the tables rewritten, and the reported size after smaller than before.
 
 Automated: the cleanup equivalence component test (new cleanup and Prefect's `vacuum_old_flow_runs` leave the same runs, logs and artifacts), and the unit test `test_prefect_reads_the_derived_values` in `backend/tests/unit/prefect_server/test_retention.py` (Prefect's own settings turn on the task run cleanup and use the `task_history` retention). The task history retention test that T021 adds to opsmill/infrahub-private-tests (`tests/performance/test_task_history_retention.py`) checks the hourly cleanup itself: it deletes finished runs older than the retention with their logs and artifacts, keeps newer and stuck runs, and also runs when the background services run in their own container.
 
