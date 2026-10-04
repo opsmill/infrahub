@@ -181,6 +181,19 @@ Webhook branch scoping matches an event against `meta.context.branch` (see [Webh
 - `branch.created` and `branch.deleted` are stamped to the global branch, pending a general rule for branch-agnostic node events.
 - `branch.rebased` and `branch.migrated` inherit the caller's context branch; they are not overridden.
 
+## Activity log behaviour
+
+| Situation | What happens |
+|---|---|
+| An Infrahub event is emitted | Prefect stores it and its related resources, keeps it for `task_manager.retention.activity_log` (7 days by default), then its hourly vacuum deletes both; see [Event retention](task-manager-retention.md#event-retention) |
+| Prefect records one of its own events (run states, heartbeats, workers) | It is never shown, and it is kept for `prefect_own_events` when its type is in `PREFECT_EVENT_TYPES`, otherwise for `activity_log` |
+| The Activities page loads its first page | The task manager reads newest first, one time window at a time, back from now |
+| The user loads more events | The page sends the time of the oldest event shown as `until` (`since` in ascending order) and drops the events it already shows by ID |
+| A filter names a branch | The resolver sends the ID of the current branch with that name, else the ID from the newest `infrahub.branch.deleted` event for that name; with neither, it returns an empty page without querying |
+| A query sets no `since` | The task manager reads back to its event retention, past Prefect's 180-day default |
+| A query selects `count` | The task manager counts the whole range; otherwise `total` is null and no count runs |
+| An API client pages with `offset` | Still accepted; a window counts as full only when it holds `offset + limit` matches, so the result equals one read of the whole range, but deep offsets get slower |
+
 ## Querying Events
 
 Events can be queried through:
@@ -192,8 +205,11 @@ Events can be queried through:
 ### Query-path performance constraints
 
 The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one time window
-at a time (1 hour, 1 day, 7 days, 30 days, then the task manager's event retention, back from
-the filter's `until`), and runs an unbounded `count(*)` over the whole range when asked.
+at a time (1 hour, 1 day, 7 days, 30 days, then the whole range, back from the filter's `until`),
+and runs an unbounded `count(*)` over the whole range when asked. The range starts at the filter's
+`since` when the caller set one, and otherwise at the request's `retention_seconds`, else Prefect's
+event retention, back from `until`. `InfrahubEventFilter.to_request` leaves an unset `since` out of
+the request so that this default applies. A filter in ascending order is read in one query.
 Two hard-earned constraints apply to this path:
 
 - **The count is only computed when the caller asks for it.** The count aggregates every
@@ -215,6 +231,38 @@ Two hard-earned constraints apply to this path:
   request (~1.5 ms). Do not remove it without re-checking the event queries' plans under
   `plan_cache_mode = force_generic_plan`.
 
+### Activities filters match indexed IDs
+
+Filter on a resource ID or a related item's ID, not on a label alone. Labels are JSON fields
+without an index, so a label filter reads every related row in the range, while Prefect indexes
+`resource_id` on both the events and their related resources. The filters in
+`task_manager/event/models.py::InfrahubEventFilter` match:
+
+| Filter | Match |
+|---|---|
+| Account | Related ID `infrahub.account.<id>`, role `infrahub.account` |
+| Branch | Related ID `infrahub.branch.<branch_id>`, role `infrahub.branch`, after the GraphQL resolver resolves names to IDs |
+| Parent event | Related ID `<parent_id>`, role `infrahub.ancestor_event`, plus the `infrahub.event_parent.id` label, because ancestors include grandparents |
+| Merged, rebased or migrated by branch name | Resource ID `infrahub.branch.<name>` when every listed event type is a branch event; otherwise the `infrahub.branch.name` label, which other event types also have |
+| Primary node | The resource ID forms `infrahub.node.<id>`, `<id>`, `infrahub.account.<id>` and `infrahub.proposed_change.<id>` plus the `infrahub.node.id` label, but only when the request lists event types and none of them is `infrahub.branch.merged`, `infrahub.branch.deleted` or `infrahub.group.auto_created`, which have the node only in a label; otherwise the label alone |
+
+- Match the primary node with the `prefect.resource.id` label of `EventResourceFilter`, which Prefect
+  looks up in the related-resources table, not with `EventResourceFilter.id`, which reads the
+  `resource_id` column of the events table: the only index containing that column starts with the
+  event name, which PostgreSQL 14 cannot skip over.
+- `backend/tests/component/task_manager/test_event_filter_equivalence.py` compares each filter with
+  the label filter it replaced, kept in `backend/tests/helpers/event_filters.py`, so a Prefect
+  upgrade that changes how resource IDs are stored fails CI.
+- A label-only filter is correct but slow on a long activity log; give a new filter an ID match
+  before adding it to the Activities page.
+
+## Retention
+
+The activity log is kept for `task_manager.retention.activity_log`, and Prefect's own events for
+`prefect_own_events`, through Prefect's global and per-type event retention. The settings, the list
+of Prefect event types and the tests that guard it are described in
+[Task Manager Retention](task-manager-retention.md#event-retention).
+
 ## Key Locations
 
 | Component | Location |
@@ -224,10 +272,14 @@ Two hard-earned constraints apply to this path:
 | Service adapter | `backend/infrahub/services/adapters/event/__init__.py` |
 | Trigger models | `backend/infrahub/trigger/models.py` |
 | GraphQL queries | `backend/infrahub/graphql/queries/event.py` |
+| Activities filters | `backend/infrahub/task_manager/event/models.py` |
+| Newest-first time windows | `backend/infrahub/prefect_server/database.py::query_events` |
+| Activities paging by time | `frontend/app/src/entities/events/ui/queries/get-events.query.ts` |
 
 ## See Also
 
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Why we use Prefect Events
+- [Task Manager Retention](task-manager-retention.md) - How long events and task runs are kept, and how they are deleted
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
 - [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
