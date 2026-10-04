@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import itertools
 import threading
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Annotated, Protocol
 from uuid import uuid4
@@ -32,6 +33,9 @@ _REWRITE_RETRIES = 3
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
 # Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
+# The tuple header and line pointer that Postgres stores with each row, which the size of its values leaves out.
+_ROW_OVERHEAD_BYTES = 28
+_PG_CLASS = sa.table("pg_class", sa.column("oid"), sa.column("reltoastrelid"))
 
 
 class CleanupLock(Protocol):
@@ -135,16 +139,23 @@ class TaskHistoryTables:
                 await session.execute(sa.delete(db.Artifact).where(db.Artifact.flow_run_id.in_(flow_run_ids)))
         return len(deleted)
 
-    async def count_runs(self) -> int:
-        async with self._db.session_context() as session:
-            count: int = await session.scalar(sa.select(sa.func.count()).select_from(self._db.FlowRun)) or 0
-        return count
+
+@dataclass(frozen=True)
+class TableSpace:
+    """The bytes a table takes on disk, and the bytes its live rows hold of them."""
+
+    disk_bytes: int
+    live_bytes: int
 
 
 class TableRewriter(Protocol):
     """Rewrites the task history tables to return the space of deleted rows to the disk."""
 
     async def total_size(self) -> int: ...
+
+    async def flow_run_space(self) -> TableSpace:
+        """Measure the disk space of the table of runs, and the part of it that its live rows hold."""
+        ...
 
     async def rewrite(self) -> list[str]:
         """Rewrite every table, returning those that stayed locked by other sessions."""
@@ -173,6 +184,23 @@ class PostgresTableRewriter:
                 )
             ).one()
         return sum(sizes)
+
+    async def flow_run_space(self) -> TableSpace:
+        # The other task history tables lose their rows with the runs they belong to, so they free space alike.
+        flow_run = self._db.FlowRun.__table__
+        relation = sa.cast(sa.literal(self._db.FlowRun.__tablename__), REGCLASS)
+        toast_relation = sa.select(_PG_CLASS.c.reltoastrelid).where(_PG_CLASS.c.oid == relation).scalar_subquery()
+        # Column by column, because the size of a whole row reads every value stored out of line.
+        row_bytes: sa.ColumnElement[int] = sa.literal(_ROW_OVERHEAD_BYTES)
+        for column in flow_run.columns:
+            row_bytes += sa.func.coalesce(sa.func.pg_column_size(column), 0)
+        disk_bytes = sa.func.pg_relation_size(relation) + sa.case(
+            (toast_relation == 0, 0), else_=sa.func.pg_relation_size(toast_relation)
+        )
+        live_bytes = sa.select(sa.func.coalesce(sa.func.sum(row_bytes), 0)).select_from(flow_run).scalar_subquery()
+        async with self._db.session_context() as session:
+            disk, live = (await session.execute(sa.select(disk_bytes, live_bytes))).one()
+        return TableSpace(disk_bytes=disk, live_bytes=live)
 
     async def rewrite(self) -> list[str]:
         engine = await self._db.engine()
@@ -222,39 +250,32 @@ class TaskHistoryCleanup:
         self._tables = tables
         self._rewriter = rewriter
 
-    async def delete(self, job: CleanupJob) -> int:
-        """Delete the runs that ended before the job's cutoff, recording the progress on the job.
-
-        Returns:
-            How many runs the tables held before the deletes, counted only where the tables can be rewritten.
-
-        """
+    async def delete(self, job: CleanupJob) -> None:
+        """Delete the runs that ended before the job's cutoff, recording the progress on the job."""
         log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
-        runs_before = 0
         if self._rewriter is not None:
             job.size_before = await self._rewriter.total_size()
-            runs_before = await self._tables.count_runs()
         await self._delete_old_runs(job=job)
-        return runs_before
 
-    async def rewrite(self, job: CleanupJob, mode: CleanupRewrite, runs_before: int) -> None:
-        """Rewrite the tables if the mode asks for it against the runs before the deletes, recording it on the job.
+    async def rewrite(self, job: CleanupJob, mode: CleanupRewrite) -> None:
+        """Rewrite the tables if the mode asks for it against their free space now, recording it on the job.
 
         Tables the job already rewrote are never rewritten again, whatever mode it is decided with afterwards.
         """
         if self._rewriter is None or job.rewritten:
             return
-        if await self._rewrite_wanted(rewrite=mode, runs_before=runs_before):
+        if await self._rewrite_wanted(rewriter=self._rewriter, rewrite=mode):
             job.not_rewritten = await self._rewriter.rewrite()
             job.rewritten = True
         job.size_after = await self._rewriter.total_size()
 
-    async def _rewrite_wanted(self, rewrite: CleanupRewrite, runs_before: int) -> bool:
+    async def _rewrite_wanted(self, rewriter: TableRewriter, rewrite: CleanupRewrite) -> bool:
         match rewrite:
             case CleanupRewrite.ALWAYS:
                 return True
             case CleanupRewrite.IF_FREED:
-                return await self._tables.count_runs() * 2 < runs_before
+                space = await rewriter.flow_run_space()
+                return space.live_bytes * 2 < space.disk_bytes
             case CleanupRewrite.NEVER:
                 return False
 
@@ -318,7 +339,7 @@ class CleanupJobs:
     async def _run(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> None:
         """Run the job to its end, deciding the rewrite again whenever a start raised its mode after the decision."""
         try:
-            runs_before = await cleanup.delete(job=job)
+            await cleanup.delete(job=job)
             decided: CleanupRewrite | None = None
             while True:
                 # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
@@ -329,7 +350,7 @@ class CleanupJobs:
                         job.state = CleanupJobState.COMPLETED
                         return
                     decided = job.rewrite
-                await cleanup.rewrite(job=job, mode=decided, runs_before=runs_before)
+                await cleanup.rewrite(job=job, mode=decided)
         # A background job has no caller to raise to, so the failure is logged and recorded on the job instead.
         except Exception as exc:
             log.exception(f"Task history cleanup {job.id} failed")

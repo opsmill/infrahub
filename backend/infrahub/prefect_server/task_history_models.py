@@ -16,7 +16,7 @@ class CleanupRewrite(StrEnum):
 
     NEVER = "never"
     IF_FREED = "if_freed"
-    """When the deletes, including the task manager's own meanwhile, freed more than half of the runs."""
+    """When more than half of the tables' disk space is free after the deletes, whenever the runs were deleted."""
     ALWAYS = "always"
 
     @property
