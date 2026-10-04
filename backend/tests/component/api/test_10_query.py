@@ -83,7 +83,12 @@ async def test_query_endpoint_group_no_params(
         )
 
         expected_calls = [
-            call(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model}, context=context),
+            call(
+                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
+                parameters={"model": model},
+                context=context,
+                tags=["infrahub.app/branch/main"],
+            ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
 
@@ -132,7 +137,12 @@ async def test_query_endpoint_group_params(
             ),
         )
         expected_calls = [
-            call(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={"model": model}, context=context),
+            call(
+                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
+                parameters={"model": model},
+                context=context,
+                tags=["infrahub.app/branch/main"],
+            ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
 

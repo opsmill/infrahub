@@ -12,3 +12,10 @@ class RequestGraphQLQueryGroupUpdate(BaseModel):
     related_node_ids: list[str] = Field(..., description="List of nodes related to the GraphQLQuery")
     subscribers: list[str] = Field(..., description="List of subscribers to add to the group")
     params: dict[str, Any] = Field(..., description="Params sent with the query")
+
+    @property
+    def related_nodes(self) -> list[str]:
+        """Nodes the update is associated with: the subscriber, when there is exactly one."""
+        if len(self.subscribers) == 1:
+            return [self.subscribers[0]]
+        return []

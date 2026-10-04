@@ -13,13 +13,7 @@ async def update_graphql_query_group(model: RequestGraphQLQueryGroupUpdate) -> N
     """Create or Update a GraphQLQueryGroup."""
     client = get_client()
 
-    # If there is only one subscriber, associate the task to it
-    # If there are more than one, for now we can't associate all of them
-    related_nodes = []
-    if len(model.subscribers) == 1:
-        related_nodes.append(model.subscribers[0])
-
-    await add_tags(branches=[model.branch], nodes=related_nodes, namespace=False)
+    await add_tags(branches=[model.branch], nodes=model.related_nodes, namespace=False)
 
     params_hash = dict_hash(model.params)
     group_name = f"{model.query_name}__{params_hash}"

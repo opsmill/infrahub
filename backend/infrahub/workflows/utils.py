@@ -19,18 +19,14 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubComponent
 
 
-async def add_tags(
+def render_tags(
     branches: list[str] | None = None,
     nodes: list[str] | None = None,
     others: list[str] | None = None,
     namespace: bool = True,
     db_change: bool = False,
-) -> None:
-    """Add metadata tags to the current Prefect flow run for observability and filtering.
-
-    Tags are applied via the Prefect API and appear in the Prefect UI, enabling operators
-    to filter flow runs by branch, related node, or custom labels. The update goes through
-    the running flow's Prefect client, so it opens no connection of its own.
+) -> set[str]:
+    """Render the Prefect flow run tags for branches, related nodes and flags.
 
     Args:
         branches: Branch names to tag. Each becomes a WorkflowTag.BRANCH tag.
@@ -42,26 +38,59 @@ async def add_tags(
             the flow run modifies the database.
 
     """
-    current_flow_run_id = flow_run.id
-    current_tags: list[str] = flow_run.tags
-    branch_tags = (
-        [
-            WorkflowTag.BRANCH.render(identifier=branch_name)
-            for branch_name in branches
-            if branch_name != GLOBAL_BRANCH_NAME
-        ]
-        if branches
-        else []
-    )
-    node_tags = [WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes] if nodes else []
-    others_tags = others or []
-    new_tags = set(current_tags + branch_tags + node_tags + others_tags)
+    tags = {
+        WorkflowTag.BRANCH.render(identifier=branch_name)
+        for branch_name in branches or []
+        if branch_name != GLOBAL_BRANCH_NAME
+    }
+    tags.update(WorkflowTag.RELATED_NODE.render(identifier=node_id) for node_id in nodes or [])
+    tags.update(others or [])
     if namespace:
-        new_tags.add(TAG_NAMESPACE)
+        tags.add(TAG_NAMESPACE)
     if db_change:
-        new_tags.add(WorkflowTag.DATABASE_CHANGE.render())
+        tags.add(WorkflowTag.DATABASE_CHANGE.render())
+    return tags
+
+
+def merge_tags(current: list[str], tags: set[str]) -> list[str] | None:
+    """Return the full tag list to set on a flow run, or None when it already carries every tag."""
+    if tags.issubset(current):
+        return None
+    return sorted(tags.union(current))
+
+
+async def add_tags(
+    branches: list[str] | None = None,
+    nodes: list[str] | None = None,
+    others: list[str] | None = None,
+    namespace: bool = True,
+    db_change: bool = False,
+) -> None:
+    """Add metadata tags to the current Prefect flow run for observability and filtering.
+
+    Tags are applied via the Prefect API and appear in the Prefect UI, enabling operators
+    to filter flow runs by branch, related node, or custom labels. The update goes through
+    the running flow's Prefect client, so it opens no connection of its own, and is skipped
+    when the flow run already carries every tag.
+
+    Args:
+        branches: Branch names to tag. Each becomes a WorkflowTag.BRANCH tag.
+            Global branch is excluded.
+        nodes: Node IDs to tag. Each becomes a WorkflowTag.RELATED_NODE tag.
+        others: Arbitrary string tags to add as-is.
+        namespace: Whether to add the TAG_NAMESPACE tag (default True).
+        db_change: Whether to add a WorkflowTag.DATABASE_CHANGE tag, indicating
+            the flow run modifies the database.
+
+    """
+    tags = merge_tags(
+        current=flow_run.tags,
+        tags=render_tags(branches=branches, nodes=nodes, others=others, namespace=namespace, db_change=db_change),
+    )
+    if tags is None:
+        return
     async with AsyncClientContext.get_or_create() as client_ctx:
-        await client_ctx.client.update_flow_run(flow_run_id=current_flow_run_id, tags=list(new_tags))
+        await client_ctx.client.update_flow_run(flow_run_id=flow_run.id, tags=tags)
 
 
 async def add_branch_tag(branch_name: str) -> None:

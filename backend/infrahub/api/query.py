@@ -29,6 +29,7 @@ from infrahub.graphql.utils import extract_data
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
+from infrahub.workflows.utils import render_tags
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -127,7 +128,11 @@ async def execute_query(
             params=params,
         )
         await service.workflow.submit_workflow(
-            workflow=GRAPHQL_QUERY_GROUP_UPDATE, context=context, parameters={"model": model}
+            workflow=GRAPHQL_QUERY_GROUP_UPDATE,
+            context=context,
+            parameters={"model": model},
+            # Created with the tags the flow adds, so the flow sends no tag update of its own.
+            tags=sorted(render_tags(branches=[model.branch], nodes=model.related_nodes, namespace=False)),
         )
 
     return response_payload
