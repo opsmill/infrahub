@@ -12,7 +12,7 @@
 
 ### User Story 1 - See where a prefix's space has gone (Priority: P1)
 
-A network engineer planning address space in a large supernet (a /8, a /16, or an IPv6 /32 to /48) opens the prefix in the IP Address Manager and selects a new "Tree Map" tab. The tab shows the prefix as a rectangle fully tiled by its direct children and its free blocks. Each tile's area is proportional to the share of the parent's address space it covers, so a /16 inside a /8 is 1/256 of the area. Allocated children are drawn in one accent style with an inner fill proportional to that child's own utilisation. Free blocks are drawn in a visibly empty style so the eye reads holes first. Hovering a tile reveals its details.
+A network engineer planning address space in a large supernet (a /8, a /16, or an IPv6 /32 to /48) opens the prefix in the IP Address Manager and selects a new "Tree Map" tab. The tab shows the prefix as a rectangle fully tiled by its direct children and its free blocks. Each tile's area is proportional to the share of the parent's address space it covers, so a /16 inside a /8 is 1/256 of the area. Allocated children are drawn in an accent style with an inner fill proportional to that child's own utilisation; children flagged as pools use a second colour so they stand out from static allocations. Free blocks are drawn in a visibly empty style so the eye reads holes first. Hovering a tile reveals its details.
 
 **Why this priority**: This is the whole point of the feature. Today the Children table shows consumption row by row and the header utilisation percentage hides fragmentation. The engineer cannot see at a glance which children consume the block or where the largest contiguous free space is. Rendering one level with free space visible answers both questions without scrolling and without any other change.
 
@@ -77,7 +77,7 @@ The engineer opens the Tree Map tab on a prefix whose members are IP addresses r
 
 ### User Story 5 - Read a very large or very fragmented prefix (Priority: P3)
 
-The engineer opens the Tree Map tab on a prefix with hundreds or thousands of direct children, or on a prefix where some children are far too small to see (a single /32 inside a /8, or a /64 inside an IPv6 /32). The map stays legible: it renders at most a fixed number of children in address order and says so, shows the rest of the space as one tile, and it collapses tiles that would be too small to see into one "N smaller prefixes" tile and one "N smaller free blocks" tile that lead the user to the Children tab.
+The engineer opens the Tree Map tab on a prefix with hundreds or thousands of direct children, or on a prefix where some children are far too small to see (a single /32 inside a /8, or a /64 inside an IPv6 /32). The map stays legible: it renders at most a fixed number of children in address order and says so, shows the rest of the space as one tile, and it collapses tiles that would be too small to see into one "N smaller prefixes" tile and one "N smaller free blocks" tile; the smaller-prefixes tile leads the user to the Children tab and the free one lists its blocks on hover.
 
 **Why this priority**: Real supernets are messy. Without a cap and an aggregation rule, the map either becomes unreadable or becomes slow, and tiny allocations become unclickable slivers that someone still needs to find.
 
@@ -161,4 +161,4 @@ No new entities are introduced.
 - Rendering individual IP addresses as tiles.
 - Zoom, pan, a size-metric toggle or image export.
 - Any backend change, including a batched or subtree utilisation lookup.
-- Changes to the IP Address Manager tree sidebar or to the Children tab.
+- Changes to the Children tab. (The IP Address Manager tree sidebar did change on this branch: it now follows in-app navigation, a pre-existing gap that drill-down made constant.)

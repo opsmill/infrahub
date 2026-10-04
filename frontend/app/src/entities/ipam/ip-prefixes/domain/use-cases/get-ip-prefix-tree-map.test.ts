@@ -172,6 +172,7 @@ describe("getIpPrefixTreeMap", () => {
 
     // THEN
     expect(result.children.map((child) => child.cidr)).toEqual(["10.1.0.0/16"]);
+    expect(result.totalChildCount).toBe(1);
     expect(result.isCapped).toBe(false);
   });
 

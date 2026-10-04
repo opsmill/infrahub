@@ -29,7 +29,7 @@ tests will use, so they are part of the contract.
 
 | Tile kind | Element | Accessible name | Visual | Action |
 |-----------|---------|-----------------|--------|--------|
-| allocated | `<a>` (react-router `Link`) | `"<CIDR>, <N>% utilized"` or `"<CIDR>, utilization unknown"` | accent surface with a solid accent border, inner fill width = utilisation %; a pool (`is_pool`) uses the pool surface, border and fill instead and carries `data-tile-pool="true"` | navigate to the child's `tree-map` route, query params preserved |
+| allocated | `<a>` (react-router `Link`) | `"<CIDR>, <N>% utilized"` or `"<CIDR>, utilization unknown"`, with `, pool` appended for a pool | accent surface with a solid accent border, inner fill width = utilisation %; a pool (`is_pool`) uses the pool surface, border and fill instead and carries `data-tile-pool="true"` | navigate to the child's `tree-map` route, query params preserved |
 | free | `<button>` (`@infrahub/ui` `Button`) | `"<CIDR> available"` | content surface with diagonal hatching, dashed border | open the create sheet prefilled with the CIDR; disabled with the permission tooltip when `permission.create.isAllowed` is false |
 | aggregate-allocated | `<a>` | `"<N> smaller prefixes"` | muted surface | navigate to the parent's `children` route |
 | aggregate-free | `<div role="img">` | `"<N> smaller free blocks"` | muted surface, dashed border | none |
@@ -40,9 +40,11 @@ Common:
 - `data-testid="ip-prefix-tree-map-tile"` and `data-tile-kind="<kind>"` on every tile.
 - Visible label is the CIDR or the aggregate label, hidden when the tile is too small; the
   accessible name never depends on the visible label.
-- An allocated tile with a description shows it on a second line once the tile is wide enough
-  (11rem); narrower tiles show a small description marker (`data-testid="ip-prefix-tree-map-tile-description-marker"`)
-  next to the CIDR and leave the text to the tooltip.
+- An allocated tile with a description shows it on a second line once the tile is at least 11rem
+  wide; from 5rem to under 11rem it shows a small description marker
+  (`data-testid="ip-prefix-tree-map-tile-description-marker"`) next to the CIDR and leaves the text
+  to the tooltip; below 5rem the whole label, marker included, is hidden.
+- The accessible name of a pool tile ends in `, pool`.
 - Hover and focus show the `@infrahub/ui` `Tooltip`. Allocated: CIDR, description, member type,
   utilisation, member count. Free: CIDR. Aggregates: the list of member CIDRs, truncated after 20
   with "and N more".
@@ -55,7 +57,7 @@ but which still holds child prefixes gets the map.
 | Element | Selector | Content |
 |---------|----------|---------|
 | Container | `data-testid="ip-prefix-tree-map-empty"` | |
-| Meter | `get_by_role("meter", name="Utilization")` | parent utilisation, same `Meter` as the Children table |
+| Meter | `get_by_role("meter", name="Utilization")` | parent utilisation, same `Meter` as the Children table; omitted when the utilisation is unknown |
 | Text | | "This prefix holds IP addresses. The tree map shows child prefixes." |
 | Link | `get_by_role("link", name="IP Addresses")` | `constructPathForIpam("../ip_addresses")` (parent-relative, because the link renders inside the `tree-map` child route) |
 

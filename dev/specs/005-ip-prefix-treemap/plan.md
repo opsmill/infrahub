@@ -32,7 +32,7 @@ No backend, schema, dependency or auth change.
 
 **Constraints**: No backend change in v1 (research R9). Cap of 1,000 children per map, address-ordered because the server computes free blocks only inside the fetched window (research R2). Exact address arithmetic across IPv4 and IPv6 (research R4). All colours through theme tokens.
 
-**Scale/Scope**: About 14 new frontend files (api, model, three rules, use-case, key factory, query hook, four UI components, page shim) plus edits to the router, the IPAM tab bar and the available-row identifier; one new E2E module; one docs section; one changelog fragment. Roughly 700 lines of source and 400 of tests.
+**Scale/Scope**: About 14 new frontend files (api, model, three rules, use-case, key factory, query hook, four UI components, page shim) plus edits to the router, the IPAM tab bar and the available-row identifier; one new E2E module; one docs section; two changelog fragments (the feature and the sidebar fix). Roughly 700 lines of source and 400 of tests.
 
 ## Constitution Check
 
@@ -109,7 +109,8 @@ docs/docs/ipam/
 └── overview.mdx                                     # "Tree Map" subsection under Utilization
 
 changelog/
-└── +ip-prefix-tree-map.added.md                     # via `towncrier create`
+├── 10858.added.md                                   # Tree Map tab, via `towncrier create`
+└── 10858.fixed.md                                   # IPAM tree follows navigation
 ```
 
 **Structure Decision**: Frontend-only slice inside the existing `entities/ipam/ip-prefixes` entity,

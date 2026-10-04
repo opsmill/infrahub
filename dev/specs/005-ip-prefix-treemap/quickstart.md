@@ -34,8 +34,13 @@ the IP Addresses link.
 ## 3. End-to-end
 
 ```bash
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/ipam/test_ip_prefix_tree_map.py -s --pdb
+uv run invoke dev.build
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/ipam/test_ip_prefix_tree_map.py -s --pdb
 ```
+
+The two variables make testcontainers run the image just built from this branch instead of a
+published one.
 
 Expected, against the `data_ipam_pools` slice:
 
@@ -70,10 +75,11 @@ Record the result here:
 
 | Date | Children | Median render time | Pass (under 3 s) |
 |------|----------|--------------------|------------------|
-| 2026-10-03 | 256 | deferred | deferred |
+| 2026-10-04 | 256 | 1.86 s (warm median of 3 runs; cold first load 3.90 s) | yes |
 
-The measurement needs a stack with Docker and the demo data, which the implementation environment
-did not have, and it must be taken before the PR is marked ready.
+Measured on a dev-stack build of this branch with the `infrahub-demo-dc` data loaded: a throwaway
+branch with 10.200.0.0/16 holding 256 direct /24 children, timed from navigation to the first tile
+painted with Playwright, logged in as admin.
 
 If it fails, the follow-up is a batched utilisation lookup raised as its own gated change, not an
 amendment to this feature.
@@ -81,9 +87,10 @@ amendment to this feature.
 ## 6. Lint and generated-file gates before pushing
 
 ```bash
-cd frontend && pnpm exec biome ci .
-cd frontend/app && pnpm knip
-cd frontend/app && pnpm exec betterer ci
+set -e
+(cd frontend && pnpm exec biome ci .)
+(cd frontend/app && pnpm knip)
+(cd frontend/app && pnpm exec betterer ci)
 uv run ruff check tests/e2e && uv run ruff format tests/e2e
 ```
 

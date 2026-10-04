@@ -99,7 +99,7 @@ rule on bitwise operators). Sums, the capped remainder and the aggregation thres
 in `BigInt`. Each tile's weight becomes a `number` fraction of the parent only after aggregation,
 via `Number(count) / Number(parentCount)`.
 
-**Rationale**: A /32 holds 2^96 addresses, past `Number.MAX_SAFE_INTEGER`. Powers of two are exact
+**Rationale**: An IPv6 /32 holds 2^96 addresses, past `Number.MAX_SAFE_INTEGER`. Powers of two are exact
 as doubles, but sums and differences of mixed powers are not once exponents differ by more than 53,
 which is exactly the IPv6 case. BigInt makes FR-002 and FR-003 provable in unit tests across prefix
 lengths 0 to 128. For the weight, plain double division is exact for every single-prefix tile

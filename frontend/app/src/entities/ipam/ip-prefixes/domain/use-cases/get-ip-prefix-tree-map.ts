@@ -108,13 +108,13 @@ export async function getIpPrefixTreeMap(
     }
   }
 
-  const totalChildCount = page.count ?? 0;
+  // A dropped node cannot be placed anywhere, so it leaves both the count and the cap arithmetic.
+  const totalChildCount = Math.max((page.count ?? 0) - droppedChildCount, children.length);
 
-  // Dropped nodes were fetched, so they must not be mistaken for children beyond the cap.
   return {
     children,
     freeBlocks,
     totalChildCount,
-    isCapped: totalChildCount > children.length + droppedChildCount,
+    isCapped: totalChildCount > children.length,
   };
 }

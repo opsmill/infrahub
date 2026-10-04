@@ -46,6 +46,11 @@ function formatUtilization(utilization: number | null): string {
   return utilization === null ? "utilization unknown" : `${Math.round(utilization)}% utilized`;
 }
 
+function formatAllocatedTileName(child: TreeMapChild): string {
+  const name = `${child.cidr}, ${formatUtilization(child.utilization)}`;
+  return child.isPool ? `${name}, pool` : name;
+}
+
 function formatMemberCount(child: TreeMapChild): string {
   const noun = child.memberType === "address" ? "IP address" : "child prefix";
   return `${child.memberCount} ${child.memberCount === 1 ? noun : `${noun}es`}`;
@@ -106,7 +111,7 @@ function AllocatedTile({ tile, child }: { tile: TreeMapTile; child: TreeMapChild
       <Focusable>
         <Link
           to={getObjectDetailsUrl(child.kind, child.id, undefined, "tree-map")}
-          aria-label={`${child.cidr}, ${formatUtilization(child.utilization)}`}
+          aria-label={formatAllocatedTileName(child)}
           className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, TREE_MAP_TILE_CLASSES[variant])}
         >
           {child.utilization !== null && (

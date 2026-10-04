@@ -110,7 +110,7 @@ Per-test verbatim pass lines come from the verbose runs each chunk reported (tim
 | `…::TestIpPrefixTreeMapAddressPrefix::test_drill_down_into_address_prefix_shows_empty_state` | e2e | same | deferred — local E2E not supported | same | n/a |
 | `…::TestIpPrefixTreeMapIpv6::test_shows_ipv6_children_and_free_blocks_without_page_errors` | e2e | same | deferred — local E2E not supported | same | n/a |
 
-The E2E module was lint-checked (`uv run ruff check tests/e2e && uv run ruff format tests/e2e`, clean) and collected after the review fix at 2026-10-04T01:5xZ. The Children-tab regression E2E `tests/e2e/ipam/test_ip_prefix_create.py` is also deferred for the same reason.
+The E2E module was lint-checked (`uv run ruff check tests/e2e && uv run ruff format tests/e2e`, clean) and collected after the review fix at 2026-10-04T01:53:34Z. The Children-tab regression E2E `tests/e2e/ipam/test_ip_prefix_create.py` is also deferred for the same reason.
 
 Other gates at head: `cd frontend && pnpm exec biome ci .` clean (1614 files); `cd frontend/app && pnpm exec betterer ci` unchanged (176 baseline issues); `cd frontend/app && pnpm knip` clean apart from a pre-existing config hint; markdownlint on the spec documents and `docs/docs/ipam/overview.mdx` clean; `uv run invoke docs.validate` reported no stale generated doc (chunk 9).
 
@@ -160,7 +160,7 @@ The `simplify` reviewer, enabled in the review config, was not run: it applies c
 ## 7. Suggested next steps
 
 1. Run the full frontend suite in CI (`frontend-tests` job) or on a machine where `pnpm test` completes, and read the whole-suite result there; the stall is environmental, not a product bug, but it is unverified here.
-2. Run the E2E module on a Docker-capable machine: `uv run pytest -c tests/e2e/pytest.ini tests/e2e/ipam/test_ip_prefix_tree_map.py -s --pdb`, plus `tests/e2e/ipam/test_ip_prefix_create.py` for the Children-tab refactor.
+2. Run the E2E module on a Docker-capable machine against the image built from this branch: `uv run invoke dev.build && INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/ipam/test_ip_prefix_tree_map.py -s --pdb`, plus `tests/e2e/ipam/test_ip_prefix_create.py` for the Children-tab refactor.
 3. Take the SC-001 measurement (quickstart.md step 5) and fill the table; if it exceeds 3 s, raise a separate gated change for a batched utilisation lookup.
 4. Decide on "utilised" versus "utilized" in the tile names, and on the inline fill colour versus a new `--accent-fill` theme token.
 5. Attach a JPD or Jira ticket, rename the branch to `ip-prefix-treemap-<ticket>` if the hook convention matters, and open the PR as a draft.

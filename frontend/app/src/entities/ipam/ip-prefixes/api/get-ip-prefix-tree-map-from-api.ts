@@ -9,7 +9,6 @@ export const GET_IP_PREFIX_TREE_MAP = graphql(`
         node {
           __typename
           id
-          display_label
           prefix {
             value
           }

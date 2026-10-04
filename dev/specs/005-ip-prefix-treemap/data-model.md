@@ -55,7 +55,8 @@ One available block, mapped from a node whose `__typename` is `InternalIPPrefixA
 
 ### `TreeMapData`
 
-Output of the use-case `domain/use-cases/get-ip-prefix-tree-map.ts`.
+The composed screen model. The use-case `domain/use-cases/get-ip-prefix-tree-map.ts` returns
+`Omit<TreeMapData, "parent">`; the page supplies `parent` from the node it already holds.
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -106,7 +107,8 @@ Output of `domain/rules/layout-tree-map.ts`, one per tile, in the same order as 
 
 Invariants asserted in tests: every rect lies inside the unit container, no two rects overlap, and
 `width * height / 10000` equals `tile.weight` within 1e-6. Input tiles are sorted by `weight`
-descending before layout, ties broken by address order, which the squarified algorithm requires.
+descending before layout, which the squarified algorithm requires; equal weights keep the tile
+builder's order (children first, then free blocks, each as received).
 
 ## State transitions
 

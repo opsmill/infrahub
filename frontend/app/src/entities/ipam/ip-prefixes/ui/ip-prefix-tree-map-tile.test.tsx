@@ -199,7 +199,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilized" }))
+      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilized, pool" }))
       .toHaveClass(/bg-pool-surface/);
     await expect
       .element(component.getByTestId("ip-prefix-tree-map-tile"))
