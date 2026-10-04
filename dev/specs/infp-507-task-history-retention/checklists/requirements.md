@@ -32,5 +32,5 @@
 ## Notes
 
 - The users are operators, so deployment modes (Compose, Helm) and operator commands are part of the user-facing behaviour, not implementation detail. The database version appears only in Assumptions, because supported versions constrain the outcome.
-- The three open items (upgrade duration on 100 GB, product sign-off on the total count, deep scrolling measurement) are external measurements and sign-offs, not specification gaps, so they live under Dependencies & Open Questions rather than as [NEEDS CLARIFICATION] markers.
+- The two open items (upgrade duration on 100 GB, deep scrolling measurement) are external measurements and sign-offs, not specification gaps, so they live under Dependencies & Open Questions rather than as [NEEDS CLARIFICATION] markers.
 - Timings in Success Criteria are indicative, as agreed in the grilling session.

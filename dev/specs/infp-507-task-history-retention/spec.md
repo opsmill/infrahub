@@ -106,7 +106,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **A table is locked by something else during the rewrite**: the rewrite of that table is skipped after a short wait and reported, and the upgrade completes.
 - **Existing scripts call the command for old runs with its current options**: they keep working.
 - **Rewrite during operation**: the rewrite option is off by default, because each table is locked until its rewrite ends; running it while the instance is up is the operator's choice.
-- **Not enough free disk for the rewrite**: the rewrite needs free space for a copy of the remaining rows (under 0.5 GB for 25 GB of task history); the upgrade guide states this.
+- **Not enough free disk for the rewrite**: the rewrite needs free space for a copy of the remaining rows (under 0.5 GB for 25 GB of task history, 2.2 GB for 100 GB); the upgrade guide states this.
 - **PENDING runs that never started**: the command for stuck runs does not catch them; they stay until a follow-up fixes the command.
 - **Runs stuck in SCHEDULED, LATE, PAUSED or CANCELLING**: not covered; whether they accumulate is an open question.
 - **Branch deleted**: finished runs tagged with the branch are deleted as today, unchanged.
@@ -206,7 +206,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - Q: What happens to the existing command for old runs? → A: It is reused with the new implementation.
 - Q: How do retention settings reach a separate background-services deployment? → A: A thin Infrahub command starts it after applying the same settings.
 - Q: Are the SQL cleanup and the new filters checked on task-manager upgrades? → A: Yes, by CI equivalence checks.
-- Q: Fallback if product refuses to remove the total count? → A: None; argue for removal.
+- Q: Fallback if product refuses to remove the total count? → A: None; argue for removal. (Later found moot: the page never asked for the count; the design doc dropped D7 and Q2.)
 - Q: Values accepted by the settings? → A: Durations of at least 1 day; own events not longer than the activity log; refuse to start otherwise.
 - Q: Activity log default? → A: Stays 7 days; a year or more is a capability, not the default.
 - Q: Helm upgrade? → A: The pre-upgrade hook does not run the cleanup; a maintenance step after the rollout does.
@@ -224,8 +224,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 
 ## Dependencies & Open Questions
 
-- **Q1 (blocks the release notes)**: how long the upgrade step takes on a large instance. Measured about 8.5 minutes on 25 GB; on track for about 1 h 45 min on 100 GB, being confirmed.
-- **Q2 (no longer blocking)**: the design doc asks for product sign-off on removing the total count from the Activities page, but the page's query already does not select it; only the server-side count changes, which users do not see. To confirm with product and correct in the design doc.
+- **Q1 (blocks the release notes)**: how long the upgrade step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Known instances hold about 20 to 35 GB.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
 - Delivery order: part 1 task history (User Story 1), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
