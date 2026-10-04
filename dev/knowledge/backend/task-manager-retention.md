@@ -77,8 +77,10 @@ database, and can then rewrite the tables to return the disk space.
   whoever deleted the runs and when. The live size sums `pg_column_size` per column plus 28 bytes a
   row, so no value stored out of line is read. A run count taken by the job would miss the runs that
   Prefect's vacuum deletes when the task manager starts, which on the Compose upgrade path is before
-  the job starts. The rewrite is `VACUUM FULL` on `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log` and `artifact`,
-  on PostgreSQL only, in autocommit with a 60-second `lock_timeout` and 3 retries per table. A
+  the job starts. On a small `flow_run`, the scheduled runs that Prefect replaces when the upgrade
+  updates the deployments can leave more than half of it free, so small tables are rewritten on most
+  upgrades, in milliseconds. The rewrite is `VACUUM FULL` on `flow_run`, `flow_run_state`,
+  `task_run`, `task_run_state`, `log` and `artifact`, on PostgreSQL only, in autocommit with a 60-second `lock_timeout` and 3 retries per table. A
   `VACUUM FULL` waiting for its lock makes every later query on the table queue behind it, hence the
   timeout; a table that still times out is listed in `not_rewritten` and the job moves on.
 - **Database pool**: the job uses a small pool of its own with a statement timeout long enough for a
