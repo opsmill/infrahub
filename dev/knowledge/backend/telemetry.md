@@ -2,12 +2,13 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [Events System](events.md), [Asynchronous Tasks](async-tasks.md), [Licensing](licensing.md)
 
-Infrahub gathers an anonymous usage snapshot once a day. The snapshot is always stored locally
+Infrahub gathers a usage snapshot once a day. The snapshot is always stored locally
 (so air-gapped and opted-out deployments still retain their own history) and, unless the
 operator opts out, is also sent to the OpsMill telemetry endpoint. It exists to understand
-adoption and scale, never to capture customer data. A deployment that requires a license also
-reports its license ID, so its snapshot is tied to that license, but never the customer name (see
-[License block](#license-block)).
+adoption and scale, never to capture customer data. A snapshot from Infrahub Community is
+anonymous. A deployment that requires a license also reports its license ID, which OpsMill can map
+to the customer it issued the license to, so that snapshot is not anonymous. It never carries the
+customer name (see [License block](#license-block)).
 
 ## Collection flow
 
@@ -86,8 +87,9 @@ distinction that matters operationally is each category's **temporal model** (be
 Not every number means the same thing over time. There are three kinds:
 
 1. **Point-in-time snapshot** — most metrics (node/relationship counts, accounts, branches,
-   schema, features, workers, database info) are the *current* value at gather time. Re-running
-   the flow reflects the graph as it is now.
+   schema, features, workers, database info, license) are the *current* value at gather time.
+   Re-running the flow reflects the graph as it is now, and the license state at the task worker's
+   current time.
 
 2. **Cumulative over Prefect retention (~7 days)** — the `prefect.events` tally is a raw count
    of each event type that Prefect *still retains*. Prefect expires events after ~7 days, so

@@ -52,6 +52,7 @@ dependency_provider.override(build_license_service, build_ent_license_service)
 ## Requirements on the Enterprise package
 
 - Register the service in every process that reads it: the API server, the task worker and the command line. Today all three call `set_enterprise_dependencies()` (`infrahub_enterprise/server.py`, `workers/infrahub_async.py`, `cli.py`); a new entry point must do the same.
+- Cache the service in the overriding builder, as the community builder does in `_singletons`. `get_license_service()` resolves the builder on every call, which means on every request, and the service verifies the key once, when it is constructed.
 - Fill `license_id`, `customer_name`, `license_type`, `product_tier`, `support_tier` and `issuer` with `str` values. Any other type raises `ValueError` when the `License` is constructed; report that as `invalid` / `malformed`.
 - Fill `starts_at`, `ends_at` and `issued_at` with timezone-aware `datetime` values. Another type, such as an integer timestamp copied from the token, or a naive datetime raises `ValueError` when the `License` is constructed; report that as `invalid` / `malformed`.
 - Return statuses built by `evaluate`. A `LicenseStatus` built directly must set exactly the fields its state carries; any other combination raises `ValueError` when it is constructed:
