@@ -122,6 +122,19 @@ CI proves the logic on small seeded data; only the private tests prove the outco
 | 2. Activities page | PR #33 `test_activity_log.py` (landed, retention override switched to the Infrahub setting, extended), `test_activity_log_concurrency.py` | Identical results to the previous release; no plan flip on repeated queries; time windows; combined filters within 10 s; deep paging by time on Postgres 14 and 18 (open measurement); many users paging at once |
 | 3. Activity log | `test_activity_log_retention.py` | No Infrahub event deleted, no orphaned related item, nothing newer than the retentions deleted, every stored Prefect event type in the list |
 
+**Recommendation: run the private tests in a new session.** The evidence tasks (T021-T024, T037-T039, T045, T056) live in another repository, so `/speckit.opsmill.implement` in this repository cannot do them. Start a separate Claude Code session in a checkout of opsmill/infrahub-private-tests, once a test image of this branch exists, with a prompt such as:
+
+```text
+INFP-507 release evidence. Spec: dev/specs/infp-507-task-history-retention in opsmill/infrahub
+(branch task-history-retention-infp-507), tasks T021-T024, T037-T039, T045, T056 in tasks.md and
+the "Evidence: infrahub-private-tests" section of plan.md. Start from PR #33 (TestActivityLog) and
+switch its retention override to INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG. Image: <tag of the
+branch build>. Run through the test-dataset workflow on backups that include prefect.dump, on
+Postgres 14 and 18, and report the results for the PR and INFP-507.
+```
+
+Keeping it separate keeps this repository's implementation context free of the private-tests code, and lets the evidence work start as soon as part 1 has an image, in parallel with parts 2 and 3.
+
 ## Delivery Order
 
 1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite only when the deletes freed most of the tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
@@ -142,7 +155,7 @@ Each of parts 1 to 3 merges only with its private-test evidence. The final run o
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
 | Behaviour proven only on small CI data | Private tests on restored production-scale backups for each part, on both Postgres versions, attached as evidence. |
 | PR #33's retention override bypasses the new Infrahub setting | Switch it to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` (T037). |
-| Helm hook rewrites tables on a live instance | Chart passes `--no-task-history-cleanup`; 404 path covers older charts against the first release. |
+| The Helm upgrade hook runs while the instance is serving | The chart passes `--no-task-history-cleanup`, and Helm users run the cleanup in a maintenance step after the rollout. Low likelihood anyway: the rewrite runs only when the deletes freed most of the tables, and Prefect's hourly cleanup has usually removed old runs already. The 404 path covers a chart without the flag on the first release. |
 | Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
 | Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
 | The cleanup and Prefect's now-enabled vacuum run at the same time | Same order as Prefect (runs, then their children); Prefect skips locked runs and each side deletes children only for its own runs, so they cannot deadlock; the concurrency test (T009) guards it. |
