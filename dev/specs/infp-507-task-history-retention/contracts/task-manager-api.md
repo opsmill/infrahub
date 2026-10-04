@@ -45,4 +45,4 @@ Behaviour changes:
 
 - `count` is computed only when selected.
 - `branches`, `account__ids`, `primary_node__ids`, `parent__ids` and the branch-name `event_type_filter` keep their arguments and results; their matching changes as described in data-model.md.
-- The Activities page passes `until` instead of `offset` for "load more" and no longer selects `count`.
+- The Activities page passes `until` instead of `offset` for "load more"; it already does not select `count`.

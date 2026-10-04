@@ -74,6 +74,6 @@ A Prefect variable already set in the environment is left as is, with a warning.
 
 | Field | Today | After |
 |---|---|---|
-| `count` | Always computed by the task manager | Computed only when selected |
+| `count` | Not selected by the page, yet always computed by the task manager | Computed only when selected |
 | Paging | `offset` | `until` = time of the oldest event shown; `offset` still accepted for API clients |
 | Time window | Prefect's 180-day default | Windows 1 h, 1 d, 7 d, 30 d, then the activity log retention, counted back from `until` or now |
