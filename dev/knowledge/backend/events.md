@@ -191,8 +191,9 @@ Events can be queried through:
 
 ### Query-path performance constraints
 
-The `/infrahub/events/filter` endpoint runs two SQL statements against the task manager's
-Postgres: an unbounded `count(*)` over the whole filter window and the `LIMIT`-ed page read.
+The `/infrahub/events/filter` endpoint reads the `LIMIT`-ed page newest first, one time window
+at a time (1 hour, 1 day, 7 days, 30 days, then the task manager's event retention, back from
+the filter's `until`), and runs an unbounded `count(*)` over the whole range when asked.
 Two hard-earned constraints apply to this path:
 
 - **The count is only computed when the caller asks for it.** The count aggregates every
@@ -210,7 +211,7 @@ Two hard-earned constraints apply to this path:
   resulting stalls look like a once-a-week CI flake: one pool connection runs the
   pathological plan while its siblings answer in milliseconds. `SET LOCAL` scopes the
   countermeasure to this transaction only — the rest of the Prefect server keeps its
-  prepared-statement plan caching — at the cost of replanning these two queries per
+  prepared-statement plan caching — at the cost of replanning these queries per
   request (~1.5 ms). Do not remove it without re-checking the event queries' plans under
   `plan_cache_mode = force_generic_plan`.
 
