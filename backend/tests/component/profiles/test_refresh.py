@@ -22,7 +22,7 @@ from infrahub.exceptions import DatabaseError, ValidationError
 from infrahub.profiles.node_applier import ChunkProfilesApplier
 from infrahub.profiles.refresh import NodeProfilesRefresher
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2
-from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -133,8 +133,9 @@ def _refresher(
     branch: Branch,
     applier_class: type[ChunkProfilesApplier] = ChunkProfilesApplier,
     transaction_chunk_size: int = 100,
+    event_service: MemoryInfrahubEvent | None = None,
 ) -> RefresherDoubles:
-    events = MemoryInfrahubEvent()
+    events = event_service if event_service is not None else MemoryInfrahubEvent()
     workflow = WorkflowRecorder()
     resolver = RecordingPythonTargetResolver(targets=[])
     chain = RecomputeChainSubmitter(
@@ -337,6 +338,34 @@ async def test_refresh_recomputes_the_readers_of_committed_chunks_when_a_later_c
         )
         for call in doubles.workflow.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
     ] == [(SERVER_KIND, PORT_KIND, sorted([dataset.server_ids[0], dataset.server_ids[1]]), 1)]
+
+
+async def test_refresh_recomputes_the_readers_of_a_chunk_whose_event_send_fails(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=2)
+    doubles = _refresher(
+        db=db, branch=default_branch, event_service=FailingInfrahubEvent(failing_kind=NodeUpdatedEvent)
+    )
+
+    with pytest.raises(RuntimeError, match=r"^NodeUpdatedEvent rejected$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        ("role-1", dataset.room_id),
+        ("role-1", dataset.room_id),
+    ]
+    assert [
+        (
+            call["parameters"]["node_kind"],
+            call["parameters"]["target_kind"],
+            sorted(call["parameters"]["object_ids"]),
+            call["parameters"]["recompute_depth"],
+        )
+        for call in doubles.workflow.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
+    ] == [(SERVER_KIND, PORT_KIND, sorted(dataset.server_ids), 1)]
 
 
 async def test_refresh_reports_a_node_that_does_not_exist(

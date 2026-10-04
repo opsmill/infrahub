@@ -76,6 +76,11 @@ class NodeProfilesRefresher:
                 for chunk in chunked(node_ids, self.transaction_chunk_size):
                     result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
                     failed_node_ids.extend(result.failed_node_ids)
+                    # Record the committed chunk before its events, so a failed send still recomputes its readers.
+                    written.extend(
+                        WrittenNode(node_id=applied.node.get_id(), kind=applied.node.get_kind(), fields=applied.fields)
+                        for applied in result.applied
+                    )
                     for applied in result.applied:
                         await send_node_updated_event(
                             event_service=self.event_service,
@@ -84,11 +89,6 @@ class NodeProfilesRefresher:
                             branch=branch,
                             context=context,
                             origin=NodeMutationOrigin.RECOMPUTE,
-                        )
-                        written.append(
-                            WrittenNode(
-                                node_id=applied.node.get_id(), kind=applied.node.get_kind(), fields=applied.fields
-                            )
                         )
         finally:
             # A rerun sees no change on committed chunks, so their readers recompute even when a later chunk fails.
