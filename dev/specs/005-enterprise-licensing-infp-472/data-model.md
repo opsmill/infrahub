@@ -30,7 +30,10 @@ The verified content of a license, produced by the Enterprise checker.
 
 Derived: `is_evaluation` is true only when `license_type == "evaluation"`.
 
-Validation at construction: `starts_at`, `ends_at` and `issued_at` must be timezone-aware; they are normalized to UTC. A naive datetime raises `ValueError`, so a vendor translation bug fails in the Enterprise checker, where it becomes `invalid` / `malformed`, instead of in a comparison.
+Validation at construction:
+
+- `license_id`, `customer_name`, `license_type`, `product_tier`, `support_tier` and `issuer` must be `str`. Any other type raises `ValueError`, so a number in a text field fails in the Enterprise checker, where it becomes `invalid` / `malformed`, instead of in `GET /api/info`.
+- `starts_at`, `ends_at` and `issued_at` must be timezone-aware `datetime` values; they are normalized to UTC. Another type, such as an integer timestamp copied from the token, or a naive datetime raises `ValueError`, so a vendor translation bug fails in the Enterprise checker, where it becomes `invalid` / `malformed`, instead of in a comparison.
 
 ## LicenseFailure (internal, frozen dataclass)
 
@@ -51,8 +54,19 @@ Returned by `evaluate(outcome, now)`, or built directly as `not_required` by the
 | `state` | `LicenseState` | See the transitions below |
 | `reason` | `LicenseFailureReason \| None` | Set only when `state == invalid` |
 | `license` | `License \| None` | Set when verification produced a license (states `not_yet_valid`, `expired`, `expiring`, `valid`) |
-| `days_remaining` | `int \| None` | When `now < ends_at`: whole days until `ends_at`, rounded up. Otherwise `None` |
-| `days_since_expiry` | `int \| None` | When `now >= ends_at`: whole days since `ends_at`, rounded down. Otherwise `None` |
+| `days_remaining` | `int \| None` | When `now < ends_at` (states `not_yet_valid`, `valid`, `expiring`): whole days until `ends_at`, rounded up. Otherwise `None` |
+| `days_since_expiry` | `int \| None` | When `now >= ends_at` (state `expired`): whole days since `ends_at`, rounded down. Otherwise `None` |
+
+Validation at construction: each state sets exactly the fields below, and constructing any other combination raises `ValueError`. `status()` must not let that error escape. If an Enterprise service lets it escape, `read_license_status` reports it as `invalid` / `internal_error`, so no surface receives a status that breaks these rules.
+
+| State | Fields set besides `state` |
+| --- | --- |
+| `not_required`, `unlicensed` | No other field |
+| `invalid` | `reason` |
+| `not_yet_valid`, `valid`, `expiring` | `license`, `days_remaining` |
+| `expired` | `license`, `days_since_expiry` |
+
+`evaluate` builds only these combinations, the Community service builds `not_required` with no other field, and the failure boundary builds `invalid` with `internal_error`.
 
 ### State derivation in `evaluate` (first match wins)
 
