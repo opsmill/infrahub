@@ -198,13 +198,14 @@ path today (they answer `null`), which the Children tab already pays for.
 - Free tile: `bg-content`, `border-dashed border-border-strong`, label `text-foreground-muted`.
   (`bg-subtle` was considered and rejected: the `subtle` token is a foreground colour and renders
   as dark grey.)
-- Aggregated tile: `bg-content-strong`, solid border, label `text-foreground-muted`
+- Aggregated tiles: `bg-content-strong`, label `text-foreground-muted`; the allocated aggregate
+  and the remainder keep a solid border, the free aggregate keeps the dashed border of free tiles
   (`bg-content-muted` is indistinguishable from the page background).
 - The container's aspect ratio is an inline style derived from the shared constant rather than an
   arbitrary Tailwind value, so the CSS box and the layout maths cannot drift apart.
 - Unknown utilisation: no inner fill, tooltip says "Utilisation unknown".
-- Label hidden with CSS when the tile is narrower than the label needs (`overflow-hidden` plus a
-  minimum size class on the label), with the CIDR always in the tooltip and `aria-label`.
+- Label hidden with a container query (each tile is a `@container`, the label shows from
+  `@min-[5rem]`), with the CIDR always in the tooltip and `aria-label`.
 
 **Rationale**: `dev/knowledge/frontend/theming.md` requires semantic tokens and forbids fixed
 palette classes; `multiple-progress-bar.tsx` is the precedent for `color-mix` on `--accent-strong`.

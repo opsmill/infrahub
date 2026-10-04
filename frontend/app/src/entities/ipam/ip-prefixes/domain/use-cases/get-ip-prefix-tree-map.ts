@@ -33,6 +33,10 @@ function parsePrefixSizeOrNull(cidr: string): PrefixSize | null {
   }
 }
 
+function toMemberType(value: unknown): TreeMapChild["memberType"] | null {
+  return value === "address" || value === "prefix" ? value : null;
+}
+
 function toTreeMapChild(node: TreeMapNode): TreeMapChild | null {
   const cidr = node.prefix?.value;
   if (!cidr || !node.id) return null;
@@ -40,7 +44,9 @@ function toTreeMapChild(node: TreeMapNode): TreeMapChild | null {
   const size = parsePrefixSizeOrNull(cidr);
   if (!size) return null;
 
-  const memberType = node.member_type?.value === "address" ? "address" : "prefix";
+  const memberType = toMemberType(node.member_type?.value);
+  if (!memberType) return null;
+
   const utilizationValue = node.utilization?.value;
 
   return {
@@ -75,27 +81,39 @@ export async function getIpPrefixTreeMap(
   }
 
   const page = data?.[IP_PREFIX_GENERIC];
-  const nodes = page?.edges.flatMap((edge) => (edge.node ? [edge.node] : [])) ?? [];
+  if (!page) {
+    throw new Error("The IP prefix tree map query returned no prefix data.");
+  }
+
+  const nodes = page.edges.flatMap((edge) => (edge.node ? [edge.node] : []));
 
   const children: TreeMapChild[] = [];
   const freeBlocks: TreeMapFreeBlock[] = [];
+  let droppedChildCount = 0;
 
   for (const node of nodes) {
     if (node.__typename === IP_PREFIX_AVAILABLE_KIND) {
       const freeBlock = toTreeMapFreeBlock(node);
       if (freeBlock) freeBlocks.push(freeBlock);
+      continue;
+    }
+
+    const child = toTreeMapChild(node);
+    if (child) {
+      children.push(child);
     } else {
-      const child = toTreeMapChild(node);
-      if (child) children.push(child);
+      droppedChildCount += 1;
+      console.warn("Skipping an IP prefix the tree map cannot place", node.id, node.prefix?.value);
     }
   }
 
-  const totalChildCount = page?.count ?? 0;
+  const totalChildCount = page.count ?? 0;
 
+  // Dropped nodes were fetched, so they must not be mistaken for children beyond the cap.
   return {
     children,
     freeBlocks,
     totalChildCount,
-    isCapped: totalChildCount > children.length,
+    isCapped: totalChildCount > children.length + droppedChildCount,
   };
 }

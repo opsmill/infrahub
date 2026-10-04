@@ -23,10 +23,10 @@ Result of parsing a CIDR string. Rule: `domain/rules/parse-prefix-length.ts`.
 |-------|------|-------|
 | `family` | `"ipv4" \| "ipv6"` | from the presence of `:` |
 | `prefixLength` | `number` | 0 to 32 or 0 to 128 |
-| `addressCount` | `bigint` | `1n << BigInt(maxLength - prefixLength)` |
+| `addressCount` | `bigint` | `2n ** BigInt(maxLength - prefixLength)` |
 
-Validation: throws a domain error for a string without `/`, a length outside the family range, or a
-family mismatch with the parent. Callers treat a throw as a malformed response.
+Validation: throws a plain error for a string without `/`, a non-integer length, or a length outside
+the family range. Callers treat a throw as a malformed response and drop the node.
 
 ### `TreeMapChild`
 

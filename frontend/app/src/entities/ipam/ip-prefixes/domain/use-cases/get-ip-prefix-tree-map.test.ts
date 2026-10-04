@@ -165,6 +165,7 @@ describe("getIpPrefixTreeMap", () => {
 
     // THEN
     expect(result.children.map((child) => child.cidr)).toEqual(["10.1.0.0/16"]);
+    expect(result.isCapped).toBe(false);
   });
 
   it("is capped when the count exceeds the real children returned", async () => {

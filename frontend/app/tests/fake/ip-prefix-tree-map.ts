@@ -42,7 +42,7 @@ export const generateTreeMapChild = (overrides: Partial<TreeMapChild> = {}): Tre
 const SLASH_18_ADDRESS_COUNT = 2n ** 14n;
 const IPV4_OCTET_RADIX = 256n;
 
-/** Sequential /18 children of 10.0.0.0/8 in address order, 1,024 at most. */
+/** Sequential /18 children of 10.0.0.0/8 in address order; valid for counts up to 1,024. */
 export const generateSlash18ChildrenOfDemoSupernet = (count: number): TreeMapChild[] =>
   Array.from({ length: count }, (_, index) => {
     const start = 0x0a000000n + BigInt(index) * SLASH_18_ADDRESS_COUNT;

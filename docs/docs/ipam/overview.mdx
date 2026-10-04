@@ -47,7 +47,7 @@ Network and broadcast addresses count toward the usable total when `is_pool` is 
 
 Open the **Tree Map** tab on a prefix detail page to see how its address space is allocated. The map draws each direct child prefix and each free block as a tile whose area matches its share of the parent's address space, so a `/16` inside a `/8` covers 1/256 of the map. Allocated tiles have an inner fill proportional to the child's own utilization, and free tiles have a dashed border and no fill. Prefixes and free blocks smaller than 1/4096 of the parent are grouped into one "smaller prefixes" tile and one "smaller free blocks" tile; hover either tile to list its members.
 
-The map shows one level at a time. Click an allocated tile to open that child's Tree Map, or click a free tile to open the Create IP Prefix form with the block's CIDR filled in. On a prefix whose `member_type` is `address`, the tab shows the utilization meter and a link to the IP Addresses tab instead of a map. The map loads at most 1,000 children in address order; when a prefix has more, a notice states how many are shown, and one tile covering the remaining space links to the Children tab.
+The map shows one level at a time. Click an allocated tile to open that child's Tree Map, or click a free tile to open the Create IP Prefix form with the block's CIDR filled in. On a prefix whose `member_type` is `address`, the tab shows the utilization meter (when the value is known) and a link to the IP Addresses tab instead of a map. The map loads at most 1,000 children in address order; when a prefix has more, a notice states how many are shown, and one tile covering the remaining space links to the Children tab.
 
 ## Namespaces
 

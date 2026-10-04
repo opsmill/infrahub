@@ -33,6 +33,7 @@ function pluralise(count: number, singular: string, plural: string): string {
 }
 
 // Address counts are powers of two, which doubles represent exactly, so the division is exact.
+// Single-prefix counts are powers of two, so only aggregate and remainder weights carry rounding.
 function weightOf(addressCount: bigint, parentAddressCount: bigint): number {
   return Number(addressCount) / Number(parentAddressCount);
 }

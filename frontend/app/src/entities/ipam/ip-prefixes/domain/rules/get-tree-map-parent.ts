@@ -12,7 +12,7 @@ function readAttributeValue(node: NodeObject, name: string): unknown {
 
 /**
  * Projects a loaded IP prefix node onto the parent shape the tree map needs, or returns `null`
- * when the node has no parseable `prefix` attribute.
+ * when the node has no parseable `prefix` attribute or no recognised member type.
  */
 export function getTreeMapParent(node: NodeObject, kind: string): TreeMapParent | null {
   const cidr = readAttributeValue(node, "prefix");
@@ -26,6 +26,8 @@ export function getTreeMapParent(node: NodeObject, kind: string): TreeMapParent 
   }
 
   const memberType = readAttributeValue(node, "member_type");
+  if (memberType !== "address" && memberType !== "prefix") return null;
+
   const utilization = readAttributeValue(node, "utilization");
 
   return {
@@ -33,7 +35,7 @@ export function getTreeMapParent(node: NodeObject, kind: string): TreeMapParent 
     kind,
     cidr,
     size,
-    memberType: memberType === "address" ? "address" : "prefix",
+    memberType,
     utilization: typeof utilization === "number" ? utilization : null,
   };
 }

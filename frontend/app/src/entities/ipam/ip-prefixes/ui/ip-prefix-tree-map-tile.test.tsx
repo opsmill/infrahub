@@ -95,6 +95,92 @@ describe("IpPrefixTreeMapTile", () => {
       .toHaveAttribute("href", "/ipam/IpamIPPrefix/parent-id/children?namespace=abc");
   });
 
+  it("keeps the branch and namespace params on an allocated tile's link", async () => {
+    // GIVEN
+    window.history.replaceState(null, "", "?branch=feature&namespace=abc");
+    const rect = generateTreeMapRect({
+      tile: generateAllocatedTile({
+        child: { id: "child-id", kind: "IpamIPPrefix", cidr: "10.1.0.0/16" },
+      }),
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={rect}
+        parent={PARENT}
+        permission={PERMISSION_ALLOW_ALL}
+        onCreateFromFreeBlock={noop}
+      />
+    );
+
+    // THEN
+    const link = component.getByRole("link", { name: "10.1.0.0/16, 0% utilised" });
+    await expect.element(link).toHaveAttribute("href", expect.stringContaining("branch=feature"));
+    await expect.element(link).toHaveAttribute("href", expect.stringContaining("namespace=abc"));
+  });
+
+  it("shows the child's details when hovering an allocated tile", async () => {
+    // GIVEN
+    const component = await render(
+      <div className="relative h-64 w-96">
+        <IpPrefixTreeMapTile
+          rect={generateTreeMapRect({
+            tile: generateAllocatedTile({
+              child: {
+                cidr: "10.1.0.0/16",
+                description: "Interconnections",
+                memberType: "prefix",
+                utilization: 50,
+                memberCount: 16,
+              },
+            }),
+          })}
+          parent={PARENT}
+          permission={PERMISSION_ALLOW_ALL}
+          onCreateFromFreeBlock={noop}
+        />
+      </div>
+    );
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByRole("link", { name: "10.1.0.0/16, 50% utilised" }).hover();
+
+    // THEN
+    const tooltip = component.getByRole("tooltip");
+    await expect.element(tooltip).toHaveTextContent("10.1.0.0/16");
+    await expect.element(tooltip).toHaveTextContent("Interconnections");
+    await expect.element(tooltip).toHaveTextContent("Member type: prefix");
+    await expect.element(tooltip).toHaveTextContent("50% utilised");
+    await expect.element(tooltip).toHaveTextContent("16 child prefixes");
+    await initPointerTracking(component.locator);
+  });
+
+  it("shows the CIDR when hovering a free tile", async () => {
+    // GIVEN
+    const component = await render(
+      <div className="relative h-64 w-96">
+        <IpPrefixTreeMapTile
+          rect={generateTreeMapRect({
+            tile: generateFreeTile({ block: generateTreeMapFreeBlock({ cidr: "10.3.0.0/16" }) }),
+          })}
+          parent={PARENT}
+          permission={PERMISSION_ALLOW_ALL}
+          onCreateFromFreeBlock={noop}
+        />
+      </div>
+    );
+    await initPointerTracking(component.locator);
+
+    // WHEN
+    await component.getByRole("button", { name: "10.3.0.0/16 available" }).hover();
+
+    // THEN
+    await expect.element(component.getByRole("tooltip")).toHaveTextContent("10.3.0.0/16");
+    await initPointerTracking(component.locator);
+  });
+
   it.each([0, 50, 100])("names an allocated tile at %d percent utilised", async (utilization) => {
     // GIVEN
     const rect = generateTreeMapRect({
