@@ -110,7 +110,7 @@ changelog/                             # fragments per part
 
 ## Delivery Order
 
-1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order, retry on deadlock, rewrite only when the deletes freed most of the tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
+1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite only when the deletes freed most of the tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
 4. **Part 4, documentation**: ships with parts 1 and 3. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
@@ -127,7 +127,7 @@ changelog/                             # fragments per part
 | Helm hook rewrites tables on a live instance | Chart passes `--no-task-history-cleanup`; 404 path covers older charts against the first release. |
 | Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
 | Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
-| The cleanup and Prefect's now-enabled vacuum deadlock on the same runs | Delete in Prefect's order (logs and artifacts, then runs); retry a day up to 3 times; concurrency test. |
+| The cleanup and Prefect's now-enabled vacuum run at the same time | Same order as Prefect (runs, then their children); Prefect skips locked runs and each side deletes children only for its own runs, so they cannot deadlock; the concurrency test (T009) guards it. |
 | A table rewrite waits forever on a lock, or makes queries queue behind it | 60 s lock timeout per table, up to 3 retries; skipped tables are reported. |
 | Existing cleanup scripts pass `--days-to-keep` or `--batch-size` | Removed per the design doc; the changelog marks the change as breaking and the CLI reference documents the retention setting. |
 

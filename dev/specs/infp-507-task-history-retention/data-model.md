@@ -55,7 +55,7 @@ A Prefect variable already set in the environment is left as is, with a warning.
 | `error` | Message when `failed` |
 
 - At most one job runs at a time across all task-manager replicas, enforced by a Postgres advisory lock held for the job's run. A new request on the same replica returns the running job; on another replica it is refused with "running elsewhere".
-- Each day of end times is committed separately, deleting logs and artifacts before the runs (Prefect's order), so a job stopped midway leaves a consistent state and a new job continues from the oldest remaining day. A day is retried up to 3 times after a deadlock or serialization error.
+- Each day of end times is committed separately, deleting the runs and then the logs and artifacts of those runs (Prefect's order), so a job stopped midway leaves a consistent state and a new job continues from the oldest remaining day.
 - The job lives in the task-manager process that runs it; a restart loses its status but not its committed progress.
 - The rewrite runs only when the deletes freed most of the tables (more than half of the runs the tables held). Each table rewrite has a 60 s lock timeout and up to 3 retries; tables that still time out are listed in the job result as `not_rewritten`.
 
