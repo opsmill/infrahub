@@ -39,6 +39,14 @@ def cleanup_lock() -> ProcessCleanupLock:
 
 
 @pytest.fixture
+async def cleanup_lock_held_elsewhere(cleanup_lock: ProcessCleanupLock) -> AsyncIterator[None]:
+    """The cleanup lock held, as another task manager would hold it, until the test ends."""
+    assert await cleanup_lock.try_acquire()
+    yield
+    await cleanup_lock.release()
+
+
+@pytest.fixture
 def app(db: PrefectDBInterface, cleanup_lock: ProcessCleanupLock) -> Generator[FastAPI, None, None]:
     """Infrahub's task manager routes on the test's own database, cleanup registry and cleanup lock."""
     app = FastAPI()
@@ -101,18 +109,15 @@ async def test_a_second_start_returns_the_running_cleanup(app: FastAPI, db: Pref
     assert await _flow_run_ids(db=db) == set()
 
 
+@pytest.mark.usefixtures("cleanup_lock_held_elsewhere")
 async def test_start_is_refused_while_another_task_manager_holds_the_cleanup_lock(
-    app: FastAPI, db: PrefectDBInterface, cleanup_lock: ProcessCleanupLock
+    app: FastAPI, db: PrefectDBInterface
 ) -> None:
     """A cleanup is refused with 409, and deletes nothing, while the cleanup lock is held outside this task manager."""
     old_run = await _seed_old_run(db=db)
-    assert await cleanup_lock.try_acquire()
 
-    try:
-        async with _client(app) as client:
-            response = await client.post(CLEANUP_URL, json={"rewrite": "never"})
-    finally:
-        await cleanup_lock.release()
+    async with _client(app) as client:
+        response = await client.post(CLEANUP_URL, json={"rewrite": "never"})
 
     assert (response.status_code, response.json()) == (409, {"detail": "a cleanup is running elsewhere"})
     assert await _flow_run_ids(db=db) == {old_run}

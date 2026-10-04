@@ -8,6 +8,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import httpx
+import pytest
 import typer
 
 from infrahub.cli.tasks import TASK_HISTORY_CLEANUP_RERUN_HINT
@@ -20,6 +21,7 @@ from tests.helpers.task_history_api import (
     polled,
     route_missing,
     started,
+    unreachable,
 )
 
 if TYPE_CHECKING:
@@ -186,6 +188,25 @@ async def test_an_unexpected_answer_is_reported_and_the_upgrade_goes_on() -> Non
     [failure, hint] = console.lines
     assert failure.startswith("ERROR Task history cleanup failed: PrefectHTTPStatusError: ")
     assert hint == TASK_HISTORY_CLEANUP_RERUN_HINT
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_an_unreachable_task_manager_is_reported_and_the_upgrade_goes_on() -> None:
+    """A task manager that cannot be reached is reported like a failed cleanup, without raising out of the upgrade."""
+    task_manager = ScriptedTaskManager(responses=[unreachable()])
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "ERROR Task history cleanup failed: ConnectError: All connection attempts failed",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
 
 
 def test_the_flag_that_leaves_the_cleanup_out_is_what_skips_the_step() -> None:
