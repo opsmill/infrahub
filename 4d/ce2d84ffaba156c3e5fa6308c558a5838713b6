@@ -1,0 +1,61 @@
+docker-compose.yml
+  s_1df8eb94da3d51::t_5bb75e23c1f18e 147
+backend/tests/unit/license/test_settings.py
+  s_1df8eb94da3d51::t_040303eff20e4b 3,6-8
+  s_1df8eb94da3d51::t_a7d77ad26319c4 1-2,4-5,9-35
+docs/docs/reference/configuration.mdx
+  s_1df8eb94da3d51::t_ce5b8fb9185107 435-440
+backend/infrahub/workers/dependencies.py
+  s_1df8eb94da3d51::t_92aca14b3e1bcf 13,211-223
+backend/infrahub/config.py
+  s_1df8eb94da3d51::t_21cc8953c5598e 1967-1974,2094-2097,2128
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_b576923a825561 42,47,52-53,58-59,62,67-69,240
+  s_1df8eb94da3d51::t_0a9b8eaab14c1a 64
+backend/tests/unit/license/test_status.py
+  s_1df8eb94da3d51::t_93b4954a70786b 1-124
+backend/infrahub/license/models.py
+  s_1df8eb94da3d51::t_cf9d715898ed27 1-115
+dev/specs/005-enterprise-licensing-infp-472/spec.md
+  s_1df8eb94da3d51::t_21d0d871448ff1 214
+backend/tests/adapters/license.py
+  s_1df8eb94da3d51::t_b8ea77ea64fe46 1-11,13-55
+  s_1df8eb94da3d51::t_865eaaf26759eb 12
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_21d0d871448ff1 116
+  s_1df8eb94da3d51::t_0a9b8eaab14c1a 139
+development/docker-compose.yml
+  s_1df8eb94da3d51::t_5bb75e23c1f18e 100
+backend/tests/unit/license/test_notices.py
+  s_1df8eb94da3d51::t_aa241bcd626e9f 1-121
+backend/infrahub/license/status.py
+  s_1df8eb94da3d51::t_e4be472c4162a5 1-4,6-37,39,42-56
+  s_1df8eb94da3d51::t_cf7dd49ade0564 5,57-58
+  s_1df8eb94da3d51::t_fc9ad7a61d9917 38,40-41
+backend/tests/unit/license/test_service.py
+  s_1df8eb94da3d51::t_1b6e664afdf045 1-8,10-28,30-47
+  s_1df8eb94da3d51::t_865eaaf26759eb 9,29
+backend/infrahub/license/service.py
+  s_1df8eb94da3d51::t_2df39f777db285 1-48,50-54
+  s_1df8eb94da3d51::t_040303eff20e4b 49
+backend/tests/unit/license/test_models.py
+  s_1df8eb94da3d51::t_65c51d4b4c1445 1-2,5-49,51-53,85-93
+  s_1df8eb94da3d51::t_865eaaf26759eb 3-4,50,94-111
+  s_1df8eb94da3d51::t_da1e212e23defe 54-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4dce2d84ffaba156c3e5fa6308c558a5838713b6",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
