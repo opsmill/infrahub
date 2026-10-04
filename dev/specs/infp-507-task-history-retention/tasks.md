@@ -121,18 +121,19 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 ### Tests for User Story 3
 
-- [ ] T040 [P] [US3] Functional guard test: run a workload of Infrahub tasks (successful, failed and cancelled flows) on a test task manager, list stored event names not starting with `infrahub.`, assert none is missing from `PREFECT_EVENT_TYPES`, in `backend/tests/functional/task_manager/test_prefect_event_types.py`
-- [ ] T041 [P] [US3] Component test: with activity log 365 days and own events 7 days applied, run Prefect's `vacuum_events_with_retention_overrides` and `vacuum_old_events`; Infrahub events older than 7 days are kept, listed Prefect events older than 7 days are deleted, an unlisted Prefect type is kept, no `event_resources` row is left without its event, in `backend/tests/component/task_manager/test_event_retention.py`
+- [ ] T040 [P] [US3] Integration-docker guard test on the full stack (real workers, Postgres): run a workload of Infrahub tasks that also reaches the failure paths it can (a failed flow, a cancelled flow, a worker restart), list stored event names not starting with `infrahub.`, assert none is missing from `PREFECT_EVENT_TYPES`, in `backend/tests/integration_docker/test_prefect_event_types.py`
+- [ ] T041 [P] [US3] Unit test independent of any workload: for every built-in state name of the pinned Prefect (read from Prefect's state definitions), assert `prefect.flow-run.<State>` and `prefect.task-run.<State>` are in `PREFECT_EVENT_TYPES`, so a Prefect upgrade that adds a state fails CI, in `backend/tests/unit/prefect_server/test_prefect_event_types.py`
+- [ ] T042 [P] [US3] Component test: with activity log 365 days and own events 7 days applied, run Prefect's `vacuum_events_with_retention_overrides` and `vacuum_old_events`; Infrahub events older than 7 days are kept, listed Prefect events older than 7 days are deleted, an unlisted Prefect type is kept, no `event_resources` row is left without its event, in `backend/tests/component/task_manager/test_event_retention.py`
 
 ### Implementation for User Story 3
 
-- [ ] T042 [US3] Fill `PREFECT_EVENT_TYPES` from the pinned Prefect 3.8.6 (flow-run and task-run state events for every built-in state name, heartbeat, worker, automation, deployment, work pool, work queue and block events) and the benchmark datasets, with a one-line comment naming the Prefect version, in `backend/infrahub/prefect_server/retention.py`
-- [ ] T043 [US3] Use the activity log retention as the widest Activities time window by default (task manager reads `config.SETTINGS.task_manager.retention.activity_log` when the request does not set it) in `backend/infrahub/prefect_server/models.py` and `backend/infrahub/prefect_server/database.py`
-- [ ] T044 [P] [US3] Changelog fragment for the configurable activity log retention (default unchanged at 7 days, how to raise it, sizing) in `changelog/+activity-log-retention.added.md`
+- [ ] T043 [US3] Fill `PREFECT_EVENT_TYPES` from the pinned Prefect 3.8.6 (flow-run and task-run state events for every built-in state name, heartbeat, worker, automation, deployment, work pool, work queue and block events) and the benchmark datasets, with a one-line comment naming the Prefect version, in `backend/infrahub/prefect_server/retention.py`
+- [ ] T044 [US3] Use the activity log retention as the widest Activities time window by default (task manager reads `config.SETTINGS.task_manager.retention.activity_log` when the request does not set it) in `backend/infrahub/prefect_server/models.py` and `backend/infrahub/prefect_server/database.py`
+- [ ] T045 [P] [US3] Changelog fragment for the configurable activity log retention (default unchanged at 7 days, how to raise it, sizing) in `changelog/+activity-log-retention.added.md`
 
 ### Evidence for User Story 3 (opsmill/infrahub-private-tests)
 
-- [ ] T045 [US3] Activity log retention test on a restored backup with the activity log raised: no Infrahub event deleted, no orphaned related item, nothing newer than either retention deleted, and every stored Prefect event type present in `PREFECT_EVENT_TYPES`, in `tests/performance/test_activity_log_retention.py` of opsmill/infrahub-private-tests
+- [ ] T046 [US3] Activity log retention test on a restored backup with the activity log raised: no Infrahub event deleted, no orphaned related item, nothing newer than either retention deleted, and every stored Prefect event type present in `PREFECT_EVENT_TYPES`, in `tests/performance/test_activity_log_retention.py` of opsmill/infrahub-private-tests
 
 **Checkpoint**: Activity log retention is configurable; IFC-1702 is solved for instances that raise it.
 
@@ -144,24 +145,24 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 **Independent Test**: Start the task manager and the separate background services with valid and invalid values (quickstart Part 1 steps 1, 2, 8 and Part 3 step 2).
 
-- [ ] T046 [P] [US4] Unit test: `create_infrahub_prefect` refuses to start on a retention under 1 day, logs a warning when own events are capped, and logs a warning per pre-set `PREFECT_*` variable, in `backend/tests/unit/prefect_server/test_app_retention.py`
-- [ ] T047 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: load the configuration, apply `apply_prefect_retention_env`, then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
-- [ ] T048 [P] [US4] Switch `task-manager-background-svc` to `command: infrahub tasks background-services` in `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
-- [ ] T049 [US4] Open the opsmill/infrahub-helm PR for the same release: background-services deployment runs `infrahub tasks background-services`, the upgrade hook passes `--no-task-history-cleanup`, retention values exposed in values.yaml (outside this repository)
+- [ ] T047 [P] [US4] Unit test: `create_infrahub_prefect` refuses to start on a retention under 1 day, logs a warning when own events are capped, and logs a warning per pre-set `PREFECT_*` variable, in `backend/tests/unit/prefect_server/test_app_retention.py`
+- [ ] T048 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: load the configuration, apply `apply_prefect_retention_env`, then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
+- [ ] T049 [P] [US4] Switch `task-manager-background-svc` to `command: infrahub tasks background-services` in `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
+- [ ] T050 [US4] Open the opsmill/infrahub-helm PR for the same release: background-services deployment runs `infrahub tasks background-services`, the upgrade hook passes `--no-task-history-cleanup`, retention values exposed in values.yaml (outside this repository)
 
 ---
 
 ## Phase 7: Polish & cross-cutting (part 4 documentation)
 
-- [ ] T050 [P] Add `("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks")` to `tasks/docs.py::CLI_COMMANDS`, then run `uv run invoke docs.generate` to regenerate `docs/docs/reference/configuration.mdx` and `docs/docs/reference/infrahub-cli/infrahub-tasks.mdx`
-- [ ] T051 [P] Upgrade guides: the task history cleanup step, irreversible deletion and setting a longer retention before upgrading, free disk for the rewrite, expected duration (Q1), the Helm maintenance step after the rollout (stop server and task workers, run `infrahub tasks flush flow-runs --rewrite`, start them), and getting disk back after lowering a retention, in `docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx`, `community.mdx` and `enterprise.mdx`
-- [ ] T052 [P] Document the activity log retention, the own-event retention and sizing guidance (5.7 to 8.1 GiB per million stored events) in `docs/docs/deploy-manage/run-observe/activity-log.mdx`, and the task history retention, the precedence of `PREFECT_*` variables, `flush flow-runs` and the stuck-runs command with its limit in `docs/docs/deploy-manage/run-observe/tasks.mdx` (follow the `opsmill-docs-writing-infrahub-docs` skill)
-- [ ] T053 [P] Update `dev/knowledge/backend/events.md` (retention, Prefect event-type list, Activities queries) and `dev/knowledge/backend/async-tasks.md` (task history retention, cleanup job, stuck runs), each with a behaviour table
-- [ ] T054 [P] Update `dev/adr/0002-events-system.md`, whose assumption that Prefect's retention covers the audit trail no longer holds
-- [ ] T055 [P] Correct `dev/specs/telemetry-collection-infp-589/spec.md` from 90 days to the 30-day task history default
-- [ ] T056 Run the opsmill/infrahub-private-tests suites from T021-T045 against the release candidate on Postgres 14 and 18, and attach the report to the PR and to INFP-507 as the release evidence
-- [ ] T057 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
-- [ ] T058 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
+- [ ] T051 [P] Add `("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks")` to `tasks/docs.py::CLI_COMMANDS`, then run `uv run invoke docs.generate` to regenerate `docs/docs/reference/configuration.mdx` and `docs/docs/reference/infrahub-cli/infrahub-tasks.mdx`
+- [ ] T052 [P] Upgrade guides: the task history cleanup step, irreversible deletion and setting a longer retention before upgrading, free disk for the rewrite, expected duration (Q1), the Helm maintenance step after the rollout (stop server and task workers, run `infrahub tasks flush flow-runs --rewrite`, start them), and getting disk back after lowering a retention, in `docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx`, `community.mdx` and `enterprise.mdx`
+- [ ] T053 [P] Document the activity log retention, the own-event retention and sizing guidance (5.7 to 8.1 GiB per million stored events) in `docs/docs/deploy-manage/run-observe/activity-log.mdx`, and the task history retention, the precedence of `PREFECT_*` variables, `flush flow-runs` and the stuck-runs command with its limit in `docs/docs/deploy-manage/run-observe/tasks.mdx` (follow the `opsmill-docs-writing-infrahub-docs` skill)
+- [ ] T054 [P] Update `dev/knowledge/backend/events.md` (retention, Prefect event-type list, Activities queries) and `dev/knowledge/backend/async-tasks.md` (task history retention, cleanup job, stuck runs), each with a behaviour table
+- [ ] T055 [P] Update `dev/adr/0002-events-system.md`, whose assumption that Prefect's retention covers the audit trail no longer holds
+- [ ] T056 [P] Correct `dev/specs/telemetry-collection-infp-589/spec.md` from 90 days to the 30-day task history default
+- [ ] T057 Run the opsmill/infrahub-private-tests suites from the evidence tasks T021-T024, T037-T039 and T046 against the release candidate on Postgres 14 and 18, and attach the report to the PR and to INFP-507 as the release evidence
+- [ ] T058 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
+- [ ] T059 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
 
 ---
 
@@ -169,11 +170,11 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 - **Setup (T001-T002)**: none.
 - **Foundational (T003-T007)**: after Setup; blocks US1, US3, US4.
-- **US1 (T008-T024)**: after Foundational. T014 → T015 → T016 → T017 → T018, T019. Tests T008-T012 are written first and fail until T014-T019 land; T013 after T018. Evidence T021-T024 after T019 on a built image; the separate-container case in T021 also needs T047 (US4).
-- **US2 (T025-T039)**: independent of Foundational except T043 (US3). T025 first; T030-T033 after T025; T034 after T033; T035 after T034. Evidence T037 any time (lands PR #33), T038-T039 after T033 and T034 on a built image.
-- **US3 (T040-T045)**: after Foundational and after US2 has merged (a longer retention with today's queries makes the page slower). T042 before T040 passes. Evidence T045 after T043.
-- **US4 (T046-T049)**: after Foundational; T047 before T048 and T049.
-- **Polish (T050-T058)**: T050-T055 alongside US1 and US3; T056 (evidence run on the release candidate), then T057-T058 last.
+- **US1 (T008-T024)**: after Foundational. T014 → T015 → T016 → T017 → T018, T019. Tests T008-T012 are written first and fail until T014-T019 land; T013 after T018. Evidence T021-T024 after T019 on a built image; the separate-container case in T021 also needs T048 (US4).
+- **US2 (T025-T039)**: independent of Foundational except T044 (US3). T025 first; T030-T033 after T025; T034 after T033; T035 after T034. Evidence T037 any time (lands PR #33), T038-T039 after T033 and T034 on a built image.
+- **US3 (T040-T046)**: after Foundational and after US2 has merged (a longer retention with today's queries makes the page slower). T043 (filling the list) before T040 and T041 pass. Evidence T046 after T044.
+- **US4 (T047-T050)**: after Foundational; T048 before T049 and T050.
+- **Polish (T051-T059)**: T051-T056 alongside US1 and US3; T057 (evidence run on the release candidate), then T058-T059 last.
 
 ## Parallel opportunities
 
@@ -181,9 +182,9 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - Foundational: T004 and T006 alongside T005 and T007.
 - US1 tests T008-T012 in parallel; T020 any time; evidence T021-T024 in parallel in the private-tests repository.
 - US2 tests T026-T029 in parallel; US2 can be developed in parallel with US1 by another developer.
-- US3 tests T040 and T041 in parallel.
-- Polish T050-T055 in parallel.
-- Evidence T037-T039 and T045 in parallel with the backend work once a test image exists.
+- US3 tests T040, T041 and T042 in parallel.
+- Polish T051-T056 in parallel.
+- Evidence T037-T039 and T046 in parallel with the backend work once a test image exists.
 
 ## Implementation strategy
 
