@@ -32,7 +32,7 @@ FREE_TILE = re.compile(r" available$")
 
 
 def allocated_tile(prefix: str) -> re.Pattern[str]:
-    """Match an allocated tile by its CIDR regardless of the utilisation it reports."""
+    """Match an allocated tile by its CIDR regardless of the utilization it reports."""
     return re.compile(rf"^{re.escape(prefix)}, ")
 
 

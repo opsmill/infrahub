@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe("IpPrefixTreeMapEmptyState", () => {
-  it("shows the utilisation meter, the explanation and the IP Addresses link", async () => {
+  it("shows the utilization meter, the explanation and the IP Addresses link", async () => {
     // GIVEN
     const utilization = 12;
 
@@ -31,7 +31,7 @@ describe("IpPrefixTreeMapEmptyState", () => {
       .toHaveAttribute("href", expect.stringMatching(/\/ip_addresses$/));
   });
 
-  it("shows the explanation and the link without a meter when utilisation is unknown", async () => {
+  it("shows the explanation and the link without a meter when utilization is unknown", async () => {
     // GIVEN
     const utilization = null;
 

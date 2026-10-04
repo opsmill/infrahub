@@ -29,7 +29,7 @@ tests will use, so they are part of the contract.
 
 | Tile kind | Element | Accessible name | Visual | Action |
 |-----------|---------|-----------------|--------|--------|
-| allocated | `<a>` (react-router `Link`) | `"<CIDR>, <N>% utilised"` or `"<CIDR>, utilisation unknown"` | accent surface, inner fill width = utilisation % | navigate to the child's `tree-map` route, query params preserved |
+| allocated | `<a>` (react-router `Link`) | `"<CIDR>, <N>% utilized"` or `"<CIDR>, utilization unknown"` | accent surface, inner fill width = utilisation % | navigate to the child's `tree-map` route, query params preserved |
 | free | `<button>` (`@infrahub/ui` `Button`) | `"<CIDR> available"` | content surface, dashed border | open the create sheet prefilled with the CIDR; disabled with the permission tooltip when `permission.create.isAllowed` is false |
 | aggregate-allocated | `<a>` | `"<N> smaller prefixes"` | muted surface | navigate to the parent's `children` route |
 | aggregate-free | `<div role="img">` | `"<N> smaller free blocks"` | muted surface, dashed border | none |

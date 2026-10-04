@@ -193,8 +193,9 @@ path today (they answer `null`), which the Children tab already pays for.
 **Decision**:
 
 - Allocated tile: `bg-accent-surface`, `border-border`, label `text-foreground`; inner fill is a
-  child element with `width: <utilisation>%` and
-  `background: color-mix(in oklch, var(--accent-strong) 55%, transparent)`.
+  child element with `width: <utilisation>%` (the only inline style, because it is data) and the
+  `bg-accent-fill` token, a 55% alpha of `--accent-strong` declared in the shared theme for both
+  themes so no component carries a `color-mix` or a `var(--x)` colour inline.
 - Free tile: `bg-content`, `border-dashed border-border-strong`, label `text-foreground-muted`.
   (`bg-subtle` was considered and rejected: the `subtle` token is a foreground colour and renders
   as dark grey.)
@@ -203,7 +204,7 @@ path today (they answer `null`), which the Children tab already pays for.
   (`bg-content-muted` is indistinguishable from the page background).
 - The container's aspect ratio is an inline style derived from the shared constant rather than an
   arbitrary Tailwind value, so the CSS box and the layout maths cannot drift apart.
-- Unknown utilisation: no inner fill, tooltip says "Utilisation unknown".
+- Unknown utilisation: no inner fill, tooltip says "utilization unknown".
 - Label hidden with a container query (each tile is a `@container`, the label shows from
   `@min-[5rem]`), with the CIDR always in the tooltip and `aria-label`.
 

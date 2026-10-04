@@ -28,6 +28,7 @@
      NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off. */
   --accent-surface: --alpha(var(--accent) / 10%);
   --accent-strong: #0987a8;
+  --accent-fill: --alpha(var(--accent-strong) / 55%);
   --accent-foreground: var(--color-white);
 
   /* Marks the element the user is currently acting on: an open navigation menu, a column being
@@ -157,6 +158,7 @@
 
   --accent-surface: --alpha(var(--accent) / 15%);
   --accent-strong: #0b97bb;
+  --accent-fill: --alpha(var(--accent-strong) / 55%);
 
   --active: var(--color-indigo-400);
   --active-surface: --alpha(var(--color-indigo-400) / 15%);
@@ -283,6 +285,7 @@
   --color-accent: var(--accent);
   --color-accent-surface: var(--accent-surface);
   --color-accent-strong: var(--accent-strong);
+  --color-accent-fill: var(--accent-fill);
   --color-accent-foreground: var(--accent-foreground);
   --color-active: var(--active);
   --color-active-surface: var(--active-surface);

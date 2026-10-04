@@ -28,9 +28,6 @@ export const TREE_MAP_TILE_CLASSES = {
   aggregate: AGGREGATE_TILE_CLASS,
 } as const;
 
-export const TREE_MAP_FILL_BACKGROUND =
-  "color-mix(in oklch, var(--accent-strong) 55%, transparent)";
-
 export interface IpPrefixTreeMapTileProps {
   rect: TreeMapRect;
   parent: { id: string; kind: string; cidr: string };
@@ -38,8 +35,8 @@ export interface IpPrefixTreeMapTileProps {
   onCreateFromFreeBlock: (block: TreeMapFreeBlock) => void;
 }
 
-function formatUtilisation(utilization: number | null): string {
-  return utilization === null ? "utilisation unknown" : `${Math.round(utilization)}% utilised`;
+function formatUtilization(utilization: number | null): string {
+  return utilization === null ? "utilization unknown" : `${Math.round(utilization)}% utilized`;
 }
 
 function formatMemberCount(child: TreeMapChild): string {
@@ -63,7 +60,7 @@ function AllocatedTooltip({ child }: { child: TreeMapChild }) {
       <span className="font-medium">{child.cidr}</span>
       {child.description && <span>{child.description}</span>}
       <span>Member type: {child.memberType}</span>
-      <span>{formatUtilisation(child.utilization)}</span>
+      <span>{formatUtilization(child.utilization)}</span>
       <span>{formatMemberCount(child)}</span>
     </Col>
   );
@@ -75,14 +72,14 @@ function AllocatedTile({ tile, child }: { tile: TreeMapTile; child: TreeMapChild
       <Focusable>
         <Link
           to={getObjectDetailsUrl(child.kind, child.id, undefined, "tree-map")}
-          aria-label={`${child.cidr}, ${formatUtilisation(child.utilization)}`}
+          aria-label={`${child.cidr}, ${formatUtilization(child.utilization)}`}
           className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, TREE_MAP_TILE_CLASSES.allocated)}
         >
           {child.utilization !== null && (
             <div
               data-testid="ip-prefix-tree-map-tile-fill"
-              className="absolute inset-y-0 left-0"
-              style={{ width: `${child.utilization}%`, background: TREE_MAP_FILL_BACKGROUND }}
+              className="absolute inset-y-0 left-0 bg-accent-fill"
+              style={{ width: `${child.utilization}%` }}
             />
           )}
           <TileLabel>{tile.label}</TileLabel>

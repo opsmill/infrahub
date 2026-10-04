@@ -70,7 +70,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilised" }))
+      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilized" }))
       .toHaveAttribute("href", "/ipam/IpamIPPrefix/child-id/tree-map?namespace=abc");
   });
 
@@ -115,7 +115,7 @@ describe("IpPrefixTreeMapTile", () => {
     );
 
     // THEN
-    const link = component.getByRole("link", { name: "10.1.0.0/16, 0% utilised" });
+    const link = component.getByRole("link", { name: "10.1.0.0/16, 0% utilized" });
     await expect.element(link).toHaveAttribute("href", expect.stringContaining("branch=feature"));
     await expect.element(link).toHaveAttribute("href", expect.stringContaining("namespace=abc"));
   });
@@ -145,14 +145,14 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
 
     // WHEN
-    await component.getByRole("link", { name: "10.1.0.0/16, 50% utilised" }).hover();
+    await component.getByRole("link", { name: "10.1.0.0/16, 50% utilized" }).hover();
 
     // THEN
     const tooltip = component.getByRole("tooltip");
     await expect.element(tooltip).toHaveTextContent("10.1.0.0/16");
     await expect.element(tooltip).toHaveTextContent("Interconnections");
     await expect.element(tooltip).toHaveTextContent("Member type: prefix");
-    await expect.element(tooltip).toHaveTextContent("50% utilised");
+    await expect.element(tooltip).toHaveTextContent("50% utilized");
     await expect.element(tooltip).toHaveTextContent("16 child prefixes");
     await initPointerTracking(component.locator);
   });
@@ -181,7 +181,7 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
   });
 
-  it.each([0, 50, 100])("names an allocated tile at %d percent utilised", async (utilization) => {
+  it.each([0, 50, 100])("names an allocated tile at %d percent utilized", async (utilization) => {
     // GIVEN
     const rect = generateTreeMapRect({
       tile: generateAllocatedTile({ child: { cidr: "10.1.0.0/16", utilization } }),
@@ -199,7 +199,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: `10.1.0.0/16, ${utilization}% utilised` }))
+      .element(component.getByRole("link", { name: `10.1.0.0/16, ${utilization}% utilized` }))
       .toBeVisible();
   });
 
@@ -228,7 +228,7 @@ describe("IpPrefixTreeMapTile", () => {
     }
   );
 
-  it("names an allocated tile with unknown utilisation", async () => {
+  it("names an allocated tile with unknown utilization", async () => {
     // GIVEN
     const rect = generateTreeMapRect({
       tile: generateAllocatedTile({ child: { cidr: "10.1.0.0/16", utilization: null } }),
@@ -246,11 +246,11 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "10.1.0.0/16, utilisation unknown" }))
+      .element(component.getByRole("link", { name: "10.1.0.0/16, utilization unknown" }))
       .toBeVisible();
   });
 
-  it("renders no fill when the utilisation is unknown", async () => {
+  it("renders no fill when the utilization is unknown", async () => {
     // GIVEN
     const rect = generateTreeMapRect({
       tile: generateAllocatedTile({ child: { cidr: "10.1.0.0/16", utilization: null } }),
