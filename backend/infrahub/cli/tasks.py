@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from datetime import UTC, timedelta
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,12 @@ from infrahub import config
 from infrahub.core.migrations.shared import get_migration_console
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
-from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL, TaskHistoryCleanupError, run_task_history_cleanup
+from infrahub.task_manager.flow_run.cleanup import (
+    POLL_INTERVAL,
+    TaskHistoryCleanupError,
+    TaskHistoryCleanupFailedError,
+    run_task_history_cleanup,
+)
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter
 from infrahub.task_manager.flow_run.retention import FlowRunRetention
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
@@ -85,10 +91,18 @@ flush_app = AsyncTyper()
 app.add_typer(flush_app, name="flush")
 
 
+@dataclass(frozen=True)
+class CleanupFailure:
+    """Why the cleanup failed or could not run, and what a cleanup that failed in the task manager had committed."""
+
+    error: str
+    committed: str | None = None
+
+
 async def clean_task_history(
     client: PrefectClient, rewrite: CleanupRewrite, console: Console, poll_interval: timedelta = POLL_INTERVAL
-) -> str | None:
-    """Run a task history cleanup in the task manager, printing its progress and then its outcome.
+) -> CleanupFailure | None:
+    """Run a task history cleanup in the task manager, printing its progress and waits, then its outcome.
 
     Returns:
         Why the cleanup failed or could not run, or None when it ran or the task manager does not provide it.
@@ -99,12 +113,15 @@ async def clean_task_history(
             client=client,
             rewrite=rewrite,
             on_progress=lambda progress: console.log(_progress_line(job=progress)),
+            on_wait=lambda wait: console.log(f"Waiting to start the cleanup, because {wait.reason}"),
             poll_interval=poll_interval,
         )
+    except TaskHistoryCleanupFailedError as exc:
+        return CleanupFailure(error=exc.message, committed=_committed_line(job=exc.job))
     except TaskHistoryCleanupError as exc:
-        return exc.message
+        return CleanupFailure(error=exc.message)
     except httpx.HTTPError as exc:
-        return f"{type(exc).__name__}: {exc}"
+        return CleanupFailure(error=f"{type(exc).__name__}: {exc}")
     if job is None:
         console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
         return None
@@ -125,7 +142,9 @@ async def flush_old_flow_runs(
     )
     if failure is None:
         return 0
-    console.log(f"{ERROR_BADGE} {failure}")
+    console.log(f"{ERROR_BADGE} {failure.error}")
+    if failure.committed is not None:
+        console.log(failure.committed)
     return 1
 
 
@@ -135,6 +154,16 @@ def _runs(count: int) -> str:
 
 def _progress_line(job: CleanupJob) -> str:
     return f"Deleting the runs that ended on {job.current_day}, {_runs(job.deleted_runs)} deleted so far"
+
+
+def _committed_line(job: CleanupJob) -> str:
+    """The runs a failed cleanup deleted, and its rewrite only once that finished, as the job records no table of one cut short."""
+    deleted = f"Deleted {_runs(job.deleted_runs)} before the failure"
+    if not job.rewritten:
+        return deleted
+    if job.not_rewritten:
+        return f"{deleted}; task history tables rewritten, except {', '.join(job.not_rewritten)}, which stayed locked"
+    return f"{deleted}; task history tables rewritten"
 
 
 def _summary_lines(job: CleanupJob) -> list[str]:

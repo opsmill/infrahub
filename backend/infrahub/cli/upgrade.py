@@ -263,7 +263,9 @@ async def upgrade_task_history(
         )
     if failure is not None:
         # Each committed day stays deleted and a failed rewrite leaves its table intact, so the upgrade can go on.
-        console.log(f"{ERROR_BADGE} Task history cleanup failed: {failure}")
+        console.log(f"{ERROR_BADGE} Task history cleanup failed: {failure.error}")
+        if failure.committed is not None:
+            console.log(failure.committed)
         console.log(TASK_HISTORY_CLEANUP_RERUN_HINT)
 
 
