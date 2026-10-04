@@ -81,8 +81,8 @@ def test_the_upgrade_runs_the_task_history_cleanup_as_step_six_of_seven() -> Non
     ]
 
 
-async def test_the_step_asks_for_a_rewrite_only_when_the_deletes_free_most_of_the_tables() -> None:
-    """The upgrade's cleanup asks for a rewrite only if the deletes freed more than half of the runs, then summarises."""
+async def test_the_step_asks_for_a_rewrite_only_when_most_of_the_tables_is_free_space() -> None:
+    """The upgrade's cleanup asks for a rewrite only if more than half of the tables' disk space is free, then summarises."""
     task_manager = ScriptedTaskManager(
         responses=[
             started(rewrite="if_freed"),

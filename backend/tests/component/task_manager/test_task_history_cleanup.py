@@ -19,7 +19,12 @@ from tests.helpers.task_manager_seed import (
     task_manager_database,
 )
 
-from infrahub.prefect_server.task_history import TaskHistoryCleanup, TaskHistoryTables, build_task_history_cleanup
+from infrahub.prefect_server.task_history import (
+    TableSpace,
+    TaskHistoryCleanup,
+    TaskHistoryTables,
+    build_task_history_cleanup,
+)
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 
 if TYPE_CHECKING:
@@ -125,7 +130,7 @@ class RewriteDecisionCase:
     name: str
     rewrite: CleanupRewrite
     old_runs: int
-    recent_runs: int
+    flow_run_space: TableSpace
     expected_rewritten: bool
     expected_calls: list[str]
     expected_not_rewritten: list[str]
@@ -134,40 +139,60 @@ class RewriteDecisionCase:
 
 REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
     RewriteDecisionCase(
-        name="if_freed_with_more_than_half_of_the_runs_deleted",
+        name="if_freed_with_more_than_half_of_the_runs_table_free",
         rewrite=CleanupRewrite.IF_FREED,
         old_runs=3,
-        recent_runs=2,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=499),
         expected_rewritten=True,
-        expected_calls=["total_size", "rewrite", "total_size"],
+        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
         expected_not_rewritten=["log"],
         expected_size_after=100,
     ),
     RewriteDecisionCase(
-        name="if_freed_with_half_of_the_runs_deleted",
+        name="if_freed_with_half_of_the_runs_table_free",
         rewrite=CleanupRewrite.IF_FREED,
-        old_runs=2,
-        recent_runs=2,
+        old_runs=3,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=500),
         expected_rewritten=False,
-        expected_calls=["total_size", "total_size"],
+        expected_calls=["total_size", "flow_run_space", "total_size"],
         expected_not_rewritten=[],
         expected_size_after=1000,
     ),
     RewriteDecisionCase(
-        name="always_with_a_fifth_of_the_runs_deleted",
+        name="if_freed_with_the_runs_deleted_before_the_cleanup_started",
+        rewrite=CleanupRewrite.IF_FREED,
+        old_runs=0,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=100),
+        expected_rewritten=True,
+        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
+        expected_not_rewritten=["log"],
+        expected_size_after=100,
+    ),
+    RewriteDecisionCase(
+        name="if_freed_with_runs_deleted_from_a_mostly_live_runs_table",
+        rewrite=CleanupRewrite.IF_FREED,
+        old_runs=3,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=900),
+        expected_rewritten=False,
+        expected_calls=["total_size", "flow_run_space", "total_size"],
+        expected_not_rewritten=[],
+        expected_size_after=1000,
+    ),
+    RewriteDecisionCase(
+        name="always_with_a_mostly_live_runs_table",
         rewrite=CleanupRewrite.ALWAYS,
         old_runs=1,
-        recent_runs=4,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=900),
         expected_rewritten=True,
         expected_calls=["total_size", "rewrite", "total_size"],
         expected_not_rewritten=["log"],
         expected_size_after=100,
     ),
     RewriteDecisionCase(
-        name="never_with_every_run_deleted",
+        name="never_with_a_runs_table_holding_no_live_rows",
         rewrite=CleanupRewrite.NEVER,
         old_runs=3,
-        recent_runs=0,
+        flow_run_space=TableSpace(disk_bytes=1000, live_bytes=0),
         expected_rewritten=False,
         expected_calls=["total_size", "total_size"],
         expected_not_rewritten=[],
@@ -180,18 +205,16 @@ REWRITE_DECISION_CASES: list[RewriteDecisionCase] = [
 async def test_tables_are_rewritten_as_the_cleanup_asks(
     task_manager_database_path: Path, case: RewriteDecisionCase
 ) -> None:
-    """The tables are rewritten always, never, or only when the deletes freed more than half of the runs they held."""
+    """The tables are rewritten always, never, or only when more than half of the runs table is free, whoever freed it."""
     db = task_manager_database(task_manager_database_path)
     for _ in range(case.old_runs):
         await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(41), end_time=days_ago(40))
-    for _ in range(case.recent_runs):
-        await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(6), end_time=days_ago(5))
-    rewriter = RecordingRewriter()
+    rewriter = RecordingRewriter(flow_run_space=case.flow_run_space)
     job = _job(rewrite=case.rewrite)
     cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
 
-    runs_before = await cleanup.delete(job=job)
-    await cleanup.rewrite(job=job, mode=job.rewrite, runs_before=runs_before)
+    await cleanup.delete(job=job)
+    await cleanup.rewrite(job=job, mode=job.rewrite)
 
     assert rewriter.calls == case.expected_calls
     assert (job.deleted_runs, job.rewrite, job.rewritten, job.not_rewritten, job.size_before, job.size_after) == (

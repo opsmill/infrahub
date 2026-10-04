@@ -79,8 +79,8 @@ async def main():
             retries=0,
         ),
     )
-    runs_before = await cleanup.delete(job=job)
-    await cleanup.rewrite(job=job, mode=job.rewrite, runs_before=runs_before)
+    await cleanup.delete(job=job)
+    await cleanup.rewrite(job=job, mode=job.rewrite)
     print(job.model_dump_json())
 
 asyncio.run(main())

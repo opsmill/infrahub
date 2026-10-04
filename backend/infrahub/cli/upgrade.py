@@ -252,7 +252,8 @@ async def upgrade_task_history(
 ) -> None:
     """Delete the task history older than its retention, reporting a failure without stopping the upgrade.
 
-    The tables are rewritten only when the deletes freed more than half of the runs they held.
+    The tables are rewritten only when more than half of their disk space is free after the deletes, including the
+    space of runs the task manager deleted before.
     """
     if skip:
         console.log("Task history cleanup skipped")
@@ -300,7 +301,9 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
 
     console.log("\nTask history:")
     console.log("  Finished task runs older than the task manager's task history retention will be deleted")
-    console.log("  The task history tables will be rewritten if the deletes free more than half of their runs")
+    console.log(
+        "  The task history tables will be rewritten if more than half of their disk space is free after the deletes"
+    )
     console.log("  --no-task-history-cleanup leaves this out")
 
     console.log("\nBranches:")
