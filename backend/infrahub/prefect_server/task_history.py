@@ -30,7 +30,7 @@ _TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_stat
 _REWRITE_LOCK_TIMEOUT = timedelta(seconds=60)
 _REWRITE_RETRIES = 3
 _CLEANUP_LOCK_KEY = int.from_bytes(b"taskhist", byteorder="big")
-# Outlasts a day of deletes; None would share the one-connection engine of Prefect 3.8.6's own vacuum.
+# Outlasts a day of deletes; Prefect 3.8.6 turns None into the API's 10 s timeout, and so into the API's engine.
 _MAINTENANCE_STATEMENT_TIMEOUT = timedelta(hours=24)
 
 
@@ -319,8 +319,7 @@ class CleanupJobs:
         """Run the job to its end, deciding the rewrite again whenever a start raised its mode after the decision."""
         try:
             runs_before = await cleanup.delete(job=job)
-            decided = job.rewrite
-            await cleanup.rewrite(job=job, mode=decided, runs_before=runs_before)
+            decided: CleanupRewrite | None = None
             while True:
                 # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
                 async with self._starting:
