@@ -13,6 +13,7 @@ from infrahub.prefect_server.retention import (
     PREFECT_EVENT_TYPES,
     apply_prefect_retention_env,
     build_prefect_retention_env,
+    prefect_retention_env_in_effect,
 )
 
 VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
@@ -289,3 +290,26 @@ def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
         EVENTS_RETENTION_PERIOD: "P14D",
         EVENT_RETENTION_OVERRIDES: '{"prefect.flow-run.heartbeat": "P1D"}',
     }
+
+
+def test_overrides_in_effect_are_counted_per_retention() -> None:
+    """The per-type overrides are reported as a count per retention instead of the full list."""
+    environ = {
+        EVENT_RETENTION_OVERRIDES: json.dumps(
+            {
+                "prefect.flow-run.Completed": "P3D",
+                "prefect.task-run.Running": "P3D",
+                "prefect.flow-run.heartbeat": "P1D",
+            }
+        )
+    }
+
+    assert prefect_retention_env_in_effect(environ=environ) == {
+        EVENT_RETENTION_OVERRIDES: "P1D for 1 event types, P3D for 2 event types"
+    }
+
+
+def test_overrides_in_effect_that_are_not_a_mapping_are_reported_as_set() -> None:
+    environ = {EVENT_RETENTION_OVERRIDES: "not json"}
+
+    assert prefect_retention_env_in_effect(environ=environ) == {EVENT_RETENTION_OVERRIDES: "not json"}

@@ -146,7 +146,7 @@ def test_startup_logs_the_retention_variables_prefect_reads(
         f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
         f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P45D",
         f"Task manager retention: {EVENTS_RETENTION_PERIOD}=P14D",
-        f'Task manager retention: {EVENT_RETENTION_OVERRIDES}={{"prefect.flow-run.heartbeat": "P1D"}}',
+        f"Task manager retention: {EVENT_RETENTION_OVERRIDES}=P1D for 1 event types",
     ]
 
 
@@ -169,7 +169,7 @@ def test_preset_legacy_variable_is_logged_and_applied_under_its_own_name(
         f"Task manager retention: {VACUUM_ENABLED}=events,flow_runs",
         f"Task manager retention: {VACUUM_RETENTION_PERIOD}=P30D",
         f"Task manager retention: {LEGACY_EVENTS_RETENTION_PERIOD}=P3D",
-        f'Task manager retention: {EVENT_RETENTION_OVERRIDES}={{"prefect.flow-run.heartbeat": "P1D"}}',
+        f"Task manager retention: {EVENT_RETENTION_OVERRIDES}=P1D for 1 event types",
     ]
     assert EVENTS_RETENTION_PERIOD not in os.environ
     assert get_current_settings().server.events.retention_period == timedelta(days=3)
