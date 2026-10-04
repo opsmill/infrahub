@@ -105,11 +105,6 @@ class TestIpPrefixTreeMapDrillDown:
         await expect(page.get_by_role("link", name="Tree Map")).to_have_attribute("aria-current", "page")
         await expect(page).to_have_url(re.compile(rf".*/tree-map\?.*{re.escape(namespace_param)}"))
 
-        ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
-        await expect(
-            ipam_tree.get_by_role("row", name=re.compile(rf"^{selector_cidr(PREFIX_CHILD)}"))
-        ).to_contain_class("bg-selected")
-
 
 class TestIpPrefixTreeMapBranch:
     @pytest.fixture
