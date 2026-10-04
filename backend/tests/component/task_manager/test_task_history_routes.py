@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from prefect.server.database import provide_database_interface
 from prefect.server.schemas.states import StateType
 from prefect.settings import temporary_settings
-from tests.adapters.task_history import RecordingRewriter
+from tests.adapters.task_history import FailingRewriter, RecordingRewriter
 from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manager_database
 
 from infrahub.prefect_server.app import router
@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from prefect.server.database import PrefectDBInterface
+
+    from infrahub.prefect_server.task_history import TableRewriter
 
 CLEANUP_URL = "/infrahub/task-history/cleanup"
 OLD_RUN_END = datetime(2026, 1, 15, 12, tzinfo=UTC)
@@ -75,7 +77,7 @@ def _client(app: FastAPI) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
-def _rewrite_through(app: FastAPI, db: PrefectDBInterface, rewriter: RecordingRewriter) -> None:
+def _rewrite_through(app: FastAPI, db: PrefectDBInterface, rewriter: TableRewriter) -> None:
     """Have the routes run their cleanups with the rewriter, which SQLite has none of."""
     app.dependency_overrides[build_task_history_cleanup] = lambda: TaskHistoryCleanup(
         tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter
@@ -236,6 +238,44 @@ async def test_a_stronger_start_after_the_cleanup_rewrote_rewrites_nothing_more(
         True,
         100,
     )
+
+
+async def test_a_start_after_a_completed_cleanup_starts_a_new_cleanup(app: FastAPI, db: PrefectDBInterface) -> None:
+    """A completed cleanup frees this task manager and the cleanup lock for the next start."""
+    await _seed_old_run(db=db)
+
+    async with _client(app) as client:
+        first = (await client.post(CLEANUP_URL, json={"rewrite": "never"})).json()
+        completed = await _finished_job(client=client, job_id=first["id"])
+        second = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        assert second.status_code == 202, second.json()
+        completed_again = await _finished_job(client=client, job_id=second.json()["id"])
+
+    assert completed == first | {"state": "completed", "deleted_runs": 1, "current_day": "2026-01-15"}
+    assert second.json()["id"] != first["id"]
+    assert completed_again == second.json() | {"state": "completed", "deleted_runs": 0, "current_day": None}
+
+
+async def test_a_start_after_a_failed_cleanup_starts_a_new_cleanup(app: FastAPI, db: PrefectDBInterface) -> None:
+    """A failed cleanup frees this task manager and the cleanup lock for the next start."""
+    await _seed_old_run(db=db)
+    _rewrite_through(app=app, db=db, rewriter=FailingRewriter())
+    failure = {
+        "state": "failed",
+        "size_before": 1000,
+        "error": "The cleanup failed with RuntimeError; the task manager log has the details",
+    }
+
+    async with _client(app) as client:
+        first = (await client.post(CLEANUP_URL, json={"rewrite": "always"})).json()
+        failed = await _finished_job(client=client, job_id=first["id"])
+        second = await client.post(CLEANUP_URL, json={"rewrite": "always"})
+        assert second.status_code == 202, second.json()
+        failed_again = await _finished_job(client=client, job_id=second.json()["id"])
+
+    assert failed == first | failure | {"deleted_runs": 1, "current_day": "2026-01-15"}
+    assert second.json()["id"] != first["id"]
+    assert failed_again == second.json() | failure | {"deleted_runs": 0, "current_day": None}
 
 
 @pytest.mark.usefixtures("cleanup_lock_held_elsewhere")

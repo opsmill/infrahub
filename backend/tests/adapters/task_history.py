@@ -38,3 +38,13 @@ class RecordingRewriter:
             self._paused.set()
             async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
                 await self._resumed.wait()
+
+
+class FailingRewriter:
+    """Measures 1000 bytes and raises on every rewrite, to prove a failed cleanup lets the next one start."""
+
+    async def total_size(self) -> int:
+        return 1000
+
+    async def rewrite(self) -> list[str]:
+        raise RuntimeError("rewrite rejected")
