@@ -67,8 +67,8 @@ database, and can then rewrite the tables to return the disk space.
   `vacuum_old_flow_runs` (top-level, terminal state, `end_time` before the cutoff), one day of end
   times per transaction. It deletes the runs first, so task runs and states follow by cascade, then
   the logs and artifacts of the deleted IDs. Keep that order and `FOR UPDATE SKIP LOCKED`: they match
-  Prefect's vacuum, so the two can run at the same time without deadlocking. A second pass catches
-  subflows that became top-level when their parent was deleted.
+  Prefect's vacuum, so the two can run at the same time without deadlocking. Passes repeat until one
+  deletes nothing, which catches subflows that became top-level when their parent was deleted.
 - **Equivalence guard**: `backend/tests/component/task_manager/test_task_history_cleanup.py` runs
   Prefect's `vacuum_old_flow_runs` and the job on copies of the same data and compares what is left.
   It fails when a Prefect upgrade changes the vacuum's rules.
@@ -79,7 +79,7 @@ database, and can then rewrite the tables to return the disk space.
   `VACUUM FULL` waiting for its lock makes every later query on the table queue behind it, hence the
   timeout; a table that still times out is listed in `not_rewritten` and the job moves on.
 - **Database pool**: the job uses a small pool of its own with a statement timeout long enough for a
-  day of deletes, since Prefect's default statement timeout of a few seconds would cut it short.
+  day of deletes, since Prefect's default database timeout of 10 seconds would cut it short.
 - **One job at a time**: `CleanupJobs` keeps the job of this process, and a PostgreSQL advisory lock,
   held by a dedicated autocommit connection that is invalidated on release, covers every replica.
   Another replica answers `409`. The same replica returns its running job and raises its mode to a
@@ -89,11 +89,17 @@ database, and can then rewrite the tables to return the disk space.
   start lock, so a request either reaches the job before that check or starts a new job.
 - **State in memory**: a task-manager restart loses the job (`GET` answers `404`) but not the days
   already committed; a new job continues from the oldest remaining day.
+- **Models**: the request and job models are in `prefect_server/task_history_models.py`, which
+  imports neither Prefect's database layer nor its driver, so the CLI client can use them; a unit test
+  checks it.
 - **Client**: `task_manager/flow_run/cleanup.py::run_task_history_cleanup` polls every 2 seconds. A
-  `404` on the first `POST` means an older task manager and returns `None`. A `409`, a `404` or a
-  transport error after the task manager has answered once means waiting and posting again; it gives
-  up 3 hours after it last saw a job. `cli/tasks.py::flow_runs` and
-  `cli/upgrade.py::upgrade_task_history` call it through `cli/tasks.py::clean_task_history`.
+  `404` to a `POST` means a task manager without the cleanup and returns `None`. A `409` on a `POST`,
+  a `404` on a `GET`, or a transport error after the task manager has answered once means waiting and
+  posting again; each wait is reported when it starts and when its reason changes, and the client
+  gives up 3 hours after it last saw a job, naming the last reason. A failed job comes back in
+  `TaskHistoryCleanupFailedError`, so the CLI prints what it had deleted and rewritten.
+  `cli/tasks.py::flow_runs` and `cli/upgrade.py::upgrade_task_history` call it through
+  `cli/tasks.py::clean_task_history`.
 
 ## Stuck runs
 
