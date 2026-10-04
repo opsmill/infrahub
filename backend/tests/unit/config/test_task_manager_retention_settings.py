@@ -99,6 +99,8 @@ REFUSED_RETENTION_TEST_CASES: list[RefusedRetentionTestCase] = [
         name="iso_8601_with_a_number_too_large", value="PT99999999999999H", reason=LONGER_THAN_36500_DAYS
     ),
     RefusedRetentionTestCase(name="iso_8601_malformed", value="P1X", reason=NOT_A_DURATION),
+    RefusedRetentionTestCase(name="iso_8601_without_any_part", value="P", reason=NOT_A_DURATION),
+    RefusedRetentionTestCase(name="iso_8601_with_an_empty_time_part", value="PT", reason=NOT_A_DURATION),
 ]
 
 
