@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from neo4j.exceptions import TransientError
 
+from infrahub import config
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
@@ -308,6 +310,45 @@ async def test_refresh_skips_only_the_node_whose_profile_application_raises(
         ("role-1", dataset.room_id),
     ]
     assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[2]]
+
+
+@pytest.fixture
+def _three_retries_without_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config.SETTINGS.database, "retry_limit", 3)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_base_delay", 0.0)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_jitter_max", 0.0)
+
+
+@pytest.mark.usefixtures("_three_retries_without_delay")
+async def test_refresh_does_not_retry_each_node_after_a_chunk_exhausts_its_retries(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=3)
+    failing_node_id = dataset.server_ids[1]
+    raised_for: list[str] = []
+
+    class TransientFailingProfilesApplier(ChunkProfilesApplier):
+        async def apply_profiles(self, node: Node) -> list[str]:
+            fields = await super().apply_profiles(node=node)
+            if node.get_id() == failing_node_id:
+                raised_for.append(failing_node_id)
+                raise TransientError("lock contention")
+            return fields
+
+    doubles = _refresher(db=db, branch=default_branch, applier_class=TransientFailingProfilesApplier)
+
+    with pytest.raises(TransientError, match=r"^lock contention$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert raised_for == [failing_node_id] * 3
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        (None, None),
+        (None, None),
+        (None, None),
+    ]
+    assert doubles.events.events == []
 
 
 async def test_refresh_recomputes_the_readers_of_committed_chunks_when_a_later_chunk_fails(

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.recompute.bulk_write import WrittenNode, send_node_updated_event
-from infrahub.database import retry_db_transaction
+from infrahub.database import is_retriable_db_error, retry_db_transaction
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_run_logger
@@ -66,6 +66,7 @@ class NodeProfilesRefresher:
         Raises:
             DatabaseError: If the database cannot be reached.
             QueryTimeoutError: If a query of the refresh times out.
+            Neo4jError: If a transaction of the refresh still fails after its retries.
 
         """
         user_id = context.account_id or SYSTEM_USER_ID
@@ -105,6 +106,9 @@ class NodeProfilesRefresher:
             raise
         # The transaction rolled back, so the chunk can be applied again without the nodes that fail.
         except Exception as exc:
+            # The transaction already retried this error, and one node at a time cannot clear it.
+            if is_retriable_db_error(exc):
+                raise
             if len(node_ids) == 1:
                 log.warning(f"Skipping the profile refresh of {node_ids[0]}: {exc}", exc_info=True)
                 return AppliedChunk(applied=[], failed_node_ids=list(node_ids))
