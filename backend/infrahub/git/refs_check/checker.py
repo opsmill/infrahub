@@ -22,7 +22,7 @@ from infrahub.git.state.cache_keys import (
     refs_check_last_key,
     refs_check_running_key,
 )
-from infrahub.log import get_log_data, get_logger
+from infrahub.log import get_log_data, get_run_logger
 from infrahub.message_bus import Meta, messages
 from infrahub.worker import WORKER_IDENTITY
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from .models import RefHeads
     from .tracked_commit import TrackedCommitReader
 
-log = get_logger()
+log = get_run_logger()
 
 
 @dataclass(frozen=True)
@@ -155,9 +155,10 @@ class ReadOnlyRepositoryRefsChecker:
         if not claimed:
             holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
             log.info(
-                "Skipping refs check, another run holds the repository",
-                repository=model.repository_name,
-                held_by=holder,
+                "Skipping the refs check of repository %s, run %s holds it",
+                model.repository_name,
+                holder,
+                extra={"repository": model.repository_name, "held_by": holder},
             )
             return RefsCheckResult(
                 repository_id=model.repository_id,
@@ -170,7 +171,12 @@ class ReadOnlyRepositoryRefsChecker:
             invalid_ref = await self._first_invalid_ref(model)
             if invalid_ref is not None:
                 reason = f"Refusing to check the invalid ref '{invalid_ref}'."
-                log.warning("Refs check refused", repository=model.repository_name, reason=reason)
+                log.warning(
+                    "Refs check of repository %s refused: %s",
+                    model.repository_name,
+                    reason,
+                    extra={"repository": model.repository_name, "reason": reason},
+                )
                 return await self._record_failure(model, reason=reason, contacted_remote=False)
 
             # The bound covers the listing and the planning, which hold no lock and fit inside the
@@ -183,7 +189,12 @@ class ReadOnlyRepositoryRefsChecker:
                     convergence = await self._plan_convergence(model, heads)
             except TimeoutError:
                 reason = f"Timed out after {self._detect_timeout_seconds}s checking the remote refs."
-                log.warning("Refs check timed out", repository=model.repository_name, reason=reason)
+                log.warning(
+                    "Refs check of repository %s timed out: %s",
+                    model.repository_name,
+                    reason,
+                    extra={"repository": model.repository_name, "reason": reason},
+                )
                 return await self._record_failure(model, reason=reason, contacted_remote=True)
 
             if convergence.needed:
@@ -193,7 +204,12 @@ class ReadOnlyRepositoryRefsChecker:
                 await self._converge(model, convergence)
         except RepositoryError as exc:
             reason = str(exc)
-            log.warning("Refs check failed", repository=model.repository_name, reason=reason)
+            log.warning(
+                "Refs check of repository %s failed: %s",
+                model.repository_name,
+                reason,
+                extra={"repository": model.repository_name, "reason": reason},
+            )
             return await self._record_failure(model, reason=reason, contacted_remote=True)
         finally:
             # Release before stamping: the claim suppresses every later check until it expires,
@@ -226,14 +242,20 @@ class ReadOnlyRepositoryRefsChecker:
             holder = await self._cache.get(key=refs_check_running_key(model.repository_id))
             if holder is not None and holder != run_id:
                 log.info(
-                    "Leaving the refs check claim in place, it now belongs to another run",
-                    repository=model.repository_name,
-                    held_by=holder,
+                    "Leaving the refs check claim of repository %s in place, it now belongs to run %s",
+                    model.repository_name,
+                    holder,
+                    extra={"repository": model.repository_name, "held_by": holder},
                 )
                 return
             await self._cache.delete(key=refs_check_running_key(model.repository_id))
         except Exception as exc:  # noqa: BLE001
-            log.warning("Could not release the refs check claim", repository=model.repository_name, reason=str(exc))
+            log.warning(
+                "Could not release the refs check claim of repository %s: %s",
+                model.repository_name,
+                exc,
+                extra={"repository": model.repository_name, "reason": str(exc)},
+            )
 
     async def _first_invalid_ref(self, model: GitReadOnlyRepositoryCheckRefs) -> str | None:
         for ref in self._tracked_ref_names(model):
@@ -266,7 +288,12 @@ class ReadOnlyRepositoryRefsChecker:
                 expires=REFS_CHECK_LAST_TTL_SECONDS,
             )
         except Exception as exc:  # noqa: BLE001
-            log.warning("Could not record the refs check time", repository=model.repository_name, reason=str(exc))
+            log.warning(
+                "Could not record the refs check time of repository %s: %s",
+                model.repository_name,
+                exc,
+                extra={"repository": model.repository_name, "reason": str(exc)},
+            )
 
     async def _plan_convergence(
         self, model: GitReadOnlyRepositoryCheckRefs, heads: tuple[RefHeads, ...]
@@ -275,7 +302,12 @@ class ReadOnlyRepositoryRefsChecker:
         fetch = False
         for ref_heads in heads:
             if ref_heads.remote_head is None:
-                log.info("Tracked ref is absent from the remote", repository=model.repository_name, ref=ref_heads.ref)
+                log.info(
+                    "Tracked ref %s of repository %s is absent from the remote",
+                    ref_heads.ref,
+                    model.repository_name,
+                    extra={"repository": model.repository_name, "ref": ref_heads.ref},
+                )
                 continue
             remote_heads[ref_heads.ref] = ref_heads.remote_head
             if ref_heads.remote_head != ref_heads.local_head:
@@ -291,12 +323,19 @@ class ReadOnlyRepositoryRefsChecker:
                 continue
 
             log.info(
-                "Tracked ref moved upstream",
-                repository=model.repository_name,
-                branch=tracked.infrahub_branch_name,
-                ref=tracked.ref,
-                previous_head=previous_head,
-                new_head=new_head,
+                "Tracked ref %s of repository %s moved upstream on branch %s from %s to %s",
+                tracked.ref,
+                model.repository_name,
+                tracked.infrahub_branch_name,
+                previous_head,
+                new_head,
+                extra={
+                    "repository": model.repository_name,
+                    "branch": tracked.infrahub_branch_name,
+                    "ref": tracked.ref,
+                    "previous_head": previous_head,
+                    "new_head": new_head,
+                },
             )
             movements.append(
                 RefMovement(
@@ -332,10 +371,11 @@ class ReadOnlyRepositoryRefsChecker:
         )
         if imported is None:
             log.info(
-                "Not announcing a branch with no imported commit",
-                repository=model.repository_name,
-                branch=tracked.infrahub_branch_name,
-                ref=tracked.ref,
+                "Not announcing branch %s of repository %s, it has no imported commit for ref %s",
+                tracked.infrahub_branch_name,
+                model.repository_name,
+                tracked.ref,
+                extra={"repository": model.repository_name, "branch": tracked.infrahub_branch_name, "ref": tracked.ref},
             )
         elif imported == remote_head:
             await self._record_announced(model, branch_name=tracked.infrahub_branch_name, head=remote_head)
@@ -375,10 +415,15 @@ class ReadOnlyRepositoryRefsChecker:
                     # Nothing imported on this branch, so there is no commit to pin the pool to;
                     # an unpinned broadcast would move every worker onto the new head.
                     log.info(
-                        "Not converging a branch with no imported commit",
-                        repository=model.repository_name,
-                        branch=tracked.infrahub_branch_name,
-                        ref=tracked.ref,
+                        "Not converging branch %s of repository %s, it has no imported commit for ref %s",
+                        tracked.infrahub_branch_name,
+                        model.repository_name,
+                        tracked.ref,
+                        extra={
+                            "repository": model.repository_name,
+                            "branch": tracked.infrahub_branch_name,
+                            "ref": tracked.ref,
+                        },
                     )
                     continue
                 # Pinned to the tracked commit so no worker moves off it while picking up the

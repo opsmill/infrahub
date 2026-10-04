@@ -126,7 +126,7 @@ backend/infrahub/
 ├── git/state/factory.py                          # NEW   build_repository_git_state_reader, the only wiring point
 ├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
-├── git/state/cache_keys.py                       # NEW   prefix + the four key builders, shared by resolver and flows
+├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
 ├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
 ├── git/models.py                                 # EDIT  GitRepositoryWarmUp, GitReadOnlyRepositoryCheckRefs

@@ -5,12 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.git.state.cache_keys import REFS_CHECK_ANNOUNCED_TTL_SECONDS, refs_check_announced_key
-from infrahub.log import get_logger
+from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
 
-log = get_logger()
+log = get_run_logger()
 
 
 async def record_announced_head(
@@ -31,8 +31,9 @@ async def record_announced_head(
         )
     except Exception as exc:  # noqa: BLE001
         log.warning(
-            "Could not record the announced head",
-            repository=repository_name,
-            branch=branch_name,
-            reason=str(exc),
+            "Could not record the announced head of branch %s of repository %s: %s",
+            branch_name,
+            repository_name,
+            exc,
+            extra={"repository": repository_name, "branch": branch_name, "reason": str(exc)},
         )
