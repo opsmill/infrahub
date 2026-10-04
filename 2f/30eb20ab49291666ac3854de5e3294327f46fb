@@ -1,0 +1,173 @@
+backend/tests/helpers/task_manager_seed.py
+  s_cfd0841cea4d76::t_1bf470012808ca 104-109
+  s_cfd0841cea4d76::t_1f193fb8dbbb62 3-4,6-7,13-17,23,28-35,68-73,78-103,111-114,118-192,194-208
+  s_cfd0841cea4d76::t_fc8c2393f9981e 110,115-117
+  s_cfd0841cea4d76::t_1ae21da024f97c 5,74-77
+  s_cfd0841cea4d76::t_08f56aa1e75960 193
+  s_cfd0841cea4d76::t_275375cc968f98 24
+  s_cfd0841cea4d76::t_40741bf4fee061 8-9,20,219-221,231,255-262,264-265,267,270-274,333
+  s_cfd0841cea4d76::t_e578bc55df8b7b 209-218,222-230,232-254,263,266,268-269,275-332,334-342
+backend/tests/component/task_manager/conftest.py
+  s_cfd0841cea4d76::t_e853c11e61ea43 1-24
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_54e4c19f98f25d 1-3,5-14,17-18,29-30,32-36,39-40,43-50,52-54,63,66-70,72,74-75,85-93,110-123,168,176-177,258,268,282,284-286,287,290-294,296,299-302,305-307,313-314,316-318,321-329
+  s_cfd0841cea4d76::t_d79d956b59d722 31,65,73,76-79,169,295,297-298,303,308,310-312,315
+  s_cfd0841cea4d76::t_93431953506a33 51,64,71
+  s_cfd0841cea4d76::t_5710a5af945b0f 319-320
+  s_cfd0841cea4d76::t_06eccad10d2bb4 304,309
+  s_cfd0841cea4d76::t_d6130af510dcc3 56-62
+  s_cfd0841cea4d76::t_37f8fd1afb03f7 281,283,288-289
+  s_cfd0841cea4d76::t_f22c1640ac7fd2 55
+  s_cfd0841cea4d76::t_1eb567c19f7cca 124-167,170-175,178-240
+  s_cfd0841cea4d76::t_f2e31ec2af894a 81-84,94-107
+  s_cfd0841cea4d76::t_d212e5c0ab60d3 4,16,19-20,21-27,41-42
+  s_cfd0841cea4d76::t_f101dbb6fdb43d 108-109
+  s_cfd0841cea4d76::t_9072a0d9e83001 15,37-38,80,243-278
+  s_cfd0841cea4d76::t_0f54bfd12467e9 279-280
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_cfd0841cea4d76::t_61e54d4d5b9a54 23,28-29,33,35
+  s_cfd0841cea4d76::t_0444eeee189785 34
+  s_cfd0841cea4d76::t_fa9278febbd733 10,13-14,18,32
+  s_cfd0841cea4d76::t_cffffade05ce06 21,30-31
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_1ae21da024f97c 296-297,300-302,334,410-411,414-417
+  s_cfd0841cea4d76::t_5fae104afe3ab5 1-5,7-18,19-21,24-28,32,34-36,37-90,92-120,122-167,172-218,220-224,227,230,237,248,250-251,261-295,303-305,308-318,320,333,335-339,343-357,359-362,366-390,395-404,406-409,418-421,423-436
+  s_cfd0841cea4d76::t_fc8c2393f9981e 358,363-365
+  s_cfd0841cea4d76::t_a9d22963e27964 168-171
+  s_cfd0841cea4d76::t_cf0b11424fd493 29-31,391-394,405
+  s_cfd0841cea4d76::t_007280e9542aea 91,121
+  s_cfd0841cea4d76::t_c1be3440c8a9b6 260
+  s_cfd0841cea4d76::t_5997485e955007 219,249,252-259
+  s_cfd0841cea4d76::t_7becef03168abe 422
+  s_cfd0841cea4d76::t_b18aa0b02b3fb2 298-299,306-307,340-343
+  s_cfd0841cea4d76::t_f29b6ea749d6c0 231-236,242,245-246
+  s_cfd0841cea4d76::t_8e4851884f643d 412-413
+  s_cfd0841cea4d76::t_b2ef300e0c0392 319,321,323-327,329-332
+  s_cfd0841cea4d76::t_148d3e5e03a99a 225-229,238-240,243-244,247
+  s_cfd0841cea4d76::t_86a90d893491bc 241
+  s_cfd0841cea4d76::t_c238c6361b9e54 328
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_c5d0ff0cb9980a 1-3,6-8,9-11,13,14,17,19-21,24-27,28-29,32-39,42-43,48,54-55,57,62,64-66,70-72,74,77-78,106-113,116-117,119,121-125,127-128,130-136,139-140,142-146,149-150,172-179,181-182,184-185,187,189,192,195-196,198,201-204
+  s_cfd0841cea4d76::t_e578bc55df8b7b 4,15-16,18,75-76,114,120,186,188
+  s_cfd0841cea4d76::t_4b18c2288e84ac 40
+  s_cfd0841cea4d76::t_a96632656976a4 126,129,137-138,141,147-148,151-171,180,183,190,197,199-200
+  s_cfd0841cea4d76::t_8da55a9d57dc5c 115
+  s_cfd0841cea4d76::t_4163f66fc0b135 12,118,191,193-194
+backend/infrahub/prefect_server/app.py
+  s_cfd0841cea4d76::t_41054f4c026017 11,20
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_b9a0b7852f35b1 22,49-50,58
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 59
+  s_cfd0841cea4d76::t_7c7a3a8a9abdbe 52-54,62,64
+  s_cfd0841cea4d76::t_b06141021cd2b3 63
+  s_cfd0841cea4d76::t_cffffade05ce06 51
+dev/specs/infp-507-task-history-retention/plan.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 11,142,160
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_fa9278febbd733 10,12
+  s_cfd0841cea4d76::t_cffffade05ce06 14
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 16,20
+dev/specs/infp-507-task-history-retention/research.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 35,38
+  s_cfd0841cea4d76::t_b06141021cd2b3 45
+  s_cfd0841cea4d76::t_cffffade05ce06 36
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_18e9282daa767e 39,41,104-105,139,141,182,205
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_cfd0841cea4d76::t_fa9278febbd733 50
+  s_cfd0841cea4d76::t_cffffade05ce06 49,58,61
+changelog/+task-manager-retention.added.md
+  s_cfd0841cea4d76::t_5b32f081f6d311 5-6
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_06fdcf0653be1a 73
+  s_cfd0841cea4d76::t_802643a6d45b14 1-5,7,9,11-13,15-19,20-21,22-27,49-54,63-66,68-72,74,80-81,87-89,91,93-94,110-111,113-115,117-122,126-127,129-132,140-142,151-158
+  s_cfd0841cea4d76::t_b0691aede39427 135-139
+  s_cfd0841cea4d76::t_6352bc7fc39f01 10,85-86,90,95-96,98-100,102-105,107,109
+  s_cfd0841cea4d76::t_51614817910c9a 75-77
+  s_cfd0841cea4d76::t_10bb1b80f61969 114-115
+  s_cfd0841cea4d76::t_864fcb7539b63e 117-120
+docs/docs/reference/infrahub-cli/infrahub-upgrade.mdx
+  s_cfd0841cea4d76::t_e2d03a2ef5e0ba 21
+backend/tests/helpers/task_history_api.py
+  s_cfd0841cea4d76::t_80dc279d9156e2 1-47,65,70,72-84,89-115
+  s_cfd0841cea4d76::t_ed05e97b911309 48-59
+  s_cfd0841cea4d76::t_d346a91c546717 85-88
+  s_cfd0841cea4d76::t_776e4232cb6511 60,62-64,66-69,71
+  s_cfd0841cea4d76::t_4f825534f462ce 61
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_b0691aede39427 12
+  s_cfd0841cea4d76::t_15d04677f47a47 1-2,8-9,11,20-29,31-35,39,45,48-52,54-56,58-61,64-70,84-115,117,119-131,133-166,168,170-180,182-184,187-188,190,192,197-202,204,217-222,224-227,230-231,233-235,319-341
+  s_cfd0841cea4d76::t_ed1ef1ec66084b 272-274,276,303,304-306,313,316,319-320,323-324,333-336,338-339,342-357,359,361-371,373-375,376-392,394-396,398,400-406
+  s_cfd0841cea4d76::t_e7abc70aa7ce27 7,10,30
+  s_cfd0841cea4d76::t_4f825534f462ce 38
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_76bce10098284a 109-111
+  s_cfd0841cea4d76::t_3e0a14dbf51544 240,247
+  s_cfd0841cea4d76::t_acf7f9899d40eb 11
+  s_cfd0841cea4d76::t_271ca4347eb956 14,28-29,55-64,66-67,69,241-246,248-250
+  s_cfd0841cea4d76::t_5af5d63f3334cb 1-9,15-21,23,25-27,30-44,47,49-50,81-101,103-108,112-125,127-129,130-138,140-145,146-148,151-162,164-169,239
+  s_cfd0841cea4d76::t_b0691aede39427 12
+  s_cfd0841cea4d76::t_182af3d1ffef8e 45-46,48,51-54,65,68,70-80
+  s_cfd0841cea4d76::t_e3812a005021a9 10,13,102,126,139,149-150,163,170-171,173-176,203-214
+  s_cfd0841cea4d76::t_fb9e1b53dea2b1 223-240
+  s_cfd0841cea4d76::t_521522456ca30d 24
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_e5e6c5bcc9d244 102-103,106,109-110,125-126,128-129,131-136,149-158,169-181,186-193,195-200,208-210
+  s_cfd0841cea4d76::t_21b0d9882c36f5 1-2,5-6,13,16,32-37,44
+  s_cfd0841cea4d76::t_098fac6d61520b 48
+  s_cfd0841cea4d76::t_a8f3d032d7195b 45-47
+  s_cfd0841cea4d76::t_c629155e0eb667 107-108,111-115,117-118,121,123,127,130,137-144,148
+  s_cfd0841cea4d76::t_807285b772a021 8
+backend/infrahub/cli/upgrade.py
+  s_cfd0841cea4d76::t_468d4cb9ba6bff 52,54-57,120-124,126-128,168,180,183,196,200,207,211,219,221-222,247-251,254-258,260,270-273
+  s_cfd0841cea4d76::t_b0691aede39427 53
+  s_cfd0841cea4d76::t_e2d03a2ef5e0ba 125
+  s_cfd0841cea4d76::t_b8fdcb07b927f0 274-275
+  s_cfd0841cea4d76::t_fc6c0ba1cb0687 220,252-253,259
+  s_cfd0841cea4d76::t_a8f3d032d7195b 49
+  s_cfd0841cea4d76::t_d93c8421e62598 261-265,269
+  s_cfd0841cea4d76::t_5ee29ab2214b60 30
+changelog/+flush-flow-runs.changed.md
+  s_cfd0841cea4d76::t_8ed7d7c2c7912b 1
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_b0691aede39427 9-12
+  s_cfd0841cea4d76::t_3fd6657870accc 307,309-310
+  s_cfd0841cea4d76::t_fc932620893790 1-6,8,13-21,24-51,54-60,94-135,167-204,289-306,308
+  s_cfd0841cea4d76::t_78bd02dfc37490 52-53,63-64,66,67-69,72-84,85-87,89-91
+  s_cfd0841cea4d76::t_8bcd3a1c87d6cc 7,23
+  s_cfd0841cea4d76::t_974db2654fd1d9 265-286,289-291
+  s_cfd0841cea4d76::t_1c636843b30bb8 287-288
+  s_cfd0841cea4d76::t_2125e005c0a6f3 92-93
+  s_cfd0841cea4d76::t_02c6e8b605b87a 61-62,65,70-71,88
+backend/tests/integration_docker/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_f97b2181ee081c 211,225-227
+  s_cfd0841cea4d76::t_47445be95b3c63 1-4,7-12,15-19,27,29-53,121-125,144-145,151,163-164,167-169,209-210,212-213,217-218,223-224,232
+  s_cfd0841cea4d76::t_f8602fb41d5329 20,28,141,143,165-166,214-216,228-231
+  s_cfd0841cea4d76::t_7f3db38d5c3168 118-119,173,176-181
+  s_cfd0841cea4d76::t_ddd38fef093927 5,13-14,21-22,54-59,62-75,80-81,84-88,112,114-115,121,146,150,152-162,170-172,174-175,182-197,208,233,244-264
+  s_cfd0841cea4d76::t_55f2737eb9c0f4 6,25-26,76-79,109-111,113,116-117,120,126-140,142,147-149,198-207,219-222
+  s_cfd0841cea4d76::t_4163f66fc0b135 82-83
+backend/tests/unit/conftest.py
+  s_cfd0841cea4d76::t_47aa19d5552774 1-2,4,21-22,24-25
+  s_cfd0841cea4d76::t_49b8a24c104c22 26-27
+backend/tests/adapters/task_history.py
+  s_cfd0841cea4d76::t_2e795781e30b52 1-3,4-42,45,48
+  s_cfd0841cea4d76::t_07a81f4ce34f3b 41-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f30eb20ab49291666ac3854de5e3294327f46fb",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
