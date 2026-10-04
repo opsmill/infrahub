@@ -18,12 +18,17 @@ Response `202`:
 
 - Starts a cleanup job in the task manager, or returns the running job if this replica runs one.
 - Response `409` `{"detail": "a cleanup is running elsewhere"}` when another replica holds the cleanup lock.
-- The only input is `rewrite`. The cutoff is now minus the task history retention read from the task manager's own configuration; nothing about the cutoff is taken from the request.
+- The only input is `rewrite`; any other field is refused with `422`. The cutoff is now minus the task history retention read from the task manager's own configuration; nothing about the cutoff is taken from the request.
 - No authentication, like Infrahub's existing task-manager route and Prefect's own API; this is a recorded constitution deviation (see plan.md).
 
 ## `GET /infrahub/task-history/cleanup/{id}`
 
-Response `200`: the job, same shape as above, with `state` `running`, `completed` or `failed`. `404` when the job is unknown (for example after a task-manager restart).
+Response `200`: the job, same shape as above, with `state` `running`, `completed` or `failed`. `404` `{"detail": "the cleanup is unknown to this task manager"}` when the job is unknown (for example after a task-manager restart).
+
+- `rewrite` says whether the tables are rewritten: `false` from the start on SQLite, and `false` at the end when the deletes freed half of the runs or less. `not_rewritten` lists the tables a rewrite skipped.
+- `size_before` (before the deletes) and `size_after` (at the end) are `null` on SQLite.
+- `current_day` is the day of end times being deleted, and once the deletes end the last such day; `null` before the first.
+- `error` names the exception type and points to the task manager log, which holds the details.
 
 ## `POST /infrahub/events/filter` (changed)
 
