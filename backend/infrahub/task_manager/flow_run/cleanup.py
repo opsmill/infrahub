@@ -6,24 +6,24 @@ from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
+import httpx
 from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub.exceptions import Error
-from infrahub.prefect_server.task_history import CleanupJob, CleanupJobState
+from infrahub.prefect_server.task_history import CleanupJob, CleanupJobState, CleanupRewrite
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from datetime import date
 
-    import httpx
     from prefect.client.orchestration import PrefectClient
-
-    from infrahub.prefect_server.task_history import CleanupRewrite
 
 CLEANUP_PATH = "/infrahub/task-history/cleanup"
 POLL_INTERVAL = timedelta(seconds=2)
 # Long enough to wait out a cleanup another task manager runs on a large task history, short enough to end a stuck loop.
 GIVE_UP_AFTER = timedelta(hours=3)
+# Each mode rewrites the tables whenever the modes before it would.
+_REWRITE_STRENGTH = (CleanupRewrite.NEVER, CleanupRewrite.IF_FREED, CleanupRewrite.ALWAYS)
 
 
 class TaskHistoryCleanupError(Error):
@@ -43,41 +43,59 @@ async def run_task_history_cleanup(
 ) -> CleanupJob | None:
     """Run a task history cleanup in the task manager to its end, or return None when the task manager does not provide it.
 
-    A cleanup that runs elsewhere, or that the task manager no longer knows, is started again after a wait; the days
-    it already deleted stay deleted. Progress is reported each time the day or the number of deleted runs changes.
+    A cleanup that runs elsewhere, that the task manager no longer knows, or that the task manager cannot be reached
+    about once it answered, is started again after a wait; the days it already deleted stay deleted. A cleanup
+    started with a weaker rewrite than asked for is followed to its end, then started again with the rewrite asked for.
+    Progress is reported each time the day or the number of deleted runs changes.
 
     Raises:
         TaskHistoryCleanupError: When the cleanup fails, or when the task manager answers for `give_up_after` only
-            that a cleanup runs elsewhere or that it does not know the cleanup.
+            that a cleanup runs elsewhere or that it does not know the cleanup, or cannot be reached.
+        httpx.TransportError: When the task manager cannot be reached to start the cleanup.
+        PrefectHTTPStatusError: When the task manager answers with an error other than 404 or 409.
 
     """
     job: CleanupJob | None = None
+    answered = False
     reported: tuple[date | None, int] | None = None
     last_seen = clock()
     while True:
-        if job is None:
-            answer = await _answer(request=client._client.post(CLEANUP_PATH, json={"rewrite": rewrite.value}))
-            if answer is HTTPStatus.NOT_FOUND:
-                return None
-        else:
-            answer = await _answer(request=client._client.get(f"{CLEANUP_PATH}/{job.id}"))
+        posted = job is None
+        request = (
+            client._client.post(CLEANUP_PATH, json={"rewrite": rewrite.value})
+            if job is None
+            else client._client.get(f"{CLEANUP_PATH}/{job.id}")
+        )
+        try:
+            answer: CleanupJob | HTTPStatus | None = await _answer(request=request)
+        except httpx.TransportError:
+            # Unreachable after it answered is a restart, which loses the cleanup as an unknown one does.
+            if not answered:
+                raise
+            answer = None
+        answered = True
+        if posted and answer is HTTPStatus.NOT_FOUND:
+            return None
 
         if isinstance(answer, CleanupJob):
             job, last_seen = answer, clock()
             if job.state is CleanupJobState.COMPLETED:
-                return job
-            if job.state is CleanupJobState.FAILED:
+                if _REWRITE_STRENGTH.index(job.rewrite) >= _REWRITE_STRENGTH.index(rewrite):
+                    return job
+                job = None
+            elif job.state is CleanupJobState.FAILED:
                 raise TaskHistoryCleanupError(message=job.error or f"The cleanup {job.id} failed")
-            progress = (job.current_day, job.deleted_runs)
-            if job.current_day is not None and progress != reported:
-                on_progress(job)
-                reported = progress
+            else:
+                progress = (job.current_day, job.deleted_runs)
+                if job.current_day is not None and progress != reported:
+                    on_progress(job)
+                    reported = progress
         else:
             job = None
             if clock() - last_seen >= give_up_after.total_seconds():
                 raise TaskHistoryCleanupError(
                     message=f"Gave up after the task manager answered for {_duration(give_up_after)} "
-                    "that a cleanup runs elsewhere or that it does not know the cleanup"
+                    "that a cleanup runs elsewhere or that it does not know the cleanup, or could not be reached"
                 )
         await sleep(poll_interval.total_seconds())
 

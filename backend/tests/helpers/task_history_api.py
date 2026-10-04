@@ -57,10 +57,18 @@ def unknown_cleanup() -> httpx.Response:
     return httpx.Response(status_code=404, json={"detail": "the cleanup is unknown to this task manager"})
 
 
-class ScriptedTaskManager:
-    """Answers the task history cleanup routes with the scripted responses in order, recording each request."""
+def unreachable() -> httpx.ConnectError:
+    """The error Prefect's client raises once its retries to reach a stopped task manager run out."""
+    return httpx.ConnectError("All connection attempts failed")
 
-    def __init__(self, responses: list[httpx.Response]) -> None:
+
+class ScriptedTaskManager:
+    """Answers the task history cleanup routes with the scripted responses in order, recording each request.
+
+    A scripted exception is raised instead of answering, as the transport raises it.
+    """
+
+    def __init__(self, responses: list[httpx.Response | httpx.TransportError]) -> None:
         self._responses = list(responses)
         self.requests: list[RecordedRequest] = []
 
@@ -74,7 +82,10 @@ class ScriptedTaskManager:
         self.requests.append(RecordedRequest(method=request.method, path=request.url.path, body=body))
         if not self._responses:
             raise AssertionError(f"{request.method} {request.url.path} came after the last scripted response")
-        return self._responses.pop(0)
+        response = self._responses.pop(0)
+        if isinstance(response, httpx.TransportError):
+            raise response
+        return response
 
 
 class FakeClock:
