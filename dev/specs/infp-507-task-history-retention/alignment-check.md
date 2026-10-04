@@ -15,8 +15,7 @@ Every behaviour row in section 2 and every decision D1 to D10 maps to a requirem
 
 | Severity | Category | PRD reference | Spec reference | Description |
 |---|---|---|---|---|
-| Minor | changed | Section 2 "Page through the Activities page" (Today: the page asks for the total count); D7; Q2 | FR-025, Dependencies & Open Questions (Q2) | The Activities page's GraphQL query does not select `count` on `stable` or `develop`; the cost comes from the server counting on every request. The spec keeps "no count on the page" and the server-side fix, and marks Q2 as non-blocking. The design doc's "Today" column, D7 and Q2 should be corrected. |
-| Minor | added | D9 ("existing command for old runs gets a new implementation") | Edge case "existing scripts keep working"; plan R5 | `--days-to-keep` kept as an override and `--batch-size` deprecated, so scripts that already clean task history keep working. Not on the page; added by the critique. |
+| Minor | changed | Section 2 "Page through the Activities page" (Today: the page asks for the total count); D7; Q2 | FR-025 | The Activities page's GraphQL query does not select `count` on `stable` or `develop`; the cost comes from the server counting on every request. The spec keeps "no count on the page" and the server-side fix. The design doc has since corrected its "Today" column and dropped D7 and Q2. |
 | Minor | added | D9 (cleanup job), part 1 notes | Edge cases (concurrent Prefect cleanup, several replicas, locked table); plan R5 | One job across replicas (advisory lock) and a lock timeout on each rewrite; the design doc has since added both. (A delete-order change with retry on deadlock was also added here, then reverted: the doc's runs-first order is Prefect's own.) |
 | Minor | added | D9 Helm paragraph ("the chart and the Helm guide leave the cleanup out") | FR-013; contracts/cli.md `--no-task-history-cleanup` | The page has no mechanism for the chart to leave the step out; from the second release on, the pre-upgrade hook reaches a task manager that provides the cleanup. The flag is documented for Helm only, so Compose still has no skip, as the page says. |
 | Minor | added | — (grilling input) | FR-004 | Startup validation of the settings: from the inline ask, not on the page. |
@@ -26,4 +25,4 @@ Every behaviour row in section 2 and every decision D1 to D10 maps to a requirem
 
 ## Action
 
-Proceed. No remediation pass. Report the first finding to the tech owner so that the design doc's section 2 "Page through" row, D7 and Q2 are corrected.
+Proceed. No remediation pass. The design doc's section 2 "Page through" row, D7 and Q2 have been corrected since.
