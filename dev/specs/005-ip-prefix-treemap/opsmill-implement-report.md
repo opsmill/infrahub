@@ -186,3 +186,17 @@ the parent is address-type and the query returned no child prefixes, and the map
 User Story 4, the UI contract, the user docs and the container tests were updated (95 tests pass),
 and the map was confirmed rendering on 10.0.0.0/8 and 0.0.0.0/0 on `main` and on 10.0.0.0/8 on
 the `add-dc3` branch through the dev server against the local stack.
+
+## Erratum 3 (2026-10-04, IPAM tree sidebar follows navigation)
+
+Drilling down from a tile left the IPAM tree sidebar unchanged: the parent stayed collapsed and the
+new prefix was not highlighted. The same happened when clicking a child in the Children table, so
+this was a pre-existing limitation of the sidebar that drill-down made constant. The tree loaded
+ancestors only for the prefix present when it first mounted and used them as the initial expanded
+keys. The user chose to fix it on this branch. The tree now loads ancestors for the current prefix
+on every change (keeping the previous data while the next loads), and its expansion is controlled:
+the expanded set is derived during render as the current ancestor path merged with the user's
+manual toggles, where a manual collapse is honoured only for the prefix it was made on. The
+derivation lives in a pure rule under `entities/ipam/ipam-tree/domain/rules/` with eight unit tests;
+the drill-down E2E test now also asserts the sidebar row is selected. Verified on the local stack
+for both the Children table and the Tree Map paths (103 frontend tests pass).

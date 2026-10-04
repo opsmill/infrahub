@@ -1,6 +1,6 @@
 import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "@infrahub/ui";
 import React from "react";
-import { Collection } from "react-aria-components";
+import { Collection, type Key } from "react-aria-components";
 
 import { Row } from "@/shared/components/container";
 import { Icon } from "@/shared/components/display/icon";
@@ -12,6 +12,14 @@ import { classNames } from "@/shared/utils/common";
 import { useCurrentIpNamespace } from "@/entities/ipam/ip-namespaces/ui/ip-namespace-provider";
 import { IP_PREFIX_GENERIC } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type { IpamTreeNode } from "@/entities/ipam/ipam-tree/domain/model/ipam-tree-node";
+import {
+  applyIpamTreeExpansionChange,
+  deriveIpamTreeExpandedKeys,
+  EMPTY_MANUAL_EXPANSION,
+  getIpamTreeAncestorKeys,
+  getIpamTreeItemId,
+  type IpamTreeKey,
+} from "@/entities/ipam/ipam-tree/domain/rules/derive-ipam-tree-expanded-keys";
 import { useGetIpamTreeNodesByParent } from "@/entities/ipam/ipam-tree/ui/queries/get-ipam-tree-nodes-by-parent.query";
 import { useGetObjectAncestors } from "@/entities/nodes/hierarchy/ui/queries/get-object-ancestors.query";
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
@@ -25,18 +33,23 @@ export interface IpamTreeProps {
   search?: string;
 }
 
-export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
-  const [initialNodeId] = React.useState(currentNodeId);
-  const { currentIpNamespace } = useCurrentIpNamespace();
+function toTreeKeys(keys: Set<Key>): Set<IpamTreeKey> {
+  return new Set([...keys].map(String));
+}
 
-  // Load ancestors if currentNodeId is provided
-  const { data: ancestorsData, isPending: isPendingGetAncestors } = useGetObjectAncestors(
+export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
+  const { currentIpNamespace } = useCurrentIpNamespace();
+  const [manualExpansion, setManualExpansion] = React.useState(EMPTY_MANUAL_EXPANSION);
+
+  // The previous path stays open while the next one loads, so in-app navigation never blanks the tree.
+  const { data: ancestorsData, isPending: isPendingAncestors } = useGetObjectAncestors(
     {
       objectKind: IP_PREFIX_GENERIC,
-      objectId: initialNodeId!,
+      objectId: currentNodeId ?? "",
     },
     {
-      enabled: !!initialNodeId,
+      enabled: !!currentNodeId,
+      placeholderData: (previous) => previous,
     }
   );
 
@@ -47,7 +60,9 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
       search: search || undefined,
     });
 
-  if (isPending || (initialNodeId && isPendingGetAncestors)) {
+  const isWaitingForFirstAncestors = !!currentNodeId && isPendingAncestors && !ancestorsData;
+
+  if (isPending || isWaitingForFirstAncestors) {
     return <LoadingIndicator className="py-2" />;
   }
 
@@ -56,30 +71,36 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
   }
 
   const items = data.pages.flat();
+  const expandedKeys = deriveIpamTreeExpandedKeys(
+    getIpamTreeAncestorKeys(ancestorsData, currentNodeId),
+    manualExpansion,
+    currentNodeId
+  );
 
-  const defaultExpandedKeys = ancestorsData
-    ? ancestorsData
-        .filter((ancestor) => ancestor.id !== currentNodeId)
-        .map((ancestor) => (ancestor.parent.node?.id ?? null) + ancestor.id)
-    : undefined;
+  const handleExpandedChange = (nextKeys: Set<Key>) => {
+    setManualExpansion((previous) =>
+      applyIpamTreeExpansionChange(previous, expandedKeys, toTreeKeys(nextKeys), currentNodeId)
+    );
+  };
 
   return (
     <Tree
       aria-label="IPAM tree"
-      defaultExpandedKeys={defaultExpandedKeys}
+      expandedKeys={expandedKeys}
+      onExpandedChange={handleExpandedChange}
       renderEmptyState={() => (
         <Row className="justify-center py-2 text-subtle-muted">No ip prefix</Row>
       )}
       className={className}
     >
-      <Collection items={items} dependencies={[currentNodeId]}>
+      <Collection items={items} dependencies={[currentNodeId, expandedKeys]}>
         {(node) => (
           <IpamTreeItem
             parentTreeNodeId={null}
             node={node}
             namespaceId={currentIpNamespace.id}
             currentNodeId={currentNodeId}
-            defaultExpandedKeys={defaultExpandedKeys}
+            expandedKeys={expandedKeys}
           />
         )}
       </Collection>
@@ -94,7 +115,7 @@ interface IpamTreeItemProps {
   node: IpamTreeNode;
   namespaceId: string;
   currentNodeId?: string;
-  defaultExpandedKeys?: string[];
+  expandedKeys: ReadonlySet<IpamTreeKey>;
 }
 
 function IpamTreeItem({
@@ -102,14 +123,12 @@ function IpamTreeItem({
   node,
   namespaceId,
   currentNodeId,
-  defaultExpandedKeys,
+  expandedKeys,
 }: IpamTreeItemProps) {
   const descendantsCount = node.descendants.count;
   const hasChildren = descendantsCount > 0;
-  const treeItemId = parentTreeNodeId + node.id;
-  const [isExpanded, setIsExpanded] = React.useState<boolean>(
-    !!defaultExpandedKeys?.some((key) => key === treeItemId)
-  );
+  const treeItemId = getIpamTreeItemId(parentTreeNodeId, node.id);
+  const isExpanded = expandedKeys.has(treeItemId);
 
   const { data, fetchNextPage, isFetchingNextPage, isPending, hasNextPage } =
     useGetIpamTreeNodesByParent(
@@ -134,7 +153,7 @@ function IpamTreeItem({
           "bg-selected text-selected-foreground shadow-selected hover:bg-selected-highlight"
       )}
     >
-      <TreeItemContent onExpandedChange={() => setIsExpanded((prev) => !prev)}>
+      <TreeItemContent>
         <Icon icon={getSchemaIcon(nodeSchema)} className="mr-2" />
         <span className="truncate">{nodeLabel}</span>
         {descendantsCount > 0 && <Badge className="mr-1 ml-auto">{descendantsCount}</Badge>}
@@ -142,14 +161,14 @@ function IpamTreeItem({
 
       {hasChildren && (
         <>
-          <Collection items={childrenNodes} dependencies={[currentNodeId]}>
+          <Collection items={childrenNodes} dependencies={[currentNodeId, expandedKeys]}>
             {(childNode) => (
               <IpamTreeItem
                 parentTreeNodeId={node.id}
                 node={childNode}
                 namespaceId={namespaceId}
                 currentNodeId={currentNodeId}
-                defaultExpandedKeys={defaultExpandedKeys}
+                expandedKeys={expandedKeys}
               />
             )}
           </Collection>
