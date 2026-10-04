@@ -7,8 +7,10 @@ import textwrap
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+import httpx
 import typer
 
+from infrahub.cli.tasks import TASK_HISTORY_CLEANUP_RERUN_HINT
 from infrahub.cli.upgrade import _upgrade_execute, upgrade_cmd, upgrade_task_history
 from tests.helpers.task_history_api import (
     CLEANUP_PATH,
@@ -95,14 +97,13 @@ async def test_the_step_asks_for_a_rewrite_only_when_the_deletes_free_most_of_th
     )
     console = RecordedConsole()
 
-    proceed = await upgrade_task_history(
+    await upgrade_task_history(
         skip=False,
         client_factory=RecordingClientFactory(task_manager=task_manager),
         console=console.console,
         poll_interval=timedelta(0),
     )
 
-    assert proceed is True
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
@@ -120,11 +121,10 @@ async def test_the_step_is_skipped_without_reaching_the_task_manager() -> None:
     client_factory = RecordingClientFactory(task_manager=task_manager)
     console = RecordedConsole()
 
-    proceed = await upgrade_task_history(
+    await upgrade_task_history(
         skip=True, client_factory=client_factory, console=console.console, poll_interval=timedelta(0)
     )
 
-    assert proceed is True
     assert (client_factory.calls, task_manager.requests) == (0, [])
     assert console.lines == ["Task history cleanup skipped"]
 
@@ -134,19 +134,18 @@ async def test_a_task_manager_without_the_cleanup_lets_the_upgrade_continue() ->
     task_manager = ScriptedTaskManager(responses=[route_missing()])
     console = RecordedConsole()
 
-    proceed = await upgrade_task_history(
+    await upgrade_task_history(
         skip=False,
         client_factory=RecordingClientFactory(task_manager=task_manager),
         console=console.console,
         poll_interval=timedelta(0),
     )
 
-    assert proceed is True
     assert console.lines == ["The task manager does not provide the task history cleanup yet; skipped."]
 
 
-async def test_a_failed_cleanup_stops_the_upgrade() -> None:
-    """A cleanup that fails prints its error, and the upgrade does not go on to the next step."""
+async def test_a_failed_cleanup_is_reported_and_the_upgrade_goes_on() -> None:
+    """A cleanup that fails prints its error and how to finish it, without raising out of the upgrade."""
     task_manager = ScriptedTaskManager(
         responses=[
             started(rewrite="if_freed"),
@@ -159,15 +158,34 @@ async def test_a_failed_cleanup_stops_the_upgrade() -> None:
     )
     console = RecordedConsole()
 
-    proceed = await upgrade_task_history(
+    await upgrade_task_history(
         skip=False,
         client_factory=RecordingClientFactory(task_manager=task_manager),
         console=console.console,
         poll_interval=timedelta(0),
     )
 
-    assert proceed is False
-    assert console.lines == ["ERROR The cleanup failed with DBAPIError; the task manager log has the details"]
+    assert console.lines == [
+        "ERROR Task history cleanup failed: The cleanup failed with DBAPIError; the task manager log has the details",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
+
+
+async def test_an_unexpected_answer_is_reported_and_the_upgrade_goes_on() -> None:
+    """An error answer other than the ones the cleanup expects is reported like a failed cleanup."""
+    task_manager = ScriptedTaskManager(responses=[httpx.Response(status_code=500, json={"detail": "boom"})])
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    [failure, hint] = console.lines
+    assert failure.startswith("ERROR Task history cleanup failed: PrefectHTTPStatusError: ")
+    assert hint == TASK_HISTORY_CLEANUP_RERUN_HINT
 
 
 def test_the_flag_that_leaves_the_cleanup_out_is_what_skips_the_step() -> None:
