@@ -10,9 +10,11 @@ import { classNames } from "@/shared/utils/common";
 import type {
   TreeMapChild,
   TreeMapFreeBlock,
+  TreeMapParent,
   TreeMapRect,
   TreeMapTile,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
+import { formatCidr } from "@/entities/ipam/ip-prefixes/domain/rules/prefix-size";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 
@@ -28,6 +30,7 @@ export const TREE_MAP_TILE_CLASSES = {
   pool: "border-pool bg-pool-surface text-foreground",
   free: "tree-map-hatch border-border-strong border-dashed bg-content text-foreground-muted",
   aggregate: AGGREGATE_TILE_CLASS,
+  notLoaded: "tree-map-not-loaded border-border bg-content-muted text-foreground-muted",
 } as const;
 
 export const TREE_MAP_FILL_CLASSES = {
@@ -37,7 +40,7 @@ export const TREE_MAP_FILL_CLASSES = {
 
 export interface IpPrefixTreeMapTileProps {
   rect: TreeMapRect;
-  parent: { id: string; kind: string; cidr: string };
+  parent: Pick<TreeMapParent, "id" | "kind" | "cidr">;
   permission: Permission;
   onCreateFromFreeBlock: (block: TreeMapFreeBlock) => void;
 }
@@ -60,6 +63,10 @@ function formatMemberList(cidrs: string[]): string {
   const shown = cidrs.slice(0, TOOLTIP_MEMBER_LIMIT).join(", ");
   const hidden = cidrs.length - TOOLTIP_MEMBER_LIMIT;
   return hidden > 0 ? `${shown} and ${hidden} more` : shown;
+}
+
+function pluralise(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function TileLabel({ children }: { children: React.ReactNode }) {
@@ -163,11 +170,13 @@ function ParentChildrenLink({
   parent,
   name,
   message,
+  className,
 }: {
   tile: TreeMapTile;
   parent: IpPrefixTreeMapTileProps["parent"];
   name: string;
   message: React.ReactNode;
+  className: string;
 }) {
   return (
     <Tooltip message={message}>
@@ -175,7 +184,7 @@ function ParentChildrenLink({
         <Link
           to={getObjectDetailsUrl(parent.kind, parent.id, undefined, "children")}
           aria-label={name}
-          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, AGGREGATE_TILE_CLASS)}
+          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, className)}
         >
           <TileLabel>{tile.label}</TileLabel>
         </Link>
@@ -224,18 +233,23 @@ function TileContent({
           tile={tile}
           parent={parent}
           name={tile.label}
-          message={formatMemberList(tile.members.map((member) => member.cidr))}
+          className={AGGREGATE_TILE_CLASS}
+          message={formatMemberList([
+            ...tile.children.map((child) => child.cidr),
+            ...tile.freeBlocks.map((block) => `${block.cidr} (free)`),
+          ])}
         />
       );
     case "aggregate-free":
-      return <AggregateFreeTile tile={tile} members={tile.members} />;
-    case "remainder":
+      return <AggregateFreeTile tile={tile} members={tile.freeBlocks} />;
+    case "not-loaded":
       return (
         <ParentChildrenLink
           tile={tile}
           parent={parent}
-          name={`${tile.label} not shown`}
-          message={`${tile.label} of ${parent.cidr} are not shown; open the Children tab to see them all`}
+          name={`${formatCidr(tile.size)} not loaded`}
+          className={TREE_MAP_TILE_CLASSES.notLoaded}
+          message={`Not loaded: ${pluralise(tile.hiddenChildCount, "more child", "more children")} of ${parent.cidr} plus any free space from ${formatCidr(tile.size)} onwards. Open the Children tab to see them all.`}
         />
       );
   }

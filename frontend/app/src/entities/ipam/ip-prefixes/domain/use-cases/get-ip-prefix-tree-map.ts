@@ -10,66 +10,95 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix";
 import type {
+  MemberType,
   PrefixSize,
   TreeMapChild,
   TreeMapData,
   TreeMapFreeBlock,
+  TreeMapParent,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
-import { parsePrefixLength } from "@/entities/ipam/ip-prefixes/domain/rules/parse-prefix-length";
+import { buildPrefixSize } from "@/entities/ipam/ip-prefixes/domain/rules/prefix-size";
 
 export type GetIpPrefixTreeMapParams = GetIpPrefixTreeMapFromApiParams;
 
-// The caller already holds the parent node, so the use-case returns only what the query adds.
-export type GetIpPrefixTreeMapResult = Omit<TreeMapData, "parent">;
+export type GetIpPrefixTreeMapResult = TreeMapData;
 
-type TreeMapPage = NonNullable<ResultOf<typeof GET_IP_PREFIX_TREE_MAP>[typeof IP_PREFIX_GENERIC]>;
+type TreeMapResult = ResultOf<typeof GET_IP_PREFIX_TREE_MAP>;
+type TreeMapPage = NonNullable<TreeMapResult[typeof IP_PREFIX_GENERIC]>;
 type TreeMapNode = NonNullable<TreeMapPage["edges"][number]["node"]>;
+type ParentNode = NonNullable<NonNullable<TreeMapResult["parent"]>["edges"][number]["node"]>;
 
-function parsePrefixSizeOrNull(cidr: string): PrefixSize | null {
+interface PrefixAttribute {
+  value?: string | null;
+  prefixlen?: number | null;
+  version?: number | null;
+}
+
+function toPrefixSize(prefix: PrefixAttribute | null | undefined): PrefixSize | null {
+  if (
+    !prefix?.value ||
+    typeof prefix.prefixlen !== "number" ||
+    typeof prefix.version !== "number"
+  ) {
+    return null;
+  }
   try {
-    return parsePrefixLength(cidr);
+    return buildPrefixSize({
+      cidr: prefix.value,
+      prefixLength: prefix.prefixlen,
+      version: prefix.version,
+    });
   } catch {
     return null;
   }
 }
 
-function toMemberType(value: unknown): TreeMapChild["memberType"] | null {
+function toMemberType(value: unknown): MemberType | null {
   return value === "address" || value === "prefix" ? value : null;
 }
 
+function toUtilization(value: unknown): number | null {
+  return typeof value === "number" ? value : null;
+}
+
 function toTreeMapChild(node: TreeMapNode): TreeMapChild | null {
-  const cidr = node.prefix?.value;
-  if (!cidr || !node.id) return null;
-
-  const size = parsePrefixSizeOrNull(cidr);
-  if (!size) return null;
-
+  const size = toPrefixSize(node.prefix);
   const memberType = toMemberType(node.member_type?.value);
-  if (!memberType) return null;
-
-  const utilizationValue = node.utilization?.value;
+  if (!size || !memberType || !node.id || !node.prefix?.value) return null;
 
   return {
     id: node.id,
     kind: node.__typename,
-    cidr,
+    cidr: node.prefix.value,
     size,
     memberType,
     isPool: node.is_pool?.value === true,
-    utilization: typeof utilizationValue === "number" ? utilizationValue : null,
+    utilization: toUtilization(node.utilization?.value),
     description: node.description?.value ?? null,
     memberCount: memberType === "address" ? node.ip_addresses.count : node.children.count,
   };
 }
 
 function toTreeMapFreeBlock(node: TreeMapNode): TreeMapFreeBlock | null {
-  const cidr = node.prefix?.value;
-  if (!cidr) return null;
+  const size = toPrefixSize(node.prefix);
+  if (!size || !node.prefix?.value) return null;
+  return { cidr: node.prefix.value, size };
+}
 
-  const size = parsePrefixSizeOrNull(cidr);
-  if (!size) return null;
-
-  return { cidr, size };
+function toTreeMapParent(node: ParentNode | undefined): TreeMapParent {
+  const size = node ? toPrefixSize(node.prefix) : null;
+  const memberType = toMemberType(node?.member_type?.value);
+  if (!node?.id || !node.prefix?.value || !size || !memberType) {
+    throw new Error("The IP prefix tree map query returned no usable parent prefix.");
+  }
+  return {
+    id: node.id,
+    kind: node.__typename,
+    cidr: node.prefix.value,
+    size,
+    memberType,
+    utilization: toUtilization(node.utilization?.value),
+  };
 }
 
 export async function getIpPrefixTreeMap(
@@ -86,6 +115,7 @@ export async function getIpPrefixTreeMap(
     throw new Error("The IP prefix tree map query returned no prefix data.");
   }
 
+  const parent = toTreeMapParent(data.parent?.edges[0]?.node ?? undefined);
   const nodes = page.edges.flatMap((edge) => (edge.node ? [edge.node] : []));
 
   const children: TreeMapChild[] = [];
@@ -112,6 +142,7 @@ export async function getIpPrefixTreeMap(
   const totalChildCount = Math.max((page.count ?? 0) - droppedChildCount, children.length);
 
   return {
+    parent,
     children,
     freeBlocks,
     totalChildCount,

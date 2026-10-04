@@ -12,7 +12,6 @@ import {
   type TreeMapFreeBlock,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
 import { buildTreeMapTiles } from "@/entities/ipam/ip-prefixes/domain/rules/build-tree-map-tiles";
-import type { TreeMapParent } from "@/entities/ipam/ip-prefixes/domain/rules/get-tree-map-parent";
 import { layoutTreeMap } from "@/entities/ipam/ip-prefixes/domain/rules/layout-tree-map";
 import { IpPrefixCreateSheet } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-create-sheet";
 import { IpPrefixTreeMapEmptyState } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-empty-state";
@@ -27,7 +26,7 @@ import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 export interface IpPrefixTreeMapProps {
-  parent: TreeMapParent;
+  parentId: string;
   parentSchema: ModelSchema;
   permission: Permission;
 }
@@ -51,7 +50,7 @@ function LegendSwatch({
   );
 }
 
-function IpPrefixTreeMapLegend() {
+function IpPrefixTreeMapLegend({ isCapped }: { isCapped: boolean }) {
   return (
     <Row className="flex-wrap gap-4 text-foreground-muted text-xs">
       <LegendSwatch className={TREE_MAP_TILE_CLASSES.allocated} label="Allocated">
@@ -69,12 +68,13 @@ function IpPrefixTreeMapLegend() {
         className={TREE_MAP_TILE_CLASSES.aggregate}
         label="Smaller than 1/4096 of the prefix"
       />
+      {isCapped && <LegendSwatch className={TREE_MAP_TILE_CLASSES.notLoaded} label="Not loaded" />}
     </Row>
   );
 }
 
-export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTreeMapProps) {
-  const { isPending, error, data } = useGetIpPrefixTreeMap({ parentId: parent.id });
+export function IpPrefixTreeMap({ parentId, parentSchema, permission }: IpPrefixTreeMapProps) {
+  const { isPending, error, data } = useGetIpPrefixTreeMap({ parentId });
   const [selectedFreeBlock, setSelectedFreeBlock] = React.useState<TreeMapFreeBlock | null>(null);
 
   if (isPending) {
@@ -84,6 +84,8 @@ export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTr
   if (error) {
     return <ErrorScreen message={error.message} />;
   }
+
+  const { parent } = data;
 
   // An address prefix can still hold child prefixes, so only the data decides between map and empty state.
   if (parent.memberType === "address" && data.children.length === 0) {
@@ -96,14 +98,15 @@ export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTr
     freeBlocks: data.freeBlocks,
     totalChildCount: data.totalChildCount,
   });
-  const rects = layoutTreeMap(tiles, TREE_MAP_ASPECT_RATIO);
+  const rects = layoutTreeMap(tiles, parent.size);
 
   return (
     <Col className="gap-3 p-2.5">
       {data.isCapped && (
         <p role="status" className="text-foreground-muted text-xs">
           Showing the first {formatNumberDisplay(data.children.length)} of{" "}
-          {formatNumberDisplay(data.totalChildCount)} children
+          {formatNumberDisplay(data.totalChildCount)} children; the space after the last loaded
+          block is marked as not loaded
         </p>
       )}
 
@@ -125,7 +128,7 @@ export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTr
         ))}
       </div>
 
-      <IpPrefixTreeMapLegend />
+      <IpPrefixTreeMapLegend isCapped={data.isCapped} />
 
       <IpPrefixCreateSheet
         schema={parentSchema}

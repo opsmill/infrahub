@@ -18,7 +18,7 @@ import {
   generateAggregateFreeTile,
   generateAllocatedTile,
   generateFreeTile,
-  generateRemainderTile,
+  generateNotLoadedTile,
   generateTreeMapChild,
   generateTreeMapFreeBlock,
   generateTreeMapRect,
@@ -91,7 +91,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "1 smaller prefix" }))
+      .element(component.getByRole("link", { name: "10.0.0.0/20: 1 smaller prefix" }))
       .toHaveAttribute("href", "/ipam/IpamIPPrefix/parent-id/children?namespace=abc");
   });
 
@@ -476,7 +476,7 @@ describe("IpPrefixTreeMapTile", () => {
   it("names an aggregate of three allocated prefixes as a link", async () => {
     // GIVEN
     const rect = generateTreeMapRect({
-      tile: generateAggregateAllocatedTile({ members: generateSlash24Children(3) }),
+      tile: generateAggregateAllocatedTile({ children: generateSlash24Children(3) }),
     });
 
     // WHEN
@@ -490,7 +490,9 @@ describe("IpPrefixTreeMapTile", () => {
     );
 
     // THEN
-    await expect.element(component.getByRole("link", { name: "3 smaller prefixes" })).toBeVisible();
+    await expect
+      .element(component.getByRole("link", { name: "10.0.0.0/20: 3 smaller prefixes" }))
+      .toBeVisible();
   });
 
   it("lists the member CIDRs when hovering an aggregate of three allocated prefixes", async () => {
@@ -499,7 +501,7 @@ describe("IpPrefixTreeMapTile", () => {
       <div className="relative h-64 w-96">
         <IpPrefixTreeMapTile
           rect={generateTreeMapRect({
-            tile: generateAggregateAllocatedTile({ members: generateSlash24Children(3) }),
+            tile: generateAggregateAllocatedTile({ children: generateSlash24Children(3) }),
           })}
           parent={PARENT}
           permission={PERMISSION_ALLOW_ALL}
@@ -510,7 +512,7 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
 
     // WHEN
-    await component.getByRole("link", { name: "3 smaller prefixes" }).hover();
+    await component.getByRole("link", { name: "10.0.0.0/20: 3 smaller prefixes" }).hover();
 
     // THEN
     await expect
@@ -525,7 +527,9 @@ describe("IpPrefixTreeMapTile", () => {
     const component = await render(
       <div className="relative h-64 w-96">
         <IpPrefixTreeMapTile
-          rect={generateTreeMapRect({ tile: generateAggregateAllocatedTile({ members }) })}
+          rect={generateTreeMapRect({
+            tile: generateAggregateAllocatedTile({ children: members }),
+          })}
           parent={PARENT}
           permission={PERMISSION_ALLOW_ALL}
           onCreateFromFreeBlock={noop}
@@ -535,7 +539,7 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
 
     // WHEN
-    await component.getByRole("link", { name: "25 smaller prefixes" }).hover();
+    await component.getByRole("link", { name: "10.0.0.0/20: 25 smaller prefixes" }).hover();
 
     // THEN
     const shownMembers = members.slice(0, 20).map((member) => member.cidr);
@@ -546,9 +550,11 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
   });
 
-  it("names a remainder tile after the children it does not show", async () => {
+  it("names a not-loaded tile after the block it covers", async () => {
     // GIVEN
-    const rect = generateTreeMapRect({ tile: generateRemainderTile({ hiddenChildCount: 200 }) });
+    const rect = generateTreeMapRect({
+      tile: generateNotLoadedTile({ cidr: "10.128.0.0/9", hiddenChildCount: 200 }),
+    });
 
     // WHEN
     const component = await render(
@@ -562,7 +568,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "200 more children not shown" }))
+      .element(component.getByRole("link", { name: "10.128.0.0/9 not loaded" }))
       .toHaveAttribute("href", "/ipam/IpamIPPrefix/parent-id/children");
   });
 
@@ -570,7 +576,10 @@ describe("IpPrefixTreeMapTile", () => {
     // GIVEN
     const rect = generateTreeMapRect({
       tile: generateAggregateFreeTile({
-        members: ["10.0.1.0/24", "10.0.2.0/24"].map((cidr) => generateTreeMapFreeBlock({ cidr })),
+        cidr: "10.0.0.0/20",
+        freeBlocks: ["10.0.1.0/24", "10.0.2.0/24"].map((cidr) =>
+          generateTreeMapFreeBlock({ cidr })
+        ),
       }),
     });
 
@@ -586,7 +595,7 @@ describe("IpPrefixTreeMapTile", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("img", { name: "2 smaller free blocks" }))
+      .element(component.getByRole("img", { name: "10.0.0.0/20: 2 smaller free blocks" }))
       .toBeVisible();
     await expect.element(component.getByRole("link")).not.toBeInTheDocument();
     await expect.element(component.getByRole("button")).not.toBeInTheDocument();
@@ -597,7 +606,7 @@ describe("IpPrefixTreeMapTile", () => {
     { kind: "free", tile: generateFreeTile() },
     { kind: "aggregate-allocated", tile: generateAggregateAllocatedTile() },
     { kind: "aggregate-free", tile: generateAggregateFreeTile() },
-    { kind: "remainder", tile: generateRemainderTile() },
+    { kind: "not-loaded", tile: generateNotLoadedTile() },
   ])("marks a $kind tile with its test id and tile kind", async ({ kind, tile }) => {
     // GIVEN
     const rect = generateTreeMapRect({ tile });

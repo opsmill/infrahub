@@ -28,14 +28,7 @@
      NOTE: --accent-strong / --accent-foreground contrast wants a designer's sign-off. */
   --accent-surface: --alpha(var(--accent) / 10%);
   --accent-strong: #0987a8;
-  --accent-fill: --alpha(var(--accent-strong) / 55%);
   --accent-foreground: var(--color-white);
-
-  /* A prefix or number pool, as opposed to a plain allocation. Fuchsia is the one hue the
-     status families and the accent leave free, so a pool reads as its own category. */
-  --pool: var(--color-fuchsia-700);
-  --pool-surface: --alpha(var(--color-fuchsia-500) / 15%);
-  --pool-fill: --alpha(var(--color-fuchsia-500) / 55%);
 
   /* Marks the element the user is currently acting on: an open navigation menu, a column being
      sorted or filtered. Each theme needs its own end of the ramp to clear WCAG AA against its own
@@ -164,11 +157,6 @@
 
   --accent-surface: --alpha(var(--accent) / 15%);
   --accent-strong: #0b97bb;
-  --accent-fill: --alpha(var(--accent-strong) / 55%);
-
-  --pool: var(--color-fuchsia-400);
-  --pool-surface: --alpha(var(--color-fuchsia-400) / 20%);
-  --pool-fill: --alpha(var(--color-fuchsia-400) / 55%);
 
   --active: var(--color-indigo-400);
   --active-surface: --alpha(var(--color-indigo-400) / 15%);
@@ -295,10 +283,6 @@
   --color-accent: var(--accent);
   --color-accent-surface: var(--accent-surface);
   --color-accent-strong: var(--accent-strong);
-  --color-accent-fill: var(--accent-fill);
-  --color-pool: var(--pool);
-  --color-pool-surface: var(--pool-surface);
-  --color-pool-fill: var(--pool-fill);
   --color-accent-foreground: var(--accent-foreground);
   --color-active: var(--active);
   --color-active-surface: var(--active-surface);

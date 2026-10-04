@@ -1,144 +1,137 @@
 import {
   type PrefixSize,
-  TREE_MAP_MIN_TILE_DIVISOR,
+  TREE_MAP_CELL_DEPTH,
   type TreeMapChild,
   type TreeMapData,
   type TreeMapFreeBlock,
   type TreeMapTile,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
+import {
+  blockEnd,
+  containingBlock,
+  formatCidr,
+  rangeToBlocks,
+} from "@/entities/ipam/ip-prefixes/domain/rules/prefix-size";
 
 export type BuildTreeMapTilesParams = Pick<
   TreeMapData,
   "children" | "freeBlocks" | "totalChildCount"
 > & { parent: Pick<TreeMapData["parent"], "size"> };
 
-type Sized = { size: PrefixSize };
-
-type Partition<T> = { large: T[]; small: T[] };
-
-function partitionBySize<T extends Sized>(items: T[], threshold: bigint): Partition<T> {
-  const partition: Partition<T> = { large: [], small: [] };
-  for (const item of items) {
-    (item.size.addressCount >= threshold ? partition.large : partition.small).push(item);
-  }
-  return partition;
-}
-
-function sumAddressCounts(items: Sized[]): bigint {
-  return items.reduce((sum, item) => sum + item.size.addressCount, 0n);
+interface Cell {
+  size: PrefixSize;
+  children: TreeMapChild[];
+  freeBlocks: TreeMapFreeBlock[];
 }
 
 function pluralise(count: number, singular: string, plural: string): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
-// Address counts are powers of two, which doubles represent exactly, so the division is exact.
-// Single-prefix counts are powers of two, so only aggregate and remainder weights carry rounding.
-function weightOf(addressCount: bigint, parentAddressCount: bigint): number {
-  return Number(addressCount) / Number(parentAddressCount);
+function byAddress(left: { size: PrefixSize }, right: { size: PrefixSize }): number {
+  if (left.size.networkAddress === right.size.networkAddress) return 0;
+  return left.size.networkAddress < right.size.networkAddress ? -1 : 1;
 }
 
-function toAllocatedTile(child: TreeMapChild, parentAddressCount: bigint): TreeMapTile {
-  return {
-    kind: "allocated",
-    key: child.cidr,
-    label: child.cidr,
-    addressCount: child.size.addressCount,
-    weight: weightOf(child.size.addressCount, parentAddressCount),
-    child,
-  };
+function toAllocatedTile(child: TreeMapChild): TreeMapTile {
+  return { kind: "allocated", key: child.cidr, label: child.cidr, size: child.size, child };
 }
 
-function toFreeTile(block: TreeMapFreeBlock, parentAddressCount: bigint): TreeMapTile {
-  return {
-    kind: "free",
-    key: block.cidr,
-    label: block.cidr,
-    addressCount: block.size.addressCount,
-    weight: weightOf(block.size.addressCount, parentAddressCount),
-    block,
-  };
+function toFreeTile(block: TreeMapFreeBlock): TreeMapTile {
+  return { kind: "free", key: block.cidr, label: block.cidr, size: block.size, block };
 }
 
-function toAggregateAllocatedTile(
-  members: TreeMapChild[],
-  parentAddressCount: bigint
-): TreeMapTile[] {
-  if (members.length === 0) return [];
-  const addressCount = sumAddressCounts(members);
-  return [
-    {
+function toCellTile(cell: Cell): TreeMapTile {
+  const cidr = formatCidr(cell.size);
+  if (cell.children.length > 0) {
+    return {
       kind: "aggregate-allocated",
-      key: "aggregate-allocated",
-      label: pluralise(members.length, "smaller prefix", "smaller prefixes"),
-      addressCount,
-      weight: weightOf(addressCount, parentAddressCount),
-      members,
-    },
-  ];
+      key: `cell:${cidr}`,
+      label: `${cidr}: ${pluralise(cell.children.length, "smaller prefix", "smaller prefixes")}`,
+      size: cell.size,
+      children: cell.children,
+      freeBlocks: cell.freeBlocks,
+    };
+  }
+  return {
+    kind: "aggregate-free",
+    key: `cell:${cidr}`,
+    label: `${cidr}: ${pluralise(cell.freeBlocks.length, "smaller free block", "smaller free blocks")}`,
+    size: cell.size,
+    freeBlocks: cell.freeBlocks,
+  };
 }
 
-function toAggregateFreeTile(
-  members: TreeMapFreeBlock[],
-  parentAddressCount: bigint
-): TreeMapTile[] {
-  if (members.length === 0) return [];
-  const addressCount = sumAddressCounts(members);
-  return [
-    {
-      kind: "aggregate-free",
-      key: "aggregate-free",
-      label: pluralise(members.length, "smaller free block", "smaller free blocks"),
-      addressCount,
-      weight: weightOf(addressCount, parentAddressCount),
-      members,
-    },
-  ];
-}
-
-function toRemainderTile(
-  { parent, children, freeBlocks, totalChildCount }: BuildTreeMapTilesParams,
-  parentAddressCount: bigint
-): TreeMapTile[] {
-  const hiddenChildCount = totalChildCount - children.length;
-  if (hiddenChildCount <= 0) return [];
-
-  const addressCount =
-    parentAddressCount - sumAddressCounts(children) - sumAddressCounts(freeBlocks);
-  if (addressCount <= 0n) return [];
-
-  return [
-    {
-      kind: "remainder",
-      key: "remainder",
-      label: pluralise(hiddenChildCount, "more child", "more children"),
-      addressCount,
-      weight: weightOf(addressCount, parent.size.addressCount),
-      hiddenChildCount,
-    },
-  ];
+/** Groups blocks too small to draw into the fixed-size cell that contains each of them. */
+function groupIntoCells(
+  parent: PrefixSize,
+  children: TreeMapChild[],
+  freeBlocks: TreeMapFreeBlock[],
+  cellPrefixLength: number
+): Cell[] {
+  const cells = new Map<bigint, Cell>();
+  const cellFor = (address: bigint): Cell => {
+    const size = containingBlock(address, cellPrefixLength, parent.family);
+    const existing = cells.get(size.networkAddress);
+    if (existing) return existing;
+    const cell: Cell = { size, children: [], freeBlocks: [] };
+    cells.set(size.networkAddress, cell);
+    return cell;
+  };
+  for (const child of children) cellFor(child.size.networkAddress).children.push(child);
+  for (const block of freeBlocks) cellFor(block.size.networkAddress).freeBlocks.push(block);
+  return [...cells.values()];
 }
 
 /**
- * Turns a prefix's children and free blocks into tiles whose address counts sum exactly to the
- * parent's, aggregating anything smaller than 1/4096 of the parent and adding one remainder tile
- * for the space held by children beyond the fetched window.
+ * The page is cut at the child limit, and the backend only reports free space up to the last
+ * block it returned, so everything after that block is unknown rather than free.
+ */
+function toNotLoadedTiles(params: BuildTreeMapTilesParams, lastEnd: bigint): TreeMapTile[] {
+  const hiddenChildCount = params.totalChildCount - params.children.length;
+  const parentEnd = blockEnd(params.parent.size);
+  if (hiddenChildCount <= 0 || lastEnd >= parentEnd) return [];
+
+  return rangeToBlocks(lastEnd, parentEnd, params.parent.size.family).map((size) => ({
+    kind: "not-loaded",
+    key: `not-loaded:${formatCidr(size)}`,
+    label: "Not loaded",
+    size,
+    hiddenChildCount,
+  }));
+}
+
+/**
+ * Turns a prefix's children and free blocks into tiles in address order, each tied to the exact
+ * block it covers. Blocks deeper than the cell depth below the parent are grouped per cell, and
+ * the space after the last fetched block becomes not-loaded tiles when the child limit applied.
  */
 export function buildTreeMapTiles(params: BuildTreeMapTilesParams): TreeMapTile[] {
-  const parentAddressCount = params.parent.size.addressCount;
-  const threshold = parentAddressCount / TREE_MAP_MIN_TILE_DIVISOR;
+  const parent = params.parent.size;
+  const cellPrefixLength = parent.prefixLength + TREE_MAP_CELL_DEPTH;
+  const isSmall = (item: { size: PrefixSize }) => item.size.prefixLength > cellPrefixLength;
 
-  const children = partitionBySize(params.children, threshold);
-  const freeBlocks = partitionBySize(params.freeBlocks, threshold);
+  const largeChildren = params.children.filter((child) => !isSmall(child));
+  const largeFree = params.freeBlocks.filter((block) => !isSmall(block));
+  const cells = groupIntoCells(
+    parent,
+    params.children.filter(isSmall),
+    params.freeBlocks.filter(isSmall),
+    cellPrefixLength
+  );
+
+  const loaded = [...params.children, ...params.freeBlocks];
+  const lastEnd = loaded.reduce(
+    (end, item) => (blockEnd(item.size) > end ? blockEnd(item.size) : end),
+    parent.networkAddress
+  );
 
   const tiles: TreeMapTile[] = [
-    ...children.large.map((child) => toAllocatedTile(child, parentAddressCount)),
-    ...freeBlocks.large.map((block) => toFreeTile(block, parentAddressCount)),
-    ...toAggregateAllocatedTile(children.small, parentAddressCount),
-    ...toAggregateFreeTile(freeBlocks.small, parentAddressCount),
-    ...toRemainderTile(params, parentAddressCount),
+    ...largeChildren.map(toAllocatedTile),
+    ...largeFree.map(toFreeTile),
+    ...cells.map(toCellTile),
+    ...toNotLoadedTiles(params, lastEnd),
   ];
 
-  // Array sort is stable, so equal weights keep the received address order.
-  return tiles.sort((left, right) => right.weight - left.weight);
+  return tiles.sort(byAddress);
 }

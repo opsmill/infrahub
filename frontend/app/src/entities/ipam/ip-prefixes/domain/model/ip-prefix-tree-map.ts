@@ -1,17 +1,19 @@
 export const TREE_MAP_CHILD_LIMIT = 1000;
 
-// A BigInt divisor keeps the aggregation threshold exact for IPv6 address counts beyond 2^53.
-export const TREE_MAP_MIN_TILE_DIVISOR = 4096n;
+// Blocks narrower than this many bits below the parent are grouped into the cell that contains them.
+export const TREE_MAP_CELL_DEPTH = 12;
 
 export const TREE_MAP_ASPECT_RATIO = 2;
 
-type IpFamily = "ipv4" | "ipv6";
+export type IpFamily = "ipv4" | "ipv6";
 
-type MemberType = "prefix" | "address";
+export type MemberType = "prefix" | "address";
 
+/** The position and extent of one CIDR block, exact for both address families. */
 export interface PrefixSize {
   family: IpFamily;
   prefixLength: number;
+  networkAddress: bigint;
   addressCount: bigint;
 }
 
@@ -32,14 +34,17 @@ export interface TreeMapFreeBlock {
   size: PrefixSize;
 }
 
+export interface TreeMapParent {
+  id: string;
+  kind: string;
+  cidr: string;
+  size: PrefixSize;
+  memberType: MemberType;
+  utilization: number | null;
+}
+
 export interface TreeMapData {
-  parent: {
-    id: string;
-    cidr: string;
-    size: PrefixSize;
-    memberType: MemberType;
-    utilization: number | null;
-  };
+  parent: TreeMapParent;
   children: TreeMapChild[];
   freeBlocks: TreeMapFreeBlock[];
   totalChildCount: number;
@@ -48,9 +53,9 @@ export interface TreeMapData {
 
 interface TreeMapTileBase {
   key: string;
-  addressCount: bigint;
-  weight: number;
   label: string;
+  /** The block the tile occupies; the layout places it from this. */
+  size: PrefixSize;
 }
 
 interface TreeMapAllocatedTile extends TreeMapTileBase {
@@ -63,18 +68,22 @@ interface TreeMapFreeTile extends TreeMapTileBase {
   block: TreeMapFreeBlock;
 }
 
+/** A cell holding at least one child prefix too small to draw on its own. */
 interface TreeMapAggregateAllocatedTile extends TreeMapTileBase {
   kind: "aggregate-allocated";
-  members: TreeMapChild[];
+  children: TreeMapChild[];
+  freeBlocks: TreeMapFreeBlock[];
 }
 
+/** A cell holding only free blocks too small to draw on their own. */
 interface TreeMapAggregateFreeTile extends TreeMapTileBase {
   kind: "aggregate-free";
-  members: TreeMapFreeBlock[];
+  freeBlocks: TreeMapFreeBlock[];
 }
 
-interface TreeMapRemainderTile extends TreeMapTileBase {
-  kind: "remainder";
+/** Address space after the last fetched block when the child limit cut the page short. */
+interface TreeMapNotLoadedTile extends TreeMapTileBase {
+  kind: "not-loaded";
   hiddenChildCount: number;
 }
 
@@ -83,7 +92,7 @@ export type TreeMapTile =
   | TreeMapFreeTile
   | TreeMapAggregateAllocatedTile
   | TreeMapAggregateFreeTile
-  | TreeMapRemainderTile;
+  | TreeMapNotLoadedTile;
 
 export interface TreeMapRect {
   tile: TreeMapTile;

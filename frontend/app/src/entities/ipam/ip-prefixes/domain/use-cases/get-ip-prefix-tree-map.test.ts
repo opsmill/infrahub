@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getIpPrefixTreeMap } from "@/entities/ipam/ip-prefixes/domain/use-cases/get-ip-prefix-tree-map";
 
+// An untyped mock keeps the fixtures free of the generated result type, whose typename union
+// only knows the core kinds.
 const getIpPrefixTreeMapFromApi = vi.hoisted(() => vi.fn());
 
 vi.mock("@/entities/ipam/ip-prefixes/api/get-ip-prefix-tree-map-from-api", () => ({
@@ -10,11 +12,18 @@ vi.mock("@/entities/ipam/ip-prefixes/api/get-ip-prefix-tree-map-from-api", () =>
 
 const PARAMS = { parentId: "parent-id", limit: 1000, branchName: "main", atDate: null };
 
+const PARENT = {
+  __typename: "IpamIPPrefix",
+  id: "parent-id",
+  prefix: { value: "10.0.0.0/8", prefixlen: 8, version: 4 },
+  member_type: { value: "prefix" },
+  utilization: { value: 1 },
+};
+
 const ADDRESS_CHILD = {
   __typename: "IpamIPPrefix",
   id: "1808d317-21bb-8bdf-d0ec-c51b636fbbeb",
-  display_label: "10.0.0.0/16",
-  prefix: { value: "10.0.0.0/16" },
+  prefix: { value: "10.0.0.0/16", prefixlen: 16, version: 4 },
   member_type: { value: "address" },
   is_pool: { value: false },
   utilization: { value: 0 },
@@ -23,37 +32,22 @@ const ADDRESS_CHILD = {
   ip_addresses: { count: 30 },
 };
 
-const PREFIX_CHILD_WITH_CHILDREN = {
+const POOL_CHILD = {
   __typename: "IpamIPPrefix",
   id: "1808d318-bc0d-b958-d0e1-c511b808cac8",
-  display_label: "10.1.0.0/16",
-  prefix: { value: "10.1.0.0/16" },
+  prefix: { value: "10.1.0.0/16", prefixlen: 16, version: 4 },
   member_type: { value: "prefix" },
   is_pool: { value: true },
   utilization: { value: 0 },
-  description: { value: null },
+  description: { value: "Interconnections" },
   children: { count: 16 },
-  ip_addresses: { count: 0 },
-};
-
-const PREFIX_CHILD_EMPTY = {
-  __typename: "IpamIPPrefix",
-  id: "1808d319-1fe0-d6ae-d0ea-c51f768a4cd7",
-  display_label: "10.2.0.0/16",
-  prefix: { value: "10.2.0.0/16" },
-  member_type: { value: "prefix" },
-  is_pool: { value: false },
-  utilization: { value: 0 },
-  description: { value: null },
-  children: { count: 0 },
   ip_addresses: { count: 0 },
 };
 
 const FREE_BLOCK = {
   __typename: "InternalIPPrefixAvailable",
   id: "18dafbec-c879-c787-11e7-10651a87fdec",
-  display_label: "10.3.0.0/16",
-  prefix: { value: "10.3.0.0/16" },
+  prefix: { value: "10.3.0.0/16", prefixlen: 16, version: 4 },
   member_type: { value: "address" },
   is_pool: { value: false },
   utilization: { value: null },
@@ -62,160 +56,139 @@ const FREE_BLOCK = {
   ip_addresses: { count: 0 },
 };
 
-const SANDBOX_SAMPLE = {
+const response = (nodes: object[], count: number, parent: object | null = PARENT) => ({
   data: {
-    BuiltinIPPrefix: {
-      count: 3,
-      edges: [
-        { node: ADDRESS_CHILD },
-        { node: PREFIX_CHILD_WITH_CHILDREN },
-        { node: PREFIX_CHILD_EMPTY },
-        { node: FREE_BLOCK },
-      ],
-    },
+    parent: { edges: parent ? [{ node: parent }] : [] },
+    BuiltinIPPrefix: { count, edges: nodes.map((node) => ({ node })) },
   },
-};
+});
+
+const mockedApi = getIpPrefixTreeMapFromApi;
+
+afterEach(() => {
+  vi.resetAllMocks();
+});
 
 describe("getIpPrefixTreeMap", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  it("maps the parent and real nodes to children with exact blocks and member counts", async () => {
+    // GIVEN a page with an address-type child and a pool child
+    mockedApi.mockResolvedValue(response([ADDRESS_CHILD, POOL_CHILD], 2));
 
-  it("maps real nodes to children in address order with the matching member count", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue(SANDBOX_SAMPLE);
-
-    // WHEN
+    // WHEN the map is loaded
     const result = await getIpPrefixTreeMap(PARAMS);
 
-    // THEN
-    expect(result.children).toEqual([
-      {
-        id: ADDRESS_CHILD.id,
-        kind: "IpamIPPrefix",
-        cidr: "10.0.0.0/16",
-        size: { family: "ipv4", prefixLength: 16, addressCount: 65536n },
-        memberType: "address",
-        isPool: false,
-        utilization: 0,
-        description: null,
-        memberCount: 30,
-      },
-      {
-        id: PREFIX_CHILD_WITH_CHILDREN.id,
-        kind: "IpamIPPrefix",
-        cidr: "10.1.0.0/16",
-        size: { family: "ipv4", prefixLength: 16, addressCount: 65536n },
-        memberType: "prefix",
-        isPool: true,
-        utilization: 0,
-        description: null,
-        memberCount: 16,
-      },
-      {
-        id: PREFIX_CHILD_EMPTY.id,
-        kind: "IpamIPPrefix",
-        cidr: "10.2.0.0/16",
-        size: { family: "ipv4", prefixLength: 16, addressCount: 65536n },
-        memberType: "prefix",
-        isPool: false,
-        utilization: 0,
-        description: null,
-        memberCount: 0,
-      },
-    ]);
-  });
-
-  it("maps available nodes to free blocks parsed from their prefix value", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue(SANDBOX_SAMPLE);
-
-    // WHEN
-    const result = await getIpPrefixTreeMap(PARAMS);
-
-    // THEN
-    expect(result.freeBlocks).toEqual([
-      { cidr: "10.3.0.0/16", size: { family: "ipv4", prefixLength: 16, addressCount: 65536n } },
-    ]);
-  });
-
-  it("reports the query count as the total child count and is not capped when it matches", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue(SANDBOX_SAMPLE);
-
-    // WHEN
-    const result = await getIpPrefixTreeMap(PARAMS);
-
-    // THEN
-    expect({ totalChildCount: result.totalChildCount, isCapped: result.isCapped }).toEqual({
-      totalChildCount: 3,
-      isCapped: false,
+    // THEN the parent and both children carry blocks built from prefixlen and version
+    expect(result.parent).toMatchObject({
+      id: "parent-id",
+      kind: "IpamIPPrefix",
+      cidr: "10.0.0.0/8",
+      memberType: "prefix",
+      utilization: 1,
+      size: { family: "ipv4", prefixLength: 8, addressCount: 2n ** 24n },
     });
+    expect(
+      result.children.map((child) => [
+        child.cidr,
+        child.memberType,
+        child.isPool,
+        child.memberCount,
+      ])
+    ).toEqual([
+      ["10.0.0.0/16", "address", false, 30],
+      ["10.1.0.0/16", "prefix", true, 16],
+    ]);
+    expect(result.children[1]?.description).toBe("Interconnections");
+    expect(result.children[1]?.size.networkAddress).toBe(10n * 2n ** 24n + 2n ** 16n);
   });
 
-  it("drops a node whose prefix value is null", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue({
-      data: {
-        BuiltinIPPrefix: {
-          count: 2,
-          edges: [
-            { node: { ...PREFIX_CHILD_EMPTY, prefix: { value: null } } },
-            { node: PREFIX_CHILD_WITH_CHILDREN },
-          ],
+  it("maps available nodes to free blocks", async () => {
+    // GIVEN a page with one free block
+    mockedApi.mockResolvedValue(response([FREE_BLOCK], 0));
+
+    // WHEN the map is loaded
+    const result = await getIpPrefixTreeMap(PARAMS);
+
+    // THEN the block is parsed from its prefix fields
+    expect(result.freeBlocks).toEqual([
+      {
+        cidr: "10.3.0.0/16",
+        size: {
+          family: "ipv4",
+          prefixLength: 16,
+          networkAddress: 10n * 2n ** 24n + 3n * 2n ** 16n,
+          addressCount: 65536n,
         },
       },
-    });
+    ]);
+  });
 
-    // WHEN
+  it("is not capped when the count matches the children returned", async () => {
+    // GIVEN two children and a count of two
+    mockedApi.mockResolvedValue(response([ADDRESS_CHILD, POOL_CHILD], 2));
+
+    // WHEN the map is loaded
     const result = await getIpPrefixTreeMap(PARAMS);
 
-    // THEN
+    // THEN it is not capped
+    expect(result.totalChildCount).toBe(2);
+    expect(result.isCapped).toBe(false);
+  });
+
+  it("is capped when the count exceeds the children returned", async () => {
+    // GIVEN one child and a count of 1,200
+    mockedApi.mockResolvedValue(response([POOL_CHILD], 1200));
+
+    // WHEN the map is loaded
+    const result = await getIpPrefixTreeMap(PARAMS);
+
+    // THEN it is capped
+    expect(result.isCapped).toBe(true);
+    expect(result.totalChildCount).toBe(1200);
+  });
+
+  it("drops a node whose prefix fields are incomplete without counting it beyond the cap", async () => {
+    // GIVEN a child without a prefix length
+    const broken = {
+      ...ADDRESS_CHILD,
+      prefix: { value: "10.0.0.0/16", prefixlen: null, version: 4 },
+    };
+    mockedApi.mockResolvedValue(response([broken, POOL_CHILD], 2));
+
+    // WHEN the map is loaded
+    const result = await getIpPrefixTreeMap(PARAMS);
+
+    // THEN only the valid child remains and the map is not capped
     expect(result.children.map((child) => child.cidr)).toEqual(["10.1.0.0/16"]);
     expect(result.totalChildCount).toBe(1);
     expect(result.isCapped).toBe(false);
   });
 
-  it("is capped when the count exceeds the real children returned", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue({
-      data: {
-        BuiltinIPPrefix: {
-          count: 1200,
-          edges: [{ node: PREFIX_CHILD_WITH_CHILDREN }, { node: FREE_BLOCK }],
-        },
-      },
-    });
-
-    // WHEN
-    const result = await getIpPrefixTreeMap(PARAMS);
-
-    // THEN
-    expect(result.isCapped).toBe(true);
-  });
-
   it("passes the parent id, limit, branch and date through to the api", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue(SANDBOX_SAMPLE);
+    // GIVEN any page
+    mockedApi.mockResolvedValue(response([], 0));
 
-    // WHEN
+    // WHEN the map is loaded
     await getIpPrefixTreeMap(PARAMS);
 
-    // THEN
-    expect(getIpPrefixTreeMapFromApi).toHaveBeenCalledWith(PARAMS);
+    // THEN the api receives the same params
+    expect(mockedApi).toHaveBeenCalledWith(PARAMS);
+  });
+
+  it("rejects when the parent prefix is missing from the response", async () => {
+    // GIVEN a response without the parent
+    mockedApi.mockResolvedValue(response([], 0, null));
+
+    // WHEN the map is loaded
+    // THEN it rejects
+    await expect(getIpPrefixTreeMap(PARAMS)).rejects.toThrow(/parent prefix/);
   });
 
   it("rejects with the messages of the errors the api returned", async () => {
-    // GIVEN
-    getIpPrefixTreeMapFromApi.mockResolvedValue({
-      data: null,
-      errors: [{ message: "first failure" }, { message: "second failure" }],
-    });
+    // GIVEN an error response
+    mockedApi.mockResolvedValue({ data: undefined, errors: [{ message: "boom" }] });
 
-    // WHEN
-    const call = getIpPrefixTreeMap(PARAMS);
-
-    // THEN
-    await expect(call).rejects.toThrow("first failure; second failure");
+    // WHEN the map is loaded
+    // THEN it rejects with the message
+    await expect(getIpPrefixTreeMap(PARAMS)).rejects.toThrow("boom");
   });
 });

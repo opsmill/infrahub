@@ -2,7 +2,26 @@ import { graphql, graphqlClient } from "@/shared/api/graphql/client";
 import type { ContextParams } from "@/shared/api/types";
 
 export const GET_IP_PREFIX_TREE_MAP = graphql(`
-  query GET_IP_PREFIX_TREE_MAP($parentIds: [ID!], $limit: Int) {
+  query GET_IP_PREFIX_TREE_MAP($parentId: ID!, $parentIds: [ID!], $limit: Int) {
+    parent: BuiltinIPPrefix(ids: [$parentId]) {
+      edges {
+        node {
+          __typename
+          id
+          prefix {
+            value
+            prefixlen
+            version
+          }
+          member_type {
+            value
+          }
+          utilization {
+            value
+          }
+        }
+      }
+    }
     BuiltinIPPrefix(parent__ids: $parentIds, include_available: true, limit: $limit) {
       count
       edges {
@@ -11,6 +30,8 @@ export const GET_IP_PREFIX_TREE_MAP = graphql(`
           id
           prefix {
             value
+            prefixlen
+            version
           }
           member_type {
             value
@@ -49,10 +70,7 @@ export function getIpPrefixTreeMapFromApi({
 }: GetIpPrefixTreeMapFromApiParams) {
   return graphqlClient.query({
     query: GET_IP_PREFIX_TREE_MAP,
-    variables: {
-      parentIds: [parentId],
-      limit,
-    },
+    variables: { parentId, parentIds: [parentId], limit },
     context: {
       branch: branchName,
       date: atDate,

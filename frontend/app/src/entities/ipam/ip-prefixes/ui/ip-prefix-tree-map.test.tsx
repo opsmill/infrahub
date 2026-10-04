@@ -35,10 +35,20 @@ afterEach(() => {
   vi.resetAllMocks();
 });
 
+const renderMap = () =>
+  render(
+    <IpPrefixTreeMap
+      parentId="parent-id"
+      parentSchema={PARENT_SCHEMA}
+      permission={PERMISSION_ALLOW_ALL}
+    />
+  );
+
 describe("IpPrefixTreeMap", () => {
   it("announces how many children are shown when the parent has more than the cap", async () => {
     // GIVEN
     vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      parent: generateTreeMapParent({ cidr: "10.0.0.0/8" }),
       children: generateSlash18ChildrenOfDemoSupernet(1000),
       freeBlocks: [],
       totalChildCount: 1200,
@@ -46,23 +56,21 @@ describe("IpPrefixTreeMap", () => {
     });
 
     // WHEN
-    const component = await render(
-      <IpPrefixTreeMap
-        parent={{ ...generateTreeMapParent({ cidr: "10.0.0.0/8" }), kind: "IpamIPPrefix" }}
-        parentSchema={PARENT_SCHEMA}
-        permission={PERMISSION_ALLOW_ALL}
-      />
-    );
+    const component = await renderMap();
 
     // THEN
     await expect
       .element(component.getByRole("status"))
       .toHaveTextContent("Showing the first 1,000 of 1,200 children");
+    await expect
+      .element(component.getByRole("link", { name: /not loaded$/ }).first())
+      .toBeVisible();
   });
 
   it("shows no cap notice when every child fits in the map", async () => {
     // GIVEN
     vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      parent: generateTreeMapParent({ cidr: "10.0.0.0/8" }),
       children: generateSlash18ChildrenOfDemoSupernet(2),
       freeBlocks: [],
       totalChildCount: 2,
@@ -70,13 +78,7 @@ describe("IpPrefixTreeMap", () => {
     });
 
     // WHEN
-    const component = await render(
-      <IpPrefixTreeMap
-        parent={{ ...generateTreeMapParent({ cidr: "10.0.0.0/8" }), kind: "IpamIPPrefix" }}
-        parentSchema={PARENT_SCHEMA}
-        permission={PERMISSION_ALLOW_ALL}
-      />
-    );
+    const component = await renderMap();
 
     // THEN
     await expect
@@ -88,6 +90,11 @@ describe("IpPrefixTreeMap", () => {
   it("shows the empty state for an address prefix with no child prefixes", async () => {
     // GIVEN
     vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      parent: generateTreeMapParent({
+        cidr: "10.0.0.0/16",
+        memberType: "address",
+        utilization: 12,
+      }),
       children: [],
       freeBlocks: [],
       totalChildCount: 0,
@@ -95,16 +102,7 @@ describe("IpPrefixTreeMap", () => {
     });
 
     // WHEN
-    const component = await render(
-      <IpPrefixTreeMap
-        parent={{
-          ...generateTreeMapParent({ cidr: "10.0.0.0/16", memberType: "address", utilization: 12 }),
-          kind: "IpamIPPrefix",
-        }}
-        parentSchema={PARENT_SCHEMA}
-        permission={PERMISSION_ALLOW_ALL}
-      />
-    );
+    const component = await renderMap();
 
     // THEN
     await expect.element(component.getByTestId("ip-prefix-tree-map-empty")).toBeVisible();
@@ -114,6 +112,7 @@ describe("IpPrefixTreeMap", () => {
   it("shows the map for an address prefix that still holds child prefixes", async () => {
     // GIVEN
     vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      parent: generateTreeMapParent({ cidr: "10.0.0.0/8", memberType: "address" }),
       children: generateSlash18ChildrenOfDemoSupernet(3),
       freeBlocks: [],
       totalChildCount: 3,
@@ -121,16 +120,7 @@ describe("IpPrefixTreeMap", () => {
     });
 
     // WHEN
-    const component = await render(
-      <IpPrefixTreeMap
-        parent={{
-          ...generateTreeMapParent({ cidr: "10.0.0.0/8", memberType: "address" }),
-          kind: "IpamIPPrefix",
-        }}
-        parentSchema={PARENT_SCHEMA}
-        permission={PERMISSION_ALLOW_ALL}
-      />
-    );
+    const component = await renderMap();
 
     // THEN
     await expect

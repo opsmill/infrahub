@@ -1,22 +1,30 @@
 import type {
+  PrefixSize,
   TreeMapChild,
-  TreeMapData,
   TreeMapFreeBlock,
+  TreeMapParent,
   TreeMapRect,
   TreeMapTile,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
 
-import { parsePrefixLength } from "../../src/entities/ipam/ip-prefixes/domain/rules/parse-prefix-length";
+import { buildPrefixSize } from "../../src/entities/ipam/ip-prefixes/domain/rules/prefix-size";
 
-export const generateTreeMapParent = (
-  overrides: Partial<TreeMapData["parent"]> = {}
-): TreeMapData["parent"] => {
+/** Builds a block from a CIDR string the way the API fields would describe it. */
+export const sizeOf = (cidr: string): PrefixSize =>
+  buildPrefixSize({
+    cidr,
+    prefixLength: Number(cidr.split("/")[1]),
+    version: cidr.includes(":") ? 6 : 4,
+  });
+
+export const generateTreeMapParent = (overrides: Partial<TreeMapParent> = {}): TreeMapParent => {
   const cidr = overrides.cidr ?? "10.0.0.0/8";
 
   return {
     id: "parent-id",
+    kind: "IpamIPPrefix",
     cidr,
-    size: parsePrefixLength(cidr),
+    size: sizeOf(cidr),
     memberType: "prefix",
     utilization: 0,
     ...overrides,
@@ -30,7 +38,7 @@ export const generateTreeMapChild = (overrides: Partial<TreeMapChild> = {}): Tre
     id: `child-${cidr}`,
     kind: "IpamIPPrefix",
     cidr,
-    size: parsePrefixLength(cidr),
+    size: sizeOf(cidr),
     memberType: "prefix",
     isPool: false,
     utilization: 0,
@@ -40,17 +48,12 @@ export const generateTreeMapChild = (overrides: Partial<TreeMapChild> = {}): Tre
   };
 };
 
-const SLASH_18_ADDRESS_COUNT = 2n ** 14n;
-const IPV4_OCTET_RADIX = 256n;
-
 /** Sequential /18 children of 10.0.0.0/8 in address order; valid for counts up to 1,024. */
 export const generateSlash18ChildrenOfDemoSupernet = (count: number): TreeMapChild[] =>
   Array.from({ length: count }, (_, index) => {
-    const start = 0x0a000000n + BigInt(index) * SLASH_18_ADDRESS_COUNT;
-    const octets = [3n, 2n, 1n, 0n].map((position) =>
-      ((start / IPV4_OCTET_RADIX ** position) % IPV4_OCTET_RADIX).toString()
-    );
-    return generateTreeMapChild({ cidr: `${octets.join(".")}/18` });
+    const second = Math.floor(index / 4);
+    const third = (index % 4) * 64;
+    return generateTreeMapChild({ cidr: `10.${second}.${third}.0/18` });
   });
 
 export const generateTreeMapFreeBlock = (
@@ -60,84 +63,69 @@ export const generateTreeMapFreeBlock = (
 
   return {
     cidr,
-    size: parsePrefixLength(cidr),
+    size: sizeOf(cidr),
     ...overrides,
   };
 };
 
-type TileOverrides = { weight?: number; addressCount?: bigint };
-
 export const generateAllocatedTile = (
-  overrides: TileOverrides & { child?: Partial<TreeMapChild> } = {}
+  overrides: { child?: Partial<TreeMapChild> } = {}
 ): TreeMapTile => {
   const child = generateTreeMapChild(overrides.child);
 
-  return {
-    kind: "allocated",
-    key: child.cidr,
-    label: child.cidr,
-    addressCount: overrides.addressCount ?? child.size.addressCount,
-    weight: overrides.weight ?? 0.25,
-    child,
-  };
+  return { kind: "allocated", key: child.cidr, label: child.cidr, size: child.size, child };
 };
 
 export const generateFreeTile = (
-  overrides: TileOverrides & { block?: Partial<TreeMapFreeBlock> } = {}
+  overrides: { block?: Partial<TreeMapFreeBlock> } = {}
 ): TreeMapTile => {
   const block = generateTreeMapFreeBlock(overrides.block);
 
-  return {
-    kind: "free",
-    key: block.cidr,
-    label: block.cidr,
-    addressCount: overrides.addressCount ?? block.size.addressCount,
-    weight: overrides.weight ?? 0.25,
-    block,
-  };
+  return { kind: "free", key: block.cidr, label: block.cidr, size: block.size, block };
 };
 
 export const generateAggregateAllocatedTile = (
-  overrides: TileOverrides & { members?: TreeMapChild[] } = {}
+  overrides: { cidr?: string; children?: TreeMapChild[]; freeBlocks?: TreeMapFreeBlock[] } = {}
 ): TreeMapTile => {
-  const members = overrides.members ?? [generateTreeMapChild({ cidr: "10.0.0.0/24" })];
+  const cidr = overrides.cidr ?? "10.0.0.0/20";
+  const children = overrides.children ?? [generateTreeMapChild({ cidr: "10.0.0.0/24" })];
 
   return {
     kind: "aggregate-allocated",
-    key: "aggregate-allocated",
-    label: `${members.length} smaller prefix${members.length === 1 ? "" : "es"}`,
-    addressCount: overrides.addressCount ?? 256n,
-    weight: overrides.weight ?? 0.001,
-    members,
+    key: `cell:${cidr}`,
+    label: `${cidr}: ${children.length} smaller prefix${children.length === 1 ? "" : "es"}`,
+    size: sizeOf(cidr),
+    children,
+    freeBlocks: overrides.freeBlocks ?? [],
   };
 };
 
 export const generateAggregateFreeTile = (
-  overrides: TileOverrides & { members?: TreeMapFreeBlock[] } = {}
+  overrides: { cidr?: string; freeBlocks?: TreeMapFreeBlock[] } = {}
 ): TreeMapTile => {
-  const members = overrides.members ?? [generateTreeMapFreeBlock({ cidr: "10.0.1.0/24" })];
+  const cidr = overrides.cidr ?? "10.0.16.0/20";
+  const freeBlocks = overrides.freeBlocks ?? [generateTreeMapFreeBlock({ cidr: "10.0.16.0/24" })];
 
   return {
     kind: "aggregate-free",
-    key: "aggregate-free",
-    label: `${members.length} smaller free block${members.length === 1 ? "" : "s"}`,
-    addressCount: overrides.addressCount ?? 256n,
-    weight: overrides.weight ?? 0.001,
-    members,
+    key: `cell:${cidr}`,
+    label: `${cidr}: ${freeBlocks.length} smaller free block${freeBlocks.length === 1 ? "" : "s"}`,
+    size: sizeOf(cidr),
+    freeBlocks,
   };
 };
 
-export const generateRemainderTile = (
-  overrides: TileOverrides & { hiddenChildCount?: number } = {}
+export const generateNotLoadedTile = (
+  overrides: { cidr?: string; hiddenChildCount?: number } = {}
 ): TreeMapTile => {
+  const cidr = overrides.cidr ?? "10.128.0.0/9";
   const hiddenChildCount = overrides.hiddenChildCount ?? 200;
 
   return {
-    kind: "remainder",
-    key: "remainder",
-    label: `${hiddenChildCount} more children`,
-    addressCount: overrides.addressCount ?? 65536n,
-    weight: overrides.weight ?? 0.1,
+    kind: "not-loaded",
+    key: `not-loaded:${cidr}`,
+    label: "Not loaded",
+    size: sizeOf(cidr),
     hiddenChildCount,
   };
 };

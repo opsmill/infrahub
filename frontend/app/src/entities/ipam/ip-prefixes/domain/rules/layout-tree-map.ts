@@ -1,7 +1,36 @@
 import type {
+  PrefixSize,
   TreeMapRect,
   TreeMapTile,
 } from "@/entities/ipam/ip-prefixes/domain/model/ip-prefix-tree-map";
+
+interface Cell {
+  x: bigint;
+  y: bigint;
+}
+
+/** Maps index `d` along a Hilbert curve of the given order to its cell on a 2^order square grid. */
+function hilbertCell(order: number, d: bigint): Cell {
+  const side = 2n ** BigInt(order);
+  let x = 0n;
+  let y = 0n;
+  let t = d;
+  for (let s = 1n; s < side; s *= 2n) {
+    const rx = (t / 2n) % 2n;
+    const ry = (t + rx) % 2n;
+    if (ry === 0n) {
+      if (rx === 1n) {
+        x = s - 1n - x;
+        y = s - 1n - y;
+      }
+      [x, y] = [y, x];
+    }
+    x += s * rx;
+    y += s * ry;
+    t /= 4n;
+  }
+  return { x, y };
+}
 
 interface Box {
   x: number;
@@ -10,117 +39,46 @@ interface Box {
   height: number;
 }
 
-interface Entry {
-  tile: TreeMapTile;
-  area: number;
-}
-
-interface Placed {
-  tile: TreeMapTile;
-  box: Box;
-}
-
-function sumAreas(entries: Entry[]): number {
-  return entries.reduce((sum, entry) => sum + entry.area, 0);
-}
-
-function worstAspectRatio(entries: Entry[], side: number): number {
-  const total = sumAreas(entries);
-  if (total === 0 || side === 0) return Number.POSITIVE_INFINITY;
-
-  const sideSquared = side * side;
-  const totalSquared = total * total;
-  return entries.reduce(
-    (worst, { area }) =>
-      Math.max(worst, (sideSquared * area) / totalSquared, totalSquared / (sideSquared * area)),
-    0
-  );
-}
-
-function rowLength(entries: Entry[], side: number): number {
-  let length = 1;
-  while (length < entries.length) {
-    const current = worstAspectRatio(entries.slice(0, length), side);
-    const extended = worstAspectRatio(entries.slice(0, length + 1), side);
-    if (extended > current) break;
-    length += 1;
-  }
-  return length;
-}
-
-function layoutRow(row: Entry[], box: Box): { placed: Placed[]; rest: Box } {
-  const total = sumAreas(row);
-
-  if (box.width >= box.height) {
-    const stripWidth = total / box.height;
-    let y = box.y;
-    const placed = row.map(({ tile, area }) => {
-      const height = area / stripWidth;
-      const placedBox = { x: box.x, y, width: stripWidth, height };
-      y += height;
-      return { tile, box: placedBox };
-    });
-    const rest = { ...box, x: box.x + stripWidth, width: box.width - stripWidth };
-    return { placed, rest };
-  }
-
-  const stripHeight = total / box.width;
-  let x = box.x;
-  const placed = row.map(({ tile, area }) => {
-    const width = area / stripHeight;
-    const placedBox = { x, y: box.y, width, height: stripHeight };
-    x += width;
-    return { tile, box: placedBox };
-  });
-  const rest = { ...box, y: box.y + stripHeight, height: box.height - stripHeight };
-  return { placed, rest };
-}
-
-function squarify(entries: Entry[], container: Box): Placed[] {
-  const placed: Placed[] = [];
-  let box = container;
-  let remaining = entries;
-
-  while (remaining.length > 0) {
-    const [head] = remaining;
-    if (head === undefined) break;
-
-    const side = Math.min(box.width, box.height);
-    if (side <= 0 || head.area <= 0) {
-      placed.push({ tile: head.tile, box: { x: box.x, y: box.y, width: 0, height: 0 } });
-      remaining = remaining.slice(1);
-      continue;
-    }
-
-    const length = rowLength(remaining, side);
-    const row = layoutRow(remaining.slice(0, length), box);
-    placed.push(...row.placed);
-    box = row.rest;
-    remaining = remaining.slice(length);
-  }
-
-  return placed;
+function boundingBox(cells: Cell[], side: bigint): Box {
+  const xs = cells.map((cell) => cell.x);
+  const ys = cells.map((cell) => cell.y);
+  const minX = xs.reduce((min, x) => (x < min ? x : min));
+  const minY = ys.reduce((min, y) => (y < min ? y : min));
+  const maxX = xs.reduce((max, x) => (x > max ? x : max));
+  const maxY = ys.reduce((max, y) => (y > max ? y : max));
+  const scale = 100 / Number(side);
+  return {
+    x: Number(minX) * scale,
+    y: Number(minY) * scale,
+    width: Number(maxX - minX + 1n) * scale,
+    height: Number(maxY - minY + 1n) * scale,
+  };
 }
 
 /**
- * Lays tiles out as a squarified treemap inside an `aspectRatio` by 1 box and returns one
- * rectangle per tile, in input order, as percentages of the container. Tiles are expected in
- * descending weight order; a zero-weight tile gets a zero-size rectangle.
+ * Places one block of the parent on the unit square. The bits below the parent's length index
+ * the block along a Hilbert curve: an even number of bits is one curve cell, an odd number is
+ * two consecutive cells, which the curve keeps side by side.
  */
-export function layoutTreeMap(tiles: TreeMapTile[], aspectRatio: number): TreeMapRect[] {
-  const totalWeight = tiles.reduce((sum, tile) => sum + tile.weight, 0);
-  const entries = tiles.map((tile) => ({
-    tile,
-    area: totalWeight > 0 ? (Math.max(tile.weight, 0) / totalWeight) * aspectRatio : 0,
-  }));
+function placeBlock(parent: PrefixSize, block: PrefixSize): Box {
+  const depth = block.prefixLength - parent.prefixLength;
+  if (depth <= 0) return { x: 0, y: 0, width: 100, height: 100 };
 
-  const placed = squarify(entries, { x: 0, y: 0, width: aspectRatio, height: 1 });
+  const offset = (block.networkAddress - parent.networkAddress) / block.addressCount;
+  const order = Math.ceil(depth / 2);
+  const side = 2n ** BigInt(order);
+  const cells =
+    depth % 2 === 0
+      ? [hilbertCell(order, offset)]
+      : [hilbertCell(order, offset * 2n), hilbertCell(order, offset * 2n + 1n)];
+  return boundingBox(cells, side);
+}
 
-  return placed.map(({ tile, box }) => ({
-    tile,
-    x: (box.x / aspectRatio) * 100,
-    y: box.y * 100,
-    width: (box.width / aspectRatio) * 100,
-    height: box.height * 100,
-  }));
+/**
+ * Lays tiles out by address: each tile takes the rectangle of its block on a Hilbert curve over
+ * the parent, so blocks that are adjacent in address space share an edge and contiguous free
+ * space reads as one region. Coordinates are percentages of the container.
+ */
+export function layoutTreeMap(tiles: TreeMapTile[], parent: PrefixSize): TreeMapRect[] {
+  return tiles.map((tile) => ({ tile, ...placeBlock(parent, tile.size) }));
 }
