@@ -13,7 +13,12 @@ from starlette.testclient import TestClient
 
 from infrahub.license.middleware import LICENSE_STATUS_HEADER, LicenseStatusHeaderMiddleware
 from infrahub.license.models import LicenseFailureReason, LicenseState, LicenseStatus, NoticeMode
-from tests.adapters.license import FailingLicenseService, FailingNoticeModeLicenseService, RecordingLicenseService
+from tests.adapters.license import (
+    FailingLicenseService,
+    FailingNoticeModeLicenseService,
+    RecordingLicenseService,
+    build_license_status,
+)
 from tests.helpers.log import find_logged_events
 
 if TYPE_CHECKING:
@@ -21,7 +26,7 @@ if TYPE_CHECKING:
 
     from infrahub.license.service import LicenseService
 
-EXPIRED = LicenseStatus(state=LicenseState.EXPIRED)
+EXPIRED = build_license_status(state=LicenseState.EXPIRED)
 
 
 async def _ok(request: Request) -> PlainTextResponse:
@@ -52,7 +57,7 @@ HEADER_CASES: list[HeaderCase] = [
     HeaderCase(name="enforce_expired", status=EXPIRED, notice_mode=NoticeMode.ENFORCE, expected="expired"),
     HeaderCase(
         name="enforce_expiring",
-        status=LicenseStatus(state=LicenseState.EXPIRING),
+        status=build_license_status(state=LicenseState.EXPIRING),
         notice_mode=NoticeMode.ENFORCE,
         expected="expiring",
     ),
@@ -64,7 +69,7 @@ HEADER_CASES: list[HeaderCase] = [
     ),
     HeaderCase(
         name="enforce_valid",
-        status=LicenseStatus(state=LicenseState.VALID),
+        status=build_license_status(state=LicenseState.VALID),
         notice_mode=NoticeMode.ENFORCE,
         expected=None,
     ),
