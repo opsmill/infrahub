@@ -1,0 +1,132 @@
+# `infrahub tasks`
+
+**Usage**:
+
+```console
+$ infrahub tasks [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--install-completion`: Install completion for the current shell.
+* `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `init`: Initialize the task manager.
+* `execute`: Check the current format of the internal...
+* `background-services`: Run the task manager&#x27;s background services...
+* `flush`
+
+## `infrahub tasks init`
+
+Initialize the task manager.
+
+**Usage**:
+
+```console
+$ infrahub tasks init [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
+* `--help`: Show this message and exit.
+
+## `infrahub tasks execute`
+
+Check the current format of the internal graph and apply the necessary migrations.
+
+**Usage**:
+
+```console
+$ infrahub tasks execute [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--debug / --no-debug`: Enable advanced logging and troubleshooting  [default: no-debug]
+* `--help`: Show this message and exit.
+
+## `infrahub tasks background-services`
+
+Run the task manager&#x27;s background services in the foreground, with the retention set in the configuration.
+
+**Usage**:
+
+```console
+$ infrahub tasks background-services [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `infrahub tasks flush`
+
+**Usage**:
+
+```console
+$ infrahub tasks flush [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `flow-runs`: Delete the finished task runs older than...
+* `stale-runs`: Flush stale task runs, marking long...
+
+### `infrahub tasks flush flow-runs`
+
+Delete the finished task runs older than the task history retention, with their logs and artifacts.
+
+**Usage**:
+
+```console
+$ infrahub tasks flush flow-runs [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--rewrite`: Rewrite the task history tables after the deletes, to return their disk space. Each table is locked while it is rewritten, so run it in a maintenance window.
+* `--help`: Show this message and exit.
+
+### `infrahub tasks flush stale-runs`
+
+Flush stale task runs, marking long RUNNING or PENDING flow runs as crashed.
+
+**Usage**:
+
+```console
+$ infrahub tasks flush stale-runs [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--days-to-keep INTEGER`: [default: 2]
+* `--batch-size INTEGER`: [default: 100]
+* `--help`: Show this message and exit.

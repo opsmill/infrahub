@@ -591,6 +591,7 @@ const sidebars: SidebarsConfig = {
             'reference/infrahub-cli/infrahub-dev',
             'reference/infrahub-cli/infrahub-upgrade',
             'reference/infrahub-cli/infrahub-recover',
+            'reference/infrahub-cli/infrahub-tasks',
           ],
         },
         {

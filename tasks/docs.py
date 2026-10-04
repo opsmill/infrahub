@@ -189,6 +189,7 @@ def _generate_infrahub_cli_documentation(context: Context) -> None:
         ("infrahub.cli.dev", "infrahub dev", "infrahub-dev"),
         ("infrahub.cli.upgrade", "infrahub upgrade", "infrahub-upgrade"),
         ("infrahub.cli.recover", "infrahub recover", "infrahub-recover"),
+        ("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks"),
     )
 
     print(" - Generate Infrahub CLI documentation")
