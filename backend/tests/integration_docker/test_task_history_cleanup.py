@@ -20,6 +20,8 @@ OLD_RUNS = 300
 SCENARIO_DELETED_RUNS = 8
 TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_state", "log", "artifact")
 LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
+# A key of the test's own, so a cleanup that another test runs on the shared stack never holds it.
+ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
 # Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
 REWRITE_LOCK_TIMEOUT_SECONDS = 5
 
@@ -80,6 +82,26 @@ async def main():
     runs_before = await cleanup.delete(job=job)
     await cleanup.rewrite(job=job, mode=job.rewrite, runs_before=runs_before)
     print(job.model_dump_json())
+
+asyncio.run(main())
+"""
+
+_ADVISORY_LOCK_SCRIPT = f"""
+import asyncio, json, sys
+sys.path.insert(0, "/source/backend")
+from prefect.server.database import provide_database_interface
+from infrahub.prefect_server.task_history import PostgresAdvisoryLock
+
+async def main():
+    db = provide_database_interface()
+    first, second, third = (PostgresAdvisoryLock(db=db, key={ADVISORY_LOCK_KEY}) for _ in range(3))
+    acquired = [await first.try_acquire(), await second.try_acquire()]
+    await first.release()
+    acquired.append(await second.try_acquire())
+    await second.release()
+    acquired.append(await third.try_acquire())
+    await third.release()
+    print(json.dumps(acquired))
 
 asyncio.run(main())
 """
@@ -208,6 +230,16 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         assert [int(match["count"]) for match in _DELETED_RUNS.finditer(stdout)] == [OLD_RUNS + SCENARIO_DELETED_RUNS]
         assert stdout.strip().splitlines()[-1].strip().endswith("Task history tables rewritten")
         assert _task_history_size(compose=infrahub_compose) < size_before
+
+    def test_the_cleanup_lock_has_one_holder_at_a_time_until_it_is_released(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """A second lock on the key is refused while the first holds it, and taken once the holder releases it."""
+        acquired = json.loads(_python_in_task_manager(compose=infrahub_compose, script=_ADVISORY_LOCK_SCRIPT))
+
+        assert acquired == [True, False, True, True]
 
     @pytest.mark.usefixtures("log_table_locked")
     def test_a_table_locked_past_the_lock_timeout_is_left_out_of_the_rewrite(
