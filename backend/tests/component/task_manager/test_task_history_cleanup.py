@@ -9,6 +9,7 @@ import pytest
 from prefect.server.schemas.states import StateType
 from prefect.server.services.db_vacuum import vacuum_old_flow_runs
 from prefect.settings import temporary_settings
+from tests.adapters.task_history import RecordingRewriter, UnraisedRewrite
 from tests.helpers.task_manager_seed import (
     copy_task_manager_database,
     days_ago,
@@ -34,19 +35,6 @@ if TYPE_CHECKING:
 RETENTION = timedelta(days=30)
 
 
-class RecordingRewriter:
-    def __init__(self) -> None:
-        self.calls: list[str] = []
-
-    async def total_size(self) -> int:
-        self.calls.append("total_size")
-        return 1000 if "rewrite" not in self.calls else 100
-
-    async def rewrite(self) -> list[str]:
-        self.calls.append("rewrite")
-        return ["log"]
-
-
 @pytest.fixture
 def thirty_day_retention() -> Generator[None, None, None]:
     with temporary_settings(updates={"server.services.db_vacuum.retention_period": RETENTION}):
@@ -68,7 +56,7 @@ async def test_cleanup_leaves_the_task_history_prefect_leaves(task_manager_datab
     job = _job()
 
     await vacuum_old_flow_runs(db=prefect_db)
-    await build_task_history_cleanup(db=cleanup_db).run(job=job)
+    await build_task_history_cleanup(db=cleanup_db).run(job=job, settle=UnraisedRewrite(job=job))
 
     left_by_prefect = await read_task_history_ids(db=prefect_db)
     left_by_cleanup = await read_task_history_ids(db=cleanup_db)
@@ -84,9 +72,12 @@ async def test_cleanup_and_prefect_vacuum_running_together_leave_the_same_task_h
     """The cleanup and Prefect's vacuum of old flow runs both succeed on the same runs and leave the old runs deleted."""
     db = task_manager_database(task_manager_database_path)
     seeded = await seed_task_history(db=db)
+    job = _job()
 
     with temporary_settings(updates={"server.services.db_vacuum.batch_size": 1}):
-        await asyncio.gather(vacuum_old_flow_runs(db=db), build_task_history_cleanup(db=db).run(job=_job()))
+        await asyncio.gather(
+            vacuum_old_flow_runs(db=db), build_task_history_cleanup(db=db).run(job=job, settle=UnraisedRewrite(job=job))
+        )
 
     assert await read_task_history_ids(db=db) == seeded.kept
 
@@ -160,7 +151,9 @@ async def test_tables_are_rewritten_as_the_cleanup_asks(
     rewriter = RecordingRewriter()
     job = _job(rewrite=case.rewrite)
 
-    await TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter).run(job=job)
+    await TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter).run(
+        job=job, settle=UnraisedRewrite(job=job)
+    )
 
     assert rewriter.calls == case.expected_calls
     assert (job.deleted_runs, job.rewrite, job.rewritten, job.not_rewritten, job.size_before, job.size_after) == (

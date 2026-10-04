@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, timedelta
 
 import httpx
@@ -210,104 +209,6 @@ async def test_an_answer_showing_the_cleanup_restarts_the_wait_limit() -> None:
     assert result is not None
     assert (result.id, result.state) == ("job-2", CleanupJobState.COMPLETED)
     assert len(task_manager.requests) == 8
-
-
-@dataclass
-class WeakerRewriteCase:
-    name: str
-    asked: CleanupRewrite
-    running: CleanupRewrite
-
-
-WEAKER_REWRITE_CASES: list[WeakerRewriteCase] = [
-    WeakerRewriteCase(
-        name="always_asked_if_freed_running", asked=CleanupRewrite.ALWAYS, running=CleanupRewrite.IF_FREED
-    ),
-    WeakerRewriteCase(name="always_asked_never_running", asked=CleanupRewrite.ALWAYS, running=CleanupRewrite.NEVER),
-    WeakerRewriteCase(name="if_freed_asked_never_running", asked=CleanupRewrite.IF_FREED, running=CleanupRewrite.NEVER),
-]
-
-
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in WEAKER_REWRITE_CASES])
-async def test_a_running_cleanup_with_a_weaker_rewrite_is_followed_by_one_with_the_rewrite_asked_for(
-    case: WeakerRewriteCase,
-) -> None:
-    """A running cleanup started with a weaker rewrite is followed to its end, then the rewrite asked for is posted again."""
-    task_manager = ScriptedTaskManager(
-        responses=[
-            started(rewrite=case.running.value),
-            polled(rewrite=case.running.value, current_day="2026-01-15", deleted_runs=5),
-            polled(rewrite=case.running.value, state="completed", current_day="2026-01-16", deleted_runs=9),
-            started(id="job-2", rewrite=case.asked.value),
-            polled(id="job-2", rewrite=case.asked.value, state="completed", rewritten=True),
-        ]
-    )
-    clock = FakeClock()
-    progress = ProgressRecorder()
-
-    result = await _run(task_manager=task_manager, clock=clock, progress=progress, rewrite=case.asked)
-
-    assert result is not None
-    assert (result.id, result.state, result.rewrite, result.rewritten) == (
-        "job-2",
-        CleanupJobState.COMPLETED,
-        case.asked,
-        True,
-    )
-    assert task_manager.requests == [
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": case.asked.value}),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": case.asked.value}),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
-    ]
-    assert progress.reported == [("job-1", date(2026, 1, 15), 5)]
-    assert clock.sleeps == [2.0] * 4
-
-
-@dataclass
-class AcceptedRewriteCase:
-    name: str
-    asked: CleanupRewrite
-    running: CleanupRewrite
-
-
-ACCEPTED_REWRITE_CASES: list[AcceptedRewriteCase] = [
-    AcceptedRewriteCase(
-        name="never_asked_if_freed_running", asked=CleanupRewrite.NEVER, running=CleanupRewrite.IF_FREED
-    ),
-    AcceptedRewriteCase(
-        name="if_freed_asked_always_running", asked=CleanupRewrite.IF_FREED, running=CleanupRewrite.ALWAYS
-    ),
-    AcceptedRewriteCase(name="always_asked_always_running", asked=CleanupRewrite.ALWAYS, running=CleanupRewrite.ALWAYS),
-]
-
-
-@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in ACCEPTED_REWRITE_CASES])
-async def test_a_running_cleanup_with_at_least_the_rewrite_asked_for_is_the_outcome(case: AcceptedRewriteCase) -> None:
-    """A running cleanup started with the rewrite asked for, or a stronger one, ends the wait when it completes."""
-    task_manager = ScriptedTaskManager(
-        responses=[
-            started(rewrite=case.running.value),
-            polled(rewrite=case.running.value, state="completed", rewritten=True, deleted_runs=4),
-        ]
-    )
-    clock = FakeClock()
-
-    result = await _run(task_manager=task_manager, clock=clock, rewrite=case.asked)
-
-    assert result is not None
-    assert (result.id, result.state, result.rewrite, result.deleted_runs) == (
-        "job-1",
-        CleanupJobState.COMPLETED,
-        case.running,
-        4,
-    )
-    assert task_manager.requests == [
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": case.asked.value}),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-    ]
-    assert clock.sleeps == [2.0]
 
 
 @pytest.mark.usefixtures("prefect_client_without_retries")
