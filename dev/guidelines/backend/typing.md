@@ -123,7 +123,7 @@ Three signs that you are reaching for the escape hatch instead of the fix:
 CI runs mypy without `--warn-unused-ignores`, so a `# type: ignore` that no longer suppresses
 anything passes silently — and later hides a real violation on the same line. When a change lets the
 checker see a type it could not before, such as a class-level annotation for an attribute that was
-only set dynamically, run `uv run mypy --warn-unused-ignores` over the backend and delete every
+only set dynamically, run `uv run mypy --warn-unused-ignores backend` and delete every
 ignore it reports as unused, in the same change. One new annotation can retire ignores in files the
 change did not otherwise touch.
 

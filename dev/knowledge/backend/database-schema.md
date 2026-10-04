@@ -119,7 +119,7 @@ All edges have:
 | `from_user_id` | string? | UUID of creating user (or `"__system__"`) |
 | `to_user_id` | string? | UUID of deleting user (only if `to` is set) |
 
-Some edge types carry payload properties beyond these (`IS_RESERVED` holds `identifier` and `provenance`). A query that recreates an edge on a new vertex — a migration moving edges — copies the old edge wholesale (`SET new_edge = properties(old)`), then overrides the fields that change and removes the ones that must reset (`to`, `to_user_id`). Rebuilding the edge from the standard branch-property map drops every payload property, including any the edge type gains later.
+Some edge types carry payload properties beyond these (`IS_RESERVED` holds the reservation's `identifier`). A query that recreates an edge on a new vertex — a migration moving edges — copies the old edge wholesale (`SET new_edge = properties(old)`), then overrides only the properties that must differ on the new edge. Rebuilding the edge from the standard branch-property map drops every payload property, including any the edge type gains later.
 
 ### Edge Types
 

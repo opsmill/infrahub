@@ -9,8 +9,10 @@ cardinality-one peer conflicts keep the default `True`, because a merge can appl
 `ResolveDiffConflict` mutation refuses `resolvable=False`; other conflicts are resolved through the
 mutation.
 
-A rebase answers a narrower question. It keeps the branch's edge for every conflicting field, so it
-honors only a resolution in favor of the branch, and only at the attribute level: a cardinality-one
-peer conflict leaves both peers visible after the rebase, and a node removed on the default branch
-cannot carry the branch's values. The gate is the explicit check in `rebase_branch`
-(`backend/infrahub/core/branch/tasks.py`) — do not reuse `resolvable` as "rebasable".
+A rebase answers a narrower question. It keeps the branch's edge for every conflicting field, so the
+only conflict it lets through is an attribute-level one, on a node the default branch did not remove,
+that is resolved in favor of the branch. An attribute conflict resolved the other way must be resolved
+in favor of the branch first; every other conflict — node-level, relationship, cardinality-one peer —
+blocks the rebase until the data is updated so both branches agree. The gate is the explicit check in
+`rebase_branch` (`backend/infrahub/core/branch/tasks.py`) — do not reuse `resolvable` as
+"rebasable".

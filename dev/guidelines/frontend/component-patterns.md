@@ -24,8 +24,9 @@ If you genuinely need a new primitive:
 - Place it in `shared/components/` (not in an entity) if it's reusable. Place it in `frontend/packages/ui/` if it's generic enough for any surface.
 
 Reuse stops at the component's contract. If your data cannot satisfy a shared component's prop type —
-your query selects four of `Dropdown`'s twelve fields — do not widen the shared type (`Pick<…>`), and
-do not fabricate the missing fields to squeeze through it. Build a small feature-local component over
+your query selects four of `Dropdown`'s twelve fields — do not reshape the shared component's props to
+fit (switching its `Dropdown` prop to `Pick<Dropdown, …>`), and do not fabricate the missing fields to
+squeeze through it. Build a small feature-local component over
 your own row type and leave the shared one to the callers it is named for. (Adding an optional,
 default-preserving prop is fine — weakening the type contract is not.)
 
@@ -94,7 +95,8 @@ A state that only *looks* inactive (nothing to act on, but the tooltip still exp
 same focusable element as every other state, dimmed with an opacity class (`opacity-60`). Disabling
 removes it from hover/focus, and swapping element types between states (`Button` in one, `LinkButton`
 in another) remounts the subtree, changes the ARIA role mid-session, and breaks role-based selectors
-in e2e tests. Reserve `disabled` for a control whose action must actually be blocked.
+in e2e tests. Reserve disabling for a control whose action must actually be blocked; when that control
+still needs its tooltip, `Button`'s `isDisabledAndFocusable` keeps it hoverable and focusable.
 
 ## Layout Extraction
 

@@ -62,7 +62,7 @@ stale verdict next to its own error treatment. Resolve a single state value in w
 error outrank the retained data, and drive every rendered detail from it:
 
 ```ts
-const state = isPending ? "pending" : error || !data ? "check-failed" : data;
+const state = isPending ? "pending" : error || data === undefined ? "check-failed" : data;
 ```
 
 ## An effect-driven retry needs a dependency that changes on failure

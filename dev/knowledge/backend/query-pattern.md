@@ -244,17 +244,17 @@ WITH n, attr, r
 WHERE r.status = "active"
 ```
 
-The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetListByAttributeValueQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value.
+The ordering prefers the most specific, most recent, active edge; `LIMIT 1` elects the winner, and the outer `WHERE` excludes soft-deleted edges. Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`; pass `variable_name="r_custom"` to bind the filter to a specific edge variable. `NodeGetByHFIDQuery` chains three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value.
 
 The outer `MATCH` returns one row per matching edge, and the graph keeps one `HAS_ATTRIBUTE` edge per branch that touched the attribute — so an attribute edited on three branches yields three rows, and the `CALL` subquery then runs three times to elect the same winning edge. Add `WITH DISTINCT <keys>` before the `CALL` and group at the natural cardinality: an Attribute has exactly one active AttributeValue per branch/time, so group by `(n, attr)` and re-apply value predicates after the subquery. Keep the outer edge anonymous (`-[:HAS_ATTRIBUTE]->`) while you are there — binding a variable you never read does not change the row count, but it does collide with the subquery's own edge variable (see below). See [Database Schema — Key Points](database-schema.md#key-points).
 
-The same granularity rule holds when one subquery reads several attribute names for a node: `UNWIND` the names and elect per `(node, name)` pair. One election over the whole batch returns one row per name only while the graph is healthy — with a duplicate-active bug it hands the reader whichever row came last instead of surfacing the fault.
+The same granularity rule holds when one query reads several attribute names for a node: `UNWIND` the names and run the electing subquery once per `(node, name)` pair, so at most one row per name comes back. Matching every name in one pass without a per-name election returns each active edge it finds; with a duplicate-active bug, a reader that keys the rows by name keeps whichever arrived last instead of surfacing the fault.
 
 ### Query performance
 
 `AttributeValueIndexed` values are stored natively typed (a number attribute's `av.value` is an integer). Compare `av.value` directly in `WHERE` predicates — wrapping the property in a function (`toInteger(av.value) >= $x`) prevents Neo4j from using the index, so the query scans every row of the kind instead of seeking the matching range.
 
-The only vertex indexes are on the `Node` label (`node_uuid`, `node_kind` — `backend/infrahub/core/graph/index.py`). A `MATCH` anchored on a kind label alone — `MATCH (pool:%(kind)s { uuid: $pool_id })` — cannot use them and scans every vertex of that kind. Include the `Node` label too: `MATCH (pool:Node:%(kind)s { uuid: $pool_id })`, and check the plan with `EXPLAIN` when in doubt.
+The `uuid` and `kind` indexes of a node vertex are declared on the `Node` label (`node_uuid`, `node_kind` in `backend/infrahub/core/graph/index.py`), not on its kind label. A `MATCH` anchored on a kind label alone — `MATCH (pool:%(kind)s { uuid: $pool_id })` — cannot use them and scans every vertex of that kind. Include the `Node` label too: `MATCH (pool:Node:%(kind)s { uuid: $pool_id })`, and check the plan with `EXPLAIN` when in doubt.
 
 ### Cypher Variable Shadowing (Neo4j 5+)
 
