@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 from infrahub import config
 from infrahub.license.middleware import LICENSE_STATUS_HEADER
 from infrahub.license.models import LicenseState, LicenseStatus, NoticeMode
-from tests.adapters.license import RecordingLicenseService
+from tests.adapters.license import RecordingLicenseService, build_license_status
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.license.service import LicenseService
 
-EXPIRED = LicenseStatus(state=LicenseState.EXPIRED)
+EXPIRED = build_license_status(state=LicenseState.EXPIRED)
 INFO_QUERY = {"query": "query { InfrahubInfo { version } }"}
 
 
