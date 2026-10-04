@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -287,8 +288,9 @@ def _failing_applier(failing_node_id: str, error: Exception) -> type[ChunkProfil
 
 
 async def test_refresh_skips_only_the_node_whose_profile_application_raises(
-    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None, caplog: pytest.LogCaptureFixture
 ) -> None:
+    caplog.set_level(logging.WARNING, logger="infrahub.tasks")
     dataset = await _create_servers(db=db, count=3)
     failing_node_id = dataset.server_ids[1]
     doubles = _refresher(
@@ -310,6 +312,13 @@ async def test_refresh_skips_only_the_node_whose_profile_application_raises(
         ("role-1", dataset.room_id),
     ]
     assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[2]]
+    assert [
+        (record.levelno, record.getMessage())
+        for record in caplog.records
+        if record.name == "infrahub.tasks" and record.levelno >= logging.WARNING
+    ] == [
+        (logging.WARNING, f"Skipping the profile refresh of {failing_node_id}: profiles of {failing_node_id} rejected")
+    ]
 
 
 @pytest.fixture

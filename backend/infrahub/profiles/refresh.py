@@ -112,7 +112,10 @@ class NodeProfilesRefresher:
             if len(node_ids) == 1:
                 log.warning(f"Skipping the profile refresh of {node_ids[0]}: {exc}", exc_info=True)
                 return AppliedChunk(applied=[], failed_node_ids=list(node_ids))
-            log.info(f"Refreshing the profiles of {len(node_ids)} nodes one by one, after their chunk failed: {exc}")
+            log.info(
+                f"Refreshing the profiles of {len(node_ids)} nodes one by one, after their chunk failed: {exc}",
+                exc_info=True,
+            )
 
         applied: list[AppliedNode] = []
         failed_node_ids: list[str] = []

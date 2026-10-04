@@ -76,7 +76,7 @@ Every node mutation event carries an `origin` label (`infrahub.node.origin`), on
 | `live` | default | A direct edit through the API. |
 | `merge` | the merge post-process | A replay of a merged change. |
 | `rebase` | the rebase flow | A change replayed onto the rebased branch. |
-| `recompute` | the bulk writer on a coalesced pass | A derived-value recompute write. |
+| `recompute` | the bulk writer on a coalesced pass, and the profile refresh (`NodeProfilesRefresher`) | A derived-value recompute write, or a profile value written by a profile refresh. |
 
 The four families' per-node triggers match only `live`, so `merge`, `rebase`, and `recompute` events do not start their per-node flows. This is what lets the coalesced pass be the single dispatcher for those families without double-processing. Other consumers (user action rules, webhooks, profiles) keep receiving every event whatever the origin.
 
