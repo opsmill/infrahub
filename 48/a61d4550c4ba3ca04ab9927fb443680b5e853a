@@ -1,0 +1,91 @@
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_f967b84da11fd0::t_d743335ab5ea09 315-321
+  s_f967b84da11fd0::t_ec7f7268a86763 177-180
+  s_f967b84da11fd0::t_502706d6303d38 556-564
+  s_f967b84da11fd0::t_7f6f898a65cd64 268,275-278
+  s_f967b84da11fd0::t_477b23459f48a9 532-535,537-539,541-544
+  s_f967b84da11fd0::t_91348d3e32a345 581-582
+  s_f967b84da11fd0::t_8c8670987672fd 391-395
+  s_f967b84da11fd0::t_7d808c24ba203a 428-437
+  s_f967b84da11fd0::t_da41b232c643aa 1-176,181-267,269-274,279-314,322-390,396-427,438-531,536,540,545-555,565-580,583-603
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_f967b84da11fd0::t_65d94e30d7c942 263-266
+  s_f967b84da11fd0::t_c9e1ba9ce1388c 172-179
+  s_f967b84da11fd0::t_5a82acfa948797 51
+  s_f967b84da11fd0::t_982b36ec8c2bf2 239-242,247-254,256-259
+  s_f967b84da11fd0::t_b36a8aff74ac88 282-290
+  s_f967b84da11fd0::t_bf4812124d04ff 295-298,300-302,307-308
+  s_f967b84da11fd0::t_33f2354f1bb863 303-306
+  s_f967b84da11fd0::t_32dbc41a598ef2 1,3,5,7-8,10-11,13-24,26,30,32,34,36-39,41,43-44,46-48,50,52-57,59-61,63,67,69-73,75-77,79-82,88-101,104,107-119,121-124,126,128-146,150,152-171,180-184,190-209,212-213,217-219,225-237,243-246,255,260-262,267-280,291-294,299,309-326,339,343,346-356,359-364,366-379
+  s_f967b84da11fd0::t_2ba3ba6651c5af 214-216,220-224
+  s_f967b84da11fd0::t_11b592fdf15000 357-358
+  s_f967b84da11fd0::t_3a36fa232add62 147-149,151
+  s_f967b84da11fd0::t_6484fb2a0d66fa 74
+  s_f967b84da11fd0::t_1ef37a3b0f0ceb 185-189
+  s_f967b84da11fd0::t_13abe06748d0bb 327-338,340-342,344-345
+  s_f967b84da11fd0::t_53e8d0b9411e29 383
+  s_f967b84da11fd0::t_5eb620565f16e5 380-382
+  s_f967b84da11fd0::t_820a1dc9d5a764 2,4,6,9,12,25,27-29,31,33,35,40,42,45,49,58,62,64-66,68,78,83-87,102-103,105-106,210-211,238,281,365
+  s_f967b84da11fd0::t_4842c47af7cea1 120
+  s_f967b84da11fd0::t_18d6b417cf8525 125,127
+dev/specs/ifc-3185-scoped-number-pools/research.md
+  s_f967b84da11fd0::t_a472176275402d 1-21,36-81,88-90,95-109,126-147,152-154,156,174-177,180-194,203,208,211-226,228,237-262,271-283,289-294,306-307,313-317,325-331
+  s_f967b84da11fd0::t_c654f5b43fe168 110-125
+  s_f967b84da11fd0::t_c638930d72efb9 82-87,91-94
+  s_f967b84da11fd0::t_c09d88dfbf428d 148-151,155,157-173,178-179
+  s_f967b84da11fd0::t_63befdc3490d49 195-202,204-207,209-210
+  s_f967b84da11fd0::t_7696414fbae815 284-288
+  s_f967b84da11fd0::t_da488fa321c0d2 318-324
+  s_f967b84da11fd0::t_7cb0cc576f061c 22-35
+  s_f967b84da11fd0::t_c29dbdb5e65ec6 263-270
+  s_f967b84da11fd0::t_bfa7f575302425 295-305,308-312
+  s_f967b84da11fd0::t_13e8fed39f5bfa 227,229-236
+dev/specs/ifc-3185-scoped-number-pools/alignment-check.md
+  s_f967b84da11fd0::t_5a82acfa948797 18
+  s_f967b84da11fd0::t_c5e41227d71948 1-17,19-46
+dev/specs/ifc-3185-scoped-number-pools/contracts/number-pool-parameters.md
+  s_f967b84da11fd0::t_54bf6d00b6571b 41
+  s_f967b84da11fd0::t_fa2183a9519c7b 1-40,42-61
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-pool-scope.md
+  s_f967b84da11fd0::t_971552793345ad 56
+  s_f967b84da11fd0::t_8631e32cacdba8 1-27,31,34-55,57-88
+  s_f967b84da11fd0::t_96039e3d176273 28-30,32-33
+dev/specs/ifc-3185-scoped-number-pools/critiques/critique-20261002.md
+  s_f967b84da11fd0::t_516887e59a3f5a 64
+  s_f967b84da11fd0::t_5a82acfa948797 216,224-253
+  s_f967b84da11fd0::t_8be8d793008290 1-63,65-215,217-223
+dev/specs/ifc-3185-scoped-number-pools/data-model.md
+  s_f967b84da11fd0::t_eb04c5092919d6 95-98,105-106,108
+  s_f967b84da11fd0::t_7c569151432fe9 68-71
+  s_f967b84da11fd0::t_2fdd1ae0fc93db 1-67,72-94,99-104,107,109-115,117-118,120-148
+  s_f967b84da11fd0::t_b15d3f51dad11c 116,119
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f967b84da11fd0::t_d13f13dd51c94d 393-400
+  s_f967b84da11fd0::t_7c1d5d1a4f6ab8 1-392,401-552
+dev/specs/ifc-3185-scoped-number-pools/checklists/requirements.md
+  s_f967b84da11fd0::t_f0d1064e56cfdb 1-36
+dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-pool-utilization.md
+  s_f967b84da11fd0::t_f985c14b297c26 1-16,22-45,47-50,56-90
+  s_f967b84da11fd0::t_93eaad489ba7b8 17-21
+  s_f967b84da11fd0::t_4d582e2c35a5a7 46
+  s_f967b84da11fd0::t_62b9e9763876bc 51-55
+dev/specs/ifc-3185-scoped-number-pools/quickstart.md
+  s_f967b84da11fd0::t_3bd3f33bed51fc 118,120-121,124
+  s_f967b84da11fd0::t_958b5dc22ebaac 1-117,119,122-123,125-134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "48a61d4550c4ba3ca04ab9927fb443680b5e853a",
+  "prompts": {},
+  "sessions": {
+    "s_f967b84da11fd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98b8ca39-f313-42d3-9f51-8aa6d856f8a4",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
