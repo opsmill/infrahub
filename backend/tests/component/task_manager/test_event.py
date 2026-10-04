@@ -96,11 +96,13 @@ async def test_query_no_filters(event_ids_inscope: list[str]) -> None:
     assert clean_events["count"] == 4
 
 
-async def test_query_branch_filter(events_data: dict[str, InfrahubEvent], event_ids_inscope: list[str]) -> None:
+async def test_query_branch_filter(
+    events_data: dict[str, InfrahubEvent], event_ids_inscope: list[str], branch1_id: str
+) -> None:
     expected_ids = extract_expected_ids(expected_events=["branch1_created", "branch1_rebased"], data=events_data)
     fields = {"count": None, "edges": {"node": {"event": None, "branch": None}}}
     event_filter = InfrahubEventFilter()
-    event_filter.add_branch_filter(branches=["branch1"])
+    event_filter.add_branch_filter(branch_ids=[branch1_id])
     events = await PrefectEvent.query(fields=fields, event_filter=event_filter)
     clean_events = filter_outofscope_events(events, event_ids_inscope)
 

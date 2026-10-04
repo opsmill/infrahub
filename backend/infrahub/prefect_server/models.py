@@ -1,7 +1,12 @@
+from datetime import timedelta
+
 from prefect.server.events.filters import EventFilter, EventNameFilter, EventOrder
 from prefect.server.events.schemas.events import ReceivedEvent
 from prefect.server.utilities.schemas import PrefectBaseModel
+from prefect.settings import get_current_settings
 from pydantic import BaseModel, Field
+
+MAXIMUM_RETENTION_SECONDS = 36_500 * 24 * 60 * 60
 
 
 class InfrahubEventFilter(EventFilter):
@@ -19,7 +24,7 @@ class InfrahubEventFilter(EventFilter):
 
 class InfrahubEventPage(PrefectBaseModel):
     events: list[ReceivedEvent] = Field(..., description="The Events matching the query")
-    total: int = Field(..., description="The total number of matching Events")
+    total: int | None = Field(default=None, description="The total number of matching Events, when requested")
 
 
 class InfrahubEventfilterInput(BaseModel):
@@ -28,5 +33,17 @@ class InfrahubEventfilterInput(BaseModel):
     offset: int | None = Field(default=None)
     include_total: bool = Field(
         default=True,
-        description="When false, skip the unbounded count query and report total=0; the paged events are unaffected",
+        description="When false, skip the unbounded count query and report a null total; the paged events are unaffected",
     )
+    retention_seconds: int | None = Field(
+        default=None,
+        gt=0,
+        le=MAXIMUM_RETENTION_SECONDS,
+        description="Widest time window read back from the end of the filter, by default the task manager's event retention",
+    )
+
+    @property
+    def retention(self) -> timedelta:
+        if self.retention_seconds is not None:
+            return timedelta(seconds=self.retention_seconds)
+        return get_current_settings().server.events.retention_period

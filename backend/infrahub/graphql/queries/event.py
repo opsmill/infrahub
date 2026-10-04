@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.constants import GlobalPermissions
+from infrahub.core.registry import registry
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
-from infrahub.exceptions import PermissionDeniedError, ValidationError
+from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
@@ -18,10 +19,24 @@ if TYPE_CHECKING:
 
     from graphql import GraphQLResolveInfo
 
+    from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
 
 
 InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
+
+
+async def _current_branch_ids(db: InfrahubDatabase, names: list[str]) -> dict[str, str]:
+    current_branch_ids: dict[str, str] = {}
+    for name in names:
+        if not name:
+            continue
+        try:
+            branch = await registry.get_branch(db=db, branch=name)
+        except BranchNotFoundError:
+            continue
+        current_branch_ids[name] = str(branch.get_uuid())
+    return current_branch_ids
 
 
 class Events(ObjectType):
@@ -74,9 +89,18 @@ class Events(ObjectType):
             except PermissionDeniedError:
                 exclude_prefixes = [ACCOUNT_EVENT_PREFIX]
 
+        branch_ids: list[str] | None = None
+        if branches:
+            branch_ids = await PrefectEvent.resolve_branch_ids(
+                names=branches,
+                current_branch_ids=await _current_branch_ids(db=graphql_context.db, names=branches),
+            )
+            if not branch_ids:
+                return {"count": 0, "edges": []}
+
         event_filter = InfrahubEventFilter.from_filters(
             ids=ids,
-            branches=branches,
+            branch_ids=branch_ids,
             account__ids=account__ids,
             has_children=has_children,
             event_type=event_type,
