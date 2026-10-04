@@ -173,7 +173,6 @@ async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:
     ]
 
 
-@pytest.mark.usefixtures("prefect_client_without_retries")
 async def test_an_unreachable_task_manager_prints_the_error_and_fails() -> None:
     """A task manager that cannot be reached prints the transport error on one line and exits with code 1."""
     task_manager = ScriptedTaskManager(responses=[unreachable()])
