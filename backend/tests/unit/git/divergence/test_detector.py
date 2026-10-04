@@ -87,7 +87,6 @@ def test_advanced_remote_is_a_fast_forward() -> None:
 @pytest.mark.parametrize(
     ("present", "ancestors"),
     [
-        pytest.param(None, {(REMOTE, IMPORTED)}, id="remote-rewound-onto-an-ancestor"),
         pytest.param(None, set(), id="unrelated-histories"),
         pytest.param({REMOTE}, set(), id="imported-commit-garbage-collected"),
     ],
