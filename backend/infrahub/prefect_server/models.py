@@ -39,7 +39,10 @@ class InfrahubEventfilterInput(BaseModel):
         default=None,
         gt=0,
         le=MAXIMUM_RETENTION_SECONDS,
-        description="Widest time window read back from the end of the filter, by default the task manager's event retention",
+        description=(
+            "Time window read back from the end of the filter when it sets no start; "
+            "the task manager's event retention by default"
+        ),
     )
 
     @property
