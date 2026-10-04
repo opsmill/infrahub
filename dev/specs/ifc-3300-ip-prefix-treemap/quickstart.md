@@ -17,9 +17,9 @@ Runnable checks that prove the feature end to end. Implementation detail lives i
 cd frontend/app && pnpm test -- src/entities/ipam/ip-prefixes/domain
 ```
 
-Expected: tests for `parse-prefix-length`, `build-tree-map-tiles` and `layout-tree-map` pass,
-including the IPv6 cases (a /48 and a /64 inside a /32, a /128 inside a /32) and the capped
-remainder case.
+Expected: tests for `prefix-size`, `build-tree-map-tiles` and `layout-tree-map` pass, including
+the IPv6 cases (a /48 and a /64 inside a /32, a /128 inside a /32), the not-loaded range when the
+map is capped, and the adjacency check that every pair of consecutive blocks shares an edge.
 
 ## 2. Component tests for the tiles and the empty state
 
@@ -59,8 +59,8 @@ Expected, against the `data_ipam_pools` slice:
 Open the Tree Map tab on `10.0.0.0/8` and on `2001:db8::/100` in both light and dark themes.
 Confirm:
 
-- Free tiles read as empty (dashed border, muted background) and allocated tiles carry a visible
-  inner fill.
+- Free tiles read as empty (diagonal hatch, dashed border) and allocated tiles carry a visible
+  inner fill; neighbouring free blocks form one contiguous region rather than scattered tiles.
 - No fixed palette colours: toggle the theme and check every tile re-colours.
 - Labels disappear on tiles too small to hold them; the tooltip still shows the CIDR.
 

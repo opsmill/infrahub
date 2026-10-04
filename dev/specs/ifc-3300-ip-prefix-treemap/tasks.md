@@ -1,8 +1,15 @@
 # Tasks: IP Prefix Tree Map
 
-**Input**: Design documents from `/specs/005-ip-prefix-treemap/`
+**Input**: Design documents from `dev/specs/ifc-3300-ip-prefix-treemap/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/graphql-query.md, contracts/ui-contract.md, quickstart.md
+
+**Rework note (2026-10-04)**: the task descriptions below record the first implementation as it was
+executed. After review, T003, T004, T012, T013 and T015 were superseded: CIDR parsing became
+`prefix-size.ts` fed by the API's `prefixlen` and `version`, the squarified layout became an
+address-ordered Hilbert-curve layout, aggregation moved to one tile per cell, the remainder tile
+became the not-loaded range, and the use-case now fetches the parent itself. See
+opsmill-implement-report.md, Erratum 6; the design documents already reflect the current state.
 
 **Tests**: Included. The constitution's Test Discipline principle requires unit, component and E2E coverage written alongside implementation, and the spec's success criteria are verified by them.
 
@@ -162,7 +169,7 @@
 
 - [X] T036 [P] Add a "Tree Map" subsection under "## Utilization" in `docs/docs/ipam/overview.mdx` (load the `opsmill-docs:writing-infrahub-docs` skill first): two short paragraphs on what allocated, free and aggregated tiles mean, that the map shows one level and drills down on click, that free tiles open the create form, the address-type behaviour, and the 1,000-child cap. Run `uv run invoke docs.lint`.
 - [X] T037 [P] Create the changelog fragment with the `creating-changelog-entries` skill (`towncrier create`, type `added`) describing the new Tree Map tab on IP prefix pages, in `changelog/`.
-- [X] T038 (measured 2026-10-04: 1.86 s warm median for 256 children, passes) Run the SC-001 measurement from quickstart.md step 5 against a /16 with 256 direct /24 children on a branch and record the median in the table in `specs/005-ip-prefix-treemap/quickstart.md`. If it exceeds 3 s, open a separate issue for a batched utilisation lookup and link it from the table; do not change the backend in this feature.
+- [X] T038 (measured 2026-10-04: 1.86 s warm median for 256 children, passes) Run the SC-001 measurement from quickstart.md step 5 against a /16 with 256 direct /24 children on a branch and record the median in the table in `dev/specs/ifc-3300-ip-prefix-treemap/quickstart.md`. If it exceeds 3 s, open a separate issue for a batched utilisation lookup and link it from the table; do not change the backend in this feature.
 - [X] T039 Run the manual theme check from quickstart.md step 4 on 10.0.0.0/8 and 2001:db8::/100 in light and dark; fix any tile that uses a non-token colour in `FE/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile.tsx`.
 - [X] T040 Run the frontend gates from `frontend/app/AGENTS.md` (`pnpm exec biome ci .` from `frontend/`, `pnpm knip`, `pnpm exec betterer ci`, `pnpm test` from `frontend/app/`), `uv run ruff check tests/e2e && uv run ruff format tests/e2e`, then `/pre-ci`. Fix anything red; `knip` must not report the extracted sheet or any new export as unused.
 

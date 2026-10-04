@@ -77,7 +77,7 @@ The engineer opens the Tree Map tab on a prefix whose members are IP addresses r
 
 ### User Story 5 - Read a very large or very fragmented prefix (Priority: P3)
 
-The engineer opens the Tree Map tab on a prefix with hundreds or thousands of direct children, or on a prefix where some children are far too small to see (a single /32 inside a /8, or a /64 inside an IPv6 /32). The map stays legible: it renders at most a fixed number of children in address order and says so, shows the rest of the space as one tile, and it collapses tiles that would be too small to see into one "N smaller prefixes" tile and one "N smaller free blocks" tile; the smaller-prefixes tile leads the user to the Children tab and the free one lists its blocks on hover.
+The engineer opens the Tree Map tab on a prefix with hundreds or thousands of direct children, or on a prefix where some children are far too small to see (a single /32 inside a /8, or a /64 inside an IPv6 /32). The map stays legible: it renders at most a fixed number of children in address order and says so, marks the space after the last loaded block as not loaded, and it collapses tiles that would be too small to see into "N smaller prefixes" and "N smaller free blocks" tiles, one per legible cell of the parent so each group sits where its members are; the smaller-prefixes tile leads the user to the Children tab and the free one lists its blocks on hover.
 
 **Why this priority**: Real supernets are messy. Without a cap and an aggregation rule, the map either becomes unreadable or becomes slow, and tiny allocations become unclickable slivers that someone still needs to find.
 
@@ -85,9 +85,9 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 
 **Acceptance Scenarios**:
 
-1. **Given** a prefix with 1,200 direct children, **When** the user opens its Tree Map tab, **Then** the map shows the first 1,000 children in address order, a notice reading "showing the first 1,000 of 1,200 children", and one tile covering the address space not shown that leads to the Children tab, and the page stays responsive.
-2. **Given** 10.0.0.0/8 contains three /16 children and one /32 child, **When** the map renders, **Then** the /32 does not appear as its own tile, a tile labelled "1 smaller prefix" appears instead, hovering it lists 10.x.y.z/32, and clicking it opens the Children tab for 10.0.0.0/8.
-3. **Given** a prefix whose free space includes blocks below the legible minimum, **When** the map renders, **Then** those blocks are collapsed into one "N smaller free blocks" tile with a hover list.
+1. **Given** a prefix with 1,200 direct children, **When** the user opens its Tree Map tab, **Then** the map shows the first 1,000 children in address order, a notice reading "showing the first 1,000 of 1,200 children", and the address space after the last loaded block marked as not loaded, drawn unlike both allocated and free tiles and leading to the Children tab, and the page stays responsive.
+2. **Given** 10.0.0.0/8 contains three /16 children and one /32 child, **When** the map renders, **Then** the /32 does not appear as its own tile, a tile labelled with the /20 cell that contains it and "1 smaller prefix" appears in that cell's place instead, hovering it lists 10.x.y.z/32, and clicking it opens the Children tab for 10.0.0.0/8.
+3. **Given** a prefix whose free space includes blocks below the legible minimum, **When** the map renders, **Then** those blocks are collapsed, cell by cell, into "N smaller free blocks" tiles with a hover list each.
 4. **Given** an IPv6 prefix 2001:db8::/32 containing a /48 and a /64, **When** the map renders, **Then** the /48 tile covers 1/65,536 of the area or is aggregated per the legibility rule, the /64 is aggregated, and the free-block areas are exact.
 
 ---
@@ -108,7 +108,8 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 
 - **FR-001**: Users MUST be able to open a "Tree Map" tab from the detail page of any IP prefix, alongside the existing Details, IP Addresses, Resource Pool and Children tabs.
 - **FR-002**: System MUST render each direct child prefix and each free block of the current prefix as a tile whose area is proportional to the share of the parent's address space it covers, computed from prefix lengths so that the result is exact for IPv4 and for IPv6 across prefix lengths 0 to 128.
-- **FR-003**: System MUST ensure the areas of all allocated and free tiles, including aggregated tiles, sum to the parent's full address space.
+- **FR-002a**: System MUST place tiles by network address so that blocks adjacent in address space share an edge on the map and a run of consecutive free blocks reads as one region.
+- **FR-003**: System MUST ensure the areas of all allocated, free, aggregated and not-loaded tiles sum to the parent's full address space.
 - **FR-004**: System MUST draw allocated tiles in an accent style with an inner fill proportional to that child's own utilisation, draw prefixes flagged as pools in a second, distinct colour family with their own legend entry, and draw free tiles in a visibly empty style (hatched) distinct from both.
 - **FR-004a**: System MUST show an allocated tile's description on the tile when there is room, and otherwise mark that a description exists so the user knows to hover for it.
 - **FR-005**: System MUST show CIDR, description, member type, utilisation and member count when the user hovers an allocated tile, and CIDR when the user hovers a free tile.
@@ -117,8 +118,8 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 - **FR-008**: Users MUST be able to click a free tile to open the existing Create IP Prefix form prefilled with the free block's CIDR, subject to the same create permission and disabled-state explanation used by the Children tab's available rows.
 - **FR-009**: System MUST refresh the map after a successful create from a free tile so the new child appears as an allocated tile without a page reload.
 - **FR-010**: System MUST render an empty state for prefixes whose member type is "address" and that have no child prefixes, showing the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab of the same prefix. An address-type prefix that does hold child prefixes gets the map.
-- **FR-011**: System MUST load at most 1,000 direct children per map in address order, render them, and whenever more exist display a notice of the form "showing the first 1,000 of N children" together with one aggregated tile covering the address space not shown that leads to the Children tab.
-- **FR-012**: System MUST collapse allocated tiles below a legible minimum area into one "N smaller prefixes" tile and free tiles below the same minimum into one "N smaller free blocks" tile, each listing its members on hover; clicking the smaller-prefixes tile MUST open the Children tab of the current prefix.
+- **FR-011**: System MUST load at most 1,000 direct children per map in address order, render them, and whenever more exist display a notice of the form "showing the first 1,000 of N children" and mark the address space after the last loaded block as not loaded, drawn distinctly from allocated and free tiles, never as either, and leading to the Children tab.
+- **FR-012**: System MUST collapse allocated tiles below a legible minimum area into "N smaller prefixes" tiles and free tiles below the same minimum into "N smaller free blocks" tiles, one per legible cell of the parent and placed where that cell sits, each listing its members on hover; clicking a smaller-prefixes tile MUST open the Children tab of the current prefix.
 - **FR-013**: System MUST render the map for the branch and IP namespace currently selected in the page, and re-render when either changes.
 - **FR-014**: System MUST keep an allocated tile visible, sized and labelled when that child's utilisation cannot be determined, showing the fill as unknown rather than as zero.
 
@@ -146,7 +147,8 @@ No new entities are introduced.
 - The existing per-prefix availability computation defines what a free block is; the map displays those blocks and does not recompute availability on its own.
 - The utilisation shown on a child tile is that child's own utilisation as the platform already defines it, which depends on the child's member type and pool flag.
 - The 1,000-child cap is an order-of-magnitude guess, not a measured threshold, and is expected to be a single adjustable constant.
-- The cap keeps children in address order rather than by size, because free space can only be computed correctly within a contiguous address window. The space not covered by the loaded children and free blocks is shown as one aggregated tile so that tile areas still sum to the parent.
+- The cap keeps children in address order rather than by size, because free space can only be computed correctly within a contiguous address window. The space after the last loaded block is marked as not loaded so that tile areas still sum to the parent without claiming that space is free or allocated.
+- Each prefix's length and address family come from the API's prefix attribute rather than from parsing the CIDR string; only the network address is parsed, and a prefix the client cannot place is dropped from the map and from the child count.
 - The legible minimum tile area is a presentation threshold chosen during implementation; the requirement is that tiles below it are aggregated, not the exact pixel value.
 - SC-001 is the criterion most at risk, because per-child utilisation is computed on read today. The feature ships with no backend change; if SC-001 is missed on the demo stack, a batched utilisation lookup is raised as a separate, explicitly gated change rather than built pre-emptively.
 - The "N smaller prefixes" tile links to the unfiltered Children tab of the current prefix; a filtered link is a possible later refinement.
@@ -161,4 +163,5 @@ No new entities are introduced.
 - Rendering individual IP addresses as tiles.
 - Zoom, pan, a size-metric toggle or image export.
 - Any backend change, including a batched or subtree utilisation lookup.
-- Changes to the Children tab. (The IP Address Manager tree sidebar did change on this branch: it now follows in-app navigation, a pre-existing gap that drill-down made constant.)
+- Changes to the Children tab.
+- Changes to the IP Address Manager tree sidebar. (It did not follow in-app navigation, a pre-existing gap that drill-down made constant; that fix is a separate change, #10866.)

@@ -1,6 +1,6 @@
 # Implementation Report: IP Prefix Tree Map
 
-**Feature**: IP Prefix Tree Map (`specs/005-ip-prefix-treemap`)
+**Feature**: IP Prefix Tree Map (`dev/specs/ifc-3300-ip-prefix-treemap`)
 **Branch**: `pmc/ip-prefix-treemap-viz-5dfe40f9`
 **Base commit** (spec docs committed, before any code): `596f09143`
 **Head commit** (last fix, before this report): `56434eeb3`
@@ -225,3 +225,35 @@ the selector helper, and corrected one expectation (on `main` the free space bel
 aggregates to 10.4.0.0/14, so no `10.5.0.0/16 available` tile exists). After that fix the module
 passed 9/9 in CI on three consecutive runs, and every other non-skipped job was green. The SC-001
 measurement is recorded in quickstart.md.
+
+## Erratum 6 (2026-10-04, rework after review)
+
+A review of the first implementation asked for five changes, all made on the branch before the PR
+left draft:
+
+- **Layout**: the squarified algorithm was replaced by an address-ordered layout along a Hilbert
+  curve (research R3). Blocks consecutive in address space now share an edge, so a run of free
+  blocks reads as one region. Binary partition and Z-order were considered and rejected because
+  consecutive blocks separate at alternate levels. Tiles are no longer sorted by size.
+- **Aggregation and the cap**: small blocks aggregate per `/(parent + 12)` cell and the aggregate
+  sits where its cell sits (research R5, `TREE_MAP_CELL_DEPTH`). The "remainder" tile is gone; when
+  the map is capped, the range from the end of the last fetched block to the end of the parent is
+  decomposed into aligned CIDR blocks drawn as **Not loaded** with a cross-hatch, never as free or
+  allocated, with a legend entry and a notice that says so.
+- **Prefix size from the API**: `prefixlen` and `version` are selected on every prefix (and on the
+  parent through an aliased root field in the same document); only the network address is parsed,
+  into a `BigInt`. `parse-prefix-length.ts` and `get-tree-map-parent.ts` were deleted and
+  `prefix-size.ts` added. `num_addresses` is not used because it is a 32-bit `Int`.
+- **Tokens**: `--accent-fill` and the `--pool` family moved out of `@infrahub/ui`'s `theme.css`
+  into the app stylesheet `frontend/app/src/app/styles/index.css`, alongside the hatch utilities.
+  The utility classes resolve exactly as before; nothing in the shared package changed.
+- **Sidebar fix split out**: the IPAM tree change recorded in Erratum 3 left this branch and is
+  its own change (#10866, PR #10871), with its changelog fragment and a new E2E test that
+  navigates from the Children table. The drill-down E2E test here no longer asserts the sidebar.
+
+The spec (FR-002a, FR-011, FR-012, new assumption, out of scope), plan, research, data model,
+contracts and quickstart were updated to the current design in the same commit; the task
+descriptions above keep their original wording and carry a rework note at the top. The docs guide
+and its screenshot were regenerated for the new layout. Gates after the rework: 79 IPAM unit and
+component tests pass, the full frontend suite passes (220 files, 1,678 tests), and Biome, knip,
+betterer, ruff, ty and markdownlint are clean.

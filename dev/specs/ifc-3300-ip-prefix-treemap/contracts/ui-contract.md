@@ -22,8 +22,8 @@ tests will use, so they are part of the contract.
 | Element | Role and name | Notes |
 |---------|---------------|-------|
 | Map | `role="group"`, `aria-label="Tree map of <parent CIDR>"` | `data-testid="ip-prefix-tree-map"`, fixed 2:1 aspect ratio, full content width |
-| Cap notice | `role="status"` | text "Showing the first 1,000 of N children", present only when capped |
-| Legend | plain text | "Allocated", "Pool", "Free", "Smaller than 1/4096 of the prefix" |
+| Cap notice | `role="status"` | text "Showing the first 1,000 of N children; the space after the last loaded block is marked as not loaded", present only when capped |
+| Legend | plain text | "Allocated", "Pool", "Free", "Smaller than 1/4096 of the prefix", plus "Not loaded" only when capped |
 
 ## Tiles
 
@@ -31,12 +31,14 @@ tests will use, so they are part of the contract.
 |-----------|---------|-----------------|--------|--------|
 | allocated | `<a>` (react-router `Link`) | `"<CIDR>, <N>% utilized"` or `"<CIDR>, utilization unknown"`, with `, pool` appended for a pool | accent surface with a solid accent border, inner fill width = utilisation %; a pool (`is_pool`) uses the pool surface, border and fill instead and carries `data-tile-pool="true"` | navigate to the child's `tree-map` route, query params preserved |
 | free | `<button>` (`@infrahub/ui` `Button`) | `"<CIDR> available"` | content surface with diagonal hatching, dashed border | open the create sheet prefilled with the CIDR; disabled with the permission tooltip when `permission.create.isAllowed` is false |
-| aggregate-allocated | `<a>` | `"<N> smaller prefixes"` | muted surface | navigate to the parent's `children` route |
-| aggregate-free | `<div role="img">` | `"<N> smaller free blocks"` | muted surface, dashed border | none |
-| remainder | `<a>` | `"<N> more children not shown"` | muted surface | navigate to the parent's `children` route |
+| aggregate-allocated | `<a>` | `"<cell CIDR>: <N> smaller prefixes"` | muted surface, solid border, placed at its cell | navigate to the parent's `children` route |
+| aggregate-free | `<div role="img">` | `"<cell CIDR>: <N> smaller free blocks"` | muted surface, dashed border, placed at its cell | none |
+| not-loaded | `<a>` | `"<CIDR> not loaded"` | cross-hatched muted surface, one tile per aligned block of the not-loaded range | navigate to the parent's `children` route |
 
 Common:
 
+- Tiles are placed by network address along a Hilbert curve, so blocks consecutive in address
+  space share an edge.
 - `data-testid="ip-prefix-tree-map-tile"` and `data-tile-kind="<kind>"` on every tile.
 - Visible label is the CIDR or the aggregate label, hidden when the tile is too small; the
   accessible name never depends on the visible label.
@@ -46,8 +48,10 @@ Common:
   to the tooltip; below 5rem the whole label, marker included, is hidden.
 - The accessible name of a pool tile ends in `, pool`.
 - Hover and focus show the `@infrahub/ui` `Tooltip`. Allocated: CIDR, description, member type,
-  utilisation, member count. Free: CIDR. Aggregates: the list of member CIDRs, truncated after 20
-  with "and N more".
+  utilisation, member count. Free: CIDR. Aggregates: the list of member CIDRs (free members marked
+  "(free)" in an allocated aggregate), truncated after 20 with "and N more". Not loaded: "Not
+  loaded: N more children of <parent CIDR> plus any free space from <CIDR> onwards. Open the
+  Children tab to see them all."
 
 ## Empty state (address-type parent with no child prefixes)
 
