@@ -48,6 +48,20 @@ class TestIpamTree:
         await expect(ipam_tree.get_by_text("10.1.0.12/31")).to_be_visible()
         await expect(ipam_tree.get_by_role("row", name="10.1.0.12/31")).to_contain_class("bg-selected")
 
+    async def test_tree_follows_in_app_navigation(self, page: Page, data_sites: SitesHandle) -> None:
+        await page.goto("/ipam")
+        ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
+        await ipam_tree.get_by_text("10.0.0.0/8").click()
+        await expect(page.get_by_role("heading", name="10.0.0.0/8")).to_be_visible()
+
+        # navigating from the Children table, not the tree, must still move the tree's selection
+        await page.get_by_role("link", name="Children").click()
+        await page.get_by_test_id("identifier-cell").get_by_role("link", name="10.1.0.0/16").click()
+        await expect(page.get_by_role("heading", name="10.1.0.0/16")).to_be_visible()
+
+        await expect(ipam_tree.get_by_role("row", name="10.1.0.0/16")).to_contain_class("bg-selected")
+        await expect(ipam_tree.get_by_text("10.1.0.0/16")).to_be_visible()
+
     async def test_go_to_prefix_summary_on_click(self, page: Page, data_sites: SitesHandle) -> None:
         await page.goto("/ipam")
         await page.get_by_label("IPAM tree").get_by_text("10.0.0.0/8").click()
