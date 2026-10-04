@@ -7,13 +7,15 @@ Infrahub's routes on the task manager (`/api/infrahub/...` on the task-manager s
 Request:
 
 ```json
-{"rewrite": false}
+{"rewrite": "never"}
 ```
+
+`rewrite` is `never` (default), `if_freed` or `always`.
 
 Response `202`:
 
 ```json
-{"id": "<job id>", "state": "running", "rewrite": false, "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "not_rewritten": [], "error": null}
+{"id": "<job id>", "state": "running", "rewrite": "never", "rewritten": false, "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "not_rewritten": [], "error": null}
 ```
 
 - Starts a cleanup job in the task manager, or returns the running job if this replica runs one.
@@ -25,7 +27,8 @@ Response `202`:
 
 Response `200`: the job, same shape as above, with `state` `running`, `completed` or `failed`. `404` `{"detail": "the cleanup is unknown to this task manager"}` when the job is unknown (for example after a task-manager restart).
 
-- `rewrite` says whether the tables are rewritten: `false` from the start on SQLite, and `false` at the end when the deletes freed half of the runs or less. `not_rewritten` lists the tables a rewrite skipped.
+- `rewrite` is the mode the job was started with. On Postgres the tables are rewritten after the deletes with `always`, never with `never`, and with `if_freed` only when the runs left are fewer than half of the runs the tables held when the job started, which counts the deletes of Prefect's own cleanup during the job too. Nothing is rewritten on SQLite.
+- `rewritten` says whether the tables were rewritten; `false` until the rewrite ran. `not_rewritten` lists the tables a rewrite skipped.
 - `size_before` (before the deletes) and `size_after` (at the end) are `null` on SQLite.
 - `current_day` is the day of end times being deleted, and once the deletes end the last such day; `null` before the first.
 - `error` names the exception type and points to the task manager log, which holds the details.
