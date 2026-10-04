@@ -171,7 +171,7 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         )
 
 
-@flow(name="branch-rebase", flow_run_name="Rebase branch {branch}")
+@flow(name="branch-rebase", flow_run_name="Rebase branch {branch}", persist_result=True)
 async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool = True) -> None:  # noqa: PLR0915
     workflow = get_workflow()
     database = await get_database()
@@ -448,7 +448,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             )
 
 
-@flow(name="branch-merge", flow_run_name="Merge branch {branch} into main")
+@flow(name="branch-merge", flow_run_name="Merge branch {branch} into main", persist_result=True)
 async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id: str | None = None) -> None:
     log = get_run_logger()
     await add_tags(branches=[branch, registry.default_branch])
@@ -492,7 +492,7 @@ async def _do_merge_branch(
     await orchestrator.merge(context=context, proposed_change_id=proposed_change_id)
 
 
-@flow(name="branch-delete", flow_run_name="Delete branch {branch}")
+@flow(name="branch-delete", flow_run_name="Delete branch {branch}", persist_result=True)
 async def delete_branch(
     branch: str, context: InfrahubContext, delete_from_git: bool = False, proposed_change_id: str | None = None
 ) -> None:
@@ -549,7 +549,7 @@ async def validate_branch(branch: str) -> State:
         return Completed(message="branch is valid")
 
 
-@flow(name="create-branch", flow_run_name="Create branch {model.name}")
+@flow(name="create-branch", flow_run_name="Create branch {model.name}", persist_result=True)
 async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> None:
     await add_tags(branches=[model.name])
 

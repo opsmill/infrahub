@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 @flow(
     name="generator-run",
     flow_run_name="Run generator {model.generator_definition.definition_name}",
+    persist_result=True,
 )
 async def run_generator(model: RequestGeneratorRun) -> None:
     client = get_client()
@@ -195,6 +196,7 @@ async def run_generator_definition(
 @flow(
     name="request-generator-definition-run",
     flow_run_name="Execute generator {model.generator_definition.definition_name}",
+    persist_result=True,
 )
 async def request_generator_definition_run(
     model: RequestGeneratorDefinitionRun, context: InfrahubContext

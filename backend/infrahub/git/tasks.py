@@ -1094,6 +1094,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
 @flow(
     name="git-repository-check-merge-conflict",
     flow_run_name="Check for merge conflicts between {model.source_branch} and {model.target_branch}",
+    persist_result=True,
 )
 async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> ValidatorConclusion:
     """Runs a check to see if there are merge conflicts between two branches."""
@@ -1178,7 +1179,9 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
     return validator_conclusion
 
 
-@flow(name="git-repository-run-user-check", flow_run_name="Execute user defined Check '{model.name}'")
+@flow(
+    name="git-repository-run-user-check", flow_run_name="Execute user defined Check '{model.name}'", persist_result=True
+)
 async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change])
 

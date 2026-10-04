@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Awaitable
 
 from typing_extensions import TYPE_CHECKING
 
@@ -12,6 +12,8 @@ from . import InfrahubWorkflow, Return
 from .priority import prepare_dispatch
 
 if TYPE_CHECKING:
+    from prefect import Flow
+
     from infrahub.context import InfrahubContext
     from infrahub.events.models import EventContext
     from infrahub.workflows.constants import WorkflowPriority
@@ -27,14 +29,13 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         tags: list[str] | None = None,  # noqa: ARG002
         priority: WorkflowPriority | None = None,
     ) -> Any:
-        flow_func = workflow.load_function()
-        parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters
-        # Stamp the resolved priority into the dispatched context; local execution has no queues to route to.
-        dispatch_context, _ = prepare_dispatch(workflow=workflow, context=context, priority=priority)
-        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
-
-        parameters = flow_func.validate_parameters(parameters=parameters)
-        return await flow_func(**parameters)
+        return await self._run(
+            flow_func=workflow.load_awaited_function(),
+            workflow=workflow,
+            context=context,
+            parameters=parameters,
+            priority=priority,
+        )
 
     async def submit_workflow(
         self,
@@ -44,5 +45,27 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         tags: list[str] | None = None,  # noqa: ARG002
         priority: WorkflowPriority | None = None,
     ) -> WorkflowInfo:
-        await self.execute_workflow(workflow=workflow, context=context, parameters=parameters, priority=priority)
+        await self._run(
+            flow_func=workflow.load_function(),
+            workflow=workflow,
+            context=context,
+            parameters=parameters,
+            priority=priority,
+        )
         return WorkflowInfo(id=uuid.uuid4())
+
+    @staticmethod
+    async def _run(
+        flow_func: Flow[Any, Awaitable],
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None,
+        parameters: dict[str, Any] | None,
+        priority: WorkflowPriority | None,
+    ) -> Any:
+        parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters
+        # Stamp the resolved priority into the dispatched context; local execution has no queues to route to.
+        dispatch_context, _ = prepare_dispatch(workflow=workflow, context=context, priority=priority)
+        inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)
+
+        parameters = flow_func.validate_parameters(parameters=parameters)
+        return await flow_func(**parameters)

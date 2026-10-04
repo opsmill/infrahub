@@ -103,6 +103,23 @@ class WorkflowDefinition(BaseModel):
         module = importlib.import_module(self.module)
         return getattr(module, self.function)
 
+    def load_awaited_function(self) -> Flow[Any, Awaitable]:
+        """Load the flow of a workflow whose caller waits for its result.
+
+        Results are persisted only by flows that opt in, and a caller in another process can read
+        back only a persisted result, including the exception of a failed run.
+
+        Raises:
+            ValueError: if the flow does not set `persist_result=True`.
+
+        """
+        flow = self.load_function()
+        if flow.persist_result is not True:
+            raise ValueError(
+                f"Workflow {self.name!r} is executed and awaited, but its flow has persist_result={flow.persist_result}"
+            )
+        return flow
+
     def get_parameters(self) -> dict[str, WorkflowParameter]:
         fn = self.load_function()
         signature = inspect.signature(fn.fn)

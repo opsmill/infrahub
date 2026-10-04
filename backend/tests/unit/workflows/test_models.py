@@ -1,4 +1,7 @@
-from infrahub.workflows.catalogue import BRANCH_REBASE
+import pytest
+
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import BRANCH_REBASE, GRAPHQL_QUERY_GROUP_UPDATE
 from infrahub.workflows.constants import WorkflowPriority
 from infrahub.workflows.models import WorkflowDefinition, WorkflowParameter
 
@@ -43,3 +46,19 @@ def test_to_deployment_cron_carries_schedules_and_work_queue_name() -> None:
     assert len(payload["schedules"]) == 1
     assert payload["schedules"][0].schedule.cron == "0 3 * * *"
     assert payload["work_queue_name"] == "low"
+
+
+def test_load_awaited_function_returns_a_flow_that_persists_its_result() -> None:
+    flow = BRANCH_REBASE.load_awaited_function()
+
+    assert flow.persist_result is True
+
+
+def test_load_awaited_function_rejects_a_flow_that_does_not_persist_its_result() -> None:
+    with pytest.raises(ValueError, match="graphql-query-group-update"):
+        GRAPHQL_QUERY_GROUP_UPDATE.load_awaited_function()
+
+
+async def test_local_execution_rejects_awaiting_a_flow_that_does_not_persist_its_result() -> None:
+    with pytest.raises(ValueError, match="graphql-query-group-update"):
+        await WorkflowLocalExecution().execute_workflow(workflow=GRAPHQL_QUERY_GROUP_UPDATE, parameters={})

@@ -9,7 +9,7 @@ from infrahub.workers.dependencies import get_client
 from infrahub.workflows.utils import add_tags
 
 
-@flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation")
+@flow(name="git-repository-check-artifact-create", flow_run_name="Check artifact creation", persist_result=True)
 async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.target_id])
 

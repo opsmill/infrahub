@@ -9,12 +9,14 @@ parameters. What Prefect does with each of those values is explained in
 ## Return only what the caller reads back
 
 Return nothing, or identifiers, and let the caller read the data back through the repository layer.
-Prefect walks and persists every flow return value, and only the result of a flow run through
-`execute_workflow` is ever read back; those flows return small values by design.
+Prefect walks every flow return value. Set `persist_result=True` only on a flow run through
+`execute_workflow`, whose caller reads the result back from another process — `execute_workflow`
+refuses a flow that does not persist — and keep those return values small.
 
 When a flow must hand a large object tree to an in-process caller, return it inside `quote()` and
-set `persist_result=False` on the decorator. `quote()` stops the walk and `persist_result=False`
-stops the persistence, so both are needed. `quote` derives from `tuple[T]`, which mypy types as a
+set `persist_result=False` on the decorator. `quote()` stops the walk, and `persist_result=False`
+records that the value must never reach the result store, which also keeps `execute_workflow` from
+awaiting the flow. `quote` derives from `tuple[T]`, which mypy types as a
 plain tuple, so annotate the flow with a bare `quote` and restore the payload type in one typed
 wrapper with a positive `isinstance` check that returns the value, never with `cast()`.
 

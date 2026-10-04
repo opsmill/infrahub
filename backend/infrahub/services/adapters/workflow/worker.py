@@ -76,7 +76,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         tags: list[str] | None = None,
         priority: WorkflowPriority | None = None,
     ) -> Any:
-        flow_func = workflow.load_function()
+        flow_func = workflow.load_awaited_function()
         parameters = dict(parameters) if parameters is not None else {}
         dispatch_context, work_queue_name = prepare_dispatch(workflow=workflow, context=context, priority=priority)
         inject_context_parameter(func=flow_func, parameters=parameters, context=dispatch_context)

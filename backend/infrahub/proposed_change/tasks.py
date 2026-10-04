@@ -240,6 +240,7 @@ async def _merge_branch_for_proposed_change(
     # on_failure=[proposed_change_transition_open],  # type: ignore
     # on_crashed=[proposed_change_transition_open],  # type: ignore
     # on_cancellation=[proposed_change_transition_open],  # type: ignore
+    persist_result=True,
 )
 async def merge_proposed_change(
     proposed_change_id: str,
@@ -897,6 +898,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 @flow(
     name="run-generator-as-check",
     flow_run_name="Execute Generator {model.generator_definition.definition_name} for {model.target_name}",
+    persist_result=True,
 )
 async def run_generator_as_check(model: RunGeneratorAsCheckModel, context: InfrahubContext) -> ValidatorConclusion:
     await add_tags(branches=[model.branch_name], nodes=[model.proposed_change], db_change=True)

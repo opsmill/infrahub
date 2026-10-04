@@ -14,7 +14,7 @@ from infrahub.workflows.catalogue import BRANCH_MERGE
 from infrahub.workflows.utils import add_tags
 
 
-@flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation")
+@flow(name="merge-branch-mutation", flow_run_name="Merge branch graphQL mutation", persist_result=True)
 async def merge_branch_mutation(branch: str, context: InfrahubContext) -> None:
     await add_tags(branches=[branch])
 
