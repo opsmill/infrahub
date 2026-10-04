@@ -643,7 +643,8 @@ async def _submit_profile_peers_refresh(
     await submit_profile_refresh(
         workflow=graphql_context.active_service.workflow,
         branch_name=graphql_context.branch.name,
-        node_ids=peer_ids,
+        # A request can name the same peer more than once.
+        node_ids=list(dict.fromkeys(peer_ids)),
         context=graphql_context.to_event_context(),
         profile_id=source.get_id(),
     )
