@@ -13,11 +13,13 @@ Request:
 Response `202`:
 
 ```json
-{"id": "<job id>", "state": "running", "rewrite": false, "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "error": null}
+{"id": "<job id>", "state": "running", "rewrite": false, "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "not_rewritten": [], "error": null}
 ```
 
-- Starts a cleanup job in the task manager, or returns the running job if one exists.
-- The cutoff is now minus the task history retention, read from the task manager's own configuration.
+- Starts a cleanup job in the task manager, or returns the running job if this replica runs one.
+- Response `409` `{"detail": "a cleanup is running elsewhere"}` when another replica holds the cleanup lock.
+- Inputs are `rewrite` and an optional `days_to_keep` (integer ≥ 1, for the CLI's `--days-to-keep`). The cutoff is now minus `days_to_keep`, or minus the task history retention read from the task manager's own configuration; a timestamp is never taken from the request.
+- No authentication, like Infrahub's existing task-manager route and Prefect's own API; this is a recorded constitution deviation (see plan.md).
 
 ## `GET /infrahub/task-history/cleanup/{id}`
 
