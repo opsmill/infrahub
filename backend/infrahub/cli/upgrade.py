@@ -26,7 +26,7 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
-from infrahub.prefect_server.task_history import CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupRewrite
 from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (

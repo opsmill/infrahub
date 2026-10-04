@@ -13,7 +13,7 @@ from rich.filesize import decimal
 
 from infrahub import config
 from infrahub.core.migrations.shared import get_migration_console
-from infrahub.prefect_server.task_history import CleanupJob, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL, TaskHistoryCleanupError, run_task_history_cleanup
 from infrahub.task_manager.flow_run.prefect_client import PrefectClientAdapter

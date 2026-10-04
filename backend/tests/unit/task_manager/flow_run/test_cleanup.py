@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import subprocess  # noqa: S404 - only a fresh interpreter shows what an import loads
+import sys
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
@@ -7,7 +10,7 @@ import httpx
 import pytest
 from prefect.settings import PREFECT_CLIENT_MAX_RETRIES, temporary_settings
 
-from infrahub.prefect_server.task_history import CleanupJob, CleanupJobState, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 from infrahub.task_manager.flow_run.cleanup import TaskHistoryCleanupError, run_task_history_cleanup
 from tests.helpers.task_history_api import (
     CLEANUP_PATH,
@@ -60,6 +63,19 @@ async def _run(
             clock=clock,
             sleep=clock.sleep,
         )
+
+
+def test_importing_the_client_loads_neither_the_task_manager_database_nor_its_driver() -> None:
+    """The client imports without Prefect's server database layer or the Postgres driver the task manager uses."""
+    probe = (
+        "import json, sys; import infrahub.task_manager.flow_run.cleanup; "
+        "print(json.dumps({name: name in sys.modules for name in ('asyncpg', 'prefect.server.database')}))"
+    )
+
+    result = subprocess.run(args=[sys.executable, "-c", probe], capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {"asyncpg": False, "prefect.server.database": False}
 
 
 async def test_a_task_manager_without_the_cleanup_route_runs_no_cleanup() -> None:

@@ -55,9 +55,8 @@ from datetime import UTC, datetime, timedelta
 sys.path.insert(0, "/source/backend")
 from prefect.server.database import provide_database_interface
 from prefect.server.utilities.database import get_max_query_parameters
-from infrahub.prefect_server.task_history import (
-    CleanupJob, CleanupJobState, CleanupRewrite, PostgresTableRewriter, TaskHistoryCleanup, TaskHistoryTables
-)
+from infrahub.prefect_server.task_history import PostgresTableRewriter, TaskHistoryCleanup, TaskHistoryTables
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 from tests.helpers.task_manager_seed import seed_task_history
 
 async def main():
