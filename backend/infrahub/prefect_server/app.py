@@ -10,7 +10,7 @@ from prefect.server.api.server import create_app
 
 from . import events
 from .bootstrap import init_prefect
-from .retention import apply_prefect_retention_env
+from .retention import apply_prefect_retention_env, prefect_retention_env_in_effect
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ async def _init_prefect() -> None:
 
 
 def apply_infrahub_settings_to_prefect() -> None:
-    """Load Infrahub's configuration into Prefect's retention settings, exiting the process when it is invalid."""
+    """Load Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid."""
     # The original Prefect container used by some test suites has no infrahub package.
     from infrahub import config  # noqa: PLC0415
 
@@ -44,6 +44,8 @@ def apply_infrahub_settings_to_prefect() -> None:
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
     refresh_global_settings_context()
+    for name, value in prefect_retention_env_in_effect(environ=os.environ).items():
+        log.info(f"Task manager retention: {name}={value}")
 
 
 def create_prefect_app_with_infrahub_routes() -> FastAPI:
