@@ -63,7 +63,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
   - `domain/model/license.ts`: the license types, re-exported from the generated REST types;
   - `domain/rules/license-banner.ts`: pure functions for "should this user see the banner" and the banner text per state, with the release note when the server's `banner.shown_to_all_users_when_enforced` is true;
   - `ui/license-banner.tsx`: the banner, placed in `pages/app-layout.tsx` above `AppHeader`;
-  - `ui/hooks/use-license-banner-dismissal.ts`: dismissal in `sessionStorage`, keyed by license ID and state;
+  - `ui/hooks/use-license-banner-dismissal.ts`: dismissal in `sessionStorage`, keyed by license ID, state and failure reason;
   - `ui/license-about-rows.tsx`: rows rendered by `entities/config/ui/about-modal.tsx`.
 
   The app-info query in `entities/config/ui/queries/get-app-info.query.ts` gains `refetchInterval` of one hour and `refetchOnWindowFocus: "always"`. Super-admin comes from `entities/permission/ui/queries/has-global-permission.query.ts::useHasGlobalPermission(SUPER_ADMIN)`.
