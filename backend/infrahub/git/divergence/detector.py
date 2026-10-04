@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.git.divergence.models import RefClassification, RefDivergence
 
 if TYPE_CHECKING:
-    from infrahub.git.divergence.gateway import AncestryGateway
+    from infrahub.git.divergence.protocols import AncestryGateway
 
 
 class RemoteDivergenceDetector:
@@ -21,6 +21,7 @@ class RemoteDivergenceDetector:
 
     def classify(
         self,
+        *,
         branch_name: str,
         infrahub_branch_name: str,
         imported_commit: str | None,
