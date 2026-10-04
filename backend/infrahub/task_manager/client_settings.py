@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from prefect.settings import PREFECT_CLIENT_CSRF_SUPPORT_ENABLED, temporary_settings
+from prefect.settings import PREFECT_CLIENT_CSRF_SUPPORT_ENABLED, PREFECT_CLIENT_CUSTOM_HEADERS, temporary_settings
 
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
@@ -16,5 +16,13 @@ def prefect_client_defaults() -> AbstractContextManager[Settings]:
     A value configured explicitly takes precedence, such as `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` for a task
     manager that has CSRF protection enabled.
     """
-    # The task manager runs without CSRF protection, so fetching a token costs every new client one refused request.
-    return temporary_settings(set_defaults={PREFECT_CLIENT_CSRF_SUPPORT_ENABLED: False})
+    return temporary_settings(
+        set_defaults={
+            # The task manager runs without CSRF protection, so fetching a token costs every new client one refused
+            # request.
+            PREFECT_CLIENT_CSRF_SUPPORT_ENABLED: False,
+            # Infrahub reaches the task manager within the same installation, where compressing responses only costs
+            # CPU on both ends.
+            PREFECT_CLIENT_CUSTOM_HEADERS: {"Accept-Encoding": "identity"},
+        }
+    )

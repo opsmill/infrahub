@@ -75,6 +75,12 @@ refused request fetching a token, and the worker opens one for every flow run it
 configured explicitly still wins, so a task manager with CSRF protection enabled needs
 `PREFECT_CLIENT_CSRF_SUPPORT_ENABLED=true` on the Infrahub server and task workers.
 
+The defaults also ask the task manager for uncompressed responses (`Accept-Encoding: identity`). The
+task manager gzips every response larger than 500 bytes for a client that accepts it, which costs
+about 50 µs of its CPU per response and decompression in the client, for traffic that stays within
+the installation. Headers configured in `PREFECT_CLIENT_CUSTOM_HEADERS` are added to this one, and an
+`Accept-Encoding` configured there replaces it.
+
 ## Known gaps
 
 - A worker that dies between claiming a run and starting its flow leaves the run `Pending` for good.
