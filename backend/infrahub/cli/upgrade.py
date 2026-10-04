@@ -298,6 +298,11 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
     except Exception as exc:  # noqa: BLE001
         console.log(f"  Unable to check: {exc}")
 
+    console.log("\nTask history:")
+    console.log("  Finished task runs older than the task manager's task history retention will be deleted")
+    console.log("  The task history tables will be rewritten if the deletes free more than half of their runs")
+    console.log("  --no-task-history-cleanup leaves this out")
+
     console.log("\nBranches:")
     branches = await get_branches_needing_rebase(db=db)
     if branches:
