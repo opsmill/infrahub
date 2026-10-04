@@ -40,18 +40,29 @@ class CleanupJobState(StrEnum):
     FAILED = "failed"
 
 
+class CleanupRewrite(StrEnum):
+    """When a cleanup rewrites the task history tables after its deletes; nothing is rewritten on SQLite."""
+
+    NEVER = "never"
+    IF_FREED = "if_freed"
+    """When the deletes, including the task manager's own meanwhile, freed more than half of the runs."""
+    ALWAYS = "always"
+
+
 class CleanupRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    rewrite: bool = Field(default=False, description="Rewrite the task history tables after the deletes")
+    rewrite: CleanupRewrite = Field(
+        default=CleanupRewrite.NEVER, description="When to rewrite the task history tables after the deletes"
+    )
 
 
 class CleanupJob(BaseModel):
     id: str
     state: CleanupJobState
-    rewrite: bool = Field(
-        description="Whether the tables are rewritten after the deletes: never on SQLite, and only when the deletes "
-        "freed more than half of the runs the tables held"
+    rewrite: CleanupRewrite = Field(description="When the cleanup was asked to rewrite the tables after the deletes")
+    rewritten: bool = Field(
+        default=False, description="Whether the tables were rewritten, which never happens on SQLite"
     )
     cutoff: datetime = Field(description="Runs that ended before this time are deleted")
     deleted_runs: int = 0
@@ -250,32 +261,35 @@ def _start_of_day(moment: datetime) -> datetime:
 
 
 class TaskHistoryCleanup:
-    """Deletes the task history older than a cleanup's cutoff a day at a time, then rewrites tables it mostly emptied."""
+    """Deletes the task history older than a cleanup's cutoff a day at a time, then rewrites the tables as it asks."""
 
     def __init__(self, tables: TaskHistoryTables, rewriter: TableRewriter | None) -> None:
         self._tables = tables
         self._rewriter = rewriter
 
-    @property
-    def rewrites_tables(self) -> bool:
-        return self._rewriter is not None
-
     async def run(self, job: CleanupJob) -> None:
         """Run the cleanup, recording its progress and outcome on the job."""
         log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
         if self._rewriter is None:
-            job.rewrite = False
             await self._delete_old_runs(job=job)
             return
 
         job.size_before = await self._rewriter.total_size()
-        runs_before = await self._tables.count_runs() if job.rewrite else 0
+        runs_before = await self._tables.count_runs() if job.rewrite is CleanupRewrite.IF_FREED else 0
         await self._delete_old_runs(job=job)
-        if job.rewrite and await self._tables.count_runs() * 2 < runs_before:
+        if await self._rewrite_wanted(rewrite=job.rewrite, runs_before=runs_before):
             job.not_rewritten = await self._rewriter.rewrite()
-        else:
-            job.rewrite = False
+            job.rewritten = True
         job.size_after = await self._rewriter.total_size()
+
+    async def _rewrite_wanted(self, rewrite: CleanupRewrite, runs_before: int) -> bool:
+        match rewrite:
+            case CleanupRewrite.ALWAYS:
+                return True
+            case CleanupRewrite.IF_FREED:
+                return await self._tables.count_runs() * 2 < runs_before
+            case CleanupRewrite.NEVER:
+                return False
 
     async def _delete_old_runs(self, job: CleanupJob) -> None:
         # A deleted parent leaves its subflows top-level, and they may have ended on a day already passed.
@@ -420,7 +434,7 @@ async def start_cleanup(
     job = CleanupJob(
         id=uuid4().hex,
         state=CleanupJobState.RUNNING,
-        rewrite=body.rewrite and cleanup.rewrites_tables,
+        rewrite=body.rewrite,
         cutoff=datetime.now(UTC) - retention,
     )
     started = await jobs.start(job=job, lock=lock, cleanup=cleanup)

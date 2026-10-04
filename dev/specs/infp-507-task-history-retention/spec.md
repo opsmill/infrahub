@@ -36,9 +36,9 @@ An operator upgrades an instance whose task history has grown for months. After 
 1. **Given** a Compose instance with finished runs older than the task history retention, **When** the operator runs the upgrade, **Then** those runs, their logs and artifacts are deleted and the task history storage is rewritten before the instance starts, and runs within the retention, unfinished runs and their logs are kept.
 2. **Given** a Helm instance with the same task history, **When** the operator rolls out the new release, **Then** the upgrade does not run the cleanup and does not fail, and the Helm upgrade guide's maintenance step (stop the server and task workers, run the command for old runs with the rewrite option, start them again) produces the same result as scenario 1.
 3. **Given** an upgraded instance, **When** a finished run becomes older than the task history retention, **Then** the automatic cleanup deletes it, with its logs and artifacts, within about an hour.
-4. **Given** an operator who needs older runs, **When** they set a longer task history retention before upgrading, **Then** the upgrade deletes only runs older than that value, and rewrites the tables only when the deletes freed most of them (in practice the first upgrade or after lowering a retention).
+4. **Given** an operator who needs older runs, **When** they set a longer task history retention before upgrading, **Then** the upgrade deletes only runs older than that value, and rewrites the tables only when the deletes during the upgrade, the automatic cleanup's included, freed more than half of the runs (in practice the first upgrade).
 5. **Given** a run that stays RUNNING or PENDING after a worker crashed, **When** an admin runs the documented command for stuck runs, **Then** the run is marked CRASHED and is deleted once it is older than the task history retention.
-6. **Given** an operator who lowered the task history retention, **When** the next automatic cleanup runs, **Then** the runs older than the new value are deleted, and the disk space comes back only after the operator runs the command for old runs with the rewrite option in a maintenance window.
+6. **Given** an operator who lowered the task history retention, **When** the next automatic cleanup runs, **Then** the runs older than the new value are deleted, and the disk space comes back only after the operator runs the command for old runs with the rewrite option in a maintenance window, which rewrites the tables even though the automatic cleanup already deleted the runs.
 
 ---
 
@@ -101,7 +101,8 @@ An operator sets how long task history, the activity log and the task manager's 
 
 - **Upgrade interrupted** (stopped session, timeout, crash): the cleanup keeps running or can be re-run, and a re-run continues where the first one stopped, because it commits one day at a time and logs its progress.
 - **Upgrade run against a task manager that is still the previous version** (Helm pre-upgrade): the command reports that the cleanup is not available and the upgrade continues instead of failing.
-- **Little to delete** (retention longer than most task history, or a routine upgrade after the first): the upgrade deletes what is older than the retention and skips the rewrite unless the deletes freed most of the tables.
+- **Little to delete** (retention longer than most task history, or a routine upgrade after the first): the upgrade deletes what is older than the retention and skips the rewrite unless the deletes during the upgrade, the automatic cleanup's included, freed more than half of the runs.
+- **Lowering the task history retention, or a Helm rollout**: the automatic cleanup deletes the old runs before any maintenance step, so the command for old runs deletes little or nothing; with the rewrite option it still rewrites the tables, so the disk space comes back.
 - **The task manager's own cleanup of old runs runs at the same time** (it is on, and runs during the upgrade): both finish and leave the same runs; neither fails.
 - **Several task-manager replicas**: only one cleanup runs at a time; the command waits and continues when another replica runs one.
 - **A table is locked by something else during the rewrite**: the rewrite waits a bounded time, retries, then skips that table and reports it, and the upgrade completes; other queries never queue behind a rewrite that is waiting for its lock.
@@ -135,9 +136,9 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-006**: System MUST automatically delete, about every hour, finished runs (completed, failed, cancelled, crashed) whose end time is older than the task history retention, together with their logs and artifacts.
 - **FR-007**: System MUST NOT delete runs that are not finished through the automatic cleanup, the command for old runs or the upgrade.
 - **FR-008**: The existing operator command for old runs MUST delete the same runs, logs and artifacts as the automatic cleanup, using the task history retention setting.
-- **FR-009**: The command for old runs MUST offer a rewrite option, off by default, that returns the disk space of the deleted runs; it MUST rewrite only when the deletes freed most of the tables. The command MUST read the task history retention setting and no longer take a number of days or a batch size.
+- **FR-009**: The command for old runs MUST offer a rewrite option, off by default, that returns the disk space of the deleted runs; with the option it MUST rewrite the tables whatever its own deletes freed, because the automatic cleanup may already have deleted the runs. The command MUST read the task history retention setting and no longer take a number of days or a batch size.
 - **FR-010**: The command for old runs MUST commit its work in steps, log its progress, keep running if the caller disconnects, and be safe to re-run after an interruption.
-- **FR-011**: On Compose, the upgrade MUST run the command for old runs with the rewrite option before the instance starts; the Compose upgrade guide offers no way to skip it.
+- **FR-011**: On Compose, the upgrade MUST run the cleanup of the command for old runs before the instance starts, and MUST rewrite the tables when the deletes during the upgrade, the automatic cleanup's included, freed more than half of the runs; the Compose upgrade guide offers no way to skip it.
 - **FR-012**: The upgrade MUST NOT fail when the task manager it reaches does not yet provide the cleanup; it MUST report that the cleanup was not run.
 - **FR-013**: On Helm, the upgrade hook MUST leave the cleanup out, also once the task manager provides it, because the instance is still serving; the Helm upgrade guide MUST describe the maintenance step after the rollout.
 - **FR-014**: The command for stuck runs MUST be documented, including that it marks runs RUNNING or PENDING for more than 2 days as CRASHED, and that PENDING runs that never started are not caught.
@@ -178,7 +179,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **Infrahub event (activity log)**: a change recorded by Infrahub and shown on the Activities page, with related items (account, branch, node, parent event). Kept for the activity log retention.
 - **Task-manager event**: an internal event of the task manager (run state changes, heartbeats, worker and deployment events). Never shown; kept for the own-event retention.
 - **Retention settings**: the three durations above, owned by the Infrahub configuration.
-- **Command for old runs**: the existing operator command, reimplemented to delete like the automatic cleanup, with a rewrite option; also called by the Compose upgrade.
+- **Command for old runs**: the existing operator command, reimplemented to delete like the automatic cleanup, with a rewrite option; its cleanup also runs in the Compose upgrade, which rewrites only when the deletes freed more than half of the runs.
 
 ## Success Criteria *(mandatory)*
 
@@ -201,7 +202,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 
 - Q: Target release? → A: 1.13, not 1.12.
 - Q: Is the first upgrade's deletion safe by default? → A: Yes; it cannot be undone, operators who need older runs set a longer retention before upgrading. No skip option, no "keep everything" value.
-- Q: How is disk reclaimed after lowering a retention? → A: The existing command for old runs with its rewrite option, in a maintenance window. The same command the upgrade runs. Event storage has no reclaim; lowering is rare.
+- Q: How is disk reclaimed after lowering a retention? → A: The existing command for old runs with its rewrite option, in a maintenance window. The same cleanup the upgrade runs; the option rewrites whatever the deletes freed, since the automatic cleanup deletes first. Event storage has no reclaim; lowering is rare.
 - Q: Guard against running the rewrite on a live instance? → A: No; operators who run these commands know what they do. The rewrite is off by default.
 - Q: Are the behaviour-table timings a contract? → A: No, indicative; 1 or 2 seconds either way is fine.
 - Q: What happens to the existing command for old runs? → A: It is reused with the new implementation.
