@@ -58,7 +58,7 @@ def unknown_cleanup() -> httpx.Response:
 
 
 def unreachable() -> httpx.ConnectError:
-    """The error Prefect's client raises once its retries to reach a stopped task manager run out."""
+    """The error Prefect's client raises for a stopped task manager: at once before its first answer, after retries from then on."""
     return httpx.ConnectError("All connection attempts failed")
 
 
