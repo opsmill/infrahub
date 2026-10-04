@@ -22,8 +22,6 @@ CLEANUP_PATH = "/infrahub/task-history/cleanup"
 POLL_INTERVAL = timedelta(seconds=2)
 # Long enough to wait out a cleanup another task manager runs on a large task history, short enough to end a stuck loop.
 GIVE_UP_AFTER = timedelta(hours=3)
-# Each mode rewrites the tables whenever the modes before it would.
-_REWRITE_STRENGTH = (CleanupRewrite.NEVER, CleanupRewrite.IF_FREED, CleanupRewrite.ALWAYS)
 
 
 class TaskHistoryCleanupError(Error):
@@ -43,10 +41,10 @@ async def run_task_history_cleanup(
 ) -> CleanupJob | None:
     """Run a task history cleanup in the task manager to its end, or return None when the task manager does not provide it.
 
-    A cleanup that runs elsewhere, that the task manager no longer knows, or that the task manager cannot be reached
-    about once it answered, is started again after a wait; the days it already deleted stay deleted. A cleanup
-    started with a weaker rewrite than asked for is followed to its end, then started again with the rewrite asked for.
-    Progress is reported each time the day or the number of deleted runs changes.
+    A cleanup already running in the task manager is followed instead, the task manager raising its rewrite to the
+    one asked for when that is stronger. A cleanup that runs elsewhere, that the task manager no longer knows, or
+    that the task manager cannot be reached about once it answered, is started again after a wait; the days it
+    already deleted stay deleted. Progress is reported each time the day or the number of deleted runs changes.
 
     Raises:
         TaskHistoryCleanupError: When the cleanup fails, or when the task manager answers for `give_up_after` only
@@ -80,16 +78,13 @@ async def run_task_history_cleanup(
         if isinstance(answer, CleanupJob):
             job, last_seen = answer, clock()
             if job.state is CleanupJobState.COMPLETED:
-                if _REWRITE_STRENGTH.index(job.rewrite) >= _REWRITE_STRENGTH.index(rewrite):
-                    return job
-                job = None
-            elif job.state is CleanupJobState.FAILED:
+                return job
+            if job.state is CleanupJobState.FAILED:
                 raise TaskHistoryCleanupError(message=job.error or f"The cleanup {job.id} failed")
-            else:
-                progress = (job.current_day, job.deleted_runs)
-                if job.current_day is not None and progress != reported:
-                    on_progress(job)
-                    reported = progress
+            progress = (job.current_day, job.deleted_runs)
+            if job.current_day is not None and progress != reported:
+                on_progress(job)
+                reported = progress
         else:
             job = None
             if clock() - last_seen >= give_up_after.total_seconds():
