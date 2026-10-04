@@ -61,7 +61,7 @@
 - [ ] T017 [US1] Add a client used by the CLI and the upgrade, `run_task_history_cleanup(client, rewrite: bool, on_progress) -> CleanupResult | None` (returns `None` when the route is missing), which starts the job, polls, re-posts on 409 or 404, and raises on a failed job, in `backend/infrahub/task_manager/flow_run/cleanup.py`
 - [ ] T018 [US1] Reimplement `infrahub.cli.tasks::flow_runs` on T017: option `--rewrite`; remove `--days-to-keep` and `--batch-size`; progress and summary output; exit codes from [contracts/cli.md](contracts/cli.md); keep `stale_runs` and `FlowRunRetention` unchanged, in `backend/infrahub/cli/tasks.py`
 - [ ] T019 [US1] Add the "Task history cleanup" step after the task manager step in `backend/infrahub/cli/upgrade.py::_upgrade_execute` (calls T017 with `rewrite=True`, prints the summary or the "not provided yet" message), add `--no-task-history-cleanup` to `upgrade_cmd`, renumber steps to 1/7 to 7/7
-- [ ] T020 [P] [US1] Changelog fragment for the task history retention, the changed `flush flow-runs` command and the upgrade step (irreversible deletion, set a longer retention before upgrading) in `changelog/+task-history-retention.added.md` and `changelog/+flush-flow-runs.changed.md` (breaking: `--days-to-keep` and `--batch-size` removed) (follow the `creating-changelog-entries` skill)
+- [ ] T020 [P] [US1] Changelog fragment for the task history retention, the changed `flush flow-runs` command and the upgrade step (irreversible deletion, set a longer retention before upgrading) by extending `changelog/+task-manager-retention.added.md` (which already covers the settings, the hourly deletion and setting a longer retention before upgrading) with the upgrade step, and adding `changelog/+flush-flow-runs.changed.md` (breaking: `--days-to-keep` and `--batch-size` removed) (follow the `creating-changelog-entries` skill)
 
 ### Evidence for User Story 1 (opsmill/infrahub-private-tests)
 
@@ -129,7 +129,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 - [X] T043 [US3] Fill `PREFECT_EVENT_TYPES` from the pinned Prefect 3.8.6 (flow-run and task-run state events for every built-in state name, heartbeat, worker, automation, deployment, work pool, work queue and block events) and the benchmark datasets, with a one-line comment naming the Prefect version, in `backend/infrahub/prefect_server/retention.py`
 - [ ] T044 [US3] Use the activity log retention as the widest Activities time window by default (task manager reads `config.SETTINGS.task_manager.retention.activity_log` when the request does not set it) in `backend/infrahub/prefect_server/models.py` and `backend/infrahub/prefect_server/database.py`
-- [ ] T045 [P] [US3] Changelog fragment for the configurable activity log retention (default unchanged at 7 days, how to raise it, sizing) in `changelog/+activity-log-retention.added.md`
+- [ ] T045 [P] [US3] Changelog for the configurable activity log retention: `changelog/+task-manager-retention.added.md` already covers the unchanged 7-day default and how to raise it; add the sizing guidance there only if the documentation does not carry it
 
 ### Evidence for User Story 3 (opsmill/infrahub-private-tests)
 
