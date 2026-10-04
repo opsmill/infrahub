@@ -71,24 +71,28 @@ class NodeProfilesRefresher:
         user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         failed_node_ids: list[str] = []
-        async with self.db.start_session() as session:
-            for chunk in chunked(node_ids, self.transaction_chunk_size):
-                result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
-                failed_node_ids.extend(result.failed_node_ids)
-                for applied in result.applied:
-                    await send_node_updated_event(
-                        event_service=self.event_service,
-                        node=applied.node,
-                        fields=list(applied.fields),
-                        branch=branch,
-                        context=context,
-                        origin=NodeMutationOrigin.RECOMPUTE,
-                    )
-                    written.append(
-                        WrittenNode(node_id=applied.node.get_id(), kind=applied.node.get_kind(), fields=applied.fields)
-                    )
-
-        await self.chain.submit(written=written, branch=branch.name, context=context, depth=0)
+        try:
+            async with self.db.start_session() as session:
+                for chunk in chunked(node_ids, self.transaction_chunk_size):
+                    result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
+                    failed_node_ids.extend(result.failed_node_ids)
+                    for applied in result.applied:
+                        await send_node_updated_event(
+                            event_service=self.event_service,
+                            node=applied.node,
+                            fields=list(applied.fields),
+                            branch=branch,
+                            context=context,
+                            origin=NodeMutationOrigin.RECOMPUTE,
+                        )
+                        written.append(
+                            WrittenNode(
+                                node_id=applied.node.get_id(), kind=applied.node.get_kind(), fields=applied.fields
+                            )
+                        )
+        finally:
+            # A rerun sees no change on committed chunks, so their readers recompute even when a later chunk fails.
+            await self.chain.submit(written=written, branch=branch.name, context=context, depth=0)
         return failed_node_ids
 
     async def _apply_isolated(

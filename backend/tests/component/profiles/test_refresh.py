@@ -18,7 +18,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import DatabaseError, ValidationError
 from infrahub.profiles.node_applier import ChunkProfilesApplier
 from infrahub.profiles.refresh import NodeProfilesRefresher
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2
@@ -270,14 +270,14 @@ async def test_refresh_reads_the_nodes_and_the_profile_data_once_per_transaction
     assert counting_db.count_for("profile_get_data") == test_case.expected_reads
 
 
-def _failing_applier(failing_node_id: str) -> type[ChunkProfilesApplier]:
+def _failing_applier(failing_node_id: str, error: Exception) -> type[ChunkProfilesApplier]:
     class FailingProfilesApplier(ChunkProfilesApplier):
         """Raises for one node, after its profile values and relationships are written."""
 
         async def apply_profiles(self, node: Node) -> list[str]:
             fields = await super().apply_profiles(node=node)
             if node.get_id() == failing_node_id:
-                raise ValidationError(f"profiles of {failing_node_id} rejected")
+                raise error
             return fields
 
     return FailingProfilesApplier
@@ -288,7 +288,13 @@ async def test_refresh_skips_only_the_node_whose_profile_application_raises(
 ) -> None:
     dataset = await _create_servers(db=db, count=3)
     failing_node_id = dataset.server_ids[1]
-    doubles = _refresher(db=db, branch=default_branch, applier_class=_failing_applier(failing_node_id))
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_failing_applier(
+            failing_node_id=failing_node_id, error=ValidationError(f"profiles of {failing_node_id} rejected")
+        ),
+    )
 
     failed_node_ids = await doubles.refresher.refresh(
         branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
@@ -301,6 +307,36 @@ async def test_refresh_skips_only_the_node_whose_profile_application_raises(
         ("role-1", dataset.room_id),
     ]
     assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[2]]
+
+
+async def test_refresh_recomputes_the_readers_of_committed_chunks_when_a_later_chunk_fails(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=4)
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_failing_applier(
+            failing_node_id=dataset.server_ids[2], error=DatabaseError(message="database rejected")
+        ),
+        transaction_chunk_size=2,
+    )
+
+    with pytest.raises(DatabaseError, match=r"^database rejected$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[1]]
+    assert [
+        (
+            call["parameters"]["node_kind"],
+            call["parameters"]["target_kind"],
+            sorted(call["parameters"]["object_ids"]),
+            call["parameters"]["recompute_depth"],
+        )
+        for call in doubles.workflow.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
+    ] == [(SERVER_KIND, PORT_KIND, sorted([dataset.server_ids[0], dataset.server_ids[1]]), 1)]
 
 
 async def test_refresh_reports_a_node_that_does_not_exist(
