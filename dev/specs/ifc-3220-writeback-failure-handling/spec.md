@@ -73,7 +73,7 @@ the default branch. It must show one pending delivery, the status "action requir
    branch synchronised with Git and carrying repository changes merges, **Then** the repository
    reports one pending delivery for that merge, with the status "action required".
 2. **Given** the same repository, **When** a user reads its delivery state, **Then** the state
-   carries the cause and the remote's rejection message exactly as the remote sent it.
+   carries the cause and the remote's rejection message verbatim, with credentials removed.
 3. **Given** the same repository, **When** a user reads its commit on the default branch, **Then**
    the commit is unchanged, and the remote has it.
 4. **Given** a merge whose first delivery attempt succeeds, **When** a user reads the repository,

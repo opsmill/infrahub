@@ -32,7 +32,7 @@ must show. The contracts are in [contracts/](contracts/), and the attributes in
 | 1 | Classifier, scrubber, queue model, held set, service, barrier, retry condition | FR-004, FR-005, FR-005b, FR-012, FR-013, FR-015, FR-020, FR-022 | `uv run pytest backend/tests/unit/git/writeback backend/tests/unit/core/merge/test_regeneration_barrier.py` | All pass with no database. A repeated hold survives a release's clear, and two holds of one item release both members. The obligation is saved before the record. A fetch outage and a killed fetch or push are retried. An abandonment and a deletion guard that wait for an attempt find its entries settled. A held-only run does nothing under a live lease. |
 | 2 | Store transitions and branch safety | FR-009, FR-019, FR-025, FR-026 | `uv run pytest backend/tests/component/git/writeback` | No delivery attribute in a diff or a merge. The update input has none of them. A new branch reads a copy, and the store never does. No node event is emitted. A 200-entry queue works. |
 | 3 | Data-only merge queues nothing | FR-005, US1 #7 | `uv run pytest backend/tests/component/git/writeback -k data_only` | Fork, trunk advances, data-only merge: no entry, no hold. |
-| 4 | Mutations off the default branch | FR-008, R7 | `uv run pytest backend/tests/component/graphql/test_repository_delivery_mutations.py` | Both refuse on another branch, and without each of the three permissions. |
+| 4 | Mutations off the default branch | FR-008, R7 | `uv run pytest backend/tests/component/graphql/mutations/test_repository_delivery_retry.py backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py` | Both refuse on another branch, and without each of the three permissions. |
 | 5 | Rejected push is visible | US1 | `LIVE -k delivery_visible` | One entry, `action-required`, cause `permission`, the hook's `remote:` line verbatim, commit unchanged. |
 | 6 | Two merges, one retry | US2 | `LIVE -k one_retry_delivers_both` | The remote holds both merges after one push. Commit equals the remote head. Status `none`. |
 | 7 | Remote advanced during the outage | US2 #3, FR-023 | `LIVE -k remote_advanced_is_imported` | The synchronisation skipped the default branch while pending. The delivered commit is recorded, then imported. An artifact definition the import updated renders against the delivered commit. |
@@ -49,10 +49,12 @@ must show. The contracts are in [contracts/](contracts/), and the attributes in
 ### Scenario 16, e2e
 
 ```bash
-sleep infinity | INFRAHUB_TESTING_IMAGE_VER=e2e-writeback INFRAHUB_TESTING_DOCKER_PULL=false \
-  uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_delivery.py -s --pdb \
-  2>&1 | tee /tmp/pdb.log
+INFRAHUB_TESTING_IMAGE_VER=e2e-writeback INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_delivery.py -s --pdb
 ```
+
+In a non-interactive shell, such as an agent's tool, put `sleep infinity |` before the command
+and send the output to `tee`, as [AGENTS.md](../../../AGENTS.md) describes.
 
 The retry test writes a rejecting `pre-receive` hook into the bare repository that the SDK
 `GitRepo` helper serves, merges a branch, opens the repository page on another branch, and checks

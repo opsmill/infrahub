@@ -108,7 +108,7 @@ untyped dictionaries for this data.
 | Field | Type | Meaning |
 |---|---|---|
 | `format` | `Literal[1]` | |
-| `version` | `int` | Increases by one when an entry is added or removed. A flag change on an entry does not move it. An abandonment names it. |
+| `version` | `int` | Starts at 0 for an empty queue that was never used. A null `delivery_queue` reads as version 0. Increases by one when an entry is added or removed. A flag change on an entry does not move it. An abandonment names it. |
 | `entries` | `tuple[PendingMerge, ...]` | In merge order. |
 | `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: the merge flow writes an entry only when it is `False`, that is, when the dispatcher's enqueue did not return (`research.md` R3). |
 | `import_owed_commit` | `str \| None` | A recorded commit whose import has not succeeded yet (FR-023). Set only while the queue is non-empty. |
@@ -214,8 +214,6 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
     └─────────────────────────────┘  └──────────── attempt starts ◀────────┘
 ```
 
-| From | Event | To | Writes |
-|---|---|---|---|
 The status follows the queue only. A run with an empty queue, a held-only run for example, writes
 its progress timestamps and never changes the status.
 

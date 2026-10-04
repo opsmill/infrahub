@@ -124,11 +124,17 @@ while the merge still reported success; sending HEAD is what closed that gap.
 The pull direction has the once-a-minute loop. The push direction has nothing equivalent.
 
 `InfrahubRepository.merge` merges into the destination worktree, pushes, and only then creates the
-commit worktree and writes the new commit to the graph. A rejected push therefore records nothing:
-the destination worktree is reset to its pre-merge commit, so a re-run of the merge re-derives it
-instead of finding nothing to merge. A failure to record after a successful push also resets the
-worktree, which leaves it behind the remote, and the periodic sync then pulls and records the pushed
-commit.
+commit worktree and writes the new commit to the graph. A rejected push therefore records nothing.
+After a rejected push, and after a failure to record a pushed commit, `merge` tries to reset the
+destination worktree to its pre-merge commit. The reset is best-effort: it never raises, so the
+original failure propagates unmasked.
+
+- When the reset succeeds, a re-run of the merge re-derives it instead of finding nothing to merge.
+  After a failed record, the reset leaves the worktree behind the remote, and the periodic sync then
+  pulls and records the pushed commit.
+- When the reset fails, `merge` logs the failure and says that manual reconciliation may be
+  required. The worktree can stay on a merge commit that the graph does not record, and a re-run can
+  then find nothing to merge.
 
 What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
 `merge()`, the periodic sync only pulls, and `merge_git_repository` has no retry. A rejected push
@@ -138,7 +144,7 @@ records that it failed: the only trace is the failed flow run.
 With `git.use_explicit_merge_commit` at its default of `False` the merge fast-forwards where it can
 and the resulting SHA is the source commit, which the remote already has. When the destination has
 diverged, or when that setting is enabled, git creates a real merge commit whose SHA embeds a
-timestamp and is therefore not reproducible. The reset on failure discards it, so a later attempt
+timestamp and is therefore not reproducible. A reset that succeeds discards it, so a later attempt
 re-derives the merge from `(source_branch, source_commit, dest_branch)` on any worker.
 
 > **Volatile section.** A delivery queue with retry and abandon actions is specified in

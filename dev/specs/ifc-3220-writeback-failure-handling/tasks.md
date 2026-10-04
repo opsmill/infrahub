@@ -588,7 +588,7 @@ Inside a phase, a test task can start as soon as the code it covers has a signat
 
 ## Implementation strategy
 
-**First increment (MVP, deployable)**: Phases 1, 2, 3 and 4, plus T085 to T092 of Phase 7 and
+**First increment (MVP, deployable)**: Phases 1, 2, 3 and 4, plus T085 to T093 of Phase 7 and
 Phase 8. A failed delivery is visible, a retry delivers everything, a stuck queue has an exit, the
 synchronisation never deletes undelivered objects, and no source branch is lost. Regeneration still
 runs as today until Phase 5.
@@ -597,7 +597,7 @@ runs as today until Phase 5.
 
 **Third increment**: Phase 6. Transient faults and lost workers need no user action.
 
-**Then**: the frontend and e2e parts of Phase 7 if they were not in the MVP, Phase 9, Phase 10.
+**Then**: the e2e part of Phase 7 (T094), Phase 9, Phase 10.
 
 **Test discipline**: the classifier, the models, the service, the abandoner, the recovery check and
 the barrier run in seconds without a database, through the three ports and their fakes. Every

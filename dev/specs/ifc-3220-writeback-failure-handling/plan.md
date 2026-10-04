@@ -215,12 +215,12 @@ Each slice is testable on its own.
 | **L. Reverted delivery** | US7 #3 | B, IFC-3210 rewrite classification | IFC-3210 |
 | **M. Documentation and e2e** | all | K | none |
 
-**MVP**: A, B, C, D, F, I1 and J. That gives a visible failure, a working retry, an exit for a
+**MVP**: A, B, C, D, F, I1, J and K. That gives a visible failure, a working retry, an exit for a
 stuck queue, no import that deletes undelivered objects, and no source branch lost.
 
-**No deployment ships C without D, I1 and J.** C alone queues merges that nothing can clear, lets
-the synchronisation delete their objects, and lets the branch deletion remove the commit they need.
-That is worse than today.
+**No deployment ships C without D, I1, J and the abandon part of K.** C alone queues merges that
+nothing can clear, lets the synchronisation delete their objects, and lets the branch deletion
+remove the commit they need. That is worse than today.
 
 **Next**: E, then G and I2, then H. Until G lands, regeneration still runs against the commit
 recorded before the merge, which is today's behaviour.
@@ -244,7 +244,7 @@ for the no-remote path and the live-remote tests of #10465.
 | **The synchronisation skips the default branch while a delivery is pending.** | A commit pushed directly to the remote default branch is not imported until the queue clears. | The section says so. The delivery imports it. Documented in the user docs. |
 | **A branch forked during an outage.** | A later synchronisation import of that branch deletes the pending merges' objects there. | The reimport refuses on every branch. The synchronisation case is a known limitation, documented. |
 | **A push failure classification changes on a Git or server upgrade.** | A rejection moves to `unclassified`, which is never retried. | The safe direction. The reason comes from GitPython's flags, and the classifier's table test lists the known cases. |
-| **The automatic retry holds a worker slot for about seven and a half minutes.** | Less worker capacity during a remote outage. | One chain per repository, three attempts, bounded Git commands. A persistent outage ends in `action-required` and frees the slot. |
+| **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), bounded Git commands. A persistent outage ends in `action-required` and frees the slot. |
 | **Existing tests assert the push rejection message.** | Slice A could break them. | The typed error keeps the message byte for byte. |
 | **The e2e stack has no Git server.** | The UI journeys cannot use Gogs. | The SDK `GitRepo` helper serves a bare repository, and a `pre-receive` hook in it rejects the push. `research.md` R15. |
 

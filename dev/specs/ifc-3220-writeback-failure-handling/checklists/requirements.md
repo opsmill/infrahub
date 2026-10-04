@@ -34,8 +34,9 @@
 The two open questions of the source PRD were resolved during specification instead of being
 carried as `[NEEDS CLARIFICATION]` markers. Both need confirmation, and the spec says so:
 
-- An unreplayable queue has one exit, abandonment. Prefix delivery is out of scope. To confirm with
-  Patrick Ogenstad.
+- Inside Infrahub, an unreplayable queue has one exit: abandonment. A user can also resolve the
+  conflict on the remote and retry, which clears the entry by observation. Prefix delivery is out
+  of scope. To confirm with Patrick Ogenstad.
 - The status label is "Push to remote", provisionally. The attribute names do not carry it. To
   settle with the owner of INFP-671.
 

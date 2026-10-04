@@ -61,7 +61,7 @@ type CoreRepository {
 #
 # {
 #   "format": 1,
-#   "version": 4,
+#   "version": 1,
 #   "entries": [
 #     {
 #       "entry_id": "1f0c1a52-6a0e-4b0e-9c7b-2f5c3f0f4a11",
