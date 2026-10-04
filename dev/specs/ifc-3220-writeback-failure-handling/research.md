@@ -205,7 +205,9 @@ this codebase uses for node attributes.
 **Decision**: `RepositoryMergeDispatcher.merge_core_repositories` writes the entry before it submits
 `GIT_REPOSITORIES_MERGE`, and passes it in `GitRepositoryMerge.pending_merge`. Each repository's
 enqueue is guarded on its own: a failed enqueue is logged, and the merge is still submitted with
-`pending_merge` set. The flow writes the same entry again, idempotently, before its first attempt.
+`pending_merge` set. The dispatcher sets `GitRepositoryMerge.pending_merge_enqueued` to `True` only
+when its own enqueue returned. The flow writes the entry before its first attempt only when that flag
+is `False`.
 
 **Which merges are queued** (FR-005): only a repository whose internal status on the source branch
 is `active`, on a source branch that syncs with Git, and whose source commit carries repository
@@ -240,11 +242,25 @@ that commit. Delivering exactly that commit keeps the remote content and the mer
 end of `run_follow_ups`. Both consult the barrier. An entry written by the delivery flow would arrive
 after them.
 
-**Why the flow writes it again, and why that is safe** (FR-005b). The flow's write repairs a failed
-first write. It must not resurrect an abandoned entry: a merge flow can wait in the Prefect queue
-while a user abandons. The queue keeps the last 256 removed entry ids, and `enqueue` refuses an id
-that is present or recently removed. A run queued by the previous code carries no `pending_merge`.
-The flow then builds the entry itself from the source branch's graph commit, as the dispatcher would.
+**When the flow writes the entry, and why that is safe** (FR-005b). The flow's write repairs a
+failed first write. It must not put an abandoned entry back: a merge flow can wait in the Prefect
+queue while a user abandons. So the flow writes the entry only when `pending_merge_enqueued` is
+`False`. Two runs have that value:
+
+- The dispatcher's enqueue did not return. The flow writes `model.pending_merge`.
+- The previous code queued the run, so it carries no `pending_merge`. The flow builds the entry from
+  the source branch's graph commit, as the dispatcher would.
+
+In both runs, the entry was never in the queue, so no user can have abandoned it. The next
+paragraph names the one exception. When the flag is `True`, the flow never writes. It only
+delivers. If a user abandoned the entry meanwhile, the snapshot does not contain it, and the attempt
+pushes nothing. This is the guarantee of FR-005b.
+
+**The second guard.** One case remains: the dispatcher's write committed, but its call raised after
+it. The flag is then `False` while the entry is in the queue. For this case, `enqueue` refuses an id
+that is present, in `removed_entry_ids` (the last 256 ids that left the queue), or in
+`delivery_last_abandonment.entries`. Both bounds expire. The entry can come back only when 256 other
+entries leave the queue and a second abandonment replaces the record, all before the late flow runs.
 
 **Rejected**: keying the queue on the Infrahub branch. The Infrahub branch can be deleted right
 after the merge (`delete_branch_after_merge`), while the remote branch is protected by FR-011.

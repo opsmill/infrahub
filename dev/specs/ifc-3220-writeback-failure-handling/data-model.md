@@ -110,7 +110,7 @@ untyped dictionaries for this data.
 | `format` | `Literal[1]` | |
 | `version` | `int` | Increases by one when an entry is added or removed. A flag change on an entry does not move it. An abandonment names it. |
 | `entries` | `tuple[PendingMerge, ...]` | In merge order. |
-| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too (FR-005b). |
+| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: the merge flow writes an entry only when it is `False`, that is, when the dispatcher's enqueue did not return (`research.md` R3). |
 | `import_owed_commit` | `str \| None` | A recorded commit whose import has not succeeded yet (FR-023). Set only while the queue is non-empty. |
 
 ### `DeliveryProgress`
@@ -247,8 +247,11 @@ its progress timestamps and never changes the status.
 4. Entries leave the queue only by a delivery that observed them on the remote, or by an
    abandonment that writes its record in the same save (FR-009, SC-006). Both happen under the
    repository lock.
-5. An entry id that left the queue is never appended again while it is in `removed_entry_ids` or in
-   the last abandonment record.
+5. An entry id that left the queue is never appended again. The merge flow appends only when
+   `pending_merge_enqueued` is `False`, that is, when the dispatcher's enqueue did not return. The
+   entry is then not in the queue, except in one case: the dispatcher's write committed, but its call
+   raised. For that case, `enqueue` refuses an id in `removed_entry_ids` or in the last abandonment
+   record.
 6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
 7. A hold recorded above a release's bound survives that release's clear (FR-015). For a delivery
    the bound is the attempt's snapshot, so a hold for a merge that is still queued waits for that
@@ -302,6 +305,7 @@ Every new field is optional with a default, so a run queued by the previous code
 | Model | Module | Field | Type |
 |---|---|---|---|
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
+| `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when its own enqueue returned. Only `False` makes the flow write the entry. |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
 | `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
 | `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |

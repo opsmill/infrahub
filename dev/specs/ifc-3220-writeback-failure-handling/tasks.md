@@ -210,19 +210,21 @@ SC-002, SC-007.
 
 ### Enqueue and the merge flow
 
-- [ ] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` to
-      `backend/infrahub/git/models.py`.
+- [ ] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
+      `GitRepositoryMerge.pending_merge_enqueued: bool = False` to `backend/infrahub/git/models.py`.
 - [ ] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
       repository with a remote, on a branch that syncs with Git, whose source commit carries content
       (R3: compare with the default branch's commit at `branched_from` and with the recorded commit).
       Guard each enqueue on its own. Pass `pending_merge` and the merge's `context` to the workflow.
+      Set `pending_merge_enqueued` to `True` only when this repository's enqueue returned (R3).
 - [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for a repository with a
-      remote, enqueue `model.pending_merge`, or build it from the source branch's graph commit when
-      it is `None`, then run the delivery through `deliver_pending_merges`. Keep the read-only and the
-      staging paths unchanged. The no-remote path merges and records locally as today, then removes
-      the entry it finds by observation. Tag the run with the repository node and the
-      default branch, log one line per transition, and set the run state from the outcome (R21).
+      remote, when `model.pending_merge_enqueued` is `False`, enqueue `model.pending_merge`, or build
+      it from the source branch's graph commit when it is `None`. When the flag is `True`, never
+      enqueue (R3, FR-005b). Then run the delivery through `deliver_pending_merges`. Keep the
+      read-only and the staging paths unchanged. The no-remote path merges and records locally as
+      today, then removes the entry it finds by observation. Tag the run with the repository node and
+      the default branch, log one line per transition, and set the run state from the outcome (R21).
 - [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with no retry
       yet. Phase 6 adds the retries.
 
@@ -251,7 +253,9 @@ SC-002, SC-007.
       recorded, the remote updated, the broadcast sent.
 - [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only branch
       forked before the trunk moved queues nothing (US1 #7); a staging repository and a repository
-      with no remote queue nothing; a failed enqueue of one repository still submits the others.
+      with no remote queue nothing; a failed enqueue of one repository still submits the others;
+      `pending_merge_enqueued` is `True` after an enqueue that returned and `False` after one that
+      raised.
 - [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
@@ -454,7 +458,9 @@ release.
       remote.
 - [ ] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
 - [ ] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b): abandon
-      while the merge flow waits, then let it run.
+      while a merge flow with `pending_merge_enqueued` set to `True` waits, then let it run. The entry
+      does not come back and the remote is unchanged. A second case: a run with the flag `False`,
+      whose entry was never queued, enqueues the entry and delivers it.
 - [ ] T093 [US5] Write the abandon mutation in the three-file pattern
       (`abandon-delivery-from-api.ts`, `abandon-delivery.ts`, `abandon-delivery.mutation.ts`), the
       "Abandon pending push" item, the confirmation modal
