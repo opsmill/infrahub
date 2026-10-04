@@ -248,8 +248,8 @@ its progress timestamps and never changes the status.
 5. An entry id that left the queue is never appended again. The merge flow appends only when
    `pending_merge_enqueued` is `False`, that is, when the dispatcher's enqueue did not return. The
    entry is then not in the queue, except in one case: the dispatcher's write committed, but its call
-   raised. For that case, `enqueue` refuses an id in `removed_entry_ids` or in the last abandonment
-   record.
+   raised. For that case, `enqueue` refuses an id that is still in `entries`, and an id that left
+   the queue and is in `removed_entry_ids` or in the last abandonment record.
 6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
 7. A hold recorded above a release's bound survives that release's clear (FR-015). For a delivery
    the bound is the attempt's snapshot, so a hold for a merge that is still queued waits for that
