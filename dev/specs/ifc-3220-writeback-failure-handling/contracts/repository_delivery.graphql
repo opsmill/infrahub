@@ -44,6 +44,9 @@ type CoreRepository {
 
   """A pushed commit that a rewrite of the remote history later discarded. Live on the default branch only; another branch holds a copy from its fork point."""
   delivery_reverted: JSONAttribute
+
+  """The progress of the push of merged changes: the last progress, the start of the last attempt, and when a waiting retry is due. Live on the default branch only; another branch holds a copy from its fork point."""
+  delivery_progress: JSONAttribute
 }
 
 # delivery_status values:          none | pending | action-required
@@ -70,10 +73,16 @@ type CoreRepository {
 #     }
 #   ],
 #   "removed_entry_ids": [],
+#   "import_owed_commit": null
+# }
+#
+# Example value of delivery_progress:
+#
+# {
+#   "format": 1,
 #   "last_progress_at": "2026-10-02T09:14:05.410000+00:00",
 #   "attempt_started_at": "2026-10-02T09:14:05.410000+00:00",
-#   "retry_due_at": null,
-#   "import_owed_commit": null
+#   "retry_due_at": null
 # }
 
 # ---------------------------------------------------------------------------------------------
