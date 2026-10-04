@@ -58,7 +58,6 @@ from prefect.server.utilities.database import get_max_query_parameters
 from infrahub.prefect_server.task_history import (
     CleanupJob, CleanupJobState, CleanupRewrite, PostgresTableRewriter, TaskHistoryCleanup, TaskHistoryTables
 )
-from tests.adapters.task_history import UnraisedRewrite
 from tests.helpers.task_manager_seed import seed_task_history
 
 async def main():
@@ -79,7 +78,8 @@ async def main():
             retries=0,
         ),
     )
-    await cleanup.run(job=job, settle=UnraisedRewrite(job=job))
+    runs_before = await cleanup.delete(job=job)
+    await cleanup.rewrite(job=job, mode=job.rewrite, runs_before=runs_before)
     print(job.model_dump_json())
 
 asyncio.run(main())

@@ -9,7 +9,7 @@ import pytest
 from prefect.server.schemas.states import StateType
 from prefect.server.services.db_vacuum import vacuum_old_flow_runs
 from prefect.settings import temporary_settings
-from tests.adapters.task_history import RecordingRewriter, UnraisedRewrite
+from tests.adapters.task_history import RecordingRewriter
 from tests.helpers.task_manager_seed import (
     copy_task_manager_database,
     days_ago,
@@ -56,7 +56,7 @@ async def test_cleanup_leaves_the_task_history_prefect_leaves(task_manager_datab
     job = _job()
 
     await vacuum_old_flow_runs(db=prefect_db)
-    await build_task_history_cleanup(db=cleanup_db).run(job=job, settle=UnraisedRewrite(job=job))
+    await build_task_history_cleanup(db=cleanup_db).delete(job=job)
 
     left_by_prefect = await read_task_history_ids(db=prefect_db)
     left_by_cleanup = await read_task_history_ids(db=cleanup_db)
@@ -75,9 +75,7 @@ async def test_cleanup_and_prefect_vacuum_running_together_leave_the_same_task_h
     job = _job()
 
     with temporary_settings(updates={"server.services.db_vacuum.batch_size": 1}):
-        await asyncio.gather(
-            vacuum_old_flow_runs(db=db), build_task_history_cleanup(db=db).run(job=job, settle=UnraisedRewrite(job=job))
-        )
+        await asyncio.gather(vacuum_old_flow_runs(db=db), build_task_history_cleanup(db=db).delete(job=job))
 
     assert await read_task_history_ids(db=db) == seeded.kept
 
@@ -150,10 +148,10 @@ async def test_tables_are_rewritten_as_the_cleanup_asks(
         await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(6), end_time=days_ago(5))
     rewriter = RecordingRewriter()
     job = _job(rewrite=case.rewrite)
+    cleanup = TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter)
 
-    await TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter).run(
-        job=job, settle=UnraisedRewrite(job=job)
-    )
+    runs_before = await cleanup.delete(job=job)
+    await cleanup.rewrite(job=job, mode=job.rewrite, runs_before=runs_before)
 
     assert rewriter.calls == case.expected_calls
     assert (job.deleted_runs, job.rewrite, job.rewritten, job.not_rewritten, job.size_before, job.size_after) == (
