@@ -132,9 +132,9 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-008**: The existing operator command for old runs MUST delete the same runs, logs and artifacts as the automatic cleanup, using the task history retention setting.
 - **FR-009**: The command for old runs MUST offer a rewrite option, off by default, that returns the disk space of the deleted runs, and MUST skip the rewrite when it deleted nothing.
 - **FR-010**: The command for old runs MUST commit its work in steps, log its progress, keep running if the caller disconnects, and be safe to re-run after an interruption.
-- **FR-011**: On Compose, the upgrade MUST run the command for old runs with the rewrite option before the instance starts, with no option to skip it.
+- **FR-011**: On Compose, the upgrade MUST run the command for old runs with the rewrite option before the instance starts; the Compose upgrade guide offers no way to skip it.
 - **FR-012**: The upgrade MUST NOT fail when the task manager it reaches does not yet provide the cleanup; it MUST report that the cleanup was not run.
-- **FR-013**: On Helm, the upgrade MUST NOT run the cleanup; the Helm upgrade guide MUST describe the maintenance step after the rollout.
+- **FR-013**: On Helm, the upgrade hook MUST leave the cleanup out, also once the task manager provides it, because the instance is still serving; the Helm upgrade guide MUST describe the maintenance step after the rollout.
 - **FR-014**: The command for stuck runs MUST be documented, including that it marks runs RUNNING or PENDING for more than 2 days as CRASHED, and that PENDING runs that never started are not caught.
 - **FR-015**: Branch deletion MUST keep deleting the finished runs tagged with the branch, as today.
 
