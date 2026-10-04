@@ -2,21 +2,42 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { AuthContext, type AuthContextType } from "@/entities/authentication/ui/auth-provider";
 import { getAppInfo } from "@/entities/config/domain/use-cases/get-app-info";
 import { ConfigContext } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";
+import {
+  generateLicenseInfo,
+  generateLicenseInfoWithoutLicense,
+} from "../../../../tests/fake/license";
 import { AboutModal } from "./about-modal";
 
 vi.mock("@/entities/config/domain/use-cases/get-app-info");
 
 const config = { installation_type: "community" } as any;
 
-function renderAboutModal(props = {}) {
+const SIGNED_IN: AuthContextType = {
+  accessToken: "token",
+  isAuthenticated: true,
+  setToken: () => {},
+  user: { id: "user-1" },
+};
+
+const ANONYMOUS: AuthContextType = {
+  accessToken: "",
+  isAuthenticated: false,
+  setToken: () => {},
+  user: null,
+};
+
+function renderAboutModal(props = {}, auth: AuthContextType = SIGNED_IN) {
   return render(
-    <ConfigContext value={config}>
-      <AboutModal isOpen={true} onOpenChange={() => {}} {...props} />
-    </ConfigContext>
+    <AuthContext value={auth}>
+      <ConfigContext value={config}>
+        <AboutModal isOpen={true} onOpenChange={() => {}} {...props} />
+      </ConfigContext>
+    </AuthContext>
   );
 }
 
@@ -26,6 +47,7 @@ describe("AboutModal", () => {
     vi.mocked(getAppInfo).mockResolvedValue({
       version: "1.8.4",
       deployment_id: "abc-123-def",
+      license: generateLicenseInfoWithoutLicense(),
     });
   });
 
@@ -63,6 +85,41 @@ describe("AboutModal", () => {
     await expect.element(component.getByText("v1.8.4")).toBeVisible();
     const copyButtons = component.getByRole("button", { name: /copy/i });
     expect(copyButtons.elements().length).toBe(3);
+  });
+
+  test("should add no license rows when no license is required", async () => {
+    const component = await renderAboutModal();
+
+    await expect.element(component.getByText("abc-123-def")).toBeVisible();
+    expect(component.getByRole("separator").elements().length).toBe(2);
+    expect(component.getByText("License", { exact: true }).query()).toBeNull();
+  });
+
+  test("should show the license rows when the deployment holds a license", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue({
+      version: "1.8.4",
+      deployment_id: "abc-123-def",
+      license: generateLicenseInfo(),
+    });
+
+    const component = await renderAboutModal();
+
+    await expect.element(component.getByText("License", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("ACME Test Ltd", { exact: true })).toBeVisible();
+  });
+
+  test("should show no license rows to an anonymous visitor", async () => {
+    vi.mocked(getAppInfo).mockResolvedValue({
+      version: "1.8.4",
+      deployment_id: "abc-123-def",
+      license: generateLicenseInfoWithoutLicense({ state: "unlicensed" }),
+    });
+
+    const component = await renderAboutModal({}, ANONYMOUS);
+
+    await expect.element(component.getByText("abc-123-def")).toBeVisible();
+    expect(component.getByRole("separator").elements().length).toBe(2);
+    expect(component.getByText("License", { exact: true }).query()).toBeNull();
   });
 
   test("should call onOpenChange when close button is clicked", async () => {

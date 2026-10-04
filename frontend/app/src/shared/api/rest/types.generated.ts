@@ -647,6 +647,12 @@ export interface components {
         AttributeParametersRead: Record<string, never>;
         /** AttributeParametersWrite */
         AttributeParametersWrite: Record<string, never>;
+        /** BannerAPI */
+        BannerAPI: {
+            audience: components["schemas"]["NoticeAudience"];
+            /** Dismissible */
+            dismissible: boolean;
+        };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
             /** File */
@@ -1369,6 +1375,8 @@ export interface components {
             deployment_id: string;
             /** Version */
             version: string;
+            /** @description License state and details, null unless the session is signed in */
+            license: components["schemas"]["LicenseInfoAPI"] | null;
         };
         /** JSONSchema */
         JSONSchema: {
@@ -1468,6 +1476,58 @@ export interface components {
              */
             icon: string;
         };
+        /**
+         * LicenseFailureReason
+         * @description Why a supplied license could not be verified; also exposed to API clients.
+         * @enum {string}
+         */
+        LicenseFailureReason: "malformed" | "bad_signature" | "unknown_key" | "wrong_issuer" | "wrong_product" | "internal_error";
+        /** LicenseInfoAPI */
+        LicenseInfoAPI: {
+            state: components["schemas"]["LicenseState"];
+            /** @description Why the license could not be verified, set only when invalid */
+            reason: components["schemas"]["LicenseFailureReason"] | null;
+            /** License Id */
+            license_id: string | null;
+            /** License Type */
+            license_type: string | null;
+            /** Customer Name */
+            customer_name: string | null;
+            /** Product Tier */
+            product_tier: string | null;
+            /** Support Tier */
+            support_tier: string | null;
+            /** Starts At */
+            starts_at: string | null;
+            /**
+             * Ends At
+             * @description First instant the license is no longer valid
+             */
+            ends_at: string | null;
+            /**
+             * Days Remaining
+             * @description Whole days until the license ends, rounded up
+             */
+            days_remaining: number | null;
+            /**
+             * Days Since Expiry
+             * @description Whole days since the license ended, rounded down
+             */
+            days_since_expiry: number | null;
+            notice_mode: components["schemas"]["NoticeMode"];
+            /**
+             * Enforcing Release
+             * @description Release in which every user starts seeing license problem notices, when known
+             */
+            enforcing_release: string | null;
+            banner: components["schemas"]["BannerAPI"];
+        };
+        /**
+         * LicenseState
+         * @description The single license state derived for a moment in time; also exposed to API clients and telemetry.
+         * @enum {string}
+         */
+        LicenseState: "not_required" | "unlicensed" | "invalid" | "not_yet_valid" | "expired" | "expiring" | "valid";
         /** ListAttributeParametersRead */
         ListAttributeParametersRead: {
             /**
@@ -2167,6 +2227,17 @@ export interface components {
              */
             children?: string | null;
         };
+        /**
+         * NoticeAudience
+         * @enum {string}
+         */
+        NoticeAudience: "none" | "super_admins" | "all_users";
+        /**
+         * NoticeMode
+         * @description Release-wide rule for license notices: super-admins only and no header, or enforced for every user.
+         * @enum {string}
+         */
+        NoticeMode: "quiet" | "enforce";
         /** NumberAttributeParametersRead */
         NumberAttributeParametersRead: {
             /**

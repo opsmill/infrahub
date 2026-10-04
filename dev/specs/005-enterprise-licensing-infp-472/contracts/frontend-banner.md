@@ -7,7 +7,7 @@ The banner renders for a signed-in user when the license object's `banner.audien
 - `all_users`; or
 - `super_admins` and the user holds the super-admin global permission.
 
-It renders nothing when the audience is `none`, when the license object is missing, or when the app-info request failed. For the `super_admins` audience it also renders nothing until the super-admin permission check has answered, so a regular user never sees a super-admin banner flash.
+It renders nothing when the audience is `none`, when the license object is missing or `null`, or when the app-info request failed. The info endpoint sends `license: null` to anonymous visitors, so they never see the banner. For the `super_admins` audience it also renders nothing until the super-admin permission check has answered, so a regular user never sees a super-admin banner flash.
 
 ## Dismissal
 
@@ -43,6 +43,8 @@ Shown to every signed-in user when the license object carries a license:
 | Type | `Commercial`, or `Evaluation license, N days left` |
 | Product tier | `{product tier}` |
 | Support tier | `{support tier}` |
-| Ends | `{end date}` (`{N} days left`, or `expired {N} days ago`) |
+| Ends | `{end date}` (`{N} days left`, `expired {N} days ago`, or `expired today` when fewer than one whole day has passed since the end) |
 
 When the state is `unlicensed` or `invalid`, a single "License" row shows "Not installed" or "Could not be verified". When the state is `not_required`, no license row is added (the About dialog is unchanged).
+
+A count of one reads `1 day`. No license row is added when the license object is missing or `null`, or when the viewer is not signed in. Anonymous visitors can open the About dialog when anonymous access is allowed; the info endpoint sends them `license: null`.
