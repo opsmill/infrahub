@@ -36,7 +36,7 @@ An operator upgrades an instance whose task history has grown for months. After 
 1. **Given** a Compose instance with finished runs older than the task history retention, **When** the operator runs the upgrade, **Then** those runs, their logs and artifacts are deleted and the task history storage is rewritten before the instance starts, and runs within the retention, unfinished runs and their logs are kept.
 2. **Given** a Helm instance with the same task history, **When** the operator rolls out the new release, **Then** the upgrade does not run the cleanup and does not fail, and the Helm upgrade guide's maintenance step (stop the server and task workers, run the command for old runs with the rewrite option, start them again) produces the same result as scenario 1.
 3. **Given** an upgraded instance, **When** a finished run becomes older than the task history retention, **Then** the automatic cleanup deletes it, with its logs and artifacts, within about an hour.
-4. **Given** an operator who needs older runs, **When** they set a longer task history retention before upgrading, **Then** the upgrade deletes only runs older than that value, and skips the rewrite when it deleted nothing.
+4. **Given** an operator who needs older runs, **When** they set a longer task history retention before upgrading, **Then** the upgrade deletes only runs older than that value, and rewrites the tables only when the deletes freed most of them (in practice the first upgrade or after lowering a retention).
 5. **Given** a run that stays RUNNING or PENDING after a worker crashed, **When** an admin runs the documented command for stuck runs, **Then** the run is marked CRASHED and is deleted once it is older than the task history retention.
 6. **Given** an operator who lowered the task history retention, **When** the next automatic cleanup runs, **Then** the runs older than the new value are deleted, and the disk space comes back only after the operator runs the command for old runs with the rewrite option in a maintenance window.
 
@@ -92,7 +92,8 @@ An operator sets how long task history, the activity log and the task manager's 
 
 1. **Given** the three retention settings, **When** the task manager starts, **Then** its cleanups use them, without the operator setting any task-manager-specific variable.
 2. **Given** the task manager's background services in their own deployment (a Helm option), **When** they start, **Then** they use the same retention values, because Infrahub's command starts them.
-3. **Given** a retention shorter than 1 day, or an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it refuses to start and names the setting.
+3. **Given** a retention shorter than 1 day, **When** the task manager starts, **Then** it refuses to start and names the setting.
+4. **Given** an own-event retention longer than the activity log retention, **When** the task manager starts, **Then** it logs a warning and uses the activity log retention for Prefect's own events, because every event older than that is deleted anyway.
 
 ---
 
@@ -100,11 +101,11 @@ An operator sets how long task history, the activity log and the task manager's 
 
 - **Upgrade interrupted** (stopped session, timeout, crash): the cleanup keeps running or can be re-run, and a re-run continues where the first one stopped, because it commits one day at a time and logs its progress.
 - **Upgrade run against a task manager that is still the previous version** (Helm pre-upgrade): the command reports that the cleanup is not available and the upgrade continues instead of failing.
-- **Nothing to delete** (retention longer than all task history): the upgrade deletes nothing and skips the rewrite.
+- **Little to delete** (retention longer than most task history, or a routine upgrade after the first): the upgrade deletes what is older than the retention and skips the rewrite unless the deletes freed most of the tables.
 - **The task manager's own cleanup of old runs runs at the same time** (it is on, and runs during the upgrade): both finish and leave the same runs; neither fails.
 - **Several task-manager replicas**: only one cleanup runs at a time; the command waits and continues when another replica runs one.
-- **A table is locked by something else during the rewrite**: the rewrite of that table is skipped after a short wait and reported, and the upgrade completes.
-- **Existing scripts call the command for old runs with its current options**: they keep working.
+- **A table is locked by something else during the rewrite**: the rewrite waits a bounded time, retries, then skips that table and reports it, and the upgrade completes; other queries never queue behind a rewrite that is waiting for its lock.
+- **Existing scripts call the command for old runs with `--days-to-keep` or `--batch-size`**: those options are removed (the command reads the retention setting); the changelog flags it as a breaking change.
 - **Rewrite during operation**: the rewrite option is off by default, because each table is locked until its rewrite ends; running it while the instance is up is the operator's choice.
 - **Not enough free disk for the rewrite**: the rewrite needs free space for a copy of the remaining rows (under 0.5 GB for 25 GB of task history, 2.2 GB for 100 GB); the upgrade guide states this.
 - **PENDING runs that never started**: the command for stuck runs does not catch them; they stay until a follow-up fixes the command.
@@ -126,7 +127,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-001**: System MUST provide three retention settings: task history (default 30 days), activity log (default 7 days) and the task manager's own events (default 7 days), settable in the Infrahub configuration, Helm values and compose environment.
 - **FR-002**: System MUST apply the three settings to the task manager's cleanups at start, without the operator setting task-manager-specific variables.
 - **FR-003**: System MUST apply the same settings when the task manager's background services run in their own deployment, by starting that deployment through an Infrahub command.
-- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day or the own-event retention is longer than the activity log retention.
+- **FR-004**: System MUST refuse to start the task manager, naming the setting, when a retention is shorter than 1 day; when the own-event retention is longer than the activity log retention, it MUST log a warning and use the activity log retention for Prefect's own events.
 - **FR-005**: System MUST accept the same retention settings, with no upper limit, in every edition.
 
 **Task history**
@@ -134,7 +135,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-006**: System MUST automatically delete, about every hour, finished runs (completed, failed, cancelled, crashed) whose end time is older than the task history retention, together with their logs and artifacts.
 - **FR-007**: System MUST NOT delete runs that are not finished through the automatic cleanup, the command for old runs or the upgrade.
 - **FR-008**: The existing operator command for old runs MUST delete the same runs, logs and artifacts as the automatic cleanup, using the task history retention setting.
-- **FR-009**: The command for old runs MUST offer a rewrite option, off by default, that returns the disk space of the deleted runs, and MUST skip the rewrite when it deleted nothing.
+- **FR-009**: The command for old runs MUST offer a rewrite option, off by default, that returns the disk space of the deleted runs; it MUST rewrite only when the deletes freed most of the tables. The command MUST read the task history retention setting and no longer take a number of days or a batch size.
 - **FR-010**: The command for old runs MUST commit its work in steps, log its progress, keep running if the caller disconnects, and be safe to re-run after an interruption.
 - **FR-011**: On Compose, the upgrade MUST run the command for old runs with the rewrite option before the instance starts; the Compose upgrade guide offers no way to skip it.
 - **FR-012**: The upgrade MUST NOT fail when the task manager it reaches does not yet provide the cleanup; it MUST report that the cleanup was not run.
@@ -207,7 +208,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - Q: How do retention settings reach a separate background-services deployment? → A: A thin Infrahub command starts it after applying the same settings.
 - Q: Are the SQL cleanup and the new filters checked on task-manager upgrades? → A: Yes, by CI equivalence checks.
 - Q: Fallback if product refuses to remove the total count? → A: None; argue for removal. (Later found moot: the page never asked for the count; the design doc dropped D7 and Q2.)
-- Q: Values accepted by the settings? → A: Durations of at least 1 day; own events not longer than the activity log; refuse to start otherwise.
+- Q: Values accepted by the settings? → A: Durations of at least 1 day, refuse to start otherwise; an own-event retention longer than the activity log is capped to it with a warning (design doc D5).
 - Q: Activity log default? → A: Stays 7 days; a year or more is a capability, not the default.
 - Q: Helm upgrade? → A: The pre-upgrade hook does not run the cleanup; a maintenance step after the rollout does.
 - Q: Load more by time and time windows? → A: Windows count back from the oldest event shown.
