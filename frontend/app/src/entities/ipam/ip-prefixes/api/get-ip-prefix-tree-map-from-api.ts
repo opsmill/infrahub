@@ -19,6 +19,9 @@ export const GET_IP_PREFIX_TREE_MAP = graphql(`
           utilization {
             value
           }
+          is_pool {
+            value
+          }
           description {
             value
           }

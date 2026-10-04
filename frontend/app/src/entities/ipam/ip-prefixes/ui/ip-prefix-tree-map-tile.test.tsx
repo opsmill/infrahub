@@ -181,6 +181,91 @@ describe("IpPrefixTreeMapTile", () => {
     await initPointerTracking(component.locator);
   });
 
+  it("styles a pool child with the pool surface and marks the tile as a pool", async () => {
+    // GIVEN
+    const rect = generateTreeMapRect({
+      tile: generateAllocatedTile({ child: { cidr: "10.1.0.0/16", isPool: true } }),
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMapTile
+        rect={rect}
+        parent={PARENT}
+        permission={PERMISSION_ALLOW_ALL}
+        onCreateFromFreeBlock={noop}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "10.1.0.0/16, 0% utilized" }))
+      .toHaveClass(/bg-pool-surface/);
+    await expect
+      .element(component.getByTestId("ip-prefix-tree-map-tile"))
+      .toHaveAttribute("data-tile-pool", "true");
+  });
+
+  it("shows the description on its own line when the tile is wide enough", async () => {
+    // GIVEN
+    const component = await render(
+      <div className="relative h-40 w-96">
+        <IpPrefixTreeMapTile
+          rect={generateTreeMapRect({
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+            tile: generateAllocatedTile({
+              child: { cidr: "10.1.0.0/16", description: "Interconnections" },
+            }),
+          })}
+          parent={PARENT}
+          permission={PERMISSION_ALLOW_ALL}
+          onCreateFromFreeBlock={noop}
+        />
+      </div>
+    );
+
+    // WHEN the tile is laid out at 24rem wide
+    const description = component.getByText("Interconnections");
+
+    // THEN the description is visible and the marker is not
+    await expect.element(description).toBeVisible();
+    await expect
+      .element(component.getByTestId("ip-prefix-tree-map-tile-description-marker"))
+      .not.toBeVisible();
+  });
+
+  it("marks that a description exists when the tile is too narrow to show it", async () => {
+    // GIVEN
+    const component = await render(
+      <div className="relative h-40 w-32">
+        <IpPrefixTreeMapTile
+          rect={generateTreeMapRect({
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 100,
+            tile: generateAllocatedTile({
+              child: { cidr: "10.1.0.0/16", description: "Interconnections" },
+            }),
+          })}
+          parent={PARENT}
+          permission={PERMISSION_ALLOW_ALL}
+          onCreateFromFreeBlock={noop}
+        />
+      </div>
+    );
+
+    // WHEN the tile is laid out at 8rem wide
+    const marker = component.getByTestId("ip-prefix-tree-map-tile-description-marker");
+
+    // THEN the marker shows and the description text stays hidden
+    await expect.element(marker).toBeVisible();
+    await expect.element(component.getByText("Interconnections")).not.toBeVisible();
+  });
+
   it.each([0, 50, 100])("names an allocated tile at %d percent utilized", async (utilization) => {
     // GIVEN
     const rect = generateTreeMapRect({

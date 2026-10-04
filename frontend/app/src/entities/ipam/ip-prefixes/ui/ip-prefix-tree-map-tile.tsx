@@ -1,4 +1,5 @@
 import { Button, Tooltip } from "@infrahub/ui";
+import { MessageSquareTextIcon } from "lucide-react";
 import type React from "react";
 import { Focusable } from "react-aria-components";
 import { Link } from "react-router";
@@ -23,9 +24,15 @@ const TILE_FOCUS_CLASS =
 const AGGREGATE_TILE_CLASS = "border-border bg-content-strong text-foreground-muted";
 
 export const TREE_MAP_TILE_CLASSES = {
-  allocated: "border-border bg-accent-surface text-foreground",
-  free: "border-border-strong border-dashed bg-content text-foreground-muted",
+  allocated: "border-accent-strong bg-accent-surface text-foreground",
+  pool: "border-pool bg-pool-surface text-foreground",
+  free: "tree-map-hatch border-border-strong border-dashed bg-content text-foreground-muted",
   aggregate: AGGREGATE_TILE_CLASS,
+} as const;
+
+export const TREE_MAP_FILL_CLASSES = {
+  allocated: "bg-accent-fill",
+  pool: "bg-pool-fill",
 } as const;
 
 export interface IpPrefixTreeMapTileProps {
@@ -54,12 +61,37 @@ function TileLabel({ children }: { children: React.ReactNode }) {
   return <span className="relative @min-[5rem]:block hidden truncate px-1 py-0.5">{children}</span>;
 }
 
+// The description gets its own line once the tile is wide enough; narrower tiles only mark that
+// one exists and leave the text to the tooltip.
+function AllocatedTileLabel({ child, label }: { child: TreeMapChild; label: string }) {
+  return (
+    <span className="relative @min-[5rem]:flex hidden min-w-0 flex-col px-1 py-0.5">
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate">{label}</span>
+        {child.description && (
+          <MessageSquareTextIcon
+            aria-hidden="true"
+            data-testid="ip-prefix-tree-map-tile-description-marker"
+            className="@min-[11rem]:hidden size-3 shrink-0 text-foreground-muted"
+          />
+        )}
+      </span>
+      {child.description && (
+        <span className="@min-[11rem]:block hidden truncate text-foreground-muted">
+          {child.description}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function AllocatedTooltip({ child }: { child: TreeMapChild }) {
   return (
     <Col className="gap-0.5">
       <span className="font-medium">{child.cidr}</span>
       {child.description && <span>{child.description}</span>}
       <span>Member type: {child.memberType}</span>
+      {child.isPool && <span>Prefix pool</span>}
       <span>{formatUtilization(child.utilization)}</span>
       <span>{formatMemberCount(child)}</span>
     </Col>
@@ -67,22 +99,24 @@ function AllocatedTooltip({ child }: { child: TreeMapChild }) {
 }
 
 function AllocatedTile({ tile, child }: { tile: TreeMapTile; child: TreeMapChild }) {
+  const variant = child.isPool ? "pool" : "allocated";
+
   return (
     <Tooltip message={<AllocatedTooltip child={child} />}>
       <Focusable>
         <Link
           to={getObjectDetailsUrl(child.kind, child.id, undefined, "tree-map")}
           aria-label={`${child.cidr}, ${formatUtilization(child.utilization)}`}
-          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, TREE_MAP_TILE_CLASSES.allocated)}
+          className={classNames(TILE_BASE_CLASS, TILE_FOCUS_CLASS, TREE_MAP_TILE_CLASSES[variant])}
         >
           {child.utilization !== null && (
             <div
               data-testid="ip-prefix-tree-map-tile-fill"
-              className="absolute inset-y-0 left-0 bg-accent-fill"
+              className={classNames("absolute inset-y-0 left-0", TREE_MAP_FILL_CLASSES[variant])}
               style={{ width: `${child.utilization}%` }}
             />
           )}
-          <TileLabel>{tile.label}</TileLabel>
+          <AllocatedTileLabel child={child} label={tile.label} />
         </Link>
       </Focusable>
     </Tooltip>
@@ -204,11 +238,13 @@ function TileContent({
 
 export function IpPrefixTreeMapTile(props: IpPrefixTreeMapTileProps) {
   const { rect } = props;
+  const isPool = rect.tile.kind === "allocated" && rect.tile.child.isPool;
 
   return (
     <div
       data-testid="ip-prefix-tree-map-tile"
       data-tile-kind={rect.tile.kind}
+      data-tile-pool={isPool ? "true" : undefined}
       className="@container absolute p-px"
       style={{
         left: `${rect.x}%`,

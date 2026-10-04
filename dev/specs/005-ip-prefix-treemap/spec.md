@@ -109,7 +109,8 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 - **FR-001**: Users MUST be able to open a "Tree Map" tab from the detail page of any IP prefix, alongside the existing Details, IP Addresses, Resource Pool and Children tabs.
 - **FR-002**: System MUST render each direct child prefix and each free block of the current prefix as a tile whose area is proportional to the share of the parent's address space it covers, computed from prefix lengths so that the result is exact for IPv4 and for IPv6 across prefix lengths 0 to 128.
 - **FR-003**: System MUST ensure the areas of all allocated and free tiles, including aggregated tiles, sum to the parent's full address space.
-- **FR-004**: System MUST draw allocated tiles in one accent style with an inner fill proportional to that child's own utilisation, and free tiles in a visibly empty style distinct from allocated tiles.
+- **FR-004**: System MUST draw allocated tiles in an accent style with an inner fill proportional to that child's own utilisation, draw prefixes flagged as pools in a second, distinct colour family with their own legend entry, and draw free tiles in a visibly empty style (hatched) distinct from both.
+- **FR-004a**: System MUST show an allocated tile's description on the tile when there is room, and otherwise mark that a description exists so the user knows to hover for it.
 - **FR-005**: System MUST show CIDR, description, member type, utilisation and member count when the user hovers an allocated tile, and CIDR when the user hovers a free tile.
 - **FR-006**: System MUST label each tile with its CIDR when the label fits, and omit the label otherwise.
 - **FR-007**: Users MUST be able to click an allocated tile to navigate to that child's Tree Map tab, with the current branch and IP namespace preserved.

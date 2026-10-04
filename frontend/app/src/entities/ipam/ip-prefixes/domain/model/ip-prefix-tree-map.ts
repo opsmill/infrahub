@@ -21,6 +21,7 @@ export interface TreeMapChild {
   cidr: string;
   size: PrefixSize;
   memberType: MemberType;
+  isPool: boolean;
   utilization: number | null;
   description: string | null;
   memberCount: number;

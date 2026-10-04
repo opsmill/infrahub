@@ -55,6 +55,7 @@ function toTreeMapChild(node: TreeMapNode): TreeMapChild | null {
     cidr,
     size,
     memberType,
+    isPool: node.is_pool?.value === true,
     utilization: typeof utilizationValue === "number" ? utilizationValue : null,
     description: node.description?.value ?? null,
     memberCount: memberType === "address" ? node.ip_addresses.count : node.children.count,

@@ -192,11 +192,16 @@ path today (they answer `null`), which the Children tab already pays for.
 
 **Decision**:
 
-- Allocated tile: `bg-accent-surface`, `border-border`, label `text-foreground`; inner fill is a
+- Pool tile (`is_pool`): the same shape as an allocated tile in the `pool` token family
+  (`bg-pool-surface`, `border-pool`, `bg-pool-fill`), a fuchsia hue because it is the one hue the
+  accent and the status families leave free; it has its own legend entry.
+- Allocated tile: `bg-accent-surface`, `border-accent-strong`, label `text-foreground`; inner fill is a
   child element with `width: <utilisation>%` (the only inline style, because it is data) and the
   `bg-accent-fill` token, a 55% alpha of `--accent-strong` declared in the shared theme for both
   themes so no component carries a `color-mix` or a `var(--x)` colour inline.
-- Free tile: `bg-content`, `border-dashed border-border-strong`, label `text-foreground-muted`.
+- Free tile: `bg-content` under a diagonal hatch drawn from `--border-strong` (the `tree-map-hatch`
+  utility), `border-dashed border-border-strong`, label `text-foreground-muted`. The hatch is what
+  separates "empty" from "allocated" at a glance; the dashed border alone was too subtle.
   (`bg-subtle` was considered and rejected: the `subtle` token is a foreground colour and renders
   as dark grey.)
 - Aggregated tiles: `bg-content-strong`, label `text-foreground-muted`; the allocated aggregate

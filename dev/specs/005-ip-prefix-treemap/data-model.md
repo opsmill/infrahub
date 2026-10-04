@@ -39,6 +39,7 @@ One real child prefix, mapped from a node whose `__typename` is not the availabl
 | `cidr` | `string` | `node.prefix.value` |
 | `size` | `PrefixSize` | parsed from `cidr` |
 | `memberType` | `"prefix" \| "address"` | `node.member_type.value` |
+| `isPool` | `boolean` | `node.is_pool.value === true`; a pool tile takes the pool colour family |
 | `utilization` | `number \| null` | `node.utilization.value`; `null` means unknown |
 | `description` | `string \| null` | `node.description.value` |
 | `memberCount` | `number` | `children.count` when `memberType` is `prefix`, else `ip_addresses.count` |

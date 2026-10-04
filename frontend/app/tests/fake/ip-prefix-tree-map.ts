@@ -32,6 +32,7 @@ export const generateTreeMapChild = (overrides: Partial<TreeMapChild> = {}): Tre
     cidr,
     size: parsePrefixLength(cidr),
     memberType: "prefix",
+    isPool: false,
     utilization: 0,
     description: null,
     memberCount: 0,

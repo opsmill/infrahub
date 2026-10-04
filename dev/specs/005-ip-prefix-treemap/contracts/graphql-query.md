@@ -29,6 +29,9 @@ query GET_IP_PREFIX_TREE_MAP($parentIds: [ID!], $limit: Int) {
         utilization {
           value
         }
+        is_pool {
+          value
+        }
         description {
           value
         }

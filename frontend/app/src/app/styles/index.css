@@ -34,6 +34,15 @@
 }
 
 @layer utilities {
+  /* Diagonal hatching marks unallocated space; it reads as empty at any size and in both themes. */
+  .tree-map-hatch {
+    background-image: repeating-linear-gradient(
+      135deg,
+      var(--border-strong) 0 1px,
+      transparent 1px 7px
+    );
+  }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

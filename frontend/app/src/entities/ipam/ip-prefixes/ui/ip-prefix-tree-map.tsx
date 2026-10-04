@@ -18,6 +18,7 @@ import { IpPrefixCreateSheet } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-cr
 import { IpPrefixTreeMapEmptyState } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-empty-state";
 import {
   IpPrefixTreeMapTile,
+  TREE_MAP_FILL_CLASSES,
   TREE_MAP_TILE_CLASSES,
 } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-tile";
 import { useGetIpPrefixTreeMap } from "@/entities/ipam/ip-prefixes/ui/queries/get-ip-prefix-tree-map.query";
@@ -54,7 +55,14 @@ function IpPrefixTreeMapLegend() {
   return (
     <Row className="flex-wrap gap-4 text-foreground-muted text-xs">
       <LegendSwatch className={TREE_MAP_TILE_CLASSES.allocated} label="Allocated">
-        <span className="absolute inset-y-0 left-0 w-1/2 bg-accent-fill" />
+        <span
+          className={classNames("absolute inset-y-0 left-0 w-1/2", TREE_MAP_FILL_CLASSES.allocated)}
+        />
+      </LegendSwatch>
+      <LegendSwatch className={TREE_MAP_TILE_CLASSES.pool} label="Pool">
+        <span
+          className={classNames("absolute inset-y-0 left-0 w-1/2", TREE_MAP_FILL_CLASSES.pool)}
+        />
       </LegendSwatch>
       <LegendSwatch className={TREE_MAP_TILE_CLASSES.free} label="Free" />
       <LegendSwatch

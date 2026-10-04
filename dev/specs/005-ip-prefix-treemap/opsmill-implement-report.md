@@ -200,3 +200,17 @@ manual toggles, where a manual collapse is honoured only for the prefix it was m
 derivation lives in a pure rule under `entities/ipam/ipam-tree/domain/rules/` with eight unit tests;
 the drill-down E2E test now also asserts the sidebar row is selected. Verified on the local stack
 for both the Children table and the Tree Map paths (103 frontend tests pass).
+
+## Erratum 4 (2026-10-04, visual encoding after hands-on review)
+
+Reviewing the map on the demo data, the user found allocated and free tiles too similar, wanted
+descriptions visible on tiles, and asked for pools to be told apart from static allocations.
+Changes: free tiles now carry a diagonal hatch (a `tree-map-hatch` utility drawn from
+`--border-strong`) on top of the dashed border; allocated tiles have a solid accent border; prefixes
+with `is_pool` use a new `pool` token family (fuchsia, declared for both themes in the shared
+theme) for surface, border and fill, with a "Pool" legend entry and a "Prefix pool" tooltip line;
+an allocated tile shows its description on a second line from 11rem wide and otherwise a small
+marker next to the CIDR, the tooltip always carrying the full text. The query selects `is_pool`,
+the child model carries `isPool`, and FR-004 gained the pool colour and a new FR-004a for the
+description. Verified on 10.0.0.0/8 of the `add-dc3` branch in both themes (106 frontend tests
+pass).
