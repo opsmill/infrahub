@@ -5,6 +5,7 @@ import re
 import sys
 import tomllib
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
@@ -17,7 +18,9 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
+    TypeAdapter,
     ValidationError,
+    ValidationInfo,
     computed_field,
     field_validator,
     model_validator,
@@ -676,6 +679,87 @@ class WorkflowSettings(BaseSettings):
             url += f":{self.port}"
         url += "/api"
         return url
+
+
+_RETENTION_IN_DAYS = re.compile(r"(\d+)d")
+_MINIMUM_RETENTION = timedelta(days=1)
+_TIMEDELTA_ADAPTER: TypeAdapter[timedelta] = TypeAdapter(timedelta)
+
+
+def _parse_retention(value: Any) -> timedelta | None:
+    if isinstance(value, timedelta):
+        return value
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if match := _RETENTION_IN_DAYS.fullmatch(text):
+        return timedelta(days=int(match.group(1)))
+    # Pydantic also reads forms such as "1 day, 00:00:00", which are not part of the documented contract.
+    if not text.startswith("P"):
+        return None
+    try:
+        return _TIMEDELTA_ADAPTER.validate_python(text)
+    except ValidationError:
+        return None
+
+
+class TaskManagerRetentionSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_RETENTION_")
+
+    task_history: timedelta = Field(
+        default="30d",
+        validate_default=True,
+        description=(
+            "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
+            "or an ISO 8601 duration (`P30D`), at least 1 day. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set."
+        ),
+    )
+    activity_log: timedelta = Field(
+        default="7d",
+        validate_default=True,
+        description=(
+            "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
+            "duration (`P7D`), at least 1 day. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` takes precedence when set."
+        ),
+    )
+    prefect_own_events: timedelta = Field(
+        default="7d",
+        validate_default=True,
+        description=(
+            "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
+            "duration (`P7D`), at least 1 day; a value longer than `activity_log` is capped to it. "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
+        ),
+    )
+
+    @field_validator("task_history", "activity_log", "prefect_own_events", mode="before")
+    @classmethod
+    def validate_retention_of_at_least_one_day(cls, value: Any, info: ValidationInfo) -> timedelta:
+        """Read a number of days such as `30d` or an ISO 8601 duration such as `P30D`.
+
+        Raises:
+            ValueError: When the value is in neither form, or is shorter than 1 day.
+
+        """
+        retention = _parse_retention(value)
+        if retention is None:
+            raise ValueError(
+                f"Invalid task manager retention: {info.field_name} must be a number of days such as 30d "
+                "or an ISO 8601 duration such as P30D"
+            )
+        if retention < _MINIMUM_RETENTION:
+            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at least 1 day")
+        return retention
+
+
+class TaskManagerSettings(BaseSettings):
+    """How long the task manager keeps its task history and activity log."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_")
+    retention: TaskManagerRetentionSettings = Field(
+        default_factory=TaskManagerRetentionSettings, description="How long each kind of record is kept."
+    )
 
 
 class ApiSettings(BaseSettings):
@@ -2084,6 +2168,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def task_manager(self) -> TaskManagerSettings:
+        return self.active_settings.task_manager
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2113,6 +2201,8 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    # Built when the configuration loads, so an invalid retention fails the load instead of the module import.
+    task_manager: TaskManagerSettings = Field(default_factory=TaskManagerSettings)
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
