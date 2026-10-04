@@ -18,7 +18,7 @@ Response `202`:
 {"id": "<job id>", "state": "running", "rewrite": "never", "rewritten": false, "cutoff": "2026-09-04T00:00:00Z", "deleted_runs": 0, "current_day": null, "size_before": null, "size_after": null, "not_rewritten": [], "error": null}
 ```
 
-- Starts a cleanup job in the task manager, or returns the running job if this replica runs one.
+- Starts a cleanup job in the task manager, or returns the running job if this replica runs one, with the `rewrite` that job was started with.
 - Response `409` `{"detail": "a cleanup is running elsewhere"}` when another replica holds the cleanup lock.
 - The only input is `rewrite`; any other field is refused with `422`. The cutoff is now minus the task history retention read from the task manager's own configuration; nothing about the cutoff is taken from the request.
 - No authentication, like Infrahub's existing task-manager route and Prefect's own API; this is a recorded constitution deviation (see plan.md).
