@@ -35,6 +35,9 @@ app = AsyncTyper()
 STALE_FLOW_RUN_STATES = [StateType.RUNNING, StateType.PENDING]
 
 TASK_HISTORY_CLEANUP_NOT_PROVIDED = "The task manager does not provide the task history cleanup yet; skipped."
+TASK_HISTORY_CLEANUP_RERUN_HINT = (
+    "Run `infrahub tasks flush flow-runs --rewrite` after the upgrade to finish the cleanup."
+)
 
 
 @app.command()

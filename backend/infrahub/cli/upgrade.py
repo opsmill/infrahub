@@ -4,10 +4,12 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+import httpx
 import typer
 from deepdiff import DeepDiff
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
+from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub import config
 from infrahub.core.initialization import (
@@ -46,7 +48,7 @@ from .db import (
     trigger_rebase_branches,
     update_core_schema,
 )
-from .tasks import clean_task_history
+from .tasks import TASK_HISTORY_CLEANUP_RERUN_HINT, clean_task_history
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -217,11 +219,7 @@ async def _upgrade_execute(
     console.log("Task manager configured")
 
     console.log("[bold]Step 6/7: Task history cleanup[/bold]")
-    if not await upgrade_task_history(
-        skip=skip_task_history_cleanup, client_factory=_task_manager_client, console=console
-    ):
-        console.log(f"Upgrade cancelled due to task history cleanup failure. {FAILED_BADGE}")
-        return
+    await upgrade_task_history(skip=skip_task_history_cleanup, client_factory=_task_manager_client, console=console)
 
     console.log("[bold]Step 7/7: Branch rebase[/bold]")
     branches = await mark_branches_needing_rebase(db=db)
@@ -253,23 +251,24 @@ async def upgrade_task_history(
     client_factory: Callable[[], PrefectClient],
     console: Console,
     poll_interval: timedelta = POLL_INTERVAL,
-) -> bool:
-    """Delete the task history older than its retention, returning whether the upgrade may go on.
+) -> None:
+    """Delete the task history older than its retention, reporting a failure without stopping the upgrade.
 
     The tables are rewritten only when the deletes freed more than half of the runs they held.
     """
     if skip:
         console.log("Task history cleanup skipped")
-        return True
+        return
     async with client_factory() as client:
         try:
             await clean_task_history(
                 client=client, rewrite=CleanupRewrite.IF_FREED, console=console, poll_interval=poll_interval
             )
-        except TaskHistoryCleanupError as exc:
-            console.log(f"{ERROR_BADGE} {exc.message}")
-            return False
-    return True
+        except (TaskHistoryCleanupError, PrefectHTTPStatusError, httpx.HTTPError) as exc:
+            # Each committed day stays deleted and a failed rewrite leaves its table intact, so the upgrade can go on.
+            message = exc.message if isinstance(exc, TaskHistoryCleanupError) else f"{type(exc).__name__}: {exc}"
+            console.log(f"{ERROR_BADGE} Task history cleanup failed: {message}")
+            console.log(TASK_HISTORY_CLEANUP_RERUN_HINT)
 
 
 def _task_manager_client() -> PrefectClient:
