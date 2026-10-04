@@ -4,7 +4,7 @@ import json
 import re
 import time
 from subprocess import CalledProcessError  # noqa: S404 - the error a failed command in a container raises
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -24,6 +24,14 @@ LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
 ADVISORY_LOCK_KEY = int.from_bytes(b"locktest", byteorder="big")
 # Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
 REWRITE_LOCK_TIMEOUT_SECONDS = 5
+OLD_RUN_AGE_DAYS = 35
+RECENT_RUN_AGE_DAYS = 5
+# Far more rows than the stack's own runs hold, so their freed space is most of the runs table whatever ran before.
+RUNS_DELETED_BEFORE_THE_CLEANUP = 2000
+# Inserted after the deleted runs, so that a vacuum cannot cut the space they freed off the end of the table.
+RUNS_AFTER_THE_DELETED_ONES = 20
+# Enough live rows that the few the stack updates meanwhile leave the runs table mostly live.
+RECENT_RUNS = 500
 
 # Only the task manager container reaches its database; the image ships the test helpers under /source/backend.
 _SEED_SCRIPT = f"""
@@ -86,6 +94,60 @@ async def main():
 asyncio.run(main())
 """
 
+# Plain SQL through Prefect's own tables, so the script also runs in an image of an earlier cleanup.
+_INSERT_RUNS_SCRIPT = """
+import asyncio, sys
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+import sqlalchemy as sa
+from prefect.server.database import provide_database_interface
+from prefect.server.schemas.states import StateType
+
+async def main(runs, ended_days_ago):
+    db = provide_database_interface()
+    flow_id = uuid4()
+    end_time = datetime.now(UTC) - timedelta(days=ended_days_ago)
+    async with db.session_context(begin_transaction=True) as session:
+        await session.execute(sa.insert(db.Flow).values(id=flow_id, name=f"flow-{flow_id}"))
+        await session.execute(
+            sa.insert(db.FlowRun),
+            [
+                {
+                    "flow_id": flow_id,
+                    "state_type": StateType.COMPLETED,
+                    "state_name": "Completed",
+                    "start_time": end_time - timedelta(hours=1),
+                    "end_time": end_time,
+                }
+                for _ in range(runs)
+            ],
+        )
+    print(flow_id)
+
+asyncio.run(main(runs=int(sys.argv[1]), ended_days_ago=int(sys.argv[2])))
+"""
+
+_START_IF_FREED_CLEANUP_SCRIPT = """
+import asyncio, json
+import httpx
+
+CLEANUP_URL = "http://localhost:4200/api/infrahub/task-history/cleanup"
+
+async def main():
+    async with httpx.AsyncClient(timeout=60) as client, asyncio.timeout(600):
+        response = await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})
+        response.raise_for_status()
+        job = response.json()
+        while job["state"] == "running":
+            await asyncio.sleep(0.5)
+            response = await client.get(f"{CLEANUP_URL}/{job['id']}")
+            response.raise_for_status()
+            job = response.json()
+    print(json.dumps(job))
+
+asyncio.run(main())
+"""
+
 _ADVISORY_LOCK_SCRIPT = f"""
 import asyncio, json, sys
 sys.path.insert(0, "/source/backend")
@@ -138,9 +200,22 @@ def _run_in_container(compose: InfrahubDockerCompose, service: str, command: lis
     return stdout
 
 
-def _python_in_task_manager(compose: InfrahubDockerCompose, script: str) -> str:
-    stdout = _run_in_container(compose=compose, service="task-manager", command=["python", "-c", script])
+def _python_in_task_manager(compose: InfrahubDockerCompose, script: str, arguments: tuple[str, ...] = ()) -> str:
+    stdout = _run_in_container(compose=compose, service="task-manager", command=["python", "-c", script, *arguments])
     return stdout.strip().splitlines()[-1]
+
+
+def _insert_finished_runs(compose: InfrahubDockerCompose, runs: int, ended_days_ago: int) -> str:
+    """Insert finished top-level runs of a flow of their own, returning the id of that flow."""
+    return _python_in_task_manager(
+        compose=compose, script=_INSERT_RUNS_SCRIPT, arguments=(str(runs), str(ended_days_ago))
+    )
+
+
+def _start_if_freed_cleanup(compose: InfrahubDockerCompose) -> dict[str, Any]:
+    """Start a cleanup that rewrites the tables only when they are mostly free, returning the job once it ended."""
+    job: dict[str, Any] = json.loads(_python_in_task_manager(compose=compose, script=_START_IF_FREED_CLEANUP_SCRIPT))
+    return job
 
 
 def _query_task_manager_database(compose: InfrahubDockerCompose, query: str) -> list[str]:
@@ -230,6 +305,57 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         assert [int(match["count"]) for match in _DELETED_RUNS.finditer(stdout)] == [OLD_RUNS + SCENARIO_DELETED_RUNS]
         assert stdout.strip().splitlines()[-1].strip().endswith("Task history tables rewritten")
         assert _task_history_size(compose=infrahub_compose) < size_before
+
+    def test_a_cleanup_rewrites_the_tables_freed_by_runs_deleted_before_it_started(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """A cleanup that rewrites only freed tables returns the space of runs deleted before it, as at a restart."""
+        old_flow = _insert_finished_runs(
+            compose=infrahub_compose, runs=RUNS_DELETED_BEFORE_THE_CLEANUP, ended_days_ago=OLD_RUN_AGE_DAYS
+        )
+        _insert_finished_runs(
+            compose=infrahub_compose, runs=RUNS_AFTER_THE_DELETED_ONES, ended_days_ago=RECENT_RUN_AGE_DAYS
+        )
+        deleted = _query_task_manager_database(
+            compose=infrahub_compose,
+            query=f"DELETE FROM flow_run WHERE flow_id = '{old_flow}'",  # noqa: S608 - a flow id the test inserted
+        )
+        file_nodes_before = _file_nodes(compose=infrahub_compose)
+        size_before = _task_history_size(compose=infrahub_compose)
+
+        job = _start_if_freed_cleanup(compose=infrahub_compose)
+
+        file_nodes_after = _file_nodes(compose=infrahub_compose)
+        assert deleted == [f"DELETE {RUNS_DELETED_BEFORE_THE_CLEANUP}"]
+        assert (job["state"], job["deleted_runs"], job["rewritten"], job["not_rewritten"]) == ("completed", 0, True, [])
+        assert {table for table in TASK_HISTORY_TABLES if file_nodes_after[table] != file_nodes_before[table]} == set(
+            TASK_HISTORY_TABLES
+        )
+        assert _task_history_size(compose=infrahub_compose) < size_before
+
+    def test_a_cleanup_leaves_tables_of_mostly_live_runs_as_they_are(
+        self,
+        infrahub_app: dict[str, int],
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """A cleanup that rewrites only freed tables, with no run to delete, leaves tables of mostly live runs as they are."""
+        _insert_finished_runs(compose=infrahub_compose, runs=RECENT_RUNS, ended_days_ago=RECENT_RUN_AGE_DAYS)
+        # The space that earlier tests freed and the dead rows of updates would otherwise count as free.
+        compacted = _query_task_manager_database(compose=infrahub_compose, query="VACUUM FULL flow_run")
+        file_nodes_before = _file_nodes(compose=infrahub_compose)
+
+        job = _start_if_freed_cleanup(compose=infrahub_compose)
+
+        assert compacted == ["VACUUM"]
+        assert (job["state"], job["deleted_runs"], job["rewritten"], job["not_rewritten"]) == (
+            "completed",
+            0,
+            False,
+            [],
+        )
+        assert _file_nodes(compose=infrahub_compose) == file_nodes_before
 
     def test_the_cleanup_lock_has_one_holder_at_a_time_until_it_is_released(
         self,
