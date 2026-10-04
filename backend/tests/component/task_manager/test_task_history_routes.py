@@ -18,7 +18,6 @@ from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manage
 from infrahub.prefect_server.app import router
 from infrahub.prefect_server.task_history import (
     CleanupJobs,
-    CleanupRewrite,
     ProcessCleanupLock,
     TaskHistoryCleanup,
     TaskHistoryTables,
@@ -26,6 +25,7 @@ from infrahub.prefect_server.task_history import (
     get_cleanup_jobs,
     get_cleanup_lock,
 )
+from infrahub.prefect_server.task_history_models import CleanupRewrite
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator

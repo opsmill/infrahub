@@ -80,6 +80,7 @@ backend/infrahub/
 │   ├── retention_settings.py          # new: retention settings (validation) and the reader of the task_manager section
 │   ├── retention.py                   # new: settings translation + PREFECT_EVENT_TYPES list
 │   ├── task_history.py                # new: cleanup job (SQL deletes per day, rewrite on Postgres) + routes
+│   ├── task_history_models.py         # new: request and job models the routes and the client share
 │   ├── database.py                    # newest-first time windows, optional count, plan per query
 │   ├── events.py, models.py           # include_count, retention window, nullable total
 ├── task_manager/
