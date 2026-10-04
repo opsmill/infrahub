@@ -27,6 +27,7 @@ from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
+from infrahub.license.reporting import log_license_state
 from infrahub.lock import initialize_lock
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
@@ -35,6 +36,7 @@ from infrahub.workers.dependencies import (
     get_component,
     get_database,
     get_http,
+    get_license_service,
     get_log_forwarding_service,
     get_message_bus,
     get_tls_registry,
@@ -180,6 +182,8 @@ class InfrahubWorkerAsync(BaseWorker):
 
         async with self.service.database.start_session() as dbs:
             await validate_graph_version(db=dbs)
+
+        log_license_state(service=get_license_service(), key_is_set=config.SETTINGS.license.key is not None)
 
         initialize_repositories_directory()
         build_component_registry()

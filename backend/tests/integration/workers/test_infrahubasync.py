@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import TYPE_CHECKING
 
 import pytest
@@ -137,3 +138,15 @@ class TestWorker(TestWorkerInfrahubAsync):
 
         user_email = await self._run_git_command("config", "--global", "--get", "user.email")
         assert user_email == "infrahub@opsmill.com"
+
+    async def test_worker_logs_its_license_state_once_at_setup(
+        self, prefect_worker: InfrahubWorkerAsync, worker_setup_records: list[logging.LogRecord]
+    ) -> None:
+        """Only the level and state are pinned, because the wording depends on whether the shell sets a license key."""
+        license_lines = [
+            record.msg
+            for record in worker_setup_records
+            if isinstance(record.msg, dict) and "license_state" in record.msg
+        ]
+
+        assert [(line["level"], line["license_state"]) for line in license_lines] == [("info", "not_required")]
