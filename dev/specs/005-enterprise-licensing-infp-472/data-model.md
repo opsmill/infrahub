@@ -84,6 +84,9 @@ Returned by `notice_for(status, mode)`.
 | `not_required`, `valid` | none, -, no header | none, -, no header |
 | `expiring` | super_admins, dismissible, no header | super_admins, dismissible, header |
 | `unlicensed`, `invalid`, `not_yet_valid`, `expired` | super_admins, dismissible, no header | all_users, not dismissible, header |
+| `invalid` with reason `internal_error` | super_admins, dismissible, no header | super_admins, dismissible, no header |
+
+The `internal_error` row is checked first. An internal error is a defect in Infrahub, not in the customer's license, so it never reaches every user and never sends the header, in either release.
 
 ## LicenseService (internal, abstract)
 
@@ -110,6 +113,8 @@ A blank or whitespace-only value is read as `None`, because deployment templates
 Field of `InfoAPI` returned by `GET /api/info`. See [contracts/api-info.md](contracts/api-info.md).
 
 `InfoAPI.license` is `null` for an anonymous caller, whatever the state. When present, the object always carries its details.
+
+Its `banner` carries the `audience` and `dismissible` of the `Notice`, plus `shown_to_all_users_when_enforced`, from `shown_to_all_users_when_enforced(status, mode)` in `status.py`: true in `quiet` mode when the `enforce` audience for the status is `all_users`, which excludes `internal_error`.
 
 ## TelemetryLicenseData (telemetry, Pydantic)
 

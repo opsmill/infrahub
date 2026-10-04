@@ -7,6 +7,7 @@ from typing import assert_never
 from infrahub.license.models import (
     License,
     LicenseFailure,
+    LicenseFailureReason,
     LicenseState,
     LicenseStatus,
     Notice,
@@ -43,6 +44,10 @@ def evaluate(outcome: License | LicenseFailure | None, now: datetime) -> License
 
 def notice_for(status: LicenseStatus, mode: NoticeMode) -> Notice:
     """Decide who sees a license notice, whether it can be dismissed and whether responses carry the header."""
+    # An internal error is a defect in Infrahub rather than in the customer's license, so it never reaches every user.
+    if status.state == LicenseState.INVALID and status.reason == LicenseFailureReason.INTERNAL_ERROR:
+        return Notice(audience=NoticeAudience.SUPER_ADMINS, dismissible=True, send_header=False)
+
     match status.state:
         case LicenseState.NOT_REQUIRED | LicenseState.VALID:
             return Notice(audience=NoticeAudience.NONE, dismissible=False, send_header=False)
@@ -56,3 +61,11 @@ def notice_for(status: LicenseStatus, mode: NoticeMode) -> Notice:
             return Notice(audience=NoticeAudience.ALL_USERS, dismissible=False, send_header=True)
         case _:
             assert_never(status.state)
+
+
+def shown_to_all_users_when_enforced(status: LicenseStatus, mode: NoticeMode) -> bool:
+    """Whether a notice that only super-admins see in quiet mode reaches every user in the enforcing release."""
+    return (
+        mode == NoticeMode.QUIET
+        and notice_for(status=status, mode=NoticeMode.ENFORCE).audience == NoticeAudience.ALL_USERS
+    )

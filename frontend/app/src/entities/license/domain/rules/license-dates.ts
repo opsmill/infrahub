@@ -4,3 +4,7 @@ const ONE_SECOND_MS = 1000;
 export function lastCoveredDay(endsAt: string): Date {
   return new Date(new Date(endsAt).getTime() - ONE_SECOND_MS);
 }
+
+export function dayCount(count: number): string {
+  return `${count} ${count === 1 ? "day" : "days"}`;
+}

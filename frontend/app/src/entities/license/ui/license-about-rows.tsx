@@ -3,7 +3,7 @@ import { InfoRow } from "@/shared/components/display/info-row";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { LicenseInfo } from "@/entities/license/domain/model/license";
-import { lastCoveredDay } from "@/entities/license/domain/rules/license-dates";
+import { dayCount, lastCoveredDay } from "@/entities/license/domain/rules/license-dates";
 import { useFormatLicenseDay } from "@/entities/license/ui/hooks/use-format-license-day";
 
 interface LicenseAboutRowsProps {
@@ -78,8 +78,4 @@ function timeLeftText({ days_remaining, days_since_expiry }: LicenseInfo) {
     return "expired today";
   }
   return `expired ${dayCount(daysExpired)} ago`;
-}
-
-function dayCount(count: number) {
-  return `${count} ${count === 1 ? "day" : "days"}`;
 }

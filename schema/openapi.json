@@ -2543,12 +2543,18 @@
                     "dismissible": {
                         "type": "boolean",
                         "title": "Dismissible"
+                    },
+                    "shown_to_all_users_when_enforced": {
+                        "type": "boolean",
+                        "title": "Shown To All Users When Enforced",
+                        "description": "True when only super-admins see the banner now and every user sees it in the enforcing release"
                     }
                 },
                 "type": "object",
                 "required": [
                     "audience",
-                    "dismissible"
+                    "dismissible",
+                    "shown_to_all_users_when_enforced"
                 ],
                 "title": "BannerAPI"
             },
