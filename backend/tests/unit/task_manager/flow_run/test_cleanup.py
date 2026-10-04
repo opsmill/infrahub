@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import TYPE_CHECKING
 
 import httpx
 import pytest
+from prefect.settings import PREFECT_CLIENT_MAX_RETRIES, temporary_settings
 
 from infrahub.prefect_server.task_history import CleanupJob, CleanupJobState, CleanupRewrite
 from infrahub.task_manager.flow_run.cleanup import TaskHistoryCleanupError, run_task_history_cleanup
@@ -20,7 +22,17 @@ from tests.helpers.task_history_api import (
     unreachable,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 POLL_INTERVAL = timedelta(seconds=2)
+
+
+@pytest.fixture
+def prefect_client_without_retries() -> Generator[None, None, None]:
+    """Prefect's client raises a connection error at once, instead of retrying it with real waits once it has had an answer."""
+    with temporary_settings(updates={PREFECT_CLIENT_MAX_RETRIES: 0}):
+        yield
 
 
 class ProgressRecorder:
@@ -243,7 +255,6 @@ async def test_a_cleanup_the_task_manager_cannot_be_reached_about_is_started_aga
     assert clock.sleeps == [2.0] * 5
 
 
-@pytest.mark.usefixtures("prefect_client_without_retries")
 async def test_a_task_manager_unreachable_when_the_cleanup_starts_raises_at_once() -> None:
     """A task manager that cannot be reached to start the cleanup raises the transport error, with no wait and no retry."""
     task_manager = ScriptedTaskManager(responses=[unreachable()])

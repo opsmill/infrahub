@@ -8,7 +8,6 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import httpx
-import pytest
 import typer
 
 from infrahub.cli.tasks import TASK_HISTORY_CLEANUP_RERUN_HINT
@@ -190,7 +189,6 @@ async def test_an_unexpected_answer_is_reported_and_the_upgrade_goes_on() -> Non
     assert hint == TASK_HISTORY_CLEANUP_RERUN_HINT
 
 
-@pytest.mark.usefixtures("prefect_client_without_retries")
 async def test_an_unreachable_task_manager_is_reported_and_the_upgrade_goes_on() -> None:
     """A task manager that cannot be reached is reported like a failed cleanup, without raising out of the upgrade."""
     task_manager = ScriptedTaskManager(responses=[unreachable()])
