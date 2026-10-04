@@ -18,6 +18,7 @@ $ infrahub upgrade [OPTIONS] [CONFIG_FILE]
 * `--rebase-branches / --no-rebase-branches`: Automatically rebase every open branch that needs it after migrations run. Without this flag, the upgrade reports which branches need rebase and stops; rebase them manually later or re-run with this flag.  [default: no-rebase-branches]
 * `--interactive / --no-interactive`: When combined with --rebase-branches, prompt y/N before rebasing each branch. Has no effect without --rebase-branches.  [default: no-interactive]
 * `--verbose / --no-verbose`: Also show internal infrahub and prefect logger output (schema-loader warnings, validator messages, workflow-client logs) from migrations and rebase that is suppressed by default. Per-step and per-migration progress messages are always shown and are not controlled by this flag.  [default: no-verbose]
+* `--no-task-history-cleanup`: Leave out the task history cleanup, for an upgrade that runs while the instance still serves, such as the upgrade hook of the Helm chart. Run `infrahub tasks flush flow-runs --rewrite` in a maintenance window afterwards.
 * `--install-completion`: Install completion for the current shell.
 * `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
 * `--help`: Show this message and exit.
