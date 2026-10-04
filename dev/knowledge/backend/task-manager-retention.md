@@ -19,7 +19,7 @@ database: it sets Prefect settings, and deletes and rewrites rows in Prefect's e
 | Every hour | Prefect deletes finished top-level runs older than `task_history` with their logs and artifacts, events older than `activity_log`, and listed Prefect event types older than `prefect_own_events` |
 | A Prefect event type is missing from `PREFECT_EVENT_TYPES` | It is kept for `activity_log`: it costs disk, and no Infrahub event is ever deleted early |
 | `infrahub tasks flush flow-runs [--rewrite]` | Runs the cleanup job in the task manager with the rewrite mode `never`, or `always` with `--rewrite` |
-| `infrahub upgrade` | Step 6/7 runs the cleanup job with `if_freed`; a failure is reported with the command that finishes it, and the upgrade continues; `--no-task-history-cleanup` skips the step |
+| `infrahub upgrade` | Its task history cleanup step runs the cleanup job with `if_freed`; a failure is reported with the command that finishes it, and the upgrade continues; `--no-task-history-cleanup` skips the step |
 | The task manager has no cleanup route (an older release) | The CLI prints that the cleanup is not provided, deletes nothing and exits 0 |
 | A retention is lowered | The next hourly run deletes the older records; task history disk space returns only with `flush flow-runs --rewrite`; event tables are never rewritten, and PostgreSQL reuses their space |
 | A run stays RUNNING or PENDING | Nothing deletes it until `infrahub tasks flush stale-runs` marks it CRASHED; see [Stuck runs](#stuck-runs) |
