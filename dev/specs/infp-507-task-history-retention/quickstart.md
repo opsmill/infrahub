@@ -26,7 +26,7 @@ Automated: the cleanup equivalence component test (new cleanup and Prefect's `va
 2. In the UI, open Activities, scroll with "load more" while creating new changes in another tab. Expect no repeated events.
 3. Query `InfrahubEvent` without `count`; check in the task-manager logs or with a breakpoint that no count query runs.
 
-Speed with a year of activity log is validated by the private performance tests (infrahub-private-tests).
+Speed with a year of activity log is validated by the private performance tests (opsmill/infrahub-private-tests, `TestActivityLog` and the concurrency test), dispatched through the `test-dataset` workflow with `test_filter=TestActivityLog`.
 
 ## Part 3: activity log retention
 
