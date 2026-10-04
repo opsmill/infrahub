@@ -35,6 +35,8 @@ export function LicenseAboutRows({ license }: LicenseAboutRowsProps) {
 
 function HeldLicenseRows({ license }: { license: LicenseInfo }) {
   const formatLicenseDay = useFormatLicenseDay();
+  const starts =
+    license.starts_at === null ? null : `${formatLicenseDay(license.starts_at)} (not valid yet)`;
   const ends =
     license.ends_at === null
       ? null
@@ -46,6 +48,7 @@ function HeldLicenseRows({ license }: { license: LicenseInfo }) {
       <LicenseRow label="Type" value={licenseTypeText(license)} />
       <LicenseRow label="Product tier" value={license.product_tier} />
       <LicenseRow label="Support tier" value={license.support_tier} />
+      {license.state === "not_yet_valid" && <LicenseRow label="Starts" value={starts} />}
       <LicenseRow label="Ends" value={ends} />
     </>
   );
