@@ -50,6 +50,17 @@ export function deriveIpamTreeExpandedKeys(
   return keys;
 }
 
+/** Drops the collapses made on another prefix, so navigating always reveals the current prefix. */
+export function forgetIpamTreeCollapsesOnNavigation(
+  manual: IpamTreeManualExpansion,
+  currentNodeId: string | undefined
+): IpamTreeManualExpansion {
+  if (manual.currentNodeId === currentNodeId) {
+    return manual;
+  }
+  return { currentNodeId, expanded: manual.expanded, collapsed: new Set() };
+}
+
 /** Records which rows the user just opened or closed, given the set before and after the toggle. */
 export function applyIpamTreeExpansionChange(
   manual: IpamTreeManualExpansion,

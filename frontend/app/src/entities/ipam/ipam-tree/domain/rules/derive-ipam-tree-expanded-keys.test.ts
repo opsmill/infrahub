@@ -4,6 +4,7 @@ import {
   applyIpamTreeExpansionChange,
   deriveIpamTreeExpandedKeys,
   EMPTY_MANUAL_EXPANSION,
+  forgetIpamTreeCollapsesOnNavigation,
   getIpamTreeAncestorKeys,
   getIpamTreeItemId,
 } from "@/entities/ipam/ipam-tree/domain/rules/derive-ipam-tree-expanded-keys";
@@ -155,5 +156,45 @@ describe("applyIpamTreeExpansionChange", () => {
     // THEN the old collapse is gone and the new prefix owns the toggles
     expect(next.collapsed.size).toBe(0);
     expect(next.currentNodeId).toBe(CHILD_ID);
+  });
+});
+
+describe("forgetIpamTreeCollapsesOnNavigation", () => {
+  it("keeps the toggles while the prefix is unchanged", () => {
+    // GIVEN a collapse recorded on the /16
+    const manual = {
+      ...EMPTY_MANUAL_EXPANSION,
+      currentNodeId: CHILD_ID,
+      collapsed: new Set([SUPERNET_KEY]),
+    };
+
+    // WHEN the tree renders again on the same /16
+    const next = forgetIpamTreeCollapsesOnNavigation(manual, CHILD_ID);
+
+    // THEN the state is untouched
+    expect(next).toBe(manual);
+  });
+
+  it("drops collapses but keeps opened rows when the user navigates away and back", () => {
+    // GIVEN the supernet was collapsed on the /16 and another row was opened by hand
+    const onChild = {
+      currentNodeId: CHILD_ID,
+      expanded: new Set(["nullother"]),
+      collapsed: new Set([SUPERNET_KEY]),
+    };
+
+    // WHEN the user navigates elsewhere without toggling, then back to the /16
+    const backOnChild = forgetIpamTreeCollapsesOnNavigation(
+      forgetIpamTreeCollapsesOnNavigation(onChild, "elsewhere"),
+      CHILD_ID
+    );
+
+    // THEN the path to the /16 is open again and the opened row stays open
+    const keys = deriveIpamTreeExpandedKeys(
+      new Set([ROOT_KEY, SUPERNET_KEY]),
+      backOnChild,
+      CHILD_ID
+    );
+    expect([...keys].sort()).toEqual([ROOT_KEY, SUPERNET_KEY, "nullother"].sort());
   });
 });

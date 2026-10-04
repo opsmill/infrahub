@@ -16,6 +16,7 @@ import {
   applyIpamTreeExpansionChange,
   deriveIpamTreeExpandedKeys,
   EMPTY_MANUAL_EXPANSION,
+  forgetIpamTreeCollapsesOnNavigation,
   getIpamTreeAncestorKeys,
   getIpamTreeItemId,
   type IpamTreeKey,
@@ -39,7 +40,13 @@ function toTreeKeys(keys: Set<Key>): Set<IpamTreeKey> {
 
 export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
   const { currentIpNamespace } = useCurrentIpNamespace();
-  const [manualExpansion, setManualExpansion] = React.useState(EMPTY_MANUAL_EXPANSION);
+  const [manualExpansion, setManualExpansion] = React.useState({
+    ...EMPTY_MANUAL_EXPANSION,
+    currentNodeId,
+  });
+  if (manualExpansion.currentNodeId !== currentNodeId) {
+    setManualExpansion(forgetIpamTreeCollapsesOnNavigation(manualExpansion, currentNodeId));
+  }
 
   // The previous path stays open while the next one loads, so in-app navigation never blanks the tree.
   const { data: ancestorsData, isPending: isPendingAncestors } = useGetObjectAncestors(
@@ -49,7 +56,8 @@ export function IpamTree({ className, currentNodeId, search }: IpamTreeProps) {
     },
     {
       enabled: !!currentNodeId,
-      placeholderData: (previous) => previous,
+      // The index route has no prefix, so a stale path from the last prefix must not stay open.
+      placeholderData: (previous) => (currentNodeId ? previous : undefined),
     }
   );
 
