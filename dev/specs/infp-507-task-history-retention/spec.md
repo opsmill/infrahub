@@ -182,7 +182,7 @@ An operator sets how long task history, the activity log and the task manager's 
 
 ## Success Criteria *(mandatory)*
 
-Timings are indicative: they come from local benchmarks, not a production contract.
+Timings are indicative: they come from local benchmarks, not a production contract. Every criterion is evidenced by the private performance tests (opsmill/infrahub-private-tests) on restored production-scale backups, on Postgres 14 and 18, before each part ships.
 
 ### Measurable Outcomes
 
@@ -228,6 +228,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - **Q1 (blocks the release notes)**: how long the upgrade step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Known instances hold about 20 to 35 GB.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
+- **Release evidence**: the private performance tests listed in the design doc (Activities queries, concurrent paging, task history retention, the upgrade step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
 - Delivery order: part 1 task history (User Story 1), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
 
 ## Out of Scope

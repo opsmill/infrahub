@@ -23,7 +23,7 @@ Research and code locations: [research.md](research.md).
 
 **Storage**: Prefect's task-manager database (Postgres 14 in the Helm chart, 18 in Compose; SQLite in the component test harness). No schema change.
 
-**Testing**: pytest (unit, component with the Prefect test harness, functional), Vitest, Playwright E2E; private performance tests in infrahub-private-tests
+**Testing**: pytest (unit, component with the Prefect test harness, functional, integration-docker), Vitest, Playwright E2E. **Release evidence**: performance and behaviour tests in opsmill/infrahub-private-tests on restored backups with real task history and activity log, on Postgres 14 and 18; each part ships only with its results attached to the PR and to INFP-507
 
 **Target Platform**: Linux containers (Compose, Helm)
 
@@ -44,7 +44,7 @@ Research and code locations: [research.md](research.md).
 | I. Schema-Driven Integrity | Pass | No Infrahub schema or graph change. Generated docs regenerated, not edited. |
 | II. Branch-Safe by Default | Pass | No graph query changes. Branch filters resolve names through the branch registry; deleted branches through their deletion event. Branch-deletion purge of runs unchanged. |
 | III. Type Safety & Explicit Contracts | Pass | Pydantic settings section and request/response models for the new routes; contracts written before implementation (contracts/). |
-| IV. Test Discipline | Pass | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; functional test for the event-type list; Vitest for paging; an E2E test for Activities "load more" without the count. |
+| IV. Test Discipline | Pass (with private-test evidence) | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; functional test for the event-type list; Vitest for paging; an E2E test for Activities "load more" without the count; the private performance tests provide the evidence at production scale that CI cannot (backups with 25 to 100 GB of task history and a year of activity log). |
 | V. Query Performance | Pass | SQL built with SQLAlchemy Core, parameterized. Plans validated with EXPLAIN in the design-doc benchmark; regression covered by private performance tests. |
 | VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite`. See Complexity Tracking. Settings input is validated at start. |
 | VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during a long upgrade does not stop the cleanup. See Complexity Tracking. |
@@ -103,17 +103,33 @@ python_testcontainers/infrahub_testcontainers/docker-compose*.test.yml  # backgr
 tasks/docs.py                          # add `infrahub tasks` to the CLI reference
 docs/docs/deploy-manage/maintain-upgrade/upgrade/*.mdx, docs/docs/reference/*  # docs (reference regenerated)
 dev/knowledge/backend/{events,async-tasks}.md, dev/adr/0002-events-system.md   # knowledge and ADR updates
+
+# opsmill/infrahub-private-tests (separate repository): release evidence
+tests/performance/test_activity_log.py (PR #33), test_activity_log_concurrency.py, test_activity_log_retention.py,
+tests/performance/test_task_history_retention.py, test_task_history_upgrade.py, test_task_history_cleanup_load.py, test_database_size.py
 changelog/                             # fragments per part
 ```
 
 **Structure Decision**: Existing backend/frontend layout. New task-manager code lives in `backend/infrahub/prefect_server/` next to Infrahub's existing routes, because only the task manager connects to Prefect's database. The Helm chart change (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) is a separate PR in opsmill/infrahub-helm.
+
+## Evidence: infrahub-private-tests
+
+CI proves the logic on small seeded data; only the private tests prove the outcomes at the scale that caused the incidents. They run through the `test-dataset` workflow of opsmill/infrahub-private-tests on restored backups that include `prefect.dump`, on Postgres 14 (Helm) and 18 (Compose), and their report is attached to each PR and to INFP-507.
+
+| Part | Private tests | Proves |
+|---|---|---|
+| 1. Task history | `test_task_history_retention.py`, `test_task_history_upgrade.py`, `test_task_history_cleanup_load.py`, `test_database_size.py` (extended) | Old runs deleted, newer and stuck runs kept, settings reach a separate background-services container; upgrade duration, extra disk and size before/after on 25 and 100 GB (Q1); no lock waits, deadlocks or task errors under load; size and dead space per table over time |
+| 2. Activities page | PR #33 `test_activity_log.py` (landed, retention override switched to the Infrahub setting, extended), `test_activity_log_concurrency.py` | Identical results to the previous release; no plan flip on repeated queries; time windows; combined filters within 10 s; deep paging by time on Postgres 14 and 18 (open measurement); many users paging at once |
+| 3. Activity log | `test_activity_log_retention.py` | No Infrahub event deleted, no orphaned related item, nothing newer than the retentions deleted, every stored Prefect event type in the list |
 
 ## Delivery Order
 
 1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order of runs then children, rewrite only when the deletes freed most of the tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
-4. **Part 4, documentation**: ships with parts 1 and 3. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
+4. **Part 4, documentation**: ships with parts 1 and 3.
+
+Each of parts 1 to 3 merges only with its private-test evidence. The final run on the release candidate (T056) covers all three together. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
 
 ## Risks
 
@@ -124,6 +140,8 @@ changelog/                             # fragments per part
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
 | New Prefect event type not in the list | Functional guard test in CI; a missed type only costs disk. |
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
+| Behaviour proven only on small CI data | Private tests on restored production-scale backups for each part, on both Postgres versions, attached as evidence. |
+| PR #33's retention override bypasses the new Infrahub setting | Switch it to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` (T037). |
 | Helm hook rewrites tables on a live instance | Chart passes `--no-task-history-cleanup`; 404 path covers older charts against the first release. |
 | Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
 | Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
