@@ -30,6 +30,6 @@ infrahub tasks background-services [CONFIG_FILE]
 
 ## `infrahub upgrade` (changed)
 
-- New step after "Task manager": "Task history cleanup", the cleanup of `infrahub tasks flush flow-runs` with the rewrite `if_freed`: the tables are rewritten only when the deletes, Prefect's own hourly deletes during the step included, freed more than half of the runs the tables held (in practice the first upgrade). Same progress and summary output; a failed cleanup cancels the upgrade, as a failed migration does.
+- New step after "Task manager": "Task history cleanup", the cleanup of `infrahub tasks flush flow-runs` with the rewrite `if_freed`: the tables are rewritten only when the deletes, Prefect's own hourly deletes during the step included, freed more than half of the runs the tables held (in practice the first upgrade). Same progress and summary output. A failed cleanup is reported with the command that finishes it, and the upgrade goes on to the next step: the days already deleted stay deleted, and a failed rewrite leaves its table intact.
 - New flag `--no-task-history-cleanup`, documented for the Helm chart's upgrade hook only, which runs while the instance is still serving.
 - Step numbering in the output becomes 1/7 to 7/7.
