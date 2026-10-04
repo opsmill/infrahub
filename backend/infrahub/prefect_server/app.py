@@ -12,7 +12,7 @@ from prefect.server.api.server import create_app
 from prefect.settings import get_current_settings
 from pydantic import ValidationError
 
-from . import events
+from . import events, task_history
 from .bootstrap import init_prefect
 from .retention import (
     apply_prefect_retention_env,
@@ -29,6 +29,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/infrahub")
 
 router.include_router(events.router)
+router.include_router(task_history.router)
 
 
 async def _init_prefect() -> None:
