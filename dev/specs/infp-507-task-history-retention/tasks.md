@@ -20,7 +20,7 @@
 **Purpose**: Shared test helpers used by several stories.
 
 - [ ] T001 [P] Add a component-test helper that seeds Prefect flow runs with explicit state, `start_time`, `end_time`, parent task run, task runs, states, logs and artifacts directly through Prefect's database interface, in `backend/tests/helpers/task_manager_seed.py` (function names: `seed_flow_run`, `seed_log`, `seed_artifact`)
-- [ ] T002 [P] Add a component-test helper that stores events through Prefect's event storage (both Infrahub events built from `infrahub.events` classes and raw Prefect events with a given name and `occurred`) in `backend/tests/helpers/task_manager_seed.py` (functions `seed_infrahub_event`, `seed_prefect_event`)
+- [X] T002 [P] Add a component-test helper that stores events through Prefect's event storage (both Infrahub events built from `infrahub.events` classes and raw Prefect events with a given name and `occurred`) in `backend/tests/helpers/task_manager_seed.py` (functions `seed_infrahub_event`, `seed_prefect_event`)
 
 ---
 
@@ -122,12 +122,12 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 ### Tests for User Story 3
 
 - [ ] T040 [P] [US3] Integration-docker guard test on the full stack (real workers, Postgres): run a workload of Infrahub tasks that also reaches the failure paths it can (a failed flow, a cancelled flow, a worker restart), list stored event names not starting with `infrahub.`, assert none is missing from `PREFECT_EVENT_TYPES`, in `backend/tests/integration_docker/test_prefect_event_types.py`
-- [ ] T041 [P] [US3] Unit test independent of any workload: for every built-in state name of the pinned Prefect (read from Prefect's state definitions), assert `prefect.flow-run.<State>` and `prefect.task-run.<State>` are in `PREFECT_EVENT_TYPES`, so a Prefect upgrade that adds a state fails CI, in `backend/tests/unit/prefect_server/test_prefect_event_types.py`
-- [ ] T042 [P] [US3] Component test: with activity log 365 days and own events 7 days applied, run Prefect's `vacuum_events_with_retention_overrides` and `vacuum_old_events`; Infrahub events older than 7 days are kept, listed Prefect events older than 7 days are deleted, an unlisted Prefect type is kept, no `event_resources` row is left without its event, in `backend/tests/component/task_manager/test_event_retention.py`
+- [X] T041 [P] [US3] Unit test independent of any workload: for every built-in state name of the pinned Prefect (read from Prefect's state definitions), assert `prefect.flow-run.<State>` and `prefect.task-run.<State>` are in `PREFECT_EVENT_TYPES`, so a Prefect upgrade that adds a state fails CI, in `backend/tests/unit/prefect_server/test_prefect_event_types.py`
+- [X] T042 [P] [US3] Component test: with activity log 365 days and own events 7 days applied, run Prefect's `vacuum_events_with_retention_overrides` and `vacuum_old_events`; Infrahub events older than 7 days are kept, listed Prefect events older than 7 days are deleted, an unlisted Prefect type is kept, no `event_resources` row is left without its event, in `backend/tests/component/task_manager/test_event_retention.py`
 
 ### Implementation for User Story 3
 
-- [ ] T043 [US3] Fill `PREFECT_EVENT_TYPES` from the pinned Prefect 3.8.6 (flow-run and task-run state events for every built-in state name, heartbeat, worker, automation, deployment, work pool, work queue and block events) and the benchmark datasets, with a one-line comment naming the Prefect version, in `backend/infrahub/prefect_server/retention.py`
+- [X] T043 [US3] Fill `PREFECT_EVENT_TYPES` from the pinned Prefect 3.8.6 (flow-run and task-run state events for every built-in state name, heartbeat, worker, automation, deployment, work pool, work queue and block events) and the benchmark datasets, with a one-line comment naming the Prefect version, in `backend/infrahub/prefect_server/retention.py`
 - [ ] T044 [US3] Use the activity log retention as the widest Activities time window by default (task manager reads `config.SETTINGS.task_manager.retention.activity_log` when the request does not set it) in `backend/infrahub/prefect_server/models.py` and `backend/infrahub/prefect_server/database.py`
 - [ ] T045 [P] [US3] Changelog fragment for the configurable activity log retention (default unchanged at 7 days, how to raise it, sizing) in `changelog/+activity-log-retention.added.md`
 
