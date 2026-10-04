@@ -54,7 +54,7 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
 - **Time windows**: implemented in `infrahub.prefect_server.database::query_events`, which receives the widest window (the activity log retention) and the anchor (`until` or now) from the request.
 - **Count**: `InfrahubEventfilterInput` gains `include_count: bool = False`; the GraphQL resolver sets it from the requested fields, the same way `infrahub.graphql.queries.task` already passes `include_count="count" in fields`.
 - **Plan per query**: PR #10379 (open, not merged) sets `plan_cache_mode = force_custom_plan` for the Activities queries. It is a dependency of part 2, merged first or carried into it.
-- **Frontend**: `frontend/app/src/entities/events/ui/queries/get-events.query.ts` pages by offset (`lastPageParam + DEFAULT_PAGE_SIZE`). It changes to `until` = `occurred_at` of the last event, with de-duplication by ID. The GraphQL document in `frontend/app/src/entities/events/api/get-events-from-api.ts` already passes `until` and **does not select `count`** (checked on `stable` and `develop`), so the design doc's premise that the page asks for the total count does not hold: the cost comes only from `infrahub.prefect_server.database::query_events` counting on every request. Q2 (product sign-off) therefore blocks nothing; no frontend count change is needed.
+- **Frontend**: `frontend/app/src/entities/events/ui/queries/get-events.query.ts` pages by offset (`lastPageParam + DEFAULT_PAGE_SIZE`). It changes to `until` = `occurred_at` of the last event, with de-duplication by ID. The GraphQL document in `frontend/app/src/entities/events/api/get-events-from-api.ts` already passes `until` and **does not select `count`** (checked on `stable` and `develop`), so the design doc's premise that the page asks for the total count does not hold: the cost comes only from `infrahub.prefect_server.database::query_events` counting on every request. No frontend count change is needed; the design doc was corrected (D7 and Q2 removed).
 
 ## R8. Tests
 
@@ -71,6 +71,6 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
 
 ## Open items carried from the design doc
 
-- Q1: upgrade-step duration on 100 GB (about 1 h 45 min so far). Blocks the release notes only.
-- Q2: product sign-off on removing the total count. Moot for the code: the Activities page already does not request it (see R7); to correct in the design doc.
+- Q1: upgrade-step duration on 100 GB: about 2 h 20 min (deletes 2 h 13 min, rewrite 85 s, at most 2.2 GB extra disk, task history tables 101 to 8 GiB). Blocks the release notes only.
+- Q2: dropped from the design doc, which now states that the Activities page never asks for the total count (see R7).
 - Deep scrolling by time on Postgres 14 and 18: measurement in progress.
