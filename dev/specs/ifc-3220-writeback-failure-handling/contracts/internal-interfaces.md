@@ -148,11 +148,20 @@ conflicted. `replay` resets to `base` first, and on a conflict aborts the merge 
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-`fetch` and `push` are bounded by `FETCH_TIMEOUT_SECONDS` and `PUSH_TIMEOUT_SECONDS`, passed as
-GitPython's `kill_after_timeout`. A timeout raises `RepositoryConnectionError`, because
-`_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
-(section 10). `delete_remote_branch` treats a branch that is already gone as deleted.
-`notify_branch_deleted` only sends `RefreshGitRepositoryBranchDeleted`.
+Every port method that runs Git bounds each of its Git commands with GitPython's
+`kill_after_timeout` (`research.md` R6):
+
+- `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
+  `PUSH_TIMEOUT_SECONDS`. A timeout of `fetch` or `push` raises `RepositoryConnectionError`, because
+  `_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
+  (section 10).
+- `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for each local
+  command. A timeout raises `RepositoryError`, with a message that names the command and the bound
+  but not the arguments, which can name worker paths. `reset` never raises: a killed reset is
+  logged like any failed reset.
+
+`import_at` has no bound (`research.md` R6). `delete_remote_branch` treats a branch that is already
+gone as deleted. `notify_branch_deleted` only sends `RefreshGitRepositoryBranchDeleted`.
 
 `RepositoryDeliveryGitAdapter` implements `DeliveryGitPort` over one `InfrahubRepository` and its
 destination worktree. `HeldRegenerationReleaser` implements `RegenerationReleasePort`. Both are
@@ -409,6 +418,8 @@ Contract:
 |---|---|
 | `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags and the joined `remote:` lines. Message wording unchanged. |
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
+| `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. |
+| `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out". |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Same `isinstance` resolution. |

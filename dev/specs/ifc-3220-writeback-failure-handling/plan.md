@@ -21,11 +21,11 @@ replays the pending merges on the fresh remote head, pushes once, records the co
 import obligation, imports when the remote had moved, broadcasts, and then, outside the repository
 lock, releases the held regeneration. The merge flow, a new retry flow and a recovery check in the
 periodic synchronisation call the same service. A Prefect task retries transient failures three
-times, and every Git command is bounded in time. While a delivery is pending, no other path imports
-the default branch. A regeneration barrier, consulted at every dispatch point of the merge
-follow-up, holds the definitions of a repository with a pending delivery as identifiers with hold
-sequences, keeps their narrowed selection in the cache for the length of the automatic retry chain,
-about 45 minutes, and releases them once, under a lease, when the queue clears. A user with write access can retry, or abandon the queue with a durable record.
+times, and every Git command of the adapter is bounded in time. While a delivery is pending, no
+other path imports the default branch. A regeneration barrier, consulted at every dispatch point of
+the merge follow-up, holds the definitions of a repository with a pending delivery as identifiers
+with hold sequences, keeps their narrowed selection in the cache for the length of the automatic
+retry chain, about 45 minutes, and releases them once, under a lease, when the queue clears. A user with write access can retry, or abandon the queue with a durable record.
 The repository page shows the state, read from the default branch, and the two actions.
 
 ## Technical Context
@@ -55,7 +55,10 @@ delivery succeeds within its automatic retry chain regenerates as precisely as t
 **Constraints**: the repository lock is the most contended lock of the Git subsystem. The new
 delivery-state lock is held for one read-modify-write, has a 30-second time to live, and is never
 held across Git work, so a branch merge never waits for a push. A delivery attempt holds no lock
-across a retry delay or a release. Every Git command of a delivery is bounded.
+across a retry delay or a release. Every Git command that the delivery adapter runs is bounded in
+time, the local ones included. The import has no bound, and the Git commands inside it have none
+either. While the import holds the repository lock, the recovery check starts no second attempt
+(`research.md` R6, R20).
 
 **Scale/Scope**: one new package of eleven files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
@@ -135,8 +138,10 @@ backend/infrahub/
 │   │   ├── abandoner.py                   # WritebackAbandoner.abandon
 │   │   ├── recovery.py                    # DeliveryRecoveryCheck.run
 │   │   └── factory.py                     # wiring for the flows
-│   ├── base.py                            # subtypes, isinstance status map, fetch timeout
-│   ├── repository.py                      # push: typed rejection, flags, remote lines, timeout; sync skip
+│   ├── base.py                            # subtypes, isinstance status map, fetch, worktree and
+│   │                                      # branch-deletion timeouts
+│   ├── repository.py                      # push: typed rejection, flags, remote lines, timeout;
+│   │                                      # reset timeout; sync skip
 │   ├── models.py                          # payload fields, PushRejectionReason, new models
 │   └── tasks.py                           # merge, retry and abandon flows; bootstrap skip; delete guard;
 │                                          # recovery check; repository filters on the blanket flow

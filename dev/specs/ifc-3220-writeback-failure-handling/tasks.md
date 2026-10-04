@@ -88,7 +88,10 @@ Slices A and B of the plan.
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
       message of `_describe_push_rejection`. Keep "push never writes `operational_status`".
 - [ ] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
-      timeout, passed as `kill_after_timeout`. Default unchanged for every existing caller.
+      timeout, passed as `kill_after_timeout`. Give the same optional timeout to
+      `create_commit_worktree` and `delete_remote_branch` in the same module, and to
+      `InfrahubRepository._reset_to_pre_merge_commit` in `backend/infrahub/git/repository.py`, passed
+      to each Git command they run. Default unchanged for every existing caller.
 - [ ] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
       the two subtypes and the killed-command text, and add a test that both status maps give
       `ERROR_CONNECTION` for the subtypes.
@@ -100,8 +103,9 @@ Slices A and B of the plan.
 
 - [ ] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
       `DELIVERY_RETRY_DELAYS_SECONDS`, `FETCH_TIMEOUT_SECONDS`, `PUSH_TIMEOUT_SECONDS`,
-      `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`, `NARROWED_HOLD_TTL_SECONDS` (derived from the
-      delays and the timeouts, not a literal), `NARROWED_HOLD_MAX_BYTES`, `RELEASE_LEASE_SECONDS`,
+      `LOCAL_GIT_TIMEOUT_SECONDS`, `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`,
+      `NARROWED_HOLD_TTL_SECONDS` (derived from the delays and the fetch and push timeouts, not a
+      literal), `NARROWED_HOLD_MAX_BYTES`, `RELEASE_LEASE_SECONDS`,
       `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
       `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
       [research.md](research.md) R2, R6, R9, R10 and R20.
@@ -182,7 +186,11 @@ SC-002, SC-007.
 - [ ] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
-      object, and raises otherwise. Agree the primitive with IFC-3210 first (**gate**).
+      object, and raises otherwise. Every Git command it runs is bounded, per
+      [research.md](research.md) R6: `FETCH_TIMEOUT_SECONDS` for the fetch, `PUSH_TIMEOUT_SECONDS`
+      for the push and `delete_remote_branch`, and `LOCAL_GIT_TIMEOUT_SECONDS` for each local
+      command. A killed local command raises `RepositoryError` with a message that names the command
+      and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
 - [ ] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
       `replay` with a clean merge and a conflict; `reset`.
@@ -419,9 +427,13 @@ X once after the delivery.
       the state past the stale bound, run one sync cycle, and assert the delivery.
 - [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
-- [ ] T084 [P] [US4] Add a timeout case to `backend/tests/unit/git/writeback/test_git_adapter.py`: a local
-      TCP server that accepts and never answers makes the push fail as `remote-unreachable` within
-      the bound.
+- [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
+      A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
+      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
+      temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
+      lowered for the test. It raises a `RepositoryError` that names the command, which the
+      classifier gives `unclassified`. The hook uses `exec` because GitPython kills only the direct
+      children of the Git process.
 
 ---
 

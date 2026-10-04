@@ -399,6 +399,8 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 | `broadcast(commit)` | `RefreshGitFetch`, as in `merge_git_repository`. |
 | `delete_remote_branch(git_branch)` | `delete_remote_branch` plus `RefreshGitRepositoryBranchDeleted`. |
 
+Every other row that runs a Git command passes `kill_after_timeout` too (R6).
+
 ---
 
 ## R5. Classifying a failure, and keeping the remote's words
@@ -422,6 +424,7 @@ and `release`. It reads the exception type first. Per-ref push rejections get a 
 | import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-failed` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict | `replay-conflict` | no |
+| replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
 | release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
 | any | anything else | `unclassified` | no |
 
@@ -444,6 +447,15 @@ first, so both subtypes keep `ERROR_CONNECTION`.
 `_raise_enriched_error_static` matches that text, so it would become a plain `RepositoryError`. The
 text joins the connection markers, so a timeout of the fetch or the push raises
 `RepositoryConnectionError` and is retried.
+
+**A killed local Git command.** It is not a remote fault, so it must not become
+`remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
+complete" (`git/cmd.py::Git.execute`), which names the command with its arguments. The adapter
+raises a `RepositoryError` whose message names the command and the bound, but not the arguments,
+which can name worker paths. At the replay, and in the checks before it, that error is
+`unclassified`: the status becomes `action-required`, and the user retries. At the record, the
+`record` row applies: the remote already has the content, so the failure is `record-failed` and is
+retried.
 
 ### The remote's own message (FR-018)
 
@@ -479,10 +491,25 @@ the final attempt. Tests override the delays with `with_options(retry_delay_seco
 server restart. The PRD assumes that real outages last days, so a longer automatic window buys
 nothing and holds a worker slot.
 
-**Bounded Git commands.** The adapter passes `kill_after_timeout` to the fetch (120 seconds) and the
-push (300 seconds). A remote that accepts the connection and never answers then fails as
-`remote-unreachable` instead of holding the repository lock for ever. The bounds live in
+**Bounded Git commands.** The adapter passes GitPython's `kill_after_timeout` to every Git command
+that it runs, so no command can hold the repository lock for ever:
+
+| Command | Bound |
+|---|---|
+| The fetch | `FETCH_TIMEOUT_SECONDS`, 120 seconds |
+| The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
+| Each local command: `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
+
+A fetch or a push to a remote that accepts the connection and never answers fails as
+`remote-unreachable`, and the chain retries it. A local command normally ends in seconds, so its
+bound stops only a command that is stuck. A killed local command raises a `RepositoryError` that
+names the command, and R5 classifies it. `reset` never raises: a killed reset is logged like any
+failed reset, and the failure of the attempt still propagates. The bounds live in
 `git/writeback/constants.py`.
+
+The import of R4 step 11 has no bound. It is not a Git command, and the local Git commands that
+`import_objects_from_files` runs get no bound either. While it runs, it holds the repository lock,
+so the delivery is not stale (R20, condition 4), and the recovery check starts no second attempt.
 
 **One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
 merge flow whose first attempt finds a retry already due in the future returns at once: that chain
@@ -1046,9 +1073,9 @@ No `GRAPH_VERSION` bump: optional attributes are added by the schema migration t
 
 ## R18. Configuration
 
-No new setting. The retry bounds, the read retries of the barrier, the Git timeouts, the stale bound
-and the cache time to live are constants in `git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES`
-is in `webhook/constants.py`.
+No new setting. The retry bounds, the read retries of the barrier, the Git timeouts (fetch, push
+and local commands, R6), the stale bound and the cache time to live are constants in
+`git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES` is in `webhook/constants.py`.
 A setting would be configurability for a hypothetical need (Principle VII).
 
 ---
@@ -1086,7 +1113,7 @@ A pending delivery is **stale** when all four hold:
 1. its status is `pending`;
 2. no automatic retry is due in the future;
 3. `last_progress_at` is older than `STALE_AFTER`, 15 minutes, which exceeds the longest retry delay
-   plus the two Git timeouts;
+   plus the fetch and push timeouts;
 4. the repository lock is free (`lock.py::InfrahubLock.locked`).
 
 Condition 4 covers what the timestamps cannot: a long import, which is not a Git command and has no
