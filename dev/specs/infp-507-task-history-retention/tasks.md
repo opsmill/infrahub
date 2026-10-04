@@ -65,7 +65,7 @@
 
 ### Evidence for User Story 1 (opsmill/infrahub-private-tests)
 
-Run through the `test-dataset` workflow (`test_filter=...`) on restored backups that include `prefect.dump`, on Postgres 14 (Helm) and 18 (Compose). Results go in the PR description and on INFP-507 as the release evidence.
+Run through the `test-dataset` workflow (`test_filter=...`) on restored backups that include `prefect.dump`, on Postgres 14 (Helm) and 18 (Compose). Results go in the PR description and on INFP-507 as the release evidence. Run every evidence task in a separate session in a checkout of opsmill/infrahub-private-tests (see plan.md, Evidence: infrahub-private-tests).
 
 - [ ] T021 [P] [US1] Task history retention test: with the retention setting applied, the hourly cleanup deletes finished runs older than the retention with their logs and artifacts, keeps newer and stuck runs, and the setting also reaches Prefect's background services when they run in their own container (`infrahub tasks background-services`), in `tests/performance/test_task_history_retention.py` of opsmill/infrahub-private-tests
 - [ ] T022 [P] [US1] Upgrade step test on backups with about 25 GB and 100 GB of task history: runs older than the retention deleted, newer and stuck runs kept, task-history tables smaller afterwards; record the duration, the extra disk used by the rewrite and the size before and after (answers Q1 for the release notes), in `tests/performance/test_task_history_upgrade.py` of opsmill/infrahub-private-tests
