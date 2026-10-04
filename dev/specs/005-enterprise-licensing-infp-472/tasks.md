@@ -28,8 +28,8 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Purpose**: Dependency and package skeleton.
 
-- [ ] T001 Change `pyjwt==2.15.0` to `pyjwt[crypto]==2.15.0` in `pyproject.toml`, run `uv lock`, and confirm `uv.lock` adds no new package (`cryptography` is already locked through authlib, jwcrypto and prefect)
-- [ ] T002 [P] Create the package `backend/infrahub/license/__init__.py` (empty) and the test package `backend/tests/unit/license/__init__.py` (empty)
+- [X] T001 Change `pyjwt==2.15.0` to `pyjwt[crypto]==2.15.0` in `pyproject.toml`, run `uv lock`, and confirm `uv.lock` adds no new package (`cryptography` is already locked through authlib, jwcrypto and prefect)
+- [X] T002 [P] Create the package `backend/infrahub/license/__init__.py` (empty) and the test package `backend/tests/unit/license/__init__.py` (empty)
 
 ---
 
