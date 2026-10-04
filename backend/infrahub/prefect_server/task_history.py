@@ -5,7 +5,7 @@ import itertools
 import threading
 from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Protocol
+from typing import TYPE_CHECKING, Annotated, Protocol, assert_never
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -48,6 +48,20 @@ class CleanupRewrite(StrEnum):
     """When the deletes, including the task manager's own meanwhile, freed more than half of the runs."""
     ALWAYS = "always"
 
+    @property
+    def strength(self) -> int:
+        """Rank of the mode, which rewrites the tables whenever a mode of a lower rank would."""
+        match self:
+            case CleanupRewrite.NEVER:
+                strength = 0
+            case CleanupRewrite.IF_FREED:
+                strength = 1
+            case CleanupRewrite.ALWAYS:
+                strength = 2
+            case _:
+                assert_never(self)
+        return strength
+
 
 class CleanupRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -60,7 +74,9 @@ class CleanupRequest(BaseModel):
 class CleanupJob(BaseModel):
     id: str
     state: CleanupJobState
-    rewrite: CleanupRewrite = Field(description="When the cleanup was asked to rewrite the tables after the deletes")
+    rewrite: CleanupRewrite = Field(
+        description="When to rewrite the tables after the deletes, raised by a request for a stronger mode while it runs"
+    )
     rewritten: bool = Field(
         default=False, description="Whether the tables were rewritten, which never happens on SQLite"
     )
@@ -260,6 +276,14 @@ def _start_of_day(moment: datetime) -> datetime:
     return moment.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+class RewriteSettlement(Protocol):
+    """Hands a running cleanup the rewrite mode to decide with, until the mode it decided with is final."""
+
+    async def __call__(self, decided: CleanupRewrite | None) -> CleanupRewrite | None:
+        """Return the cleanup's mode unless it is the one decided with, else end the cleanup and return None."""
+        ...
+
+
 class TaskHistoryCleanup:
     """Deletes the task history older than a cleanup's cutoff a day at a time, then rewrites the tables as it asks."""
 
@@ -267,17 +291,27 @@ class TaskHistoryCleanup:
         self._tables = tables
         self._rewriter = rewriter
 
-    async def run(self, job: CleanupJob) -> None:
-        """Run the cleanup, recording its progress and outcome on the job."""
-        log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
-        if self._rewriter is None:
-            await self._delete_old_runs(job=job)
-            return
+    async def run(self, job: CleanupJob, settle: RewriteSettlement) -> None:
+        """Run the cleanup, recording its progress and outcome on the job.
 
-        job.size_before = await self._rewriter.total_size()
-        runs_before = await self._tables.count_runs() if job.rewrite is CleanupRewrite.IF_FREED else 0
+        The rewrite is decided again with each mode the settlement hands back, against the runs counted before the
+        deletes, until that mode is final; tables already rewritten are never rewritten again.
+        """
+        log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
+        runs_before = 0
+        if self._rewriter is not None:
+            job.size_before = await self._rewriter.total_size()
+            runs_before = await self._tables.count_runs()
         await self._delete_old_runs(job=job)
-        if await self._rewrite_wanted(rewrite=job.rewrite, runs_before=runs_before):
+        decided: CleanupRewrite | None = None
+        while (rewrite := await settle(decided=decided)) is not None:
+            await self._decide_rewrite(job=job, rewrite=rewrite, runs_before=runs_before)
+            decided = rewrite
+
+    async def _decide_rewrite(self, job: CleanupJob, rewrite: CleanupRewrite, runs_before: int) -> None:
+        if self._rewriter is None or job.rewritten:
+            return
+        if await self._rewrite_wanted(rewrite=rewrite, runs_before=runs_before):
             job.not_rewritten = await self._rewriter.rewrite()
             job.rewritten = True
         job.size_after = await self._rewriter.total_size()
@@ -328,12 +362,16 @@ class CleanupJobs:
     async def start(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> CleanupJob | None:
         """Start the job in the background, unless a job already runs in this process or the lock is held elsewhere.
 
+        A job already running takes the job's rewrite mode when that one is stronger.
+
         Returns:
             The job running in this process, or None when another task manager holds the lock.
 
         """
         async with self._starting:
             if self._running is not None:
+                if job.rewrite.strength > self._running.rewrite.strength:
+                    self._running.rewrite = job.rewrite
                 return self._running
             if not await lock.try_acquire():
                 return None
@@ -346,8 +384,7 @@ class CleanupJobs:
 
     async def _run(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> None:
         try:
-            await cleanup.run(job=job)
-            job.state = CleanupJobState.COMPLETED
+            await cleanup.run(job=job, settle=self._settlement(job=job, lock=lock))
         # A background job has no caller to raise to, so the failure is logged and recorded on the job instead.
         except Exception as exc:
             log.exception(f"Task history cleanup {job.id} failed")
@@ -355,8 +392,22 @@ class CleanupJobs:
             job.error = f"The cleanup failed with {type(exc).__name__}; the task manager log has the details"
         finally:
             async with self._starting:
+                if self._running is job:
+                    self._running = None
+                    await lock.release()
+
+    def _settlement(self, job: CleanupJob, lock: CleanupLock) -> RewriteSettlement:
+        async def settle(decided: CleanupRewrite | None) -> CleanupRewrite | None:
+            # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
+            async with self._starting:
+                if job.rewrite is not decided:
+                    return job.rewrite
                 self._running = None
                 await lock.release()
+                job.state = CleanupJobState.COMPLETED
+            return None
+
+        return settle
 
 
 class _MaintenancePostgresConfiguration(AsyncPostgresConfiguration):
@@ -425,6 +476,8 @@ async def start_cleanup(
     cleanup: Annotated[TaskHistoryCleanup, Depends(build_task_history_cleanup)],
 ) -> CleanupJob:
     """Start deleting the task history older than the task manager's retention, or return the cleanup already running.
+
+    A cleanup already running takes the rewrite asked for when that one is stronger than its own.
 
     Raises:
         HTTPException: 409 when another task manager runs a cleanup.

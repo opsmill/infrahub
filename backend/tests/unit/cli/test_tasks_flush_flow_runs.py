@@ -57,26 +57,17 @@ async def test_the_rewrite_option_asks_the_task_manager_to_always_rewrite(case: 
     assert task_manager.requests[0] == RecordedRequest(method="POST", path=CLEANUP_PATH, body=case.expected_body)
 
 
-async def test_the_rewrite_option_rewrites_after_a_running_cleanup_that_may_not_rewrite() -> None:
-    """With the rewrite option, a running cleanup that may not rewrite is followed by one that always rewrites."""
+async def test_the_rewrite_option_follows_a_cleanup_already_running_to_its_own_summary() -> None:
+    """With the rewrite option, a cleanup already running is reported from the progress it had when joined to its end."""
     task_manager = ScriptedTaskManager(
         responses=[
-            started(rewrite="if_freed"),
-            polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=7),
+            started(rewrite="always", current_day="2026-01-15", deleted_runs=7),
             polled(
-                rewrite="if_freed",
-                state="completed",
-                current_day="2026-01-15",
-                deleted_runs=7,
-                size_before=3_000_000,
-                size_after=3_000_000,
-            ),
-            started(id="job-2", rewrite="always"),
-            polled(
-                id="job-2",
                 rewrite="always",
                 state="completed",
                 rewritten=True,
+                current_day="2026-01-15",
+                deleted_runs=7,
                 size_before=3_000_000,
                 size_after=1_000_000,
             ),
@@ -90,13 +81,10 @@ async def test_the_rewrite_option_rewrites_after_a_running_cleanup_that_may_not_
     assert task_manager.requests == [
         RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"}),
         RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
-        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"}),
-        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
     ]
     assert console.lines == [
         "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
-        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Deleted 7 runs that ended before 2026-09-04 00:00 UTC",
         "Task history tables: 3.0 MB before, 1.0 MB after",
         "Task history tables rewritten",
     ]

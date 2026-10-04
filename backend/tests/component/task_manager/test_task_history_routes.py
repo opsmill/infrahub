@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
@@ -12,10 +12,20 @@ from fastapi import FastAPI
 from prefect.server.database import provide_database_interface
 from prefect.server.schemas.states import StateType
 from prefect.settings import temporary_settings
-from tests.helpers.task_manager_seed import seed_flow_run, task_manager_database
+from tests.adapters.task_history import RecordingRewriter
+from tests.helpers.task_manager_seed import days_ago, seed_flow_run, task_manager_database
 
 from infrahub.prefect_server.app import router
-from infrahub.prefect_server.task_history import CleanupJobs, ProcessCleanupLock, get_cleanup_jobs, get_cleanup_lock
+from infrahub.prefect_server.task_history import (
+    CleanupJobs,
+    CleanupRewrite,
+    ProcessCleanupLock,
+    TaskHistoryCleanup,
+    TaskHistoryTables,
+    build_task_history_cleanup,
+    get_cleanup_jobs,
+    get_cleanup_lock,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
@@ -26,6 +36,8 @@ if TYPE_CHECKING:
 
 CLEANUP_URL = "/infrahub/task-history/cleanup"
 OLD_RUN_END = datetime(2026, 1, 15, 12, tzinfo=UTC)
+OLD_RUNS = 3
+RECENT_RUNS = 2
 
 
 @pytest.fixture
@@ -63,12 +75,11 @@ def _client(app: FastAPI) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
-@asynccontextmanager
-async def _sqlite_write_lock(db: PrefectDBInterface) -> AsyncIterator[None]:
-    """Hold the database's write lock, so that a cleanup waits before its first delete."""
-    async with db.session_context(begin_transaction=True, with_for_update=True) as session:
-        await session.execute(sa.select(1))
-        yield
+def _rewrite_through(app: FastAPI, db: PrefectDBInterface, rewriter: RecordingRewriter) -> None:
+    """Have the routes run their cleanups with the rewriter, which SQLite has none of."""
+    app.dependency_overrides[build_task_history_cleanup] = lambda: TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=rewriter
+    )
 
 
 async def _seed_old_run(db: PrefectDBInterface) -> UUID:
@@ -76,6 +87,22 @@ async def _seed_old_run(db: PrefectDBInterface) -> UUID:
         db=db, state_type=StateType.COMPLETED, start_time=OLD_RUN_END - timedelta(hours=1), end_time=OLD_RUN_END
     )
     return run.id
+
+
+async def _seed_mostly_old_runs(db: PrefectDBInterface) -> set[UUID]:
+    """Seed old runs and fewer recent ones, so that the deletes free more than half of the runs.
+
+    Returns:
+        The recent runs, which the cleanup keeps.
+
+    """
+    for _ in range(OLD_RUNS):
+        await _seed_old_run(db=db)
+    recent = [
+        await seed_flow_run(db=db, state_type=StateType.COMPLETED, start_time=days_ago(6), end_time=days_ago(5))
+        for _ in range(RECENT_RUNS)
+    ]
+    return {run.id for run in recent}
 
 
 async def _flow_run_ids(db: PrefectDBInterface) -> set[UUID]:
@@ -92,21 +119,123 @@ async def _finished_job(client: httpx.AsyncClient, job_id: str) -> dict[str, Any
             await asyncio.sleep(0.05)
 
 
-async def test_a_second_start_returns_the_running_cleanup(app: FastAPI, db: PrefectDBInterface) -> None:
-    """Starting a cleanup while one runs in the task manager returns the running cleanup instead of a new one."""
-    await _seed_old_run(db=db)
+@dataclass
+class SecondStartCase:
+    name: str
+    first: CleanupRewrite
+    second: CleanupRewrite
+    expected_rewrite: CleanupRewrite
+
+
+SECOND_START_CASES: list[SecondStartCase] = [
+    SecondStartCase(
+        name="never_raised_to_if_freed",
+        first=CleanupRewrite.NEVER,
+        second=CleanupRewrite.IF_FREED,
+        expected_rewrite=CleanupRewrite.IF_FREED,
+    ),
+    SecondStartCase(
+        name="never_raised_to_always",
+        first=CleanupRewrite.NEVER,
+        second=CleanupRewrite.ALWAYS,
+        expected_rewrite=CleanupRewrite.ALWAYS,
+    ),
+    SecondStartCase(
+        name="always_kept_against_never",
+        first=CleanupRewrite.ALWAYS,
+        second=CleanupRewrite.NEVER,
+        expected_rewrite=CleanupRewrite.ALWAYS,
+    ),
+    SecondStartCase(
+        name="if_freed_kept_against_never",
+        first=CleanupRewrite.IF_FREED,
+        second=CleanupRewrite.NEVER,
+        expected_rewrite=CleanupRewrite.IF_FREED,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in SECOND_START_CASES])
+async def test_a_second_start_returns_the_running_cleanup_with_the_stronger_rewrite(
+    app: FastAPI, db: PrefectDBInterface, case: SecondStartCase
+) -> None:
+    """A start while a cleanup runs returns that cleanup, which then rewrites with the stronger of the two modes."""
+    recent_runs = await _seed_mostly_old_runs(db=db)
+    rewriter = RecordingRewriter(pause_at_call=1)
+    _rewrite_through(app=app, db=db, rewriter=rewriter)
 
     async with _client(app) as client:
-        async with _sqlite_write_lock(db=db):
-            first = await client.post(CLEANUP_URL, json={"rewrite": "never"})
-            second = await client.post(CLEANUP_URL, json={"rewrite": "always"})
-        finished = await _finished_job(client=client, job_id=first.json()["id"])
+        first = await client.post(CLEANUP_URL, json={"rewrite": case.first.value})
+        await rewriter.wait_until_paused()
+        second = await client.post(CLEANUP_URL, json={"rewrite": case.second.value})
+        rewriter.resume()
+        job = first.json()
+        finished = await _finished_job(client=client, job_id=job["id"])
 
     assert (first.status_code, second.status_code) == (202, 202)
-    assert second.json()["id"] == first.json()["id"]
-    assert (first.json()["state"], second.json()["state"], second.json()["rewrite"]) == ("running", "running", "never")
-    assert (finished["state"], finished["deleted_runs"]) == ("completed", 1)
-    assert await _flow_run_ids(db=db) == set()
+    assert (job["rewrite"], second.json()) == (case.first.value, job | {"rewrite": case.expected_rewrite.value})
+    assert finished == job | {
+        "state": "completed",
+        "rewrite": case.expected_rewrite.value,
+        "rewritten": True,
+        "deleted_runs": OLD_RUNS,
+        "current_day": "2026-01-15",
+        "size_before": 1000,
+        "size_after": 100,
+        "not_rewritten": ["log"],
+    }
+    assert rewriter.calls == ["total_size", "rewrite", "total_size"]
+    assert await _flow_run_ids(db=db) == recent_runs
+
+
+async def test_a_stronger_start_after_the_cleanup_decided_against_a_rewrite_makes_it_decide_again(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """A stronger mode that arrives after the decision is decided again, against the runs counted when the cleanup began."""
+    await _seed_mostly_old_runs(db=db)
+    rewriter = RecordingRewriter(pause_at_call=2)
+    _rewrite_through(app=app, db=db, rewriter=rewriter)
+
+    async with _client(app) as client:
+        started = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        await rewriter.wait_until_paused()
+        raised = await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})
+        rewriter.resume()
+        finished = await _finished_job(client=client, job_id=started.json()["id"])
+
+    assert raised.json()["id"] == started.json()["id"]
+    assert rewriter.calls == ["total_size", "total_size", "rewrite", "total_size"]
+    assert (finished["state"], finished["rewrite"], finished["rewritten"], finished["size_after"]) == (
+        "completed",
+        "if_freed",
+        True,
+        100,
+    )
+
+
+async def test_a_stronger_start_after_the_cleanup_rewrote_rewrites_nothing_more(
+    app: FastAPI, db: PrefectDBInterface
+) -> None:
+    """A stronger mode that arrives after the cleanup rewrote the tables leaves them as they are."""
+    await _seed_mostly_old_runs(db=db)
+    rewriter = RecordingRewriter(pause_at_call=3)
+    _rewrite_through(app=app, db=db, rewriter=rewriter)
+
+    async with _client(app) as client:
+        started = await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})
+        await rewriter.wait_until_paused()
+        raised = await client.post(CLEANUP_URL, json={"rewrite": "always"})
+        rewriter.resume()
+        finished = await _finished_job(client=client, job_id=started.json()["id"])
+
+    assert raised.json()["id"] == started.json()["id"]
+    assert rewriter.calls == ["total_size", "rewrite", "total_size"]
+    assert (finished["state"], finished["rewrite"], finished["rewritten"], finished["size_after"]) == (
+        "completed",
+        "always",
+        True,
+        100,
+    )
 
 
 @pytest.mark.usefixtures("cleanup_lock_held_elsewhere")
