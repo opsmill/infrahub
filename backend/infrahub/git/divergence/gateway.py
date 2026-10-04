@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError, GitError
 
@@ -17,18 +17,6 @@ OBJECT_ABSENT_STATUS = 1
 
 NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
-
-
-class AncestryGateway(Protocol):
-    """Answers ancestry questions about one repository's object database.
-
-    Implementations raise RepositoryError for every git failure, so a caller handles one
-    exception type and imports no git library.
-    """
-
-    def is_ancestor(self, ancestor_commit: str, descendant_commit: str) -> bool: ...
-
-    def has_commit(self, commit: str) -> bool: ...
 
 
 class GitPythonAncestryGateway:

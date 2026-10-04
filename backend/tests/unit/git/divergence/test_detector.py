@@ -12,7 +12,8 @@ from tests.unit.git.divergence.conftest import ABSENT, IMPORTED, REMOTE, break_o
 if TYPE_CHECKING:
     from git import Repo
 
-    from infrahub.git.divergence.gateway import AncestryGateway, GitPythonAncestryGateway
+    from infrahub.git.divergence.gateway import GitPythonAncestryGateway
+    from infrahub.git.divergence.protocols import AncestryGateway
 
 
 class FakeAncestryGateway:
