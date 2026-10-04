@@ -10,7 +10,7 @@ import httpx
 from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub.exceptions import Error
-from infrahub.prefect_server.task_history import CleanupJob, CleanupJobState, CleanupRewrite
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable

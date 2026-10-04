@@ -19,14 +19,8 @@ from tests.helpers.task_manager_seed import (
     task_manager_database,
 )
 
-from infrahub.prefect_server.task_history import (
-    CleanupJob,
-    CleanupJobState,
-    CleanupRewrite,
-    TaskHistoryCleanup,
-    TaskHistoryTables,
-    build_task_history_cleanup,
-)
+from infrahub.prefect_server.task_history import TaskHistoryCleanup, TaskHistoryTables, build_task_history_cleanup
+from infrahub.prefect_server.task_history_models import CleanupJob, CleanupJobState, CleanupRewrite
 
 if TYPE_CHECKING:
     from collections.abc import Generator
