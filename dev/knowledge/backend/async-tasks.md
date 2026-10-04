@@ -111,10 +111,12 @@ after the flow body returns. None of that work appears in Infrahub logs.
 - A flow's return value is walked recursively to find futures, one Python call per list, dict, set,
   dataclass, or Pydantic model it contains. Only a flow that sets `persist_result=True` then has the
   value pickled and written to the Redis result storage block, and the Prefect API stores a result
-  artifact with each of its completed states. `execute_workflow` reads the result back from another
-  process, so it refuses a flow that does not persist. On a large branch diff the walk alone filled
-  most of the gap between the flow's last log line and its completion, and when every flow persisted
-  its result, every run stored a copy of the whole diff that never expired.
+  artifact with each of its completed states. The task worker runs every other flow with persistence
+  off, because Prefect persists by default whenever a default result storage block is configured,
+  which the worker needs for the flows that persist. `execute_workflow` reads the result back from
+  another process, so it refuses a flow that does not persist. On a large branch diff the walk alone
+  filled most of the gap between the flow's last log line and its completion, and when every flow
+  persisted its result, every run stored a copy of the whole diff that never expired.
 - Task arguments are walked twice before the task starts: once to collect upstream dependencies,
   once to resolve futures. The default cache policy also hashes every argument to compute a cache
   key, which is why every Infrahub task sets `cache_policy=NONE`. Wrapping a multi-megabyte GraphQL

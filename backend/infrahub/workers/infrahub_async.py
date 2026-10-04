@@ -41,7 +41,7 @@ from infrahub.workers.dependencies import (
     set_component_type,
 )
 from infrahub.workers.submission import FlowRunReservations, SubmissionWindow, UnreservedFlowRuns
-from infrahub.workers.utils import inject_service_parameter, load_flow_function
+from infrahub.workers.utils import inject_service_parameter, load_flow_function, with_opt_in_result_persistence
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
 if TYPE_CHECKING:
@@ -190,7 +190,7 @@ class InfrahubWorkerAsync(BaseWorker):
 
         file_path, flow_name = entrypoint.split(":")
         module_path = file_path.removeprefix("backend/").removesuffix(".py").replace("/", ".")
-        flow_func = load_flow_function(module_path=module_path, flow_name=flow_name)
+        flow_func = with_opt_in_result_persistence(load_flow_function(module_path=module_path, flow_name=flow_name))
         inject_service_parameter(func=flow_func, parameters=flow_run.parameters, service=self.service)
         flow_run_logger.debug("Validating parameters")
         params = flow_func.validate_parameters(parameters=flow_run.parameters)

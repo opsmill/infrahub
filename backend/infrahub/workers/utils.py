@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import importlib
 import inspect
 from typing import TYPE_CHECKING, Any
@@ -70,6 +71,18 @@ def load_flow_function(module_path: str, flow_name: str) -> Flow:
             f"Function loaded at {module_path=} with {flow_name=} has type {type(flow_func)}, expected {Flow}"
         )
     return flow_func
+
+
+@functools.cache
+def with_opt_in_result_persistence(flow: Flow) -> Flow:
+    """Return the flow with result persistence off unless the flow sets `persist_result` itself.
+
+    With a default result storage block configured, Prefect persists the result of every flow that
+    leaves `persist_result` unset.
+    """
+    if flow.persist_result is not None:
+        return flow
+    return flow.with_options(persist_result=False)
 
 
 def get_parameter_name(func: Flow, types: list[Any]) -> str | None:
