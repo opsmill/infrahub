@@ -40,13 +40,15 @@ Request gains:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `include_count` | bool | `false` | Compute `total`; otherwise `total` is `null` |
+| `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field added by PR #10379, kept under its name and default) |
 | `retention_seconds` | int | activity log retention of the task manager | Widest time window |
 
 Behaviour changes:
 
 - Events are read newest first, through the time windows 1 h, 1 d, 7 d, 30 d, then the retention, counted back from the filter's `occurred.until` or now, stopping at the first window that fills the page (or at the retention).
 - With `offset`, a window counts as full only when it holds `offset + limit` matches, so position paging returns the same events as reading the whole retention.
+- A filter that sets `occurred.since` is read from that start instead of the retention; the Infrahub server leaves `since` out of the request when the caller did not set it.
+- A filter in ascending order is read in one query over the whole range.
 - Every query runs with a plan per query (PR #10379).
 - Response `total` becomes nullable.
 

@@ -66,9 +66,9 @@ A Prefect variable already set in the environment is left as is, with a warning.
 |---|---|---|
 | Account | related `infrahub.resource.id` | related id `infrahub.account.<id>`, role `infrahub.account` |
 | Branch | related `infrahub.resource.label = <name>` | related id `infrahub.branch.<branch_id>`, role `infrahub.branch`; name resolved to ID, deleted names through the newest `infrahub.branch.deleted` event |
-| Primary node | resource label `infrahub.node.id` | resource `prefect.resource.id` in (`infrahub.node.<id>`, `<id>`), which Prefect matches on the event's main related item (indexed), not on the event row (fast only with skip scan) |
+| Primary node | resource label `infrahub.node.id` | when the request lists event types and none of them is `infrahub.branch.merged`, `infrahub.branch.deleted` or `infrahub.group.auto_created`: resource `prefect.resource.id` in (`infrahub.node.<id>`, `<id>`, `infrahub.account.<id>`, `infrahub.proposed_change.<id>`), which Prefect matches on the event's main related item (indexed), not on the event row (fast only with skip scan), plus today's label on the same item; otherwise today's label only, because those three event types carry the node (a proposed change or a group) only in a label |
 | Parent event | related label `infrahub.event_parent.id` | related id `<parent_id>`, role `infrahub.ancestor_event`, plus today's label check for direct children |
-| Merged, rebased, migrated by name | resource label `infrahub.branch.name` | resource id `infrahub.branch.<name>` |
+| Merged, rebased, migrated by name | resource label `infrahub.branch.name` | resource id `infrahub.branch.<name>` when every listed event type is a branch event; otherwise today's label, which other event types also carry |
 | Level, event type, has children | unchanged | unchanged |
 
 ## Activities page request (changed)

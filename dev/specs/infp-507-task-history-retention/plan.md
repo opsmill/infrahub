@@ -81,12 +81,12 @@ backend/infrahub/
 │   ├── task_history.py                # new: cleanup job (SQL deletes per day, rewrite on Postgres) + routes
 │   ├── task_history_models.py         # new: request and job models the routes and the client share
 │   ├── database.py                    # newest-first time windows, optional count, plan per query
-│   ├── events.py, models.py           # include_count, retention window, nullable total
+│   ├── events.py, models.py           # include_total, retention window, nullable total
 ├── task_manager/
 │   ├── event/models.py                # account/branch/node/parent/branch-name filters on resource IDs
-│   ├── event/query.py                 # pass include_count, nullable count
+│   ├── event/query.py                 # pass include_total, nullable count
 │   └── flow_run/retention.py          # FlowRunRetention kept for stale-runs
-├── graphql/queries/event.py           # include_count from selected fields, branch name → ID resolution
+├── graphql/queries/event.py           # include_total from selected fields, branch name → ID resolution
 └── cli/
     ├── tasks.py                       # flush flow-runs via the job, background-services command
     └── upgrade.py                     # task history cleanup step, --no-task-history-cleanup
