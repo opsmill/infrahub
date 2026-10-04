@@ -7,14 +7,21 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from fastapi import FastAPI, Request
 
+from infrahub.api import internal
 from infrahub.api.internal import get_info
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.license.models import License, LicenseFailureReason, LicenseState, LicenseStatus, NoticeMode
 from infrahub.license.service import LicenseService, LicenseServiceCommunity
 from infrahub.workers.dependencies import build_license_service
-from tests.adapters.license import FailingLicenseService, RecordingLicenseService
+from tests.adapters.license import (
+    FailingLicenseService,
+    FailingNoticeModeLicenseService,
+    RecordingLicenseService,
+    build_license,
+)
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.log import find_logged_events
 
 if TYPE_CHECKING:
     from fast_depends import Provider
@@ -265,3 +272,69 @@ async def test_info_carries_no_license_object_for_anonymous_callers(dependency_p
         info = await get_info(request=_request(), account_session=ANONYMOUS)
 
     assert info.license is None
+
+
+INTERNAL_ERROR_OBJECT: dict[str, Any] = {
+    "state": "invalid",
+    "reason": "internal_error",
+    **NO_LICENSE_DETAILS,
+    "days_remaining": None,
+    "days_since_expiry": None,
+    "notice_mode": "quiet",
+    "enforcing_release": None,
+    "banner": {"audience": "super_admins", "dismissible": True, "shown_to_all_users_when_enforced": False},
+}
+
+
+def _license_with_a_number_as_its_product_tier() -> License:
+    granted = build_license()
+    # The constructor rejects a number in a text field, so the defect is planted after construction.
+    vars(granted)["product_tier"] = 3
+    return granted
+
+
+@pytest.fixture
+def license_object_failure_not_logged_yet(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(internal, "_license_object_failure", internal._FailureLog())
+
+
+@pytest.mark.parametrize(
+    "service",
+    [
+        pytest.param(
+            FailingNoticeModeLicenseService(status=LicenseStatus(state=LicenseState.UNLICENSED)),
+            id="notice_mode_raises",
+        ),
+        pytest.param(
+            RecordingLicenseService(
+                status=LicenseStatus(
+                    state=LicenseState.VALID, license=_license_with_a_number_as_its_product_tier(), days_remaining=150
+                )
+            ),
+            id="license_object_rejects_the_status",
+        ),
+    ],
+)
+@pytest.mark.usefixtures("license_object_failure_not_logged_yet")
+async def test_info_reports_an_internal_error_when_the_license_object_cannot_be_built(
+    service: LicenseService, dependency_provider: Provider, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The traceback is logged on the first failure only, since every later request fails the same way."""
+    with (
+        caplog.at_level("ERROR", logger="infrahub"),
+        override_dependency(
+            original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
+        ),
+    ):
+        first = await get_info(request=_request(), account_session=SESSION)
+        second = await get_info(request=_request(), account_session=SESSION)
+
+    assert first.model_dump(mode="json")["license"] == INTERNAL_ERROR_OBJECT
+    assert second.model_dump(mode="json")["license"] == INTERNAL_ERROR_OBJECT
+    failures = find_logged_events(
+        caplog,
+        event="The license object could not be built; reporting the license as invalid with reason internal_error",
+    )
+    assert len(failures) == 1
+    assert failures[0]["level"] == "error"
+    assert failures[0]["exc_info"] is True

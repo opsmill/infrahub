@@ -38,10 +38,7 @@ class _RecordCollector(logging.Handler):
 
 @contextmanager
 def capture_log_records(logger_name: str, level: int) -> Iterator[list[logging.LogRecord]]:
-    """Collect what one logger emits at ``level`` or above inside the block, then put its level and handlers back.
-
-    Meant for a class-scoped fixture, whose logs land in whichever test happens to set it up first.
-    """
+    """Collect what one logger emits at ``level`` or above inside the block, then put its level and handlers back."""
     records: list[logging.LogRecord] = []
     handler = _RecordCollector(records=records, level=level)
     target = logging.getLogger(logger_name)

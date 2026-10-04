@@ -61,4 +61,5 @@
 - `invalid` with `internal_error` gets `banner: { "audience": "super_admins", "dismissible": true, "shown_to_all_users_when_enforced": false }` in both modes. An internal error is a defect in Infrahub, not in the customer's license, so it never reaches every user.
 - The key itself is never part of the response.
 - If computing the status raises, the endpoint still answers with `state: "invalid"`, `reason: "internal_error"`.
+- If building the license object raises (reading `notice_mode` or `enforcing_release` fails, or a status field does not fit the object), the endpoint answers with `state: "invalid"`, `reason: "internal_error"`, `notice_mode: "quiet"` and `enforcing_release: null` instead of failing with a 500. The traceback is logged on the first failure in each process only.
 - `schema/openapi.json` and `frontend/app/src/shared/api/rest/types.generated.ts` are regenerated.

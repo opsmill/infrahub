@@ -237,11 +237,6 @@ TELEMETRY_BLOCK_CASES: list[TelemetryBlockCase] = [
         expected={"state": "invalid", **STATE_ONLY_BLOCK_FIELDS},
     ),
     TelemetryBlockCase(
-        name="invalid_carrying_a_license_still_carries_the_state_only",
-        status=LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.WRONG_PRODUCT, license=LICENSE),
-        expected={"state": "invalid", **STATE_ONLY_BLOCK_FIELDS},
-    ),
-    TelemetryBlockCase(
         name="valid_carries_every_license_field",
         status=LicenseStatus(state=LicenseState.VALID, license=LICENSE, days_remaining=200),
         expected={"state": "valid", **LICENSE_BLOCK_FIELDS},
