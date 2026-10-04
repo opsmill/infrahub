@@ -1,9 +1,11 @@
+import { pluralize } from "@/shared/utils/string";
+
 import type {
   LicenseFailureReason,
   LicenseInfo,
   NoticeAudience,
 } from "@/entities/license/domain/model/license";
-import { dayCount, lastCoveredDay } from "@/entities/license/domain/rules/license-dates";
+import { lastCoveredDay } from "@/entities/license/domain/rules/license-dates";
 
 type FormatDay = (date: Date) => string;
 
@@ -68,7 +70,7 @@ function stateMessage(license: LicenseInfo, formatDay: FormatDay): string | null
     case "expiring":
       return ends_at === null || days_remaining === null
         ? null
-        : `Your license expires in ${dayCount(days_remaining)}, on ${formatDay(lastCoveredDay(ends_at))}.`;
+        : `Your license expires in ${pluralize(days_remaining, "day")}, on ${formatDay(lastCoveredDay(ends_at))}.`;
     case "not_required":
     case "valid":
       return null;

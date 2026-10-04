@@ -110,6 +110,23 @@ describe("useLicenseBannerDismissal", () => {
     expect(hook.result.current.isDismissed).toBe(false);
   });
 
+  test("shows the banner again when the license fails verification for a different reason", async () => {
+    // GIVEN
+    await dismissFor(
+      generateLicenseInfoWithoutLicense({ state: "invalid", reason: "internal_error" })
+    );
+    const badSignature = generateLicenseInfoWithoutLicense({
+      state: "invalid",
+      reason: "bad_signature",
+    });
+
+    // WHEN
+    const { result } = await renderHook(() => useLicenseBannerDismissal(badSignature));
+
+    // THEN
+    expect(result.current.isDismissed).toBe(false);
+  });
+
   test("falls back to not dismissed when the session storage cannot be read", async () => {
     // GIVEN
     blockSessionStorage("getItem");

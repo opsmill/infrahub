@@ -5,7 +5,3 @@ const ONE_MILLISECOND_MS = 1;
 export function lastCoveredDay(endsAt: string): Date {
   return new Date(new Date(endsAt).getTime() - ONE_MILLISECOND_MS);
 }
-
-export function dayCount(count: number): string {
-  return `${count} ${count === 1 ? "day" : "days"}`;
-}

@@ -14,8 +14,8 @@ The server sends the `super_admins` audience, dismissible, for `invalid` with `i
 ## Dismissal
 
 - Offered only when `banner.dismissible` is true.
-- Stored in `sessionStorage` under a key built from the license ID (or `none`) and the state.
-- A different license ID or state shows the banner again.
+- Stored in `sessionStorage` under a key built from the license ID (or `none`), the state and the failure reason (or `none`).
+- A different license ID, state or failure reason shows the banner again, so dismissing an `internal_error` notice does not hide a later `bad_signature` one.
 
 ## Text per state
 
