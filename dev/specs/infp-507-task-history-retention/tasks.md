@@ -162,8 +162,8 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - [X] T055 [P] Update `dev/adr/0002-events-system.md`, whose assumption that Prefect's retention covers the audit trail no longer holds. As landed: an appended, dated amendment section; the status and the decision are unchanged
 - [X] T056 [P] Correct `dev/specs/telemetry-collection-infp-589/spec.md` from 90 days to the 30-day task history default. As landed: `research.md` of the same spec repeated the figure and is corrected too
 - [ ] T057 Run the opsmill/infrahub-private-tests suites from the evidence tasks T021-T024, T037-T039 and T046 against the release candidate on Postgres 14 and 18, and attach the report to the PR and to INFP-507 as the release evidence
-- [ ] T058 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
-- [ ] T059 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
+- [X] T058 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
+- [X] T059 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
 
 ---
 
