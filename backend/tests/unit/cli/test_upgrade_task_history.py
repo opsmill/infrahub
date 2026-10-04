@@ -19,6 +19,7 @@ from tests.helpers.task_history_api import (
     ScriptedTaskManager,
     polled,
     route_missing,
+    running_elsewhere,
     started,
     unreachable,
 )
@@ -168,7 +169,34 @@ async def test_a_failed_cleanup_is_reported_and_the_upgrade_goes_on() -> None:
 
     assert console.lines == [
         "ERROR Task history cleanup failed: The cleanup failed with DBAPIError; the task manager log has the details",
+        "Deleted 0 runs before the failure",
         TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
+
+
+async def test_a_wait_is_printed_and_the_step_follows_the_cleanup_it_then_starts() -> None:
+    """While a cleanup runs elsewhere the step prints why it waits once, then the summary of the cleanup it starts."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            running_elsewhere(),
+            running_elsewhere(),
+            started(rewrite="if_freed"),
+            polled(rewrite="if_freed", state="completed", current_day="2026-01-16", deleted_runs=3),
+        ]
+    )
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
+        "Deleted 3 runs that ended before 2026-09-04 00:00 UTC",
+        "Task history tables not rewritten",
     ]
 
 
@@ -184,9 +212,12 @@ async def test_an_unexpected_answer_is_reported_and_the_upgrade_goes_on() -> Non
         poll_interval=timedelta(0),
     )
 
-    [failure, hint] = console.lines
-    assert failure.startswith("ERROR Task history cleanup failed: PrefectHTTPStatusError: ")
-    assert hint == TASK_HISTORY_CLEANUP_RERUN_HINT
+    assert console.lines == [
+        "ERROR Task history cleanup failed: PrefectHTTPStatusError: Server error '500 Internal Server Error' for url "
+        "'http://task-manager:4200/api/infrahub/task-history/cleanup' - Response: {'detail': 'boom'} - "
+        "For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
 
 
 async def test_an_unreachable_task_manager_is_reported_and_the_upgrade_goes_on() -> None:
