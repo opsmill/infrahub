@@ -4,6 +4,7 @@ import logging
 from datetime import UTC, timedelta
 from typing import TYPE_CHECKING
 
+import httpx
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
@@ -86,41 +87,46 @@ app.add_typer(flush_app, name="flush")
 
 async def clean_task_history(
     client: PrefectClient, rewrite: CleanupRewrite, console: Console, poll_interval: timedelta = POLL_INTERVAL
-) -> None:
+) -> str | None:
     """Run a task history cleanup in the task manager, printing its progress and then its outcome.
 
-    Raises:
-        TaskHistoryCleanupError: When the cleanup fails, or the task manager stays unable to run it.
+    Returns:
+        Why the cleanup failed or could not run, or None when it ran or the task manager does not provide it.
 
     """
-    job = await run_task_history_cleanup(
-        client=client,
-        rewrite=rewrite,
-        on_progress=lambda progress: console.log(_progress_line(job=progress)),
-        poll_interval=poll_interval,
-    )
+    try:
+        job = await run_task_history_cleanup(
+            client=client,
+            rewrite=rewrite,
+            on_progress=lambda progress: console.log(_progress_line(job=progress)),
+            poll_interval=poll_interval,
+        )
+    except TaskHistoryCleanupError as exc:
+        return exc.message
+    except httpx.HTTPError as exc:
+        return f"{type(exc).__name__}: {exc}"
     if job is None:
         console.log(TASK_HISTORY_CLEANUP_NOT_PROVIDED)
-        return
+        return None
     for line in _summary_lines(job=job):
         console.log(line)
+    return None
 
 
 async def flush_old_flow_runs(
     client: PrefectClient, rewrite: bool, console: Console, poll_interval: timedelta = POLL_INTERVAL
 ) -> int:
     """Delete the finished runs older than the task history retention, returning the exit code of the command."""
-    try:
-        await clean_task_history(
-            client=client,
-            rewrite=CleanupRewrite.ALWAYS if rewrite else CleanupRewrite.NEVER,
-            console=console,
-            poll_interval=poll_interval,
-        )
-    except TaskHistoryCleanupError as exc:
-        console.log(f"{ERROR_BADGE} {exc.message}")
-        return 1
-    return 0
+    failure = await clean_task_history(
+        client=client,
+        rewrite=CleanupRewrite.ALWAYS if rewrite else CleanupRewrite.NEVER,
+        console=console,
+        poll_interval=poll_interval,
+    )
+    if failure is None:
+        return 0
+    console.log(f"{ERROR_BADGE} {failure}")
+    return 1
 
 
 def _runs(count: int) -> str:

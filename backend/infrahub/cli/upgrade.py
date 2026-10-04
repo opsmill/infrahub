@@ -4,12 +4,10 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
-import httpx
 import typer
 from deepdiff import DeepDiff
 from infrahub_sdk.async_typer import AsyncTyper
 from prefect.client.orchestration import get_client
-from prefect.exceptions import PrefectHTTPStatusError
 
 from infrahub import config
 from infrahub.core.initialization import (
@@ -29,7 +27,7 @@ from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
 from infrahub.prefect_server.task_history import CleanupRewrite
-from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL, TaskHistoryCleanupError
+from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
@@ -260,15 +258,13 @@ async def upgrade_task_history(
         console.log("Task history cleanup skipped")
         return
     async with client_factory() as client:
-        try:
-            await clean_task_history(
-                client=client, rewrite=CleanupRewrite.IF_FREED, console=console, poll_interval=poll_interval
-            )
-        except (TaskHistoryCleanupError, PrefectHTTPStatusError, httpx.HTTPError) as exc:
-            # Each committed day stays deleted and a failed rewrite leaves its table intact, so the upgrade can go on.
-            message = exc.message if isinstance(exc, TaskHistoryCleanupError) else f"{type(exc).__name__}: {exc}"
-            console.log(f"{ERROR_BADGE} Task history cleanup failed: {message}")
-            console.log(TASK_HISTORY_CLEANUP_RERUN_HINT)
+        failure = await clean_task_history(
+            client=client, rewrite=CleanupRewrite.IF_FREED, console=console, poll_interval=poll_interval
+        )
+    if failure is not None:
+        # Each committed day stays deleted and a failed rewrite leaves its table intact, so the upgrade can go on.
+        console.log(f"{ERROR_BADGE} Task history cleanup failed: {failure}")
+        console.log(TASK_HISTORY_CLEANUP_RERUN_HINT)
 
 
 def _task_manager_client() -> PrefectClient:

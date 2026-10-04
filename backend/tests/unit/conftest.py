@@ -1,4 +1,7 @@
+from collections.abc import Generator
+
 import pytest
+from prefect.settings import PREFECT_CLIENT_MAX_RETRIES, temporary_settings
 
 from infrahub.core import registry
 from infrahub.core.constants import (
@@ -13,6 +16,13 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 @pytest.fixture(autouse=True)
 def set_registry_default_branch() -> None:
     registry._default_branch = "main"
+
+
+@pytest.fixture
+def prefect_client_without_retries() -> Generator[None, None, None]:
+    """Prefect's client raises a transport error at once, as it does once its retries run out, instead of after real waits."""
+    with temporary_settings(updates={PREFECT_CLIENT_MAX_RETRIES: 0}):
+        yield
 
 
 @pytest.fixture

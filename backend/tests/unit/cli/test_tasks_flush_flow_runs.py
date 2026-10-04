@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import timedelta
 
+import httpx
 import pytest
 from typer.testing import CliRunner
 
@@ -18,6 +19,7 @@ from tests.helpers.task_history_api import (
     route_missing,
     running_elsewhere,
     started,
+    unreachable,
 )
 
 ANSI_STYLE = re.compile(r"\x1b\[[0-9;]*m")
@@ -46,12 +48,58 @@ REWRITE_OPTION_CASES: list[RewriteOptionCase] = [
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REWRITE_OPTION_CASES])
 async def test_the_rewrite_option_asks_the_task_manager_to_always_rewrite(case: RewriteOptionCase) -> None:
     """The rewrite option asks for a rewrite whatever the deletes freed, and no rewrite is asked for without it."""
-    task_manager = ScriptedTaskManager(responses=[started(), polled(state="completed")])
+    mode = case.expected_body["rewrite"]
+    task_manager = ScriptedTaskManager(responses=[started(rewrite=mode), polled(rewrite=mode, state="completed")])
 
     exit_code = await _flush(task_manager=task_manager, console=RecordedConsole(), rewrite=case.rewrite)
 
     assert exit_code == 0
     assert task_manager.requests[0] == RecordedRequest(method="POST", path=CLEANUP_PATH, body=case.expected_body)
+
+
+async def test_the_rewrite_option_rewrites_after_a_running_cleanup_that_may_not_rewrite() -> None:
+    """With the rewrite option, a running cleanup that may not rewrite is followed by one that always rewrites."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(rewrite="if_freed"),
+            polled(rewrite="if_freed", current_day="2026-01-15", deleted_runs=7),
+            polled(
+                rewrite="if_freed",
+                state="completed",
+                current_day="2026-01-15",
+                deleted_runs=7,
+                size_before=3_000_000,
+                size_after=3_000_000,
+            ),
+            started(id="job-2", rewrite="always"),
+            polled(
+                id="job-2",
+                rewrite="always",
+                state="completed",
+                rewritten=True,
+                size_before=3_000_000,
+                size_after=1_000_000,
+            ),
+        ]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
+
+    assert exit_code == 0
+    assert task_manager.requests == [
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-2"),
+    ]
+    assert console.lines == [
+        "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
+        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Task history tables: 3.0 MB before, 1.0 MB after",
+        "Task history tables rewritten",
+    ]
 
 
 async def test_progress_lines_then_the_summary_are_printed() -> None:
@@ -134,6 +182,34 @@ async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:
     assert console.lines == [
         "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
         "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
+    ]
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_an_unreachable_task_manager_prints_the_error_and_fails() -> None:
+    """A task manager that cannot be reached prints the transport error on one line and exits with code 1."""
+    task_manager = ScriptedTaskManager(responses=[unreachable()])
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
+
+    assert exit_code == 1
+    assert task_manager.requests == [RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "always"})]
+    assert console.lines == ["ERROR ConnectError: All connection attempts failed"]
+
+
+async def test_an_unexpected_answer_prints_the_error_and_fails() -> None:
+    """An error answer other than the ones the cleanup expects prints the error and exits with code 1."""
+    task_manager = ScriptedTaskManager(responses=[httpx.Response(status_code=500, json={"detail": "boom"})])
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 1
+    assert console.lines == [
+        "ERROR PrefectHTTPStatusError: Server error '500 Internal Server Error' for url "
+        "'http://task-manager:4200/api/infrahub/task-history/cleanup' - Response: {'detail': 'boom'} - "
+        "For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
     ]
 
 
