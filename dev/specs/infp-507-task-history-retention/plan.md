@@ -46,7 +46,7 @@ Research and code locations: [research.md](research.md).
 | III. Type Safety & Explicit Contracts | Pass | Pydantic settings section and request/response models for the new routes; contracts written before implementation (contracts/). |
 | IV. Test Discipline | Pass | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; functional test for the event-type list; Vitest for paging; an E2E test for Activities "load more" without the count. |
 | V. Query Performance | Pass | SQL built with SQLAlchemy Core, parameterized. Plans validated with EXPLAIN in the design-doc benchmark; regression covered by private performance tests. |
-| VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite` and an optional `days_to_keep` ≥ 1, never a timestamp. See Complexity Tracking. Settings input is validated at start. |
+| VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite`. See Complexity Tracking. Settings input is validated at start. |
 | VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during a long upgrade does not stop the cleanup. See Complexity Tracking. |
 
 **Post-design re-check**: unchanged. No new dependency, no new abstraction with fewer than two callers (the settings translation serves the task manager and the background-services command; the cleanup job serves the CLI and the upgrade).
@@ -110,7 +110,7 @@ changelog/                             # fragments per part
 
 ## Delivery Order
 
-1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order, retry on deadlock, rewrite lock timeout), `flush flow-runs` reimplementation with `--days-to-keep` kept and `--batch-size` deprecated, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
+1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order, retry on deadlock, rewrite only when the deletes freed most of the tables, rewrite lock timeout with retries), `flush flow-runs` reimplementation without `--days-to-keep` and `--batch-size`, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
 2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
 4. **Part 4, documentation**: ships with parts 1 and 3. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
@@ -128,8 +128,8 @@ changelog/                             # fragments per part
 | Operators already set PREFECT_* variables by hand | Explicit values win, with a warning naming the hidden Infrahub setting. |
 | Several task-manager replicas run two cleanups | Postgres advisory lock; the CLI retries on "running elsewhere" or an unknown job. |
 | The cleanup and Prefect's now-enabled vacuum deadlock on the same runs | Delete in Prefect's order (logs and artifacts, then runs); retry a day up to 3 times; concurrency test. |
-| A table rewrite waits forever on a lock | 60 s lock timeout per table; skipped tables are reported. |
-| Existing cleanup scripts break on removed flags | `--days-to-keep` kept as an override, `--batch-size` deprecated. |
+| A table rewrite waits forever on a lock, or makes queries queue behind it | 60 s lock timeout per table, up to 3 retries; skipped tables are reported. |
+| Existing cleanup scripts pass `--days-to-keep` or `--batch-size` | Removed per the design doc; the changelog marks the change as breaking and the CLI reference documents the retention setting. |
 
 ## Complexity Tracking
 

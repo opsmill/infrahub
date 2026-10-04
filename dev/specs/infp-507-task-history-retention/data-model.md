@@ -8,7 +8,7 @@ No graph schema, GraphQL schema or database schema changes. The feature adds one
 |---|---|---|---|
 | `task_history` | duration | 30 days | ≥ 1 day |
 | `activity_log` | duration | 7 days | ≥ 1 day |
-| `prefect_own_events` | duration | 7 days | ≥ 1 day and ≤ `activity_log` |
+| `prefect_own_events` | duration | 7 days | ≥ 1 day; above `activity_log`, capped to it with a warning |
 
 - Owned by the Infrahub configuration, as a section of the main settings with its own environment prefix (names final in the configuration contract).
 - Same values in every edition, no upper limit.
@@ -51,13 +51,13 @@ A Prefect variable already set in the environment is left as is, with a warning.
 | `deleted_runs` | Runs deleted so far |
 | `current_day` | Day of end times being deleted (progress) |
 | `size_before`, `size_after` | Total size of the six task-history tables, when the database reports it |
-| `not_rewritten` | Tables whose rewrite hit the lock timeout |
+| `not_rewritten` | Tables whose rewrite still hit the lock timeout after its retries |
 | `error` | Message when `failed` |
 
 - At most one job runs at a time across all task-manager replicas, enforced by a Postgres advisory lock held for the job's run. A new request on the same replica returns the running job; on another replica it is refused with "running elsewhere".
 - Each day of end times is committed separately, deleting logs and artifacts before the runs (Prefect's order), so a job stopped midway leaves a consistent state and a new job continues from the oldest remaining day. A day is retried up to 3 times after a deadlock or serialization error.
 - The job lives in the task-manager process that runs it; a restart loses its status but not its committed progress.
-- Each table rewrite has a 60 s lock timeout; tables that time out are listed in the job result as `not_rewritten`.
+- The rewrite runs only when the deletes freed most of the tables (more than half of the runs the tables held). Each table rewrite has a 60 s lock timeout and up to 3 retries; tables that still time out are listed in the job result as `not_rewritten`.
 
 ## Activities filters (changed expression, same results)
 
