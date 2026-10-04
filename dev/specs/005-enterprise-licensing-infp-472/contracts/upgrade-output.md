@@ -65,7 +65,7 @@ License: could not be determined because of an internal error. Check the server 
 - In enforce mode, `unlicensed` says that every user sees the banner; the other states print their state line only.
 - `invalid` with `internal_error` is a defect in Infrahub, not in the customer's license, so it points at the server logs and gives no key advice. The other reasons name the reason code and point at the key.
 - The type reads `evaluation` for an evaluation license and `commercial` otherwise, including for a type this release does not know.
-- An end date shows the last day covered (`ends_at` minus one second) and a start date the first, both in UTC.
+- An end date shows the last day covered (`ends_at` minus one microsecond, the smallest unit a `License` datetime keeps, so an end at `00:00:00.500000Z` still shows that day) and a start date the first, both in UTC.
 - When fewer than one whole day has passed since the end (`days_since_expiry` is 0), the count reads "today" instead of "0 days ago", as the About dialog's "expired today". A count of one reads "1 day".
 - The command never prompts because of the license and never changes its exit code because of it.
 - An error while building the section is logged and the section is skipped.

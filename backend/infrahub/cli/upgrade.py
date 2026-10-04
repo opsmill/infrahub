@@ -275,7 +275,7 @@ def _print_license_section(service: LicenseService) -> None:
             notice_mode=service.notice_mode,
             enforcing_release=service.enforcing_release,
         )
-    # Top-level boundary: upgrades run unattended, and a section that is only a reminder must not fail one.
+    # Best-effort side effect: the section is only a reminder, so failing to build it must not fail an upgrade.
     except Exception:
         log.exception("The license section of the upgrade output could not be built; skipping it")
         return

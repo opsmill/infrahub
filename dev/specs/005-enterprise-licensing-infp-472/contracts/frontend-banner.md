@@ -14,8 +14,8 @@ The server sends the `super_admins` audience, dismissible, for `invalid` with `i
 ## Dismissal
 
 - Offered only when `banner.dismissible` is true.
-- Stored in `sessionStorage` under a key built from the license ID (or `none`) and the state.
-- A different license ID or state shows the banner again.
+- Stored in `sessionStorage` under a key built from the license ID (or `none`), the state and the failure reason (or `none`).
+- A different license ID, state or failure reason shows the banner again, so dismissing an `internal_error` notice does not hide a later `bad_signature` one.
 
 ## Text per state
 
@@ -60,7 +60,10 @@ Shown to every signed-in user when the license object carries a license:
 | Type | `Commercial`, or `Evaluation license, N days left` |
 | Product tier | `{product tier}` |
 | Support tier | `{support tier}` |
+| Starts | `{start date} (not valid yet)`, only when the state is `not_yet_valid` |
 | Ends | `{end date}` (`{N} days left`, `expired {N} days ago`, or `expired today` when fewer than one whole day has passed since the end) |
+
+Dates are UTC days in the viewer's date format. The start date is the day of `starts_at`. The end date is the last day the license covers: the day of the instant one millisecond before `ends_at`, the smallest unit a browser `Date` keeps, so an end at `00:00:00.500Z` still shows that day.
 
 When the state is `unlicensed` or `invalid`, a single "License" row shows "Not installed" or "Could not be verified". When the state is `not_required`, no license row is added (the About dialog is unchanged).
 

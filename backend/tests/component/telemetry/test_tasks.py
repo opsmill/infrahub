@@ -470,9 +470,13 @@ async def test_gather_license_block_that_cannot_be_built_is_null_and_logged(
     telemetry_environment: InfrahubDatabase, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A license the block cannot hold nulls only the license field and leaves the rest of the payload intact."""
-    malformed = License(**{**LICENSE_CLAIMS, "product_tier": 3})
+    malformed = License(**LICENSE_CLAIMS)
+    # The constructor rejects a number in a text field, so the defect is planted after construction.
+    vars(malformed)["product_tier"] = 3
     gatherer = await _build_gatherer(
-        license_service=RecordingLicenseService(status=LicenseStatus(state=LicenseState.VALID, license=malformed))
+        license_service=RecordingLicenseService(
+            status=LicenseStatus(state=LicenseState.VALID, license=malformed, days_remaining=200)
+        )
     )
 
     with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
