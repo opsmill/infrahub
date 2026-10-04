@@ -14,7 +14,8 @@ parameters, per-run values are entry-point arguments, and each flow builds the g
 ```text
 backend/infrahub/git/writeback/          # NEW
 ├── __init__.py
-├── constants.py     # retry bounds, Git timeouts, STALE_AFTER, cache time to live and size bound
+├── constants.py     # retry bounds, barrier read retries, Git timeouts, STALE_AFTER,
+│                    # cache time to live and size bound
 ├── models.py        # DeliveryQueue, PendingMerge, HeldRegeneration, AbandonmentRecord,
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
 ├── classifier.py    # classify_delivery_failure, scrub_credentials
@@ -302,7 +303,11 @@ class NarrowedHoldCache:
 
 class RegenerationBarrier:
     def __init__(
-        self, state: DeliveryStatePort, narrowed: NarrowedHoldCache, default_branch_name: str
+        self,
+        state: DeliveryStatePort,
+        narrowed: NarrowedHoldCache,
+        default_branch_name: str,
+        sleep: Callable[[float], Awaitable[None]],
     ) -> None: ...
 
     async def admit(
@@ -327,8 +332,15 @@ Contract of `admit`:
 5. A candidate whose owner is `None` → held under every pending repository except `releasing`.
    Admitted as well when every `hold` returned `None`.
 6. Candidates of one repository are held in one `hold` call.
-7. If the state raises, or the state lock cannot be acquired → admit every candidate and log at
-   error level. A cache write failure is logged and does not change the decision.
+7. If a state call raises, or the state lock cannot be acquired → wait for the next delay of
+   `BARRIER_STATE_READ_DELAYS_SECONDS`, then apply rules 2 to 6 again from the start, up to
+   `BARRIER_STATE_READ_RETRIES` times. A repeated hold of an item only refreshes it (rule 4). If the
+   last retry fails too → admit every candidate and log at error level, with the branch and the
+   repositories of the candidates (`research.md` R9). A cache write failure is logged, is not
+   retried, and does not change the decision.
+
+`sleep` waits between the retries of rule 7. Every builder passes `asyncio.sleep`. A unit test
+passes one that records the delays and returns at once.
 
 `releasing` has no default. Every non-release site passes `None` explicitly, so a release site
 cannot forget it.

@@ -685,10 +685,33 @@ cost a new parameter on four flows for a case that only delays work during an ou
 
 ### When the store fails
 
-If the store raises or the state lock cannot be acquired, the barrier admits every candidate and
-logs at error level. Holding blindly could drop work that no release would ever cover, which is
-under-execution, and ADR 0012 forbids it. Dispatching against the recorded commit is today's
-behaviour.
+**Decision**: retry the read, then fail open. If the store raises, or the state lock cannot be
+acquired, the barrier reads the delivery state again. It retries `BARRIER_STATE_READ_RETRIES`
+times, 3, after the delays of `BARRIER_STATE_READ_DELAYS_SECONDS`, 2, 8 and 20 seconds. A read that
+succeeds decides as usual, so the barrier still holds the work of a pending repository. If the last
+retry fails too, the barrier admits every candidate. It then logs at error level, with the branch
+and the repositories of the candidates. Both constants live in `git/writeback/constants.py` (R18).
+
+**Why a retry.** When a failure of the store is short, the barrier still holds the work. A lock that
+a dead worker left is the clearest case: it expires within its 30-second time to live, and the last
+read starts at least 30 seconds after the first.
+
+**Why no durable hold after the last retry.** The hold is a write to the same store that the barrier
+cannot read. When the read fails, the hold fails too. A hold kept only in the memory of a worker is
+lost with the worker, and no release would ever cover it.
+
+**Why the barrier does not raise.** Nothing retries the flows that consult the barrier. A raise
+therefore drops the regeneration. That is under-execution, and ADR 0012 forbids it.
+
+**The residual window.** Work admitted after the last retry runs against the recorded commit, which
+is today's behaviour. That commit can differ from the commit that the delivery puts on the remote.
+The barrier held nothing for that work, so the delivery does not run it again when it completes.
+The next regeneration of the same definition corrects it. FR-016 and SC-004 state this exception.
+
+**The cost.** The retry delays a flow only while the store fails. The delays add up to 30 seconds
+for each consultation of the barrier. When the lock acquire times out, each read also waits up to
+`STATE_LOCK_ACQUIRE_SECONDS`, 10 seconds (R2). A flow that consults the barrier, the merge flow
+included, waits for that time.
 
 ### The narrowed selection, kept for a short time (FR-014, SC-008)
 
@@ -934,9 +957,9 @@ list, and the status vocabulary (INFP-671).
   the lock, the release outside the lock, release then clear;
 - the interleavings: an abandonment and a deletion guard that wait for the attempt find the entries
   already settled; a held-only run during a live lease does nothing;
-- the barrier: partition, the atomic hold, the fast path, unknown owners, `releasing`, fail-open,
-  the narrowed cache hit and miss, and two holds of one item with different members, which release
-  both members;
+- the barrier: partition, the atomic hold, the fast path, unknown owners, `releasing`, a state error
+  that clears within the retries, fail-open after the last retry, the narrowed cache hit and miss,
+  and two holds of one item with different members, which release both members;
 - the retry condition and `final_attempt`.
 
 **Component, with a database**: the store's transitions and the lock time to live; `read_only`
@@ -1007,8 +1030,9 @@ No `GRAPH_VERSION` bump: optional attributes are added by the schema migration t
 
 ## R18. Configuration
 
-No new setting. The retry bounds, the Git timeouts, the stale bound and the cache time to live are
-constants in `git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES` is in `webhook/constants.py`.
+No new setting. The retry bounds, the read retries of the barrier, the Git timeouts, the stale bound
+and the cache time to live are constants in `git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES`
+is in `webhook/constants.py`.
 A setting would be configurability for a hypothetical need (Principle VII).
 
 ---
@@ -1089,7 +1113,8 @@ one read.
 - A run ends `Failed` for the outcomes `failed` and `unreplayable`, and `Completed` for `delivered`,
   `observed` and `nothing-pending`.
 - The barrier logs each hold at info level, with the repository and the held identifiers, and each
-  fail-open at error level.
+  fail-open at error level, after the last retry, with the branch and the repositories of the
+  candidates.
 - The merge flow's run log gains one line per queued repository, so the user who merged sees that a
   push is pending.
 

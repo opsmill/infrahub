@@ -102,7 +102,8 @@ Slices A and B of the plan.
       `DELIVERY_RETRY_DELAYS_SECONDS`, `FETCH_TIMEOUT_SECONDS`, `PUSH_TIMEOUT_SECONDS`,
       `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`, `NARROWED_HOLD_TTL_SECONDS` (derived from the
       delays and the timeouts, not a literal), `NARROWED_HOLD_MAX_BYTES`, `RELEASE_LEASE_SECONDS`,
-      `STATE_LOCK_TTL_SECONDS` and `STATE_LOCK_ACQUIRE_SECONDS`, with the values of
+      `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
+      `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
       [research.md](research.md) R2, R6, R9, R10 and R20.
 - [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden` and
@@ -343,9 +344,11 @@ X once after the delivery.
       the new request, or nothing when the previous entry is missing.
 - [ ] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
       empty fast path, the partition, a hold that returns `None` admits, an unknown owner held under
-      every pending repository, `releasing`, fail-open on a state error and on a lock timeout, a cache
-      write failure, one `hold` call per repository, and two holds of one artifact definition with
-      different members whose release covers both members.
+      every pending repository, `releasing`, a cache write failure, one `hold` call per repository,
+      and two holds of one artifact definition with different members whose release covers both
+      members. For a state error and for a lock timeout: an error that clears within the retries
+      holds as usual, and one that persists admits after the last retry. Pass a `sleep` that records
+      the delays and returns at once.
 - [ ] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
       `backend/infrahub/core/merge/regeneration_dispatcher.py`: on the built plan, in `_submit` after
       the cascade, in `_full_regeneration` (marker scope `all`) and in

@@ -461,7 +461,8 @@ system, and the new delivery path must keep them true.*
   without dispatching it. An unresolvable held set MUST widen to full regeneration of the owning
   repository's definitions and MUST NOT be skipped. Every dispatch on the merge follow-up path, a
   release included, MUST pass through the barrier. When the barrier cannot read the delivery state,
-  it MUST dispatch and log, never hold blindly.
+  it MUST first retry the read a bounded number of times. If every retry fails, it MUST dispatch and
+  log at error level, never hold blindly.
 - **FR-017**: The coalesced recompute and the schema-scoped recompute MUST consult the same barrier
   for transform-based computed attributes, so that a transform never runs on the merge follow-up
   path against a repository with a pending delivery. At those two consultation points the barrier
@@ -563,7 +564,8 @@ state from the repository node.
   the definitions that the repository owns. Outside the widened fallback, it covers only the
   definitions that the affected merges touched. No artifact, generator or transform-based computed
   attribute on the merge follow-up path runs against a commit other than the one that is finally on
-  the remote, except when the barrier cannot read the delivery state, which it logs at error level.
+  the remote, except when the barrier cannot read the delivery state after a bounded retry, which it
+  logs at error level.
   A failure between the dispatch and the clear can repeat a release, and it can never drop one.
 - **SC-005**: No deferred regeneration is ever dropped. The clear of the held work and its dispatch
   are inseparable, on the abandonment path and on the delivery path.

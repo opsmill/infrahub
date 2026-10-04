@@ -124,7 +124,8 @@ backend/infrahub/
 ├── git/
 │   ├── writeback/                         # NEW
 │   │   ├── __init__.py
-│   │   ├── constants.py                   # retry bounds, Git timeouts, stale bound, cache bounds
+│   │   ├── constants.py                   # retry bounds, barrier read retries, Git timeouts,
+│   │   │                                  # stale bound, cache bounds
 │   │   ├── models.py                      # queue, held set, records, intent, outcomes, actor
 │   │   ├── classifier.py                  # classify_delivery_failure, scrub_credentials
 │   │   ├── ports.py                       # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort
