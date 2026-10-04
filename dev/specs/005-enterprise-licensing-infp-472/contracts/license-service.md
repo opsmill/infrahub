@@ -53,7 +53,13 @@ dependency_provider.override(build_license_service, build_ent_license_service)
 ## Requirements on the Enterprise package
 
 - Register the service in every process that reads it: the API server, the task worker and the command line. Today all three call `set_enterprise_dependencies()` (`infrahub_enterprise/server.py`, `workers/infrahub_async.py`, `cli.py`); a new entry point must do the same.
-- Return timezone-aware UTC datetimes in `License`; a naive datetime is rejected when the `License` is constructed.
+- Fill `license_id`, `customer_name`, `license_type`, `product_tier`, `support_tier` and `issuer` with `str` values. Any other type raises `ValueError` when the `License` is constructed; report that as `invalid` / `malformed`.
+- Fill `starts_at`, `ends_at` and `issued_at` with timezone-aware `datetime` values. Another type, such as an integer timestamp copied from the token, or a naive datetime raises `ValueError` when the `License` is constructed; report that as `invalid` / `malformed`.
+- Return statuses built by `evaluate`. A `LicenseStatus` built directly must set exactly the fields its state carries; any other combination raises `ValueError` when it is constructed:
+  - `not_required` and `unlicensed`: no other field.
+  - `invalid`: `reason`.
+  - `not_yet_valid`, `valid` and `expiring`: `license` and `days_remaining`.
+  - `expired`: `license` and `days_since_expiry`.
 - Use only the reasons in `LicenseFailureReason`. A new reason is added in this repository first.
 
 ## Guarantees this repository gives the Enterprise service

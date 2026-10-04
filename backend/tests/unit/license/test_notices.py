@@ -4,8 +4,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.license.models import LicenseState, LicenseStatus, Notice, NoticeAudience, NoticeMode
+from infrahub.license.models import LicenseState, Notice, NoticeAudience, NoticeMode
 from infrahub.license.status import notice_for
+from tests.adapters.license import build_license_status
 
 NO_NOTICE = Notice(audience=NoticeAudience.NONE, dismissible=False, send_header=False)
 SUPER_ADMINS_DISMISSIBLE = Notice(audience=NoticeAudience.SUPER_ADMINS, dismissible=True, send_header=False)
@@ -111,7 +112,7 @@ NOTICE_TEST_CASES: list[NoticeTestCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in NOTICE_TEST_CASES])
 def test_notice_for_each_state_and_mode(test_case: NoticeTestCase) -> None:
-    assert notice_for(status=LicenseStatus(state=test_case.state), mode=test_case.mode) == test_case.expected
+    assert notice_for(status=build_license_status(state=test_case.state), mode=test_case.mode) == test_case.expected
 
 
 def test_every_state_and_mode_is_covered() -> None:
