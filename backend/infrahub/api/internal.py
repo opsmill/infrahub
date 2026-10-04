@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Self
 
@@ -21,23 +22,26 @@ from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.exceptions import NodeNotFoundError
-from infrahub.license.models import (  # noqa: TC001
+from infrahub.license.models import (
     LicenseFailureReason,
     LicenseState,
     NoticeAudience,
     NoticeMode,
 )
-from infrahub.license.service import read_license_status
+from infrahub.license.service import LicenseServiceUnavailable, read_license_status
 from infrahub.license.status import notice_for
+from infrahub.log import get_logger
 from infrahub.message_bus.messages import RefreshSettingsResponseDelay
 from infrahub.workers.dependencies import get_installation_type, get_license_service
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
     from infrahub.license.models import LicenseStatus
+    from infrahub.license.service import LicenseService
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices
 
+log = get_logger()
 router = APIRouter()
 
 
@@ -107,6 +111,35 @@ class InfoAPI(BaseModel):
     )
 
 
+@dataclass
+class _FailureLog:
+    logged: bool = False
+
+
+_license_object_failure = _FailureLog()
+
+
+def _license_object(license_service: LicenseService) -> LicenseInfoAPI:
+    status = read_license_status(service=license_service)
+    try:
+        return LicenseInfoAPI.from_status(
+            status=status,
+            notice_mode=license_service.notice_mode,
+            enforcing_release=license_service.enforcing_release,
+        )
+    # Top-level boundary: a license object that cannot be built must not fail the whole response.
+    except Exception:
+        # A defect that fails every request logs its traceback once per process rather than once per request.
+        if not _license_object_failure.logged:
+            _license_object_failure.logged = True
+            log.exception(
+                "The license object could not be built; reporting the license as invalid with reason internal_error"
+            )
+        return LicenseInfoAPI.from_status(
+            status=LicenseServiceUnavailable().status(), notice_mode=NoticeMode.QUIET, enforcing_release=None
+        )
+
+
 @router.get("/config")
 async def get_config() -> ConfigAPI:
     return ConfigAPI(
@@ -131,15 +164,10 @@ async def get_info(request: Request, account_session: AccountSession = Depends(g
     if not account_session.authenticated:
         return InfoAPI(deployment_id=str(registry.id), version=request.app.version, license=None)
 
-    license_service = get_license_service()
     return InfoAPI(
         deployment_id=str(registry.id),
         version=request.app.version,
-        license=LicenseInfoAPI.from_status(
-            status=read_license_status(service=license_service),
-            notice_mode=license_service.notice_mode,
-            enforcing_release=license_service.enforcing_release,
-        ),
+        license=_license_object(license_service=get_license_service()),
     )
 
 

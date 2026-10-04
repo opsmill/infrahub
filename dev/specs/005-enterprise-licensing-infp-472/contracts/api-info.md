@@ -59,4 +59,5 @@
 - `reason` is a short code and reveals nothing secret; the UI shows its explanation to super-admins only.
 - The key itself is never part of the response.
 - If computing the status raises, the endpoint still answers with `state: "invalid"`, `reason: "internal_error"`.
+- If building the license object raises (reading `notice_mode` or `enforcing_release` fails, or a status field does not fit the object), the endpoint answers with `state: "invalid"`, `reason: "internal_error"`, `notice_mode: "quiet"` and `enforcing_release: null` instead of failing with a 500. The traceback is logged on the first failure in each process only.
 - `schema/openapi.json` and `frontend/app/src/shared/api/rest/types.generated.ts` are regenerated.
