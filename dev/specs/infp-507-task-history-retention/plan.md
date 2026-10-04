@@ -111,7 +111,7 @@ changelog/                             # fragments per part
 ## Delivery Order
 
 1. **Part 1, task history** (independent): settings section and translation, flow-run vacuum on, cleanup job and routes (advisory lock, Prefect's delete order, retry on deadlock, rewrite lock timeout), `flush flow-runs` reimplementation with `--days-to-keep` kept and `--batch-size` deprecated, upgrade step and `--no-task-history-cleanup`, background-services command, stale-runs documentation, cleanup equivalence and concurrency tests, Postgres run of the cleanup test in the integration-docker tier. The infrahub-helm PR (background-services command, `--no-task-history-cleanup` in the upgrade hook arguments) ships in the same release.
-2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time and no count (frontend change waits for Q2); filter equivalence test.
+2. **Part 2, Activities page** (before part 3): PR #10379 merged first or carried in; ID filters and branch resolution; time windows; optional count; frontend paging by time (the page already omits `count`, so Q2 blocks nothing); filter equivalence test.
 3. **Part 3, activity log retention**: Prefect event-type list and its guard test; activity log and own-event retentions applied; defaults.
 4. **Part 4, documentation**: ships with parts 1 and 3. The release notes explain how to raise the activity log retention and its cost, and the Helm upgrade notes lead with the maintenance step and its expected duration.
 
@@ -120,7 +120,7 @@ changelog/                             # fragments per part
 | Risk | Mitigation |
 |---|---|
 | Upgrade step takes hours on large instances (Q1) | Per-day commits, progress output, re-runnable; operators can set a longer retention before upgrading. Release notes wait for the 100 GB figure. |
-| Product refuses removing the total count (Q2) | Backend changes ship regardless; only the frontend change waits. |
+| Product refuses removing the total count (Q2) | Moot: the Activities page already does not request it; API clients that select `count` still get it. |
 | SQL cleanup drifts from Prefect's rules on a Prefect upgrade | Cleanup equivalence component test in CI. |
 | New Prefect event type not in the list | Functional guard test in CI; a missed type only costs disk. |
 | Filter results change on a Prefect upgrade | Filter equivalence component test in CI. |
