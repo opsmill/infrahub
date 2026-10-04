@@ -192,7 +192,7 @@ in-window events.
 ### Edge Cases
 
 - **Event-retention leakage**: The 24h window is far shorter than the underlying
-  event retention (7 days for events, 90 days for webhook flow runs), so a correct
+  event retention (7 days for events, 30 days by default for webhook flow runs), so a correct
   window must never include retained-but-out-of-window records.
 - **Window anchoring vs. jittered schedule**: The daily job runs at a per-deployment
   random minute. If the window were anchored to the job's execution time, day-over-day
@@ -356,7 +356,7 @@ in-window events.
   timestamp, so a windowed event query is the correct and only source.
 - The 24h window is anchored to the previous full UTC calendar day (a fixed
   boundary, not job-execution time) and is comfortably shorter than the underlying
-  retention windows (7-day event retention, 90-day webhook flow-run retention), so
+  retention windows (7-day event retention, 30-day default webhook flow-run retention), so
   all in-window records are available at gather time and consecutive daily
   snapshots tile exactly.
 - Activity counts are best-effort trend signals (event dispatch can drop), not
