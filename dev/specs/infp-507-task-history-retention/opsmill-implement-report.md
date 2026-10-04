@@ -62,7 +62,7 @@ T059 (quickstart on a local Compose stack, image built from the top of the stack
   - Step 7 was not run, because no task manager from the previous release was at hand; the unit tests cover the `404` path.
   - Step 8 is covered by the scale-out stack check in §4.
 - Part 2: steps 1 and 2 are covered by the equivalence component test and the Activities E2E test in §4. Step 3 passed: the Postgres statement log shows the count query only for a GraphQL query that selects `count`.
-- Part 3: all steps passed (365 days gives `P365D`; own events of 30 days with an activity log of 7 days give the warning and `P7D`; the event-type tests are in §4).
+- Part 3: step 1 ran with own events of 30 days, so it showed `P365D` and `P30D for 103 event types` rather than the 7-day default the step expects; the overrides follow `prefect_own_events`, and the unit tests cover the default. Step 2 passed: the warning and `P7D`. The event-type tests of step 3 are in §4.
 - Part 4: `docs.validate` passed in `/pre-ci`.
 - The results are in PR 6's description. The constitution deviation is in PR 2's description.
 
