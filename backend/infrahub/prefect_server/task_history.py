@@ -276,14 +276,6 @@ def _start_of_day(moment: datetime) -> datetime:
     return moment.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-class RewriteSettlement(Protocol):
-    """Hands a running cleanup the rewrite mode to decide with, until the mode it decided with is final."""
-
-    async def __call__(self, decided: CleanupRewrite | None) -> CleanupRewrite | None:
-        """Return the cleanup's mode unless it is the one decided with, else end the cleanup and return None."""
-        ...
-
-
 class TaskHistoryCleanup:
     """Deletes the task history older than a cleanup's cutoff a day at a time, then rewrites the tables as it asks."""
 
@@ -291,11 +283,12 @@ class TaskHistoryCleanup:
         self._tables = tables
         self._rewriter = rewriter
 
-    async def run(self, job: CleanupJob, settle: RewriteSettlement) -> None:
-        """Run the cleanup, recording its progress and outcome on the job.
+    async def delete(self, job: CleanupJob) -> int:
+        """Delete the runs that ended before the job's cutoff, recording the progress on the job.
 
-        The rewrite is decided again with each mode the settlement hands back, against the runs counted before the
-        deletes, until that mode is final; tables already rewritten are never rewritten again.
+        Returns:
+            How many runs the tables held before the deletes, counted only where the tables can be rewritten.
+
         """
         log.info(f"Task history cleanup {job.id}: deleting the runs that ended before {job.cutoff.isoformat()}")
         runs_before = 0
@@ -303,15 +296,16 @@ class TaskHistoryCleanup:
             job.size_before = await self._rewriter.total_size()
             runs_before = await self._tables.count_runs()
         await self._delete_old_runs(job=job)
-        decided: CleanupRewrite | None = None
-        while (rewrite := await settle(decided=decided)) is not None:
-            await self._decide_rewrite(job=job, rewrite=rewrite, runs_before=runs_before)
-            decided = rewrite
+        return runs_before
 
-    async def _decide_rewrite(self, job: CleanupJob, rewrite: CleanupRewrite, runs_before: int) -> None:
+    async def rewrite(self, job: CleanupJob, mode: CleanupRewrite, runs_before: int) -> None:
+        """Rewrite the tables if the mode asks for it against the runs before the deletes, recording it on the job.
+
+        Tables the job already rewrote are never rewritten again, whatever mode it is decided with afterwards.
+        """
         if self._rewriter is None or job.rewritten:
             return
-        if await self._rewrite_wanted(rewrite=rewrite, runs_before=runs_before):
+        if await self._rewrite_wanted(rewrite=mode, runs_before=runs_before):
             job.not_rewritten = await self._rewriter.rewrite()
             job.rewritten = True
         job.size_after = await self._rewriter.total_size()
@@ -383,8 +377,21 @@ class CleanupJobs:
         return job
 
     async def _run(self, job: CleanupJob, lock: CleanupLock, cleanup: TaskHistoryCleanup) -> None:
+        """Run the job to its end, deciding the rewrite again whenever a start raised its mode after the decision."""
         try:
-            await cleanup.run(job=job, settle=self._settlement(job=job, lock=lock))
+            runs_before = await cleanup.delete(job=job)
+            decided = job.rewrite
+            await cleanup.rewrite(job=job, mode=decided, runs_before=runs_before)
+            while True:
+                # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
+                async with self._starting:
+                    if job.rewrite is decided:
+                        self._running = None
+                        await lock.release()
+                        job.state = CleanupJobState.COMPLETED
+                        return
+                    decided = job.rewrite
+                await cleanup.rewrite(job=job, mode=decided, runs_before=runs_before)
         # A background job has no caller to raise to, so the failure is logged and recorded on the job instead.
         except Exception as exc:
             log.exception(f"Task history cleanup {job.id} failed")
@@ -395,19 +402,6 @@ class CleanupJobs:
                 if self._running is job:
                     self._running = None
                     await lock.release()
-
-    def _settlement(self, job: CleanupJob, lock: CleanupLock) -> RewriteSettlement:
-        async def settle(decided: CleanupRewrite | None) -> CleanupRewrite | None:
-            # Ending the job in the same hold as the check leaves no moment where a start raises a mode it ignores.
-            async with self._starting:
-                if job.rewrite is not decided:
-                    return job.rewrite
-                self._running = None
-                await lock.release()
-                job.state = CleanupJobState.COMPLETED
-            return None
-
-        return settle
 
 
 class _MaintenancePostgresConfiguration(AsyncPostgresConfiguration):
