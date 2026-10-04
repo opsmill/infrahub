@@ -419,10 +419,11 @@ const sidebars: SidebarsConfig = {
           items: [
             // Tasks (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/tasks', label: 'Tasks' },
-            // Telemetry (PRs 5/6/7)
-            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             // Activity Log (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
+            // Telemetry (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
+            { type: 'doc', id: 'deploy-manage/run-observe/metrics', label: 'Metrics' },
             // Log Forwarding hub + spoke (PR 8)
             {
               type: 'category',
@@ -638,6 +639,7 @@ const sidebars: SidebarsConfig = {
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
+        { type: 'doc', id: 'reference/metrics', label: 'Prometheus Metrics' },
         { type: 'doc', id: 'reference/graph-traversal', label: 'Graph Traversal' },
       ],
     },
