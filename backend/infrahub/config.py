@@ -682,7 +682,9 @@ class WorkflowSettings(BaseSettings):
 
 
 _RETENTION_IN_DAYS = re.compile(r"(\d+)d")
-_ISO_8601_DURATION = re.compile(r"P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?")
+_ISO_8601_DURATION = re.compile(
+    r"P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
+)
 _MINIMUM_RETENTION = timedelta(days=1)
 # Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
 _MAXIMUM_RETENTION = timedelta(days=36500)
