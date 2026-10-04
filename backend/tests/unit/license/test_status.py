@@ -7,6 +7,7 @@ import pytest
 
 from infrahub.license.models import License, LicenseFailure, LicenseFailureReason, LicenseState, LicenseStatus
 from infrahub.license.status import evaluate
+from tests.adapters.license import build_license
 
 STARTS_AT = datetime(2026, 1, 1, tzinfo=UTC)
 ENDS_AT = datetime(2027, 1, 1, tzinfo=UTC)
@@ -14,17 +15,7 @@ NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
 
 def _build_license(license_type: str = "commercial") -> License:
-    return License(
-        license_id="lic-0001",
-        customer_name="Example Networks",
-        license_type=license_type,
-        product_tier="enterprise",
-        support_tier="premium",
-        starts_at=STARTS_AT,
-        ends_at=ENDS_AT,
-        issued_at=datetime(2025, 12, 15, tzinfo=UTC),
-        issuer="opsmill",
-    )
+    return build_license(license_type=license_type, starts_at=STARTS_AT, ends_at=ENDS_AT)
 
 
 def test_no_license_is_unlicensed() -> None:
