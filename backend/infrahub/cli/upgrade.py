@@ -26,6 +26,8 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
+from infrahub.prefect_server.task_history import CleanupRewrite
+from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL, TaskHistoryCleanupError
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
@@ -44,8 +46,15 @@ from .db import (
     trigger_rebase_branches,
     update_core_schema,
 )
+from .tasks import clean_task_history
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import timedelta
+
+    from prefect.client.orchestration import PrefectClient
+    from rich.console import Console
+
     from infrahub.cli.context import CliContext
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
@@ -108,6 +117,15 @@ async def upgrade_cmd(
             "and are not controlled by this flag."
         ),
     ),
+    no_task_history_cleanup: bool = typer.Option(
+        False,
+        "--no-task-history-cleanup",
+        help=(
+            "Leave out the task history cleanup, for an upgrade that runs while the instance still serves, "
+            "such as the upgrade hook of the Helm chart. Run `infrahub tasks flush flow-runs --rewrite` "
+            "in a maintenance window afterwards."
+        ),
+    ),
 ) -> None:
     """Upgrade Infrahub to the latest version.
 
@@ -147,6 +165,7 @@ async def upgrade_cmd(
         rebase_branches=rebase_branches,
         interactive=interactive,
         verbose=verbose,
+        skip_task_history_cleanup=no_task_history_cleanup,
     )
 
     await dbdriver.close()
@@ -158,9 +177,10 @@ async def _upgrade_execute(
     rebase_branches: bool = False,
     interactive: bool = False,
     verbose: bool = False,
+    skip_task_history_cleanup: bool = False,
 ) -> None:
     """Execute the full upgrade sequence with structured step output."""
-    console.log("[bold]Step 1/6: Database migrations[/bold]")
+    console.log("[bold]Step 1/7: Database migrations[/bold]")
     migrations = await detect_migration_to_run(current_graph_version=root_node_graph_version)
 
     if verbose:
@@ -173,22 +193,22 @@ async def _upgrade_execute(
                 console.log(f"Upgrade cancelled due to migration failure. {FAILED_BADGE}")
                 return
 
-    console.log("[bold]Step 2/6: Internal schema[/bold]")
+    console.log("[bold]Step 2/7: Internal schema[/bold]")
     await initialize_internal_schema()
     console.log("Internal schema initialized")
 
-    console.log("[bold]Step 3/6: Core schema[/bold]")
+    console.log("[bold]Step 3/7: Core schema[/bold]")
     if verbose:
         await update_core_schema(db=db, initialize=False)
     else:
         with suppress_internal_logs():
             await update_core_schema(db=db, initialize=False)
 
-    console.log("[bold]Step 4/6: Internal objects[/bold]")
+    console.log("[bold]Step 4/7: Internal objects[/bold]")
     await upgrade_menu(db=db)
     await upgrade_permissions(db=db)
 
-    console.log("[bold]Step 5/6: Task manager[/bold]")
+    console.log("[bold]Step 5/7: Task manager[/bold]")
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
@@ -196,7 +216,14 @@ async def _upgrade_execute(
         await trigger_configure_all()
     console.log("Task manager configured")
 
-    console.log("[bold]Step 6/6: Branch rebase[/bold]")
+    console.log("[bold]Step 6/7: Task history cleanup[/bold]")
+    if not await upgrade_task_history(
+        skip=skip_task_history_cleanup, client_factory=_task_manager_client, console=console
+    ):
+        console.log(f"Upgrade cancelled due to task history cleanup failure. {FAILED_BADGE}")
+        return
+
+    console.log("[bold]Step 7/7: Branch rebase[/bold]")
     branches = await mark_branches_needing_rebase(db=db)
     plural = len(branches) != 1
     console.log(
@@ -219,6 +246,34 @@ async def _upgrade_execute(
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
     console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
+
+
+async def upgrade_task_history(
+    skip: bool,
+    client_factory: Callable[[], PrefectClient],
+    console: Console,
+    poll_interval: timedelta = POLL_INTERVAL,
+) -> bool:
+    """Delete the task history older than its retention, returning whether the upgrade may go on.
+
+    The tables are rewritten only when the deletes freed more than half of the runs they held.
+    """
+    if skip:
+        console.log("Task history cleanup skipped")
+        return True
+    async with client_factory() as client:
+        try:
+            await clean_task_history(
+                client=client, rewrite=CleanupRewrite.IF_FREED, console=console, poll_interval=poll_interval
+            )
+        except TaskHistoryCleanupError as exc:
+            console.log(f"{ERROR_BADGE} {exc.message}")
+            return False
+    return True
+
+
+def _task_manager_client() -> PrefectClient:
+    return get_client(sync_client=False)
 
 
 async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:
