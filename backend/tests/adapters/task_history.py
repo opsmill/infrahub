@@ -1,10 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from infrahub.prefect_server.task_history import CleanupJob, CleanupRewrite
 
 PAUSE_TIMEOUT_SECONDS = 30
 
@@ -42,13 +38,3 @@ class RecordingRewriter:
             self._paused.set()
             async with asyncio.timeout(PAUSE_TIMEOUT_SECONDS):
                 await self._resumed.wait()
-
-
-class UnraisedRewrite:
-    """Settles the rewrite mode of a cleanup run on its own, which no request can raise."""
-
-    def __init__(self, job: CleanupJob) -> None:
-        self._job = job
-
-    async def __call__(self, decided: CleanupRewrite | None) -> CleanupRewrite | None:
-        return None if decided is self._job.rewrite else self._job.rewrite
