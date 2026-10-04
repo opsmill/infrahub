@@ -25,15 +25,22 @@ ADDRESS_PREFIX = "10.0.0.0/16"
 PREFIX_CHILD = "10.1.0.0/16"
 EMPTY_PREFIX_CHILD = "10.2.0.0/16"
 BRANCH_ONLY_CHILD = "10.5.0.0/16"
+# Free space is reported as the largest whole blocks, so on main the branch-only child sits inside this tile.
+FREE_BLOCK_COVERING_BRANCH_CHILD = "10.4.0.0/14"
 FIRST_FREE_BLOCK = "10.3.0.0/16"
 IPV6_SUPERNET = "2001:db8::/100"
 IPV6_CHILD_TILE = re.compile(r"^2001:db8::")
 FREE_TILE = re.compile(r" available$")
 
 
+def selector_cidr(prefix: str) -> str:
+    """Escape a CIDR for a regex that lands inside a Playwright (1.60) selector literal, where a bare `/` ends it."""
+    return re.escape(prefix).replace("/", r"\/")
+
+
 def allocated_tile(prefix: str) -> re.Pattern[str]:
     """Match an allocated tile by its CIDR regardless of the utilization it reports."""
-    return re.compile(rf"^{re.escape(prefix)}, ")
+    return re.compile(rf"^{selector_cidr(prefix)}, ")
 
 
 @pytest.fixture
@@ -99,9 +106,9 @@ class TestIpPrefixTreeMapDrillDown:
         await expect(page).to_have_url(re.compile(rf".*/tree-map\?.*{re.escape(namespace_param)}"))
 
         ipam_tree = page.get_by_role("treegrid", name="IPAM tree")
-        await expect(ipam_tree.get_by_role("row", name=re.compile(rf"^{re.escape(PREFIX_CHILD)}"))).to_contain_class(
-            "bg-selected"
-        )
+        await expect(
+            ipam_tree.get_by_role("row", name=re.compile(rf"^{selector_cidr(PREFIX_CHILD)}"))
+        ).to_contain_class("bg-selected")
 
 
 class TestIpPrefixTreeMapBranch:
@@ -132,7 +139,9 @@ class TestIpPrefixTreeMapBranch:
         tree_map = admin_page.get_by_test_id("ip-prefix-tree-map")
         await expect(tree_map.get_by_role("link", name=allocated_tile(ADDRESS_PREFIX))).to_be_visible()
         await expect(tree_map.get_by_role("link", name=child_tile)).to_have_count(0)
-        await expect(tree_map.get_by_role("button", name=f"{branch_only_child} available")).to_be_visible()
+        await expect(
+            tree_map.get_by_role("button", name=f"{FREE_BLOCK_COVERING_BRANCH_CHILD} available")
+        ).to_be_visible()
 
 
 class TestIpPrefixTreeMapCreate:
