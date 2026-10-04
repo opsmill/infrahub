@@ -72,9 +72,12 @@ database, and can then rewrite the tables to return the disk space.
 - **Equivalence guard**: `backend/tests/component/task_manager/test_task_history_cleanup.py` runs
   Prefect's `vacuum_old_flow_runs` and the job on copies of the same data and compares what is left.
   It fails when a Prefect upgrade changes the vacuum's rules.
-- **Rewrite**: `CleanupRewrite` is `never`, `if_freed` (the runs left are fewer than half of the runs
-  counted when the job started, Prefect's concurrent deletes included) or `always`. The rewrite is
-  `VACUUM FULL` on `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log` and `artifact`,
+- **Rewrite**: `CleanupRewrite` is `never`, `if_freed` or `always`. `if_freed` rewrites when the live
+  rows of `flow_run` take less than half of its size on disk (main data and TOAST, without indexes),
+  whoever deleted the runs and when. The live size sums `pg_column_size` per column plus 28 bytes a
+  row, so no value stored out of line is read. A run count taken by the job would miss the runs that
+  Prefect's vacuum deletes when the task manager starts, which on the Compose upgrade path is before
+  the job starts. The rewrite is `VACUUM FULL` on `flow_run`, `flow_run_state`, `task_run`, `task_run_state`, `log` and `artifact`,
   on PostgreSQL only, in autocommit with a 60-second `lock_timeout` and 3 retries per table. A
   `VACUUM FULL` waiting for its lock makes every later query on the table queue behind it, hence the
   timeout; a table that still times out is listed in `not_rewritten` and the job moves on.
@@ -84,8 +87,8 @@ database, and can then rewrite the tables to return the disk space.
   held by a dedicated autocommit connection that is invalidated on release, covers every replica.
   Another replica answers `409`. The same replica returns its running job and raises its mode to a
   stronger request's (`never` < `if_freed` < `always`). The job decides about the rewrite once its
-  deletes end, decides again when a stronger mode arrives after that, against the count taken at
-  start, and never rewrites twice. The mode change and the job's final check take the registry's
+  deletes end, decides again when a stronger mode arrives after that, measuring the free space again,
+  and never rewrites twice. The mode change and the job's final check take the registry's
   start lock, so a request either reaches the job before that check or starts a new job.
 - **State in memory**: a task-manager restart loses the job (`GET` answers `404`) but not the days
   already committed; a new job continues from the oldest remaining day.
