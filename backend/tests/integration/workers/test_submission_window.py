@@ -78,3 +78,24 @@ class TestSubmissionWindow(TestWorkerInfrahubAsync):
                     break
                 await asyncio.sleep(1)
         assert run.infrastructure_pid is None
+
+    async def test_submitted_run_goes_from_pending_to_running(
+        self,
+        dummy_deployment_in_priority_queues: None,
+        prefect_client: PrefectClient,
+        prefect_worker: InfrahubWorkerAsync,
+    ) -> None:
+        service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
+        flow_run_id = await self.submit_dummy(service=service, priority=WorkflowPriority.HIGH)
+
+        submitted = await prefect_worker.get_and_submit_flow_runs()
+
+        assert flow_run_id in {run.id for run in submitted}
+        async with asyncio.timeout(60):
+            while True:
+                run = await prefect_client.read_flow_run(flow_run_id)
+                if run.state_type == StateType.COMPLETED:
+                    break
+                await asyncio.sleep(1)
+        states = await prefect_client.read_flow_run_states(flow_run_id)
+        assert [state.name for state in states] == ["Scheduled", "Pending", "Running", "Completed"]

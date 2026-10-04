@@ -14,18 +14,21 @@ Prefect server for runs due within the next 10 seconds (Prefect's prefetch windo
 in the pool, and gets back up to 200 of them, ordered by queue precedence and then by scheduled time.
 A poll changes nothing on the server: a run stays `SCHEDULED` until a worker claims it.
 
-Claiming and starting one run takes six sequential calls to the Prefect API, all through the
+Claiming and starting one run takes five sequential calls to the Prefect API, all through the
 worker's own Prefect client, which holds 16 connections for the whole worker:
 
 1. read the deployment, to check that it still exists;
 2. propose `Pending` — this is the claim, and the server rejects it if another worker got there first;
 3. read the deployment and the flow again, to build the job configuration;
 4. add the worker labels to the run;
-5. propose `Submitting`;
-6. start the flow in the worker's event loop, which reports `Running` through a client of its own.
+5. start the flow in the worker's event loop, which reports `Running` through a client of its own.
 
 The worker signals the start without an infrastructure id: the flow runs in its own event loop, so
 there is no infrastructure to record or to kill when a pending run is cancelled.
+
+The worker skips the `Submitting` state that Prefect workers propose between `Pending` and `Running`.
+The flow starts right after its claim, so that state would last a few milliseconds and cost the task
+manager one more state transition, of the four each run made, for every run.
 
 A run that has been claimed (`Pending` or later) belongs to one worker and is never reordered: queue
 precedence orders runs only while they are still `SCHEDULED` on the server.

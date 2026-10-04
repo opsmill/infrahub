@@ -205,6 +205,11 @@ class InfrahubWorkerAsync(BaseWorker):
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
 
+    async def _propose_submitting_state(self, flow_run: FlowRun) -> None:  # noqa: ARG002
+        # Prefect>=3.6.22 proposes Submitting before every run, but a flow starts in this event loop right after
+        # its claim, so the state would only cost the task manager one more state transition per run.
+        return
+
     def _build_flow_run_reservations(self) -> FlowRunReservations:
         return UnreservedFlowRuns()
 
