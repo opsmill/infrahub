@@ -185,21 +185,21 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Independent Test**: With a test service, run the telemetry collection and read the stored snapshot (quickstart.md §2).
 
-- [ ] T037 [P] [US5] Write tests for `license_block(status) -> TelemetryLicenseData | None` in `backend/tests/unit/license/test_reporting.py`:
+- [X] T037 [P] [US5] Write tests for `license_block(status) -> TelemetryLicenseData | None` in `backend/tests/unit/license/test_reporting.py`:
   - `None` for `not_required`;
   - state only for `unlicensed` and `invalid`;
   - all fields for states carrying a license;
   - no `customer_name` field ever.
-- [ ] T038 [US5] Add `TelemetryLicenseData` and `TelemetryData.license: TelemetryLicenseData | None = None` to `backend/infrahub/telemetry/models.py`
-- [ ] T039 [US5] Implement `license_block(status)` in `backend/infrahub/license/reporting.py`; make T037 pass
-- [ ] T040 [US5] In `backend/infrahub/telemetry/tasks.py`:
+- [X] T038 [US5] Add `TelemetryLicenseData` and `TelemetryData.license: TelemetryLicenseData | None = None` to `backend/infrahub/telemetry/models.py`
+- [X] T039 [US5] Implement `license_block(status)` in `backend/infrahub/license/reporting.py`; make T037 pass
+- [X] T040 [US5] In `backend/infrahub/telemetry/tasks.py`:
   - add a `license_service: LicenseService` constructor argument to `AnonymousTelemetryGatherer`, wired from `get_license_service()` in `build_anonymous_telemetry_gatherer`;
   - set `license=license_block(read_license_status(self.license_service))` in `gather()`;
   - log a failure and store `None` instead of failing the snapshot.
 
   Update every existing construction of `AnonymousTelemetryGatherer` in `backend/tests/` for the new argument.
-- [ ] T041 [US5] Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` to a new date-based value; if the resource-allocation telemetry PR (#10003) has merged in the meantime, bump past its value
-- [ ] T042 [US5] Extend `backend/tests/component/telemetry/test_tasks.py`:
+- [X] T041 [US5] Bump `TELEMETRY_VERSION` in `backend/infrahub/telemetry/constants.py` to a new date-based value; if the resource-allocation telemetry PR (#10003) has merged in the meantime, bump past its value
+- [X] T042 [US5] Extend `backend/tests/component/telemetry/test_tasks.py`:
   - the stored snapshot contains the license block with a test service and `null` with the community default;
   - the block is still stored when `telemetry_optout` is set.
 

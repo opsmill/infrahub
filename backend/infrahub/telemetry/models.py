@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from .constants import InfrahubType
@@ -71,6 +73,17 @@ class TelemetryPrefectData(BaseModel):
     work_pools: list[TelemetryWorkPoolData]
 
 
+class TelemetryLicenseData(BaseModel):
+    state: str
+    license_id: str | None
+    license_type: str | None
+    product_tier: str | None
+    support_tier: str | None
+    starts_at: datetime | None
+    ends_at: datetime | None
+    issuer: str | None
+
+
 class TelemetryData(BaseModel):
     deployment_id: str | None
     execution_time: float | None
@@ -86,3 +99,4 @@ class TelemetryData(BaseModel):
     schema_info: TelemetrySchemaData
     database: TelemetryDatabaseData
     prefect: TelemetryPrefectData
+    license: TelemetryLicenseData | None = None

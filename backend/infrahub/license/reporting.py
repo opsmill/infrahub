@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, assert_never
 from infrahub.license.models import LicenseFailureReason, LicenseState, LicenseStatus
 from infrahub.license.service import read_license_status
 from infrahub.log import get_logger
+from infrahub.telemetry.models import TelemetryLicenseData
 
 if TYPE_CHECKING:
     from infrahub.license.service import LicenseService
@@ -68,3 +69,26 @@ def log_license_state(service: LicenseService, key_is_set: bool) -> None:
             )
         case _:
             assert_never(status.state)
+
+
+def license_block(status: LicenseStatus) -> TelemetryLicenseData | None:
+    """Return the license block of the telemetry snapshot, ``None`` when no license is required; never the customer name."""
+    match status.state:
+        case LicenseState.NOT_REQUIRED:
+            return None
+        case LicenseState.UNLICENSED | LicenseState.INVALID:
+            granted = None
+        case LicenseState.VALID | LicenseState.EXPIRING | LicenseState.EXPIRED | LicenseState.NOT_YET_VALID:
+            granted = status.license
+        case _:
+            assert_never(status.state)
+    return TelemetryLicenseData(
+        state=status.state.value,
+        license_id=granted.license_id if granted else None,
+        license_type=granted.license_type if granted else None,
+        product_tier=granted.product_tier if granted else None,
+        support_tier=granted.support_tier if granted else None,
+        starts_at=granted.starts_at if granted else None,
+        ends_at=granted.ends_at if granted else None,
+        issuer=granted.issuer if granted else None,
+    )

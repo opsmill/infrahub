@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -7,7 +8,7 @@ from typing import Any
 import pytest
 
 from infrahub.license.models import License, LicenseFailureReason, LicenseState, LicenseStatus
-from infrahub.license.reporting import log_license_state
+from infrahub.license.reporting import license_block, log_license_state
 from tests.adapters.license import FailingLicenseService, RecordingLicenseService
 
 LICENSE = License(
@@ -191,3 +192,97 @@ def test_log_license_state_reports_a_failing_service_as_invalid_without_raising(
         "license_state": "invalid",
         "license_reason": "internal_error",
     }
+
+
+STATE_ONLY_BLOCK_FIELDS = {
+    "license_id": None,
+    "license_type": None,
+    "product_tier": None,
+    "support_tier": None,
+    "starts_at": None,
+    "ends_at": None,
+    "issuer": None,
+}
+LICENSE_BLOCK_FIELDS = {
+    "license_id": "lic-0042",
+    "license_type": "commercial",
+    "product_tier": "enterprise",
+    "support_tier": "premium",
+    "starts_at": "2026-01-01T00:00:00Z",
+    "ends_at": "2027-01-01T00:00:00Z",
+    "issuer": "opsmill-test",
+}
+
+
+@dataclass
+class TelemetryBlockCase:
+    name: str
+    status: LicenseStatus
+    expected: dict[str, Any] | None
+    """The whole block as serialized into the snapshot, so any extra field fails the comparison."""
+
+
+TELEMETRY_BLOCK_CASES: list[TelemetryBlockCase] = [
+    TelemetryBlockCase(
+        name="not_required_has_no_block",
+        status=LicenseStatus(state=LicenseState.NOT_REQUIRED),
+        expected=None,
+    ),
+    TelemetryBlockCase(
+        name="unlicensed_carries_the_state_only",
+        status=LicenseStatus(state=LicenseState.UNLICENSED),
+        expected={"state": "unlicensed", **STATE_ONLY_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="invalid_carries_the_state_only",
+        status=LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.BAD_SIGNATURE),
+        expected={"state": "invalid", **STATE_ONLY_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="invalid_from_an_internal_error_carries_the_state_only",
+        status=LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.INTERNAL_ERROR),
+        expected={"state": "invalid", **STATE_ONLY_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="invalid_carrying_a_license_still_carries_the_state_only",
+        status=LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.WRONG_PRODUCT, license=LICENSE),
+        expected={"state": "invalid", **STATE_ONLY_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="valid_carries_every_license_field",
+        status=LicenseStatus(state=LicenseState.VALID, license=LICENSE, days_remaining=200),
+        expected={"state": "valid", **LICENSE_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="expiring_carries_every_license_field",
+        status=LicenseStatus(state=LicenseState.EXPIRING, license=LICENSE, days_remaining=12),
+        expected={"state": "expiring", **LICENSE_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="expired_carries_every_license_field",
+        status=LicenseStatus(state=LicenseState.EXPIRED, license=LICENSE, days_since_expiry=3),
+        expected={"state": "expired", **LICENSE_BLOCK_FIELDS},
+    ),
+    TelemetryBlockCase(
+        name="not_yet_valid_carries_every_license_field",
+        status=LicenseStatus(state=LicenseState.NOT_YET_VALID, license=LICENSE, days_remaining=400),
+        expected={"state": "not_yet_valid", **LICENSE_BLOCK_FIELDS},
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in TELEMETRY_BLOCK_CASES])
+def test_license_block_reports_the_license_fields_of_the_state(test_case: TelemetryBlockCase) -> None:
+    block = license_block(status=test_case.status)
+
+    assert (block.model_dump(mode="json") if block is not None else None) == test_case.expected
+
+
+@pytest.mark.parametrize(
+    "test_case", [pytest.param(tc, id=tc.name) for tc in TELEMETRY_BLOCK_CASES if tc.expected is not None]
+)
+def test_license_block_never_carries_the_customer_name(test_case: TelemetryBlockCase) -> None:
+    block = license_block(status=test_case.status)
+
+    assert block is not None
+    assert "Example Networks" not in json.dumps(block.model_dump(mode="json"))

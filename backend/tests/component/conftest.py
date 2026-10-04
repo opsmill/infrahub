@@ -2,7 +2,8 @@ import os
 import shutil
 import subprocess  # noqa: S404
 import sys
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
+from contextlib import ExitStack
 from itertools import islice
 from pathlib import Path
 from typing import Any, Generator
@@ -70,8 +71,9 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.license.service import LicenseService
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_cache
+from infrahub.workers.dependencies import build_cache, build_license_service
 from tests.adapters.cache import MemoryCache
 from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
@@ -3176,6 +3178,21 @@ def memory_cache(dependency_provider: Provider) -> Generator[MemoryCache, None, 
     cache = MemoryCache()
     with override_dependency(build_cache, lambda: cache, dependency_provider=dependency_provider):
         yield cache
+
+
+@pytest.fixture
+def use_license_service(dependency_provider: Provider) -> Generator[Callable[[LicenseService], None], None, None]:
+    """Resolve the license service to the one passed in, from the call until the end of the test."""
+    with ExitStack() as stack:
+
+        def use(service: LicenseService) -> None:
+            stack.enter_context(
+                override_dependency(
+                    original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
+                )
+            )
+
+        yield use
 
 
 @pytest.fixture

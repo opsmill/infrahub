@@ -34,3 +34,7 @@ The daily snapshot (`TelemetryData`) gains a `license` field. `TELEMETRY_VERSION
 - The block is built on the task worker, from the task worker's license service.
 - The snapshot is stored locally whether or not sending is turned off, so the air-gapped export carries the block.
 - A failure while building the block is logged and stores `license: null` rather than failing the snapshot.
+
+## Public documentation
+
+The FAQ (`docs/docs/faq/faq.mdx`) and the telemetry page (`docs/docs/deploy-manage/run-observe/telemetry.mdx`) describe all telemetry as anonymous. Before the first licensing release, update both to say that licensed Enterprise deployments also send the license ID, type, tiers, issuer and dates, never the customer name. Community sends `license: null`, so nothing changes until then.
