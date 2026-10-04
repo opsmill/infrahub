@@ -205,6 +205,65 @@ def test_preset_variable_wins_with_a_warning(test_case: PresetVariableTestCase) 
     }
 
 
+LEGACY_EVENTS_RETENTION_PERIOD = "PREFECT_EVENTS_RETENTION_PERIOD"
+
+
+@dataclass
+class AcceptedNameTestCase:
+    name: str
+    preset: dict[str, str]
+    expected_warning: str
+    expected_events_retention: timedelta
+
+
+ACCEPTED_NAME_TEST_CASES: list[AcceptedNameTestCase] = [
+    AcceptedNameTestCase(
+        name="legacy_name",
+        preset={LEGACY_EVENTS_RETENTION_PERIOD: "P14D"},
+        expected_warning=f"{LEGACY_EVENTS_RETENTION_PERIOD} is set and overrides task_manager.retention.activity_log",
+        expected_events_retention=timedelta(days=14),
+    ),
+    AcceptedNameTestCase(
+        name="lower_case_name",
+        preset={"prefect_server_events_retention_period": "P14D"},
+        expected_warning=(
+            "prefect_server_events_retention_period is set and overrides task_manager.retention.activity_log"
+        ),
+        expected_events_retention=timedelta(days=14),
+    ),
+    AcceptedNameTestCase(
+        name="current_and_legacy_names",
+        preset={EVENTS_RETENTION_PERIOD: "P14D", LEGACY_EVENTS_RETENTION_PERIOD: "P21D"},
+        expected_warning=f"{EVENTS_RETENTION_PERIOD} is set and overrides task_manager.retention.activity_log",
+        expected_events_retention=timedelta(days=14),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ACCEPTED_NAME_TEST_CASES])
+def test_setting_preset_under_any_name_prefect_accepts_wins(
+    monkeypatch: pytest.MonkeyPatch, test_case: AcceptedNameTestCase
+) -> None:
+    """A Prefect setting preset under any name Prefect reads is kept, and the warning names the variable found."""
+    settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="7d")
+    environ = dict(test_case.preset)
+
+    warnings = apply_prefect_retention_env(environ=environ, settings=settings)
+
+    assert warnings == [test_case.expected_warning]
+    assert _with_parsed_overrides(environ) == {
+        **test_case.preset,
+        VACUUM_ENABLED: "events,flow_runs",
+        VACUUM_RETENTION_PERIOD: "P30D",
+        EVENT_RETENTION_OVERRIDES: dict.fromkeys(PREFECT_EVENT_TYPES, "P7D"),
+    }
+    for name in (EVENTS_RETENTION_PERIOD, LEGACY_EVENTS_RETENTION_PERIOD):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in environ.items():
+        monkeypatch.setenv(name, value)
+    assert ServerEventsSettings().retention_period == test_case.expected_events_retention
+
+
 def test_environment_with_every_variable_preset_is_left_unchanged() -> None:
     settings = TaskManagerRetentionSettings(task_history="30d", activity_log="7d", prefect_own_events="30d")
     environ = {
