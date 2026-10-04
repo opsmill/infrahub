@@ -683,7 +683,17 @@ class WorkflowSettings(BaseSettings):
 
 _RETENTION_IN_DAYS = re.compile(r"(\d+)d")
 _MINIMUM_RETENTION = timedelta(days=1)
+# Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
+_MAXIMUM_RETENTION = timedelta(days=36500)
 _TIMEDELTA_ADAPTER: TypeAdapter[timedelta] = TypeAdapter(timedelta)
+
+
+def _days(count: str) -> timedelta:
+    try:
+        return timedelta(days=int(count))
+    except (OverflowError, ValueError):
+        # Still a number of days, so it is refused by the upper bound rather than as an unreadable value.
+        return timedelta.max
 
 
 def _parse_retention(value: Any) -> timedelta | None:
@@ -693,7 +703,7 @@ def _parse_retention(value: Any) -> timedelta | None:
         return None
     text = value.strip()
     if match := _RETENTION_IN_DAYS.fullmatch(text):
-        return timedelta(days=int(match.group(1)))
+        return _days(count=match.group(1))
     # Pydantic also reads forms such as "1 day, 00:00:00", which are not part of the documented contract.
     if not text.startswith("P"):
         return None
@@ -711,7 +721,7 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
-            "or an ISO 8601 duration (`P30D`), at least 1 day. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
+            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set."
         ),
     )
@@ -720,7 +730,8 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), at least 1 day. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` takes precedence when set."
+            "duration (`P7D`), from 1 to 36500 days. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name "
+            "`PREFECT_EVENTS_RETENTION_PERIOD`, takes precedence when set."
         ),
     )
     prefect_own_events: timedelta = Field(
@@ -728,18 +739,18 @@ class TaskManagerRetentionSettings(BaseSettings):
         validate_default=True,
         description=(
             "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
-            "duration (`P7D`), at least 1 day; a value longer than `activity_log` is capped to it. "
+            "duration (`P7D`), from 1 to 36500 days; a value longer than `activity_log` is capped to it. "
             "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
         ),
     )
 
     @field_validator("task_history", "activity_log", "prefect_own_events", mode="before")
     @classmethod
-    def validate_retention_of_at_least_one_day(cls, value: Any, info: ValidationInfo) -> timedelta:
+    def validate_retention_from_one_to_36500_days(cls, value: Any, info: ValidationInfo) -> timedelta:
         """Read a number of days such as `30d` or an ISO 8601 duration such as `P30D`.
 
         Raises:
-            ValueError: When the value is in neither form, or is shorter than 1 day.
+            ValueError: When the value is in neither form, is shorter than 1 day or is longer than 36500 days.
 
         """
         retention = _parse_retention(value)
@@ -750,6 +761,8 @@ class TaskManagerRetentionSettings(BaseSettings):
             )
         if retention < _MINIMUM_RETENTION:
             raise ValueError(f"Invalid task manager retention: {info.field_name} must be at least 1 day")
+        if retention > _MAXIMUM_RETENTION:
+            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at most 36500 days")
         return retention
 
 
