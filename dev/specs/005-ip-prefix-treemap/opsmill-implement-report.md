@@ -164,3 +164,12 @@ The `simplify` reviewer, enabled in the review config, was not run: it applies c
 3. Take the SC-001 measurement (quickstart.md step 5) and fill the table; if it exceeds 3 s, raise a separate gated change for a batched utilisation lookup.
 4. Decide on "utilised" versus "utilized" in the tile names, and on the inline fill colour versus a new `--accent-fill` theme token.
 5. Attach a JPD or Jira ticket, rename the branch to `ip-prefix-treemap-<ticket>` if the hook convention matters, and open the PR as a draft.
+
+## Erratum (2026-10-04, after the report above)
+
+Both product decisions in section 6 were put to the user and resolved in the commit that follows this report:
+
+- **Spelling**: American. Tile names and tooltips now read `"<CIDR>, <N>% utilized"` and `"<CIDR>, utilization unknown"`; the component tests, the E2E helper docstring and `contracts/ui-contract.md` were updated to match. The E2E locators already matched on the CIDR prefix, so no E2E assertion changed.
+- **Fill colour**: a theme token. `--accent-fill` is declared in `frontend/packages/ui/src/styles/theme.css` for `:root` and `.dark` as a 55% alpha of `--accent-strong`, bridged through `@theme inline`, and used as `bg-accent-fill` on the tile fill and the legend swatch. The only inline style left on the fill is its data-driven width. Verified against the public demo through the local dev server: the computed fill is `oklab(… / 0.55)` derived from the light accent in light mode and from the dark accent in dark mode. Gates after the change: 93 IPAM tests pass, Biome, betterer, knip, ruff and markdownlint clean.
+
+Next step 4 above is therefore closed.
