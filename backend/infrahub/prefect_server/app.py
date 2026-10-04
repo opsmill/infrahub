@@ -47,12 +47,17 @@ async def _init_prefect() -> None:
         await init_prefect()
 
 
-def apply_infrahub_settings_to_prefect() -> None:
-    """Load Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid."""
+def apply_infrahub_settings_to_prefect(config_file: str | None = None) -> None:
+    """Load Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid.
+
+    Args:
+        config_file: The configuration file to load, or None for the one `INFRAHUB_CONFIG` names.
+
+    """
     # The original Prefect container used by some test suites has no infrahub package.
     from infrahub import config  # noqa: PLC0415
 
-    config.SETTINGS.initialize_and_exit()
+    config.SETTINGS.initialize_and_exit(config_file=config_file)
     for warning in apply_prefect_retention_env(environ=os.environ, settings=config.SETTINGS.task_manager.retention):
         log.warning(warning)
     # Prefect reads its settings from the environment once at import, so new values apply only after a refresh.
