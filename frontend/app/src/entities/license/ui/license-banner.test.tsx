@@ -63,6 +63,11 @@ const UNLICENSED_ENFORCED = generateLicenseInfoWithoutLicense({
   banner: { audience: "all_users", dismissible: false, shown_to_all_users_when_enforced: false },
 });
 
+const UNLICENSED_FOR_SUPER_ADMINS = generateLicenseInfoWithoutLicense({
+  state: "unlicensed",
+  banner: { audience: "super_admins", dismissible: true, shown_to_all_users_when_enforced: true },
+});
+
 const EXPIRING_FOR_SUPER_ADMINS = generateLicenseInfo({
   state: "expiring",
   days_remaining: 12,
@@ -171,7 +176,7 @@ describe("LicenseBanner", () => {
     // GIVEN
     mockAppInfoLicense(EXPIRING_FOR_SUPER_ADMINS);
     vi.mocked(useHasGlobalPermission).mockReturnValue({
-      data: undefined,
+      data: true,
       isSuccess: false,
       isPending: true,
     } as unknown as PermissionResult);
@@ -183,7 +188,7 @@ describe("LicenseBanner", () => {
     expect(component.getByRole("region", { name: "License notice" }).query()).toBeNull();
   });
 
-  test("shows nothing when the license needs no attention", async () => {
+  test("shows nothing and checks no permission when the license needs no attention", async () => {
     // GIVEN
     mockAppInfoLicense(
       generateLicenseInfo({
@@ -197,6 +202,7 @@ describe("LicenseBanner", () => {
 
     // THEN
     expect(component.getByRole("region", { name: "License notice" }).query()).toBeNull();
+    expect(useHasGlobalPermission).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -272,6 +278,25 @@ describe("LicenseBanner", () => {
     await expect
       .element(component.getByRole("region", { name: "License notice" }))
       .not.toBeInTheDocument();
+  });
+
+  test("shows a banner that is not dismissible even after the same notice was dismissed", async () => {
+    // GIVEN
+    mockAppInfoLicense(UNLICENSED_FOR_SUPER_ADMINS);
+    mockSuperAdmin(true);
+    const quiet = await renderBanner();
+    await quiet.getByRole("button", { name: "Dismiss license notice" }).click();
+    await expect
+      .element(quiet.getByRole("region", { name: "License notice" }))
+      .not.toBeInTheDocument();
+    await quiet.unmount();
+
+    // WHEN
+    mockAppInfoLicense(UNLICENSED_ENFORCED);
+    const enforced = await renderBanner();
+
+    // THEN
+    await expect.element(enforced.getByRole("region", { name: "License notice" })).toBeVisible();
   });
 
   test("offers no dismissal when the banner is not dismissible", async () => {

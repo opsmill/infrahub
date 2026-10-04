@@ -167,6 +167,37 @@ describe("LicenseAboutRows", () => {
       .toBeVisible();
   });
 
+  test("shows the first day of a license that is not valid yet", async () => {
+    // GIVEN
+    const license = generateLicenseInfo({
+      state: "not_yet_valid",
+      starts_at: "2027-01-01T00:00:00Z",
+      ends_at: "2028-01-01T00:00:00Z",
+      days_remaining: 400,
+    });
+
+    // WHEN
+    const component = await renderRows(license);
+
+    // THEN
+    await expect.element(component.getByText("Starts", { exact: true })).toBeVisible();
+    await expect
+      .element(component.getByText("2027-01-01 (not valid yet)", { exact: true }))
+      .toBeVisible();
+  });
+
+  test("shows no start row once the license has started", async () => {
+    // GIVEN
+    const license = generateLicenseInfo({ state: "valid" });
+
+    // WHEN
+    const component = await renderRows(license);
+
+    // THEN
+    await expect.element(component.getByText("Ends", { exact: true })).toBeVisible();
+    expect(component.getByText("Starts", { exact: true }).query()).toBeNull();
+  });
+
   test("shows a single row when no license is installed", async () => {
     // GIVEN
     const license = generateLicenseInfoWithoutLicense({ state: "unlicensed" });

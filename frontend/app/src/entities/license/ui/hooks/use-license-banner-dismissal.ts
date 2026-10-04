@@ -4,10 +4,10 @@ import type { LicenseInfo } from "@/entities/license/domain/model/license";
 
 const DISMISSED = "dismissed";
 
-type DismissalScope = Pick<LicenseInfo, "license_id" | "state">;
+type DismissalScope = Pick<LicenseInfo, "license_id" | "state" | "reason">;
 
-function storageKey({ license_id, state }: DismissalScope): string {
-  return `infrahub.license.banner-dismissed.${license_id ?? "none"}.${state}`;
+function storageKey({ license_id, state, reason }: DismissalScope): string {
+  return `infrahub.license.banner-dismissed.${license_id ?? "none"}.${state}.${reason ?? "none"}`;
 }
 
 function readDismissed(key: string): boolean {
@@ -27,7 +27,7 @@ function writeDismissed(key: string): void {
   }
 }
 
-/** Remembers for the browser session that the banner was dismissed for this license ID and state. */
+/** Remembers for the browser session that the banner was dismissed for this license ID, state and failure reason. */
 export function useLicenseBannerDismissal(license: DismissalScope) {
   const key = storageKey(license);
   const [dismissedKey, setDismissedKey] = useState<string | null>(null);

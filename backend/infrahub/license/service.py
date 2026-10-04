@@ -46,7 +46,6 @@ class LicenseServiceUnavailable(LicenseService):
 
     @property
     def notice_mode(self) -> NoticeMode:
-        # A service that fails to build is a defect in the edition, not the customer's license, so only super-admins see it.
         return NoticeMode.QUIET
 
     @property
