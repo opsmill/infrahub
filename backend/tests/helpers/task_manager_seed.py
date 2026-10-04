@@ -18,6 +18,7 @@ from prefect.server.database.query_components import AioSqliteQueryComponents
 from prefect.server.events.schemas.events import ReceivedEvent, RelatedResource, Resource
 from prefect.server.events.storage.database import write_events
 from prefect.server.schemas.states import StateType
+from pydantic_core import to_jsonable_python
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -41,7 +42,7 @@ async def seed_infrahub_event(event: InfrahubEvent, occurred: datetime) -> UUID:
         occurred=occurred,
         resource=Resource(event.get_resource()),
         related=[RelatedResource(item) for item in event.get_related()],
-        payload=event.get_event_payload(),
+        payload=to_jsonable_python(event.get_event_payload()),
     )
     await _store(events=[received])
     return received.id

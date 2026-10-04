@@ -29,6 +29,7 @@ async def read_events(
         events, total = await query_events(
             session=session,
             filter=event_filter.filter,
+            retention=event_filter.retention,
             page_size=event_filter.limit,
             offset=event_filter.offset,
             include_total=event_filter.include_total,

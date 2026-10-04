@@ -5,11 +5,13 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.timestamp import Timestamp
 from prefect.client.orchestration import PrefectClient, get_client
+from prefect.events.filters import EventNameFilter, EventResourceFilter
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.events.branch_action import BranchDeletedEvent
 from infrahub.events.group_action import (
     GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
@@ -19,10 +21,12 @@ from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
 
+from .models import InfrahubEventFilter
+
 log = get_logger()
 
 if TYPE_CHECKING:
-    from .models import InfrahubEventFilter
+    from collections.abc import Mapping
 
 
 class PrefectEventData(PrefectEventModel):
@@ -384,7 +388,7 @@ class PrefectEventData(PrefectEventModel):
 
 
 class PrefectEventResponse(BaseModel):
-    count: int = Field(..., description="Number of matching events")
+    count: int | None = Field(..., description="Number of matching events, when requested")
     events: list[PrefectEventData] = Field(..., description="Returned events")
 
 
@@ -400,7 +404,7 @@ class PrefectEvent:
     ) -> PrefectEventResponse:
         body = {
             "limit": limit,
-            "filter": filters.model_dump(mode="json", exclude_none=True),
+            "filter": filters.to_request(),
             "offset": offset,
             "include_total": include_total,
         }
@@ -429,9 +433,39 @@ class PrefectEvent:
         data: dict[str, Any] = response.json()
 
         return PrefectEventResponse(
-            count=data.get("total", 0),
+            count=data.get("total"),
             events=TypeAdapter(list[PrefectEventData]).validate_python(data.get("events")),
         )
+
+    @classmethod
+    async def resolve_branch_ids(cls, names: list[str], current_branch_ids: Mapping[str, str]) -> list[str]:
+        """Return the ID of each named branch: the current branch, else the newest deletion of that name inside the retention.
+
+        A name that matches neither is left out.
+        """
+        deleted_branch_ids: dict[str, str | None] = {}
+        if missing_names := [name for name in names if name not in current_branch_ids]:
+            async with get_client(sync_client=False) as client:
+                for name in missing_names:
+                    deleted_branch_ids[name] = await cls._deleted_branch_id(client=client, name=name)
+
+        branch_ids: list[str] = []
+        for name in names:
+            branch_id = current_branch_ids.get(name) or deleted_branch_ids.get(name)
+            if branch_id and branch_id not in branch_ids:
+                branch_ids.append(branch_id)
+        return branch_ids
+
+    @classmethod
+    async def _deleted_branch_id(cls, client: PrefectClient, name: str) -> str | None:
+        deletions = InfrahubEventFilter(
+            event=EventNameFilter(name=[BranchDeletedEvent.event_name]),
+            resource=EventResourceFilter(id=[f"infrahub.branch.{name}"]),
+        )
+        response = await cls.query_events(client=client, limit=1, filters=deletions, include_total=False)
+        if not response.events:
+            return None
+        return response.events[0].resource.get("infrahub.branch.id")
 
     @classmethod
     async def query(

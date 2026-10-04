@@ -10,11 +10,12 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
+from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchRebasedEvent
 from infrahub.events.group_action import (
     GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
@@ -207,30 +208,12 @@ ACCOUNT_SESSION_2 = AccountSession(authenticated=True, account_id=ACCOUNT2_ID, a
 
 
 @pytest.fixture
-async def branch1_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-async def branch2_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-async def branch3_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
 async def events_data(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
     car_person_schema: SchemaBranch,
     prefect_client: PrefectClient,
-    branch1_id: uuid.UUID,
-    branch2_id: uuid.UUID,
-    branch3_id: uuid.UUID,
 ) -> dict[str, InfrahubEvent]:
     tag1 = await Node.init(db=db, schema="BuiltinTag", branch=default_branch)
     await tag1.new(db=db, name="red", description="The red tag")
@@ -280,36 +263,36 @@ async def events_data(
     await group_eu.new(db=db, name="Europe", children=[group_fr])
     await group_eu.save(db=db)
 
-    branch1 = Branch(uuid=branch1_id, name=BRANCH1_NAME)
-    branch2 = Branch(uuid=branch2_id, name=BRANCH2_NAME)
-    branch3 = Branch(uuid=branch3_id, name=BRANCH3_NAME)
+    branch1 = await create_branch(branch_name=BRANCH1_NAME, db=db)
+    branch2 = await create_branch(branch_name=BRANCH2_NAME, db=db)
+    branch3 = await create_branch(branch_name=BRANCH3_NAME, db=db)
 
     items: dict[str, InfrahubEvent] = {
         "branch1_created": BranchCreatedEvent(
             branch_name=BRANCH1_NAME,
-            branch_id=str(branch1_id),
+            branch_id=str(branch1.get_uuid()),
             sync_with_git=True,
             meta=dummy_event_meta(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name=BRANCH1_NAME,
-            branch_id=str(branch1_id),
+            branch_id=str(branch1.get_uuid()),
             meta=dummy_event_meta(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name=BRANCH2_NAME,
-            branch_id=str(branch2_id),
+            branch_id=str(branch2.get_uuid()),
             sync_with_git=False,
             meta=dummy_event_meta(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name=BRANCH2_NAME,
-            branch_id=str(branch2_id),
+            branch_id=str(branch2.get_uuid()),
             meta=dummy_event_meta(branch=branch2),
         ),
         "branch3_created": BranchCreatedEvent(
             branch_name=BRANCH3_NAME,
-            branch_id=str(branch3_id),
+            branch_id=str(branch3.get_uuid()),
             sync_with_git=True,
             meta=dummy_event_meta(branch=branch3),
         ),
@@ -784,6 +767,53 @@ async def test_event_query_prefect(
         "action": "ADDED",
         "peer": {"id": events_data["branch3_mutated2"].node_id, "kind": "TestPerson"},
     } in event["relationships"]
+
+
+async def test_event_query_branch_name_without_a_current_branch(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+) -> None:
+    """A name no current branch has resolves through its deletion event, and a name with neither returns an empty page."""
+    deleted_branch = Branch(uuid=uuid.uuid4(), name=f"deleted-{_TEST_ID}")
+    events: dict[str, InfrahubEvent] = {
+        "rebased": BranchRebasedEvent(
+            branch_name=deleted_branch.name,
+            branch_id=str(deleted_branch.get_uuid()),
+            meta=dummy_event_meta(branch=deleted_branch),
+        ),
+        "deleted": BranchDeletedEvent(
+            branch_name=deleted_branch.name,
+            branch_id=str(deleted_branch.get_uuid()),
+            sync_with_git=False,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+    }
+    await send_events(client=prefect_client, events=list(events.values()))
+
+    deleted = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": [deleted_branch.name]},
+        account_session=session_admin,
+    )
+    unknown = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": [f"unknown-{_TEST_ID}"]},
+        account_session=session_admin,
+    )
+
+    assert deleted.errors is None
+    assert deleted.data
+    assert deleted.data["InfrahubEvent"]["count"] == 1
+    assert [edge["node"]["id"] for edge in deleted.data["InfrahubEvent"]["edges"]] == [events["rebased"].get_id()]
+    assert unknown.errors is None
+    assert unknown.data == {"InfrahubEvent": {"count": 0, "edges": []}}
 
 
 @pytest.fixture
