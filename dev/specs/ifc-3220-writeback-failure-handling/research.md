@@ -223,6 +223,12 @@ branch's value at `branched_from`, or when it equals the commit recorded now. A 
 recorded its own commit reads exactly the default branch's value at `branched_from`, so the second
 test catches every data-only branch, including one forked before the trunk moved.
 
+For such a merge the dispatcher also submits no `GIT_REPOSITORIES_MERGE`: there is nothing to merge,
+and today's flow would only find nothing to merge and broadcast the commit the workers already hold.
+A run that the previous code queued carries no `pending_merge`, so the flow builds the entry itself.
+Before it does, it runs the same test and skips a merge that carries no content. Without that test,
+such a run would queue an entry that FR-005 forbids.
+
 **What the entry holds**:
 
 | Field | Source |
@@ -316,7 +322,10 @@ Under the repository lock:
 12. **Broadcast** `RefreshGitFetch` pinned to M, as `merge_git_repository` does today.
 13. **Delete source branches.** For each delivered entry with `delete_source_git_branch` set, and
     that no remaining entry names, delete the remote branch and send
-    `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted.
+    `RefreshGitRepositoryBranchDeleted` (R12). A branch that is already gone counts as deleted. A
+    deletion that fails is logged at warning level and does not fail the attempt, because the
+    delivery itself succeeded. The remote branch then stays, as it does today when
+    `git_branch_delete` fails.
 14. **Settle.** Under the state lock, in one save: remove the snapshot's entries into
     `removed_entry_ids` and bump the version; set `delivery_last_delivered_commit` to M when
     something was pushed; set the status from what remains, and clear the cause and the message when
@@ -389,7 +398,7 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 | Port method | Built on |
 |---|---|
 | `fetch()` | `InfrahubRepositoryBase.fetch`, with `kill_after_timeout`. |
-| `remote_head(git_branch)` | `get_commit_value(branch_name=..., remote=True)` |
+| `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, bounded. Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
 | `is_ancestor(ancestor, descendant)` | `git merge-base --is-ancestor`. Exit 1 means no. A missing object means no. Any other failure raises. Shared with IFC-3210 (R19). |
 | `replay(base, commits)` | `reset --hard`, then `merge` per commit, aborting on a conflict. |
 | `push()` | `InfrahubRepository.push`, extended by R5, with `kill_after_timeout`. |
@@ -498,7 +507,7 @@ that it runs, so no command can hold the repository lock for ever:
 |---|---|
 | The fetch | `FETCH_TIMEOUT_SECONDS`, 120 seconds |
 | The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
-| Each local command: `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
+| Each local command: `rev-parse`, in `remote_head`; `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
 
 A fetch or a push to a remote that accepts the connection and never answers fails as
 `remote-unreachable`, and the chain retries it. A local command normally ends in seconds, so its
@@ -507,9 +516,16 @@ names the command, and R5 classifies it. `reset` never raises: a killed reset is
 failed reset, and the failure of the attempt still propagates. The bounds live in
 `git/writeback/constants.py`.
 
+**A killed local command can leave a lock file.** GitPython kills with `SIGKILL`, so a killed
+`reset` or `merge` can leave `index.lock` in the destination worktree. Every later Git command in
+that worktree would then fail until someone removed the file by hand. After it kills a local
+command, the adapter removes that `index.lock` before it raises. That is safe because the adapter
+holds the repository lock, so no other Git process on this worker writes to that worktree.
+
 The import of R4 step 11 has no bound. It is not a Git command, and the local Git commands that
-`import_objects_from_files` runs get no bound either. While it runs, it holds the repository lock,
-so the delivery is not stale (R20, condition 4), and the recovery check starts no second attempt.
+`import_objects_from_files` runs get no bound either. FR-004 therefore excludes the import, and
+FR-027 covers it instead: while it runs, it holds the repository lock, so the delivery is not stale
+(R20, condition 4), and the recovery check starts no second attempt.
 
 **One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
 merge flow whose first attempt finds a retry already due in the future returns at once: that chain
@@ -787,7 +803,9 @@ dispatch a stale target set".
 delays, plus the fetch and push timeouts times the number of attempts, plus a 10-minute margin for
 the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
-precisely as today. A miss only widens.
+precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
+command normally ends in seconds. A chain that runs longer than the cache, for example after
+retried record failures, only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.

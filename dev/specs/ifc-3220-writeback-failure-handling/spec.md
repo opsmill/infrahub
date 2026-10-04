@@ -411,8 +411,9 @@ system, and the new delivery path must keep them true.*
   raised error.
 - **FR-004**: The system MUST retry a transient failure automatically, a bounded number of times. It
   MUST NOT automatically retry a credential, permission or branch-protection failure. A failure
-  after the remote accepted the push counts as transient. Every Git command of a delivery MUST be
-  bounded in time, so that a remote that stops answering produces a transient failure.
+  after the remote accepted the push counts as transient. Every Git command of a delivery attempt,
+  outside the repository import, MUST be bounded in time, so that a remote that stops answering
+  produces a transient failure. FR-027 covers the import.
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
