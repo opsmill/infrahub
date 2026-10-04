@@ -59,7 +59,7 @@ dependency_provider.override(build_license_service, build_ent_license_service)
 ## Guarantees this repository gives the Enterprise service
 
 - Every surface (info endpoint, About dialog, banner, header, telemetry, upgrade output, startup log) reads `status()`, `notice_mode` and `enforcing_release` only.
-- A raised exception from `status()` is still caught at every call site and treated as `invalid` / `internal_error`.
+- A raised exception from `status()` is still caught at every call site and treated as `invalid` / `internal_error`; its traceback is logged the first time each exception type is raised in the process.
 - An exception while building the service is contained too: `get_license_service()` logs it once with the traceback and returns `LicenseServiceUnavailable` (`invalid` / `internal_error`, quiet mode, no enforcing release) for the rest of the process, without retrying the builder. Quiet mode, because a build failure is a defect in the edition, not the customer's license, so only super-admins see it.
 - Together these mean an exception while building the service or from `status()` cannot fail a request or a startup, and no surface wraps those two calls itself. `notice_mode` and `enforcing_release` are read without a guard.
 - The license key's value is never read by these surfaces; only the Enterprise service reads `config.SETTINGS.license.key`, and the startup log only checks whether a key is set. A blank or whitespace-only value counts as no key.

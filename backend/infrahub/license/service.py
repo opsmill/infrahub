@@ -60,11 +60,17 @@ class LicenseServiceUnavailable(LicenseService):
         )
 
 
+# A service that keeps failing would otherwise log the same traceback on every request.
+_reported_failure_types: set[type[Exception]] = set()
+
+
 def read_license_status(service: LicenseService, now: datetime | None = None) -> LicenseStatus:
-    """Return the service's license state, reporting any error it raises as invalid with an internal error."""
+    """Return the service's license state, reporting an error it raises as invalid, logged once per exception type."""
     try:
         return service.status(now=now)
     # Top-level boundary: a defect in a replaceable license service must not fail a startup or a request.
-    except Exception:
-        log.exception("The license service failed; reporting the license as invalid with reason internal_error")
+    except Exception as exc:
+        if type(exc) not in _reported_failure_types:
+            _reported_failure_types.add(type(exc))
+            log.exception("The license service failed; reporting the license as invalid with reason internal_error")
         return LicenseServiceUnavailable().status(now=now)
