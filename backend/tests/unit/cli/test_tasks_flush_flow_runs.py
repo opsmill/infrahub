@@ -19,6 +19,7 @@ from tests.helpers.task_history_api import (
     route_missing,
     running_elsewhere,
     started,
+    unknown_cleanup,
     unreachable,
 )
 
@@ -132,6 +133,37 @@ async def test_a_cleanup_that_rewrote_nothing_on_a_database_without_sizes_says_s
 
     assert exit_code == 0
     assert console.lines == [
+        "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
+        "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
+        "Task history tables not rewritten",
+    ]
+
+
+@pytest.mark.usefixtures("prefect_client_without_retries")
+async def test_each_wait_prints_one_line_when_it_starts_or_its_reason_changes() -> None:
+    """A wait prints its reason once, however many times the start is posted again, and again when the reason changes."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            running_elsewhere(),
+            running_elsewhere(),
+            started(),
+            unknown_cleanup(),
+            started(id="job-2"),
+            unreachable(),
+            unreachable(),
+            started(id="job-3"),
+            polled(id="job-3", state="completed"),
+        ]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console)
+
+    assert exit_code == 0
+    assert console.lines == [
+        "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
+        "Waiting to start the cleanup, because the task manager answered that it does not know the cleanup",
+        "Waiting to start the cleanup, because the task manager could not be reached",
         "Deleted 0 runs that ended before 2026-09-04 00:00 UTC",
         "Task history tables not rewritten",
     ]
@@ -170,6 +202,63 @@ async def test_a_failed_cleanup_prints_its_error_and_fails() -> None:
     assert console.lines == [
         "Deleting the runs that ended on 2026-01-15, 7 runs deleted so far",
         "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
+        "Deleted 7 runs before the failure",
+    ]
+
+
+@dataclass
+class FailedAfterRewriteCase:
+    name: str
+    deleted_runs: int
+    not_rewritten: list[str]
+    expected_committed: str
+
+
+FAILED_AFTER_REWRITE_CASES: list[FailedAfterRewriteCase] = [
+    FailedAfterRewriteCase(
+        name="every_table_rewritten",
+        deleted_runs=1,
+        not_rewritten=[],
+        expected_committed="Deleted 1 run before the failure; task history tables rewritten",
+    ),
+    FailedAfterRewriteCase(
+        name="tables_left_locked",
+        deleted_runs=40,
+        not_rewritten=["log", "artifact"],
+        expected_committed=(
+            "Deleted 40 runs before the failure; task history tables rewritten, except log, artifact, which stayed locked"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in FAILED_AFTER_REWRITE_CASES])
+async def test_a_cleanup_that_failed_after_its_rewrite_prints_what_it_deleted_and_rewrote(
+    case: FailedAfterRewriteCase,
+) -> None:
+    """A cleanup that failed once its rewrite had run prints the runs it deleted and the tables it rewrote."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(rewrite="always"),
+            polled(
+                rewrite="always",
+                state="failed",
+                rewritten=True,
+                deleted_runs=case.deleted_runs,
+                not_rewritten=case.not_rewritten,
+                size_before=1000,
+                error="The cleanup failed with DBAPIError; the task manager log has the details",
+            ),
+        ]
+    )
+    console = RecordedConsole()
+
+    exit_code = await _flush(task_manager=task_manager, console=console, rewrite=True)
+
+    assert exit_code == 1
+    assert console.lines == [
+        "ERROR The cleanup failed with DBAPIError; the task manager log has the details",
+        case.expected_committed,
     ]
 
 
