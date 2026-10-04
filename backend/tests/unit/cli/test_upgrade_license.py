@@ -1,23 +1,37 @@
 from __future__ import annotations
 
 import re
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 import typer
 
-from infrahub.cli.upgrade import _print_license_section, console
+from infrahub.cli import upgrade
+from infrahub.cli.upgrade import _print_license_section, _upgrade_check, _upgrade_execute, console
 from infrahub.license.models import License, LicenseFailureReason, LicenseState, LicenseStatus, NoticeMode
+from infrahub.workers.dependencies import build_license_service
 from tests.adapters.license import FailingLicenseService, FailingNoticeModeLicenseService, RecordingLicenseService
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.log import infrahub_log_payloads
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Callable, Coroutine, Iterator
+
+    from fast_depends import Provider
+
+    from infrahub.database import InfrahubDatabase
     from infrahub.license.service import LicenseService
 
 ANSI_STYLE = re.compile(r"\x1b\[[0-9;]*m")
 LOG_TIME = re.compile(r"^\[[^\]]+\]")
+LOG_TIMES = re.compile(r"^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]", re.MULTILINE)
+UNLICENSED_SECTION = (
+    "License: not set Set INFRAHUB_LICENSE_KEY on the servers and task workers. "
+    "From Infrahub 1.13, every user sees an Unlicensed banner without it."
+)
 
 LICENSE = License(
     license_id="lic-0042",
@@ -136,9 +150,6 @@ PROMPT_CASES: list[PromptCase] = [
             status=LicenseStatus(state=LicenseState.EXPIRING, license=LICENSE, days_remaining=12)
         ),
     ),
-    PromptCase(
-        name="valid_without_details", service=RecordingLicenseService(status=LicenseStatus(state=LicenseState.VALID))
-    ),
     PromptCase(name="failing_status", service=FailingLicenseService(notice_mode=NoticeMode.ENFORCE)),
     PromptCase(
         name="failing_notice_mode",
@@ -164,3 +175,81 @@ def test_print_license_section_never_prompts_and_returns_normally(
         _print_license_section(service=test_case.service)
 
     assert prompts == []
+
+
+def _returning(value: Any) -> Callable[..., Coroutine[Any, Any, Any]]:
+    async def step(*args: Any, **kwargs: Any) -> Any:
+        return value
+
+    return step
+
+
+@asynccontextmanager
+async def _task_manager_client(*args: Any, **kwargs: Any) -> AsyncIterator[None]:
+    yield None
+
+
+@pytest.fixture
+def upgrade_steps_with_nothing_to_do(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Replace the database and task manager steps, which the place of the license section does not depend on."""
+    for name, value in (
+        ("detect_migration_to_run", []),
+        ("migrate_database", True),
+        ("initialize_internal_schema", None),
+        ("update_core_schema", None),
+        ("check_core_schema_diff", False),
+        ("upgrade_menu", None),
+        ("upgrade_permissions", None),
+        ("setup_blocks", None),
+        ("setup_worker_pools", None),
+        ("setup_deployments", None),
+        ("trigger_configure_all", None),
+        ("mark_branches_needing_rebase", []),
+        ("get_branches_needing_rebase", []),
+    ):
+        monkeypatch.setattr(upgrade, name, _returning(value))
+    monkeypatch.setattr(upgrade, "get_client", _task_manager_client)
+
+
+@pytest.fixture
+def unlicensed_service(dependency_provider: Provider) -> Iterator[None]:
+    service = RecordingLicenseService(
+        status=LicenseStatus(state=LicenseState.UNLICENSED), notice_mode=NoticeMode.QUIET, enforcing_release="1.13"
+    )
+    with override_dependency(
+        original=build_license_service, override=lambda: service, dependency_provider=dependency_provider
+    ):
+        yield
+
+
+def _printed_output_words(printed: str) -> str:
+    return " ".join(LOG_TIMES.sub("", ANSI_STYLE.sub("", printed)).split())
+
+
+@pytest.mark.usefixtures("upgrade_steps_with_nothing_to_do", "unlicensed_service")
+async def test_upgrade_check_prints_the_license_section_before_the_closing_line() -> None:
+    db = cast("InfrahubDatabase", object())
+
+    with console.capture() as capture:
+        await _upgrade_check(db=db, root_node_graph_version=1)
+
+    assert _printed_output_words(capture.get()) == (
+        "Infrahub Upgrade Check Database: Reachable: yes Database migrations: Up to date, nothing to do "
+        "Core schema: Up to date, nothing to do Branches: No branches need rebase "
+        f"{UNLICENSED_SECTION} Run 'infrahub upgrade' to apply all changes."
+    )
+
+
+@pytest.mark.usefixtures("upgrade_steps_with_nothing_to_do", "unlicensed_service")
+async def test_upgrade_prints_the_license_section_after_the_upgrade_completes() -> None:
+    db = cast("InfrahubDatabase", object())
+
+    with console.capture() as capture:
+        await _upgrade_execute(db=db, root_node_graph_version=1)
+
+    assert _printed_output_words(capture.get()) == (
+        "Step 1/6: Database migrations Step 2/6: Internal schema Internal schema initialized "
+        "Step 3/6: Core schema Step 4/6: Internal objects Step 5/6: Task manager Task manager configured "
+        "Step 6/6: Branch rebase Found 0 branches that need to be rebased Upgrade complete SUCCESS "
+        f"{UNLICENSED_SECTION}"
+    )

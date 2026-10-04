@@ -83,15 +83,9 @@ def log_license_state(service: LicenseService, key_is_set: bool) -> None:
 
 def license_block(status: LicenseStatus) -> TelemetryLicenseData | None:
     """Return the license block of the telemetry snapshot, ``None`` when no license is required; never the customer name."""
-    match status.state:
-        case LicenseState.NOT_REQUIRED:
-            return None
-        case LicenseState.UNLICENSED | LicenseState.INVALID:
-            granted = None
-        case LicenseState.VALID | LicenseState.EXPIRING | LicenseState.EXPIRED | LicenseState.NOT_YET_VALID:
-            granted = status.license
-        case _:
-            assert_never(status.state)
+    if status.state == LicenseState.NOT_REQUIRED:
+        return None
+    granted = status.license
     return TelemetryLicenseData(
         state=status.state.value,
         license_id=granted.license_id if granted else None,
@@ -104,16 +98,12 @@ def license_block(status: LicenseStatus) -> TelemetryLicenseData | None:
     )
 
 
-_ONE_SECOND = timedelta(seconds=1)
+# License datetimes keep microseconds, so the instant one microsecond before the end is the last one covered.
+_ONE_MICROSECOND = timedelta(microseconds=1)
 
 
 def license_report_lines(status: LicenseStatus, notice_mode: NoticeMode, enforcing_release: str | None) -> list[str]:
-    """Return the license section of the upgrade output, empty when no license is required.
-
-    Raises:
-        ValueError: When the status lacks the license details its state requires.
-
-    """
+    """Return the license section of the upgrade output, empty when no license is required."""
     lines = _state_lines(status=status, notice_mode=notice_mode)
     if shown_to_all_users_when_enforced(status=status, mode=notice_mode):
         lines.append(_enforcing_release_note(state=status.state, enforcing_release=enforcing_release))
@@ -136,9 +126,9 @@ def _state_lines(status: LicenseStatus, notice_mode: NoticeMode) -> list[str]:
         case LicenseState.INVALID if status.reason == LicenseFailureReason.INTERNAL_ERROR:
             return ["License: could not be determined because of an internal error. Check the server logs."]
         case LicenseState.INVALID:
-            reason = "" if status.reason is None else f" ({status.reason.value})"
             return [
-                f"License: could not be verified{reason}. Check INFRAHUB_LICENSE_KEY on the servers and task workers."
+                f"License: could not be verified ({status.reason}). "
+                "Check INFRAHUB_LICENSE_KEY on the servers and task workers."
             ]
         case LicenseState.VALID | LicenseState.EXPIRING | LicenseState.EXPIRED | LicenseState.NOT_YET_VALID:
             return [f"License: {_granted_summary(status=status)}"]
@@ -160,7 +150,8 @@ def _granted_summary(status: LicenseStatus) -> str:
             return f"expired on {_last_covered_day(granted)}, {since}. Renew it and set the new INFRAHUB_LICENSE_KEY."
         case LicenseStatus(state=LicenseState.NOT_YET_VALID, license=License() as granted):
             return f"starts on {granted.starts_at.date().isoformat()}. Infrahub runs as unlicensed until then."
-    raise ValueError(f"License status in state '{status.state.value}' lacks the license details that state requires")
+    # The status constructor guarantees that each of these states carries the details matched above.
+    raise AssertionError(f"License status in state '{status.state.value}' lacks the details its state carries")
 
 
 def _type_of(granted: License) -> str:
@@ -168,7 +159,7 @@ def _type_of(granted: License) -> str:
 
 
 def _last_covered_day(granted: License) -> str:
-    return (granted.ends_at - _ONE_SECOND).date().isoformat()
+    return (granted.ends_at - _ONE_MICROSECOND).date().isoformat()
 
 
 def _day_count(days: int) -> str:

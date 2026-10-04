@@ -449,13 +449,6 @@ REPORT_LINES_CASES: list[ReportLinesCase] = [
         expected=[BAD_SIGNATURE_LINE],
     ),
     ReportLinesCase(
-        name="invalid_without_a_reason_still_points_at_the_key",
-        status=LicenseStatus(state=LicenseState.INVALID),
-        notice_mode=NoticeMode.ENFORCE,
-        enforcing_release="1.13",
-        expected=["License: could not be verified. Check INFRAHUB_LICENSE_KEY on the servers and task workers."],
-    ),
-    ReportLinesCase(
         name="invalid_from_an_internal_error_in_quiet_mode_points_at_the_logs_without_a_release_note",
         status=LicenseStatus(state=LicenseState.INVALID, reason=LicenseFailureReason.INTERNAL_ERROR),
         notice_mode=NoticeMode.QUIET,
@@ -499,6 +492,15 @@ REPORT_DATE_CASES: list[ReportDateCase] = [
         expected=["License: ACME Test Ltd, commercial, ends 2027-09-30"],
     ),
     ReportDateCase(
+        name="end_less_than_a_second_after_midnight_shows_that_day",
+        status=LicenseStatus(
+            state=LicenseState.VALID,
+            license=replace(REPORT_LICENSE, ends_at=datetime(2027, 9, 30, 0, 0, 0, 500000, tzinfo=UTC)),
+            days_remaining=200,
+        ),
+        expected=["License: ACME Test Ltd, commercial, ends 2027-09-30"],
+    ),
+    ReportDateCase(
         name="end_given_in_another_timezone_shows_the_utc_day",
         status=LicenseStatus(
             state=LicenseState.EXPIRING,
@@ -521,16 +523,7 @@ REPORT_DATE_CASES: list[ReportDateCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REPORT_DATE_CASES])
 def test_license_report_lines_show_dates_as_utc_days(test_case: ReportDateCase) -> None:
-    """The end shown is the last day the license covers, one second before its end instant."""
+    """The end shown is the last day the license covers, one microsecond before its end instant."""
     lines = license_report_lines(status=test_case.status, notice_mode=NoticeMode.ENFORCE, enforcing_release=None)
 
     assert lines == test_case.expected
-
-
-def test_license_report_lines_reject_a_status_missing_the_license_its_state_requires() -> None:
-    with pytest.raises(
-        ValueError, match=r"^License status in state 'valid' lacks the license details that state requires$"
-    ):
-        license_report_lines(
-            status=LicenseStatus(state=LicenseState.VALID), notice_mode=NoticeMode.QUIET, enforcing_release=None
-        )
