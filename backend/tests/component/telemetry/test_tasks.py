@@ -4,8 +4,10 @@ import hashlib
 import json
 import logging
 from collections.abc import AsyncGenerator, Callable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Generator
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -422,6 +424,46 @@ async def test_stored_snapshot_carries_the_license_block_when_sending_is_turned_
 
     assert stored.remote_send_status == RemoteSendStatus.SKIPPED
     assert stored.data["license"] == STORED_LICENSE_BLOCK
+
+
+LICENSE_KEY = f"leak-sentinel-{uuid4()}"
+
+
+@dataclass
+class LicenseKeyLeakCase:
+    name: str
+    replacement_status: LicenseStatus | None
+    """Status of a service swapped in for the community default, which stays in place when None."""
+
+    stored_license_block: dict[str, Any] | None
+
+
+LICENSE_KEY_LEAK_CASES: list[LicenseKeyLeakCase] = [
+    LicenseKeyLeakCase(name="community_default", replacement_status=None, stored_license_block=None),
+    LicenseKeyLeakCase(
+        name="replaced_service_with_a_valid_license",
+        replacement_status=VALID,
+        stored_license_block=STORED_LICENSE_BLOCK,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in LICENSE_KEY_LEAK_CASES])
+async def test_stored_snapshot_never_carries_the_license_key(
+    telemetry_environment: InfrahubDatabase,
+    telemetry_opted_out: None,
+    use_license_service: Callable[[LicenseService], None],
+    monkeypatch: pytest.MonkeyPatch,
+    test_case: LicenseKeyLeakCase,
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.license, "key", LICENSE_KEY)
+    if test_case.replacement_status is not None:
+        use_license_service(RecordingLicenseService(status=test_case.replacement_status))
+
+    stored = await _run_telemetry_flow(db=telemetry_environment)
+
+    assert stored.data["license"] == test_case.stored_license_block
+    assert LICENSE_KEY not in stored.model_dump_json()
 
 
 async def test_gather_license_block_that_cannot_be_built_is_null_and_logged(

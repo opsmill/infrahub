@@ -51,7 +51,7 @@ Run the local stack (`uv run invoke dev.start`), sign in as `admin`, and check:
 
 - no banner on any page, and the About dialog has the same rows as before;
 - `curl -si http://localhost:8000/api/schema/summary -H "X-INFRAHUB-KEY: ..." | grep -i x-infrahub-license` prints nothing;
-- `docker compose exec infrahub-server infrahub upgrade --check` prints no license section;
+- `docker exec <project>-server-1 infrahub upgrade --check` prints no license section, where `<project>` is the compose project `invoke dev.start` used (`INFRAHUB_BUILD_NAME`, by default the checkout directory's name without dashes);
 - setting `INFRAHUB_LICENSE_KEY=anything` on the server and restarting logs one INFO line saying it is ignored, and nothing else changes.
 
 ## 6. Generated files and lint

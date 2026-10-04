@@ -130,6 +130,7 @@ Each entry says *when* to load it — open the doc before working in that area.
 - `dev/knowledge/backend/async-tasks.md` - Prefect workflows, priority lanes, failure/best-effort handling; read before creating or changing a workflow
 - `dev/knowledge/backend/message-bus.md` - Message bus system; read when adding or changing a message
 - `dev/knowledge/backend/telemetry.md` - Anonymous usage telemetry (categories, windowing, retention, degradation); read when adding or changing telemetry metrics or the collection window
+- `dev/knowledge/backend/licensing.md` - License service contract, states, notices and the surfaces that show them; read when touching the license service, a license surface, or `INFRAHUB_LICENSE_KEY`
 - `dev/knowledge/backend/webhooks.md` - Webhook delivery and failure classification; read when touching webhook delivery
 - `dev/knowledge/backend/computed-attributes.md` - Jinja2 and Python-transform computed attributes, their automations and recompute paths; read when touching either
 - `dev/knowledge/backend/display-labels-and-hfid.md` - Display-label and human-friendly-id derivation; read when touching either
