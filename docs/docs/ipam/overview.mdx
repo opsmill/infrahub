@@ -45,9 +45,7 @@ Network and broadcast addresses count toward the usable total when `is_pool` is 
 
 ### Tree map
 
-A tile shows its description when it is wide enough; tiles too narrow for the description but wide enough for their label show a small marker instead, and the full description is always in the hover tooltip.
-
-The map shows one level at a time. Click an allocated tile to open that child's Tree Map, or, if you have permission to create prefixes, click a free tile to open the Create IP Prefix form with the block's CIDR filled in. On a prefix whose `member_type` is `address` and that has no child prefixes, the tab shows the utilization meter (when the value is known) and a link to the IP Addresses tab instead of a map. The map loads at most 1,000 children in address order; when a prefix has more, a notice states how many are shown, and one tile covering the remaining space links to the Children tab.
+The **Tree Map** tab on a prefix draws its direct children and free blocks as tiles sized by their share of the address space, with each child's utilization as an inner fill and pools in their own color, so you can see where the space of a supernet has gone and where contiguous free blocks remain. Click a child to descend one level, or a free block to allocate into it. See [Visualize prefix utilization](./visualize-prefix-utilization.mdx).
 
 ## Namespaces
 
