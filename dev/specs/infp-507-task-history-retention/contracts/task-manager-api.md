@@ -55,7 +55,7 @@ Request gains:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field added by PR #10379, kept under its name and default) |
-| `retention_seconds` | int | activity log retention of the task manager, at least 180 days when it does not delete old events | Widest time window |
+| `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention, or at least 180 days when it does not delete old events | Widest time window |
 
 Behaviour changes:
 
