@@ -71,7 +71,7 @@ async def execute(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),  # noqa: ARG001
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations."""
+    """Run a sample workflow through the task manager and a worker, and print its result."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
