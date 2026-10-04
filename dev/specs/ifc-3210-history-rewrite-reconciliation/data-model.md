@@ -160,7 +160,8 @@ Validation:
 ### `ReconciledBranch`
 
 A frozen dataclass. One branch a synchronisation cycle advanced, and the commit it advanced to.
-This is what the widened broadcast carries and what the recorder consumes.
+`RepositorySyncer.sync` returns these on its `SyncOutcome`, and the recorder consumes them. The
+broadcast is built from them but carries `BranchCommitPair`, which holds no divergence.
 
 | Field | Type | Meaning |
 |---|---|---|
