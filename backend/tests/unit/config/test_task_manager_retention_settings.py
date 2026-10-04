@@ -49,6 +49,10 @@ ACCEPTED_RETENTION_TEST_CASES: list[AcceptedRetentionTestCase] = [
     AcceptedRetentionTestCase(name="one_day_is_the_minimum", value="1d", expected=timedelta(days=1)),
     AcceptedRetentionTestCase(name="iso_8601_one_day_is_the_minimum", value="P1D", expected=timedelta(days=1)),
     AcceptedRetentionTestCase(name="surrounding_whitespace", value=" 365d ", expected=timedelta(days=365)),
+    AcceptedRetentionTestCase(name="36500_days_is_the_maximum", value="36500d", expected=timedelta(days=36500)),
+    AcceptedRetentionTestCase(
+        name="iso_8601_36500_days_is_the_maximum", value="P36500D", expected=timedelta(days=36500)
+    ),
 ]
 
 
@@ -68,6 +72,7 @@ class RefusedRetentionTestCase:
 
 
 SHORTER_THAN_ONE_DAY = "must be at least 1 day"
+LONGER_THAN_36500_DAYS = "must be at most 36500 days"
 NOT_A_DURATION = "must be a number of days such as 30d or an ISO 8601 duration such as P30D"
 
 REFUSED_RETENTION_TEST_CASES: list[RefusedRetentionTestCase] = [
@@ -80,6 +85,16 @@ REFUSED_RETENTION_TEST_CASES: list[RefusedRetentionTestCase] = [
     RefusedRetentionTestCase(name="negative_iso_8601", value="-P30D", reason=NOT_A_DURATION),
     RefusedRetentionTestCase(name="malformed_iso_8601", value="P30X", reason=NOT_A_DURATION),
     RefusedRetentionTestCase(name="python_timedelta_text", value="30 days, 0:00:00", reason=NOT_A_DURATION),
+    RefusedRetentionTestCase(name="one_day_over_the_maximum", value="36501d", reason=LONGER_THAN_36500_DAYS),
+    RefusedRetentionTestCase(
+        name="iso_8601_one_second_over_the_maximum", value="P36500DT1S", reason=LONGER_THAN_36500_DAYS
+    ),
+    RefusedRetentionTestCase(name="days_beyond_prefect_cutoff", value="800000d", reason=LONGER_THAN_36500_DAYS),
+    RefusedRetentionTestCase(name="days_beyond_a_timedelta", value="1000000000d", reason=LONGER_THAN_36500_DAYS),
+    RefusedRetentionTestCase(
+        name="days_beyond_integer_conversion", value=f"{'9' * 5000}d", reason=LONGER_THAN_36500_DAYS
+    ),
+    RefusedRetentionTestCase(name="iso_8601_beyond_a_timedelta", value="P1000000000D", reason=NOT_A_DURATION),
 ]
 
 
