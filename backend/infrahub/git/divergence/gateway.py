@@ -52,11 +52,9 @@ class GitPythonAncestryGateway:
     def has_commit(self, commit: str) -> bool:
         """Whether a commit of that name is present in the local object database.
 
-        A caller needs this separately from is_ancestor because a commit that is merely absent and
-        a git call that could not run both surface as the same error from the ancestry check.
-
-        A name that answers to a tree, a blob or an annotated tag holds no commit, so it reports
-        absent.
+        An absent commit and a git call that could not run are the same error once a comparison
+        raises, so the two are told apart here instead. A name that answers to a tree, a blob or an
+        annotated tag holds no commit, so it reports absent.
 
         Raises:
             RepositoryError: When the identifier is not a full object name, or when git could not
