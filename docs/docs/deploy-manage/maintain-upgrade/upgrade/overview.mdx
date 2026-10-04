@@ -102,7 +102,7 @@ The task manager keeps finished task runs, with their logs and artifacts, for th
 
 - Infrahub deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, together with their logs and artifacts. Runs that are still running or pending are kept.
 - Infrahub deletes one day of end times at a time and prints the day it is working on, so `Deleting the runs that ended on …` lines are progress messages.
-- When the deletes leave fewer than half of the runs that the task history held when the step started, Infrahub then rewrites the six task history tables, so that their files shrink and the disk space returns. In practice, this happens on the first upgrade that runs the step. An upgrade that deletes little does not rewrite the tables.
+- When more than half of the disk space of the task history tables is free after the deletes, Infrahub then rewrites the six task history tables, so that their files shrink and the disk space returns. This includes the space of the runs that the task manager deleted when it started, before the step. In practice, this happens on the first upgrade that runs the step, and on an upgrade that applies a lower task history retention. An upgrade that frees little disk space does not rewrite the tables.
 
 :::warning
 
@@ -122,7 +122,7 @@ The last lines of the step report the result:
 | Output | Meaning |
 |---|---|
 | `Task history tables rewritten` | The deletes and the rewrite completed. |
-| `Task history tables not rewritten` | The deletes completed, and they freed too few runs for a rewrite. |
+| `Task history tables not rewritten` | The deletes completed, and less than half of the disk space of the task history tables was free, so Infrahub did not rewrite them. |
 | `Task history tables rewritten, except log, which stayed locked` | Another session held a lock on the listed table for more than 60 seconds on each of four attempts, so Infrahub left that table as it was. |
 | `Task history cleanup failed: …` | The cleanup stopped with an error. The days already deleted stay deleted, and a table whose rewrite failed is left as it was. The upgrade continues with the next step. |
 | `The task manager does not provide the task history cleanup yet; skipped.` | The command reached a task manager from a release without the cleanup, and nothing was deleted. |
