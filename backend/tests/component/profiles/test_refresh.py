@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
+from neo4j.exceptions import TransientError
 
+from infrahub import config
 from infrahub.core.constants import RelationshipCardinality, RelationshipKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge.recompute_coalescing import (
@@ -18,11 +21,11 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.events.node_action import NodeUpdatedEvent
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import DatabaseError, ValidationError
 from infrahub.profiles.node_applier import ChunkProfilesApplier
 from infrahub.profiles.refresh import NodeProfilesRefresher
 from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2
-from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -133,8 +136,9 @@ def _refresher(
     branch: Branch,
     applier_class: type[ChunkProfilesApplier] = ChunkProfilesApplier,
     transaction_chunk_size: int = 100,
+    event_service: MemoryInfrahubEvent | None = None,
 ) -> RefresherDoubles:
-    events = MemoryInfrahubEvent()
+    events = event_service if event_service is not None else MemoryInfrahubEvent()
     workflow = WorkflowRecorder()
     resolver = RecordingPythonTargetResolver(targets=[])
     chain = RecomputeChainSubmitter(
@@ -270,25 +274,32 @@ async def test_refresh_reads_the_nodes_and_the_profile_data_once_per_transaction
     assert counting_db.count_for("profile_get_data") == test_case.expected_reads
 
 
-def _failing_applier(failing_node_id: str) -> type[ChunkProfilesApplier]:
+def _failing_applier(failing_node_id: str, error: Exception) -> type[ChunkProfilesApplier]:
     class FailingProfilesApplier(ChunkProfilesApplier):
         """Raises for one node, after its profile values and relationships are written."""
 
         async def apply_profiles(self, node: Node) -> list[str]:
             fields = await super().apply_profiles(node=node)
             if node.get_id() == failing_node_id:
-                raise ValidationError(f"profiles of {failing_node_id} rejected")
+                raise error
             return fields
 
     return FailingProfilesApplier
 
 
 async def test_refresh_skips_only_the_node_whose_profile_application_raises(
-    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None, caplog: pytest.LogCaptureFixture
 ) -> None:
+    caplog.set_level(logging.WARNING, logger="infrahub.tasks")
     dataset = await _create_servers(db=db, count=3)
     failing_node_id = dataset.server_ids[1]
-    doubles = _refresher(db=db, branch=default_branch, applier_class=_failing_applier(failing_node_id))
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_failing_applier(
+            failing_node_id=failing_node_id, error=ValidationError(f"profiles of {failing_node_id} rejected")
+        ),
+    )
 
     failed_node_ids = await doubles.refresher.refresh(
         branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
@@ -301,6 +312,110 @@ async def test_refresh_skips_only_the_node_whose_profile_application_raises(
         ("role-1", dataset.room_id),
     ]
     assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[2]]
+    assert [
+        (record.levelno, record.getMessage())
+        for record in caplog.records
+        if record.name == "infrahub.tasks" and record.levelno >= logging.WARNING
+    ] == [
+        (logging.WARNING, f"Skipping the profile refresh of {failing_node_id}: profiles of {failing_node_id} rejected")
+    ]
+
+
+@pytest.fixture
+def _three_retries_without_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config.SETTINGS.database, "retry_limit", 3)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_base_delay", 0.0)
+    monkeypatch.setattr(config.SETTINGS.database, "retry_jitter_max", 0.0)
+
+
+@pytest.mark.usefixtures("_three_retries_without_delay")
+async def test_refresh_does_not_retry_each_node_after_a_chunk_exhausts_its_retries(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=3)
+    failing_node_id = dataset.server_ids[1]
+    raised_for: list[str] = []
+
+    class TransientFailingProfilesApplier(ChunkProfilesApplier):
+        async def apply_profiles(self, node: Node) -> list[str]:
+            fields = await super().apply_profiles(node=node)
+            if node.get_id() == failing_node_id:
+                raised_for.append(failing_node_id)
+                raise TransientError("lock contention")
+            return fields
+
+    doubles = _refresher(db=db, branch=default_branch, applier_class=TransientFailingProfilesApplier)
+
+    with pytest.raises(TransientError, match=r"^lock contention$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert raised_for == [failing_node_id] * 3
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        (None, None),
+        (None, None),
+        (None, None),
+    ]
+    assert doubles.events.events == []
+
+
+async def test_refresh_recomputes_the_readers_of_committed_chunks_when_a_later_chunk_fails(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=4)
+    doubles = _refresher(
+        db=db,
+        branch=default_branch,
+        applier_class=_failing_applier(
+            failing_node_id=dataset.server_ids[2], error=DatabaseError(message="database rejected")
+        ),
+        transaction_chunk_size=2,
+    )
+
+    with pytest.raises(DatabaseError, match=r"^database rejected$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert [event.node_id for event in doubles.events.events] == [dataset.server_ids[0], dataset.server_ids[1]]
+    assert [
+        (
+            call["parameters"]["node_kind"],
+            call["parameters"]["target_kind"],
+            sorted(call["parameters"]["object_ids"]),
+            call["parameters"]["recompute_depth"],
+        )
+        for call in doubles.workflow.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
+    ] == [(SERVER_KIND, PORT_KIND, sorted([dataset.server_ids[0], dataset.server_ids[1]]), 1)]
+
+
+async def test_refresh_recomputes_the_readers_of_a_chunk_whose_event_send_fails(
+    db: InfrahubDatabase, default_branch: Branch, server_schema: None
+) -> None:
+    dataset = await _create_servers(db=db, count=2)
+    doubles = _refresher(
+        db=db, branch=default_branch, event_service=FailingInfrahubEvent(failing_kind=NodeUpdatedEvent)
+    )
+
+    with pytest.raises(RuntimeError, match=r"^NodeUpdatedEvent rejected$"):
+        await doubles.refresher.refresh(
+            branch=default_branch, node_ids=dataset.server_ids, context=_context(branch=default_branch)
+        )
+
+    assert [await _role_and_room(db=db, branch=default_branch, node_id=node_id) for node_id in dataset.server_ids] == [
+        ("role-1", dataset.room_id),
+        ("role-1", dataset.room_id),
+    ]
+    assert [
+        (
+            call["parameters"]["node_kind"],
+            call["parameters"]["target_kind"],
+            sorted(call["parameters"]["object_ids"]),
+            call["parameters"]["recompute_depth"],
+        )
+        for call in doubles.workflow.get_submit_calls_for(DISPLAY_LABELS_PROCESS_JINJA2)
+    ] == [(SERVER_KIND, PORT_KIND, sorted(dataset.server_ids), 1)]
 
 
 async def test_refresh_reports_a_node_that_does_not_exist(

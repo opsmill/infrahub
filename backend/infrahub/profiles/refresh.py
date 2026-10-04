@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions
 from infrahub.core.manager import NodeManager
 from infrahub.core.recompute.bulk_write import WrittenNode, send_node_updated_event
-from infrahub.database import retry_db_transaction
+from infrahub.database import is_retriable_db_error, retry_db_transaction
 from infrahub.events.constants import NodeMutationOrigin
 from infrahub.exceptions import DatabaseError, QueryTimeoutError
 from infrahub.log import get_run_logger
@@ -66,29 +66,34 @@ class NodeProfilesRefresher:
         Raises:
             DatabaseError: If the database cannot be reached.
             QueryTimeoutError: If a query of the refresh times out.
+            Neo4jError: If a transaction of the refresh still fails after its retries.
 
         """
         user_id = context.account_id or SYSTEM_USER_ID
         written: list[WrittenNode] = []
         failed_node_ids: list[str] = []
-        async with self.db.start_session() as session:
-            for chunk in chunked(node_ids, self.transaction_chunk_size):
-                result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
-                failed_node_ids.extend(result.failed_node_ids)
-                for applied in result.applied:
-                    await send_node_updated_event(
-                        event_service=self.event_service,
-                        node=applied.node,
-                        fields=list(applied.fields),
-                        branch=branch,
-                        context=context,
-                        origin=NodeMutationOrigin.RECOMPUTE,
-                    )
-                    written.append(
+        try:
+            async with self.db.start_session() as session:
+                for chunk in chunked(node_ids, self.transaction_chunk_size):
+                    result = await self._apply_isolated(db=session, branch=branch, node_ids=chunk, user_id=user_id)
+                    failed_node_ids.extend(result.failed_node_ids)
+                    # Record the committed chunk before its events, so a failed send still recomputes its readers.
+                    written.extend(
                         WrittenNode(node_id=applied.node.get_id(), kind=applied.node.get_kind(), fields=applied.fields)
+                        for applied in result.applied
                     )
-
-        await self.chain.submit(written=written, branch=branch.name, context=context, depth=0)
+                    for applied in result.applied:
+                        await send_node_updated_event(
+                            event_service=self.event_service,
+                            node=applied.node,
+                            fields=list(applied.fields),
+                            branch=branch,
+                            context=context,
+                            origin=NodeMutationOrigin.RECOMPUTE,
+                        )
+        finally:
+            # A rerun sees no change on committed chunks, so their readers recompute even when a later chunk fails.
+            await self.chain.submit(written=written, branch=branch.name, context=context, depth=0)
         return failed_node_ids
 
     async def _apply_isolated(
@@ -101,10 +106,16 @@ class NodeProfilesRefresher:
             raise
         # The transaction rolled back, so the chunk can be applied again without the nodes that fail.
         except Exception as exc:
+            # The transaction already retried this error, and one node at a time cannot clear it.
+            if is_retriable_db_error(exc):
+                raise
             if len(node_ids) == 1:
                 log.warning(f"Skipping the profile refresh of {node_ids[0]}: {exc}", exc_info=True)
                 return AppliedChunk(applied=[], failed_node_ids=list(node_ids))
-            log.info(f"Refreshing the profiles of {len(node_ids)} nodes one by one, after their chunk failed: {exc}")
+            log.info(
+                f"Refreshing the profiles of {len(node_ids)} nodes one by one, after their chunk failed: {exc}",
+                exc_info=True,
+            )
 
         applied: list[AppliedNode] = []
         failed_node_ids: list[str] = []
