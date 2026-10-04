@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,6 +27,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 RETENTION = timedelta(days=30)
+# Old runs that all ended on one day, so a day's delete spans several statements when a statement takes one run.
+RUNS_ENDED_ON_ONE_DAY = 3
 
 
 @pytest.fixture
@@ -39,24 +41,68 @@ def _job(rewrite: CleanupRewrite = CleanupRewrite.NEVER) -> CleanupJob:
     return CleanupJob(id="test", state=CleanupJobState.RUNNING, rewrite=rewrite, cutoff=datetime.now(UTC) - RETENTION)
 
 
+@dataclass
+class StatementSizeCase:
+    name: str
+    ids_per_statement: int
+
+
+STATEMENT_SIZE_CASES: list[StatementSizeCase] = [
+    StatementSizeCase(name="one_run_per_statement", ids_per_statement=1),
+    StatementSizeCase(name="as_many_runs_as_sqlite_takes", ids_per_statement=999),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in STATEMENT_SIZE_CASES])
 @pytest.mark.usefixtures("thirty_day_retention")
-async def test_cleanup_leaves_the_task_history_prefect_leaves(task_manager_database_path: Path) -> None:
-    """The cleanup leaves the same runs, task runs, states, logs and artifacts as Prefect's vacuum of old flow runs."""
+async def test_cleanup_leaves_the_task_history_prefect_leaves(
+    task_manager_database_path: Path, case: StatementSizeCase
+) -> None:
+    """The cleanup leaves the same task history as Prefect's vacuum of old flow runs, however many runs a statement takes."""
     prefect_db = task_manager_database(task_manager_database_path)
-    seeded = await seed_task_history(db=prefect_db)
+    seeded = await seed_task_history(db=prefect_db, old_runs=RUNS_ENDED_ON_ONE_DAY)
     copy_path = task_manager_database_path.with_name("copy.db")
     copy_task_manager_database(source=task_manager_database_path, target=copy_path)
     cleanup_db = task_manager_database(copy_path)
+    cleanup = TaskHistoryCleanup(
+        tables=TaskHistoryTables(db=cleanup_db, ids_per_statement=case.ids_per_statement), rewriter=None
+    )
     job = _job()
 
     await vacuum_old_flow_runs(db=prefect_db)
-    await build_task_history_cleanup(db=cleanup_db).delete(job=job)
+    await cleanup.delete(job=job)
 
     left_by_prefect = await read_task_history_ids(db=prefect_db)
     left_by_cleanup = await read_task_history_ids(db=cleanup_db)
     assert left_by_cleanup == left_by_prefect
     assert left_by_cleanup == seeded.kept
-    assert job.deleted_runs == len(seeded.deleted.flow_runs) == 8
+    assert job.deleted_runs == len(seeded.deleted.flow_runs) == 11
+
+
+async def test_cleanup_keeps_a_run_that_ended_after_the_cutoff_on_the_cutoff_day(
+    task_manager_database_path: Path,
+) -> None:
+    """On the cutoff's day, a run that ended before the cutoff is deleted and one that ended after it is kept."""
+    db = task_manager_database(task_manager_database_path)
+    cutoff = datetime(2026, 1, 15, 12, tzinfo=UTC)
+    await seed_flow_run(
+        db=db,
+        state_type=StateType.COMPLETED,
+        start_time=datetime(2026, 1, 15, 5, tzinfo=UTC),
+        end_time=datetime(2026, 1, 15, 6, tzinfo=UTC),
+    )
+    ended_after_the_cutoff = await seed_flow_run(
+        db=db,
+        state_type=StateType.COMPLETED,
+        start_time=datetime(2026, 1, 15, 17, tzinfo=UTC),
+        end_time=datetime(2026, 1, 15, 18, tzinfo=UTC),
+    )
+    job = CleanupJob(id="test", state=CleanupJobState.RUNNING, rewrite=CleanupRewrite.NEVER, cutoff=cutoff)
+
+    await TaskHistoryCleanup(tables=TaskHistoryTables(db=db, ids_per_statement=999), rewriter=None).delete(job=job)
+
+    assert (await read_task_history_ids(db=db)).flow_runs == {ended_after_the_cutoff.id}
+    assert (job.deleted_runs, job.current_day) == (1, date(2026, 1, 15))
 
 
 @pytest.mark.usefixtures("thirty_day_retention")
