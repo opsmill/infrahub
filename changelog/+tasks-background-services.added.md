@@ -1,0 +1,1 @@
+Added the `infrahub tasks background-services` command, which runs the task manager background services in the foreground with the `task_manager.retention` settings applied, for deployments that run these services apart from the task manager. Use it in place of `prefect server services start`, which does not read the `task_manager.retention` settings.

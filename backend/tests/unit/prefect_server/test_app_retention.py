@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-import prefect.context
 import pytest
 from prefect.settings import get_current_settings
 
@@ -21,10 +20,9 @@ from tests.helpers.task_manager_retention import (
     EVENTS_RETENTION_PERIOD,
     LEGACY_EVENTS_RETENTION_PERIOD,
     PREFECT_RETENTION_VARIABLES,
-    PREFECT_TEST_MODE_VARIABLES,
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
-    WEBSERVER_ONLY,
+    unloaded_task_manager_retention,
 )
 
 if TYPE_CHECKING:
@@ -36,29 +34,8 @@ APP_LOGGER = "infrahub.prefect_server.app"
 
 @pytest.fixture
 def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    """Start with no configuration loaded and no Prefect setting from any source, then restore the process state."""
-    monkeypatch.setattr(config.SETTINGS, "settings", None)
-    monkeypatch.setattr(prefect.context, "GLOBAL_SETTINGS_CONTEXT", prefect.context.GLOBAL_SETTINGS_CONTEXT)
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setenv("INFRAHUB_CONFIG", str(tmp_path / "absent.toml"))
-    monkeypatch.setenv("PREFECT_PROFILES_PATH", str(tmp_path / "profiles.toml"))
-    for name in (
-        "INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY",
-        "INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG",
-        "INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS",
-        "PREFECT_API_BLOCKS_REGISTER_ON_START",
-        "PREFECT_API_DATABASE_MIGRATE_ON_START",
-        WEBSERVER_ONLY,
-        *PREFECT_TEST_MODE_VARIABLES,
-        *PREFECT_RETENTION_VARIABLES,
-    ):
-        monkeypatch.delenv(name, raising=False)
-
-    yield
-
-    # The code under test writes these directly, and pytest puts back only the values set before the test.
-    for name in PREFECT_RETENTION_VARIABLES:
-        os.environ.pop(name, None)
+    with unloaded_task_manager_retention(monkeypatch=monkeypatch, directory=tmp_path):
+        yield
 
 
 def _app_messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:

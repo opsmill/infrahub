@@ -63,13 +63,19 @@ async def _init_prefect() -> None:
         await init_prefect()
 
 
-def apply_infrahub_settings_to_prefect() -> None:
-    """Read the task manager section of Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid."""
+def apply_infrahub_settings_to_prefect(config_file: Path | None = None) -> None:
+    """Read the task manager section of Infrahub's configuration into Prefect's retention settings and log them, exiting when it is invalid.
+
+    Args:
+        config_file: The configuration file to read, or None for the file `INFRAHUB_CONFIG` names, `infrahub.toml` by default.
+
+    """
     # Sets up the log handler and level that the retention lines need, and is imported here because the stock
     # Prefect container of some test suites has no infrahub package.
     import infrahub.log  # noqa: F401, PLC0415
 
-    config_file = Path(os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")).resolve()
+    if config_file is None:
+        config_file = Path(os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")).resolve()
     try:
         retention = load_task_manager_settings(config_file=config_file).retention
     except ValidationError as error:
