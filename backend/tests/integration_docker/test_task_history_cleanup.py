@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from subprocess import CalledProcessError  # noqa: S404 - the error a failed command in a container raises
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,6 +20,8 @@ OLD_RUNS = 300
 SCENARIO_DELETED_RUNS = 8
 TASK_HISTORY_TABLES = ("flow_run", "flow_run_state", "task_run", "task_run_state", "log", "artifact")
 LOG_LOCK_HOLDER = "task-history-cleanup-test-log-lock"
+# Long enough to outwait autovacuum and Prefect's own writes, far shorter than the hold on the locked table.
+REWRITE_LOCK_TIMEOUT_SECONDS = 5
 
 # Only the task manager container reaches its database; the image ships the test helpers under /source/backend.
 _SEED_SCRIPT = f"""
@@ -70,7 +73,10 @@ async def main():
     cleanup = TaskHistoryCleanup(
         tables=TaskHistoryTables(db=db, ids_per_statement=get_max_query_parameters()),
         rewriter=PostgresTableRewriter(
-            db=db, tables={TASK_HISTORY_TABLES!r}, lock_timeout=timedelta(seconds=1), retries=0
+            db=db,
+            tables={TASK_HISTORY_TABLES!r},
+            lock_timeout=timedelta(seconds={REWRITE_LOCK_TIMEOUT_SECONDS}),
+            retries=0,
         ),
     )
     await cleanup.run(job=job, settle=UnraisedRewrite(job=job))
@@ -79,36 +85,48 @@ async def main():
 asyncio.run(main())
 """
 
-_SIZE_QUERY = (
-    "SELECT sum(pg_total_relation_size(name::regclass)) FROM unnest(ARRAY"
-    "['flow_run', 'flow_run_state', 'task_run', 'task_run_state', 'log', 'artifact']) AS name"
-)
+# The queries below interpolate only this module's constants, so S608 has no input to guard against.
+_TABLE_NAMES = f"ARRAY[{', '.join(f"'{table}'" for table in TASK_HISTORY_TABLES)}]"
+_SIZE_QUERY = f"SELECT sum(pg_total_relation_size(name::regclass)) FROM unnest({_TABLE_NAMES}) AS name"  # noqa: S608
 _FILE_NODES_QUERY = (
-    "SELECT relname || '=' || relfilenode FROM pg_class WHERE relkind = 'r' AND relname = ANY(ARRAY"
-    "['flow_run', 'flow_run_state', 'task_run', 'task_run_state', 'log', 'artifact'])"
+    f"SELECT relname || '=' || relfilenode FROM pg_class WHERE relkind = 'r' AND relname = ANY({_TABLE_NAMES})"  # noqa: S608
 )
 _LOG_LOCK_QUERY = (
-    "SELECT count(*) FROM pg_locks JOIN pg_stat_activity USING (pid) "
-    "WHERE application_name = 'task-history-cleanup-test-log-lock' AND relation = 'log'::regclass AND granted"
+    "SELECT count(*) FROM pg_locks JOIN pg_stat_activity USING (pid) "  # noqa: S608
+    f"WHERE application_name = '{LOG_LOCK_HOLDER}' AND relation = 'log'::regclass AND granted"
 )
 _RELEASE_LOG_LOCK_QUERY = (
-    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-    "WHERE application_name = 'task-history-cleanup-test-log-lock'"
+    f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = '{LOG_LOCK_HOLDER}'"  # noqa: S608
 )
 
 _DELETED_RUNS = re.compile(r"Deleted (?P<count>\d+) runs that ended before \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC")
 
 
+def _run_in_container(compose: InfrahubDockerCompose, service: str, command: list[str]) -> str:
+    """Run the command in the service's container, returning its standard output.
+
+    Raises:
+        CalledProcessError: When the command fails, noting what it printed.
+
+    """
+    try:
+        stdout, _, _ = compose.exec_in_container(command=command, service_name=service)
+    except CalledProcessError as exc:
+        exc.add_note(f"stdout:\n{exc.stdout.decode()}\nstderr:\n{exc.stderr.decode()}")
+        raise
+    return stdout
+
+
 def _python_in_task_manager(compose: InfrahubDockerCompose, script: str) -> str:
-    stdout, stderr, exit_code = compose.exec_in_container(command=["python", "-c", script], service_name="task-manager")
-    assert exit_code == 0, stderr
+    stdout = _run_in_container(compose=compose, service="task-manager", command=["python", "-c", script])
     return stdout.strip().splitlines()[-1]
 
 
 def _query_task_manager_database(compose: InfrahubDockerCompose, query: str) -> list[str]:
-    stdout, _, _ = compose.exec_in_container(
+    stdout = _run_in_container(
+        compose=compose,
+        service="task-manager-db",
         command=["psql", "--username=postgres", "--dbname=prefect", "--tuples-only", "--no-align", "-c", query],
-        service_name="task-manager-db",
     )
     return stdout.strip().splitlines()
 
@@ -156,13 +174,16 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
                 "BEGIN; LOCK TABLE log IN ACCESS SHARE MODE; SELECT pg_sleep(600); COMMIT;",
             ]
         )
-        deadline = time.monotonic() + 60
-        while _query_task_manager_database(compose=infrahub_compose, query=_LOG_LOCK_QUERY) != ["1"]:
-            if time.monotonic() > deadline:
-                raise TimeoutError(f"{LOG_LOCK_HOLDER} did not lock the log table within 60 seconds")
-            time.sleep(0.5)
-        yield
-        _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_LOG_LOCK_QUERY)
+        # The session outlives a failed wait as well, holding the lock for minutes unless it is ended.
+        try:
+            deadline = time.monotonic() + 60
+            while _query_task_manager_database(compose=infrahub_compose, query=_LOG_LOCK_QUERY) != ["1"]:
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"{LOG_LOCK_HOLDER} did not lock the log table within 60 seconds")
+                time.sleep(0.5)
+            yield
+        finally:
+            _query_task_manager_database(compose=infrahub_compose, query=_RELEASE_LOG_LOCK_QUERY)
 
     def test_flush_flow_runs_with_rewrite_deletes_the_old_task_history_and_shrinks_its_tables(
         self,
@@ -174,8 +195,10 @@ class TestTaskHistoryCleanup(TestInfrahubDockerClient):
         kept, deleted = _ids_by_table(ids=seeded["kept"]), _ids_by_table(ids=seeded["deleted"])
         size_before = _task_history_size(compose=infrahub_compose)
 
-        stdout, _, _ = infrahub_compose.exec_in_container(
-            command=["infrahub", "tasks", "flush", "flow-runs", "--rewrite"], service_name="infrahub-server"
+        stdout = _run_in_container(
+            compose=infrahub_compose,
+            service="infrahub-server",
+            command=["infrahub", "tasks", "flush", "flow-runs", "--rewrite"],
         )
 
         remaining = _ids_by_table(
