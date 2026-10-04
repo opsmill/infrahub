@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -84,29 +85,52 @@ def test_advanced_remote_is_a_fast_forward() -> None:
     assert result.classification is RefClassification.FAST_FORWARD
 
 
-@pytest.mark.parametrize(
-    ("present", "ancestors"),
-    [
-        pytest.param(None, set(), id="unrelated-histories"),
-        pytest.param({REMOTE}, set(), id="imported-commit-garbage-collected"),
-    ],
-)
-@pytest.mark.parametrize(
-    ("target_changed", "expected"),
-    [(False, RefClassification.REWRITE), (True, RefClassification.RETARGET)],
-)
-def test_a_lost_imported_commit_is_a_rewrite_unless_the_target_changed(
-    present: set[str] | None,
-    ancestors: set[tuple[str, str]],
-    target_changed: bool,
-    expected: RefClassification,
-) -> None:
+@dataclass
+class LostCommitTestCase:
+    name: str
+    present: set[str] | None
+    """What the object database still holds, or None for everything the test declared."""
+
+    target_changed: bool
+    expected: RefClassification
+
+
+LOST_COMMIT_TEST_CASES: list[LostCommitTestCase] = [
+    LostCommitTestCase(
+        name="unrelated_histories_are_a_rewrite",
+        present=None,
+        target_changed=False,
+        expected=RefClassification.REWRITE,
+    ),
+    LostCommitTestCase(
+        name="unrelated_histories_after_a_retarget",
+        present=None,
+        target_changed=True,
+        expected=RefClassification.RETARGET,
+    ),
+    LostCommitTestCase(
+        name="garbage_collected_commit_is_a_rewrite",
+        present={REMOTE},
+        target_changed=False,
+        expected=RefClassification.REWRITE,
+    ),
+    LostCommitTestCase(
+        name="garbage_collected_commit_after_a_retarget",
+        present={REMOTE},
+        target_changed=True,
+        expected=RefClassification.RETARGET,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in LOST_COMMIT_TEST_CASES])
+def test_a_lost_imported_commit_is_a_rewrite_unless_the_target_changed(test_case: LostCommitTestCase) -> None:
     """Whatever lost the commit, only a deliberate re-target suppresses the record."""
-    gateway = FakeAncestryGateway(present=present, ancestors=ancestors)
+    gateway = FakeAncestryGateway(present=test_case.present, ancestors=set())
 
-    result = classify(gateway, imported=IMPORTED, remote=REMOTE, target_changed=target_changed)
+    result = classify(gateway, imported=IMPORTED, remote=REMOTE, target_changed=test_case.target_changed)
 
-    assert result.classification is expected
+    assert result.classification is test_case.expected
 
 
 def test_absent_object_is_decided_without_asking_about_ancestry() -> None:

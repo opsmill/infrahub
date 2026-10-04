@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -83,22 +84,45 @@ def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway
         gateway.has_commit(commit=commit)
 
 
-@pytest.mark.parametrize("identifier", ["not-a-sha", "abcd", "0" * 39, "0" * 41, "A" * 40])
+@dataclass
+class MalformedIdentifierTestCase:
+    name: str
+    identifier: str
+
+
+MALFORMED_IDENTIFIER_TEST_CASES: list[MalformedIdentifierTestCase] = [
+    MalformedIdentifierTestCase(name="not_hexadecimal", identifier="not-a-sha"),
+    MalformedIdentifierTestCase(name="far_too_short", identifier="abcd"),
+    MalformedIdentifierTestCase(name="one_character_short", identifier="0" * 39),
+    MalformedIdentifierTestCase(name="one_character_long", identifier="0" * 41),
+    MalformedIdentifierTestCase(name="uppercase", identifier="A" * 40),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in MALFORMED_IDENTIFIER_TEST_CASES])
 def test_a_malformed_commit_identifier_is_an_error_not_an_absence(
-    gateway: GitPythonAncestryGateway, identifier: str
+    gateway: GitPythonAncestryGateway, test_case: MalformedIdentifierTestCase
 ) -> None:
-    expected = re.escape(f"{identifier!r} is not a valid commit identifier")
+    expected = re.escape(f"{test_case.identifier!r} is not a valid commit identifier")
 
     with pytest.raises(RepositoryError, match=rf"^{expected}$"):
-        gateway.has_commit(commit=identifier)
+        gateway.has_commit(commit=test_case.identifier)
 
 
-@pytest.mark.parametrize("identifier", ["not-a-sha", "A" * 40])
-def test_the_comparison_rejects_a_malformed_identifier(gateway: GitPythonAncestryGateway, identifier: str) -> None:
-    expected = re.escape(f"{identifier!r} is not a valid commit identifier")
+COMPARISON_IDENTIFIER_TEST_CASES: list[MalformedIdentifierTestCase] = [
+    MalformedIdentifierTestCase(name="not_hexadecimal", identifier="not-a-sha"),
+    MalformedIdentifierTestCase(name="uppercase", identifier="A" * 40),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in COMPARISON_IDENTIFIER_TEST_CASES])
+def test_the_comparison_rejects_a_malformed_identifier(
+    gateway: GitPythonAncestryGateway, test_case: MalformedIdentifierTestCase
+) -> None:
+    expected = re.escape(f"{test_case.identifier!r} is not a valid commit identifier")
 
     with pytest.raises(RepositoryError, match=rf"^{expected}$"):
-        gateway.is_ancestor(ancestor_commit=identifier, descendant_commit=ABSENT)
+        gateway.is_ancestor(ancestor_commit=test_case.identifier, descendant_commit=ABSENT)
 
     with pytest.raises(RepositoryError, match=rf"^{expected}$"):
-        gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=identifier)
+        gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=test_case.identifier)
