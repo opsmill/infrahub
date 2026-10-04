@@ -13,7 +13,7 @@ Validation scenarios for each part. Settings and commands are defined in [contra
 2. Set `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=0d` and restart. Expect the task manager to refuse to start, naming `task_history`.
 3. Seed finished runs with end times older than 1 day, recent runs, and one RUNNING run (component test fixtures do this). Run `infrahub tasks flush flow-runs`. Expect only the old finished runs, their logs and artifacts gone, and the RUNNING run kept.
 4. Run `infrahub tasks flush flow-runs --rewrite` on a database with old runs. Expect the reported size after to be smaller than before.
-5. Run `infrahub upgrade` on a Compose stack with old runs. Expect a "Task history cleanup" step with progress lines, then the summary, with the tables rewritten when the old runs were more than half of the runs.
+5. Run `infrahub upgrade` on a Compose stack with old runs. Expect a "Task history cleanup" step with progress lines, then the summary, with the tables rewritten when more than half of their disk space is free after the deletes. When the task manager started just before the step, its own cleanup has already deleted the old runs: expect few or no runs deleted by the step, and the tables rewritten all the same.
 6. Run `infrahub upgrade --no-task-history-cleanup`. Expect the step to be reported as skipped.
 7. Point `infrahub tasks flush flow-runs` at a task manager from the previous release. Expect the "does not provide the task history cleanup yet" message and exit code 0.
 8. Start the background services through `infrahub tasks background-services` with the test compose file and confirm the derived settings in its log.

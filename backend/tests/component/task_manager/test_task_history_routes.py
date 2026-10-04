@@ -19,6 +19,7 @@ from infrahub.prefect_server.app import router
 from infrahub.prefect_server.task_history import (
     CleanupJobs,
     ProcessCleanupLock,
+    TableSpace,
     TaskHistoryCleanup,
     TaskHistoryTables,
     build_task_history_cleanup,
@@ -40,6 +41,8 @@ CLEANUP_URL = "/infrahub/task-history/cleanup"
 OLD_RUN_END = datetime(2026, 1, 15, 12, tzinfo=UTC)
 OLD_RUNS = 3
 RECENT_RUNS = 2
+FLOW_RUN_TABLE_MOSTLY_FREE = TableSpace(disk_bytes=1000, live_bytes=100)
+FLOW_RUN_TABLE_MOSTLY_LIVE = TableSpace(disk_bytes=1000, live_bytes=900)
 
 
 @pytest.fixture
@@ -91,8 +94,8 @@ async def _seed_old_run(db: PrefectDBInterface) -> UUID:
     return run.id
 
 
-async def _seed_mostly_old_runs(db: PrefectDBInterface) -> set[UUID]:
-    """Seed old runs and fewer recent ones, so that the deletes free more than half of the runs.
+async def _seed_old_and_recent_runs(db: PrefectDBInterface) -> set[UUID]:
+    """Seed old runs, which the cleanup deletes, and recent ones.
 
     Returns:
         The recent runs, which the cleanup keeps.
@@ -127,6 +130,7 @@ class SecondStartCase:
     first: CleanupRewrite
     second: CleanupRewrite
     expected_rewrite: CleanupRewrite
+    expected_calls: list[str]
 
 
 SECOND_START_CASES: list[SecondStartCase] = [
@@ -135,24 +139,28 @@ SECOND_START_CASES: list[SecondStartCase] = [
         first=CleanupRewrite.NEVER,
         second=CleanupRewrite.IF_FREED,
         expected_rewrite=CleanupRewrite.IF_FREED,
+        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
     ),
     SecondStartCase(
         name="never_raised_to_always",
         first=CleanupRewrite.NEVER,
         second=CleanupRewrite.ALWAYS,
         expected_rewrite=CleanupRewrite.ALWAYS,
+        expected_calls=["total_size", "rewrite", "total_size"],
     ),
     SecondStartCase(
         name="always_kept_against_never",
         first=CleanupRewrite.ALWAYS,
         second=CleanupRewrite.NEVER,
         expected_rewrite=CleanupRewrite.ALWAYS,
+        expected_calls=["total_size", "rewrite", "total_size"],
     ),
     SecondStartCase(
         name="if_freed_kept_against_never",
         first=CleanupRewrite.IF_FREED,
         second=CleanupRewrite.NEVER,
         expected_rewrite=CleanupRewrite.IF_FREED,
+        expected_calls=["total_size", "flow_run_space", "rewrite", "total_size"],
     ),
 ]
 
@@ -162,8 +170,8 @@ async def test_a_second_start_returns_the_running_cleanup_with_the_stronger_rewr
     app: FastAPI, db: PrefectDBInterface, case: SecondStartCase
 ) -> None:
     """A start while a cleanup runs returns that cleanup, which then rewrites with the stronger of the two modes."""
-    recent_runs = await _seed_mostly_old_runs(db=db)
-    rewriter = RecordingRewriter(pause_at_call=1)
+    recent_runs = await _seed_old_and_recent_runs(db=db)
+    rewriter = RecordingRewriter(flow_run_space=FLOW_RUN_TABLE_MOSTLY_FREE, pause_at_call=1)
     _rewrite_through(app=app, db=db, rewriter=rewriter)
 
     async with _client(app) as client:
@@ -186,30 +194,62 @@ async def test_a_second_start_returns_the_running_cleanup_with_the_stronger_rewr
         "size_after": 100,
         "not_rewritten": ["log"],
     }
-    assert rewriter.calls == ["total_size", "rewrite", "total_size"]
+    assert rewriter.calls == case.expected_calls
     assert await _flow_run_ids(db=db) == recent_runs
 
 
+@dataclass
+class DecidedAgainCase:
+    name: str
+    first: CleanupRewrite
+    second: CleanupRewrite
+    flow_run_space: TableSpace
+    pause_at_call: int
+    """The call that measures the size after the decision against a rewrite, where the stronger start arrives."""
+    expected_calls: list[str]
+
+
+DECIDED_AGAIN_CASES: list[DecidedAgainCase] = [
+    DecidedAgainCase(
+        name="never_raised_to_if_freed_on_a_mostly_free_runs_table",
+        first=CleanupRewrite.NEVER,
+        second=CleanupRewrite.IF_FREED,
+        flow_run_space=FLOW_RUN_TABLE_MOSTLY_FREE,
+        pause_at_call=2,
+        expected_calls=["total_size", "total_size", "flow_run_space", "rewrite", "total_size"],
+    ),
+    DecidedAgainCase(
+        name="if_freed_on_a_mostly_live_runs_table_raised_to_always",
+        first=CleanupRewrite.IF_FREED,
+        second=CleanupRewrite.ALWAYS,
+        flow_run_space=FLOW_RUN_TABLE_MOSTLY_LIVE,
+        pause_at_call=3,
+        expected_calls=["total_size", "flow_run_space", "total_size", "rewrite", "total_size"],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DECIDED_AGAIN_CASES])
 async def test_a_stronger_start_after_the_cleanup_decided_against_a_rewrite_makes_it_decide_again(
-    app: FastAPI, db: PrefectDBInterface
+    app: FastAPI, db: PrefectDBInterface, case: DecidedAgainCase
 ) -> None:
-    """A stronger mode that arrives after the decision is decided again, against the runs counted when the cleanup began."""
-    await _seed_mostly_old_runs(db=db)
-    rewriter = RecordingRewriter(pause_at_call=2)
+    """A stronger mode that arrives after the decision against a rewrite is decided again, and rewrites the tables once."""
+    await _seed_old_and_recent_runs(db=db)
+    rewriter = RecordingRewriter(flow_run_space=case.flow_run_space, pause_at_call=case.pause_at_call)
     _rewrite_through(app=app, db=db, rewriter=rewriter)
 
     async with _client(app) as client:
-        started = await client.post(CLEANUP_URL, json={"rewrite": "never"})
+        started = await client.post(CLEANUP_URL, json={"rewrite": case.first.value})
         await rewriter.wait_until_paused()
-        raised = await client.post(CLEANUP_URL, json={"rewrite": "if_freed"})
+        raised = await client.post(CLEANUP_URL, json={"rewrite": case.second.value})
         rewriter.resume()
         finished = await _finished_job(client=client, job_id=started.json()["id"])
 
     assert raised.json()["id"] == started.json()["id"]
-    assert rewriter.calls == ["total_size", "total_size", "rewrite", "total_size"]
+    assert rewriter.calls == case.expected_calls
     assert (finished["state"], finished["rewrite"], finished["rewritten"], finished["size_after"]) == (
         "completed",
-        "if_freed",
+        case.second.value,
         True,
         100,
     )
@@ -219,8 +259,8 @@ async def test_a_stronger_start_after_the_cleanup_rewrote_rewrites_nothing_more(
     app: FastAPI, db: PrefectDBInterface
 ) -> None:
     """A stronger mode that arrives after the cleanup rewrote the tables leaves them as they are."""
-    await _seed_mostly_old_runs(db=db)
-    rewriter = RecordingRewriter(pause_at_call=3)
+    await _seed_old_and_recent_runs(db=db)
+    rewriter = RecordingRewriter(flow_run_space=FLOW_RUN_TABLE_MOSTLY_FREE, pause_at_call=4)
     _rewrite_through(app=app, db=db, rewriter=rewriter)
 
     async with _client(app) as client:
@@ -231,7 +271,7 @@ async def test_a_stronger_start_after_the_cleanup_rewrote_rewrites_nothing_more(
         finished = await _finished_job(client=client, job_id=started.json()["id"])
 
     assert raised.json()["id"] == started.json()["id"]
-    assert rewriter.calls == ["total_size", "rewrite", "total_size"]
+    assert rewriter.calls == ["total_size", "flow_run_space", "rewrite", "total_size"]
     assert (finished["state"], finished["rewrite"], finished["rewritten"], finished["size_after"]) == (
         "completed",
         "always",

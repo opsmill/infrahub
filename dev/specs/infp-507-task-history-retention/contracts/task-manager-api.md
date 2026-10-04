@@ -27,8 +27,8 @@ Response `202`:
 
 Response `200`: the job, same shape as above, with `state` `running`, `completed` or `failed`. `404` `{"detail": "the cleanup is unknown to this task manager"}` when the job is unknown (for example after a task-manager restart).
 
-- `rewrite` is the job's mode: the one it was started with, raised by any stronger request while it runs. On Postgres the tables are rewritten after the deletes with `always`, never with `never`, and with `if_freed` only when the runs left are fewer than half of the runs the tables held when the job started, which counts the deletes of Prefect's own cleanup during the job too. Nothing is rewritten on SQLite.
-- The job decides about the rewrite with the mode it holds once its deletes end. When a stronger mode arrives after that decision, the job decides again before it completes, against the same count of runs taken when it started. Tables a job already rewrote are not rewritten again.
+- `rewrite` is the job's mode: the one it was started with, raised by any stronger request while it runs. On Postgres the tables are rewritten after the deletes with `always`, never with `never`, and with `if_freed` only when more than half of the tables' disk space is free after the deletes, whoever deleted the runs and when: runs that Prefect's own cleanup deleted before the job started count too. The free space is measured on `flow_run`, whose rows the other tables lose with their runs, as the table's size on disk against the size of its live rows. Nothing is rewritten on SQLite.
+- The job decides about the rewrite with the mode it holds once its deletes end. When a stronger mode arrives after that decision, the job decides again before it completes, measuring the free space again. Tables a job already rewrote are not rewritten again.
 - `rewritten` says whether the tables were rewritten; `false` until the rewrite ran. `not_rewritten` lists the tables a rewrite skipped.
 - `size_before` (before the deletes) and `size_after` (at the end) are `null` on SQLite.
 - `current_day` is the day of end times being deleted, and once the deletes end the last such day; `null` before the first.
