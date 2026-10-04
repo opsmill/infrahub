@@ -16,25 +16,26 @@ Upgrading Infrahub involves pulling the latest container images, running databas
 
 ## What the upgrade does
 
-`infrahub upgrade` runs as a structured six-step pipeline against the database the configured Infrahub instance points at:
+`infrahub upgrade` runs as a structured seven-step pipeline against the database the configured Infrahub instance points at:
 
 | Step  | What runs |
 |-------|-----------|
-| 1/6   | Database migrations (same code path as `infrahub db migrate`) |
-| 2/6   | Internal schema initialization |
-| 3/6   | Core schema update |
-| 4/6   | Internal objects — menu and permissions |
-| 5/6   | Task manager — workflow blocks, worker pools, deployments |
-| 6/6   | Branch rebase (only writes when `--rebase-branches` is set) |
+| 1/7   | Database migrations (same code path as `infrahub db migrate`) |
+| 2/7   | Internal schema initialization |
+| 3/7   | Core schema update |
+| 4/7   | Internal objects — menu and permissions |
+| 5/7   | Task manager — workflow blocks, worker pools, deployments |
+| 6/7   | Task history cleanup — deletes finished task runs older than the task history retention (see [Task history cleanup](#task-history-cleanup)) |
+| 7/7   | Branch rebase (only writes when `--rebase-branches` is set) |
 
-The command logs a header for each step, per-migration timing inside Step 1/6, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
+The command logs a header for each step, per-migration timing inside Step 1/7, and a final `Upgrade complete SUCCESS` line. Use `--check` to see what the upgrade would do without writing anything.
 
 ### What you will see during an upgrade
 
-Each step prints a header, and migrations inside Step 1/6 print per-migration progress. Long, data-rewriting migrations — recomputing HFID and display-label values, normalizing MAC addresses, unifying IP pool resource identifiers — also print their own progress messages so you can confirm which data they are touching. Example excerpt:
+Each step prints a header, and migrations inside Step 1/7 print per-migration progress. Long, data-rewriting migrations — recomputing HFID and display-label values, normalizing MAC addresses, unifying IP pool resource identifiers — also print their own progress messages so you can confirm which data they are touching. Example excerpt:
 
 ```console
-Step 1/6: Database migrations
+Step 1/7: Database migrations
 Database version: 67
 Target version:   73
 Pending: 6 migrations
@@ -60,20 +61,28 @@ Normalized 14 HFID value(s) to all-string format
   Applying 073_unify_ip_pool_resource_identifier... OK (0.04s)
 Applied 6 migrations successfully in 1.44s
 
-Step 2/6: Internal schema
+Step 2/7: Internal schema
 Internal schema initialized
 
-Step 3/6: Core schema
+Step 3/7: Core schema
 Core Schema updated successfully
 
-Step 4/6: Internal objects
+Step 4/7: Internal objects
 Menu has been updated
 Permissions up to date, nothing to update
 
-Step 5/6: Task manager
+Step 5/7: Task manager
 Task manager configured
 
-Step 6/6: Branch rebase
+Step 6/7: Task history cleanup
+Deleting the runs that ended on 2026-02-11, 2310 runs deleted so far
+...
+Deleting the runs that ended on 2026-09-03, 1428917 runs deleted so far
+Deleted 1428917 runs that ended before 2026-09-04 08:15 UTC
+Task history tables: 24.8 GB before, 1.6 GB after
+Task history tables rewritten
+
+Step 7/7: Branch rebase
 Found 2 branches that need to be rebased
 Rebased branch 'clean-branch' (ID: ...) SUCCESS
 Rebased branch 'conflict-branch' (ID: ...) SUCCESS
@@ -85,14 +94,52 @@ Lines such as `Cleaning up …`, `Recomputing HFID/display_label …`, `Normaliz
 
 ### What `--verbose` does
 
-`--verbose` does **not** control per-migration progress (that is always shown). It only lifts the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/6 and Step 6/6. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
+`--verbose` does **not** control per-migration progress (that is always shown). It only lifts the suppression on the `infrahub` and `prefect` Python loggers so their schema-loader warnings, validator-determiner messages, and workflow-client logs become visible during Step 1/7 and Step 7/7. Use it when a migration is failing and you want the full internal log trail; in normal operation you do not need it.
+
+### Task history cleanup
+
+The task manager keeps finished task runs, with their logs and artifacts, for the task history retention, 30 days by default, and deletes older runs every hour. An instance that ran a release without this retention can hold months of task history. In step 6/7, Infrahub deletes that backlog before the instance starts:
+
+- Infrahub deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, together with their logs and artifacts. Runs that are still running or pending are kept.
+- Infrahub deletes one day of end times at a time and prints the day it is working on, so `Deleting the runs that ended on …` lines are progress messages.
+- When the deletes leave fewer than half of the runs that the task history held when the step started, Infrahub then rewrites the six task history tables, so that their files shrink and the disk space returns. In practice, this happens on the first upgrade that runs the step. An upgrade that deletes little does not rewrite the tables.
+
+:::warning
+
+The deletion cannot be undone. If you need task runs older than 30 days, set a longer task history retention on the task manager before you upgrade, for example `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY=90d`. The upgrade deletes according to the retention set on the task manager, not on the container that runs `infrahub upgrade`. See [Task history retention](../../run-observe/tasks.mdx#task-history-retention) for the ways to set it.
+
+:::
+
+Plan for the time and the disk space the step needs:
+
+- **Time**: almost all of it is spent deleting. In OpsMill benchmarks, the step took about 8.5 minutes for 25 GB of task history and about 2 hours 20 minutes for 100 GB. These are benchmark figures, not a guarantee: the duration depends on the hardware and the data of your instance.
+- **Free disk space**: the rewrite writes a copy of the remaining rows before it removes the old files, so it needs free space for the runs that are kept. In the same benchmarks, that was under 0.5 GB for 25 GB of task history and 2.2 GB for 100 GB.
+
+The cleanup runs inside the task manager, so it continues if the session that runs `infrahub upgrade` ends. Running `infrahub upgrade` or `infrahub tasks flush flow-runs` again follows the cleanup that is still running, or starts a new one that continues from the oldest remaining day.
+
+The last lines of the step report the result:
+
+| Output | Meaning |
+|---|---|
+| `Task history tables rewritten` | The deletes and the rewrite completed. |
+| `Task history tables not rewritten` | The deletes completed, and they freed too few runs for a rewrite. |
+| `Task history tables rewritten, except log, which stayed locked` | Another session held a lock on the listed table for more than 60 seconds on each of four attempts, so Infrahub left that table as it was. |
+| `Task history cleanup failed: …` | The cleanup stopped with an error. The days already deleted stay deleted, and a table whose rewrite failed is left as it was. The upgrade continues with the next step. |
+| `The task manager does not provide the task history cleanup yet; skipped.` | The command reached a task manager from a release without the cleanup, and nothing was deleted. |
+| `Task history cleanup skipped` | The upgrade ran with `--no-task-history-cleanup`. |
+
+To finish a cleanup that failed or skipped a table, run `infrahub tasks flush flow-runs --rewrite` with the Infrahub server and the task workers stopped.
+
+`--no-task-history-cleanup` leaves the step out. Use it only when `infrahub upgrade` runs while the instance still serves requests, as on Helm, where the rewrite would lock tables that the task workers are using. The Helm instructions in [Upgrade Community](./community.mdx) and [Upgrade Enterprise](./enterprise.mdx) run the cleanup in a maintenance window after the rollout instead.
+
+The same rewrite is how you get disk space back after you lower the task history retention later: see [Task history retention](../../run-observe/tasks.mdx#task-history-retention).
 
 ## Database migration commands
 
 :::note
 You do not need any of the `infrahub db` commands for day-to-day upgrades — `infrahub upgrade` takes care of everything. However, `infrahub db showmigrations` is a useful verification step after an upgrade, while the remaining commands are intended for advanced debugging: previewing what would run, or applying the migration step in isolation when investigating a failure.
 :::
-`infrahub db migrate` runs the same code path as **Step 1/6 of `infrahub upgrade`**, with identical formatting. Use it only when you specifically want the migration step in isolation — for example, to reproduce a migration failure outside the full upgrade pipeline.
+`infrahub db migrate` runs the same code path as **Step 1/7 of `infrahub upgrade`**, with identical formatting. Use it only when you specifically want the migration step in isolation — for example, to reproduce a migration failure outside the full upgrade pipeline.
 
 ### Listing migrations
 
