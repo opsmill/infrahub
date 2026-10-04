@@ -102,7 +102,7 @@ The task manager keeps finished task runs, with their logs and artifacts, for th
 
 - Infrahub deletes the finished runs (completed, failed, cancelled, or crashed) whose end time is older than the task history retention, together with their logs and artifacts. Runs that are still running or pending are kept.
 - Infrahub deletes one day of end times at a time and prints the day it is working on, so `Deleting the runs that ended on …` lines are progress messages.
-- When more than half of the disk space of the task history tables is free after the deletes, Infrahub then rewrites the six task history tables, so that their files shrink and the disk space returns. This includes the space of the runs that the task manager deleted when it started, before the step. In practice, this happens on the first upgrade that runs the step, and on an upgrade that applies a lower task history retention. An upgrade that frees little disk space does not rewrite the tables.
+- When more than half of the disk space of the task history tables is free after the deletes, Infrahub then rewrites the six task history tables, so that their files shrink and the disk space returns. This includes the space of the runs that the task manager deleted when it started, before the step. In practice, this happens on the first upgrade that runs the step, and on an upgrade that applies a lower task history retention. When the task history is small, for example on a new instance, most upgrades also rewrite the tables, which then takes less than a second.
 
 :::warning
 
