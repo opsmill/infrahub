@@ -3,7 +3,6 @@ import { useCurrentFormContext } from "@/shared/components/form/utils/form-conte
 
 import { getTreeMapParent } from "@/entities/ipam/ip-prefixes/domain/rules/get-tree-map-parent";
 import { IpPrefixTreeMap } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map";
-import { IpPrefixTreeMapEmptyState } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-empty-state";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 
 export function Component() {
@@ -17,10 +16,6 @@ export function Component() {
 
   if (!parent) {
     return <ErrorScreen message={`${parentSchema.label} ${parentData.id} has no valid prefix`} />;
-  }
-
-  if (parent.memberType === "address") {
-    return <IpPrefixTreeMapEmptyState utilization={parent.utilization} />;
   }
 
   return (

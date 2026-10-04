@@ -15,6 +15,7 @@ import { buildTreeMapTiles } from "@/entities/ipam/ip-prefixes/domain/rules/buil
 import type { TreeMapParent } from "@/entities/ipam/ip-prefixes/domain/rules/get-tree-map-parent";
 import { layoutTreeMap } from "@/entities/ipam/ip-prefixes/domain/rules/layout-tree-map";
 import { IpPrefixCreateSheet } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-create-sheet";
+import { IpPrefixTreeMapEmptyState } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-tree-map-empty-state";
 import {
   IpPrefixTreeMapTile,
   TREE_MAP_TILE_CLASSES,
@@ -74,6 +75,11 @@ export function IpPrefixTreeMap({ parent, parentSchema, permission }: IpPrefixTr
 
   if (error) {
     return <ErrorScreen message={error.message} />;
+  }
+
+  // An address prefix can still hold child prefixes, so only the data decides between map and empty state.
+  if (parent.memberType === "address" && data.children.length === 0) {
+    return <IpPrefixTreeMapEmptyState utilization={parent.utilization} />;
   }
 
   const tiles = buildTreeMapTiles({

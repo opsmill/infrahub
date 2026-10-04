@@ -62,7 +62,7 @@ The engineer spots a free block on the map, clicks it, and the existing Create I
 
 ### User Story 4 - Open the tab on an address-member prefix (Priority: P3)
 
-The engineer opens the Tree Map tab on a prefix whose members are IP addresses rather than child prefixes (for example a /16 holding 30 hosts). Instead of a map of sub-pixel address tiles, the tab shows the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab.
+The engineer opens the Tree Map tab on a prefix whose members are IP addresses rather than child prefixes (for example a /16 holding 30 hosts). Instead of a map of sub-pixel address tiles, the tab shows the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab. A prefix marked as holding addresses but which still has child prefixes (a common modelling choice for supernets) gets the map, since the decision is taken from the children the query returns, not from the member type alone.
 
 **Why this priority**: Address-level prefixes are not the design target, but the tab must behave predictably on every prefix so drill-down never surprises the user. A clear empty state is cheap and avoids a misleading picture.
 
@@ -70,7 +70,8 @@ The engineer opens the Tree Map tab on a prefix whose members are IP addresses r
 
 **Acceptance Scenarios**:
 
-1. **Given** 10.0.0.0/16 has member type "address" and 30 IP addresses, **When** the user opens its Tree Map tab, **Then** no tiles are drawn, the utilisation meter is shown, the explanation is shown, and a link leads to the IP Addresses tab of the same prefix.
+1. **Given** 10.0.0.0/16 has member type "address", 30 IP addresses and no child prefixes, **When** the user opens its Tree Map tab, **Then** no tiles are drawn, the utilisation meter is shown, the explanation is shown, and a link leads to the IP Addresses tab of the same prefix.
+2. **Given** a /8 has member type "address" but holds five child prefixes, **When** the user opens its Tree Map tab, **Then** the map renders with one tile per child and the free blocks, not the empty state.
 
 ---
 
@@ -114,7 +115,7 @@ The engineer opens the Tree Map tab on a prefix with hundreds or thousands of di
 - **FR-007**: Users MUST be able to click an allocated tile to navigate to that child's Tree Map tab, with the current branch and IP namespace preserved.
 - **FR-008**: Users MUST be able to click a free tile to open the existing Create IP Prefix form prefilled with the free block's CIDR, subject to the same create permission and disabled-state explanation used by the Children tab's available rows.
 - **FR-009**: System MUST refresh the map after a successful create from a free tile so the new child appears as an allocated tile without a page reload.
-- **FR-010**: System MUST render an empty state for prefixes whose member type is "address", showing the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab of the same prefix.
+- **FR-010**: System MUST render an empty state for prefixes whose member type is "address" and that have no child prefixes, showing the prefix's utilisation meter, a one-line explanation that the map shows child prefixes, and a link to the IP Addresses tab of the same prefix. An address-type prefix that does hold child prefixes gets the map.
 - **FR-011**: System MUST load at most 1,000 direct children per map in address order, render them, and whenever more exist display a notice of the form "showing the first 1,000 of N children" together with one aggregated tile covering the address space not shown that leads to the Children tab.
 - **FR-012**: System MUST collapse allocated tiles below a legible minimum area into one "N smaller prefixes" tile and free tiles below the same minimum into one "N smaller free blocks" tile, each listing its members on hover; clicking the smaller-prefixes tile MUST open the Children tab of the current prefix.
 - **FR-013**: System MUST render the map for the branch and IP namespace currently selected in the page, and re-render when either changes.

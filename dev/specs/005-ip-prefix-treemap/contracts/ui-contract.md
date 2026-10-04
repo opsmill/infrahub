@@ -44,7 +44,10 @@ Common:
   utilisation, member count. Free: CIDR. Aggregates: the list of member CIDRs, truncated after 20
   with "and N more".
 
-## Empty state (address-type parent)
+## Empty state (address-type parent with no child prefixes)
+
+Rendered by the map container after the query returns, so a prefix whose member type is `address`
+but which still holds child prefixes gets the map.
 
 | Element | Selector | Content |
 |---------|----------|---------|

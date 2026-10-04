@@ -98,7 +98,7 @@ frontend/app/src/
         │   └── get-ip-prefix-tree-map.query.ts      # NEW queryOptions + useGetIpPrefixTreeMap
         ├── ip-prefix-tree-map.tsx                   # NEW container: states, notice, legend, create sheet wiring
         ├── ip-prefix-tree-map-tile.tsx              # NEW + .test.tsx: allocated, free, aggregate, remainder tiles
-        ├── ip-prefix-tree-map-empty-state.tsx       # NEW + .test.tsx: address-type parent
+        ├── ip-prefix-tree-map-empty-state.tsx       # NEW + .test.tsx: address-type parent without child prefixes
         ├── ip-prefix-create-sheet.tsx               # NEW, extracted from ip-prefix-available-identifier.tsx
         └── ip-prefix-available-identifier.tsx       # use IpPrefixCreateSheet
 

@@ -173,3 +173,16 @@ Both product decisions in section 6 were put to the user and resolved in the com
 - **Fill colour**: a theme token. `--accent-fill` is declared in `frontend/packages/ui/src/styles/theme.css` for `:root` and `.dark` as a 55% alpha of `--accent-strong`, bridged through `@theme inline`, and used as `bg-accent-fill` on the tile fill and the legend swatch. The only inline style left on the fill is its data-driven width. Verified against the public demo through the local dev server: the computed fill is `oklab(… / 0.55)` derived from the light accent in light mode and from the dark accent in dark mode. Gates after the change: 93 IPAM tests pass, Biome, betterer, knip, ruff and markdownlint clean.
 
 Next step 4 above is therefore closed.
+
+## Erratum 2 (2026-10-04, after loading the infrahub-demo-dc dataset locally)
+
+The feature was exercised against a dev-stack build of this branch with the `infrahub-demo-dc`
+bootstrap and Arista data centre loaded. Every prefix in that dataset carries `member_type:
+address`, including supernets with child prefixes (10.0.0.0/8 with five children, 0.0.0.0/0 with
+five children and eighteen descendants), so under FR-010 as originally written the map never
+rendered: every page showed the empty state. The user chose to decide from the data instead of the
+member type. The query now runs for every prefix; the container renders the empty state only when
+the parent is address-type and the query returned no child prefixes, and the map otherwise. FR-010,
+User Story 4, the UI contract, the user docs and the container tests were updated (95 tests pass),
+and the map was confirmed rendering on 10.0.0.0/8 and 0.0.0.0/0 on `main` and on 10.0.0.0/8 on
+the `add-dc3` branch through the dev server against the local stack.

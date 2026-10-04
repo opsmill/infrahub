@@ -84,4 +84,58 @@ describe("IpPrefixTreeMap", () => {
       .toBeVisible();
     await expect.element(component.getByRole("status")).not.toBeInTheDocument();
   });
+
+  it("shows the empty state for an address prefix with no child prefixes", async () => {
+    // GIVEN
+    vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      children: [],
+      freeBlocks: [],
+      totalChildCount: 0,
+      isCapped: false,
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMap
+        parent={{
+          ...generateTreeMapParent({ cidr: "10.0.0.0/16", memberType: "address", utilization: 12 }),
+          kind: "IpamIPPrefix",
+        }}
+        parentSchema={PARENT_SCHEMA}
+        permission={PERMISSION_ALLOW_ALL}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByTestId("ip-prefix-tree-map-empty")).toBeVisible();
+    await expect.element(component.getByTestId("ip-prefix-tree-map")).not.toBeInTheDocument();
+  });
+
+  it("shows the map for an address prefix that still holds child prefixes", async () => {
+    // GIVEN
+    vi.mocked(getIpPrefixTreeMap).mockResolvedValue({
+      children: generateSlash18ChildrenOfDemoSupernet(3),
+      freeBlocks: [],
+      totalChildCount: 3,
+      isCapped: false,
+    });
+
+    // WHEN
+    const component = await render(
+      <IpPrefixTreeMap
+        parent={{
+          ...generateTreeMapParent({ cidr: "10.0.0.0/8", memberType: "address" }),
+          kind: "IpamIPPrefix",
+        }}
+        parentSchema={PARENT_SCHEMA}
+        permission={PERMISSION_ALLOW_ALL}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByRole("group", { name: "Tree map of 10.0.0.0/8" }))
+      .toBeVisible();
+    await expect.element(component.getByTestId("ip-prefix-tree-map-empty")).not.toBeInTheDocument();
+  });
 });
