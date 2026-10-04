@@ -128,7 +128,6 @@ class TestGlobalActivities:
             tags.append(tag)
         await _wait_for_stored_events(infrahub_client, node_ids=[tag.id for tag in tags])
 
-        # Load more by scrolling to the end of the list.
         deadline = Deadline("the next page of activities to load")
         async with admin_page.expect_request(_is_events_request) as load_more_request:
             while await details_links.count() <= first_page_count:
