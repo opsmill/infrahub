@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import TYPE_CHECKING
@@ -204,11 +205,27 @@ def apply_prefect_retention_env(environ: MutableMapping[str, str], settings: Tas
     return warnings
 
 
+def _count_overrides_per_retention(value: str) -> str:
+    try:
+        overrides = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if not isinstance(overrides, dict):
+        return value
+    per_retention = Counter(str(retention) for retention in overrides.values())
+    return ", ".join(f"{retention} for {count} event types" for retention, count in sorted(per_retention.items()))
+
+
 def prefect_retention_env_in_effect(environ: Mapping[str, str]) -> dict[str, str]:
-    """Return the variable Prefect reads for each retention setting present in the environment, with its value."""
+    """Return the variable Prefect reads for each retention setting present in the environment, with its value.
+
+    The per-type overrides are counted per retention rather than listed, as the list holds over a hundred types.
+    """
     in_effect: dict[str, str] = {}
-    for setting in _PREFECT_SETTINGS.values():
+    for name, setting in _PREFECT_SETTINGS.items():
         name_set = _name_set_in(environ=environ, setting=setting)
-        if name_set is not None:
-            in_effect[name_set] = environ[name_set]
+        if name_set is None:
+            continue
+        value = environ[name_set]
+        in_effect[name_set] = _count_overrides_per_retention(value) if name == EVENT_RETENTION_OVERRIDES else value
     return in_effect
