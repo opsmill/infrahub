@@ -156,7 +156,7 @@ An operator sets how long task history, the activity log and the task manager's 
 - **FR-022**: The Activities page MUST load events newest first, reading the most recent time window first and widening it only while a page is not full, with the windows counted back from the oldest event shown (or now, on the first page).
 - **FR-023**: The Activities page MUST load more events by continuing from the time of the oldest event shown, so that no event is repeated or skipped when new events arrive, keeping events with the same time at a page boundary once.
 - **FR-024**: The activity log API MUST compute the total count only when a request asks for it.
-- **FR-025**: The Activities page MUST stop asking for the total count (subject to product sign-off, see Open Questions).
+- **FR-025**: The Activities page MUST keep not asking for the total count. (The page's query already omits it on `stable` and `develop`; today's cost comes from the server counting regardless, which FR-024 removes.)
 - **FR-026**: Activities queries MUST keep their performance when the same query is repeated many times on one connection.
 
 **Guards**
@@ -225,7 +225,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 ## Dependencies & Open Questions
 
 - **Q1 (blocks the release notes)**: how long the upgrade step takes on a large instance. Measured about 8.5 minutes on 25 GB; on track for about 1 h 45 min on 100 GB, being confirmed.
-- **Q2 (blocks the Activities page frontend change)**: product and frontend sign-off on removing the total count.
+- **Q2 (no longer blocking)**: the design doc asks for product sign-off on removing the total count from the Activities page, but the page's query already does not select it; only the server-side count changes, which users do not see. To confirm with product and correct in the design doc.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
 - Delivery order: part 1 task history (User Story 1), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
