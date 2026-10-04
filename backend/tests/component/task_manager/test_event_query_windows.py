@@ -140,6 +140,13 @@ WINDOW_CASES = [
         expected=[0, 1, 2, 3],
     ),
     WindowCase(
+        name="explicit_start_inside_a_wider_window_that_fills_the_page",
+        account=DENSE_ACCOUNT,
+        limit=13,
+        since_age=timedelta(hours=2),
+        expected=list(range(12)),
+    ),
+    WindowCase(
         name="oldest_first",
         account=SPARSE_ACCOUNT,
         limit=3,
