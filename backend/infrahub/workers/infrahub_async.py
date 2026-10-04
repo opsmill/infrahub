@@ -183,7 +183,7 @@ class InfrahubWorkerAsync(BaseWorker):
         self,
         flow_run: FlowRun,
         configuration: BaseJobConfiguration,
-        task_status: TaskStatus[int] | None = None,
+        task_status: TaskStatus[Any] | None = None,
     ) -> BaseWorkerResult:
         flow_run_logger = self.get_flow_run_logger(flow_run)
 
@@ -197,7 +197,8 @@ class InfrahubWorkerAsync(BaseWorker):
         params = flow_func.validate_parameters(parameters=flow_run.parameters)
 
         if task_status:
-            task_status.started(True)
+            # Flows run in this worker's event loop, so there is no infrastructure identifier to record.
+            task_status.started()
 
         async with AsyncClientContext(httpx_settings={"verify": get_http().verify_tls()}) as ctx:
             ctx._httpx_settings = None  # Hack to make all child task/flow runs use the same client
