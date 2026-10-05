@@ -562,7 +562,7 @@ feature. Tasks cover all three.
 3. `merge-failure-recovery.md`, "Key Files": it attributes the merge-start logic to
    `core/branch/tasks.py::_do_merge_branch`. That logic now lives in `core/merge/orchestrator.py`.
 
-Two of the four "Volatile section" notes in `git-integration.md` need rewriting. The one under
+Two of the three "Volatile section" notes in `git-integration.md` need rewriting. The one under
 "How git errors are classified" describes this feature as planned. The one on the merge ordering
 describes push-before-graph-write as intended, and it shipped with IFC-1449, so the section it sits
 in, "The writeback direction has no reconciliation", is stale around it. Its first bullet still
@@ -571,6 +571,6 @@ bullet, "Re-running the merge no-ops", still describes a local merge commit that
 after a rejected push, which the reset now removes, so a retry re-derives the merge and reaches the
 push again. The paragraph below the bullets still says a merge commit "exists on exactly one
 worker's disk". Only the second bullet, "Nothing ever re-pushes", stays accurate.
-There are three such notes, not four: PR #10542 removed the trunk-fallback one when it landed.
+
 **Leave the remaining one alone.** It covers the persisted writeback state (IFC-3220). Rewriting
 it would claim another fix shipped.
