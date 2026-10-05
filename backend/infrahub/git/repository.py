@@ -65,11 +65,12 @@ class PendingObjectImport:
     infrahub_branch_name: str
     commit: str
     git_branch_name: str | None = None
-    infrahub_branch_id: str | None = None
-    """The branch UUID, set when a sync collected the import."""
+    reconciled: ReconciledBranch | None = None
+    """The branch a sync advanced to produce this import, None for an import no sync collected.
 
-    divergence: RefDivergence | None = None
-    """How the remote head compared to the commit the graph records, when the sync classified the branch."""
+    It names the branch whose commit the sync wrote, which differs from ``infrahub_branch_name`` when
+    the objects of a staging repository's trunk go to the staging branch.
+    """
 
 
 class ImportStep(StrEnum):
@@ -106,17 +107,8 @@ class CollectedImports:
 
     @property
     def reconciled(self) -> list[ReconciledBranch]:
-        """The Infrahub branch each collected import advances, and the commit it advances to."""
-        return [
-            ReconciledBranch(
-                infrahub_branch_name=pending_import.infrahub_branch_name,
-                infrahub_branch_id=pending_import.infrahub_branch_id,
-                commit=pending_import.commit,
-                divergence=pending_import.divergence,
-            )
-            for pending_import in self.imports
-            if pending_import.infrahub_branch_id is not None
-        ]
+        """The branch each collected import advanced, and the commit it advanced to."""
+        return [pending_import.reconciled for pending_import in self.imports if pending_import.reconciled is not None]
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -504,8 +496,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             PendingObjectImport(
                 infrahub_branch_name=infrahub_branch,
                 commit=commit,
-                infrahub_branch_id=branch.id,
-                divergence=divergence,
+                reconciled=ReconciledBranch(
+                    infrahub_branch_name=infrahub_branch,
+                    infrahub_branch_id=branch.id,
+                    commit=commit,
+                    divergence=divergence,
+                ),
             )
         )
 
@@ -552,10 +548,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             RepositoryError: When git cannot classify the branch or move its worktree.
-            ValueError: When the graph has no ``import_branch``, or the branch has no worktree here.
+            ValueError: When the graph has no Infrahub branch for the branch, or it has no worktree here.
 
         """
-        branch_id = self._get_branch_id(infrahub_branch=import_branch, graph_branches=graph_branches)
+        advanced_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        branch_id = self._get_branch_id(infrahub_branch=advanced_branch, graph_branches=graph_branches)
         remote_head = remote_heads.get(branch_name)
         divergence = self._classify_against_graph(
             branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
@@ -567,8 +564,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     infrahub_branch_name=import_branch,
                     commit=commit,
                     git_branch_name=git_branch_name,
-                    infrahub_branch_id=branch_id,
-                    divergence=divergence,
+                    reconciled=ReconciledBranch(
+                        infrahub_branch_name=advanced_branch,
+                        infrahub_branch_id=branch_id,
+                        commit=commit,
+                        divergence=divergence,
+                    ),
                 )
             )
 

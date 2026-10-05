@@ -143,14 +143,22 @@ def divergence(
 
 
 def queued(
-    commit: str, divergence: RefDivergence | None, branch_name: str = TRACKED, git_branch_name: str | None = None
+    commit: str,
+    divergence: RefDivergence | None,
+    branch_name: str = TRACKED,
+    import_branch: str | None = None,
+    git_branch_name: str | None = None,
 ) -> PendingObjectImport:
     return PendingObjectImport(
-        infrahub_branch_name=branch_name,
+        infrahub_branch_name=import_branch or branch_name,
         commit=commit,
         git_branch_name=git_branch_name,
-        infrahub_branch_id=f"{branch_name}-id",
-        divergence=divergence,
+        reconciled=ReconciledBranch(
+            infrahub_branch_name=branch_name,
+            infrahub_branch_id=f"{branch_name}-id",
+            commit=commit,
+            divergence=divergence,
+        ),
     )
 
 
@@ -428,7 +436,8 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_i
         queued(
             commit=rewritten,
             divergence=divergence(imported, rewritten, RefClassification.REWRITE, branch_name="main"),
-            branch_name=STAGING,
+            branch_name="main",
+            import_branch=STAGING,
             git_branch_name="main",
         )
     ]

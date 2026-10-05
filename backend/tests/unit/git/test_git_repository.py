@@ -30,6 +30,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git import InfrahubRepository
 from infrahub.git.base import BranchInRemote
+from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -735,7 +736,13 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
     collected = await repository.collect_pending_imports()
 
     assert collected.imports == [
-        PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02", infrahub_branch_id="branch02-id")
+        PendingObjectImport(
+            infrahub_branch_name="branch02",
+            commit="commit-branch02",
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="branch02", infrahub_branch_id="branch02-id", commit="commit-branch02"
+            ),
+        )
     ]
     assert collected.failed_imports == [
         FailedImport(

@@ -66,6 +66,12 @@ class ReconciledBranch:
     """One branch a synchronisation cycle advanced, and the commit it advanced to."""
 
     infrahub_branch_name: str
+    """The branch whose commit the cycle wrote.
+
+    For a staging repository it is the branch the trunk maps onto, not the staging branch that receives
+    the objects.
+    """
+
     infrahub_branch_id: str
     """The branch UUID, not the database element id."""
 

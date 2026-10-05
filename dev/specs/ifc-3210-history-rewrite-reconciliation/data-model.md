@@ -172,8 +172,8 @@ broadcast is built from them but carries `BranchCommitPair`, which holds no dive
 
 | Field | Type | Meaning |
 |---|---|---|
-| `infrahub_branch_name` | `str` | The Infrahub branch. |
-| `infrahub_branch_id` | `str` | The branch UUID, not the database element id. A worker missing the worktree creates it under whatever it is given. |
+| `infrahub_branch_name` | `str` | The Infrahub branch whose commit the cycle wrote. On a staging repository it is the branch the trunk maps onto, not the staging branch that receives the objects, so the broadcast converges the trunk worktree and the recorder writes on the branch the classification compared. |
+| `infrahub_branch_id` | `str` | The UUID of that branch, not the database element id. A worker missing the worktree creates it under whatever it is given. |
 | `commit` | `str` | The commit the cycle pinned. |
 | `divergence` | `RefDivergence \| None` | How the remote head compares to the commit the graph records, whatever the classification. `None` when the cycle had no graph commits to compare against, as in the add flow. |
 

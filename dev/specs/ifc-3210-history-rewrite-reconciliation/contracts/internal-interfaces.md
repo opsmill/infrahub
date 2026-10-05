@@ -449,6 +449,7 @@ repository.
 | One message, for `staging_branch or registry.default_branch` only | One message, carrying every branch the cycle advanced |
 | Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is re-raised |
 | Commit read from `repo.default_branch` | Commit taken per branch from `ReconciledBranch` |
+| A staging sync names the staging branch | A staging sync names the branch its trunk maps onto, as `ReconciledBranch` does, so other workers move their trunk worktree |
 
 ### Rules
 
