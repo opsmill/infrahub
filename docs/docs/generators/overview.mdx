@@ -231,9 +231,11 @@ A Generator run leaves four kinds of data in Infrahub: the Generator instance, t
 |---|---|---|---|---|
 | You remove the target object from the target group | Not deleted | Not deleted ([#3289](https://github.com/opsmill/infrahub/issues/3289)) | Not deleted | Not deleted |
 | You delete the target object | Deleted | Not deleted | Not deleted | Not deleted. The deleted object is no longer a member. |
-| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted |
+| You remove the Generator definition | Deleted | Not deleted | Not deleted | Not deleted, unless you also remove the query from `.infrahub.yml`. Deleting a query deletes its query groups. |
 
-Infrahub does not delete Generator groups or GraphQL query groups automatically. They stay in Infrahub until you delete them. To remove them with a retired Generator, see [Remove a generator](./remove).
+Infrahub does not delete Generator groups automatically. A GraphQL query group is deleted only when its query is deleted. To remove both with a retired Generator, see [Remove a generator](./remove).
+
+Generator groups appear in the list of groups in the web interface. GraphQL query groups are internal groups, which the list hides by default; remove the internal groups filter to view them. See [the visibility model](../groups/overview#the-visibility-model).
 
 ## Query response modes
 
