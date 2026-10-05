@@ -276,7 +276,7 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/infrahub/git/tasks.py::sync_remote_repositories` in its own `try`, so no failure in
       one repository can stop the others (FR-018a). This guard is missing today, independently of
       this feature.
-- [ ] T035 [US3] Make the `fetch` handler's collaborators injectable before testing it. It reads
+- [x] T035 [US3] Make the `fetch` handler's collaborators injectable before testing it. It reads
       the module-global `lock.registry` and calls `get_initialized_repo(get_client())`, neither of
       which a database-free, mock-free unit test can substitute.
 - [ ] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
