@@ -1,5 +1,8 @@
 # Rework contract (2026-10-01): one row per branch
 
+> **Superseded 2026-10-01 by [`rework-contract-a.md`](./rework-contract-a.md).** Kept as the record of the one-row-per-branch rework with per-cell fetching; the data path it describes was replaced by the repository-anchored, page-owned design (research R15).
+
+
 Owner decision after trying the fan-out on a dev stack with 24 branches × 16 repositories: 279 rows,
 280 checkboxes, ~15 000 DOM nodes, ~200 console warnings, visibly slow. The 24 per-branch requests
 complete in 0.36 s total, so the cost is rendering, not fetching. The ticket's "one row per

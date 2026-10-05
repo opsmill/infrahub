@@ -84,5 +84,8 @@ class TestBranchesGitColumns:
         if not read_only:
             await expect(repositories_cell).to_have_text("Not synced with Git")
             return
-        names = sorted((repository.name.value for repository in read_only), key=str.lower)
-        await expect(repositories_cell.get_by_role("link").first).to_have_text(names[0])
+        # The lead pill is the worst sync status, so only membership is stable across leftovers.
+        names = {repository.name.value for repository in read_only}
+        lead = repositories_cell.get_by_role("link").first
+        await expect(lead).to_be_visible()
+        assert (await lead.inner_text()).strip() in names
