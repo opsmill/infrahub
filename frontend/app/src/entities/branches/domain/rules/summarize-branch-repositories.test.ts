@@ -11,14 +11,16 @@ import { generateBranch } from "../../../../../tests/fake/branch";
 import { generateDropdown } from "../../../../../tests/fake/dropdown";
 import { generateRepositoryBranchStatus } from "../../../../../tests/fake/repository";
 import {
+  findBranchesAbsentFromEveryPage,
   type RepositoryStatusFetch,
   summarizeBranchRepositories as summarize,
 } from "./summarize-branch-repositories";
 
 const summarizeBranchRepositories = (
   branches: Parameters<typeof summarize>[0],
-  fetches: Parameters<typeof summarize>[1]
-) => summarize(branches, fetches, compareSyncStatusSeverity);
+  fetches: Parameters<typeof summarize>[1],
+  unconfirmedBranchNames?: Parameters<typeof summarize>[3]
+) => summarize(branches, fetches, compareSyncStatusSeverity, unconfirmedBranchNames);
 
 const IMPORT_ERROR = generateDropdown({
   value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,
@@ -152,16 +154,50 @@ describe("summarizeBranchRepositories", () => {
             generateRepositoryBranchStatus({ name: { value: "main" }, sync_status: null })
           ),
         ]),
+        fetched("e", [row("main", UNKNOWN)]),
       ]
     );
 
     expect(summaries.main).toMatchObject({
       counts: [
         { value: "error-import", label: "Import Error", count: 1 },
-        { value: null, label: "Unknown", count: 1 },
+        { value: "unknown", label: "Unknown", count: 2 },
         { value: "in-sync", label: "In Sync", count: 2 },
       ],
     });
+  });
+
+  it("reads a row with no sync status as unknown", () => {
+    const summaries = summarizeBranchRepositories(
+      [main],
+      [
+        fetched("a", [
+          mapRepositoryBranchStatusRow(
+            generateRepositoryBranchStatus({ name: { value: "main" }, sync_status: null })
+          ),
+        ]),
+      ]
+    );
+
+    expect(summaries.main).toMatchObject({
+      repositories: [
+        {
+          syncStatus: { value: "unknown", label: "Unknown", color: null, description: null },
+        },
+      ],
+    });
+  });
+
+  it("keeps a branch the pages may predate pending instead of empty", () => {
+    // GIVEN pages read before the local branch appeared
+    const fetches = [fetched("a", [row("main")])];
+
+    // WHEN
+    const summaries = summarizeBranchRepositories([main, local], fetches, ["local"]);
+
+    // THEN
+    expect(summaries.local).toEqual({ status: "pending" });
+    expect(summaries.main).toMatchObject({ status: "ok" });
   });
 
   it("reports an error for a branch absent from a page the backend cut short", () => {
@@ -234,5 +270,18 @@ describe("summarizeBranchRepositories", () => {
     expect(summaries.feature).toMatchObject({
       repositories: [{ repository: { name: "read-only" } }, { repository: { name: "read-write" } }],
     });
+  });
+});
+
+describe("findBranchesAbsentFromEveryPage", () => {
+  it("lists the branches no loaded page mentions", () => {
+    const fetches = [fetched("a", [row("main")]), fetched("b", [row("main"), row("feature")])];
+
+    expect(findBranchesAbsentFromEveryPage([main, feature, local], fetches)).toEqual(["local"]);
+  });
+
+  it("lists nothing while a page is loading or when there is no page", () => {
+    expect(findBranchesAbsentFromEveryPage([local], [{ status: "pending" }])).toEqual([]);
+    expect(findBranchesAbsentFromEveryPage([local], [])).toEqual([]);
   });
 });

@@ -5,6 +5,7 @@ import { renderHook } from "vitest-browser-react";
 
 import { retryBackgroundQuery } from "@/shared/api/background-query";
 
+import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { useBranchRepositorySummaries } from "@/entities/branches/ui/hooks/use-branch-repository-summaries";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import {
@@ -38,6 +39,7 @@ vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
 
 const primary = generateBranch({ id: "b-primary", name: "primary", is_default: true });
 const feature = generateBranch({ id: "b-feature", name: "feature", sync_with_git: true });
+const fresh = generateBranch({ id: "b-fresh", name: "fresh", sync_with_git: true });
 
 const SYNCING = generateDropdown({ value: "syncing", label: "Syncing" });
 
@@ -55,10 +57,12 @@ const renderSummaries = async () => {
   });
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
-  const rendered = await renderHook(() => useBranchRepositorySummaries([primary, feature]), {
-    wrapper,
-  });
-  return { queryClient, result: rendered.result };
+  const rendered = await renderHook(
+    (props?: { branches: BranchListItem[] }) =>
+      useBranchRepositorySummaries(props?.branches ?? [primary, feature]),
+    { wrapper, initialProps: { branches: [primary, feature] } }
+  );
+  return { queryClient, result: rendered.result, rerender: rendered.rerender };
 };
 
 describe("useBranchRepositorySummaries", () => {
@@ -142,6 +146,37 @@ describe("useBranchRepositorySummaries", () => {
       )
       .toBe(2);
     expect(result.current.feature?.status).toBe("ok");
+  });
+
+  test("re-reads the status once for a branch the cached pages predate, pending until then", async () => {
+    // GIVEN status pages read before the fresh branch existed
+    const { result, rerender, queryClient } = await renderSummaries();
+    await expect.poll(() => result.current.feature?.status).toBe("ok");
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const pendingReads: Array<() => void> = [];
+    vi.mocked(getRepositoryBranchStatus).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          pendingReads.push(() => resolve(pageOf("primary", "feature")));
+        })
+    );
+
+    // WHEN a branch-list refetch brings the fresh branch
+    await rerender({ branches: [primary, feature, fresh] });
+
+    // THEN it waits on one re-read instead of showing no repositories
+    expect(result.current.fresh).toEqual({ status: "pending" });
+    await expect.poll(() => invalidate.mock.calls.length).toBe(1);
+    expect(result.current.fresh).toEqual({ status: "pending" });
+
+    // WHEN the re-read lands without the branch
+    for (const resolve of pendingReads) resolve();
+
+    // THEN its absence is the answer
+    await expect
+      .poll(() => result.current.fresh)
+      .toEqual({ status: "ok", repositories: [], counts: [] });
+    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
   test("marks every branch denied when every status read is denied", async () => {

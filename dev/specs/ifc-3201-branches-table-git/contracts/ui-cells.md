@@ -15,7 +15,7 @@ This file covers the props and rendering contracts for what the feature adds or 
 - **Muted text**: `<span className="text-foreground-muted">…</span>` (FR-007, FR-012, FR-013).
 - **Headers**: `TableColumnHeaderSimple` over the `BRANCH_FIELD_SCHEMAS` entries, with no filter or sort control (FR-015).
 - **Column position**: after `proposed_changes`; display column ids `repositories` and `git_state`.
-- **Link rule**: the repository pill carries the **row's** branch via `getBranchQspOverride(branch.name, Boolean(branch.is_default))`. The default branch gets no `branch` parameter.
+- **Link rule**: the repository pill carries the **row's** branch via `getBranchQsp(branch.name)`. The default branch's row also carries `branch=<default>`.
 
 ## `useBranchRepositorySummaries` — `entities/branches/ui/hooks/use-branch-repository-summaries.ts` (new)
 
@@ -23,7 +23,9 @@ This file covers the props and rendering contracts for what the feature adds or 
 function useBranchRepositorySummaries(branches: BranchListItem[]): Record<string, BranchRepositorySummary>
 ```
 
-Reads the default branch (`is_default`) from the branches provider; calls `useGetBranchRepositories({ branchName: <default>, syncWithGit: true })`; runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default>, limit: 500 })`, `staleTime: 60_000` and `refetchInterval: 10_000` while any row of that query is `syncing`; `combine` maps results to `RepositoryStatusFetch` (data-first, `PERMISSION_DENIED` → denied) and returns `summarizeBranchRepositories(branches, fetches)`. No `useMemo`.
+Reads the default branch (`is_default`) from the branches provider; reads the repository list with `useQuery(getBranchRepositoriesQueryOptions({ branchName: <default>, syncWithGit: true, isSyncing: false, limit: 500, offset: 0 }))`; runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default>, limit: 500 })`, `staleTime: 60_000` and `refetchInterval: 10_000` while any row of that query is `syncing`; `combine` maps results to `RepositoryStatusFetch` (data-first, `PERMISSION_DENIED` → denied) and returns `summarizeBranchRepositories(branches, fetches, compareSyncStatusSeverity, unconfirmedBranchNames)`. No `useMemo`.
+
+A branch that appears in a branch-list refetch after the status pages were read is absent from every page without that being an answer. The hook keeps, per branch name, the oldest status read time (`max(dataUpdatedAt, errorUpdatedAt)` over the status queries) at the moment the branch first appeared. A branch absent from every loaded page whose pages are not newer than that time is unconfirmed: it summarises as `pending`, and an effect invalidates `repositoryQueryKeys.branchStatuses()` once, when no status query is fetching. After that re-read (successful or failed), the branch's absence is final and it summarises as `ok` with no repositories.
 
 ## `BranchRepositoriesCell` — `entities/branches/ui/branches-table/cells/branch-repositories-cell.tsx`
 
@@ -40,7 +42,7 @@ interface BranchRepositoriesCellProps { branch: BranchTableRow }
 | `ok`, 0 repositories, `branch.sync_with_git === true` | muted "No repositories" |
 | `ok`, N ≥ 1 | the pill, then, when N > 1, the "+N more" link (`Row className="flex-wrap"`) |
 
-**Pill**: `LinkPill` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branch.name, Boolean(branch.is_default))])` for `repositories[0].repository`, `className="max-w-40"`, content `FolderGitIcon` (`shrink-0`) + `<span className="truncate">{name}</span>`. Wrapped in `Tooltip` whose message is `formatRepositoryState / formatSyncStatusCounts(repositories[0])` (`entities/branches/domain/rules/format-repository-summary.ts`): `<label> · <7-char commit> · read-only`, each part omitted when absent (FR-004).
+**Pill**: `LinkPill` to `getObjectDetailsUrl(kind, id, [getBranchQsp(branch.name)])` for `repositories[0].repository`, `className="max-w-40"`, content `FolderGitIcon` (`shrink-0`) + `<span className="truncate">{name}</span>`. Wrapped in `Tooltip` whose message is `formatRepositoryState / formatSyncStatusCounts(repositories[0])` (`entities/branches/domain/rules/format-repository-summary.ts`): `<label> · <7-char commit> · read-only`, each part omitted when absent (FR-004).
 
 **"+N more"**: react-router `Link` to `getBranchDetailsUrl(branch.name)`, text `+{N - 1} more`, `className="shrink-0 whitespace-nowrap text-foreground-muted text-sm hover:underline"`.
 

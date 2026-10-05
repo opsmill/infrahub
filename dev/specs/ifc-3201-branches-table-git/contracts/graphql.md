@@ -6,7 +6,7 @@
 
 ## 1. Repository list, once
 
-`entities/repository/ui/queries/get-branch-repositories.query.ts::useGetBranchRepositories({ branchName: <default branch>, syncWithGit: true })` (#10779), i.e. `GET_BRANCH_REPOSITORIES` over `CoreGenericRepository(limit: 500)`, sent on the default branch (taken from the branches provider by `is_default`). The list reads `id`, `name`, `kind` (`__typename`) and `isReadOnly` from it.
+`useQuery(getBranchRepositoriesQueryOptions({ branchName: <default branch>, syncWithGit: true, isSyncing: false, limit: 500, offset: 0 }))` from `entities/repository/ui/queries/get-branch-repositories.query.ts` (#10779), i.e. `GET_BRANCH_REPOSITORIES` over `CoreGenericRepository(limit: 500)`, sent on the default branch (taken from the branches provider by `is_default`). The list reads `id`, `name`, `kind` (`__typename`) and `isReadOnly` from it.
 
 ## 2. Status, once per repository
 
@@ -29,10 +29,10 @@ query REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int, $offset: Int, $name__v
 | Entry point | `entities/repository/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusQueryOptions(params)` (factory, no hook), run by `useBranchRepositorySummaries` through `useQueries` |
 | Variables | `{ id: <repository id>, limit: 500 }` |
 | Branch | the default branch, as the request's branch context; the rows name their own branch |
-| Query key | `repositoryQueryKeys.branchStatus(params)`, i.e. `["repositories", "branch-status", { id, branchName, limit }]` (#10658's member name and shape on this base's `all`) |
+| Query key | `repositoryQueryKeys.branchStatus(params)`, i.e. `["repository", "branch-status", { id, branchName, limit }]`, under the prefix `repositoryQueryKeys.branchStatuses()` (`["repository", "branch-status"]`) that the hook invalidates for a branch the pages predate |
 | Row set | read/write repositories: `sync_with_git` branches only; read-only repositories: every branch; MERGED, DELETING and the global branch excluded |
-| Freshness | `staleTime: 60_000`; `refetchInterval: 10_000` while any row's `sync_status.value === "syncing"` |
-| Retry | none (`queryClient` default `retry: false`) |
+| Freshness | `staleTime: 60_000`; `refetchInterval: pollWhileHealthy(anyRowSyncing, 10_000, query)`: 10 s while any row's `sync_status.value === "syncing"`, slower after a failed refetch, none after a permission denial |
+| Retry | `retryBackgroundQuery` (`shared/api/background-query.ts`): up to 2 retries, none on `PERMISSION_DENIED` or a load-shed response |
 | Requests | 1 + R per page load (16 on the dev stack), none on scroll |
 
 ## Result mapping (`domain/use-cases/get-repository-branch-status.ts::getRepositoryBranchStatus`)
