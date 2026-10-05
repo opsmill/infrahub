@@ -128,7 +128,7 @@ which is still the true answer to "what did Infrahub hold".
 ## R2. Where the read-write detection runs
 
 **Decision**: inside `git/repository.py::InfrahubRepository.collect_pending_imports`, over every
-candidate branch, after `fetch()` and before `pull()`. The candidates are the union described below,
+candidate branch, after `fetch()` and before the worktree moves. The candidates are the union described below,
 plus the branches new to this worker.
 
 **Rationale**: the fetch that precedes it has already brought the remote objects in, so the
@@ -167,9 +167,10 @@ by a rejected push, no longer arises: `merge` pushes before it records and reset
 when either step fails, and `rebase` delegates to `merge`.
 
 **Rationale**: FR-005 requires convergence to hold for a worker that received no broadcast. Every
-path that advances a branch worktree **from the remote** goes through `pull`: the sync collector,
-and the `RefreshGitFetch` handler when no commit is pinned. Putting the rule there makes the
-property true by construction for those paths rather than by broadcast coverage.
+path that advances a branch worktree **from the remote** either resets it itself, as the sync
+collector does, or goes through `pull`, as the `RefreshGitFetch` handler does when no commit is
+pinned. Putting the rule in `pull` makes the property true by construction for the paths that do
+not reset, rather than by broadcast coverage.
 
 **It does not cover every path.** Two paths advance a destination worktree from purely local
 state, with no fetch and no pull:

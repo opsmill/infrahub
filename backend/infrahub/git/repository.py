@@ -341,9 +341,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         whose objects still need importing into the graph, alongside the branches whose git setup
         failed and the reason each one failed.
 
-        A branch worktree that does not lead to the remote head is reset onto it, whatever the graph
-        records. Each branch is also classified against the commit the graph records for it, which is
-        what tells a rewritten history apart from a fast-forward.
+        A branch worktree that moves is hard-reset onto the remote head, whatever the graph records, and
+        a worktree that does not lead to that head loses the commits it held. Each branch is also
+        classified against the commit the graph records for it, which is what tells a rewritten history
+        apart from a fast-forward.
 
         Args:
             graph_commits: The commit the graph records for this repository, per Infrahub branch that
@@ -627,12 +628,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def _advance_branch(
         self, branch_name: str, remote_head: str | None, divergence: RefDivergence | None
     ) -> str | None:
-        """Bring this worker's worktree of a branch onto the remote head and return the commit to import.
+        """Hard-reset this worker's worktree of a branch onto the remote head and return the commit to import.
 
-        The worktree head against the remote head decides how the worktree moves, so a worker whose
-        graph already records the remote head still resets a worktree that holds a history the remote
-        discarded. The classification decides one case only: a worktree already on the remote head is
-        left alone unless the graph records another commit. Returns None when there is nothing to import.
+        The classification decides one case only: a worktree already on the remote head is left alone
+        unless the graph records another commit. Returns None when there is nothing to import.
 
         Raises:
             ValueError: When the branch has no worktree on this worker.
@@ -652,29 +651,16 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if (
             worktree_head is not None
             and worktree_head != remote_head
-            and self._get_ancestry_gateway().is_ancestor(ancestor_commit=worktree_head, descendant_commit=remote_head)
+            and not self._get_ancestry_gateway().is_ancestor(
+                ancestor_commit=worktree_head, descendant_commit=remote_head
+            )
         ):
-            commit_after = await self.pull(branch_name=branch_name)
-            if commit_after is True:
-                log.warning(
-                    "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
-                    commit_after,
-                    branch_name,
-                    self.name,
-                )
-            if not isinstance(commit_after, str):
-                return None
-            commit = commit_after
-        else:
-            # Unlike a pull, a reset records the commit of a worktree that is already on the remote head.
-            await self.reset_to_commit(branch_name=branch_name, commit=remote_head)
-            commit = remote_head
-            if worktree_head != remote_head:
-                discarded_commit = discarded_commit or worktree_head
+            discarded_commit = discarded_commit or worktree_head
 
+        await self.reset_to_commit(branch_name=branch_name, commit=remote_head)
         if discarded_commit is not None:
-            self._log_reconciliation(branch_name=branch_name, discarded_commit=discarded_commit, commit=commit)
-        return commit
+            self._log_reconciliation(branch_name=branch_name, discarded_commit=discarded_commit, commit=remote_head)
+        return remote_head
 
     def _log_reconciliation(self, branch_name: str, discarded_commit: str, commit: str) -> None:
         log.info(

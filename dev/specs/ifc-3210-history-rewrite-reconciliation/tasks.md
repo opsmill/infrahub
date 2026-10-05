@@ -157,6 +157,9 @@ head, the imported objects match the rewritten tree, and the repository reports 
       catches up, so a `default_branch` edit records a rewrite and fires the trunk event on every
       cycle after the first.
       Then record the commit and pin the commit worktree as the fast-forward path already does.
+      Landed with a hard reset onto the classified remote head in every case that moves the
+      worktree, a worktree behind the remote included, so the commit imported is the one the cycle
+      classified. A pull would fetch again and could import a newer one.
       This is what repairs a worker whose graph already equals the remote while its own worktree is
       stale (FR-001c). Keying the reset on the classification would leave that worker on the
       discarded history, flagged by `compare_local_remote` every cycle and repaired by nothing,

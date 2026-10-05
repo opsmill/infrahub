@@ -199,7 +199,7 @@ async def test_a_rewritten_branch_is_reset_onto_the_remote_head_and_imported_aga
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=imported, commit=rewritten)]
 
 
-async def test_a_fast_forwarded_branch_is_pulled_and_reports_no_reconciliation(
+async def test_a_fast_forwarded_branch_is_moved_onto_the_remote_head_and_reports_no_reconciliation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)

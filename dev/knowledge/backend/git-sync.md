@@ -101,11 +101,13 @@ apart, because they drive different outcomes:
   unchanged, fast-forward, rewrite, re-target or gone from the remote (`git/divergence/`). The commits
   are read once per cycle by `get_repositories_commit_per_branch` and passed down through the sync
   flows.
-- **This worker's worktree head against the remote head** says whether the clone moves. A worktree
-  behind the remote is pulled. A worktree that does not lead to the remote head, because the remote
-  was rewritten or rewound, is hard-reset onto it. That includes a worktree ahead of the remote, and
-  the reset discards its local commits. No path leaves such a commit: `InfrahubRepository.merge`
-  pushes before it records the commit, and resets the destination worktree when either step fails
+- **This worker's worktree head against the remote head** says whether the clone moves. The sync
+  moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
+  remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
+  to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
+  that includes a worktree ahead of the remote. No path leaves such a commit:
+  `InfrahubRepository.merge` pushes before it records the commit, and resets the destination
+  worktree when either step fails
   ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
   already on the remote head stays there. When the graph records another commit, the sync resets the
   worktree onto the same commit, which records it, and imports the branch again: a pull would move

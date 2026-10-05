@@ -204,7 +204,7 @@ Reset, from this worker's worktree against the remote, decided independently:
 |---|---|---|
 | Equal | equals the remote head | nothing |
 | Equal | **differs from the remote head** | **write the commit, queue the import, and record if the classification is `REWRITE`** |
-| Worktree is an ancestor of the remote head | any | pull, as today |
+| Worktree is an ancestor of the remote head | any | reset onto the remote head, which fast-forwards it. Not a pull: a pull fetches again and can import a newer commit than the one classified |
 | Remote head is an ancestor of the worktree | any | reset onto the remote head. The remote was rewound |
 | Neither is an ancestor | any | reset onto the remote head |
 | The remote carries no such ref | any | nothing |
@@ -309,8 +309,8 @@ Returns whether a record was written.
 
 `RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
 once per branch around `apply_branch_import`. The reconciled commit is written inside the **first**
-one: `collect_pending_imports` calls `pull`, which defaults `update_commit_value=True`, and the
-reset path of the sync task writes the commit the same way.
+one: `collect_pending_imports` moves every branch with `reset_to_commit`, which defaults
+`update_commit_value=True`.
 
 **The recorder runs there, beside that write.** Both properties the placement needs hold:
 
