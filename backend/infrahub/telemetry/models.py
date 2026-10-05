@@ -3,6 +3,15 @@ from pydantic import BaseModel, Field
 from .constants import InfrahubType
 
 
+class TelemetryPerWorkerData(BaseModel):
+    """One worker's share of its container's CPU and memory; multiplied by the active count it gives the total."""
+
+    processor_available: float | None = None
+    processor_assigned: float | None = None
+    memory_total: int | None = None
+    memory_available: int | None = None
+
+
 class TelemetryWorkerData(BaseModel):
     total: int
     active: int
@@ -48,6 +57,15 @@ class TelemetryDatabaseSystemInfoData(BaseModel):
     memory_total: int
     memory_available: int
     processor_available: int
+    processor_assigned: int | None = Field(default=None, ge=0)
+
+
+class TelemetryComponentData(BaseModel):
+    """One component's processes, counted like the workers block, with one worker's CPU and memory."""
+
+    total: int | None = None
+    active: int | None = None
+    per_worker: TelemetryPerWorkerData = Field(default_factory=TelemetryPerWorkerData)
 
 
 class TelemetryDatabaseData(BaseModel):
@@ -79,6 +97,8 @@ class TelemetryData(BaseModel):
     python_version: str
     platform: str
     workers: TelemetryWorkerData
+    server: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
+    task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
     branches: TelemetryBranchData
     accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
     activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
