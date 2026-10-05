@@ -267,7 +267,7 @@ A branch with no repository to show reads one of these texts in its **Repositori
 
 A branch created outside this page, such as by a Git import or by another user, can read **No repositories** or **Not synced with Git** until the page reads the repository status lists again. The page reads them again when you reload it, or when you return to the browser window at least a minute after the last read. A branch created from this page shows these texts only until that reading finishes, because creating a branch starts it.
 
-The branch columns load normally in every one of these states. While a repository is syncing on any branch, Infrahub refreshes that repository's state on every branch until the sync finishes.
+The branch columns load normally in every one of these states. While a repository is syncing on any branch, the open branches page reads that repository's state on every branch again every 10 seconds, until the sync finishes.
 
 ## Checking a repository's status on every branch
 
