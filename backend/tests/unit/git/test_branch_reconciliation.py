@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.uuidt import UUIDT
@@ -21,8 +22,6 @@ from tests.helpers.test_client import dummy_async_request
 if TYPE_CHECKING:
     from pathlib import Path
 
-    import pytest
-
     from infrahub.git.repository import InfrahubRepository
 
 SYNC_LOGGER = "infrahub.tasks"
@@ -31,6 +30,11 @@ OTHER = "other"
 STAGING = "staging-x"
 UNKNOWN_COMMIT = "0" * 40
 """A commit no clone holds, as when the graph recorded a history this worker never fetched."""
+
+
+@pytest.fixture(autouse=True)
+def capture_sync_logs(caplog: pytest.LogCaptureFixture) -> None:
+    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
 
 def branch_payload(name: str) -> dict[str, Any]:
@@ -164,8 +168,7 @@ async def test_a_rewritten_branch_is_reset_onto_the_remote_head_and_imported_aga
 ) -> None:
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
-    rewritten = tracked.remote.rewrite_branch(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"})
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
@@ -185,7 +188,6 @@ async def test_a_fast_forwarded_branch_is_pulled_and_reports_no_reconciliation(
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
     advanced = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
@@ -204,7 +206,6 @@ async def test_a_branch_the_remote_rewound_is_reset_back_onto_the_remote_head(
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
     tracked.remote.move_branch(branch_name=TRACKED, commit=tracked.trunk_commit)
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
@@ -229,8 +230,7 @@ async def test_a_stale_worktree_resets_even_when_the_graph_already_records_the_r
     """
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
-    rewritten = tracked.remote.rewrite_branch(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"})
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
         graph_commits=tracked.graph_commits(**{TRACKED: rewritten})
@@ -250,7 +250,6 @@ async def test_a_worktree_on_the_remote_head_records_the_commit_the_graph_lacks(
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
     assert await tracked.repository.compare_local_remote() == ([], [])
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
     collected = await tracked.repository.collect_pending_imports(
         graph_commits=tracked.graph_commits(**{TRACKED: tracked.trunk_commit})
@@ -272,7 +271,6 @@ async def test_a_worktree_on_the_remote_head_reports_the_commit_the_graph_held_a
 ) -> None:
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     imported = tracked.imported_commits[TRACKED]
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
     collected = await tracked.repository.collect_pending_imports(
         graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
@@ -303,7 +301,7 @@ async def test_a_branch_that_cannot_be_classified_fails_alone_and_keeps_its_work
 ) -> None:
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
     imported = tracked.imported_commits[TRACKED]
-    tracked.remote.rewrite_branch(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"})
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
 
     collected = await tracked.repository.collect_pending_imports(
@@ -327,8 +325,7 @@ async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_anot
     """The graph records what another worker imported, so a rewrite shows even on a worker without the branch."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
     imported = tracked.imported_commits[TRACKED]
-    rewritten = tracked.remote.rewrite_branch(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"})
-    caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
@@ -347,7 +344,7 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_i
         tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
     )
     imported = tracked.trunk_commit
-    rewritten = tracked.remote.rewrite_branch(branch_name="main", files={"data.txt": "main rewritten\n"})
+    rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
 
     collected = await tracked.repository.collect_pending_imports(
         staging_branch=STAGING, graph_commits=tracked.graph_commits()

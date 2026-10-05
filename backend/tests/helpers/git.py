@@ -62,8 +62,13 @@ class LocalRemote:
     def create_branch(self, branch_name: str) -> None:
         self.repo.git.branch(branch_name, self.trunk)
 
-    def commit(self, branch_name: str, files: dict[str, str]) -> str:
-        """Commit the given files on a branch, creating it from the trunk when it does not exist yet."""
+    def commit(self, branch_name: str, files: dict[str, str], amend: bool = False) -> str:
+        """Commit the given files on a branch, creating it from the trunk when it does not exist yet.
+
+        Args:
+            amend: Replace the last commit of the branch, so the branch no longer holds that commit.
+
+        """
         remote_head = self.repo.active_branch.name
         if branch_name not in [head.name for head in self.repo.heads]:
             self.create_branch(branch_name)
@@ -71,18 +76,10 @@ class LocalRemote:
         for name, content in files.items():
             (self.directory / name).write_text(content, encoding="utf-8")
         self.repo.index.add(list(files))
-        commit = self.repo.index.commit(f"Update on {branch_name}").hexsha
-        self.repo.git.checkout(remote_head)
-        return commit
-
-    def rewrite_branch(self, branch_name: str, files: dict[str, str]) -> str:
-        """Replace the last commit of a branch with a new one, so the branch no longer holds the commit it replaced."""
-        remote_head = self.repo.active_branch.name
-        self.repo.git.checkout(branch_name)
-        for name, content in files.items():
-            (self.directory / name).write_text(content, encoding="utf-8")
-        self.repo.index.add(list(files))
-        self.repo.git.commit("--amend", "-m", f"Rewritten on {branch_name}")
+        if amend:
+            self.repo.git.commit("--amend", "-m", f"Rewritten on {branch_name}")
+        else:
+            self.repo.index.commit(f"Update on {branch_name}")
         commit = self.repo.head.commit.hexsha
         self.repo.git.checkout(remote_head)
         return commit

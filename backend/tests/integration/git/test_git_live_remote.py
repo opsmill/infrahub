@@ -40,7 +40,6 @@ from tests.integration.git.conftest import (
     grant_read_access,
     readonly_clone_url,
     tracked_branch_files,
-    write_files_script,
 )
 
 if TYPE_CHECKING:
@@ -73,27 +72,6 @@ def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename:
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Remote commit failed (exit {result.exit_code}): {result.output.decode()}"
-
-
-def _force_push_rewritten_branch(container: DockerContainer, repo_name: str, branch: str, files: dict[str, str]) -> str:
-    """Replace the last commit of a remote branch with a different one, force-push it and return the new head.
-
-    This is what an amended commit or a rebase leaves on the remote: the branch no longer contains the
-    commit it pointed at before. Reuses the working clone that create_gogs_repo() left in /tmp/{repo_name}.
-    """
-    script = (
-        f"set -e && "
-        f"cd /tmp/{repo_name} && "
-        f"git fetch origin && "
-        f"git checkout -B {branch} origin/{branch} && "
-        f"{write_files_script(files)} && "
-        f"git add -A && "
-        f"git commit --amend -m 'Rewritten commit on {branch}' && "
-        f"git push --force origin {branch}"
-    )
-    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
-    assert result.exit_code == 0, f"Force push failed (exit {result.exit_code}): {result.output.decode()}"
-    return gogs_repo_branch_commit(container, repo_name, branch)
 
 
 def _install_remote_branch_rejection_hook(container: DockerContainer, repo_name: str, branch: str = "main") -> None:
@@ -992,11 +970,12 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
     ) -> None:
         tracked = await tracked_branch_repository("force-pushed-repo", "force-pushed-branch")
-        rewritten = _force_push_rewritten_branch(
+        rewritten = commit_to_remote_branch(
             gogs_server.container,
             tracked.name,
             branch=tracked.branch_name,
             files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
         )
 
         await sync_remote_repositories()
@@ -1069,7 +1048,9 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         repo = await InfrahubRepository.init(
             id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
         )
-        _push_commit_to_remote(gogs_server.container, tracked.name, "trunk_ahead.txt")
+        commit_to_remote_branch(
+            gogs_server.container, tracked.name, branch="main", files={"trunk_ahead.txt": "trunk ahead\n"}
+        )
         await repo.fetch()
         await repo.pull(branch_name="main", update_commit_value=False)
 

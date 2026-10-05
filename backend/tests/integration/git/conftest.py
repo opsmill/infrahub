@@ -215,7 +215,7 @@ def gogs_repo_tag(container: DockerContainer, repo_name: str, tag_name: str, com
     _gogs_git(container, repo_name, "tag", tag_name, commit_ish, failure=f"Tagging {repo_name} failed")
 
 
-def write_files_script(files: dict[str, str]) -> str:
+def _write_files_script(files: dict[str, str]) -> str:
     """Return shell commands writing each file into the current directory, whatever characters it holds."""
     commands = []
     for path, content in files.items():
@@ -225,22 +225,38 @@ def write_files_script(files: dict[str, str]) -> str:
 
 
 def commit_to_remote_branch(
-    container: DockerContainer, repo_name: str, branch: str, files: dict[str, str], base: str = "main"
+    container: DockerContainer,
+    repo_name: str,
+    branch: str,
+    files: dict[str, str],
+    base: str = "main",
+    amend: bool = False,
 ) -> str:
     """Commit files on a remote branch, creating it from ``base`` when absent, and return the new head.
 
     Reuses the working clone that create_gogs_repo() left in /tmp/{repo_name}.
+
+    Args:
+        amend: Replace the last commit of the branch and force-push it, as a rebase or an amended
+            commit does, so the branch no longer holds the commit it pointed at.
+
     """
+    commit = (
+        f"git commit --amend -m 'Rewritten commit on {branch}'"
+        if amend
+        else f"git commit -m 'Remote commit on {branch}'"
+    )
+    push = f"git push --force origin {branch}" if amend else f"git push origin {branch}"
     script = (
         f"set -e && "
         f"cd /tmp/{repo_name} && "
         f"git fetch origin && "
         f"if git rev-parse --verify --quiet origin/{branch} > /dev/null; "
         f"then git checkout -B {branch} origin/{branch}; else git checkout -B {branch} origin/{base}; fi && "
-        f"{write_files_script(files)} && "
+        f"{_write_files_script(files)} && "
         f"git add -A && "
-        f"git commit -m 'Remote commit on {branch}' && "
-        f"git push origin {branch}"
+        f"{commit} && "
+        f"{push}"
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Remote commit failed (exit {result.exit_code}): {result.output.decode()}"

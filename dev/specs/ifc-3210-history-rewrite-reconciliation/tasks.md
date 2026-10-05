@@ -112,6 +112,8 @@ head, the imported objects match the rewritten tree, and the repository reports 
       `backend/tests/integration/git/test_git_live_remote.py`, beside the existing
       `_push_commit_to_remote`, which lives in that module and not in `conftest.py`. It builds a
       divergent history inside the Gogs container and pushes it with `--force`.
+      It landed as the `amend` option of `commit_to_remote_branch` in
+      `backend/tests/integration/git/conftest.py`, the helper the T013 fixture also commits with.
 - [x] T013 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
       already imported, in `backend/tests/integration/git/conftest.py`. The rewrite tests all start
       from that state.
