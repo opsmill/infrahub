@@ -6,24 +6,29 @@ read liveness as a union across branches: a number stays taken while *any* branc
 becomes allocatable only once *every* branch has let it go.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.branch import Branch
-from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
-from infrahub.database import InfrahubDatabase
+from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.schema import TICKET, load_schema
+
+if TYPE_CHECKING:
+    from fast_depends import Provider
+
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 POOL_START = 1
 POOL_END = 10
@@ -60,23 +65,6 @@ async def _new_ticket(db: InfrahubDatabase, pool: CoreNumberPool, title: str) ->
     await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
     await ticket.save(db=db)
     return ticket
-
-
-async def _rebase_with_retirement(db: InfrahubDatabase, branch: Branch, base: Branch, node_id: str) -> None:
-    """Rebase as the rebase flow does, since only its retirement pass can close a reservation record."""
-    rebase_at = Timestamp()
-    nodes_to_check = await NodesToCheckForGlobalEdgesQuery.init(
-        db=db, branch_name=base.name, from_time=Timestamp(branch.get_branched_from()), to_time=rebase_at
-    )
-    await nodes_to_check.execute(db=db)
-    node_uuids = nodes_to_check.get_node_uuids()
-    assert node_id in node_uuids, "the rebase must re-evaluate the object deleted on the base branch"
-    async with db.start_transaction() as dbt:
-        await branch.rebase(db=dbt, at=rebase_at)
-        retirement = await RetireNodeAgnosticFieldsQuery.init(
-            db=dbt, node_uuids=node_uuids, at=rebase_at, user_id=SYSTEM_USER_ID
-        )
-        await retirement.execute(db=dbt)
 
 
 class TestBranchLiveness:
@@ -257,7 +245,11 @@ class TestOlderBranchLiveness:
         assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
 
     async def test_a_rebase_keeps_the_record_while_another_older_branch_still_holds_the_number(
-        self, db: InfrahubDatabase, default_branch_scope_class: Branch, pool: CoreNumberPool
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        pool: CoreNumberPool,
+        dependency_provider: Provider,
     ) -> None:
         """The retirement pass a rebase runs may close the record only once no branch reaches the number."""
         ticket = await _new_ticket(db=db, pool=pool, title="held-past-a-rebase")
@@ -268,7 +260,9 @@ class TestOlderBranchLiveness:
         second = await create_branch(branch_name="still-holds-past-the-rebase", db=db)
         await ticket.delete(db=db)
 
-        await _rebase_with_retirement(db=db, branch=first, base=default_branch_scope_class, node_id=ticket.id)
+        await rebase_branch(
+            db=db, default_branch=default_branch_scope_class, branch=first, dependency_provider=dependency_provider
+        )
 
         records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
         assert [record.is_open for record in records] == [True], (
@@ -277,7 +271,9 @@ class TestOlderBranchLiveness:
         assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
         assert await pool.get_free(db=db, branch=default_branch_scope_class) != held
 
-        await _rebase_with_retirement(db=db, branch=second, base=default_branch_scope_class, node_id=ticket.id)
+        await rebase_branch(
+            db=db, default_branch=default_branch_scope_class, branch=second, dependency_provider=dependency_provider
+        )
 
         records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
         assert [record.is_open for record in records] == [False], "with no branch left holding it, the record closes"

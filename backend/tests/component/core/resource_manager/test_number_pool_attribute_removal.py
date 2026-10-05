@@ -13,7 +13,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
-from tests.component.core.agnostic_retirement.test_on_rebase import _rebase_branch
+from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START, pooled_widget
 from tests.helpers.agnostic_edges import (
     EdgeState,
@@ -147,7 +147,7 @@ async def test_the_is_reserved_edge_closes_once_every_older_branch_rebases_past_
         == IsReservedEdge.OPEN
     ), "the older branches have not taken the removal and still hold the value at their fork point"
 
-    await _rebase_branch(db=db, default_branch=default_branch, branch=first, dependency_provider=dependency_provider)
+    await rebase_branch(db=db, default_branch=default_branch, branch=first, dependency_provider=dependency_provider)
 
     assert (
         await is_reserved_edge_on(
@@ -156,7 +156,7 @@ async def test_the_is_reserved_edge_closes_once_every_older_branch_rebases_past_
         == IsReservedEdge.OPEN
     ), "the branch not yet rebased still reads the attribute at its fork point"
 
-    await _rebase_branch(db=db, default_branch=default_branch, branch=last, dependency_provider=dependency_provider)
+    await rebase_branch(db=db, default_branch=default_branch, branch=last, dependency_provider=dependency_provider)
 
     assert (
         await is_reserved_edge_on(
