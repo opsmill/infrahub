@@ -80,9 +80,11 @@ export function useGetRepositoryImportError(
   if (!lookup) return task.isError ? { status: "not-found", taskId: null } : undefined;
   if (lookup.status === "running") return undefined;
   if (lookup.status === "not-found") return { status: "not-found", taskId: null };
-  if (log.data === undefined) return log.isError ? { status: "not-found", taskId } : undefined;
+  if (log.data === undefined) {
+    return log.isError ? { status: "not-found", taskId: lookup.taskId } : undefined;
+  }
 
   return log.data === null
-    ? { status: "not-found", taskId }
-    : { status: "found", taskId, message: log.data };
+    ? { status: "not-found", taskId: lookup.taskId }
+    : { status: "found", taskId: lookup.taskId, message: log.data };
 }
