@@ -312,8 +312,8 @@ class ReadOnlyRepositoryRefsChecker:
     ) -> str | None:
         """Return the head the pool was last told about on this branch, or None when there is nothing to compare.
 
-        Every sender of a convergence broadcast records the head only after its broadcast went out,
-        so a stored value is the baseline even when the imported commit has caught up with the
+        The check and the read-only import flows record the head only after their broadcast went
+        out, so a stored value is the baseline even when the imported commit has caught up with the
         remote: that is the case an import whose broadcast failed leaves behind. When nothing is
         stored the imported commit stands in, so an empty or expired value announces only a branch
         whose remote has moved past what it imported, once; a stand-in found equal to the remote is
