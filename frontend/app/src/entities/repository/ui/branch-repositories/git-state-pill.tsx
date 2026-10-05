@@ -15,7 +15,7 @@ function GitStatePillContent({ syncStatus }: GitStatePillProps) {
   if (!label || !color) {
     return (
       <Badge variant="gray" className="whitespace-nowrap font-normal">
-        {value || label || "—"}
+        {label || value || "—"}
       </Badge>
     );
   }
