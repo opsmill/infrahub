@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
-    from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
 
@@ -201,20 +200,14 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
             # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
             obj = await NodeManager.get_one(db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch, raise_on_error=True)
-            repository = NumberPoolRepository(db=dbt)
-            shorthand_range = None
-            if shorthand_supplied:
-                shorthand_range = await cls._get_shorthand_range(repository=repository, pool_id=pool_id)
-
             number_pool, result = await super()._call_mutate_update(
                 info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
+
+            repository = NumberPoolRepository(db=dbt)
             if shorthand_supplied:
                 await cls._write_shorthand_range(
-                    repository=repository,
-                    number_pool=number_pool,
-                    shorthand_range=shorthand_range,
-                    user_id=graphql_context.assigned_user_id,
+                    repository=repository, number_pool=number_pool, user_id=graphql_context.assigned_user_id
                 )
 
             updated_ranges = await repository.get_ranges(pool_id=pool_id)
@@ -243,37 +236,30 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
     @classmethod
-    async def _get_shorthand_range(cls, repository: NumberPoolRepository, pool_id: str) -> CoreNumberPoolRange | None:
-        """Return the range a shorthand write rewrites, or None when the pool holds no range yet.
+    async def _write_shorthand_range(cls, repository: NumberPoolRepository, number_pool: Node, user_id: str) -> None:
+        """Write the pool's start_range / end_range to its single range, creating the range when the pool holds none.
 
         Raises:
-            ValidationError: When the pool holds more than one range.
+            ValidationError: When the pool holds more than one range, a bound is missing or cleared, or the
+                bounds are backwards.
 
         """
-        stored_ranges = await repository.get_ranges(pool_id=pool_id)
+        stored_ranges = await repository.get_ranges(pool_id=number_pool.get_id())
         validate_shorthand_target(ranges=range_bounds(stored_ranges))
-        return stored_ranges[0] if stored_ranges else None
+        stored_range = stored_ranges[0] if stored_ranges else None
 
-    @classmethod
-    async def _write_shorthand_range(
-        cls,
-        repository: NumberPoolRepository,
-        number_pool: Node,
-        shorthand_range: CoreNumberPoolRange | None,
-        user_id: str,
-    ) -> None:
         start = number_pool.get_attribute("start_range").value
         end = number_pool.get_attribute("end_range").value
         if not isinstance(start, int) or not isinstance(end, int):
-            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if shorthand_range else BOUNDS_REQUIRED)
+            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if stored_range else BOUNDS_REQUIRED)
 
         if start > end:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        if shorthand_range is None:
+        if stored_range is None:
             await repository.create_range(pool=number_pool, start=start, end=end, user_id=user_id)
         else:
-            await repository.save_range_bounds(pool_range=shorthand_range, start=start, end=end, user_id=user_id)
+            await repository.save_range_bounds(pool_range=stored_range, start=start, end=end, user_id=user_id)
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
