@@ -6,10 +6,11 @@
 
 ## Context
 
-ADR 0017 replaced the per-node recompute fan-out of merge and rebase with one coalesced pass. It
-covered three families: Jinja2 computed attributes, display labels, and human-friendly ids. All
-three share one property. What each value reads, and which nodes read a given node, are schema
-facts. The builder derives them from the schema branch it already holds, and reads no database.
+[ADR 0017](0017-coalesced-merge-rebase-recompute.md) replaced the per-node recompute fan-out of
+merge and rebase with one coalesced pass. It covered three families: Jinja2 computed attributes,
+display labels, and human-friendly ids. All three share one property. What each value reads, and
+which nodes read a given node, are schema facts. The builder derives them from the schema branch
+it already holds, and reads no database.
 
 Python transform computed attributes have neither fact in the schema. What a transform reads is
 known only from its GraphQL query. Which nodes read a given node is known only from the query
@@ -38,7 +39,7 @@ Add the Python family to the coalesced pass, and derive it behind an interface
 (`core/merge/recompute_coalescing.py::PythonTargetResolver`). The narrowing then needs no database
 or client import of its own. Two runtime sources feed that interface. The analyzed transform
 queries say what each attribute reads. The query-group subscriber index says which nodes read a
-given node.
+given node; [Groups](../../docs/docs/groups/overview.mdx) defines query groups and subscribers.
 
 Group the changes by their `(kind, action, changed fields)` signature before narrowing. The work
 then runs once per distinct shape, and not once per changed node.
@@ -48,8 +49,9 @@ the whole target kind instead, and the pass logs it.
 
 Treat the pass and the origin filter as one unit. Both per-node trigger types
 (`computed_attribute/models.py::ComputedAttrPythonTriggerDefinition` and
-`::ComputedAttrPythonQueryTriggerDefinition`) match the live mutation origin, the way ADR 0016
-already had the other three families match it. Neither half works alone: the filter without the
+`::ComputedAttrPythonQueryTriggerDefinition`) match the live mutation origin, the way
+[ADR 0016](0016-node-mutation-origin-label-suppression.md) already had the other three families
+match it. Neither half works alone: the filter without the
 pass leaves a replayed change unrecomputed, and the pass without the filter recomputes it twice.
 
 A merge that changes the schema also starts the schema-scoped backfill, which refreshes whole
