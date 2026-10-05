@@ -72,7 +72,7 @@ export async function getBranchRepositoriesFromApi({
   limit,
   offset,
 }: GetBranchRepositoriesFromApiParams): Promise<BranchRepositoriesConnection> {
-  const context = { branch: branchName };
+  const context = { branch: branchName, processErrorMessage: () => {} };
   const variables = { limit, offset };
 
   if (kind === READONLY_REPOSITORY_KIND) {

@@ -48,18 +48,13 @@ describe("getRepositoryImportTask", () => {
     await expect(getRepositoryImportTask(params)).resolves.toBeNull();
   });
 
-  it("returns null when the api fails, and logs the error", async () => {
+  it("rejects when the api fails, so the query can tell a failure from no match", async () => {
     // GIVEN
     const error = new Error("Network error");
     vi.mocked(getRepositoryImportTaskFromApi).mockRejectedValue(error);
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     // WHEN / THEN
-    await expect(getRepositoryImportTask(params)).resolves.toBeNull();
-    expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("repository repo-1 on branch feature"),
-      error
-    );
+    await expect(getRepositoryImportTask(params)).rejects.toBe(error);
   });
 });
 

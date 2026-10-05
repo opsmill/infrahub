@@ -43,7 +43,7 @@ describe("getBranchRepositoriesFromApi", () => {
     expect(mockQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { limit: 10, offset: 20 },
-        context: { branch: "feature" },
+        context: { branch: "feature", processErrorMessage: expect.any(Function) },
       })
     );
     expect(sentQuery()).toContain("CoreGenericRepository(");
@@ -117,7 +117,10 @@ describe("getBranchRepositoryHealthFromApi", () => {
     // THEN
     expect(result).toBe(data);
     expect(mockQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ variables: statuses, context: { branch: "feature" } })
+      expect.objectContaining({
+        variables: statuses,
+        context: { branch: "feature", processErrorMessage: expect.any(Function) },
+      })
     );
     const query = sentQuery();
     expect(query).toMatch(

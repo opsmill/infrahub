@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
 import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
@@ -7,6 +8,7 @@ import {
   type GetBranchTasksParams,
   getBranchTasks,
 } from "@/entities/tasks/domain/use-cases/get-branch-tasks";
+import { getTaskCount } from "@/entities/tasks/domain/use-cases/get-task-count";
 import { getTaskCountQueryOptions } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
@@ -16,7 +18,9 @@ export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
   return queryOptions({
     queryKey: tasksQueryKeys.branchList(params),
     queryFn: () => getBranchTasks(params),
-    refetchInterval: params.offset === 0 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
+    retry: retryBackgroundQuery,
+    refetchInterval: (query) =>
+      pollWhileHealthy(params.offset === 0, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
   });
@@ -36,9 +40,13 @@ export function useGetBranchTasks({ branchName, page, pageSize }: UseGetBranchTa
 
 // FAILED only: the Tasks page filters on a single state, and the count must match what its link opens.
 export function getBranchFailedTaskCountQueryOptions({ branchName }: { branchName: string }) {
+  const params = { branchName, state: [TASK_STATE_FAILED] };
+
   return queryOptions({
-    ...getTaskCountQueryOptions({ branchName, state: [TASK_STATE_FAILED] }),
-    refetchInterval: BRANCH_TASKS_REFETCH_INTERVAL_MS,
+    ...getTaskCountQueryOptions(params),
+    queryFn: () => getTaskCount(params, { silenceErrors: true }),
+    retry: retryBackgroundQuery,
+    refetchInterval: (query) => pollWhileHealthy(true, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
   });
 }
 

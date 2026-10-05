@@ -15,25 +15,16 @@ export interface GetRepositoryImportTaskParams extends BranchContextParams {
   repositoryId: string;
 }
 
-// The band stays up whatever happens here: a failed lookup reads as "details not found".
-export async function getRepositoryImportTask({
+export function getRepositoryImportTask({
   branchName,
   repositoryId,
 }: GetRepositoryImportTaskParams): Promise<string | null> {
-  try {
-    return await getRepositoryImportTaskFromApi({
-      branch: branchName,
-      repositoryId,
-      workflows: [...IMPORT_WORKFLOWS],
-      states: [...IMPORT_FAILED_TASK_STATES],
-    });
-  } catch (error) {
-    console.error(
-      `An error occurred while looking up the failed import of repository ${repositoryId} on branch ${branchName}:`,
-      error
-    );
-    return null;
-  }
+  return getRepositoryImportTaskFromApi({
+    branch: branchName,
+    repositoryId,
+    workflows: [...IMPORT_WORKFLOWS],
+    states: [...IMPORT_FAILED_TASK_STATES],
+  });
 }
 
 // Throws when the log can't be fetched, so a failed request isn't mistaken for a log with no error line.

@@ -31,7 +31,7 @@ describe("getRepositoryNamesFromApi", () => {
     expect(mockQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { ids: ["repo-1", "task-node"] },
-        context: { branch: "feature" },
+        context: { branch: "feature", processErrorMessage: expect.any(Function) },
       })
     );
   });

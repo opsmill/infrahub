@@ -104,7 +104,7 @@ export async function getBranchRepositoryHealthFromApi({
   kind,
   ...variables
 }: GetBranchRepositoryHealthFromApiParams): Promise<BranchRepositoryHealthResponse> {
-  const context = { branch: branchName };
+  const context = { branch: branchName, processErrorMessage: () => {} };
 
   if (kind === READONLY_REPOSITORY_KIND) {
     const { data } = await graphqlClient.query({

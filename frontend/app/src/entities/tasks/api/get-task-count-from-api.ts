@@ -1,5 +1,7 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
+import type { TaskQueryOptions } from "@/entities/tasks/api/get-task-list-from-api";
+
 const TASK_COUNT = graphql(`
   query TASK_COUNT(
     $search: String
@@ -20,9 +22,13 @@ const TASK_COUNT = graphql(`
 
 export interface GetTaskCountFromApiParams extends VariablesOf<typeof TASK_COUNT> {}
 
-export function getTaskCountFromApi(variables?: GetTaskCountFromApiParams) {
+export function getTaskCountFromApi(
+  variables?: GetTaskCountFromApiParams,
+  { silenceErrors = false }: TaskQueryOptions = {}
+) {
   return graphqlClient.query({
     query: TASK_COUNT,
     variables,
+    context: silenceErrors ? { processErrorMessage: () => {} } : undefined,
   });
 }

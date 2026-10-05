@@ -57,18 +57,17 @@ describe("getBranchTasks", () => {
     );
   });
 
-  it("passes the branch name, offset and limit", async () => {
+  it("passes the branch name, offset and limit, and leaves errors to the card", async () => {
     mockGetTaskListFromApi.mockResolvedValueOnce({
       data: { InfrahubTask: { count: 0, edges: [] } },
     } as unknown as Response);
 
     await getBranchTasks({ branchName: "feature", offset: 20, limit: 10 });
 
-    expect(mockGetTaskListFromApi).toHaveBeenCalledWith({
-      branchName: "feature",
-      offset: 20,
-      limit: 10,
-    });
+    expect(mockGetTaskListFromApi).toHaveBeenCalledWith(
+      { branchName: "feature", offset: 20, limit: 10 },
+      { silenceErrors: true }
+    );
   });
 
   it("lets an api error through", async () => {

@@ -8,13 +8,26 @@ import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 const params = { branchName: "feature", offset: 0, limit: 10 };
 
+const queryIn = (status: "success" | "error") => ({ state: { status } }) as never;
+
+const intervalOf = (refetchInterval: unknown, status: "success" | "error" = "success") => {
+  if (typeof refetchInterval !== "function") throw new Error("expected a refetch function");
+  return refetchInterval(queryIn(status));
+};
+
 describe("getBranchTasksQueryOptions", () => {
   it("polls page 1 every 10 seconds", () => {
-    expect(getBranchTasksQueryOptions(params).refetchInterval).toBe(10_000);
+    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval)).toBe(10_000);
   });
 
   it("doesn't poll other pages", () => {
-    expect(getBranchTasksQueryOptions({ ...params, offset: 10 }).refetchInterval).toBe(false);
+    expect(intervalOf(getBranchTasksQueryOptions({ ...params, offset: 10 }).refetchInterval)).toBe(
+      false
+    );
+  });
+
+  it("stops polling once a fetch has failed", () => {
+    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval, "error")).toBe(false);
   });
 
   it("keys the page on the branch and its window", () => {
@@ -56,9 +69,10 @@ describe("getBranchFailedTaskCountQueryOptions", () => {
     );
   });
 
-  it("polls every 10 seconds", () => {
-    expect(getBranchFailedTaskCountQueryOptions({ branchName: "feature" }).refetchInterval).toBe(
-      10_000
-    );
+  it("polls every 10 seconds until a fetch fails", () => {
+    const { refetchInterval } = getBranchFailedTaskCountQueryOptions({ branchName: "feature" });
+
+    expect(intervalOf(refetchInterval)).toBe(10_000);
+    expect(intervalOf(refetchInterval, "error")).toBe(false);
   });
 });

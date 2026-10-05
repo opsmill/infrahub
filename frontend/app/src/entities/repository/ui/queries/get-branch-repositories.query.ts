@@ -1,14 +1,15 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
 import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
 
-import { REPOSITORY_SYNC_STATUS_SYNCING } from "@/entities/repository/domain/model/repository";
+import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
 import {
   type GetBranchRepositoriesParams,
   getBranchRepositories,
 } from "@/entities/repository/domain/use-cases/get-branch-repositories";
-import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
 
 export interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
   isSyncing: boolean;
@@ -22,13 +23,13 @@ export function getBranchRepositoriesQueryOptions({
     queryKey: repositoryQueryKeys.branchRepositories(params),
     queryFn: () => getBranchRepositories(params),
     // Rows still showing a sync are fetched again after the health says it ended, so they catch up.
+    retry: retryBackgroundQuery,
     refetchInterval: (query) =>
-      isSyncing ||
-      query.state.data?.repositories.some(
-        ({ syncStatus }) => syncStatus.value === REPOSITORY_SYNC_STATUS_SYNCING
-      )
-        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
-        : false,
+      pollWhileHealthy(
+        isSyncing || !!query.state.data?.repositories.some(isRepositorySyncing),
+        REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
+        query
+      ),
     // Keeps the previous page on screen while the next one loads, within one branch and list only.
     placeholderData: (previousData, previousQuery) => {
       const previousParams = previousQuery?.queryKey.at(-1) as

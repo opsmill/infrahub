@@ -33,6 +33,7 @@ export async function getRepositoryImportTaskFromApi(
   const { data } = await graphqlClient.query({
     query: GET_REPOSITORY_FAILED_IMPORT_TASK,
     variables,
+    context: { processErrorMessage: () => {} },
   });
   return data.InfrahubTask.edges[0]?.node?.id ?? null;
 }
@@ -59,7 +60,11 @@ const GET_IMPORT_TASK_LOGS = graphql(`
 export type GetImportTaskLogsFromApiParams = VariablesOf<typeof GET_IMPORT_TASK_LOGS>;
 
 export async function getImportTaskLogsFromApi(variables: GetImportTaskLogsFromApiParams) {
-  const { data } = await graphqlClient.query({ query: GET_IMPORT_TASK_LOGS, variables });
+  const { data } = await graphqlClient.query({
+    query: GET_IMPORT_TASK_LOGS,
+    variables,
+    context: { processErrorMessage: () => {} },
+  });
   const logs = data.InfrahubTask.edges[0]?.node?.logs?.edges ?? [];
   return logs.flatMap((edge) => (edge?.node ? [edge.node] : []));
 }

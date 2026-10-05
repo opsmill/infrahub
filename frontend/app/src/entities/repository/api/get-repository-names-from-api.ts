@@ -26,7 +26,7 @@ export async function getRepositoryNamesFromApi({
   const { data } = await graphqlClient.query({
     query: GET_REPOSITORY_NAMES,
     variables: { ids },
-    context: { branch: branchName },
+    context: { branch: branchName, processErrorMessage: () => {} },
   });
 
   return Object.fromEntries(
