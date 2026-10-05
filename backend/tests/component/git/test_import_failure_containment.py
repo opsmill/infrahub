@@ -12,8 +12,8 @@ from infrahub.core.branch import Branch
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryConnectionError
 from infrahub.git.import_errors import RepositoryImportError
-from infrahub.git.repository import PendingObjectImport
-from infrahub.git.sync import RepositoryBranchesFailedError, RepositorySyncer, import_branch
+from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
+from infrahub.git.sync import RepositorySyncer, import_branch
 from infrahub.lock import InfrahubLockRegistry
 from tests.adapters.lock import FailingImporter
 from tests.helpers.flow import call_in_flow
@@ -116,15 +116,13 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         lock_registry=InfrahubLockRegistry(local_only=True), importer=FailingImporter(RuntimeError("lock lost"))
     )
 
-    with pytest.raises(
-        RepositoryBranchesFailedError,
-        match=r"^Unable to synchronize the following branches of repository .+: "
-        r"branch01 \(step=import\): RuntimeError: lock lost$",
-    ) as exc_info:
-        await call_in_flow(lambda: syncer.sync(git_repo_04))
+    outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))
 
-    assert exc_info.value.report.failed_import_branches == ("branch01",)
-    assert exc_info.value.report.imported_branches == ()
+    assert outcome.failed == (
+        FailedImport(branch_name="branch01", step=ImportStep.IMPORT, reason="RuntimeError: lock lost"),
+    )
+    assert outcome.report.failed_import_branches == ("branch01",)
+    assert outcome.report.imported_branches == ()
 
 
 async def test_failed_status_write_does_not_replace_the_import_failure(

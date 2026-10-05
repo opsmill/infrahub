@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
     from infrahub.lock import InfrahubLockRegistry
 
+    from .divergence.models import ReconciledBranch
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
 
@@ -51,17 +52,47 @@ class SyncReport:
         return bool(self.skipped_branches) and bool(self.imported_branches or self.advanced_skipped_branches)
 
 
+@dataclass(frozen=True)
+class SyncOutcome:
+    """What a synchronization run did: its report, the branches it advanced and the branches that failed."""
+
+    report: SyncReport
+    reconciled: tuple[ReconciledBranch, ...]
+    """The branches whose import succeeded, each with the commit it advanced to."""
+
+    failed: tuple[FailedImport, ...]
+
+
 @suppress_traceback_in_logs
 class RepositoryBranchesFailedError(RepositoryError):
-    """Raised when at least one branch failed to synchronize, carrying the report of the whole run.
+    """Raised when at least one branch failed to synchronize, carrying the outcome of the whole run.
 
     Registered so the logging layer drops the traceback Prefect writes when it leaves a flow: each
     branch failure was already logged once, and this error only summarizes them.
     """
 
-    def __init__(self, identifier: str, report: SyncReport, message: str | None = None) -> None:
+    def __init__(self, identifier: str, outcome: SyncOutcome, message: str | None = None) -> None:
         super().__init__(identifier=identifier, message=message)
-        self.report = report
+        self.outcome = outcome
+
+    @property
+    def report(self) -> SyncReport:
+        return self.outcome.report
+
+
+def raise_if_branches_failed(repo: InfrahubRepository, outcome: SyncOutcome) -> None:
+    """Log every branch the run failed to synchronize and raise them as one error.
+
+    Raises:
+        RepositoryBranchesFailedError: When at least one branch failed to synchronize; the error
+            carries the outcome of the whole run.
+
+    """
+    try:
+        repo.raise_if_branches_failed(list(outcome.failed))
+    except RepositoryError as exc:
+        # Same identifier and message, so the original adds nothing to the chain.
+        raise RepositoryBranchesFailedError(identifier=exc.identifier, outcome=outcome, message=exc.message) from None
 
 
 class RepositoryImporter(ABC):
@@ -210,22 +241,23 @@ class RepositorySyncer:
         repo: InfrahubRepository,
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
-    ) -> SyncReport:
-        """Synchronize the repository and report what the run did.
+    ) -> SyncOutcome:
+        """Synchronize the repository and return what the run did, including the branches that failed.
+
+        A branch that fails does not raise, so the caller can act on the branches that advanced first.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
             RepositoryCredentialsError: When the credentials for the remote repository are invalid.
             RepositoryError: When fetching the remote fails for another reason.
             CommitNotFoundError: When a commit the sync needs cannot be found.
-            RepositoryBranchesFailedError: When at least one branch failed to synchronize; the error
-                carries the same report a successful run returns.
 
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
             collected = await repo.collect_pending_imports(staging_branch=staging_branch, graph_commits=graph_commits)
 
         failed_imports = list(collected.failed_imports)
+        reconciled: list[ReconciledBranch] = []
         imported_branches: list[str] = []
         failed_import_branches: list[str] = []
         for pending_import in collected.imports:
@@ -234,6 +266,8 @@ class RepositorySyncer:
             )
             if import_error is None:
                 imported_branches.append(pending_import.infrahub_branch_name)
+                if pending_import.reconciled is not None:
+                    reconciled.append(pending_import.reconciled)
                 continue
             failed_imports.append(
                 FailedImport(
@@ -248,9 +282,4 @@ class RepositorySyncer:
             failed_import_branches=tuple(failed_import_branches),
             advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
         )
-        try:
-            repo.raise_if_branches_failed(failed_imports)
-        except RepositoryError as exc:
-            # Same identifier and message, so the original adds nothing to the chain.
-            raise RepositoryBranchesFailedError(identifier=exc.identifier, report=report, message=exc.message) from None
-        return report
+        return SyncOutcome(report=report, reconciled=tuple(reconciled), failed=tuple(failed_imports))

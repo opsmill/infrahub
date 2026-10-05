@@ -86,11 +86,12 @@ from .models import (
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
 from .sync import (
     RepositoryAdder,
-    RepositoryBranchesFailedError,
     RepositoryFileImporter,
     RepositorySyncer,
+    SyncOutcome,
     SyncReport,
     import_branch,
+    raise_if_branches_failed,
 )
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
@@ -184,12 +185,9 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             raise added.import_error
         return
 
-    try:
-        report = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
-    except RepositoryBranchesFailedError as exc:
-        log_skipped_branches(repo=repo, report=exc.report)
-        raise
-    log_skipped_branches(repo=repo, report=report)
+    outcome = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    log_skipped_branches(repo=repo, report=outcome.report)
+    raise_if_branches_failed(repo=repo, outcome=outcome)
 
     try:
         pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -312,7 +310,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     infrahub_branch: str,
     staging_branch: str | None = None,
     graph_commits: dict[str, str | None] | None = None,
-) -> None:
+) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
     A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
@@ -342,15 +340,16 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
     try:
-        report = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
-    except RepositoryBranchesFailedError as exc:
-        await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
-        raise
+        outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
     except (RepositoryError, CommitNotFoundError):
         if online:
             await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
         raise
-    await report_sync_run(repo=repo, report=report, infrahub_branch=infrahub_branch, link_run=False)
+    await report_sync_run(
+        repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
+    )
+    raise_if_branches_failed(repo=repo, outcome=outcome)
+    return outcome
 
 
 async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:

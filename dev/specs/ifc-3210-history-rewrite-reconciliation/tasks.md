@@ -252,7 +252,7 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/infrahub/message_bus/operations/git/repository.py::fetch`. Reset every pair inside
       one lock acquisition and one fetch. Fall back to the single-branch fields when `branches` is
       absent. Log a failed pair with its branch and carry on with the rest.
-- [ ] T031 [US3] Return a `SyncOutcome` from `backend/infrahub/git/sync.py::RepositorySyncer.sync`
+- [x] T031 [US3] Return a `SyncOutcome` from `backend/infrahub/git/sync.py::RepositorySyncer.sync`
       instead of raising. It carries the reconciled branches and the failures, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 4.
       **Update its other two callers in the same change**, or the API change loses behaviour that
@@ -289,8 +289,9 @@ healthy branch is still sent, and a second worker converges on it.
 - [x] T038 [P] [US3] Unit-test the handler fan-out in
       `backend/tests/unit/message_bus/test_refresh_git_fetch_fanout.py`: N pairs are reset inside
       one lock acquisition and one fetch. Use a fake lock registry, not a mock.
-- [ ] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
-      raising, in `backend/tests/component/git/test_sync_repository.py`.
+- [x] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
+      raising, in `backend/tests/component/git/test_git_repository.py`, where the test that asserted
+      the raise already lived.
 - [ ] T040 [US3] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on

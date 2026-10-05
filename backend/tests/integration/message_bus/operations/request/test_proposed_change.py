@@ -101,9 +101,9 @@ PROPOSED_CHANGE_QUERY = """
 @flow(name="sync-repository-for-test")
 async def sync_repository(repo: InfrahubRepository) -> None:
     """Run a repository sync inside a flow run so the import has a Prefect run context, as in production."""
-    await RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()).sync(
-        repo
-    )
+    syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
+    outcome = await syncer.sync(repo)
+    assert outcome.failed == ()
 
 
 class TestProposedChange(TestInfrahubApp):

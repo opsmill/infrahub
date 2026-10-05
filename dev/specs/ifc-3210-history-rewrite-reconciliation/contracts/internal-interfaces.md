@@ -414,22 +414,22 @@ and neither records.
 
 Changed. `backend/infrahub/git/sync.py`.
 
-Today it returns a `SyncReport` of the skipped, imported and advanced branches, and it raises
-`RepositoryBranchesFailedError`, carrying the same report, when a branch failed. Phase 4 (T031) makes
-it return the branches the cycle advanced, and leaves the raise for failed branches to its caller,
-after the broadcast.
+Before Phase 4 (T031) it returned a `SyncReport` of the skipped, imported and advanced branches,
+and it raised `RepositoryBranchesFailedError`, carrying the same report, when a branch failed. T031
+makes it return the branches the cycle advanced and the branches that failed, and leaves the raise
+for failed branches to its caller, after the broadcast.
 
 ```text
-sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # today
-sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # after T031
+sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # before T031
+sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # since T031
 ```
 
 `graph_commits` holds the commit the graph records for each Infrahub branch that can still record
 one, read once per cycle (section 1). The add flow passes none, so its first sync classifies nothing.
 
-`SyncOutcome` carries `reconciled: tuple[ReconciledBranch, ...]` and
-`failed: tuple[FailedImport, ...]`. It must also keep what `SyncReport` reports today, because
-`git/tasks.py::report_sync_run` logs the skipped branches and links the run from it.
+`SyncOutcome` carries the run's `report: SyncReport`, `reconciled: tuple[ReconciledBranch, ...]` and
+`failed: tuple[FailedImport, ...]`. It keeps the report because `git/tasks.py::report_sync_run`
+logs the skipped branches and links the run from it.
 
 ### Contract
 
@@ -443,7 +443,9 @@ one, read once per cycle (section 1). The add flow passes none, so its first syn
    `git/tasks.py::sync_git_repo_with_origin_and_tag_on_failure` no longer reaches its `except` and
    would stop tagging failures, and `git/tasks.py::add_git_repository` calls `sync` directly and
    would silently ignore a failed initial import. Both must read the returned failures and act on
-   them.
+   them. Both do so through `git/sync.py::raise_if_branches_failed`, which raises
+   `RepositoryBranchesFailedError` as before, now carrying the whole `SyncOutcome`. The tagging
+   flow still links its run and fails it, and the add flow still fails.
 
 ---
 

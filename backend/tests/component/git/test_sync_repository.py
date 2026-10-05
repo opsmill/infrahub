@@ -26,7 +26,13 @@ from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
-from infrahub.git.sync import RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
+from infrahub.git.sync import (
+    RepositoryBranchesFailedError,
+    RepositoryFileImporter,
+    RepositorySyncer,
+    SyncOutcome,
+    SyncReport,
+)
 from infrahub.git.tasks import sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.workers.dependencies import clear_singletons
@@ -448,10 +454,17 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             infrahub_branch_name=registry.default_branch,
         )
 
-        report = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
+        outcome = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
 
-        assert report == SyncReport(
-            skipped_branches=("main",), imported_branches=(), failed_import_branches=(), advanced_skipped_branches=()
+        assert outcome == SyncOutcome(
+            report=SyncReport(
+                skipped_branches=("main",),
+                imported_branches=(),
+                failed_import_branches=(),
+                advanced_skipped_branches=(),
+            ),
+            reconciled=(),
+            failed=(),
         )
 
     async def test_no_warning_once_the_colliding_branch_is_deleted(
