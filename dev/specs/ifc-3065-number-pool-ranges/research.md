@@ -33,7 +33,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 | "(required)" suffix | `graphql/manager.py::GraphQLSchemaManager.generate_graphql_object` | Appended to the description of non-optional attributes; the only site. |
 | Published contract | `tasks/backend.py` (`number_pool_parameters_fields`, `_field`, `_sdk_extension_field`), ADR 0010 | SDK parameter families are hand-listed, scalar-only; generated into `python_sdk/infrahub_sdk/schema/generated/`, `schema/openapi.json`, `frontend/app/src/shared/api/rest/types.generated.ts`, `docs/docs/snippets/attribute-kind-params.mdx`. |
 | Frontend readers | `frontend/app/src/entities/schema/ui/attribute-display.tsx`, `entities/resource-manager/ui/number-pool-form.tsx` | GraphQL types already `Maybe<>`; REST parameter types are non-optional; attribute display formats `parameters.start_range` without a null guard; the pool form tolerates missing values. |
-| Migrations | `backend/infrahub/core/migrations/graph/`, `core/graph/__init__.py::GRAPH_VERSION = 79` | Next is `m080`, `minimum_version = 79`. Graph migrations run before `cli/db.py::update_core_schema`; `m073` bootstraps a new core kind inside the migration with `registry.schema.create_node_in_db`, guarded by a count query. |
+| Migrations | `backend/infrahub/core/migrations/graph/`, `core/graph/__init__.py::GRAPH_VERSION = 80` | `m080` adds the range kind, `minimum_version = 79`. Graph migrations run before `cli/db.py::update_core_schema`; `m073` bootstraps a new core kind inside the migration with `registry.schema.create_node_in_db`, guarded by a count query. |
 | Benchmarks | `backend/tests/query_benchmark/` | No pool benchmark exists; `test_node_unique_attribute_constraint.py` is the pattern. |
 
 ## Decisions
@@ -48,7 +48,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 ### D2. The shorthand scalars stay stored and mirror the range set
 
-**Decision**: `start_range` / `end_range` remain attributes on `CoreNumberPool`, `optional=True`, with a `deprecation` message. One component, `NumberPoolShorthandMirror` in `pools/number_pool_shorthand.py`, writes them from the range set: the single range's bounds when the pool holds exactly one range, `None` otherwise. Every write path that changes ranges calls it: the range mutation class, the pool mutation, the schema upserter and synchronizer, and the data migration.
+**Decision**: `start_range` / `end_range` remain attributes on `CoreNumberPool`, `optional=True`, with a `deprecation` message. One component, `NumberPoolShorthandMirror` in `pools/number_pool_shorthand.py`, writes them from the range set: the single range's bounds when the pool holds exactly one range, `None` otherwise. Every write path that changes ranges calls it: the range mutation class, the pool mutation, the schema upserter and synchronizer. The data migration needs no sync: it builds each range from the pool's own bounds.
 
 **Rationale**: a derived read would need a custom resolver inside the generic GraphQL generator and would leave the SDK's generic node queries without a value. Mirroring keeps the read shape generic and the invariant lives in one function.
 

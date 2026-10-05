@@ -112,7 +112,7 @@ docs/docs/schema/number-pool.mdx, docs/docs/resource-manager/allocate-number.mdx
 changelog/                                        # fragments listed in spec
 ```
 
-**Structure Decision**: backend-centred change following the existing resource-manager layout (`core/node/resource_manager`, `core/query/resource_manager`, `pools/`, `graphql/*/resource_manager`). The only new module is the calculator under `pools/`.
+**Structure Decision**: backend-centred change following the existing resource-manager layout (`core/node/resource_manager`, `core/query/resource_manager`, `pools/`, `graphql/*/resource_manager`). The new modules under `pools/` are the calculator, the repository and the shorthand mirror.
 
 ## Phase 0: Research
 

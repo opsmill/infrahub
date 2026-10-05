@@ -65,7 +65,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 ### Tests
 
 - [X] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py`: pre-80 fixture with a user pool and a schema pool, run through the upgrade runner; after the run the range kind and the `ranges` relationship exist in the database schema, the branch carries the stored schema's hash, each pool has one range with the old bounds and no weight, and the shorthand is still populated; a second run creates no range and no second range schema node; the graph passes the integrity checks after each run
-- [X] T013 [P] [US2] Component test in `backend/tests/component/core/resource_manager/test_number_pool.py`: `NumberPoolShorthandMirror.sync` sets the bounds for one range and `None` for zero or two ranges
+- [X] T013 [P] [US2] Component test in `backend/tests/component/pools/test_number_pool_shorthand.py`: `NumberPoolShorthandMirror.sync` sets the bounds for one range and `None` for zero or two ranges
 
 ### Implementation
 
