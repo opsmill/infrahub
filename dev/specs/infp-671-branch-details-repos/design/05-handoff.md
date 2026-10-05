@@ -165,6 +165,12 @@ router block goes to production.
 
 1. **Repositories on the branch:** `CoreGenericRepository` on the branch with `name`, `__typename`
    (Read-only), `commit`, `sync_status`, `operational_status`. Paginated.
+   _(Note 2026-10-05: this lists read-write and read-only repositories together, because
+   `CoreGenericRepository` is the generic both kinds inherit from. A branch created with Sync with
+   Git off tracks only read-only repositories, so on that branch the implementation sends a separate
+   query, `CoreReadOnlyRepository` with the same fields, order and pagination. The health query that
+   feeds the bands and polling has the same read-only variant. See `research.md` D1 and
+   `data-model.md` `getRepositoryListKind`.)_
 2. **Latest import task per failing repository:** `InfrahubTask(branch, related_node__ids: [repo],
    workflow: [import workflows], limit: 1, log_limit: N)`. The last error-severity log line is the
    band's text.
