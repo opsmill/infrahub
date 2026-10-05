@@ -102,6 +102,44 @@ describe("countUnlistedFailures", () => {
     ).toBe(0);
     expect(countUnlistedFailures(undefined)).toBe(0);
   });
+
+  it("doesn't count a listed repository again when the other list's limit left it out", () => {
+    // GIVEN "both" has a band as an import error and is also past the unreachable list's limit
+    const both = generateBranchRepository({
+      id: "both",
+      name: "both",
+      syncStatus: SYNC_STATUS.importError,
+      operationalStatus: OPERATIONAL_STATUS.errorCred,
+    });
+    const health = generateBranchRepositoryHealth({
+      importErrors: [both],
+      importErrorCount: 1,
+      unreachable: [unreachable("b")],
+      unreachableCount: 3,
+    });
+
+    // WHEN / THEN only the one other unreachable repository is unlisted
+    expect(countUnlistedFailures(health)).toBe(1);
+  });
+
+  it("counts a repository listed in both lists once", () => {
+    // GIVEN
+    const both = generateBranchRepository({
+      id: "both",
+      name: "both",
+      syncStatus: SYNC_STATUS.importError,
+      operationalStatus: OPERATIONAL_STATUS.errorCred,
+    });
+    const health = generateBranchRepositoryHealth({
+      importErrors: [both],
+      importErrorCount: 1,
+      unreachable: [both],
+      unreachableCount: 1,
+    });
+
+    // WHEN / THEN
+    expect(countUnlistedFailures(health)).toBe(0);
+  });
 });
 
 describe("getBandKind", () => {

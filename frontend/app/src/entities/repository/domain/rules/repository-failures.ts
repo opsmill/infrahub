@@ -33,16 +33,29 @@ export function getFailingRepositories(
   ];
 }
 
-// Failing repositories past the list limit. One that is both failing and unreachable, and past
-// the limit of both lists, is counted twice.
+// Failing repositories past the list limits. A listed repository that also fails the other way is
+// in that list's server total, so it is taken out of the remainder when it isn't listed there too.
+// One past the limit of both lists can't be recognised from here, so it is still counted twice.
 export function countUnlistedFailures(health: BranchRepositoryHealth | undefined): number {
   if (!health) return 0;
 
-  return (
+  const importErrorIds = new Set(health.importErrors.map(({ id }) => id));
+  const unreachableIds = new Set(health.unreachable.map(({ id }) => id));
+  const alsoUnreachable = health.importErrors.filter(
+    (repository) => isRepositoryUnreachable(repository) && !unreachableIds.has(repository.id)
+  ).length;
+  const alsoImportError = health.unreachable.filter(
+    (repository) => hasImportError(repository) && !importErrorIds.has(repository.id)
+  ).length;
+
+  return Math.max(
+    0,
     health.importErrorCount -
-    health.importErrors.length +
-    health.unreachableCount -
-    health.unreachable.length
+      health.importErrors.length -
+      alsoImportError +
+      health.unreachableCount -
+      health.unreachable.length -
+      alsoUnreachable
   );
 }
 
