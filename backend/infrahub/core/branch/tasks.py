@@ -47,7 +47,7 @@ from infrahub.core.merge.selective_regen.orchestrator import build_merge_selecti
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
-from infrahub.core.query.node_agnostic_retirement import NodesDeletedOnBranchQuery, RetireNodeAgnosticFieldsQuery
+from infrahub.core.query.node_agnostic_retirement import NodesToCheckForGlobalEdgesQuery, RetireNodeAgnosticFieldsQuery
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
@@ -238,11 +238,11 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
 
         migrations = []
         async with lock.registry.global_graph_lock():
-            base_deletions_query = await NodesDeletedOnBranchQuery.init(
+            nodes_to_check_query = await NodesToCheckForGlobalEdgesQuery.init(
                 db=db, branch_name=base_branch.name, from_time=initial_from_time, to_time=rebase_at
             )
-            await base_deletions_query.execute(db=db)
-            base_deleted_node_uuids = base_deletions_query.get_node_uuids()
+            await nodes_to_check_query.execute(db=db)
+            node_uuids_to_check = nodes_to_check_query.get_node_uuids()
             # Both baselines are resolved under the lock and before the rebase: the common ancestor
             # resolves against branched_from, which the rebase advances, and the rollback snapshot
             # must not predate a schema update that landed while the pre-lock validation ran.
@@ -255,9 +255,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
             async with db.start_transaction() as dbt:
                 await user_branch.rebase(db=dbt, user_id=user_id, at=rebase_at)
                 log.info("Branch graph rebased")
-                await _retire_agnostic_fields_of_base_deletions(
+                await _retire_agnostic_fields_of_base_changes(
                     db=dbt,
-                    node_uuids=base_deleted_node_uuids,
+                    node_uuids=node_uuids_to_check,
                     at=rebase_at,
                     user_id=user_id,
                     log=log,
@@ -510,23 +510,25 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
         await creator.create(model=model, context=context)
 
 
-async def _retire_agnostic_fields_of_base_deletions(
+async def _retire_agnostic_fields_of_base_changes(
     db: InfrahubDatabase,
     node_uuids: list[str],
     at: Timestamp,
     user_id: str,
     log: Logger | LoggerAdapter[Logger],
 ) -> None:
-    """Re-evaluate branch-agnostic retention for the base-branch deletions this rebase absorbs.
+    """Re-evaluate branch-agnostic retention for the base-branch changes this rebase absorbs.
 
-    Look at every object deleted as part of this rebase and check any branch-agnostic fields on each
-    object, deleting them on the global branch if the field is no longer reachable from any branch.
+    Look at every object deleted, or whose pool-reserved attribute lost its owning edge, as part of this
+    rebase and check the global edges of each object's fields, closing them on the global branch if the
+    field is no longer reachable from any branch.
 
     Must run after the branch has been rebased.
 
     Args:
         db: The transaction the rebase itself runs in.
-        node_uuids: The nodes deleted on the base branch within the rebased window.
+        node_uuids: The nodes deleted on the base branch within the rebased window, and those whose
+            pool-reserved attribute lost its owning edge there.
         at: The rebase timestamp; closed edges are stamped with it.
         user_id: The account the rebase runs as, recorded on the edges the re-evaluation closes.
         log: The flow's run logger.
@@ -534,7 +536,7 @@ async def _retire_agnostic_fields_of_base_deletions(
     """
     if not node_uuids:
         return
-    log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} deletions absorbed by the rebase")
+    log.info(f"Re-evaluating branch-agnostic retirement for {len(node_uuids)} nodes changed on the base branch")
     for batch_start in range(0, len(node_uuids), RETIREMENT_BATCH_SIZE):
         batch_uuids = node_uuids[batch_start : batch_start + RETIREMENT_BATCH_SIZE]
         retirement_query = await RetireNodeAgnosticFieldsQuery.init(
@@ -543,7 +545,7 @@ async def _retire_agnostic_fields_of_base_deletions(
         await retirement_query.execute(db=db)
         retired = retirement_query.get_data()
         log.info(
-            "Branch-agnostic retirement re-evaluated for base-branch deletions: "
+            "Branch-agnostic retirement re-evaluated for base-branch changes: "
             f"candidates={len(batch_uuids)} edges_closed={retired.edges_closed} at={at.to_string()}"
         )
 

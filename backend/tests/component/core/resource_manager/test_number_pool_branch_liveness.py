@@ -6,11 +6,13 @@ read liveness as a union across branches: a number stays taken while *any* branc
 becomes allocatable only once *every* branch has let it go.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -19,8 +21,17 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import delete_branch
+from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.schema import TICKET, load_schema
+
+if TYPE_CHECKING:
+    from fast_depends import Provider
+
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
 
 POOL_START = 1
 POOL_END = 10
@@ -263,6 +274,43 @@ class TestOlderBranchLiveness:
         assert held not in await repository.get_used(pool=pool, branch=default_branch_scope_class), (
             "once the older branch forks after the delete, no branch holds the number"
         )
+        assert await repository.get_free(pool=pool, branch=default_branch_scope_class) == held
+
+    async def test_a_rebase_keeps_the_record_while_another_older_branch_still_holds_the_number(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        pool: CoreNumberPool,
+        repository: NumberPoolRepository,
+        dependency_provider: Provider,
+    ) -> None:
+        """The retirement pass a rebase runs may close the record only once no branch reaches the number."""
+        ticket = await _new_ticket(db=db, pool=pool, title="held-past-a-rebase")
+        held = ticket.get_attribute("ticket_id").value
+        attribute_id = ticket.get_attribute("ticket_id").id
+        assert attribute_id is not None
+        first = await create_branch(branch_name="rebased-while-another-holds", db=db)
+        second = await create_branch(branch_name="still-holds-past-the-rebase", db=db)
+        await ticket.delete(db=db)
+
+        await rebase_branch(
+            db=db, default_branch=default_branch_scope_class, branch=first, dependency_provider=dependency_provider
+        )
+
+        records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
+        assert [record.is_open for record in records] == [True], (
+            "the second older branch still holds the number, so the rebase must leave its record open"
+        )
+        assert held in await repository.get_used(pool=pool, branch=default_branch_scope_class)
+        assert await repository.get_free(pool=pool, branch=default_branch_scope_class) != held
+
+        await rebase_branch(
+            db=db, default_branch=default_branch_scope_class, branch=second, dependency_provider=dependency_provider
+        )
+
+        records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
+        assert [record.is_open for record in records] == [False], "with no branch left holding it, the record closes"
+        assert held not in await repository.get_used(pool=pool, branch=default_branch_scope_class)
         assert await repository.get_free(pool=pool, branch=default_branch_scope_class) == held
 
     async def test_a_branch_being_deleted_holds_nothing(

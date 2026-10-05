@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch.data_deleter import BranchDataDeleter
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import BranchSupportType, InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
@@ -14,6 +15,7 @@ from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA,
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.schema import SchemaRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -59,6 +61,22 @@ async def pooled_holder(db: InfrahubDatabase, branch: Branch, kind: str, pool: C
         == IsReservedEdge.OPEN
     )
     return holder
+
+
+def widget_schema(serial_branch_support: BranchSupportType) -> SchemaRoot:
+    """The widget schema with its pooled attribute given the requested branch support."""
+    schema = deepcopy(AGNOSTIC_RETIREMENT_SCHEMA)
+    widget = next(node for node in schema.nodes if node.kind == WIDGET_KIND)
+    widget.get_attribute(name=SERIAL_ATTRIBUTE_NAME).branch = serial_branch_support
+    return schema
+
+
+async def pooled_widget(
+    db: InfrahubDatabase, default_branch: Branch, pool: CoreNumberPool, support: BranchSupportType
+) -> Node:
+    """Register the widget with its pooled serial at the given branch support and allocate one."""
+    registry.schema.register_schema(schema=widget_schema(serial_branch_support=support), branch=default_branch.name)
+    return await pooled_holder(db=db, branch=default_branch, kind=WIDGET_KIND, pool=pool, name="holds-a-pooled-serial")
 
 
 async def delete_branch(db: InfrahubDatabase, branch: Branch) -> None:

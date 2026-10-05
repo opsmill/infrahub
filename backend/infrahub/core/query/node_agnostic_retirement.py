@@ -86,12 +86,30 @@ class RetireNodeAgnosticFieldsQuery(Query):
         return NodeAgnosticRetirementResult(edges_closed=0)
 
 
-_NODES_DELETED_ON_BRANCH = """
-MATCH (node:Node)-[deletion:IS_PART_OF]->(:Root)
-WHERE deletion.branch = $branch_name
-  AND deletion.status = "deleted"
-  AND deletion.from >= $from_time
-  AND deletion.from <= $to_time
+_NODES_TO_CHECK_FOR_GLOBAL_EDGES = """
+CALL () {
+    MATCH (node:Node)-[deletion:IS_PART_OF]->(:Root)
+    WHERE deletion.branch = $branch_name
+      AND deletion.status = "deleted"
+      AND deletion.from >= $from_time
+      AND deletion.from <= $to_time
+    RETURN node
+  UNION
+    // -----------------
+    // Attribute vertices with open IS_RESERVED edges might need to have those edges retired
+    // so they must be included in this list
+    // -----------------
+    MATCH ()-[is_reserved:IS_RESERVED]->(:Attribute)<-[owning:HAS_ATTRIBUTE]-(node:Node)
+    WHERE is_reserved.branch = $global_branch_name
+      AND is_reserved.status = "active"
+      AND is_reserved.from <= $to_time
+      AND is_reserved.to IS NULL
+      AND owning.branch = $branch_name
+      AND owning.status = "active"
+      AND owning.to >= $from_time
+      AND owning.to <= $to_time
+    RETURN node
+}
 // -----------------
 // One row holding every uuid, so the existence edges are scanned once rather than once per page.
 // -----------------
@@ -99,14 +117,15 @@ RETURN collect(DISTINCT node.uuid) AS node_uuids
 """
 
 
-class NodesDeletedOnBranchQuery(Query):
-    """Return the uuids of the nodes deleted on a branch between two timestamps, both included.
+class NodesToCheckForGlobalEdgesQuery(Query):
+    """Return the uuids of objects to check for branch-agnostic edges that may need to be retired.
 
-    A kind or inheritance change deletes the superseded vertex of a node that stays live under the same
-    uuid, so a returned uuid is a node whose retention needs re-evaluating, not proof that it is gone.
+    Includes both objects deleted on the branch within the timestamps and objects with pool-reserved
+    attributes that lost their owning edge on the branch in the same window. Not all objects actually
+    need to have branch-agnostic retirement applied, but they all do need to be checked.
     """
 
-    name: str = "nodes_deleted_on_branch"
+    name: str = "nodes_to_check_for_global_edges"
     type: QueryType = QueryType.READ
 
     insert_return: bool = False
@@ -119,10 +138,11 @@ class NodesDeletedOnBranchQuery(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["branch_name"] = self.branch_name
+        self.params["global_branch_name"] = GLOBAL_BRANCH_NAME
         self.params["from_time"] = self.from_time.to_string()
         self.params["to_time"] = self.to_time.to_string()
 
-        self.add_to_query(_NODES_DELETED_ON_BRANCH)
+        self.add_to_query(_NODES_TO_CHECK_FOR_GLOBAL_EDGES)
         self.return_labels = ["node_uuids"]
 
     def get_node_uuids(self) -> list[str]:

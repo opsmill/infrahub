@@ -23,7 +23,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from tests.component.core.agnostic_retirement.test_on_rebase import _rebase_branch
+from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import (
     SERIAL_ATTRIBUTE_NAME,
     SERIAL_POOL_START,
@@ -320,7 +320,7 @@ class TestObjectDelete:
             == IsReservedEdge.OPEN
         ), "the branch still holds the object through its fork point"
 
-        rebased = await _rebase_branch(
+        rebased = await rebase_branch(
             db=db, default_branch=default_branch_scope_class, branch=branch, dependency_provider=dependency_provider
         )
 
@@ -418,7 +418,7 @@ class TestOnlyTheIsReservedEdgeIsClosed:
             db=db, default_branch=default_branch_scope_class, pool=pool, name="retired-by-a-rebase"
         )
 
-        await _rebase_branch(
+        await rebase_branch(
             db=db, default_branch=default_branch_scope_class, branch=older, dependency_provider=dependency_provider
         )
 

@@ -5,19 +5,29 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, SchemaPathType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, SchemaPathType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_attribute_remove import NodeAttributeRemoveMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.timestamp import Timestamp
 from infrahub.pools.number_pool_repository import NumberPoolRepository
-from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START
-from tests.helpers.agnostic_edges import EdgeState, open_active_edges
+from tests.component.core.agnostic_retirement.support import rebase_branch
+from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START, pooled_widget
+from tests.helpers.agnostic_edges import (
+    EdgeState,
+    IsReservedEdge,
+    is_reserved_edge_on,
+    open_active_edges,
+    remove_attribute_from_schema,
+)
 from tests.helpers.schema.agnostic_retirement import WIDGET_KIND
 
 if TYPE_CHECKING:
+    from fast_depends import Provider
+
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -55,20 +65,7 @@ async def test_removing_a_pool_tracked_attribute_closes_its_record_and_frees_the
         "the pool holds exactly one live record, on the global branch"
     )
 
-    previous_widget_schema = agnostic_schema.get(name=WIDGET_KIND)
-    new_widget_schema = agnostic_schema.duplicate().get(name=WIDGET_KIND)
-    new_widget_schema.attributes = [
-        attribute for attribute in new_widget_schema.attributes if attribute.name != SERIAL_ATTRIBUTE_NAME
-    ]
-
-    migration = NodeAttributeRemoveMigration(
-        previous_node_schema=previous_widget_schema,
-        new_node_schema=new_widget_schema,
-        schema_path=SchemaPath(
-            path_type=SchemaPathType.ATTRIBUTE, schema_kind=WIDGET_KIND, field_name=SERIAL_ATTRIBUTE_NAME
-        ),
-    )
-    result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
     assert not result.errors
 
     after = await reservation_edges(db=db, pool_id=serial_pool.id)
@@ -127,3 +124,44 @@ async def test_removing_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     assert await NumberPoolRepository(db=db).get_free(pool=serial_pool, branch=default_branch) != SERIAL_POOL_START, (
         "a removal on a branch must not offer the default branch's number again"
     )
+
+
+async def test_the_is_reserved_edge_closes_once_every_older_branch_rebases_past_a_removal(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    serial_pool: CoreNumberPool,
+    dependency_provider: Provider,
+) -> None:
+    holder = await pooled_widget(
+        db=db, default_branch=default_branch, pool=serial_pool, support=BranchSupportType.AWARE
+    )
+    first = await create_branch(db=db, branch_name="rebases-past-the-removal-first")
+    last = await create_branch(db=db, branch_name="rebases-past-the-removal-last")
+
+    result = await remove_attribute_from_schema(db=db, branch=default_branch, at=Timestamp())
+    assert not result.errors
+
+    assert (
+        await is_reserved_edge_on(
+            db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME
+        )
+        == IsReservedEdge.OPEN
+    ), "the older branches have not taken the removal and still hold the value at their fork point"
+
+    await rebase_branch(db=db, default_branch=default_branch, branch=first, dependency_provider=dependency_provider)
+
+    assert (
+        await is_reserved_edge_on(
+            db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME
+        )
+        == IsReservedEdge.OPEN
+    ), "the branch not yet rebased still reads the attribute at its fork point"
+
+    await rebase_branch(db=db, default_branch=default_branch, branch=last, dependency_provider=dependency_provider)
+
+    assert (
+        await is_reserved_edge_on(
+            db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME
+        )
+        == IsReservedEdge.CLOSED
+    ), "once the last branch reading the attribute rebases past the removal, no branch reaches it"
