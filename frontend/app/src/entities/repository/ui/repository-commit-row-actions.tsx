@@ -3,7 +3,7 @@ import { CopyIcon, EllipsisVerticalIcon, ExternalLinkIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { copyTextToClipboard } from "@/shared/utils/clipboard";
 
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 import type { RepositoryCommit } from "@/entities/repository/domain/model/repository";
@@ -14,11 +14,12 @@ export interface RepositoryCommitRowActionsProps {
 }
 
 export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitRowActionsProps) {
-  const { copyToClipboard } = useCopyToClipboard();
-
   const copyHash = async () => {
-    await copyToClipboard(commit.hash);
-    toast(<Alert message="Commit hash copied" type={ALERT_TYPES.INFO} />);
+    if (await copyTextToClipboard(commit.hash)) {
+      toast(<Alert message="Commit hash copied" type={ALERT_TYPES.INFO} />);
+      return;
+    }
+    toast(<Alert message="Could not copy the commit hash" type={ALERT_TYPES.ERROR} />);
   };
 
   return (

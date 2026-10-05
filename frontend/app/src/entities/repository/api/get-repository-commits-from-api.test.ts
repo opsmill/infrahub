@@ -26,9 +26,27 @@ describe("getRepositoryCommitsFromApi", () => {
     // THEN
     expect(graphqlClient.query).toHaveBeenCalledWith(
       expect.objectContaining({
-        variables: { repositoryId: "repo-1", limit: 20, offset: 40 },
+        variables: { repositoryId: "repo-1", limit: 20, offset: 40, isFirstPage: false },
         context: { branch: "feature-x" },
       })
     );
   });
+
+  test.each([0, undefined])(
+    "asks for the pending count on the first page (offset %s)",
+    async (offset) => {
+      // WHEN
+      await getRepositoryCommitsFromApi({
+        repositoryId: "repo-1",
+        limit: 20,
+        offset,
+        branchName: "main",
+      });
+
+      // THEN
+      expect(graphqlClient.query).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: expect.objectContaining({ isFirstPage: true }) })
+      );
+    }
+  );
 });

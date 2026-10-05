@@ -7,7 +7,12 @@ import {
 import type { BranchContextParams } from "@/shared/api/types";
 
 const REPOSITORY_COMMITS = graphql(`
-  query REPOSITORY_COMMITS($repositoryId: String!, $limit: Int, $offset: Int) {
+  query REPOSITORY_COMMITS(
+    $repositoryId: String!
+    $limit: Int
+    $offset: Int
+    $isFirstPage: Boolean!
+  ) {
     InfrahubRepositoryCommits(repository_id: $repositoryId, limit: $limit, offset: $offset) {
       repository_id
       branch_name
@@ -15,7 +20,7 @@ const REPOSITORY_COMMITS = graphql(`
       condition
       imported_commit
       remote_head
-      pending_count
+      pending_count @include(if: $isFirstPage)
       fetched_at
       checked_at
       unavailable {
@@ -40,7 +45,7 @@ export type RepositoryCommitsResponse = ResultOf<typeof REPOSITORY_COMMITS>;
 
 export interface GetRepositoryCommitsFromApiParams
   extends BranchContextParams,
-    VariablesOf<typeof REPOSITORY_COMMITS> {}
+    Omit<VariablesOf<typeof REPOSITORY_COMMITS>, "isFirstPage"> {}
 
 export function getRepositoryCommitsFromApi({
   repositoryId,
@@ -54,6 +59,7 @@ export function getRepositoryCommitsFromApi({
       repositoryId,
       limit,
       offset,
+      isFirstPage: !offset,
     },
     context: {
       branch: branchName,

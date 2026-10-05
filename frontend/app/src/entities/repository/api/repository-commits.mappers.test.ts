@@ -61,4 +61,15 @@ describe("mapToRepositoryCommitLog", () => {
     // THEN
     expect(map).toThrow("Expected an ISO 8601 DateTime string");
   });
+
+  test("reads a pending count left out of a later page as unknown", () => {
+    // GIVEN
+    const response = { ...generateBehindCommitsResponse(), pending_count: undefined };
+
+    // WHEN
+    const log = mapToRepositoryCommitLog(response);
+
+    // THEN
+    expect(log.pending_count).toBeNull();
+  });
 });

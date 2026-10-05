@@ -104,7 +104,7 @@ export function getFreshness({
   return {
     trackedRef: git_ref,
     checkedAt: checked_at,
-    // A check that brought the update already shows that time.
+    // fetched_at equals checked_at when the last check fetched new commits, so show the time once.
     updatedAt: fetched_at === checked_at ? null : fetched_at,
   };
 }

@@ -97,6 +97,21 @@ describe("useCopyToClipboard", () => {
     await expect.element(component.getByText("copied")).toBeVisible();
   });
 
+  it("does not confirm a copy that failed", async () => {
+    // GIVEN
+    vi.stubGlobal("isSecureContext", false);
+    vi.spyOn(document, "execCommand").mockReturnValue(false);
+    const component = await render(<CopyButton value="test-value" />);
+    const button = component.getByTestId("copy-btn");
+
+    // WHEN
+    await button.click();
+
+    // THEN
+    await expect.element(button).toHaveAttribute("data-copy-count", "0");
+    await expect.element(button).toHaveAttribute("data-copied", "false");
+  });
+
   it("counts every successful copy so repeated copies can be announced again", async () => {
     // GIVEN
     const writeText = vi.fn().mockResolvedValue(undefined);

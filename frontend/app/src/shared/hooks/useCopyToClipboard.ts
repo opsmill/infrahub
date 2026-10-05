@@ -1,19 +1,6 @@
 import React from "react";
 
-function oldSchoolCopy(text: string) {
-  const textNode = document.createTextNode(text);
-  document.body.appendChild(textNode);
-  const range = document.createRange();
-  range.selectNode(textNode);
-  const selection = window.getSelection();
-  if (selection) {
-    selection.removeAllRanges();
-    selection.addRange(range);
-    document.execCommand("copy");
-    selection.removeAllRanges();
-  }
-  document.body.removeChild(textNode);
-}
+import { copyTextToClipboard } from "@/shared/utils/clipboard";
 
 const COPIED_FEEDBACK_DURATION = 2000;
 
@@ -31,30 +18,15 @@ export function useCopyToClipboard() {
     };
   }, []);
 
-  const copyToClipboard = React.useCallback(async (value: string) => {
-    function confirmCopied() {
-      // The clipboard write can settle after unmount, past the cleanup that clears the timer.
-      if (!isMounted.current) return;
-      setIsCopied(true);
-      setCopyCount((count) => count + 1);
-      clearTimeout(feedbackTimeout.current);
-      feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
-    }
-
-    if (!window.isSecureContext || !navigator.clipboard) {
-      oldSchoolCopy(value);
-      confirmCopied();
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(value);
-      confirmCopied();
-    } catch {
-      oldSchoolCopy(value);
-      confirmCopied();
-    }
-  }, []);
+  const copyToClipboard = async (value: string) => {
+    const hasCopied = await copyTextToClipboard(value);
+    // The clipboard write can settle after unmount, past the cleanup that clears the timer.
+    if (!hasCopied || !isMounted.current) return;
+    setIsCopied(true);
+    setCopyCount((count) => count + 1);
+    clearTimeout(feedbackTimeout.current);
+    feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+  };
 
   return { isCopied, copyCount, copyToClipboard };
 }
