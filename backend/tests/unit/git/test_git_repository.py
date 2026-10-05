@@ -685,7 +685,7 @@ class _BranchSyncRepository(InfrahubRepository):
 
     async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         return BranchData(
-            id=str(UUIDT.new()),
+            id=f"{branch_name}-id",
             name=branch_name,
             description=None,
             sync_with_git=True,
@@ -734,7 +734,9 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
 
     collected = await repository.collect_pending_imports()
 
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02")]
+    assert collected.imports == [
+        PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02", infrahub_branch_id="branch02-id")
+    ]
     assert collected.failed_imports == [
         FailedImport(
             branch_name="branch01",

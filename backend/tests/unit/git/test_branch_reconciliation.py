@@ -142,9 +142,15 @@ def divergence(
     )
 
 
-def reconciled(commit: str, divergence: RefDivergence | None, branch_name: str = TRACKED) -> ReconciledBranch:
-    return ReconciledBranch(
-        infrahub_branch_name=branch_name, infrahub_branch_id=f"{branch_name}-id", commit=commit, divergence=divergence
+def queued(
+    commit: str, divergence: RefDivergence | None, branch_name: str = TRACKED, git_branch_name: str | None = None
+) -> PendingObjectImport:
+    return PendingObjectImport(
+        infrahub_branch_name=branch_name,
+        commit=commit,
+        git_branch_name=git_branch_name,
+        infrahub_branch_id=f"{branch_name}-id",
+        divergence=divergence,
     )
 
 
@@ -173,9 +179,12 @@ async def test_a_rewritten_branch_is_reset_onto_the_remote_head_and_imported_aga
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
     assert collected.failed_imports == []
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=TRACKED, commit=rewritten)]
+    rewrite = divergence(imported, rewritten, RefClassification.REWRITE)
+    assert collected.imports == [queued(commit=rewritten, divergence=rewrite)]
     assert collected.reconciled == [
-        reconciled(commit=rewritten, divergence=divergence(imported, rewritten, RefClassification.REWRITE))
+        ReconciledBranch(
+            infrahub_branch_name=TRACKED, infrahub_branch_id=f"{TRACKED}-id", commit=rewritten, divergence=rewrite
+        )
     ]
     assert tracked.worktree_head(branch_name=TRACKED) == rewritten
     assert tracked.client.recorded_commits == [(TRACKED, rewritten)]
@@ -191,9 +200,8 @@ async def test_a_fast_forwarded_branch_is_pulled_and_reports_no_reconciliation(
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=TRACKED, commit=advanced)]
-    assert collected.reconciled == [
-        reconciled(commit=advanced, divergence=divergence(imported, advanced, RefClassification.FAST_FORWARD))
+    assert collected.imports == [
+        queued(commit=advanced, divergence=divergence(imported, advanced, RefClassification.FAST_FORWARD))
     ]
     assert tracked.worktree_head(branch_name=TRACKED) == advanced
     assert reconciliation_messages(caplog) == []
@@ -209,8 +217,8 @@ async def test_a_branch_the_remote_rewound_is_reset_back_onto_the_remote_head(
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
-    assert collected.reconciled == [
-        reconciled(
+    assert collected.imports == [
+        queued(
             commit=tracked.trunk_commit,
             divergence=divergence(imported, tracked.trunk_commit, RefClassification.REWRITE),
         )
@@ -236,8 +244,8 @@ async def test_a_stale_worktree_resets_even_when_the_graph_already_records_the_r
         graph_commits=tracked.graph_commits(**{TRACKED: rewritten})
     )
 
-    assert collected.reconciled == [
-        reconciled(commit=rewritten, divergence=divergence(rewritten, rewritten, RefClassification.UNCHANGED))
+    assert collected.imports == [
+        queued(commit=rewritten, divergence=divergence(rewritten, rewritten, RefClassification.UNCHANGED))
     ]
     assert tracked.worktree_head(branch_name=TRACKED) == rewritten
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=imported, commit=rewritten)]
@@ -255,11 +263,8 @@ async def test_a_worktree_on_the_remote_head_records_the_commit_the_graph_lacks(
         graph_commits=tracked.graph_commits(**{TRACKED: tracked.trunk_commit})
     )
 
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=TRACKED, commit=imported)]
-    assert collected.reconciled == [
-        reconciled(
-            commit=imported, divergence=divergence(tracked.trunk_commit, imported, RefClassification.FAST_FORWARD)
-        )
+    assert collected.imports == [
+        queued(commit=imported, divergence=divergence(tracked.trunk_commit, imported, RefClassification.FAST_FORWARD))
     ]
     assert tracked.client.recorded_commits == [(TRACKED, imported)]
     assert tracked.worktree_head(branch_name=TRACKED) == imported
@@ -276,8 +281,8 @@ async def test_a_worktree_on_the_remote_head_reports_the_commit_the_graph_held_a
         graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
     )
 
-    assert collected.reconciled == [
-        reconciled(commit=imported, divergence=divergence(UNKNOWN_COMMIT, imported, RefClassification.REWRITE))
+    assert collected.imports == [
+        queued(commit=imported, divergence=divergence(UNKNOWN_COMMIT, imported, RefClassification.REWRITE))
     ]
     assert tracked.client.recorded_commits == [(TRACKED, imported)]
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=UNKNOWN_COMMIT, commit=imported)]
@@ -291,7 +296,6 @@ async def test_a_branch_on_the_remote_head_in_both_git_and_the_graph_is_left_alo
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
     assert collected.imports == []
-    assert collected.reconciled == []
     assert collected.failed_imports == []
     assert tracked.client.recorded_commits == []
 
@@ -315,7 +319,15 @@ async def test_a_branch_that_cannot_be_classified_fails_alone_and_keeps_its_work
             reason="'not-a-commit' is not a valid commit identifier",
         )
     ]
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=OTHER, commit=advanced)]
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
     assert tracked.worktree_head(branch_name=TRACKED) == imported
 
 
@@ -332,7 +344,15 @@ async def test_a_branch_whose_infrahub_branch_is_gone_is_left_alone(
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
     assert collected.failed_imports == []
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=OTHER, commit=advanced)]
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
     assert tracked.client.recorded_commits == [(OTHER, advanced)]
     assert tracked.worktree_head(branch_name=TRACKED) == imported
 
@@ -347,9 +367,8 @@ async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_anot
 
     collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
 
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name=TRACKED, commit=rewritten)]
-    assert collected.reconciled == [
-        reconciled(commit=rewritten, divergence=divergence(imported, rewritten, RefClassification.REWRITE))
+    assert collected.imports == [
+        queued(commit=rewritten, divergence=divergence(imported, rewritten, RefClassification.REWRITE))
     ]
     assert tracked.client.recorded_commits == [(TRACKED, rewritten)]
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=imported, commit=rewritten)]
@@ -369,13 +388,11 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_i
     )
 
     assert collected.imports == [
-        PendingObjectImport(infrahub_branch_name=STAGING, git_branch_name="main", commit=rewritten)
-    ]
-    assert collected.reconciled == [
-        reconciled(
+        queued(
             commit=rewritten,
             divergence=divergence(imported, rewritten, RefClassification.REWRITE, branch_name="main"),
             branch_name=STAGING,
+            git_branch_name="main",
         )
     ]
     assert tracked.worktree_head(branch_name="main") == rewritten

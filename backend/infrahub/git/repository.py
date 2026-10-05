@@ -65,6 +65,11 @@ class PendingObjectImport:
     infrahub_branch_name: str
     commit: str
     git_branch_name: str | None = None
+    infrahub_branch_id: str | None = None
+    """The branch UUID, set when a sync collected the import."""
+
+    divergence: RefDivergence | None = None
+    """How the remote head compared to the commit the graph records, when the sync classified the branch."""
 
 
 class ImportStep(StrEnum):
@@ -87,41 +92,31 @@ class FailedImport:
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
 
-    ``imports`` are the branches ready to have their objects imported, and ``reconciled`` holds, at the
-    same position, the entry naming the Infrahub branch each import advances and the commit it advances to.
-    ``failed_imports`` are the branches whose git or branch setup failed, each carrying the phase that
-    failed and the reason. ``skipped_branches`` are the remote branches left out because their name
-    collides with Infrahub's default branch, and ``advanced_skipped_branches`` the subset of them whose
-    remote head moved during this run's fetch.
+    ``imports`` are the branches ready to have their objects imported. ``failed_imports`` are the
+    branches whose git or branch setup failed, each carrying the phase that failed and the reason.
+    ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
+    default branch, and ``advanced_skipped_branches`` the subset of them whose remote head moved
+    during this run's fetch.
     """
 
     imports: list[PendingObjectImport] = field(default_factory=list)
-    reconciled: list[ReconciledBranch] = field(default_factory=list)
     failed_imports: list[FailedImport] = field(default_factory=list)
     skipped_branches: list[str] = field(default_factory=list)
     advanced_skipped_branches: list[str] = field(default_factory=list)
 
-    def add_import(
-        self,
-        infrahub_branch_name: str,
-        infrahub_branch_id: str,
-        commit: str,
-        divergence: RefDivergence | None,
-        git_branch_name: str | None = None,
-    ) -> None:
-        self.imports.append(
-            PendingObjectImport(
-                infrahub_branch_name=infrahub_branch_name, commit=commit, git_branch_name=git_branch_name
-            )
-        )
-        self.reconciled.append(
+    @property
+    def reconciled(self) -> list[ReconciledBranch]:
+        """The Infrahub branch each collected import advances, and the commit it advances to."""
+        return [
             ReconciledBranch(
-                infrahub_branch_name=infrahub_branch_name,
-                infrahub_branch_id=infrahub_branch_id,
-                commit=commit,
-                divergence=divergence,
+                infrahub_branch_name=pending_import.infrahub_branch_name,
+                infrahub_branch_id=pending_import.infrahub_branch_id,
+                commit=pending_import.commit,
+                divergence=pending_import.divergence,
             )
-        )
+            for pending_import in self.imports
+            if pending_import.infrahub_branch_id is not None
+        ]
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -494,8 +489,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self._log_reconciliation(
                 branch_name=branch_name, discarded_commit=divergence.discarded_commit, commit=commit
             )
-        collected.add_import(
-            infrahub_branch_name=infrahub_branch, infrahub_branch_id=branch.id, commit=commit, divergence=divergence
+        collected.imports.append(
+            PendingObjectImport(
+                infrahub_branch_name=infrahub_branch,
+                commit=commit,
+                infrahub_branch_id=branch.id,
+                divergence=divergence,
+            )
         )
 
     async def _collect_updated_branch(
@@ -549,12 +549,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         if commit is not None:
-            collected.add_import(
-                infrahub_branch_name=import_branch,
-                infrahub_branch_id=branch_id,
-                commit=commit,
-                divergence=divergence,
-                git_branch_name=git_branch_name,
+            collected.imports.append(
+                PendingObjectImport(
+                    infrahub_branch_name=import_branch,
+                    commit=commit,
+                    git_branch_name=git_branch_name,
+                    infrahub_branch_id=branch_id,
+                    divergence=divergence,
+                )
             )
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
