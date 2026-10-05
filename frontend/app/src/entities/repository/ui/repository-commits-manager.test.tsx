@@ -8,6 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -91,6 +92,7 @@ describe("RepositoryCommitsManager", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.resetAllMocks();
     vi.unstubAllGlobals();
@@ -239,7 +241,6 @@ describe("RepositoryCommitsManager", () => {
   });
 
   test.each<{ condition: RepositoryGitCondition; response: RepositoryCommitsWire }>([
-    { condition: "UNAVAILABLE", response: generateNotClonedCommitsResponse() },
     {
       condition: "NOT_TRACKED",
       response: generateRepositoryCommitsResponse({ condition: "NOT_TRACKED", git_ref: null }),
@@ -338,8 +339,68 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
   });
 
-  test("renders the error screen when a poll fails after an unavailable answer", async () => {
+  test("keeps the not-yet-available state on screen while it retries, then renders the rows", async () => {
     // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    let answerSecondAttempt: (result: ApiResult) => void = () => {};
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockReturnValueOnce(
+        new Promise<ApiResult>((resolve) => {
+          answerSecondAttempt = resolve;
+        })
+      )
+      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+
+    // WHEN
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    expect(component.getByText("Loading...", { exact: true }).query()).toBeNull();
+    answerSecondAttempt(apiResult(generateNotClonedCommitsResponse()));
+    await expect
+      .poll(() => component.getByText("Commit log not available yet").query())
+      .not.toBeNull();
+    expect(component.getByText("Loading...", { exact: true }).query()).toBeNull();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test.each([
+    {
+      name: "reading commits is not implemented",
+      answer: () => Promise.resolve(apiResult(generateNotImplementedCommitsResponse())),
+      text: NOT_IMPLEMENTED_MESSAGE,
+    },
+    {
+      name: "the read fails",
+      answer: () => Promise.reject(new Error("Worker did not answer in time")),
+      text: "Worker did not answer in time",
+    },
+  ])("asks once and does not retry when $name", async ({ answer, text }) => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock.mockImplementation(answer);
+
+    // WHEN
+    const component = await renderTab();
+    await expect.element(component.getByText(text)).toBeVisible();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(1);
+    await expect.element(component.getByText(text)).toBeVisible();
+  });
+
+  test("renders the error screen when a retry fails after an unavailable answer", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
     apiMock
       .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
       .mockRejectedValue(new Error("Worker did not answer in time"));
@@ -347,12 +408,41 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
 
     // WHEN
-    await queryClient.refetchQueries();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
 
     // THEN
     await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
     await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test("keeps the loaded rows as stale while a refresh answering unavailable is retried, then refreshes them", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValue(apiResult(generateInSyncCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    const staleNotice = component.getByText(STALE_NOTICE);
+    expect(staleNotice.query()).toBeNull();
+
+    // WHEN
+    const refetch = queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(staleNotice).toBeVisible();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await refetch;
+    await expect.element(component.getByText(IN_SYNC_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(staleNotice.query()).toBeNull();
+    expect(component.getByText(BEHIND_HEAD).query()).toBeNull();
   });
 
   test("refetches the log when refresh is pressed on the error screen", async () => {
@@ -374,47 +464,7 @@ describe("RepositoryCommitsManager", () => {
     expect(apiMock).toHaveBeenCalledTimes(2);
   });
 
-  test("keeps the loaded rows when a later poll answers unavailable", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
-      .mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
-    const component = await renderTab();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    expect(apiMock).toHaveBeenCalledTimes(2);
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
-    expect(component.getByText("Commit log not available yet").query()).toBeNull();
-  });
-
-  test("says the rows are stale while polls answer unavailable, until one answers with the log", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
-    const component = await renderTab();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    const staleNotice = component.getByText(STALE_NOTICE);
-    expect(staleNotice.query()).toBeNull();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    await expect.element(staleNotice).toBeVisible();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await queryClient.refetchQueries();
-    await expect.poll(() => staleNotice.query()).toBeNull();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-  });
-
-  test("keeps the loaded rows when a later poll fails", async () => {
+  test("keeps the loaded rows when a later refresh fails", async () => {
     // GIVEN
     apiMock
       .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
@@ -452,23 +502,6 @@ describe("RepositoryCommitsManager", () => {
     await queryClient.refetchQueries();
     await expect.poll(() => staleNotice.query()).toBeNull();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-  });
-
-  test("replaces the not-yet-available state with the rows once a worker answers", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
-    const component = await renderTab();
-    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
-    expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
   test("drops the previous branch's rows when the branch changes", async () => {
@@ -510,25 +543,6 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(PAGE_ONE_LAST).elements()).toHaveLength(1);
   });
 
-  test("still loads the next page after a poll answered unavailable", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
-    const component = await renderTab();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-    await queryClient.refetchQueries();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-
-    // WHEN
-    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-
-    // THEN
-    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
-    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
-  });
-
   test("offers a retry when a later page answers unavailable, and loads only that page on retry", async () => {
     // GIVEN
     apiMock
@@ -543,6 +557,7 @@ describe("RepositoryCommitsManager", () => {
       .toBeVisible();
     await expect.element(component.getByText(PAGE_ONE_LAST)).toBeVisible();
     expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
+    expect(component.getByRole("status").query()).toBeNull();
     expect(apiMock).toHaveBeenCalledTimes(2);
 
     // WHEN

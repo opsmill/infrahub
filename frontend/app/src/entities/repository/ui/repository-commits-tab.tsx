@@ -7,6 +7,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import { REPOSITORY_COMMITS_TAB } from "@/entities/repository/domain/model/repository";
 import { getPendingImportCount } from "@/entities/repository/domain/rules/get-pending-import-count";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { isLoadingFirstPage } from "@/entities/repository/ui/repository-commits.view";
 
 export interface RepositoryCommitsTabProps {
   objectKind: string;
@@ -14,7 +15,11 @@ export interface RepositoryCommitsTabProps {
 }
 
 export function RepositoryCommitsTab({ objectKind, objectId }: RepositoryCommitsTabProps) {
-  const { isPending, data: pendingImportCount } = useGetRepositoryCommits(
+  const {
+    isPending,
+    failureReason,
+    data: pendingImportCount,
+  } = useGetRepositoryCommits(
     { repositoryId: objectId },
     {
       select: ({ pages: [firstPage] }) => (firstPage ? getPendingImportCount(firstPage) : null),
@@ -27,7 +32,7 @@ export function RepositoryCommitsTab({ objectKind, objectId }: RepositoryCommits
       scrollIntoViewOnActive
     >
       Commits
-      {isPending ? (
+      {isLoadingFirstPage({ isPending, failureReason }) ? (
         <Spinner />
       ) : (
         pendingImportCount !== null &&

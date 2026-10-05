@@ -21,7 +21,7 @@ import {
 } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
   REPOSITORY_COMMITS_PAGE_SIZE,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+  REPOSITORY_COMMITS_RETRY_DELAY_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/repository-commits.constants";
 
@@ -37,10 +37,8 @@ export function getRepositoryCommitsQueryKey({ repositoryId, branchName }: Repos
   });
 }
 
-function getPollInterval(error: Error | null) {
-  return error instanceof RepositoryGitUnavailableError && shouldRetryGitUnavailable(error.reason)
-    ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
-    : false;
+function isWarmingUp(error: Error) {
+  return error instanceof RepositoryGitUnavailableError && shouldRetryGitUnavailable(error.reason);
 }
 
 type RepositoryCommitsQueryKey = ReturnType<typeof getRepositoryCommitsQueryKey>;
@@ -58,7 +56,9 @@ export function getRepositoryCommitsQueryOptions<TData = RepositoryCommitPages>(
         if (lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE) return;
         return lastPageParam + REPOSITORY_COMMITS_PAGE_SIZE;
       },
-      refetchInterval: (query) => getPollInterval(query.state.error),
+      // Retried, not polled: an interval refetch with no data resets the query to pending and clears its error.
+      retry: (_, error) => isWarmingUp(error),
+      retryDelay: REPOSITORY_COMMITS_RETRY_DELAY_MS,
       // Every loaded page is a worker round trip, and a focus or remount refetch replays all of them.
       refetchOnWindowFocus: false,
       staleTime: REPOSITORY_COMMITS_STALE_TIME_MS,

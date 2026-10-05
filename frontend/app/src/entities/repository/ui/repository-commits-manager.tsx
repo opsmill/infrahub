@@ -8,14 +8,16 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
-import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   type CommitLogEmptyState,
+  getCommitLogWithoutPages,
   getEmptyState,
   getLoadedCommits,
+  getNextPageState,
   getNoCommitLogState,
+  isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
@@ -38,42 +40,50 @@ export function RepositoryCommitsManager({
   const {
     data,
     error,
+    failureReason,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
     isRefetchError,
+    isRefetching,
   } = useGetRepositoryCommits({ repositoryId });
   const pages = data?.pages ?? [];
   const [log] = pages;
 
   if (!log) {
-    if (error instanceof RepositoryGitUnavailableError) {
-      return (
-        <RepositoryCommitsEmptyState
-          log={error.log}
-          repositoryId={repositoryId}
-          emptyState={getEmptyState(error)}
-        />
-      );
-    }
+    const withoutPages = getCommitLogWithoutPages({ error, failureReason });
 
-    if (error) {
-      return (
-        <Col className="h-full gap-0">
-          <Row className="p-2">
-            <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
-          </Row>
-          <ErrorScreen message={error.message} />
-        </Col>
-      );
+    switch (withoutPages.kind) {
+      case "unavailable":
+        return (
+          <RepositoryCommitsEmptyState
+            log={withoutPages.error.log}
+            repositoryId={repositoryId}
+            emptyState={getEmptyState(withoutPages.error)}
+          />
+        );
+      case "failed":
+        return (
+          <Col className="h-full gap-0">
+            <Row className="p-2">
+              <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
+            </Row>
+            <ErrorScreen message={withoutPages.error.message} />
+          </Col>
+        );
+      default:
+        return <LoadingIndicator className="h-full p-4" />;
     }
-
-    return <LoadingIndicator className="h-full p-4" />;
   }
 
   const commits = getLoadedCommits(pages);
   const noCommitLogState = commits.length === 0 ? getNoCommitLogState(log) : null;
+  const nextPageState = getNextPageState({
+    isFetchNextPageError,
+    isFetchingNextPage,
+    failureReason,
+  });
 
   if (noCommitLogState) {
     return (
@@ -88,7 +98,7 @@ export function RepositoryCommitsManager({
   return (
     <Col className="h-full gap-0">
       <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
-      {isRefetchError && (
+      {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>Couldn't refresh the commit log right now. Showing the last loaded commits.</p>
         </RepositoryCommitsNotice>
@@ -109,20 +119,19 @@ export function RepositoryCommitsManager({
           gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
-        {isFetchNextPageError ? (
+        {nextPageState === "loading" && <Spinner className="mx-auto my-2" />}
+        {(nextPageState === "failed" || nextPageState === "retry-pending") && (
           <RepositoryCommitsNotice>
             <p>Older commits could not be loaded right now.</p>
             <Button
               variant="outline"
               size="sm"
-              isPending={isFetchingNextPage}
+              isPending={nextPageState === "retry-pending"}
               onPress={() => fetchNextPage()}
             >
               Retry
             </Button>
           </RepositoryCommitsNotice>
-        ) : (
-          isFetchingNextPage && <Spinner className="mx-auto my-2" />
         )}
       </InfiniteScroll>
     </Col>

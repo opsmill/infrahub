@@ -2,6 +2,7 @@ import { type QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
 
 import { render } from "../../../../tests/components/render";
 import {
@@ -45,6 +46,7 @@ const expectNoCount = async (component: Awaited<ReturnType<typeof renderTab>>) =
 
 describe("RepositoryCommitsTab", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.resetAllMocks();
   });
 
@@ -83,6 +85,25 @@ describe("RepositoryCommitsTab", () => {
     const component = await renderTab();
 
     // THEN
+    await expectNoCount(component);
+  });
+
+  test("shows no spinner while it retries an unavailable answer", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockReturnValueOnce(new Promise<ApiResult>(() => {}));
+    const component = await renderTab();
+    await expect.poll(() => apiMock.mock.calls.length).toBe(1);
+    await expect.poll(() => component.getByRole("status").query()).toBeNull();
+
+    // WHEN
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    expect(component.getByRole("status").query()).toBeNull();
     await expectNoCount(component);
   });
 

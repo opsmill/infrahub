@@ -9,7 +9,7 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
-import type { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
+import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 
 // Offset paging over a moving log can repeat a commit at a page boundary.
 export function getLoadedCommits(
@@ -20,6 +20,61 @@ export function getLoadedCommits(
       pages.flatMap((page) => page.commits).map((commit) => [commit.hash, commit])
     ).values(),
   ];
+}
+
+export type CommitLogWithoutPages =
+  | { kind: "loading" }
+  | { kind: "unavailable"; error: RepositoryGitUnavailableError }
+  | { kind: "failed"; error: Error };
+
+interface CommitLogFailure {
+  error: Error | null;
+  failureReason: Error | null;
+}
+
+// A retried attempt only reports its failure through failureReason; error stays null until retrying stops.
+export function getCommitLogWithoutPages({
+  error,
+  failureReason,
+}: CommitLogFailure): CommitLogWithoutPages {
+  const failure = error ?? failureReason;
+  if (failure instanceof RepositoryGitUnavailableError)
+    return { kind: "unavailable", error: failure };
+  if (failure) return { kind: "failed", error: failure };
+  return { kind: "loading" };
+}
+
+export function isLoadingFirstPage({
+  isPending,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & { isPending: boolean }): boolean {
+  return isPending && failureReason === null;
+}
+
+export function isShowingStaleCommits({
+  isRefetchError,
+  isRefetching,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & {
+  isRefetchError: boolean;
+  isRefetching: boolean;
+}): boolean {
+  return isRefetchError || (isRefetching && failureReason !== null);
+}
+
+export type NextPageState = "idle" | "loading" | "failed" | "retry-pending";
+
+export function getNextPageState({
+  isFetchNextPageError,
+  isFetchingNextPage,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & {
+  isFetchNextPageError: boolean;
+  isFetchingNextPage: boolean;
+}): NextPageState {
+  if (!isFetchingNextPage) return isFetchNextPageError ? "failed" : "idle";
+  if (failureReason !== null) return "failed";
+  return isFetchNextPageError ? "retry-pending" : "loading";
 }
 
 export interface CommitLogEmptyState {

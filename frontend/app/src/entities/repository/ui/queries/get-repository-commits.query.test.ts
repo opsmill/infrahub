@@ -13,7 +13,7 @@ import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   REPOSITORY_COMMITS_PAGE_SIZE,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+  REPOSITORY_COMMITS_RETRY_DELAY_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/repository-commits.constants";
 
@@ -57,12 +57,12 @@ function buildUnavailableError(reason: RepositoryGitUnavailableReason | null) {
   });
 }
 
-function resolveRefetchInterval(error: Error | null) {
-  const { refetchInterval } = getRepositoryCommitsQueryOptions(PARAMS);
-  if (typeof refetchInterval !== "function") {
-    throw new Error("refetchInterval is expected to be a function");
+function resolveRetry(error: Error) {
+  const { retry } = getRepositoryCommitsQueryOptions(PARAMS);
+  if (typeof retry !== "function") {
+    throw new Error("retry is expected to be a function");
   }
-  return refetchInterval({ state: { error } } as Parameters<typeof refetchInterval>[0]);
+  return retry(0, error);
 }
 
 function observeCommits() {
@@ -83,48 +83,40 @@ describe("getRepositoryCommitsQueryOptions", () => {
     RepositoryGitUnavailableReason.NOT_CLONED,
     RepositoryGitUnavailableReason.TIMEOUT,
     null,
-  ])("polls while the commit log is unavailable with reason %s", (reason) => {
+  ])("retries an unavailable answer with reason %s", (reason) => {
     // GIVEN
     const error = buildUnavailableError(reason);
 
     // WHEN
-    const interval = resolveRefetchInterval(error);
+    const shouldRetry = resolveRetry(error);
 
     // THEN
-    expect(interval).toBe(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
+    expect(shouldRetry).toBe(true);
   });
 
-  test("does not poll when reading commits is not implemented", () => {
+  test("does not retry when reading commits is not implemented", () => {
     // GIVEN
     const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED);
 
     // WHEN
-    const interval = resolveRefetchInterval(error);
+    const shouldRetry = resolveRetry(error);
 
     // THEN
-    expect(interval).toBe(false);
+    expect(shouldRetry).toBe(false);
   });
 
-  test("does not poll after an error that is not an unavailable answer", () => {
+  test("does not retry an error that is not an unavailable answer", () => {
     // GIVEN
     const error = new Error("Permission denied");
 
     // WHEN
-    const interval = resolveRefetchInterval(error);
+    const shouldRetry = resolveRetry(error);
 
     // THEN
-    expect(interval).toBe(false);
+    expect(shouldRetry).toBe(false);
   });
 
-  test("does not poll without an error", () => {
-    // WHEN
-    const interval = resolveRefetchInterval(null);
-
-    // THEN
-    expect(interval).toBe(false);
-  });
-
-  test("keeps polling a query in error until a worker answers, then stops", async () => {
+  test("keeps the query pending with the unavailable answer as its failure reason until a worker answers", async () => {
     // GIVEN
     vi.useFakeTimers();
     focusManager.setFocused(true);
@@ -138,16 +130,62 @@ describe("getRepositoryCommitsQueryOptions", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     // THEN
-    expect(observer.getCurrentResult().error).toBeInstanceOf(RepositoryGitUnavailableError);
+    expect(observer.getCurrentResult()).toMatchObject({ status: "pending", error: null });
+    expect(observer.getCurrentResult().failureReason).toBeInstanceOf(RepositoryGitUnavailableError);
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
-    expect(observer.getCurrentResult().error).toBeInstanceOf(RepositoryGitUnavailableError);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    expect(observer.getCurrentResult()).toMatchObject({ status: "pending", error: null });
+    expect(observer.getCurrentResult().failureReason).toBeInstanceOf(RepositoryGitUnavailableError);
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
     expect(observer.getCurrentResult().status).toBe("success");
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
-    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_POLL_INTERVAL_MS * 3);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
     expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
+    unsubscribe();
+  });
+
+  test("stops retrying once nothing observes the commit log", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock.mockRejectedValue(
+      buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED)
+    );
+    const { unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // WHEN
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
+
+    // THEN
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("retries only the page that answered unavailable", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock
+      .mockResolvedValueOnce(buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE))
+      .mockRejectedValueOnce(buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED))
+      .mockResolvedValue(buildLog(RepositoryGitCondition.IN_SYNC));
+    const { observer, unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // WHEN
+    const nextPage = observer.fetchNextPage();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await nextPage;
+
+    // THEN
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
+    expect(getRepositoryCommitsMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ offset: REPOSITORY_COMMITS_PAGE_SIZE })
+    );
+    expect(observer.getCurrentResult().data?.pages).toHaveLength(2);
     unsubscribe();
   });
 
@@ -157,7 +195,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
       error: buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED),
     },
     { name: "the read fails", error: new Error("Permission denied") },
-  ])("does not poll a query in error when $name", async ({ error }) => {
+  ])("fails at once without retrying when $name", async ({ error }) => {
     // GIVEN
     vi.useFakeTimers();
     focusManager.setFocused(true);
@@ -165,7 +203,7 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // WHEN
     const { observer, unsubscribe } = observeCommits();
-    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_POLL_INTERVAL_MS * 3);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
 
     // THEN
     expect(observer.getCurrentResult().error).toBe(error);

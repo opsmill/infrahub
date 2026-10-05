@@ -6,13 +6,18 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
+import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import {
+  getCommitLogWithoutPages,
   getConditionNotice,
   getEmptyState,
   getFreshness,
   getLoadedCommits,
+  getNextPageState,
   getNoCommitLogState,
   getStateBadges,
+  isLoadingFirstPage,
+  isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const IMPORTED_HASH = "a".repeat(40);
@@ -308,5 +313,177 @@ describe("getConditionNotice", () => {
 
     // THEN
     expect(notice).toBeNull();
+  });
+});
+
+function buildUnavailableError(reason: RepositoryGitUnavailableReason) {
+  return new RepositoryGitUnavailableError({
+    repository_id: "repo-1",
+    branch_name: "main",
+    git_ref: "main",
+    condition: RepositoryGitCondition.UNAVAILABLE,
+    imported_commit: null,
+    remote_head: null,
+    pending_count: null,
+    fetched_at: null,
+    checked_at: null,
+    unavailable: { reason, message: reason },
+    commits: [],
+  });
+}
+
+describe("getCommitLogWithoutPages", () => {
+  test("reports an unavailable answer that is still being retried", () => {
+    // GIVEN
+    const failureReason = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
+
+    // WHEN
+    const state = getCommitLogWithoutPages({ error: null, failureReason });
+
+    // THEN
+    expect(state).toEqual({ kind: "unavailable", error: failureReason });
+  });
+
+  test("reports an unavailable answer that is no longer retried", () => {
+    // GIVEN
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED);
+
+    // WHEN
+    const state = getCommitLogWithoutPages({ error, failureReason: error });
+
+    // THEN
+    expect(state).toEqual({ kind: "unavailable", error });
+  });
+
+  test("reports any other error as a failed read", () => {
+    // GIVEN
+    const error = new Error("Permission denied");
+
+    // WHEN
+    const state = getCommitLogWithoutPages({ error, failureReason: error });
+
+    // THEN
+    expect(state).toEqual({ kind: "failed", error });
+  });
+
+  test("reports a first load that has not failed yet as loading", () => {
+    // WHEN
+    const state = getCommitLogWithoutPages({ error: null, failureReason: null });
+
+    // THEN
+    expect(state).toEqual({ kind: "loading" });
+  });
+});
+
+describe("isLoadingFirstPage", () => {
+  test.each([
+    {
+      name: "the first attempt is in flight",
+      isPending: true,
+      failureReason: null,
+      expected: true,
+    },
+    {
+      name: "an unavailable answer is being retried",
+      isPending: true,
+      failureReason: buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED),
+      expected: false,
+    },
+    { name: "the log has loaded", isPending: false, failureReason: null, expected: false },
+  ])("is $expected when $name", ({ isPending, failureReason, expected }) => {
+    // WHEN
+    const isLoading = isLoadingFirstPage({ isPending, failureReason });
+
+    // THEN
+    expect(isLoading).toBe(expected);
+  });
+});
+
+describe("isShowingStaleCommits", () => {
+  const failureReason = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
+
+  test.each([
+    {
+      name: "a refetch failed",
+      isRefetchError: true,
+      isRefetching: false,
+      failureReason,
+      expected: true,
+    },
+    {
+      name: "a refetch is being retried",
+      isRefetchError: false,
+      isRefetching: true,
+      failureReason,
+      expected: true,
+    },
+    {
+      name: "a refetch has not failed yet",
+      isRefetchError: false,
+      isRefetching: true,
+      failureReason: null,
+      expected: false,
+    },
+    {
+      name: "only a later page failed",
+      isRefetchError: false,
+      isRefetching: false,
+      failureReason,
+      expected: false,
+    },
+  ])("is $expected when $name", ({ isRefetchError, isRefetching, failureReason, expected }) => {
+    // WHEN
+    const isStale = isShowingStaleCommits({ isRefetchError, isRefetching, failureReason });
+
+    // THEN
+    expect(isStale).toBe(expected);
+  });
+});
+
+describe("getNextPageState", () => {
+  const failureReason = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
+
+  test.each([
+    {
+      name: "no page is loading",
+      isFetchNextPageError: false,
+      isFetchingNextPage: false,
+      failureReason: null,
+      expected: "idle",
+    },
+    {
+      name: "a page is loading for the first time",
+      isFetchNextPageError: false,
+      isFetchingNextPage: true,
+      failureReason: null,
+      expected: "loading",
+    },
+    {
+      name: "a page is being retried after an unavailable answer",
+      isFetchNextPageError: false,
+      isFetchingNextPage: true,
+      failureReason,
+      expected: "failed",
+    },
+    {
+      name: "a page failed",
+      isFetchNextPageError: true,
+      isFetchingNextPage: false,
+      failureReason,
+      expected: "failed",
+    },
+    {
+      name: "a failed page is loading again",
+      isFetchNextPageError: true,
+      isFetchingNextPage: true,
+      failureReason: null,
+      expected: "retry-pending",
+    },
+  ])("is $expected when $name", ({ expected, ...state }) => {
+    // WHEN
+    const nextPageState = getNextPageState(state);
+
+    // THEN
+    expect(nextPageState).toBe(expected);
   });
 });
