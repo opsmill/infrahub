@@ -127,6 +127,11 @@ The collector therefore takes the union of two sets:
 
 Both are needed. Neither is a subset of the other.
 
+**Only branches that can still record a commit enter the second set.** A merged branch, a branch
+being deleted, or a branch Infrahub no longer lists rejects a commit, so the graph comparison would
+select it again on every cycle and keep the early return from firing. The periodic sync leaves them
+out of the graph commits it passes down, using the branch listing it already reads once per cycle.
+
 **A branch new to this worker is classified too.** The periodic sync runs on whichever worker picks
 it up, and that worker may never have held the branch. The graph can still record a commit another
 worker imported and the remote has since discarded. Skipping the classification there would leave

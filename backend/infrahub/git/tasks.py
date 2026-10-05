@@ -1,8 +1,10 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.branch import BranchData
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -24,6 +26,7 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -362,6 +365,22 @@ async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub
         await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
 
 
+def select_writable_branch_commits(
+    branch_commits: Mapping[str, str | None], branches: Mapping[str, BranchData]
+) -> dict[str, str | None]:
+    """Keep the commit of each Infrahub branch that can still record one.
+
+    A merged branch, a branch being deleted and a branch Infrahub no longer lists reject a commit, so
+    the sync must not select them for one: it would select them again on every cycle.
+    """
+    terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
+    return {
+        name: commit
+        for name, commit in branch_commits.items()
+        if name in branches and branches[name].status.value not in terminal_status_values
+    }
+
+
 def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:
     """Return the git branch whose objects must be seeded after a clone, or None when none is needed.
 
@@ -524,7 +543,7 @@ async def sync_remote_repositories() -> None:
             infrahub_branch=infrahub_branch,
             infrahub_branch_id=branches[infrahub_branch].id,
             client=client,
-            graph_commits=dict(repository_data.branches),
+            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
         )
 
 

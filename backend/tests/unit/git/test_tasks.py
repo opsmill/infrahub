@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
+from infrahub_sdk.branch import BranchData, BranchStatus
 
 from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, Severity, ValidatorConclusion
 from infrahub.core.registry import registry
@@ -11,6 +12,7 @@ from infrahub.git.tasks import (
     evaluate_import_status,
     format_check_log_entry,
     resolve_initial_import_branch,
+    select_writable_branch_commits,
 )
 
 
@@ -181,3 +183,40 @@ def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> N
             "resolve the cause and run the checks again."
         ),
     )
+
+
+def listed_branch(name: str, status: BranchStatus) -> BranchData:
+    return BranchData(
+        id=f"{name}-id",
+        name=name,
+        sync_with_git=True,
+        is_default=name == "main",
+        has_schema_changes=False,
+        status=status,
+        branched_from="2024-01-01T00:00:00Z",
+    )
+
+
+def test_only_a_branch_that_can_still_record_a_commit_keeps_its_commit() -> None:
+    """A branch that rejects a commit would otherwise be selected for one on every sync cycle."""
+    branch_commits: dict[str, str | None] = {
+        "main": "commit-main",
+        "open": "commit-open",
+        "rebase-needed": "commit-rebase-needed",
+        "merged": "commit-merged",
+        "deleting": "commit-deleting",
+        "unlisted": "commit-unlisted",
+    }
+    branches = {
+        "main": listed_branch(name="main", status=BranchStatus.OPEN),
+        "open": listed_branch(name="open", status=BranchStatus.OPEN),
+        "rebase-needed": listed_branch(name="rebase-needed", status=BranchStatus.NEED_REBASE),
+        "merged": listed_branch(name="merged", status=BranchStatus.MERGED),
+        "deleting": listed_branch(name="deleting", status=BranchStatus.DELETING),
+    }
+
+    assert select_writable_branch_commits(branch_commits=branch_commits, branches=branches) == {
+        "main": "commit-main",
+        "open": "commit-open",
+        "rebase-needed": "commit-rebase-needed",
+    }

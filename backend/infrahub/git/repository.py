@@ -354,9 +354,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         what tells a rewritten history apart from a fast-forward.
 
         Args:
-            graph_commits: The commit the graph records for this repository, per Infrahub branch.
-                Without it no branch is classified, and a branch whose worktree already matches the
-                remote is left alone even when the graph records another commit.
+            graph_commits: The commit the graph records for this repository, per Infrahub branch that
+                can still record one. Without it no branch is classified, and a branch whose worktree
+                already matches the remote is left alone even when the graph records another commit.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
