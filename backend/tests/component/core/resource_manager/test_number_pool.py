@@ -16,6 +16,7 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.agnostic_edges import pool_reservation_edges
@@ -484,3 +485,22 @@ async def test_allocation_from_a_pool_holding_several_ranges_starts_at_the_lowes
 
     attribute = registry.schema.get_node_schema(name=TICKET.kind).get_attribute(name="ticket_id")
     assert await pool.get_next(db=db, branch=default_branch, attribute=attribute) == 100
+
+
+async def test_allocation_from_a_pool_without_range_names_the_single_range_it_needs(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+
+    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+    await pool.new(db=db, name="empty-pool", node="TestingTicket", node_attribute="ticket_id")
+    await pool.save(db=db)
+
+    attribute = registry.schema.get_node_schema(name=TICKET.kind).get_attribute(name="ticket_id")
+    with pytest.raises(PoolExhaustedError) as exc_info:
+        await pool.get_next(db=db, branch=default_branch, attribute=attribute)
+
+    assert exc_info.value.message == (
+        "There are no values available in this pool: allocation draws from a pool holding exactly one range."
+    )

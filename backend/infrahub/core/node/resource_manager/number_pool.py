@@ -96,7 +96,9 @@ class CoreNumberPool(Node):
         pool_end = self.end_range.value  # type: ignore[attr-defined]
         # A pool holding no range or several ranges carries no shorthand bounds to allocate between.
         if pool_start is None or pool_end is None:
-            raise PoolExhaustedError("There are no more values available in this pool.")
+            raise PoolExhaustedError(
+                "There are no values available in this pool: allocation draws from a pool holding exactly one range."
+            )
 
         effective_start = pool_start
         effective_end = pool_end
