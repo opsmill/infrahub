@@ -298,7 +298,7 @@ healthy branch is still sent, and a second worker converges on it.
 - [x] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
       raising, in `backend/tests/component/git/test_git_repository.py`, where the test that asserted
       the raise already lived.
-- [ ] T040 [US3] Add a live-remote test in
+- [x] T040 [US3] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on
       it.
