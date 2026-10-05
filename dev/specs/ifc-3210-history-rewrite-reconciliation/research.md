@@ -327,7 +327,10 @@ re-targets of the same repository inside one cycle.
 
 1. **Ordering.** `RepositorySyncer.sync` raises through `sync_git_repo_with_origin_and_tag_on_failure`,
    and `sync_repository_from_origin` catches that raise before it reaches the send. The syncer must
-   return the reconciled branches to its caller, and the caller must broadcast before it re-raises.
+   return the reconciled branches to its caller, and the broadcast must go out before the failure
+   is handled. What landed: the tagging flow still raises, with an error that carries the whole
+   outcome, and `sync_repository_from_origin` sends the message from that outcome before it
+   handles the failure.
 2. **Coverage.** `sync_repository_from_origin` sends one message for
    `staging_branch or registry.default_branch` only. It must send for every branch the cycle
    advanced.

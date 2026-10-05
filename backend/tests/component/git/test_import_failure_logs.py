@@ -417,7 +417,7 @@ class TestImportFailureLogs(TestInfrahubApp):
                 repo=repo,
                 staging_branch=None,
                 infrahub_branch=registry.default_branch,
-                infrahub_branch_id=str(UUIDT()),
+                default_branch_id=str(UUIDT()),
                 client=client,
             )
         )

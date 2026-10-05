@@ -465,10 +465,16 @@ repository.
 
 | Before | After |
 |---|---|
-| One message, for `staging_branch or registry.default_branch` only | One message, carrying every branch the cycle advanced |
-| Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is re-raised |
-| Commit read from `repo.default_branch` | Commit taken per branch from `ReconciledBranch` |
+| One message, for `staging_branch or registry.default_branch` only | One message, carrying the trunk first and then every other branch the cycle advanced |
+| Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is handled |
+| Commit read from `repo.default_branch` | The trunk commit is still read from `repo.default_branch`; every other commit is taken from its `ReconciledBranch` |
 | A staging sync names the staging branch | A staging sync names the branch its trunk maps onto, as `ReconciledBranch` does, so other workers move their trunk worktree |
+
+The tagging flow `sync_git_repo_with_origin_and_tag_on_failure` sits between this function and the
+syncer, and it still raises `RepositoryBranchesFailedError` when a branch failed, so its run stays
+linked and failed. The error carries the whole `SyncOutcome`. This function catches it, sends the
+message built from `outcome.reconciled`, and only then handles the failure. The builder is
+`git/tasks.py::build_cycle_fetch_message`.
 
 ### Rules
 
@@ -480,9 +486,12 @@ repository.
   pull-path self-heal of FR-005 replaces it. **Order the two:** keep sending the trunk message
   unconditionally until the pull-path reset ships, then drop it. Shipping the "no branch advanced,
   no message" rule first leaves a stale worker with no heal on either side.
-- When every branch failed, the coalesced message carries no pairs. The unconditional trunk
-  message above still goes, because it is what heals a stale worker and nothing in this phase
-  replaces it.
+- The trunk is the first pair of that one message on every cycle, whether or not it advanced, and
+  the trunk worktree's local head is its commit. This is the unconditional trunk message above,
+  carried in the coalesced message rather than sent beside it. When every branch failed, the
+  message lists the trunk alone, because it is what heals a stale worker and nothing in this phase
+  replaces it. When the trunk commit cannot be read, the trunk is left out of the list, and a
+  message that lists nothing sets no `branches`, so every worker pulls the trunk as it did before.
 - **A trunk failure is made loud without being made fatal.** Today
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
   `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
@@ -500,7 +509,7 @@ repository.
 - **The single-branch fields stay populated.** `infrahub_branch_name` and `infrahub_branch_id` are
   required on the message, so a coalesced message fills them, and `commit`, from its first pair. A
   worker still running the previous code then converges one branch instead of failing to construct
-  the message. That is a degradation during a rolling deployment, not a failure, and the remaining
+  the message. Because the trunk comes first, that branch is the trunk, as it was before. That is a degradation during a rolling deployment, not a failure, and the remaining
   branches converge on first contact through the pull-path rule of FR-005.
 
 ---

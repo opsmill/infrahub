@@ -260,7 +260,7 @@ healthy branch is still sent, and a second worker converges on it.
       its `except`, which the return no longer reaches, and `git/tasks.py::add_git_repository` calls
       `sync` directly and would ignore a failed initial import in silence. Both must read the
       returned failures and act on them.
-- [ ] T032 [US3] Broadcast before the raise in
+- [x] T032 [US3] Broadcast before the raise in
       `backend/infrahub/git/tasks.py::sync_repository_from_origin`. Send one coalesced
       `RefreshGitFetch` covering every reconciled branch, then re-raise the failures of branches
       **other than** the configured default branch, which keeps today's failure tagging working.

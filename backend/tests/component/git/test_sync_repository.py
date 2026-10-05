@@ -35,9 +35,10 @@ from infrahub.git.sync import (
 )
 from infrahub.git.tasks import sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.conftest import TestHelper
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
 from tests.helpers.repository_sync import (
@@ -156,10 +157,10 @@ async def test_sync_broadcasts_synced_commit(
     prefect_test_fixture: None,
     message_bus_recorder: BusRecorder,
 ) -> None:
-    """The commit broadcast to the worker pool resolves to the repository's git default branch HEAD.
+    """The trunk broadcast to the worker pool resolves to the repository's git default branch HEAD.
 
     Holds across matching and mismatched default branches and staging syncs, so every worker
-    converges on the same pinned commit.
+    converges on the same pinned commit, including on a cycle that advanced nothing.
     """
     source_dir = tmp_path / "source-repo"
     source_dir.mkdir()
@@ -181,7 +182,7 @@ async def test_sync_broadcasts_synced_commit(
             repo=repo,
             staging_branch=scenario.staging_branch,
             infrahub_branch=infrahub_branch,
-            infrahub_branch_id="branch-id",
+            default_branch_id="default-branch-id",
             client=client,
         )
 
@@ -190,8 +191,19 @@ async def test_sync_broadcasts_synced_commit(
     fetch_messages = [message for message in message_bus_recorder.messages if isinstance(message, RefreshGitFetch)]
     assert len(fetch_messages) == 1
 
-    expected_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-    assert fetch_messages[0].commit == expected_commit
+    # A staging sync still names the Infrahub default branch, which is where the other workers keep the trunk.
+    trunk = BranchCommitPair(
+        infrahub_branch_name=registry.default_branch,
+        infrahub_branch_id="default-branch-id",
+        commit=repo.get_commit_value(branch_name=repo.default_branch, remote=False),
+    )
+    message = fetch_messages[0]
+    assert (message.infrahub_branch_name, message.infrahub_branch_id, message.commit) == (
+        trunk.infrahub_branch_name,
+        trunk.infrahub_branch_id,
+        trunk.commit,
+    )
+    assert message.branches == (trunk,)
 
 
 TRUNK = "develop"
@@ -727,3 +739,81 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         assert isinstance(await state.aresult(raise_on_failure=False), RepositoryError)
         assert await is_linked_to_node(prefect_client, state, repository_id) is case.expected_linked
+
+
+class TestSynchronisationCycleFailures(TestInfrahubApp):
+    """A synchronization cycle in which some branches fail, against a remote whose trunk is `main`."""
+
+    @pytest.fixture(autouse=True)
+    def no_import_sync_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Every remote branch is a candidate for import, whatever the environment configures."""
+        monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+
+    async def _connect(self, db: InfrahubDatabase, tmp_path: Path, name: str) -> tuple[LocalRemote, Node]:
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch="main",
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+        assert state.is_completed()
+        return remote, node
+
+    async def test_a_failed_branch_does_not_hold_back_the_message_for_the_advanced_branches(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        bus_simulator: BusSimulator,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "partly-failing-broadcast-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        await create_branch(branch_name="broken-branch", db=db)
+        await create_branch(branch_name="healthy-branch", db=db)
+        remote.commit(branch_name="broken-branch", files={".infrahub.yml": "schemas: [unclosed\n"})
+        healthy_commit = remote.commit(branch_name="healthy-branch", files={"data.txt": "healthy\n"})
+        branches = await client.branch.all()
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        sent_before = len(bus_simulator.messages)
+
+        @flow(name="test-sync-a-partly-failing-repository")
+        async def _run_sync() -> None:
+            await sync_repository_from_origin(
+                repository=node,
+                repo=repo,
+                staging_branch=None,
+                infrahub_branch=registry.default_branch,
+                default_branch_id=branches[registry.default_branch].id,
+                client=client,
+            )
+
+        await _run_sync()
+
+        fetch_messages = [
+            message for message in bus_simulator.messages[sent_before:] if isinstance(message, RefreshGitFetch)
+        ]
+        assert [message.branches for message in fetch_messages] == [
+            (
+                BranchCommitPair(
+                    infrahub_branch_name=registry.default_branch,
+                    infrahub_branch_id=branches[registry.default_branch].id,
+                    commit=repo.get_commit_value(branch_name="main", remote=False),
+                ),
+                BranchCommitPair(
+                    infrahub_branch_name="healthy-branch",
+                    infrahub_branch_id=branches["healthy-branch"].id,
+                    commit=healthy_commit,
+                ),
+            )
+        ]

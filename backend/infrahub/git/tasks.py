@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,6 +45,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
@@ -65,6 +66,7 @@ from ..workflows.catalogue import (
 from ..workflows.utils import add_branch_tag, add_tags
 from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
+from .divergence.models import ReconciledBranch
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -86,6 +88,7 @@ from .models import (
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
 from .sync import (
     RepositoryAdder,
+    RepositoryBranchesFailedError,
     RepositoryFileImporter,
     RepositorySyncer,
     SyncOutcome,
@@ -458,19 +461,69 @@ async def bootstrap_local_repository(
     return repo
 
 
+def build_cycle_fetch_message(
+    location: str,
+    repository_id: str,
+    repository_name: str,
+    repository_kind: str,
+    default_branch_id: str,
+    trunk_commit: str | None,
+    reconciled: Sequence[ReconciledBranch],
+) -> messages.RefreshGitFetch:
+    """Build the one fetch message of a synchronization cycle: the trunk, then every other branch it advanced.
+
+    The trunk is listed on every cycle, even when it did not move, so a worker that missed an earlier
+    message converges on it again. Without a trunk commit the workers pull the trunk instead.
+    """
+    branches: list[BranchCommitPair] = []
+    if trunk_commit is not None:
+        branches.append(
+            BranchCommitPair(
+                infrahub_branch_name=registry.default_branch, infrahub_branch_id=default_branch_id, commit=trunk_commit
+            )
+        )
+    listed = {branch.infrahub_branch_name for branch in branches}
+    branches.extend(
+        BranchCommitPair(
+            infrahub_branch_name=branch.infrahub_branch_name,
+            infrahub_branch_id=branch.infrahub_branch_id,
+            commit=branch.commit,
+        )
+        for branch in reconciled
+        if branch.infrahub_branch_name not in listed
+    )
+    first = branches[0] if branches else None
+    return messages.RefreshGitFetch(
+        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+        location=location,
+        repository_id=repository_id,
+        repository_name=repository_name,
+        repository_kind=repository_kind,
+        infrahub_branch_name=first.infrahub_branch_name if first else registry.default_branch,
+        infrahub_branch_id=first.infrahub_branch_id if first else default_branch_id,
+        commit=first.commit if first else None,
+        branches=tuple(branches) or None,
+    )
+
+
 async def sync_repository_from_origin(
     repository: CoreRepository,
     repo: InfrahubRepository,
     staging_branch: str | None,
     infrahub_branch: str,
-    infrahub_branch_id: str,
+    default_branch_id: str,
     client: InfrahubClient,
     graph_commits: dict[str, str | None] | None = None,
 ) -> None:
-    """Sync the repository from its origin and notify the worker pool of the resulting commit."""
+    """Sync the repository from its origin and send the worker pool the commits of the cycle.
+
+    The message goes out before a failed branch is handled, so the failure never keeps the branches
+    that advanced from converging on the other workers.
+    """
     log = get_run_logger()
+    failure: RepositoryBranchesFailedError | None = None
     try:
-        await sync_git_repo_with_origin_and_tag_on_failure(
+        outcome = await sync_git_repo_with_origin_and_tag_on_failure(
             client=client,
             repository_id=repository.id,
             repository_name=repository.name.value,
@@ -480,29 +533,33 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
             graph_commits=graph_commits,
         )
-        try:
-            pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-        except (ValueError, InvalidGitRepositoryError) as exc:
-            log.debug(
-                f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"
-            )
-            pinned_commit = None
-        # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
-        # pool converges on the same commit even if upstream advances during fan-out.
-        message = messages.RefreshGitFetch(
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-            location=repository.location.value,
-            repository_id=repository.id,
-            repository_name=repository.name.value,
-            repository_kind=repository.get_kind(),
-            infrahub_branch_name=infrahub_branch,
-            infrahub_branch_id=infrahub_branch_id,
-            commit=pinned_commit,
-        )
-        message_bus = await get_message_bus()
-        await message_bus.send(message=message)
+    except RepositoryBranchesFailedError as exc:
+        outcome = exc.outcome
+        failure = exc
     except (RepositoryError, CommitNotFoundError) as exc:
         log.info(exc.message)
+        return
+
+    try:
+        trunk_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+    except (ValueError, InvalidGitRepositoryError) as exc:
+        log.debug(f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}")
+        trunk_commit = None
+    # Pinned SHAs, so the whole pool converges on the same commits even if upstream advances during fan-out.
+    message = build_cycle_fetch_message(
+        location=repository.location.value,
+        repository_id=repository.id,
+        repository_name=repository.name.value,
+        repository_kind=repository.get_kind(),
+        default_branch_id=default_branch_id,
+        trunk_commit=trunk_commit,
+        reconciled=outcome.reconciled,
+    )
+    message_bus = await get_message_bus()
+    await message_bus.send(message=message)
+
+    if failure is not None:
+        log.info(failure.message)
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
@@ -539,7 +596,7 @@ async def sync_remote_repositories() -> None:
             repo=repo,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
-            infrahub_branch_id=branches[infrahub_branch].id,
+            default_branch_id=branches[registry.default_branch].id,
             client=client,
             graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
         )
