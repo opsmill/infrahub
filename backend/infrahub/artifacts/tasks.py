@@ -24,6 +24,7 @@ async def create(model: CheckArtifactCreate) -> ValidatorConclusion:
         repository_id=model.repository_id,
         name=model.repository_name,
         repository_kind=model.repository_kind,
+        infrahub_branch_name=model.branch_name,
         commit=model.commit,
     )
 

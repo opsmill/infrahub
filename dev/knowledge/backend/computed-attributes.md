@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 **When**: A branch merge or rebase changes nodes that feed computed attributes.
 
-A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. It replaces the per-node path for all four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes. Their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. `INFRAHUB_COALESCE_PYTHON_RECOMPUTE_AFTER_MERGE`, on by default, governs the Python family and selects both halves at once: the pass and the `live` filter on its two automations. See [merge-recompute.md](merge-recompute.md).
+A merge or rebase runs a single coalesced recompute for the whole change set, writes the results in bulk, and chains any value that reads them. It replaces the per-node path for all four derived-value families: Jinja2 computed attributes, display labels, human-friendly ids and Python transform computed attributes. Their triggers are suppressed for merge/rebase/recompute-origin events, so the change is processed once. See [merge-recompute.md](merge-recompute.md).
 
 ## Self-Targeting Filter (`targets_self`)
 
@@ -91,6 +91,9 @@ Key methods:
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
 | Branch merge or rebase | Coalesced | `CoalescedRecomputeBuilder` + `BulkRecomputeWriter` | Affected computed attrs across the whole change set |
+| Template added or changed (schema update), or `InfrahubRecomputeComputedAttribute` without `node_ids` | Coalesced, one flow per chunk of node ids | `trigger_update_jinja2_computed_attributes` | Every node of the kind |
+
+The async and coalesced process flow skips a node whose template raises while rendering: the node keeps its stored value, a warning is logged, and the rest of the flow's nodes are still written.
 
 ## Python Transform Computed Attributes
 
@@ -119,7 +122,20 @@ All three run `process_transform_lifecycle`. On create or update it waits for th
 
 ### Node-Input Automations
 
-Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path automations in two families that recompute the value when a node feeding the transform's query changes: one on the attribute's own kind, and one per kind the query reads. While the coalesced pass owns merge and rebase, both trigger types match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+Besides the transform-lifecycle triggers, two families of data-path automations recompute the value when a node feeding the transform's query changes.
+
+- **Owner automations** are keyed on `(key_name, transform)` and match the attribute's own kind. The action names the attribute it submits, so each attribute needs a definition of its own.
+- **Query automations** are keyed on the transform, with one definition per kind its query reads. The action names no attribute and the flow behind it resolves them, so one definition covers every attribute the transform feeds. A definition per attribute would start the same flow once per attribute for one change, with no difference in what gets recomputed.
+- **Ownership.** A branch owns both families or neither — see [Branch scoping of automations](events.md#branch-scoping-of-automations).
+- **Backfill.** `computed_attribute_setup_python` builds its recompute candidates from the owner automations scoped to the event's branch, so a `SchemaUpdatedEvent` backfills attributes only on a branch that owns its automations.
+
+The coalesced pass owns merge and rebase, so both trigger types match `origin=live` only. `_reconcile_python_computed_attribute_automations` rebuilds these from the schema. One gather builds both trigger lists and they are applied under a single trigger-registry lock, so a concurrent reconcile cannot delete an automation another run just created, and a transform delete prunes its automation rather than leaving it stale.
+
+The flow behind the second family resolves its targets from query-group membership: every node subscribed to a group that holds the changed node as a member. It is told which query and which transform its automation was built for, so it keeps only the groups of that query and submits only the attributes that transform feeds. A node reported once per matching group is submitted once. Both parameters are optional, and each one fails open on its own axis: without the transform every Python attribute of every subscriber kind is recomputed, and without the query id every group is kept. An automation the schema cannot explain has to recompute rather than narrow to nothing. Zero matching groups is not that case: the automation exists per kind its own query reads, so it means no reader of that query moved, and the flow submits nothing.
+
+**The baked query id is the one value that can go stale.** The query is identified by its id, so renaming the query changes nothing, and deleting it cascade-deletes its groups so nothing reports the old id. A repoint does not: pointing `CoreTransformPython.query` at another query leaves the automation holding the previous id while the groups report the new one, and every reader is filtered out until the automations are rebuilt. The transform-lifecycle update trigger therefore matches a relationship update on `query` as well as the `fingerprint` attribute, so a repoint reconciles.
+
+One window survives that. A repository import that repoints a transform submits the recompute before it reconciles, and the old query's groups are not deleted, so a live edit landing after a node's own recompute but before its group is rewritten is dropped by this flow. The recompute in flight rewrites those values anyway; what is lost is only an edit arriving inside that gap.
 
 ### Batch Execution
 
@@ -131,6 +147,7 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path
 - A coalesced pass tells the flow so through `coalesced` and `recompute_depth`: its writes are stamped with the recompute origin and drive the next chain level, instead of re-entering the live per-node paths with no depth guard. A third flag, `widened`, marks the batches a resolution could not narrow, and only those may skip an attribute nothing can compute.
 - The recomputed values persist through the shared bulk recompute writer (bounded transactions), not via per-node GraphQL mutations. The writer's skip-unchanged gating is per node, not per value: a save that produces no effective change emits no event and dispatches no follow-on recompute, which is what keeps a wide fan-out from echoing into further waves. A node whose save changes another of its fields still emits an event.
 - A node whose transform raises or returns a non-string is skipped with its previous value intact and a logged reason; the rest of the batch persists. The flow ends with a `submitted/written/skipped` summary line.
+- A whole-kind recompute reads only the kind's node ids, a page at a time in node uuid order, and submits one batch per submission chunk. Paging in the schema `order_by` would let the submitted batches rewrite a sort field mid-paging and skip nodes.
 - Each submission carries the branch tag at creation so the flow run stays visible in branch-filtered task queries; tags added mid-run do not survive later in-flow tag updates.
 - Crash semantics: the writer commits in bounded chunks, so a mid-batch crash leaves earlier chunks persisted. Recovery is re-running the recompute; skip-unchanged makes redone work no-op-cheap. Rollback of the whole feature is a clean revert (no schema or data migration).
 
@@ -162,3 +179,4 @@ Besides the transform-lifecycle triggers, each `(kind, attribute)` has data-path
 - [Mutations](mutations.md) — where `_recompute_local_jinja2()` fits in the update flow
 - [Display Labels & HFID](display-labels-and-hfid.md) — parallel `_collect_extra_filters()` pattern
 - [Merge/Rebase Recompute](merge-recompute.md) — the coalesced recompute path for merges and rebases
+- [Events](events.md) — trigger action parameters and the branch scoping these automations follow

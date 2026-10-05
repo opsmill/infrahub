@@ -10,17 +10,15 @@ from infrahub.core.changelog.models import AttributeChangelog, NodeChangelog
 from infrahub.core.constants import DiffAction
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge.post_merge import PostMergeDispatcher
-from infrahub.core.merge.python_target_resolution import DisabledPythonTargetResolver
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
-from tests.adapters.python_target_sources import RecordingPythonTargetResolver
+from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
 
 if TYPE_CHECKING:
-    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.branch import Branch
     from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.core.models import SchemaDiff
@@ -59,49 +57,6 @@ def _derived_value_schema_diff(default_branch: Branch) -> tuple[SchemaDiff, str]
     return base_schema.diff(other=candidate), candidate.get_hash()
 
 
-def _a_merged_car() -> tuple[DiffAction, NodeChangelog]:
-    """One merged data change, so the dispatch reaches the resolver the scope is read from."""
-    return (
-        DiffAction.UPDATED,
-        NodeChangelog(
-            node_id=str(uuid4()),
-            node_kind="TestCar",
-            display_label="Accord",
-            attributes={"name": AttributeChangelog(name="name", value="Accord", kind="Text")},
-        ),
-    )
-
-
-async def _schema_scope_handed_over(
-    db: InfrahubDatabase,
-    source_branch: Branch,
-    default_branch: Branch,
-    event_service: MemoryInfrahubEvent,
-) -> ChangedElementSet | None:
-    """The schema scope the post-merge dispatch handed to the coalesced pass."""
-    resolver = RecordingPythonTargetResolver(targets=[])
-    dispatcher = _build_dispatcher(
-        db=db,
-        source_branch=source_branch,
-        destination_branch=default_branch,
-        event_service=event_service,
-        python_resolver=resolver,
-    )
-    schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
-
-    await dispatcher.dispatch_events(
-        branch=source_branch,
-        proposed_change_id=None,
-        node_events=[_a_merged_car()],
-        context=_context(default_branch),
-        schema_diff=schema_diff,
-        schema_hash=schema_hash,
-    )
-
-    assert len(resolver.calls) == 1
-    return resolver.calls[0].schema_scope
-
-
 def _context(default_branch: Branch) -> InfrahubContext:
     return InfrahubContext.init(
         branch=default_branch,
@@ -131,7 +86,7 @@ class TestPostMergeSchemaEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
@@ -167,7 +122,7 @@ class TestPostMergeSchemaEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         await dispatcher.dispatch_events(
@@ -181,27 +136,48 @@ class TestPostMergeSchemaEvent:
         assert not [event for event in memory_event.events if isinstance(event, SchemaUpdatedEvent)]
         assert [event for event in memory_event.events if isinstance(event, BranchMergedEvent)]
 
-    async def test_the_pass_is_scoped_only_when_the_schema_event_went_out(
+    async def test_a_failed_schema_event_still_hands_the_merged_changes_to_the_pass(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ) -> None:
-        """The coalesced pass drops the pairs this backfill covers, so a failed event covers nothing.
-
-        The send failure is absorbed so that one bad event cannot abort the rest, which is why the
-        scope cannot be handed over before the send.
-        """
+        """A failed schema event does not stop the other events or the pass."""
         source_branch = await create_branch(branch_name="feature", db=db)
-
-        scope = await _schema_scope_handed_over(db, source_branch, default_branch, MemoryInfrahubEvent())
-        assert scope is not None
-        assert "display_labels" in scope.changed_fields.get("TestCar", frozenset())
-
         failing = FailingInfrahubEvent(failing_kind=SchemaUpdatedEvent)
-        assert await _schema_scope_handed_over(db, source_branch, default_branch, failing) is None
+        resolver = RecordingPythonTargetResolver(targets=[])
+        dispatcher = _build_dispatcher(
+            db=db,
+            source_branch=source_branch,
+            destination_branch=default_branch,
+            event_service=failing,
+            python_resolver=resolver,
+        )
+        schema_diff, schema_hash = _derived_value_schema_diff(default_branch)
+        car_id = str(uuid4())
+
+        await dispatcher.dispatch_events(
+            branch=source_branch,
+            proposed_change_id=None,
+            node_events=[
+                (
+                    DiffAction.UPDATED,
+                    NodeChangelog(
+                        node_id=car_id,
+                        node_kind="TestCar",
+                        display_label="Accord",
+                        attributes={"name": AttributeChangelog(name="name", value="Accord", kind="Text")},
+                    ),
+                )
+            ],
+            context=_context(default_branch),
+            schema_diff=schema_diff,
+            schema_hash=schema_hash,
+        )
+
         assert [type(event).__name__ for event in failing.events] == ["BranchMergedEvent", "NodeUpdatedEvent"]
+        assert resolver.calls == [ResolveCall(branch=default_branch.name, node_ids=(car_id,))]
 
 
 class TestPostMergeBranchMergedEvent:
@@ -226,7 +202,7 @@ class TestPostMergeBranchMergedEvent:
             source_branch=source_branch,
             destination_branch=default_branch,
             event_service=memory_event,
-            python_resolver=DisabledPythonTargetResolver(),
+            python_resolver=RecordingPythonTargetResolver(targets=[]),
         )
 
         await dispatcher.dispatch_events(

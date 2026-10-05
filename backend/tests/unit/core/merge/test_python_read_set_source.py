@@ -47,7 +47,6 @@ async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
 
     assert set(read_sets) == {"summary", "roster"}
     assert read_sets["summary"].read_set == DEVICE_READS
-    assert read_sets["summary"].gathered is True
     assert read_sets["summary"].pinned is True
     assert read_sets["roster"].pinned is False
 
@@ -67,7 +66,6 @@ async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     assert analyzed.calls == [BRANCH]
     assert {entry.attribute_name for entry in read_sets} == {"summary", "digest"}
     assert all(entry.read_set.depends_on_everything for entry in read_sets)
-    assert not any(entry.gathered for entry in read_sets)
 
 
 async def test_a_branch_declaring_nothing_never_reaches_the_analysis() -> None:

@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub import config
 from infrahub.computed_attribute.gather import gather_python_transform_attributes
 from infrahub.computed_attribute.read_sets import transform_read_set_from_query_report
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
@@ -15,7 +14,7 @@ from infrahub.log import get_logger, get_run_logger
 from infrahub.workers.dependencies import get_client, get_component
 from infrahub.workflows.utils import wait_for_schema_to_converge
 
-from .python_target_resolution import DisabledPythonTargetResolver, IndexedPythonTargetResolver, PythonAttributeReadSet
+from .python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
 
 log = get_logger()
 
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
 
     from infrahub_sdk.client import InfrahubClient
 
-    from infrahub.computed_attribute.scoping import ChangedElementSet
     from infrahub.core.query_group.subscribers import SubscriberRef
     from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
@@ -87,9 +85,9 @@ class SchemaDeclaredPythonAttributes:
             return []
 
         # A worker behind on the schema declares no Python attribute, which reads as nothing to do.
-        await wait_for_schema_to_converge(
-            branch_name=branch, component=self.component, db=self.db, log=get_run_logger()
-        )
+        # The database object can be shared by every flow a worker runs at once, and a session serves one caller.
+        async with self.db.start_session() as db:
+            await wait_for_schema_to_converge(branch_name=branch, component=self.component, db=db, log=get_run_logger())
         return [
             DeclaredAttribute(kind=kind, attribute_name=attribute.name)
             for kind, attributes in self._attributes_per_kind(branch=branch).items()
@@ -100,9 +98,9 @@ class SchemaDeclaredPythonAttributes:
 class GatheredPythonReadSets:
     """The reads, mapped from the transform queries the gather resolved and analyzed.
 
-    Every query is mapped the same way the schema-scoped backfill maps it, so both sides scope a
-    schema change on the same read set. A root that is not restricted to a single object is carried
-    as a separate fact rather than folded into the mapping.
+    Every query is mapped the same way the schema-scoped backfill maps it, so both sides agree on
+    what a query reads. A root that is not restricted to a single object is carried as a separate
+    fact rather than folded into the mapping.
     """
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -110,7 +108,9 @@ class GatheredPythonReadSets:
 
     async def analyzed(self, *, branch: str) -> dict[DeclaredAttribute, AnalyzedRead]:
         schema_branch = registry.schema.get_schema_branch(name=branch)
-        gathered = await gather_python_transform_attributes(db=self.db, branch_name=branch)
+        # The database object can be shared by every flow a worker runs at once, and a session serves one caller.
+        async with self.db.start_session(read_only=True) as db:
+            gathered = await gather_python_transform_attributes(db=db, branch_name=branch)
 
         reads: dict[DeclaredAttribute, AnalyzedRead] = {}
         for item in gathered:
@@ -158,10 +158,7 @@ class ComposedPythonReadSetSource:
             log.exception("Widening every Python computed attribute on %s: the read-set gather failed", branch)
             return [
                 PythonAttributeReadSet(
-                    kind=attribute.kind,
-                    attribute_name=attribute.attribute_name,
-                    read_set=TransformReadSet.imprecise(),
-                    gathered=False,
+                    kind=attribute.kind, attribute_name=attribute.attribute_name, read_set=TransformReadSet.imprecise()
                 )
                 for attribute in declared
             ]
@@ -208,25 +205,19 @@ class UnavailablePythonTargetResolver:
         *,
         changes: Iterable[MergeChange],  # noqa: ARG002
         branch: str,  # noqa: ARG002
-        schema_changed_elements: ChangedElementSet | None = None,  # noqa: ARG002
     ) -> list[AffectedTarget]:
         raise RuntimeError("the Python target resolver could not be built")
 
 
-async def build_python_target_resolver(*, db: InfrahubDatabase) -> PythonTargetResolver:
-    """Build the resolver for one recompute pass, inert while the switch is off.
-
-    The switch is read first, so a deployment that leaves the family to the per-node automations
-    resolves neither the client nor the component.
-    """
-    if not config.SETTINGS.main.coalesce_python_recompute_after_merge:
-        log.debug("Deriving no Python computed attribute for this pass: the coalesced pass is disabled")
-        return DisabledPythonTargetResolver()
-
+async def build_python_target_resolver(
+    *, db: InfrahubDatabase, refresh_updated_nodes: bool = False
+) -> PythonTargetResolver:
+    """Build the resolver for one recompute pass."""
     return IndexedPythonTargetResolver(
         read_set_source=ComposedPythonReadSetSource(
             declared_attributes=SchemaDeclaredPythonAttributes(db=db, component=await get_component()),
             analyzed_reads=GatheredPythonReadSets(db=db),
         ),
         subscriber_source=ClientSubscriberSource(client=get_client()),
+        refresh_updated_nodes=refresh_updated_nodes,
     )

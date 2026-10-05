@@ -69,8 +69,8 @@ class FieldLevelImpactResolver:
         assessment = classifier.assess(diff_summary=diff_summary)
 
         match assessment:
-            case EveryTarget():
-                return TargetSelection(ids=every_target, widened=True)
+            case EveryTarget(widening=widening):
+                return TargetSelection(ids=every_target, widening=widening)
             case ChangedNodes(node_ids=node_ids):
                 member_ids = node_ids
             case RelationshipReachedChanges():
@@ -81,7 +81,7 @@ class FieldLevelImpactResolver:
 
         subscribers = await fetch_subscriber_refs(client=self.client, node_ids=member_ids, branch=query_branch)
         ids = [subscriber.id for subscriber in subscribers if subscriber.kind == subscriber_kind]
-        return TargetSelection(ids=ids, widened=False)
+        return TargetSelection(ids=ids)
 
 
 class ReachedMemberResolver:

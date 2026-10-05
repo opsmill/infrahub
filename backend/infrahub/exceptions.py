@@ -123,6 +123,18 @@ class RepositoryCredentialsError(RepositoryError):
         )
 
 
+class RepositoryPermissionError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message
+            or (
+                f"Write access to repository {identifier} was denied. The credentials can read but "
+                "not push; grant the token write access to the repository."
+            ),
+        )
+
+
 class RepositoryInvalidBranchError(RepositoryError):
     def __init__(self, identifier: str, branch_name: str, location: str, message: str | None = None) -> None:
         super().__init__(
@@ -578,4 +590,32 @@ class LDAPCollisionError(Error):
     def __init__(self, account_name: str, message: str | None = None) -> None:
         self.account_name = account_name
         self.message = message or self.DESCRIPTION
+        super().__init__(self.message)
+
+
+class ArtifactChecksumMismatchError(Error):
+    """The stored file of an artifact does not match the checksum recorded for it, so it must not be served."""
+
+    HTTP_CODE: int = 409
+
+    def __init__(self, storage_id: str) -> None:
+        self.storage_id = storage_id
+        self.message = (
+            f"The stored file of this artifact ({storage_id}) does not match its checksum, so it was not served. "
+            "It may have been modified outside of Infrahub. Regenerate the artifact to restore it."
+        )
+        super().__init__(self.message)
+
+
+class ArtifactChecksumMissingError(Error):
+    """An artifact records no checksum for its stored file, so the file cannot be checked and must not be served."""
+
+    HTTP_CODE: int = 409
+
+    def __init__(self, storage_id: str) -> None:
+        self.storage_id = storage_id
+        self.message = (
+            f"This artifact has no recorded checksum to check its stored file ({storage_id}) against, "
+            "so it was not served. Regenerate the artifact to restore it."
+        )
         super().__init__(self.message)

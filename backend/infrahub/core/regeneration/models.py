@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntFlag, StrEnum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, assert_never
 
 if TYPE_CHECKING:
     from infrahub.core.constants import RelationshipDirection
@@ -28,17 +28,52 @@ class ReachedPath:
     hops: tuple[RelationshipHop, ...]
 
 
+class WideningReason(StrEnum):
+    """Why a change could not be traced back to specific targets."""
+
+    NON_UNIQUE_TARGETS = "non_unique_targets"
+    RELATIONSHIP_REACHED_CHANGE = "relationship_reached_change"
+    UNSCOPABLE_DERIVED_READ = "unscopable_derived_read"
+
+
+@dataclass(frozen=True, kw_only=True, slots=True)
+class Widening:
+    """The reason narrowing was abandoned, with the changed kinds it applies to when there are any."""
+
+    reason: WideningReason
+    kinds: tuple[str, ...] = ()
+
+    @property
+    def detail(self) -> str:
+        """The clause explaining the widening to the task log."""
+        match self.reason:
+            case WideningReason.NON_UNIQUE_TARGETS:
+                return "the query does not guarantee unique targets"
+            case WideningReason.RELATIONSHIP_REACHED_CHANGE:
+                return (
+                    f"the query reads {', '.join(self.kinds)} through a relationship, "
+                    "and a change there cannot be traced back to specific targets"
+                )
+            case WideningReason.UNSCOPABLE_DERIVED_READ:
+                return (
+                    "the query reads a human_friendly_id or display_label whose value "
+                    "cannot be traced back to specific targets"
+                )
+            case _ as unreachable:
+                assert_never(unreachable)
+
+
 @dataclass(frozen=True, slots=True)
 class TargetSelection:
-    """The targets to process, and whether narrowing had to be abandoned to arrive at them.
+    """The targets to process, and why narrowing had to be abandoned to arrive at them, if it was.
 
     ``ids`` is always the authoritative, complete list, so a caller needs nothing else to act.
-    ``widened`` explains only how that list was reached -- it carries no meaning of its own and
+    ``widening`` explains only how that list was reached -- it carries no meaning of its own and
     exists so a caller can report the lost precision without re-deriving it.
     """
 
     ids: list[str]
-    widened: bool
+    widening: Widening | None = None
 
 
 class RegenerationReason(StrEnum):
