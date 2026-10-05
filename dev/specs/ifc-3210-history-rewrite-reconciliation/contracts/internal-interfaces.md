@@ -214,9 +214,9 @@ is_ancestor(ancestor_commit, descendant_commit) -> bool
 has_commit(commit) -> bool
 ```
 
-`is_ancestor` wraps `git merge-base --is-ancestor` through GitPython's `Repo.is_ancestor`. Every
-git failure leaves it as a `RepositoryError`, so the detector handles one exception type and
-imports no git library.
+`is_ancestor` runs `git merge-base --is-ancestor` as a plain git command through GitPython, and
+reads exit status 1 as "not an ancestor" rather than as a failure. Every git failure leaves it as
+a `RepositoryError`, so the detector handles one exception type and imports no git library.
 
 `has_commit` answers whether the object is present, and it is what makes the absent-object rows
 reachable. Without it "the object is gone" and "git could not be asked" arrive as the same
@@ -244,8 +244,9 @@ Returns whether a record was written.
 1. Writes nothing unless `divergence.classification` is `REWRITE`. `RETARGET` arrives already
    classified, so the recorder needs no precondition of its own and never reads the cache.
 2. Needs no precondition about the two commits matching. `RefDivergence` rejects at construction
-   any classification other than `UNCHANGED` whose commits are equal, so a divergence that reaches
-   the recorder has already differed.
+   any classification other than `UNCHANGED` whose commits are equal, so every `REWRITE` that
+   reaches the write path already carries two different commits. An `UNCHANGED` divergence does
+   reach `record()` with matching commits, and rule 1 above stops it before anything is written.
 3. Reads the current `rewrite_count` on that branch, writes `count + 1`, treating an absent value
    as zero.
 4. Writes all four attributes in one mutation, on the Infrahub branch named.

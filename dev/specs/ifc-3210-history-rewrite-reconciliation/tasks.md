@@ -68,10 +68,11 @@ its own.
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
 - [x] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`, and declare
       `is_ancestor` and `has_commit` as a `Protocol` in `divergence/protocols.py` so the module
-      naming them imports no git library. The gateway holds a GitPython implementation over
-      `Repo.is_ancestor`. Every git failure leaves as a `RepositoryError`, so the detector imports no
-      git library. Bind the implementation to one repository at construction, so neither call takes
-      a repository argument and the `Protocol` names no git type.
+      naming them imports no git library. The gateway runs `git merge-base --is-ancestor` as a
+      plain git command through GitPython, and reads exit status 1 as "not an ancestor". Every git
+      failure leaves as a `RepositoryError`, so the detector imports no git library. Bind the
+      implementation to one repository at construction, so neither call takes a repository argument
+      and the `Protocol` names no git type.
 - [x] T008 Make `has_commit` distinguish a missing object from a failed git call. Without it both
       arrive as `RepositoryError`, so a garbage-collected commit raises on every cycle and the
       branch never classifies. The absent-object rows of the contract table depend on this.

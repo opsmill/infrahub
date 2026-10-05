@@ -56,8 +56,8 @@ That is wrong for `CoreReadOnlyRepository`, and this change corrects the table t
 
 ## R1. The ancestry test
 
-**Decision**: use `git merge-base --is-ancestor <imported_commit> <remote_head>`, reached through
-GitPython's `Repo.is_ancestor(ancestor_rev, rev)`.
+**Decision**: use `git merge-base --is-ancestor <imported_commit> <remote_head>`, run as a plain
+git command through GitPython. Exit status 1 is the answer "not an ancestor", not a failure.
 
 **Rationale**: it is one plumbing call per changed ref, it is exactly the question FR-001 asks, and
 it needs no extra network round trip because the fetch already brought the objects in. The full
@@ -92,10 +92,11 @@ also removes the once-a-minute "update was detected but the commit remained the 
 pull()" log line.
 
 **The missing-object case.** If the imported commit is no longer in the local object database, the
-ancestry test cannot run. `Repo.is_ancestor` raises rather than answering. The branch is then
-classified `REWRITE`, because the only other reading is that the local clone lost an object, and a
-reset to the remote repairs both readings. The record names the imported commit as the previous
-commit, which is still the true answer to "what did Infrahub hold".
+ancestry test cannot run. `git merge-base --is-ancestor` exits with an error rather than an answer,
+so the gateway raises. The branch is then classified `REWRITE`, because the only other reading is
+that the local clone lost an object, and a reset to the remote repairs both readings. The record
+names the imported commit as the previous commit, which is still the true answer to "what did
+Infrahub hold".
 
 **Alternatives rejected**:
 
