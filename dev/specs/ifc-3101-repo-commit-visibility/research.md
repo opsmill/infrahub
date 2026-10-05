@@ -306,10 +306,11 @@ network call holds no lock:
 
 **Superseded in part by T065h.** Steps 3 and 4 compare the remote against this worker's local copy,
 which decides the broadcast from whichever worker happened to run the check. The broadcast is now
-decided per Infrahub branch against the remote head last announced for it, held in
-`git:refs_check:announced:<id>:<branch>` and falling back to the imported commit; the local
-comparison still decides whether this worker fetches. The recipients' fetch is also forced for a
-read-only repository, since git refuses to move an existing tag otherwise.
+decided per tracked ref against the remote head the last check listed, held in
+`git:refs_check:listed:<id>:<ref>` and written by the check alone; the local comparison still
+decides whether this worker fetches. The recipients' fetch is also forced for a read-only
+repository, since git refuses to move an existing tag otherwise, and bounded by a kill timeout,
+since every recipient runs it while holding the repository lock.
 
 Failure of any step is caught per repository, recorded with the repository and the reason, and the
 `git:refs_check:due:<id>` due key is deleted so the next tick retries rather than treating the repository

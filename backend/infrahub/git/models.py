@@ -151,9 +151,7 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The type of repository")
-    location: str = Field(..., description="The external URL of the repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
-    infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     ref: str = Field(..., description="The ref of the repository")
 
 

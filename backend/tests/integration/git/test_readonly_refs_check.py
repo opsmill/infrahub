@@ -147,7 +147,7 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
             cache=cache,
             message_bus=bus,
             lock_registry=RecordingLockRegistry(timeline=timeline),
-            gateway=GitRepositoryRefsGateway(client=client, list_kill_after_seconds=110, fetch_kill_after_seconds=900),
+            gateway=GitRepositoryRefsGateway(client=client, list_kill_after_seconds=110),
             ref_validator=RefNameValidator(check_ref_format=git_check_ref_format),
             scheduler=RefsCheckScheduler(cache=cache, interval_seconds=900, retry_seconds=300),
             tracked_commit_reader=GraphTrackedCommitReader(db=db),
@@ -191,18 +191,26 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         bus: BusRecorder,
         timeline: LockTimeline,
     ) -> None:
+        imported_commit = await self.tracked_commit(db, branch_tracking_dataset)
         model = await self.build_model(db, branch_tracking_dataset)
         checker = self.build_checker(cache, bus, timeline, client, db)
         lock_name = f"repository.{branch_tracking_dataset['repo_name']}"
 
-        result = await checker.check(model, run_id="step01")
+        first = await checker.check(model, run_id="step01-first")
 
-        assert result.movements == ()
-        assert result.failure_reason is None
-        # Nothing moved, so the repository lock was never taken and no concurrent import of the
+        # No earlier listing is recorded, so the pool is told once without a move being reported.
+        assert first.movements == ()
+        assert [message.commit for message in bus.messages] == [imported_commit]
+        assert timeline.acquire_sequence(prefix=lock_name) == [lock_name]
+
+        second = await checker.check(model, run_id="step01-second")
+
+        assert second.movements == ()
+        assert second.failure_reason is None
+        # Nothing moved, so the repository lock was not taken again and no concurrent import of the
         # same repository could have been made to wait on this remote.
-        assert timeline.acquire_sequence(prefix=lock_name) == []
-        assert bus.messages == []
+        assert timeline.acquire_sequence(prefix=lock_name) == [lock_name]
+        assert len(bus.messages) == 1
 
     async def test_step02_an_advanced_branch_moves_without_touching_the_tracked_commit(
         self,
@@ -222,6 +230,8 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         model = await self.build_model(db, branch_tracking_dataset)
         checker = self.build_checker(cache, bus, timeline, client, db)
         lock_name = f"repository.{branch_tracking_dataset['repo_name']}"
+        messages_before = len(bus.messages)
+        locks_before = len(timeline.acquire_sequence(prefix=lock_name))
 
         result = await checker.check(model, run_id="step02")
 
@@ -231,8 +241,8 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         assert await self.tracked_commit(db, branch_tracking_dataset) == imported_commit
         self.assert_commit_readable(branch_tracking_dataset, imported_commit)
         # The convergence steps are serialised against other work on the local copy; the listing is not.
-        assert timeline.acquire_sequence(prefix=lock_name) == [lock_name]
-        assert [message.commit for message in bus.messages] == [imported_commit]
+        assert timeline.acquire_sequence(prefix=lock_name)[locks_before:] == [lock_name]
+        assert [message.commit for message in bus.messages[messages_before:]] == [imported_commit]
 
     async def test_step03_a_rewritten_branch_moves_without_losing_the_imported_commit(
         self,
@@ -274,13 +284,19 @@ class TestReadOnlyRefsCheck(TestInfrahubApp):
         """
         model = await self.build_model(db, tag_tracking_dataset)
         checker = self.build_checker(cache, bus, timeline, client, db)
+        lock_name = f"repository.{tag_tracking_dataset['repo_name']}"
+        # The first check of this repository records the listing the second one compares against.
+        await checker.check(model, run_id="step04-first")
         messages_before = len(bus.messages)
+        locks_before = timeline.acquire_sequence(prefix=lock_name)
 
         result = await checker.check(model, run_id="step04")
 
         assert result.movements == ()
         assert result.failure_reason is None
         assert len(bus.messages) == messages_before
+        # The local read and the listing agree on the peeled commit, so nothing is fetched either.
+        assert timeline.acquire_sequence(prefix=lock_name) == locks_before
 
     async def test_step05_a_moved_tag_moves_without_touching_the_tracked_commit(
         self,

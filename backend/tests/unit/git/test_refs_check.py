@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -15,7 +14,6 @@ from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import RepositoryError
 from infrahub.git.models import GitReadOnlyRepositoryCheckRefs, RepositoryBranchInfo, RepositoryData, TrackedRef
-from infrahub.git.refs_check.announced import record_announced_head
 from infrahub.git.refs_check.checker import RefNameValidator
 from infrahub.git.refs_check.factory import build_check_refs_model
 from infrahub.git.refs_check.gateway import (
@@ -27,11 +25,9 @@ from infrahub.git.refs_check.gateway import (
     select_remote_head,
 )
 from infrahub.git.refs_check.models import RefHeads
-from tests.adapters.cache import UnreachableCache
 from tests.helpers.schema.tag import TAG
 
 LIST_KILL_AFTER_SECONDS = 110
-FETCH_KILL_AFTER_SECONDS = 900
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -310,9 +306,7 @@ def build_local_copy(tmp_path: Path, *, origin: str) -> GitReadOnlyRepositoryChe
 
 def build_gateway() -> GitRepositoryRefsGateway:
     return GitRepositoryRefsGateway(
-        client=InfrahubClient(config=Config(address="http://mock")),
-        list_kill_after_seconds=LIST_KILL_AFTER_SECONDS,
-        fetch_kill_after_seconds=FETCH_KILL_AFTER_SECONDS,
+        client=InfrahubClient(config=Config(address="http://mock")), list_kill_after_seconds=LIST_KILL_AFTER_SECONDS
     )
 
 
@@ -469,23 +463,3 @@ def test_a_repository_with_no_location_is_not_checked() -> None:
     model = build_check_refs_model(repository_data=repository_data, branch_ids={"main": "main-id"})
 
     assert model is None
-
-
-async def test_a_failed_announced_head_write_is_logged_to_the_task_logger(caplog: pytest.LogCaptureFixture) -> None:
-    """The write happens inside flows, so its failure has to reach the logger the worker forwards to the flow run."""
-    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
-        await record_announced_head(
-            cache=UnreachableCache(),
-            repository_id="repository-id",
-            repository_name="readonly-repo",
-            branch_name="main",
-            head="cccccccccccccccccccccccccccccccccccccccc",
-        )
-
-    assert [(record.name, record.levelno, record.getMessage()) for record in caplog.records] == [
-        (
-            "infrahub.tasks",
-            logging.WARNING,
-            "Could not record the announced head of Infrahub branch main of repository readonly-repo: cache unreachable",
-        )
-    ]

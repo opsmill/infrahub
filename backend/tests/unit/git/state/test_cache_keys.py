@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from infrahub.git.state.cache_keys import (
-    refs_check_announced_key,
     refs_check_due_key,
     refs_check_last_key,
+    refs_check_listed_key,
     refs_check_running_key,
     warm_up_key,
 )
@@ -23,6 +23,6 @@ def test_the_cache_key_formats_are_stable() -> None:
         refs_check_last_key(repository_id=REPOSITORY_ID) == "git:refs_check:last:18d39e83-1ef7-d650-5424-0242ac120005"
     )
     assert (
-        refs_check_announced_key(repository_id=REPOSITORY_ID, branch_name="main")
-        == "git:refs_check:announced:18d39e83-1ef7-d650-5424-0242ac120005:main"
+        refs_check_listed_key(repository_id=REPOSITORY_ID, ref="main")
+        == "git:refs_check:listed:18d39e83-1ef7-d650-5424-0242ac120005:main"
     )

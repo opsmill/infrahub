@@ -18,16 +18,16 @@ from infrahub.git.refs_check.models import (
     RefsCheckResult,
 )
 from infrahub.git.state.cache_keys import (
-    REFS_CHECK_ANNOUNCED_TTL_SECONDS,
-    refs_check_announced_key,
+    REFS_CHECK_LISTED_TTL_SECONDS,
     refs_check_due_key,
     refs_check_last_key,
+    refs_check_listed_key,
     refs_check_running_key,
 )
 from infrahub.message_bus import InfrahubMessage, messages
 from tests.adapters.cache import ClaimAwareCache
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, PublishFailingBus
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -41,7 +41,7 @@ IMPORTED_COMMIT = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 LOCAL_HEAD = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 REMOTE_HEAD = "cccccccccccccccccccccccccccccccccccccccc"
 RETRY_SECONDS = 300
-ANNOUNCED_KEY = refs_check_announced_key(REPOSITORY_ID, branch_name="main")
+LISTED_KEY = refs_check_listed_key(REPOSITORY_ID, ref="stable")
 
 
 class RecordingRefsGateway:
@@ -125,17 +125,17 @@ class ClaimReleaseFailingCache(ClaimAwareCache):
         await super().delete(key=key)
 
 
-class AnnouncedWriteFailingCache(ClaimAwareCache):
-    """Fails only the announced-head write, the way a cache blip during that one call would."""
+class ListedWriteFailingCache(ClaimAwareCache):
+    """Fails only the listed-head write, the way a cache blip during that one call would."""
 
     async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
-        if key == ANNOUNCED_KEY:
+        if key == LISTED_KEY:
             raise ConnectionError("cache unreachable")
         return await super().set(key=key, value=value, expires=expires, not_exists=not_exists)
 
 
-class AnnouncedWriteOrderCache(ClaimAwareCache):
-    """Records how many broadcasts had been published at each announced-head write."""
+class ListedWriteOrderCache(ClaimAwareCache):
+    """Records how many broadcasts had been published at each listed-head write."""
 
     def __init__(self, bus: BusRecorder) -> None:
         super().__init__()
@@ -143,18 +143,17 @@ class AnnouncedWriteOrderCache(ClaimAwareCache):
         self.broadcasts_at_write: list[tuple[str, int]] = []
 
     async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
-        if key.startswith(refs_check_announced_key(REPOSITORY_ID, branch_name="")):
+        if key.startswith(refs_check_listed_key(REPOSITORY_ID, ref="")):
             self.broadcasts_at_write.append((key, len(self.bus.messages)))
         return await super().set(key=key, value=value, expires=expires, not_exists=not_exists)
 
 
-class PublishFailingBus(BusRecorder):
-    """Fails every publish, the way a broker outage during the broadcast would."""
+class HangingListedReadCache(ClaimAwareCache):
+    """Never answers the listed-head read, the way a cache stalled behind a slow network would."""
 
-    async def publish(
-        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
-    ) -> None:
-        raise ConnectionError("broker unreachable")
+    async def get_values(self, keys: list[str]) -> list[str | None]:
+        await asyncio.sleep(30)
+        return await super().get_values(keys=keys)
 
 
 class CrashingRefsGateway:
@@ -177,24 +176,16 @@ class RecordingTrackedCommitReader:
         return self.commits.get(branch_name)
 
 
-class SequencedTrackedCommitReader:
-    """Answers each read with the next scripted commit, the way an import landing between two reads would."""
+class CheckpointingTrackedCommitReader(RecordingTrackedCommitReader):
+    """Marks each read on the shared lock timeline, so the lock held at that point is assertable."""
 
-    def __init__(self, answers: list[str | None]) -> None:
-        self.answers = answers
-        self.reads: list[str] = []
-
-    async def read(self, *, repository_id: str, branch_name: str) -> str | None:
-        self.reads.append(branch_name)
-        return self.answers.pop(0)
-
-
-class HangingTrackedCommitReader:
-    """Never answers, the way a graph read stalled behind a slow database would."""
+    def __init__(self, timeline: LockTimeline) -> None:
+        super().__init__()
+        self.timeline = timeline
 
     async def read(self, *, repository_id: str, branch_name: str) -> str | None:
-        await asyncio.sleep(30)
-        return IMPORTED_COMMIT
+        self.timeline.checkpoint("tracked-commit-read")
+        return await super().read(repository_id=repository_id, branch_name=branch_name)
 
 
 def build_model(
@@ -217,7 +208,8 @@ def build_checker(
     bus: BusRecorder,
     timeline: LockTimeline,
     gateway: RecordingRefsGateway | CrashingRefsGateway,
-    tracked_commit_reader: RecordingTrackedCommitReader | SequencedTrackedCommitReader | None = None,
+    tracked_commit_reader: RecordingTrackedCommitReader | None = None,
+    detect_timeout_seconds: float = 30,
 ) -> ReadOnlyRepositoryRefsChecker:
     return ReadOnlyRepositoryRefsChecker(
         cache=cache,
@@ -228,7 +220,7 @@ def build_checker(
         scheduler=build_scheduler(cache),
         tracked_commit_reader=tracked_commit_reader or RecordingTrackedCommitReader(),
         claim_ttl_seconds=180,
-        detect_timeout_seconds=30,
+        detect_timeout_seconds=detect_timeout_seconds,
     )
 
 
@@ -258,10 +250,12 @@ async def test_the_due_key_carries_the_configured_interval_as_its_ttl() -> None:
 async def test_an_unchanged_remote_lists_refs_and_transfers_nothing() -> None:
     timeline = LockTimeline()
     bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=IMPORTED_COMMIT)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": IMPORTED_COMMIT}, remote_heads={"stable": IMPORTED_COMMIT}
     )
-    checker = build_checker(cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway)
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
 
     result = await checker.check(build_model(), run_id="run-1")
 
@@ -273,11 +267,27 @@ async def test_an_unchanged_remote_lists_refs_and_transfers_nothing() -> None:
     assert timeline.acquire_sequence(prefix=f"repository.{REPOSITORY_NAME}") == []
 
 
-async def test_a_worker_already_at_the_remote_head_still_announces_a_move_the_pool_was_not_told_about() -> None:
+async def test_an_unchanged_listing_is_written_again_so_it_only_lapses_once_no_check_lists_it() -> None:
+    timeline = LockTimeline()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=IMPORTED_COMMIT, expires=60)
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": IMPORTED_COMMIT}, remote_heads={"stable": IMPORTED_COMMIT}
+    )
+    checker = build_checker(cache=cache, bus=BusRecorder(), timeline=timeline, gateway=gateway)
+
+    await checker.check(build_model(), run_id="run-1")
+
+    assert cache.storage[LISTED_KEY] == IMPORTED_COMMIT
+    assert cache.expires[LISTED_KEY] == REFS_CHECK_LISTED_TTL_SECONDS
+
+
+async def test_a_worker_already_at_the_remote_head_still_announces_a_move_the_last_check_did_not_list() -> None:
     """Another worker fetched on its own, so this copy agrees with the remote while the rest of the pool may not."""
     timeline = LockTimeline()
     bus = BusRecorder()
     cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -285,20 +295,18 @@ async def test_a_worker_already_at_the_remote_head_still_announces_a_move_the_po
 
     result = await checker.check(build_model(), run_id="run-1")
 
-    assert result.movements == (
-        RefMovement(ref="stable", infrahub_branch_name="main", previous_head=IMPORTED_COMMIT, new_head=REMOTE_HEAD),
-    )
+    assert result.movements == (RefMovement(ref="stable", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),)
     assert gateway.fetches == []
     assert [(message.infrahub_branch_name, message.commit) for message in bus.messages] == [("main", IMPORTED_COMMIT)]
-    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
-    assert cache.expires[ANNOUNCED_KEY] == REFS_CHECK_ANNOUNCED_TTL_SECONDS
+    assert cache.storage[LISTED_KEY] == REMOTE_HEAD
+    assert cache.expires[LISTED_KEY] == REFS_CHECK_LISTED_TTL_SECONDS
 
 
-async def test_a_worker_behind_a_move_already_announced_fetches_without_announcing_it_again() -> None:
+async def test_a_worker_behind_a_move_already_listed_fetches_without_announcing_it_again() -> None:
     timeline = LockTimeline()
     bus = BusRecorder()
     cache = ClaimAwareCache()
-    await cache.set(key=ANNOUNCED_KEY, value=REMOTE_HEAD)
+    await cache.set(key=LISTED_KEY, value=REMOTE_HEAD)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -310,74 +318,35 @@ async def test_a_worker_behind_a_move_already_announced_fetches_without_announci
     assert result.movements == ()
     assert gateway.fetches == [REPOSITORY_NAME]
     assert bus.messages == []
-    # The announced head answered the question, so the graph was never asked.
+    # Nothing is broadcast, so the graph is never asked for a commit to pin.
     assert reader.reads == []
 
 
-async def test_a_stale_announced_head_is_announced_even_when_the_import_caught_up_with_the_remote() -> None:
-    """An import records the head only after its own broadcast, so a stale value means that broadcast never went out."""
-    timeline = LockTimeline()
-    bus = BusRecorder()
-    cache = ClaimAwareCache()
-    await cache.set(key=ANNOUNCED_KEY, value=LOCAL_HEAD)
-    gateway = RecordingRefsGateway(
-        timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
-    )
-    reader = RecordingTrackedCommitReader({"main": REMOTE_HEAD})
-    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader)
-
-    result = await checker.check(build_model(), run_id="run-1")
-
-    assert result.movements == (
-        RefMovement(ref="stable", infrahub_branch_name="main", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),
-    )
-    assert [message.commit for message in bus.messages] == [REMOTE_HEAD]
-    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
-    # The stored value answered the question, so the graph was read only to pin the broadcast.
-    assert reader.reads == ["main"]
-
-
-async def test_a_cold_cache_remembers_the_imported_commit_when_the_remote_is_still_on_it() -> None:
-    """With nothing cached the imported commit is the baseline, so a fresh instance announces nothing."""
+async def test_a_ref_with_no_recorded_listing_is_announced_once_without_being_reported_as_moved() -> None:
+    """A missing listing says nothing about whether the remote moved, so the pool is told but no move is counted."""
     timeline = LockTimeline()
     bus = BusRecorder()
     cache = ClaimAwareCache()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": IMPORTED_COMMIT}, remote_heads={"stable": IMPORTED_COMMIT}
     )
-    reader = RecordingTrackedCommitReader()
-    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader)
-
-    await checker.check(build_model(), run_id="run-1")
-    await checker.check(build_model(), run_id="run-2")
-
-    assert bus.messages == []
-    assert cache.storage[ANNOUNCED_KEY] == IMPORTED_COMMIT
-    # Written back on the first check, so the second one does not read the graph again.
-    assert reader.reads == ["main"]
-
-
-async def test_a_cold_cache_announces_a_remote_ahead_of_the_imported_commit_once() -> None:
-    """The remote moved while nothing was cached, which is a move the pool has not been told about."""
-    timeline = LockTimeline()
-    bus = BusRecorder()
-    cache = ClaimAwareCache()
-    gateway = RecordingRefsGateway(
-        timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
-    )
     checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
 
     first = await checker.check(build_model(), run_id="run-1")
     second = await checker.check(build_model(), run_id="run-2")
 
-    assert [movement.previous_head for movement in first.movements] == [IMPORTED_COMMIT]
+    assert first.movements == ()
     assert second.movements == ()
+    assert RefsCheckCycleSummary(results=(first, second), not_due=0, duration_seconds=0.0).moved_count == 0
     assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+    assert gateway.fetches == []
+    assert cache.storage[LISTED_KEY] == IMPORTED_COMMIT
 
 
-async def test_a_failed_broadcast_leaves_the_move_unannounced_so_the_next_check_retries_it() -> None:
+async def test_a_failed_broadcast_leaves_the_listing_unrecorded_so_the_next_check_retries_it() -> None:
     timeline = LockTimeline()
     cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -386,7 +355,7 @@ async def test_a_failed_broadcast_leaves_the_move_unannounced_so_the_next_check_
     with pytest.raises(ConnectionError, match=r"^broker unreachable$"):
         await failing.check(build_model(), run_id="run-1")
 
-    assert ANNOUNCED_KEY not in cache.storage
+    assert cache.storage[LISTED_KEY] == LOCAL_HEAD
 
     # The fetch has already happened, so this worker's copy agrees with the remote from here on.
     gateway.local_heads["stable"] = REMOTE_HEAD
@@ -395,15 +364,17 @@ async def test_a_failed_broadcast_leaves_the_move_unannounced_so_the_next_check_
 
     result = await retrying.check(build_model(), run_id="run-2")
 
-    assert [movement.new_head for movement in result.movements] == [REMOTE_HEAD]
+    assert result.movements == (RefMovement(ref="stable", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),)
     assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
-    assert cache.storage[ANNOUNCED_KEY] == REMOTE_HEAD
+    assert cache.storage[LISTED_KEY] == REMOTE_HEAD
 
 
-async def test_each_announced_head_is_written_only_after_its_own_broadcast() -> None:
+async def test_a_listing_is_recorded_only_after_every_branch_on_its_ref_was_broadcast() -> None:
     timeline = LockTimeline()
     bus = BusRecorder()
-    cache = AnnouncedWriteOrderCache(bus=bus)
+    cache = ListedWriteOrderCache(bus=bus)
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
+    cache.broadcasts_at_write.clear()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -418,16 +389,13 @@ async def test_each_announced_head_is_written_only_after_its_own_broadcast() -> 
 
     await checker.check(model, run_id="run-1")
 
-    assert cache.broadcasts_at_write == [
-        (ANNOUNCED_KEY, 1),
-        (refs_check_announced_key(REPOSITORY_ID, branch_name="feature"), 2),
-    ]
+    assert cache.broadcasts_at_write == [(LISTED_KEY, 2)]
 
 
-async def test_a_failed_announced_head_write_costs_one_repeated_broadcast_and_not_the_result() -> None:
+async def test_a_failed_listing_write_costs_one_repeated_broadcast_and_not_the_result() -> None:
     timeline = LockTimeline()
     bus = BusRecorder()
-    cache = AnnouncedWriteFailingCache()
+    cache = ListedWriteFailingCache()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": REMOTE_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -437,8 +405,7 @@ async def test_a_failed_announced_head_write_costs_one_repeated_broadcast_and_no
     second = await checker.check(build_model(), run_id="run-2")
 
     assert first.outcome is RefsCheckOutcome.COMPLETED
-    assert [movement.new_head for movement in first.movements] == [REMOTE_HEAD]
-    assert [movement.new_head for movement in second.movements] == [REMOTE_HEAD]
+    assert second.outcome is RefsCheckOutcome.COMPLETED
     assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT, IMPORTED_COMMIT]
     assert refs_check_running_key(REPOSITORY_ID) not in cache.storage
 
@@ -460,9 +427,31 @@ async def test_the_repository_lock_covers_the_fetch_and_the_broadcast_but_never_
     timeline.assert_held_at_checkpoint(f"repository.{REPOSITORY_NAME}", "broadcast")
 
 
-async def test_a_moved_ref_is_broadcast_once_per_branch_pinned_to_the_imported_commit() -> None:
+async def test_the_commit_the_broadcast_pins_is_read_while_the_lock_is_held() -> None:
+    """An import that lands while the check waits for the lock has moved the pool, so the pin is read after it."""
     timeline = LockTimeline()
     bus = BusRecorder()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    reader = CheckpointingTrackedCommitReader(timeline=timeline)
+    checker = build_checker(
+        cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader
+    )
+
+    await checker.check(build_model(), run_id="run-1")
+
+    timeline.assert_held_at_checkpoint(f"repository.{REPOSITORY_NAME}", "tracked-commit-read")
+    assert reader.reads == ["main"]
+    assert [message.commit for message in bus.messages] == [IMPORTED_COMMIT]
+
+
+async def test_a_moved_ref_is_broadcast_once_per_branch_pinned_to_its_imported_commit() -> None:
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
+    await cache.set(key=refs_check_listed_key(REPOSITORY_ID, ref="untouched"), value=IMPORTED_COMMIT)
     gateway = RecordingRefsGateway(
         timeline=timeline,
         local_heads={"stable": LOCAL_HEAD, "untouched": IMPORTED_COMMIT},
@@ -479,34 +468,27 @@ async def test_a_moved_ref_is_broadcast_once_per_branch_pinned_to_the_imported_c
     reader = RecordingTrackedCommitReader(
         {"main": IMPORTED_COMMIT, "feature": other_branch_commit, "quiet": IMPORTED_COMMIT}
     )
-    checker = build_checker(
-        cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader
-    )
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader)
 
     result = await checker.check(model, run_id="run-1")
 
-    # Two branches on one ref each carry their own baseline, so each is reported against it.
-    assert result.movements == (
-        RefMovement(ref="stable", infrahub_branch_name="main", previous_head=IMPORTED_COMMIT, new_head=REMOTE_HEAD),
-        RefMovement(
-            ref="stable", infrahub_branch_name="feature", previous_head=other_branch_commit, new_head=REMOTE_HEAD
-        ),
-    )
-
+    assert result.movements == (RefMovement(ref="stable", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),)
     broadcast = [message for message in bus.messages if isinstance(message, messages.RefreshGitFetch)]
     assert [(message.infrahub_branch_name, message.commit) for message in broadcast] == [
         ("main", IMPORTED_COMMIT),
         ("feature", other_branch_commit),
     ]
     assert {message.repository_kind for message in broadcast} == {InfrahubKind.READONLYREPOSITORY}
-    # Every branch is read once for its baseline, and only the moved ones again under the lock.
-    assert reader.reads == ["main", "feature", "quiet", "main", "feature"]
+    # Only the branches on the moved ref are read, each once and under the lock.
+    assert reader.reads == ["main", "feature"]
 
 
 async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast() -> None:
     """There is no commit to pin such a branch to, and an unpinned broadcast would move the pool."""
     timeline = LockTimeline()
     bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
@@ -517,7 +499,7 @@ async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast()
         ]
     )
     checker = build_checker(
-        cache=ClaimAwareCache(),
+        cache=cache,
         bus=bus,
         timeline=timeline,
         gateway=gateway,
@@ -526,52 +508,9 @@ async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast()
 
     result = await checker.check(model, run_id="run-1")
 
-    assert [movement.infrahub_branch_name for movement in result.movements] == ["main"]
-    assert gateway.fetches == [REPOSITORY_NAME]
-    assert [message.infrahub_branch_name for message in bus.messages] == ["main"]
-
-
-async def test_the_broadcast_pins_the_commit_read_while_the_lock_is_held() -> None:
-    """The broadcast pins whatever commit is imported when the lock is held, not an earlier one."""
-    timeline = LockTimeline()
-    bus = BusRecorder()
-    gateway = RecordingRefsGateway(
-        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
-    )
-    imported_meanwhile = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-    reader = SequencedTrackedCommitReader([IMPORTED_COMMIT, imported_meanwhile])
-    checker = build_checker(
-        cache=ClaimAwareCache(), bus=bus, timeline=timeline, gateway=gateway, tracked_commit_reader=reader
-    )
-
-    await checker.check(build_model(), run_id="run-1")
-
-    assert [message.commit for message in bus.messages] == [imported_meanwhile]
-    assert reader.reads == ["main", "main"]
-
-
-async def test_a_branch_whose_repository_vanished_before_the_lock_is_not_broadcast() -> None:
-    timeline = LockTimeline()
-    bus = BusRecorder()
-    cache = ClaimAwareCache()
-    gateway = RecordingRefsGateway(
-        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
-    )
-    checker = build_checker(
-        cache=cache,
-        bus=bus,
-        timeline=timeline,
-        gateway=gateway,
-        tracked_commit_reader=SequencedTrackedCommitReader([IMPORTED_COMMIT, None]),
-    )
-
-    result = await checker.check(build_model(), run_id="run-1")
-
     assert [movement.ref for movement in result.movements] == ["stable"]
     assert gateway.fetches == [REPOSITORY_NAME]
-    assert bus.messages == []
-    # Nothing was broadcast, so nothing may be recorded as announced.
-    assert ANNOUNCED_KEY not in cache.storage
+    assert [message.infrahub_branch_name for message in bus.messages] == ["main"]
 
 
 async def test_every_distinct_tracked_ref_is_read_in_one_listing() -> None:
@@ -623,6 +562,7 @@ async def test_a_check_that_outlived_its_claim_leaves_the_later_run_s_claim_alon
     has since taken it, which is the overlap the claim exists to prevent.
     """
     cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=IMPORTED_COMMIT)
     timeline = LockTimeline()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": IMPORTED_COMMIT}, remote_heads={"stable": IMPORTED_COMMIT}
@@ -777,10 +717,12 @@ async def test_a_failed_claim_release_does_not_cost_the_result_of_the_check_it_e
     """
     timeline = LockTimeline()
     bus = BusRecorder()
+    cache = ClaimReleaseFailingCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
-    checker = build_checker(cache=ClaimReleaseFailingCache(), bus=bus, timeline=timeline, gateway=gateway)
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway)
 
     result = await checker.check(build_model(), run_id="run-1")
 
@@ -832,7 +774,7 @@ async def test_an_unexpected_programming_error_is_not_recorded_as_a_repository_f
 
 
 async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository_lock() -> None:
-    """The wall-clock bound sits on the listing and the planning, the steps that can wait on a remote or the graph.
+    """The wall-clock bound sits on the listing and the planning, the steps that can wait on a remote or the cache.
 
     It deliberately does not wrap the convergence: that holds the repository lock, and this lock
     carries no expiry, so cancelling a run part-way through releasing it would leave every later
@@ -866,25 +808,15 @@ async def test_an_unresponsive_remote_is_abandoned_without_taking_the_repository
     assert cache.expires[refs_check_due_key(REPOSITORY_ID)] == RETRY_SECONDS
 
 
-async def test_a_slow_baseline_read_is_abandoned_before_the_claim_can_lapse() -> None:
-    """The baseline reads share the listing's bound, so a slow graph cannot outlast the claim's lease."""
-    cache = ClaimAwareCache()
+async def test_a_slow_listing_read_is_abandoned_before_the_claim_can_lapse() -> None:
+    """The read of the last listing shares the remote listing's bound, so a slow cache cannot outlast the claim."""
+    cache = HangingListedReadCache()
     timeline = LockTimeline()
     bus = BusRecorder()
     gateway = RecordingRefsGateway(
         timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
     )
-    checker = ReadOnlyRepositoryRefsChecker(
-        cache=cache,
-        message_bus=bus,
-        lock_registry=RecordingLockRegistry(timeline=timeline),
-        gateway=gateway,
-        ref_validator=RefNameValidator(check_ref_format=lambda _: True),
-        scheduler=build_scheduler(cache),
-        tracked_commit_reader=HangingTrackedCommitReader(),
-        claim_ttl_seconds=180,
-        detect_timeout_seconds=0.05,
-    )
+    checker = build_checker(cache=cache, bus=bus, timeline=timeline, gateway=gateway, detect_timeout_seconds=0.05)
 
     result = await checker.check(build_model(), run_id="run-1")
 
@@ -908,11 +840,7 @@ async def test_the_cycle_record_counts_each_repository_by_what_happened_to_it() 
                 repository_id="b",
                 repository_name="moved",
                 outcome=RefsCheckOutcome.COMPLETED,
-                movements=(
-                    RefMovement(
-                        ref="stable", infrahub_branch_name="main", previous_head=IMPORTED_COMMIT, new_head=REMOTE_HEAD
-                    ),
-                ),
+                movements=(RefMovement(ref="stable", previous_head=IMPORTED_COMMIT, new_head=REMOTE_HEAD),),
                 contacted_remote=True,
             ),
             RefsCheckResult(
@@ -960,14 +888,7 @@ class InvalidResultCase:
                 kwargs={
                     "outcome": RefsCheckOutcome.SKIPPED_CLAIMED,
                     "claimed_by": "another-run",
-                    "movements": (
-                        RefMovement(
-                            ref="stable",
-                            infrahub_branch_name="main",
-                            previous_head=IMPORTED_COMMIT,
-                            new_head=REMOTE_HEAD,
-                        ),
-                    ),
+                    "movements": (RefMovement(ref="stable", previous_head=IMPORTED_COMMIT, new_head=REMOTE_HEAD),),
                 },
                 expected_message="^A skipped_claimed check cannot carry movements$",
             ),

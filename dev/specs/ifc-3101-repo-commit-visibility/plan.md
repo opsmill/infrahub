@@ -32,8 +32,8 @@ worker read and the refs check.
 message bus (existing; the NATS adapter is edited for signature parity only and is not a supported
 driver, see research.md), TanStack Query v5 and gql.tada (existing)
 **Storage**: none new. Five cache keys in the existing `service.cache`: warm-up collapsing, the
-refs-check due marker, the in-flight guard, the last-checked timestamp, and the remote head last
-announced per branch
+refs-check due marker, the in-flight guard, the last-checked timestamp, and the remote head the
+last check listed per tracked ref
 **Testing**: pytest unit (`backend/tests/unit/`), component with testcontainers
 (`backend/tests/component/`), integration with a Gogs remote (`backend/tests/integration/git/`),
 Vitest browser mode, pytest-playwright e2e (`tests/e2e/`)
@@ -298,14 +298,15 @@ determinism logic, no test and no documentation entry.
   unresponsive remote fails instead of hanging for the life of the tick.
 - **Movement decision (FR-017, SC-009).** The listing answers two separate questions. Whether this
   worker fetches is decided against its own `origin/<ref>`. Whether the pool is told is decided per
-  Infrahub branch against `git:refs_check:announced:<id>:<branch>`, the remote head last broadcast
-  for that branch, falling back to the branch's imported commit when the key is absent. Deciding the
-  broadcast against local disk made one arbitrary worker's copy answer for the pool: a worker that
-  was already current saw nothing to announce and left the others behind. The key is written only
-  after its broadcast succeeds, so a failed broadcast is retried by the next check rather than lost,
-  and the imported-commit fallback limits an empty or expired cache to one broadcast per branch
-  whose remote has moved past its imported commit; a branch still on it announces nothing.
-  Recorded as T065h.
+  tracked ref against `git:refs_check:listed:<id>:<ref>`, the remote head the last check listed and
+  broadcast. Deciding the broadcast against local disk made one arbitrary worker's copy answer for
+  the pool: a worker that was already current saw nothing to announce and left the others behind.
+  The check is the only writer, and it holds the per-repository claim while it writes, so no two
+  writers race. It writes every listed head only after every broadcast of that check has gone out, so
+  a failed broadcast is retried by the next check rather than lost. A ref with no recorded listing,
+  after a cache flush or on the first check after deployment, is broadcast once and not reported as
+  moved. Every check writes the value again, so it lapses only for a ref no check has listed for 30
+  days. Recorded as T065h.
 - **Non-accumulation (FR-025).** Before doing any remote work, the shared body claims the repository
   with `cache.set(key=<running key>, value=<this flow's run id>, expires=<per-run ceiling>,
   not_exists=True)` and returns the recorded run id without contacting the remote when the claim

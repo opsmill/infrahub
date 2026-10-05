@@ -155,9 +155,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             repository_id=obj.id,
             repository_name=str(obj.name.value),
             repository_kind=obj.get_kind(),
-            location=obj.location.value,
             infrahub_branch_name=branch.name,
-            infrahub_branch_id=str(branch.get_uuid()),
             ref=str(obj.ref.value),
         )
         if graphql_context.service:
@@ -268,9 +266,7 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             repository_id=repository_id,
             repository_name=str(repo.name.value),
             repository_kind=repo.get_kind(),
-            location=str(repo.location.value),
             infrahub_branch_name=branch.name,
-            infrahub_branch_id=str(branch.get_uuid()),
             ref=str(repo.ref.value),
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(

@@ -25,16 +25,14 @@ from infrahub.git.models import (
     GitRepositoryPullReadOnly,
 )
 from infrahub.git.repository import CollectedImports, InfrahubReadOnlyRepository
-from infrahub.git.state.cache_keys import refs_check_announced_key
 from infrahub.git.sync import RepositoryAdder
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_cache, build_client, build_message_bus
+from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
-from tests.adapters.cache import ClaimAwareCache
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.dependency_override import override_dependency
@@ -298,13 +296,10 @@ class TestPullReadOnly:
         self.workflow = WorkflowLocalExecution()
         self.service = await InfrahubServices.new(client=self.client, workflow=self.workflow, message_bus=self.recorder)
 
-        self.cache = ClaimAwareCache()
-
         with (
             override_dependency(build_message_bus, lambda: self.recorder, dependency_provider=dependency_provider),
             override_workflow(self.workflow, dependency_provider=dependency_provider),
             override_dependency(build_client, lambda: self.client, dependency_provider=dependency_provider),
-            override_dependency(build_cache, lambda: self.cache, dependency_provider=dependency_provider),
         ):
             self.commit = str(UUIDT())
             self.infrahub_branch_name = "read-only-branch"
@@ -367,10 +362,6 @@ class TestPullReadOnly:
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
-        # Recorded once the broadcast went out, so the refs check does not announce it again.
-        assert self.cache.storage == {
-            refs_check_announced_key(self.repo_id, branch_name=self.infrahub_branch_name): self.commit
-        }
 
     async def test_new_repository(self, setup: None, prefect_test_fixture: None) -> None:
         self.mock_repo_class.init.side_effect = RepositoryError(self.repo_name, "it is broken")

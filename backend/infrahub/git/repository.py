@@ -745,18 +745,12 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
         return True
 
-    async def update_latest_commit(self) -> str:
-        """Import the commit the tracked ref points at on the remote and record it as the tracked commit.
-
-        Returns:
-            The commit now tracked.
-
-        """
+    async def update_latest_commit(self) -> None:
+        """Import the commit the tracked ref points at on the remote and record it as the tracked commit."""
         latest_commit = self.get_commit_value(branch_name=await self.resolve_checkout_ref(), remote=True)
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)
         if not synced_from_remote:
             await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
-        return latest_commit
 
 
 @cached(
