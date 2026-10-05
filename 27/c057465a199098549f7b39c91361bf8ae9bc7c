@@ -1,0 +1,21 @@
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_c29bc2a8dbf032::t_145db1742df62a 3,6,9-10,14-15,17-18,89-102,105-110,115-170
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_c29bc2a8dbf032::t_91ef1ac8b4fd81 1-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27c057465a199098549f7b39c91361bf8ae9bc7c",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
