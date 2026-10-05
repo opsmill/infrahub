@@ -125,6 +125,7 @@ head, the imported objects match the rewritten tree, and the repository reports 
       `self.pull(branch_name=self.default_branch)` outside the `ACTIVE` loop, so a rewritten trunk
       on a staging repository would be neither classified nor recorded, and before T041 would still
       fail with the old message.
+      Landed in `collect_pending_imports`, which queues the trunk through `_queue_advanced_branch`.
 - [x] T015 [US1] Thread the per-branch graph commits down to
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`. They are
       loaded once per cycle by `get_repositories_commit_per_branch` and live on
