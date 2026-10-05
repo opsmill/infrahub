@@ -317,7 +317,7 @@ in-memory one. The recorder itself imports neither the SDK nor the event service
 Changed. `backend/infrahub/git/base.py`.
 
 Before it pulls, it compares the branch worktree head and the remote head by ancestry. It
-hard-resets onto the remote head only when **neither** is an ancestor of the other.
+hard-resets onto the remote head whenever the worktree does not lead to it.
 
 ### Contract
 
@@ -326,7 +326,7 @@ hard-resets onto the remote head only when **neither** is an ancestor of the oth
 | No origin | Returns `False`, unchanged. |
 | Worktree head equals remote head | Returns `True`, unchanged. |
 | Worktree head is an ancestor of remote head | Pulls, unchanged. |
-| **Remote head is an ancestor of worktree head** | **Returns `True`. Resets nothing.** The worktree holds commits the remote does not. |
+| **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
 
@@ -451,11 +451,10 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-6. **It resets with `reset_to_commit` and runs no ancestry check.** A pinned SHA moves the
-   worktree whether or not it holds commits the remote does not, so the broadcast skips the
-   worktree-is-ahead row of the reset table in section 1. That is deliberate, because the
-   broadcast carries a SHA the sending worker already resolved and the receiving worker is meant
-   to converge on exactly it.
+6. **It resets with `reset_to_commit` and runs no ancestry check.** It moves the worktree onto
+   the pinned SHA without asking how the two commits relate, which is what the pull path asks.
+   That is deliberate, because the broadcast carries a SHA the sending worker already resolved
+   and the receiving worker is meant to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.

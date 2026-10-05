@@ -107,7 +107,7 @@ backend/infrahub/
 │   │   ├── recorder.py                  # HistoryRewriteRecorder
 │   │   ├── store.py                     # the SDK-backed RepositoryRecordStore
 │   │   └── suppression.py               # the re-target marker, read and consume
-│   ├── base.py                          # pull(): reset only when neither head is an ancestor
+│   ├── base.py                          # pull(): reset unless the worktree leads to the remote
 │   ├── repository.py                    # collect_pending_imports(): classify updated branches
 │   ├── sync.py                          # RepositorySyncer.sync(): return the outcome
 │   └── tasks.py                         # broadcast every reconciled branch, before the raise
