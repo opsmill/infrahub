@@ -21,7 +21,7 @@ from rich.console import Console
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, SchemaPathType
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m080_reanchor_number_pool_reservations import Migration080
+from infrahub.core.migrations.graph.m081_reanchor_number_pool_reservations import Migration081
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.node import Node
@@ -116,10 +116,10 @@ async def create_ticket(db: InfrahubDatabase, title: str, pool: CoreNumberPool, 
     return ticket
 
 
-async def run_migration(db: InfrahubDatabase, migration: Migration080 | None = None) -> MigrationRun:
+async def run_migration(db: InfrahubDatabase, migration: Migration081 | None = None) -> MigrationRun:
     """Run the migration and keep both its console output and its own verdict on the result."""
     console = Console(record=True, width=250)
-    migration = migration or Migration080()
+    migration = migration or Migration081()
     result = await migration.execute(migration_input=MigrationInput(db=db, console=console))
     validation = await migration.validate_migration(db=db)
     return MigrationRun(result=result, output=console.export_text(), validation=validation)

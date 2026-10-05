@@ -20,7 +20,8 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
-from tests.component.core.migrations.graph.m080_reanchor_number_pool_reservations.conftest import (
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservations.conftest import (
     POOL_END,
     POOL_START,
     TRACKED_ATTRIBUTE_NAME,
@@ -187,7 +188,7 @@ async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Br
         utilization_default_branch=getter.utilization_default_branch,
         utilization_branches=getter.utilization_branches,
         allocated=tuple(sorted((entry.branch, entry.number) for entry in getter.used)),
-        in_use=tuple(sorted(await pool.get_used(db=db, branch=branch))),
+        in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch))),
     )
 
 
@@ -216,7 +217,7 @@ class MigratedDatabase:
     second_run: MigrationRun
 
 
-class TestMigration080:
+class TestMigration081:
     @pytest.fixture(scope="class")
     async def migrated(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema_scope_class: None

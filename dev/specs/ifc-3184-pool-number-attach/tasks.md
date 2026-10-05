@@ -369,15 +369,15 @@ where nothing else has moved the numbers.
       inferring it from the source the record produces. Cover both entry points in the same test so
       the uuid path cannot stand in for the name path.
 
-### 1f. Migration `m080` (planned as `m079`)
+### 1f. Migration `m081` (planned as `m079`)
 
 - [X] T025 [US1] Create the package
       `core/migrations/graph/m079_reanchor_number_pool_reservations/` (`__init__.py`, `migration.py`,
       `queries.py`) exporting `Migration079`, an `ArbitraryMigration` with `minimum_version = 78`.
       Model on `m078_retire_agnostic_property_edges/`. Registration is filename-driven — **no registry
       list to edit**.
-      *(Landed as `m080_reanchor_number_pool_reservations` / `Migration080`, `minimum_version =
-      79`: `m079` was taken by `m079_range_diff_indexes`.)*
+      *(Landed as `m081_reanchor_number_pool_reservations` / `Migration081`, `minimum_version =
+      80`: `m079` was taken by `m079_range_diff_indexes` and `m080` by `m080_number_pool_ranges`.)*
 - [X] T026 [US1] Behaviour 1 — re-anchor every record. Resolve `identifier` to the **active** `Node`
       vertex using the `graph_traversal/_cypher.py::_SOURCE_MATCH` idiom (latest `IS_PART_OF` without
       pre-filtering status, keep only if active, then `ORDER BY branch_level DESC, from DESC LIMIT 1`);
@@ -421,7 +421,7 @@ where nothing else has moved the numbers.
       `backend/tests/component/core/migrations/graph/m079_reanchor_number_pool_reservations/`: one per
       behaviour, the duplicate-uuid node case, idempotency, and the console counts (assert the logged
       string, as `m078`'s tests do).
-      *(Under `…/m080_reanchor_number_pool_reservations/`: one shared dataset run twice, plus
+      *(Under `…/m081_reanchor_number_pool_reservations/`: one shared dataset run twice, plus
       `test_resume.py` for failures in each step.)*
 - [X] T035 [US1] Component tests for the source sweep: two pools with live records on one attribute,
       both carrying legacy pool source edges — after migration the attribute reports the surviving

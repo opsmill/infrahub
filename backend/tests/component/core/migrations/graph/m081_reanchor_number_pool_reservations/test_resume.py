@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 import pytest
 
-from infrahub.core.migrations.graph.m080_reanchor_number_pool_reservations import Migration080
-from infrahub.core.migrations.graph.m080_reanchor_number_pool_reservations.queries import (
+from infrahub.core.migrations.graph.m081_reanchor_number_pool_reservations import Migration081
+from infrahub.core.migrations.graph.m081_reanchor_number_pool_reservations.queries import (
     CollapseSharedAttributeRecordsQuery,
     CountedMigrationQuery,
     DeleteLegacyRecordsQuery,
@@ -17,7 +17,7 @@ from infrahub.core.migrations.graph.m080_reanchor_number_pool_reservations.queri
     ReanchorNumberPoolRecordsQuery,
 )
 from infrahub.core.timestamp import Timestamp
-from tests.component.core.migrations.graph.m080_reanchor_number_pool_reservations.conftest import (
+from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservations.conftest import (
     attribute_id_of,
     create_legacy_record,
     create_legacy_source_edge,
@@ -32,7 +32,7 @@ from tests.component.core.migrations.graph.m080_reanchor_number_pool_reservation
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.migrations.graph.m080_reanchor_number_pool_reservations.migration import MigrationBehaviour
+    from infrahub.core.migrations.graph.m081_reanchor_number_pool_reservations.migration import MigrationBehaviour
     from infrahub.database import InfrahubDatabase
 
 
@@ -84,7 +84,7 @@ FAILED_BEHAVIOUR_TEST_CASES: list[FailedBehaviourTestCase] = [
 
 
 class FailingQuery(CountedMigrationQuery):
-    name: str = "m080_failing_query"
+    name: str = "m081_failing_query"
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         pass
@@ -93,16 +93,16 @@ class FailingQuery(CountedMigrationQuery):
         raise RuntimeError("injected failure")
 
 
-def migration_failing_at(query_class: type[CountedMigrationQuery]) -> Migration080:
+def migration_failing_at(query_class: type[CountedMigrationQuery]) -> Migration081:
     """The migration with the behaviour that runs `query_class` swapped for one that raises."""
 
-    class FailingMigration080(Migration080):
+    class FailingMigration081(Migration081):
         behaviors: ClassVar[tuple[MigrationBehaviour, ...]] = tuple(
             replace(behaviour, query_class=FailingQuery) if behaviour.query_class is query_class else behaviour
-            for behaviour in Migration080.behaviors
+            for behaviour in Migration081.behaviors
         )
 
-    return FailingMigration080()
+    return FailingMigration081()
 
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_BEHAVIOUR_TEST_CASES])
