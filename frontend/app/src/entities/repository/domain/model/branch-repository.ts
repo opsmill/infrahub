@@ -61,3 +61,8 @@ export class BranchRepositoriesError extends Error {
 export type RepositoryImportError =
   | { status: "found"; taskId: string; message: string }
   | { status: "not-found"; taskId: string | null };
+
+export type RepositoryImportTaskLookup =
+  | { status: "running" }
+  | { status: "failed"; taskId: string }
+  | { status: "not-found" };

@@ -30,10 +30,10 @@ describe("getRepositoryImportTask", () => {
       .mockResolvedValueOnce("task-1");
 
     // WHEN
-    const taskId = await getRepositoryImportTask(params);
+    const lookup = await getRepositoryImportTask(params);
 
     // THEN
-    expect(taskId).toBe("task-1");
+    expect(lookup).toEqual({ status: "failed", taskId: "task-1" });
     expect(getRepositoryImportTaskFromApi).toHaveBeenNthCalledWith(1, {
       branch: "feature",
       repositoryId: "repo-1",
@@ -48,24 +48,24 @@ describe("getRepositoryImportTask", () => {
     });
   });
 
-  it("returns null while an import is still running, so an older failed run isn't picked", async () => {
+  it("reports a running import, so an older failed run isn't picked", async () => {
     // GIVEN
     vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValueOnce("running-task");
 
     // WHEN
-    const taskId = await getRepositoryImportTask(params);
+    const lookup = await getRepositoryImportTask(params);
 
     // THEN
-    expect(taskId).toBeNull();
+    expect(lookup).toEqual({ status: "running" });
     expect(getRepositoryImportTaskFromApi).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when no failed import matches", async () => {
+  it("reports no match when no import is running and no failed import matches", async () => {
     // GIVEN
     vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValue(null);
 
     // WHEN / THEN
-    await expect(getRepositoryImportTask(params)).resolves.toBeNull();
+    await expect(getRepositoryImportTask(params)).resolves.toEqual({ status: "not-found" });
   });
 
   it("rejects when the api fails, so the query can tell a failure from no match", async () => {

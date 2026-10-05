@@ -2,7 +2,10 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
 
-import type { RepositoryImportError } from "@/entities/repository/domain/model/branch-repository";
+import type {
+  RepositoryImportError,
+  RepositoryImportTaskLookup,
+} from "@/entities/repository/domain/model/branch-repository";
 import {
   type GetRepositoryImportTaskParams,
   getImportTaskErrorMessage,
@@ -18,17 +21,32 @@ export interface GetRepositoryImportTaskQueryParams extends GetRepositoryImportT
   isSyncing: boolean;
 }
 
+// Only consecutive "nothing found" answers count against the lookup budget: a running import is
+// expected to end as a failed run, so it is polled for as long as it runs.
+interface RepositoryImportTaskLookupResult {
+  lookup: RepositoryImportTaskLookup;
+  notFoundCount: number;
+}
+
 export function getRepositoryImportTaskQueryOptions({
   isSyncing,
   ...params
 }: GetRepositoryImportTaskQueryParams) {
   return queryOptions({
     queryKey: repositoryQueryKeys.importTask(params),
-    queryFn: () => getRepositoryImportTask(params),
+    queryFn: async ({ client, queryKey }): Promise<RepositoryImportTaskLookupResult> => {
+      const lookup = await getRepositoryImportTask(params);
+      const previous = client.getQueryData<RepositoryImportTaskLookupResult>(queryKey);
+      const notFoundCount = lookup.status === "not-found" ? (previous?.notFoundCount ?? 0) + 1 : 0;
+      return { lookup, notFoundCount };
+    },
     retry: retryBackgroundQuery,
     refetchInterval: (query) => {
+      const { data, status } = query.state;
       const isStillLookingForTask =
-        query.state.data === null && query.state.dataUpdateCount < MAX_IMPORT_TASK_LOOKUPS;
+        status === "error" ||
+        data?.lookup.status === "running" ||
+        (data?.lookup.status === "not-found" && data.notFoundCount < MAX_IMPORT_TASK_LOOKUPS);
 
       return pollWhileHealthy(
         isSyncing || isStillLookingForTask,
@@ -55,11 +73,13 @@ export function useGetRepositoryImportError(
   params: GetRepositoryImportTaskQueryParams
 ): RepositoryImportError | undefined {
   const task = useQuery(getRepositoryImportTaskQueryOptions(params));
-  const taskId = task.data;
+  const lookup = task.data?.lookup;
+  const taskId = lookup?.status === "failed" ? lookup.taskId : undefined;
   const log = useQuery(getImportTaskErrorMessageQueryOptions(taskId));
 
-  if (taskId === undefined) return task.isError ? { status: "not-found", taskId: null } : undefined;
-  if (taskId === null) return { status: "not-found", taskId: null };
+  if (!lookup) return task.isError ? { status: "not-found", taskId: null } : undefined;
+  if (lookup.status === "running") return undefined;
+  if (lookup.status === "not-found") return { status: "not-found", taskId: null };
   if (log.data === undefined) return log.isError ? { status: "not-found", taskId } : undefined;
 
   return log.data === null
