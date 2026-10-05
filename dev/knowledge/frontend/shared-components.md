@@ -141,6 +141,7 @@ More primitives (`Sheet`, `Tree`, `Menu`, `Select`, `ListBox`, `Autocomplete`, `
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
 | Local-storage state | `useLocalStorage` | `shared/hooks/useLocalStorage.ts` |
 | Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
+| Announce a copy to screen readers | `CopiedAnnouncement` | `shared/components/a11y/copied-announcement.tsx` |
 | Page title | `useTitle` | `shared/hooks/useTitle.ts` |
 | Branch context | `useCurrentBranch` | (entity hook) |
 | Date context | `useAtomValue(datetimeAtom)` | `shared/stores/` |

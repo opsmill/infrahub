@@ -106,7 +106,7 @@ export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQue
         ? REPOSITORY_COMMITS_POLL_INTERVAL_MS
         : false;
     },
-    // TanStack types structuralSharing's arguments as unknown.
+    // TanStack Query v5 types structuralSharing's arguments as unknown.
     structuralSharing: (oldData, newData) =>
       keepLoadedCommitsWithLatestAvailability(
         oldData as RepositoryCommitPages | undefined,

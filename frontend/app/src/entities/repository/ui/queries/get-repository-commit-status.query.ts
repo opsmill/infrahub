@@ -43,7 +43,7 @@ export function getRepositoryCommitStatusQueryOptions(params: GetRepositoryCommi
     refetchOnWindowFocus: false,
     // The open Commits tab writes this status, so leaving the tab must not read it again at once.
     staleTime: REPOSITORY_COMMITS_STALE_TIME_MS,
-    // TanStack types structuralSharing's arguments as unknown.
+    // TanStack Query v5 types structuralSharing's arguments as unknown.
     structuralSharing: (oldData, newData) =>
       keepStatusOverColdAnswer(
         oldData as RepositoryCommitStatus | undefined,
