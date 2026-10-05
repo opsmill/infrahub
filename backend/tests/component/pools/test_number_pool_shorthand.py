@@ -70,14 +70,17 @@ class TestNumberPoolShorthandMirror:
         assert reloaded.start_range.value is None
         assert reloaded.end_range.value is None
 
-    async def test_sync_shorthand_writes_only_the_shorthand_at_the_given_time(
+    async def test_sync_shorthand_writes_only_the_shorthand_at_the_callers_time_and_account(
         self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
-        """The mirror saves the two shorthand attributes at the caller's timestamp and nothing else."""
+        """The mirror saves only the two shorthand attributes, at the caller's timestamp and under its account.
+
+        A mirror that is already right is not rewritten.
+        """
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
         await pool.new(
             db=db,
-            name="mirror-at-given-time",
+            name="mirror-write",
             node="TestingTicket",
             node_attribute="ticket_id",
             start_range=1,
@@ -88,33 +91,11 @@ class TestNumberPoolShorthandMirror:
 
         sync_at = Timestamp()
         pool.description.value = "pending change owned by another writer"
-        await mirror.sync(pool=pool, at=sync_at)
+        await mirror.sync(pool=pool, at=sync_at, user_id="first-writer")
 
         at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=sync_at)
         assert at_sync is not None
         assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200)
-
-        reloaded = await _reload(db=db, pool=pool)
-        assert reloaded.description.value is None
-
-    async def test_sync_shorthand_records_the_caller_and_leaves_a_correct_mirror_untouched(
-        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
-    ) -> None:
-        """The write is recorded under the caller's account, and a mirror that is already right is not rewritten."""
-        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-        await pool.new(
-            db=db,
-            name="mirror-records-caller",
-            node="TestingTicket",
-            node_attribute="ticket_id",
-            start_range=1,
-            end_range=10,
-        )
-        await pool.save(db=db)
-        await add_pool_range(db=db, pool=pool, start=100, end=200)
-
-        sync_at = Timestamp()
-        await mirror.sync(pool=pool, at=sync_at, user_id="first-writer")
 
         async def shorthand_metadata() -> list[tuple[str | None, str | None]]:
             loaded = await NodeManager.get_one(
@@ -134,6 +115,8 @@ class TestNumberPoolShorthandMirror:
         ]
 
         reloaded = await _reload(db=db, pool=pool)
+        assert reloaded.description.value is None
+
         await mirror.sync(pool=reloaded, at=Timestamp(), user_id="second-writer")
 
         assert await shorthand_metadata() == [
@@ -141,14 +124,14 @@ class TestNumberPoolShorthandMirror:
             ("first-writer", sync_at.to_string()),
         ]
 
-    async def test_sync_shorthand_mirrors_the_ranges_the_caller_holds(
+    async def test_sync_shorthand_reads_the_ranges_at_its_time_unless_the_caller_hands_them_in(
         self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
-        """Ranges handed in by the caller are mirrored as given, without reading the pool's ranges again."""
+        """A sync mirrors the ranges the pool held at its time, or exactly the ranges the caller hands in."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
         await pool.new(
             db=db,
-            name="mirror-caller-ranges",
+            name="mirror-read-ranges",
             node="TestingTicket",
             node_attribute="ticket_id",
             start_range=1,
@@ -156,28 +139,6 @@ class TestNumberPoolShorthandMirror:
         )
         await pool.save(db=db)
         held_range = await add_pool_range(db=db, pool=pool, start=100, end=200)
-        await add_pool_range(db=db, pool=pool, start=300, end=400)
-
-        await mirror.sync(pool=pool, ranges=[held_range])
-
-        reloaded = await _reload(db=db, pool=pool)
-        assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200)
-
-    async def test_sync_shorthand_reads_the_ranges_held_at_the_given_time(
-        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
-    ) -> None:
-        """A sync at a past time mirrors the ranges the pool held then, not the ones it holds now."""
-        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-        await pool.new(
-            db=db,
-            name="mirror-at-past-time",
-            node="TestingTicket",
-            node_attribute="ticket_id",
-            start_range=1,
-            end_range=10,
-        )
-        await pool.save(db=db)
-        await add_pool_range(db=db, pool=pool, start=100, end=200)
         one_range_at = Timestamp()
         await add_pool_range(db=db, pool=pool, start=300, end=400)
 
@@ -185,4 +146,13 @@ class TestNumberPoolShorthandMirror:
 
         at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=one_range_at)
         assert at_sync is not None
-        assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200)
+        assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200), (
+            "a sync at a past time mirrors the single range the pool held then"
+        )
+
+        await mirror.sync(pool=pool, ranges=[held_range])
+
+        reloaded = await _reload(db=db, pool=pool)
+        assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200), (
+            "the caller's ranges are mirrored as given, without reading the two the pool holds now"
+        )
