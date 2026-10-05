@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -511,6 +512,49 @@ async def test_a_branch_with_nothing_imported_yet_is_fetched_but_not_broadcast()
     assert [movement.ref for movement in result.movements] == ["stable"]
     assert gateway.fetches == [REPOSITORY_NAME]
     assert [message.infrahub_branch_name for message in bus.messages] == ["main"]
+
+
+async def test_a_moved_ref_whose_only_branch_has_nothing_imported_is_recorded_without_a_broadcast() -> None:
+    """The import that later lands on that branch broadcasts its own commit, so the pool is owed nothing for this move."""
+    timeline = LockTimeline()
+    bus = BusRecorder()
+    cache = ClaimAwareCache()
+    await cache.set(key=LISTED_KEY, value=LOCAL_HEAD)
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": LOCAL_HEAD}, remote_heads={"stable": REMOTE_HEAD}
+    )
+    checker = build_checker(
+        cache=cache,
+        bus=bus,
+        timeline=timeline,
+        gateway=gateway,
+        tracked_commit_reader=RecordingTrackedCommitReader({}),
+    )
+
+    result = await checker.check(build_model(), run_id="run-1")
+
+    assert result.movements == (RefMovement(ref="stable", previous_head=LOCAL_HEAD, new_head=REMOTE_HEAD),)
+    assert gateway.fetches == [REPOSITORY_NAME]
+    assert bus.messages == []
+    assert cache.storage[LISTED_KEY] == REMOTE_HEAD
+
+
+async def test_a_failed_listing_write_is_logged_to_the_task_logger(caplog: pytest.LogCaptureFixture) -> None:
+    """The write happens inside a flow, so its failure has to reach the logger the worker forwards to the flow run."""
+    timeline = LockTimeline()
+    gateway = RecordingRefsGateway(
+        timeline=timeline, local_heads={"stable": IMPORTED_COMMIT}, remote_heads={"stable": IMPORTED_COMMIT}
+    )
+    checker = build_checker(cache=ListedWriteFailingCache(), bus=BusRecorder(), timeline=timeline, gateway=gateway)
+
+    with caplog.at_level(logging.WARNING, logger="infrahub.tasks"):
+        await checker.check(build_model(), run_id="run-1")
+
+    assert [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "infrahub.tasks" and record.levelno == logging.WARNING
+    ] == [f"Could not record the listed head of tracked ref stable of repository {REPOSITORY_NAME}: cache unreachable"]
 
 
 async def test_every_distinct_tracked_ref_is_read_in_one_listing() -> None:

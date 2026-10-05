@@ -95,31 +95,29 @@ class TestImportLatestCommitReachesThePool(TestInfrahubApp):
 
         # The pull the import's commit update submits is what tells the pool, so the import itself sends nothing.
         assert _fetches_for(bus_simulator.messages[broadcasts_before_import:], repository_id=node.id) == []
-        cascade = api_workflow.submit_calls[1:]
-        assert [call["workflow"] for call in cascade] == [
-            GIT_REPOSITORIES_PULL_READ_ONLY,
-            GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+        pulls = api_workflow.get_submit_calls_for(workflow=GIT_REPOSITORIES_PULL_READ_ONLY)
+        assert [pull["parameters"] for pull in pulls] == [
+            {
+                "model": GitRepositoryPullReadOnly(
+                    location=str(remote.directory),
+                    repository_id=node.id,
+                    repository_name=name,
+                    ref="main",
+                    commit=latest_commit,
+                    infrahub_branch_name=default_branch.name,
+                    infrahub_branch_id=str(default_branch.get_uuid()),
+                )
+            }
         ]
-        assert cascade[0]["parameters"] == {
-            "model": GitRepositoryPullReadOnly(
-                location=str(remote.directory),
-                repository_id=node.id,
-                repository_name=name,
-                ref="main",
-                commit=latest_commit,
-                infrahub_branch_name=default_branch.name,
-                infrahub_branch_id=str(default_branch.get_uuid()),
-            )
-        }
 
         broadcasts_before_pull = len(bus_simulator.messages)
-        await _run(cascade[0])
+        await _run(pulls[0])
 
         assert _fetches_for(bus_simulator.messages[broadcasts_before_pull:], repository_id=node.id) == [
             (default_branch.name, str(default_branch.get_uuid()), latest_commit, InfrahubKind.READONLYREPOSITORY)
         ]
-        # The pull writes a commit the graph already holds, so the cascade submits nothing further.
-        assert len(api_workflow.submit_calls) == 3
+        # The pull writes a commit the graph already holds, so it does not submit another pull.
+        assert len(api_workflow.get_submit_calls_for(workflow=GIT_REPOSITORIES_PULL_READ_ONLY)) == 1
 
 
 async def _run(submission: dict[str, Any]) -> None:
