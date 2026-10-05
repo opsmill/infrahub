@@ -265,8 +265,7 @@ class NodeProfilesApplier:
 class ChunkProfilesApplier(NodeProfilesApplier):
     """Applies profile values to many nodes, with the data of all their profiles read in one query.
 
-    Call `load_profile_data` with the nodes before applying. A profile that this read did not cover is
-    read again for each node, as the base class does.
+    Call `load_profile_data` with the nodes before applying them.
     """
 
     def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:

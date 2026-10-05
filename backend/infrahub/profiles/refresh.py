@@ -1,5 +1,3 @@
-"""Re-apply the assigned profiles to nodes and templates directly against the database."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,12 +37,7 @@ class AppliedChunk:
 
 
 class NodeProfilesRefresher:
-    """Re-apply the assigned profiles to nodes and templates, then recompute the values that read them.
-
-    Each chunk of nodes is applied in one transaction. When a chunk fails, its nodes are applied again
-    one by one, so that only the nodes that fail are skipped. The writes carry the recompute origin, and
-    their readers on other nodes are recomputed in one coalesced pass.
-    """
+    """Re-apply the assigned profiles to nodes and templates, then recompute the values that read them."""
 
     def __init__(
         self,
