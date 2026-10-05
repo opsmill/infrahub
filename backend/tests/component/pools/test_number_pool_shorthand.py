@@ -1,5 +1,5 @@
 from infrahub.core.branch import Branch
-from infrahub.core.constants import MetadataOptions
+from infrahub.core.constants import InfrahubKind, MetadataOptions
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -9,6 +9,12 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.number_pool import add_pool_range, shorthand_mirror
 from tests.helpers.schema import TICKET, load_schema
+
+
+async def _reload(db: InfrahubDatabase, pool: CoreNumberPool) -> CoreNumberPool:
+    reloaded = await NodeManager.get_one(db=db, id=pool.get_id(), kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
+    assert isinstance(reloaded, CoreNumberPool)
+    return reloaded
 
 
 async def test_sync_shorthand_from_ranges(
@@ -36,7 +42,7 @@ async def test_sync_shorthand_from_ranges(
     assert pool.start_range.value is None
     assert pool.end_range.value is None
 
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+    reloaded = await _reload(db=db, pool=pool)
     assert reloaded.start_range.value is None
     assert reloaded.end_range.value is None
 
@@ -61,7 +67,7 @@ async def test_sync_shorthand_writes_only_the_shorthand_at_the_given_time(
     assert at_sync is not None
     assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200)
 
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+    reloaded = await _reload(db=db, pool=pool)
     assert reloaded.description.value is None
 
 
@@ -92,7 +98,7 @@ async def test_sync_shorthand_records_the_caller_and_leaves_a_correct_mirror_unt
 
     assert await shorthand_metadata() == [("first-writer", sync_at.to_string()), ("first-writer", sync_at.to_string())]
 
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+    reloaded = await _reload(db=db, pool=pool)
     await shorthand_mirror(db=db).sync(pool=reloaded, at=Timestamp(), user_id="second-writer")
 
     assert await shorthand_metadata() == [("first-writer", sync_at.to_string()), ("first-writer", sync_at.to_string())]
@@ -113,5 +119,5 @@ async def test_sync_shorthand_mirrors_the_ranges_the_caller_holds(
 
     await shorthand_mirror(db=db).sync(pool=pool, ranges=[held_range])
 
-    reloaded = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+    reloaded = await _reload(db=db, pool=pool)
     assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200)
