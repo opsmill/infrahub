@@ -1,17 +1,17 @@
 import { queryOptions } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "../../../tests/components/render";
 import { useCountClampedQuery } from "./use-count-clamped-query";
 
-const TOTAL = 25;
 const PAGE_SIZE = 10;
+let total = 25;
 
 const fetchPage = vi.fn(async (offset: number) => ({
-  rows: Array.from({ length: Math.max(Math.min(PAGE_SIZE, TOTAL - offset), 0) }, (_, index) =>
+  rows: Array.from({ length: Math.max(Math.min(PAGE_SIZE, total - offset), 0) }, (_, index) =>
     String(offset + index + 1)
   ),
-  count: TOTAL,
+  count: total,
 }));
 
 const Probe = ({ page, refetchInterval }: { page: number; refetchInterval?: number }) => {
@@ -34,6 +34,10 @@ const Probe = ({ page, refetchInterval }: { page: number; refetchInterval?: numb
 };
 
 describe("useCountClampedQuery", () => {
+  beforeEach(() => {
+    total = 25;
+  });
+
   it("shows the requested page when it is in range", async () => {
     // WHEN
     const component = await render(<Probe page={2} />);
@@ -68,5 +72,18 @@ describe("useCountClampedQuery", () => {
 
     // THEN
     expect(offsets().filter((offset) => offset === 80)).toHaveLength(1);
+  });
+
+  it("shows the requested page again once the clamped page reports that the row set has grown", async () => {
+    // GIVEN
+    const component = await render(<Probe page={4} refetchInterval={20} />);
+    await expect.element(component.getByText("page 3")).toBeVisible();
+
+    // WHEN
+    total = 45;
+
+    // THEN
+    await expect.element(component.getByText("page 4")).toBeVisible();
+    await expect.element(component.getByText("rows 31,32,33,34,35,36,37,38,39,40")).toBeVisible();
   });
 });
