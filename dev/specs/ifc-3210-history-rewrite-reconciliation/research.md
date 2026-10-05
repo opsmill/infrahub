@@ -86,7 +86,10 @@ commit the remote lacks. `create_locally` records straight after a clone. `pull`
 the fetch brought in. `reset_to_commit` records the SHA it pinned. The synchronisation's
 new-branch path pushes first, and a rejected push raises into `failed_imports` before the record
 is reached. `merge` pushes before it records and resets the worktree when either step fails. The
-read-only paths record what they read from the remote. So the remote head sitting on an ancestor
+read-only paths record what they read from the remote. `merge` skips the push when its caller passes
+`push_remote=False`, and records all the same. Only a test passes it today, and `rebase` forwards
+it, so the audit holds for the product while that parameter has no production caller. So the remote
+head sitting on an ancestor
 of the imported commit has one cause: the remote was rewound, by a force push or a ref moved
 backwards. It discards content exactly as a rewrite does, so it is reconciled and recorded.
 
