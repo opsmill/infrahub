@@ -714,7 +714,7 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(/^Checked /).query()).toBeNull();
   });
 
-  test("copies the full hash and announces it", async () => {
+  test("copies the full hash and confirms it in a toast", async () => {
     // GIVEN
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("isSecureContext", true);
@@ -728,9 +728,7 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     expect(writeText).toHaveBeenCalledWith(fullHash(BEHIND_HEAD));
-    await expect
-      .element(component.getByRole("status").filter({ hasText: "Copied to clipboard" }))
-      .toHaveTextContent("Copied to clipboard");
+    await expect.element(component.getByText("Commit hash copied")).toBeVisible();
   });
 
   test("renders no total commit count", async () => {

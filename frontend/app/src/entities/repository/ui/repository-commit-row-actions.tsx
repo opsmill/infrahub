@@ -1,7 +1,8 @@
 import { Button, Menu, MenuItem, MenuTrigger, Popover } from "@infrahub/ui";
 import { CopyIcon, EllipsisVerticalIcon, ExternalLinkIcon } from "lucide-react";
+import { toast } from "react-toastify";
 
-import { CopiedAnnouncement } from "@/shared/components/a11y/copied-announcement";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -13,7 +14,12 @@ export interface RepositoryCommitRowActionsProps {
 }
 
 export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitRowActionsProps) {
-  const { isCopied, copyCount, copyToClipboard } = useCopyToClipboard();
+  const { copyToClipboard } = useCopyToClipboard();
+
+  const copyHash = async () => {
+    await copyToClipboard(commit.hash);
+    toast(<Alert message="Commit hash copied" type={ALERT_TYPES.INFO} />);
+  };
 
   return (
     <StickyRightCell>
@@ -29,7 +35,7 @@ export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitR
 
         <Popover placement="bottom end">
           <Menu aria-label="Commit actions">
-            <MenuItem textValue="Copy commit hash" onAction={() => copyToClipboard(commit.hash)}>
+            <MenuItem textValue="Copy commit hash" onAction={copyHash}>
               <CopyIcon />
               <span>Copy commit hash</span>
             </MenuItem>
@@ -48,8 +54,6 @@ export function RepositoryCommitRowActions({ commit, webUrl }: RepositoryCommitR
           </Menu>
         </Popover>
       </MenuTrigger>
-
-      <CopiedAnnouncement isCopied={isCopied} copyCount={copyCount} />
     </StickyRightCell>
   );
 }
