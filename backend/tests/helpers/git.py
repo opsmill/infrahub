@@ -99,6 +99,7 @@ def build_repository_client(
     default_branch: str,
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
+    reject_commit_updates: bool = False,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -106,6 +107,10 @@ def build_repository_client(
     construction started reading the graph. Use this where the code under test builds the repository
     object itself, so the real resolution path runs. The schema comes from the live registry, so it
     cannot drift; the caller must have the core schema registered.
+
+    Args:
+        reject_commit_updates: Answer every commit update with a GraphQL error instead.
+
     """
     node = {
         "__typename": InfrahubKind.REPOSITORY,
@@ -125,6 +130,9 @@ def build_repository_client(
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
         query = (payload or {}).get("query", "")
+        if reject_commit_updates and "commit" in ((payload or {}).get("variables") or {}):
+            errors = [{"message": "The commit update was rejected"}]
+            return httpx.Response(status_code=200, json={"errors": errors}, request=request)
         # Only the construction read, which selects default_branch, returns a node; every other
         # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:

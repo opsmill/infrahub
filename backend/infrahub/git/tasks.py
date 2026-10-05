@@ -3,6 +3,7 @@ from typing import Any
 
 from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -565,7 +566,14 @@ async def git_branch_create(
             pinned_commit = None
         # Unwritten, the branch reads its origin branch's commit, and a sync would classify against that.
         if created and pinned_commit is not None:
-            await repo.update_commit_value(branch_name=branch, commit=pinned_commit)
+            try:
+                await repo.update_commit_value(branch_name=branch, commit=pinned_commit)
+            except GraphQLError as exc:
+                # The next sync records a commit the graph lacks, but nothing resends the broadcast below.
+                log.warning(
+                    f"Unable to record commit {pinned_commit} of the new branch '{branch}' for repository "
+                    f"'{repository_name}', the next synchronization records it - {exc.message}"
+                )
         # New branch has been pushed remotely, tell workers to fetch it and check out the SHA it
         # was created at so the pool converges even if upstream advances during fan-out.
         message = messages.RefreshGitFetch(
