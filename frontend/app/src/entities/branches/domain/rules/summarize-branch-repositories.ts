@@ -25,7 +25,7 @@ type LoadedFetch = Extract<RepositoryStatusFetch, { status: "ok" }>;
 function getSharedSummary(
   fetches: readonly RepositoryStatusFetch[]
 ): BranchRepositorySummary | null {
-  // Permission is checked per repository kind, so one denied kind only hides its own repositories.
+  // Status reads are checked per repository, so one denied repository only hides itself.
   if (fetches.length > 0 && fetches.every(({ status }) => status === "denied")) {
     return { status: "denied" };
   }
