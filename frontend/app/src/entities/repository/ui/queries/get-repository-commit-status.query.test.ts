@@ -7,10 +7,8 @@ import {
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitStatus } from "@/entities/repository/domain/use-cases/get-repository-commit-status";
-import {
-  getRepositoryCommitStatusQueryOptions,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
-} from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+import { getRepositoryCommitStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+import { REPOSITORY_COMMITS_POLL_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
 
 vi.mock("@/entities/repository/domain/use-cases/get-repository-commit-status");
 

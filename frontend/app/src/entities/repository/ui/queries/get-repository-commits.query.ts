@@ -19,13 +19,14 @@ import {
   type GetRepositoryCommitsParams,
   getRepositoryCommits,
 } from "@/entities/repository/domain/use-cases/get-repository-commits";
+import { keepStatusOverColdAnswer } from "@/entities/repository/ui/queries/keep-status-over-cold-answer";
 import {
-  keepStatusOverColdAnswer,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
-} from "@/entities/repository/ui/queries/get-repository-commit-status.query";
-import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
+  type RepositoryCommitStatusKeyParams,
+  repositoriesQueryKeys,
+} from "@/entities/repository/ui/queries/repository.query-keys";
 import {
   REPOSITORY_COMMITS_PAGE_SIZE,
+  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/repository-commits.constants";
 
@@ -63,13 +64,20 @@ function keepLoadedCommitsWithLatestAvailability(
   });
 }
 
+export function getRepositoryCommitsQueryKey({
+  repositoryId,
+  branchName,
+}: RepositoryCommitStatusKeyParams) {
+  return repositoriesQueryKeys.commits({
+    repositoryId,
+    branchName,
+    limit: REPOSITORY_COMMITS_PAGE_SIZE,
+  });
+}
+
 export function getRepositoryCommitsQueryOptions(params: GetRepositoryCommitsQueryParams) {
   return infiniteQueryOptions({
-    queryKey: repositoriesQueryKeys.commits({
-      repositoryId: params.repositoryId,
-      branchName: params.branchName,
-      limit: REPOSITORY_COMMITS_PAGE_SIZE,
-    }),
+    queryKey: getRepositoryCommitsQueryKey(params),
     queryFn: async ({ pageParam, client }) => {
       const log = await getRepositoryCommits({
         ...params,
