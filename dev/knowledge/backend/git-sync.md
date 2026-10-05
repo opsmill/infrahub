@@ -92,6 +92,30 @@ More than one worker can also each report the same
 push, at most once per worker. Reporting it reliably needs a baseline that only the sync writes, such
 as a worker-local ref updated after each comparison.
 
+## Rewritten history
+
+`InfrahubRepository.collect_pending_imports` compares each branch twice. Keep the two comparisons
+apart, because they drive different outcomes:
+
+- **The commit the graph records against the remote head** says what happened to the branch:
+  unchanged, fast-forward, rewrite, re-target or gone from the remote (`git/divergence/`). The commits
+  are read once per cycle by `get_repositories_commit_per_branch` and passed down through the sync
+  flows.
+- **This worker's worktree head against the remote head** says whether the clone moves. A worktree
+  behind the remote is pulled. A worktree that does not lead to the remote head, because the remote
+  was rewritten or rewound, is hard-reset onto it. A worktree already on the remote head stays where
+  it is, but when the graph records another commit, the sync writes the commit and imports the branch
+  again: a pull would move nothing, so it would record nothing.
+
+A worker whose graph already holds the remote head can still hold the discarded history on disk. It
+resets, and its classification stays unchanged, so the rewrite is not counted a second time.
+
+The sync considers the branches whose local head differs from the remote, and also the local
+branches whose graph commit differs from the remote head. It classifies a branch new to this worker
+too, because the graph can hold a commit that another worker imported and the remote has since
+discarded. Each reset or lineage break logs one line with the branch, the discarded commit and the
+commit that replaced it. The add flow passes no graph commits, so it classifies nothing.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning

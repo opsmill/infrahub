@@ -234,23 +234,23 @@ error and an HTTP failure surfaces only as text from the libcurl remote helper. 
 substrings are stable user-facing git and curl strings, but they are still strings: a wording change
 upstream silently reclassifies an error to the generic fallthrough.
 
-Two gaps to know about:
+One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
+`push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-- **Per-ref push rejections bypass it** (see above); they arrive on `push_info.summary`. Transport-level
-  push failures do reach it, because those raise `GitCommandError`.
-- **Divergence is misreported as conflict.** The workers configure no `pull.rebase` or `pull.ff`
-  (`workers/infrahub_async.py::set_git_global_config`), so a branch whose remote history was rewritten
-  fails `git pull` with "Need to specify how to reconcile divergent branches", which the classifier
-  maps to "there are conflicts that must be resolved". There is no conflict. A user acting on that
-  message will look for a merge conflict that does not exist.
+A diverged pull gets a message of its own. The workers configure no `pull.rebase` or `pull.ff`
+(`workers/infrahub_async.py::set_git_global_config`), so `git pull` on a branch whose remote history
+was rewritten fails with "Need to specify how to reconcile divergent branches". The classifier reports
+that as a local history and a remote history that have diverged, never as a conflict. Only "you have
+unmerged files", which is a conflict git observed, is reported as one.
 
-`InfrahubRepositoryBase.compare_local_remote` cannot tell the two situations apart in the first place:
-it compares only `remote_branches[b].commit != local_branches[b].commit`, so a fast-forward and a
-rewritten history are indistinguishable and both are reported as "New commit detected".
+The periodic sync does not reach that failure for a rewritten branch. `compare_local_remote` compares
+heads by equality only, but the sync collector then classifies each branch by ancestry and resets a
+branch worktree that does not lead to the remote head. [Git Sync](git-sync.md#rewritten-history)
+describes how.
 
-> **Volatile section.** A planned fix adds divergence detection here, and reconciles a rewritten
-> branch by hard-resetting to the remote and broadcasting, rather than failing. Update this section
-> when that lands.
+> **Volatile section.** `InfrahubRepositoryBase.pull` still raises on a diverged branch, so a worker
+> that advances a branch outside the sync collector does not reset it yet. The broadcast still covers
+> only the trunk, and no record of a rewrite is stored. Update this section when those land.
 
 ## Known limitations
 
@@ -267,10 +267,6 @@ rewritten history are indistinguishable and both are reported as "New commit det
   logged, until it moves. The operator-facing warning is gated separately, and a
   push to that branch can go unreported when more than one worker runs; both are covered in
   [Git Sync](git-sync.md#branch-import-and-mapping).
-- **A branch left ahead of its remote is re-reported every cycle too.** After a failed push the local
-  branch sits ahead of `origin/`, so `compare_local_remote` flags it as updated, `pull()` returns
-  `True` with no change, and "An update was detected but the commit remained the same after `pull()`"
-  is logged once a minute.
 - **`CommitUpdatedEvent` is emitted but has no subscribers.** It is sent from
   `InfrahubRepositoryIntegrator.apply_import_plan` and no `EventTrigger` anywhere lists
   `infrahub.repository.update_commit` in its events set. It is not a working signal; wiring anything
