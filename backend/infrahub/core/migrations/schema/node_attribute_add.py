@@ -6,6 +6,7 @@ from infrahub.core import registry
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.tasks.registry import update_branch_registry
 
@@ -90,6 +91,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
         upserter = SchemaNumberPoolUpserter(
             db=db,
             schema_manager=registry.schema,
+            range_store_factory=NumberPoolRepository,
         )
         number_pool = await upserter.upsert_number_pool(
             schema_node=self.new_schema,

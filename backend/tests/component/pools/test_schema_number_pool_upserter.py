@@ -10,6 +10,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
@@ -64,7 +65,7 @@ async def test_get_existing_number_pool_id_returns_pool_id_from_attribute(
     schema_with_number_pool_id: NodeSchema,
 ) -> None:
     """Test that get_existing_number_pool_id returns pool_id when set in parameters."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = schema_with_number_pool_id.get_attribute("number")
 
     pool_id = await upserter.get_existing_number_pool_id(
@@ -80,7 +81,7 @@ async def test_get_existing_number_pool_id_returns_none_when_no_pool(
     db: InfrahubDatabase, base_schema: NodeSchema
 ) -> None:
     """Test that get_existing_number_pool_id returns None when no pool exists."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = base_schema.get_attribute("number")
 
     pool_id = await upserter.get_existing_number_pool_id(
@@ -96,7 +97,7 @@ async def test_upsert_number_pool_creates_new_pool(
     db: InfrahubDatabase, base_schema: NodeSchema, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test that upsert_number_pool creates a new pool when none exists."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = base_schema.get_attribute("number")
 
     pool = await upserter.upsert_number_pool(
@@ -118,7 +119,7 @@ async def test_upsert_number_pool_returns_existing_pool(
     default_number_pool: Node,
 ) -> None:
     """Test that upsert_number_pool returns existing pool when one exists."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = base_schema.get_attribute("number")
 
     # Create first pool
@@ -142,7 +143,7 @@ async def test_upsert_number_pool_with_pool_id_set(
     db: InfrahubDatabase, schema_with_number_pool_id: NodeSchema, default_number_pool: Node
 ) -> None:
     """Test that upsert_number_pool retrieves pool when pool_id is already set."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = schema_with_number_pool_id.get_attribute("number")
 
     retrieved_pool = await upserter.upsert_number_pool(
@@ -165,7 +166,7 @@ async def test_upsert_number_pool_inherited_uses_generic_kind(
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
     incident_attr = snow_incident.get_attribute(name="number")
 
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     registry.node["CoreNumberPool"] = CoreNumberPool
 
     pool = await upserter.upsert_number_pool(
@@ -191,7 +192,7 @@ async def test_upsert_number_pool_inherited_shares_pool(
     incident_attr = snow_incident.get_attribute(name="number")
     request_attr = snow_request.get_attribute(name="number")
 
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     registry.node["CoreNumberPool"] = CoreNumberPool
 
     pool_incident = await upserter.upsert_number_pool(
@@ -260,7 +261,7 @@ async def test_upsert_number_pool_non_inherited_gets_own_pool(
     attr_a = node_a_schema.get_attribute(name="counter")
     attr_b = node_b_schema.get_attribute(name="counter")
 
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
 
     pool_a = await upserter.upsert_number_pool(
         schema_node=node_a_schema,
@@ -283,7 +284,7 @@ async def test_upsert_number_pool_invalid_type_raises(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test that upsert_number_pool raises ValueError for non-NumberPool attributes."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     attribute = SNOW_INCIDENT.get_attribute("identifier")
 
     with pytest.raises(ValueError, match="is not a NumberPool type"):
@@ -298,7 +299,7 @@ async def test_get_inherited_pool_info_returns_none_for_non_node_schema(
     db: InfrahubDatabase, register_core_models_schema: SchemaBranch
 ) -> None:
     """Test that get_inherited_pool_info returns None for GenericSchema."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
 
     result = upserter.get_inherited_pool_info(
         node_schema=SNOW_TASK,
@@ -318,7 +319,7 @@ async def test_get_inherited_pool_info_returns_info_for_inherited_attribute(
 
     snow_incident = schema_branch.get_node(name="SnowIncident", duplicate=False)
 
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
 
     result = upserter.get_inherited_pool_info(
         node_schema=snow_incident,

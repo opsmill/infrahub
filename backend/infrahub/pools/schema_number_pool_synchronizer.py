@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.manager import SchemaManager
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
     from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
 default_log = get_logger()
@@ -35,6 +36,8 @@ class SchemaNumberPoolSynchronizer:
         db: Database connection.
         log: Logger instance.
         schema_manager: Schema manager for looking up schemas.
+        range_store_factory: Builds the store that rewrites a pool's ranges, from the database running
+            the reconciliation transaction.
 
     """
 
@@ -43,12 +46,14 @@ class SchemaNumberPoolSynchronizer:
         db: InfrahubDatabase,
         schema_manager: SchemaManager,
         upserter: SchemaNumberPoolUpserter,
+        range_store_factory: NumberPoolRangeStoreFactory,
         log: Logger | LoggerAdapter | BoundLogger | None = None,
     ) -> None:
         self.db = db
         self.log = log or default_log
         self.schema_manager = schema_manager
         self.upserter = upserter
+        self._range_store_factory = range_store_factory
 
     async def run(self, user_id: str = SYSTEM_USER_ID) -> set[str]:
         """Execute the full synchronization process.

@@ -14,6 +14,7 @@ from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
@@ -157,12 +158,15 @@ class TestNumberPoolSingleInstanceAcrossBranches(TestInfrahubApp):
     ) -> None:
         """Validate that SchemaNumberPoolSynchronizer creates exactly one CoreNumberPool after schemas are loaded."""
         # Run the synchronizer
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await synchronizer.run()
 
@@ -399,12 +403,15 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         load_generic_schema: None,
     ) -> str:
         """Run the synchronizer to create the CoreNumberPool for the generic."""
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await synchronizer.run()
 
@@ -441,12 +448,15 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         load_inheriting_node_schema: None,
     ) -> None:
         """Run the synchronizer again after adding the inheriting node."""
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
         synchronizer = SchemaNumberPoolSynchronizer(
             db=db,
             log=log,
             schema_manager=registry.schema,
             upserter=upserter,
+            range_store_factory=NumberPoolRepository,
         )
         await synchronizer.run()
 
@@ -658,8 +668,12 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         In integration tests, the synchronizer doesn't run automatically (it relies on events).
         We run it manually to update the number_pool_id in the schema's attribute parameters.
         """
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        synchronizer = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        synchronizer = SchemaNumberPoolSynchronizer(
+            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        )
         await synchronizer.run()
 
     async def test_only_one_pool_exists(

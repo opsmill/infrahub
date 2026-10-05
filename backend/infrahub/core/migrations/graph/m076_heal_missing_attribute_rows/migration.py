@@ -20,6 +20,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import NodeSchema, SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.lock import initialize_lock
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
 from .queries import AttributeHealDetectionQuery
@@ -420,7 +421,9 @@ class Migration076(MigrationRequiringRebase):
         db = migration_input.db
         console = migration_input.console
 
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
         number_pool = await upserter.upsert_number_pool(
             schema_node=node_schema,
             attribute=attribute,

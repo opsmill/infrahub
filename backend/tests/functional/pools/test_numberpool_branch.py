@@ -9,6 +9,7 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.test_app import TestInfrahubApp
@@ -68,8 +69,12 @@ BRANCH2 = "branch2"
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _run_number_pool_validator(self, db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        )
         await snps.run()
         graphql_registry.clear_cache()
 
