@@ -40,8 +40,11 @@ Code references name the module and symbol. Line numbers are left out on purpose
 > **Amended 2026-10-02** by § "Restructure (2026-10-02)" D3: the lookup asks for the newest **failed** (`FAILED`, `CRASHED`) import, not the newest import, and the log is a second request keyed on the task id, fetched once.
 
 
-**Decision**: For each failing repository **whose band is rendered** (the first 3; the rest once "Show all" is used), one request:
-`InfrahubTask(branch: <page branch>, related_node__ids: [<repo id>], workflow: IMPORT_WORKFLOWS, limit: 1, log_limit: IMPORT_LOG_LIMIT)` selecting `count`, `id`, `state`, `updated_at`, `logs { edges { node { message severity timestamp } } }`.
+**Decision** (rewritten 2026-10-05 to match the amendment and the code): for each failing repository **whose band is rendered** (the first 3; the rest once "Show all" is used), two lookups:
+
+1. **Task lookup**: `InfrahubTask(branch: <page branch>, related_node__ids: [<repo id>], workflow: IMPORT_WORKFLOWS, state: <states>, limit: 1)` selecting `id`. It runs first with the active states (`SCHEDULED`, `PENDING`, `RUNNING`). If an import is still running, the lookup reports it as running, because an older failed run isn't the one that set the status, and asks again on the next poll. Otherwise it runs with `state: [FAILED, CRASHED]` and returns the newest failed import, or reports that nothing was found.
+2. **Log request**: `InfrahubTask(ids: [<task id>], log_limit: IMPORT_LOG_LIMIT)` selecting `logs { edges { node { message severity } } }`, sent only once a failed task is known. It is keyed on the task id and fetched once (`staleTime: Infinity`, no polling), because a finished task's log doesn't change.
+
 The band's text is the **last** log whose `severity` is `error` or `critical` (the task manager maps levels 40/50 to those, `task_manager/flow_run/constants.py::LOG_LEVEL_MAPPING`). `IMPORT_LOG_LIMIT = 10_000`, the backend cap (`task_manager/flow_run/reader.py::NB_LOGS_LIMIT`).
 
 `IMPORT_WORKFLOWS` (flow names in `backend/infrahub/git/tasks.py`):
@@ -49,7 +52,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 **Rationale**:
 - The task manager returns flow runs newest first (`task_manager/flow_run/reader.py::…read_flow_runs`, `FlowRunSort.START_TIME_DESC`), so `limit: 1` is the latest.
-- `log_limit` applies to the **whole request**, across every returned flow run, in ascending time order (`…read_logs`). With `limit: 1` the budget is that one task's; asking for several repositories in one request would let one noisy task starve the others. Hence one request per rendered band, lazily: at most 3 on first render.
+- `log_limit` applies to the **whole request**, across every returned flow run, in ascending time order (`…read_logs`). With one task id per request the budget is that one task's; asking for several repositories in one request would let one noisy task starve the others. Hence one request per rendered band, lazily: at most 3 on first render.
 - Logs come back oldest first, with no ordering or "last N" option, and the `logs.count` field is the number returned, not the total, so there's no way to read only the tail. The error line that ends an import is near the end, so the limit is the backend cap: a lower one (the first draft used 500) would cut that line off a long log and show an earlier error, or none. The backend reads logs in batches of 200 and stops at the last one, so a short log still costs one call. A log past 10,000 lines can still lose its tail; see follow-ups.md.
 
 **Riskiest assumption (brief: "that the frontend can reliably tie a task to a repository")** — verified in code, and it is only partly true:
@@ -84,7 +87,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 > **Amended 2026-10-02**: the syncing flag comes from the health query's server-filtered `syncing` count (`isAnyRepositorySyncing`), not from scanning the fetched list; the tasks query polls when `offset === 0`; a task's log is never polled.
 
 
-**Decision** (revised by critique P4/E6): the tasks query refetches every 10s **on page 1 only** (`refetchInterval: page === 1 ? 10_000 : false`), and the failed count every 10s. The repositories and import-band queries refetch every 10s **only while a listed repository's `sync_status` is `syncing`** (`refetchInterval: (query) => anySyncing(query.state.data) ? 10_000 : false`; the band queries take the flag from the repositories result), and otherwise on Refresh and window refocus (TanStack's default). Intervals pause in background tabs by default. Today's `TaskDisplay` polls every 5s; 10s matches the cadence IFC-3199 chose for repository state.
+**Decision** (revised by critique P4/E6; rewritten 2026-10-05 to match the amendment and the code): the tasks query refetches every 10s **on the first page only** (`offset === 0`), and the failed count every 10s. The repositories, health and import-task queries refetch every 10s **while the health query's server-filtered `syncing` count is above zero**. The card computes that flag once (`isAnyRepositorySyncing(health)`) and passes it to the other queries, so a repository that is syncing outside the page shown still starts polling. The import-task lookup also polls while an import is running, and a limited number of times while it finds nothing. A task's log is never polled. Otherwise the queries refetch on Refresh and on window refocus (TanStack's default). After a failed fetch a poll slows down to one every 60s, and a permission denial stops it. Intervals pause in background tabs by default. Today's `TaskDisplay` polls every 5s; 10s matches the cadence IFC-3199 chose for repository state.
 
 ## R5 — Table pagination
 
@@ -107,10 +110,10 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 > **Amended 2026-10-02**: the root is `["repository"]` (IFC-3130 and IFC-3199's), keys are `branchRepositories`, `branchHealth`, `importTask`, `importLog`, `names` next to IFC-3199's `syncHealth`; `RefreshButton` has a single `queryKeys` prop and scopes its last-update time to those keys.
 
 
-**Decision**:
-- `entities/repository/ui/queries/repository.query-keys.ts::repositoryQueryKeys` (new): `all: ["repositories"]`, `branch: ({ branchName, kind }) => [...all, "branch", branchName, kind]`, `importError: ({ branchName, repositoryId }) => [...all, "import-error", branchName, repositoryId]`.
-- `tasksQueryKeys` gains `branchList: ({ branchName, offset, limit }) => [...all, "branch-list", …]`; the failed count keeps `tasksQueryKeys.count(…)`.
-- `RefreshButton` (`entities/nodes/object/ui/object-details/refresh-button.tsx`) gains an optional `queryKeys?: ReadonlyArray<readonly unknown[]>`; when set it invalidates each and counts fetching across all (`useIsFetching` with a predicate). The single-key API is unchanged for today's callers. The branch header passes `[branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all]`: `branchesQueryKeys.all` rather than `.details({ branchName })`, because the header and the action buttons read other branch queries too.
+**Decision** (rewritten 2026-10-05 to match the amendment and the code):
+- `entities/repository/ui/queries/repository.query-keys.ts::repositoryQueryKeys`, under IFC-3130's and IFC-3199's root `all: ["repository"]`: `syncHealth(branch)` (IFC-3199), `branchRepositories(params)`, `branchHealth(params)`, `importTask(params)`, `importLog(taskId)` and `names(params)`, each `[...all, "<kebab-case name>", <params>]`.
+- `tasksQueryKeys` gains `branchList: (params) => [...all, "branch-list", params]`; the failed count keeps `tasksQueryKeys.count(…)`.
+- `RefreshButton` (`entities/nodes/object/ui/object-details/refresh-button.tsx`) has a single `queryKeys?: ReadonlyArray<readonly unknown[]>` prop (default `[objectQueryKeys.all]`). A press invalidates every key, and the button is busy only until that refresh settles, not while a background poll fetches. "Last data refresh" reads the active queries under those keys only. The branch header passes `[branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all]`: `branchesQueryKeys.all` rather than `.details({ branchName })`, because the header and the action buttons read other branch queries too.
 
 **Rationale**: The page spans three entities with different key roots; a synthetic page-level root would break the documented key shape (`dev/guidelines/frontend/naming-conventions.md`).
 
@@ -134,7 +137,7 @@ Exact token names are checked against `frontend/packages/ui/src/styles/theme.css
 > **Amended 2026-10-02**: the maps stay in `domain/model/workflow-labels.ts` (vocabulary); `getWorkflowLabel` moves to `domain/rules/get-workflow-label.ts` (a pure function).
 
 
-**Decision**: `entities/tasks/domain/model/workflow-labels.ts::getWorkflowLabel(workflow)` with a static map, raw id as fallback:
+**Decision** (rewritten 2026-10-05 to match the amendment and the code): `entities/tasks/domain/rules/get-workflow-label.ts::getWorkflowLabel(workflow)` reads the static maps in `entities/tasks/domain/model/workflow-labels.ts` (by exact workflow name, then by prefix) and falls back to the workflow id, humanized:
 
 | Label | Workflows |
 |---|---|
