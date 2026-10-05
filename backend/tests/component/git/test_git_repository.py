@@ -493,7 +493,7 @@ async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubReposit
     assert response == commit
 
 
-async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
+async def test_pull_of_a_diverged_branch_names_a_divergent_history(git_repo_06: InfrahubRepository) -> None:
     repo = git_repo_06
     await repo.fetch()
 
@@ -506,7 +506,11 @@ async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
     with pytest.raises(RepositoryError) as exc:
         await repo.pull(branch_name=branch_name)
 
-    assert "there are conflicts that must be resolved" in str(exc.value)
+    assert exc.value.message == (
+        f"Unable to pull the branch {branch_name} for repository {repo.name}, "
+        "its local history and the remote history have diverged."
+    )
+    assert "conflict" not in exc.value.message.lower()
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository) -> None:
