@@ -1088,9 +1088,11 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
         client=client, branch=model.source_branch, definition=model.generator_definition
     )
 
-    instance_by_member = {}
-    for instance in existing_instances:
-        instance_by_member[instance.object.peer.id] = instance.id
+    instance_by_member = map_subscriber_ids_by_member(
+        existing_subscribers=existing_instances,
+        definition_name=model.generator_definition.definition_name,
+        log=log,
+    )
 
     repository = model.branch_diff.get_repository(repository_id=model.generator_definition.repository_id)
     requested_instances = 0
