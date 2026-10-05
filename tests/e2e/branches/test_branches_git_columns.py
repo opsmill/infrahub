@@ -69,7 +69,7 @@ class TestBranchesGitColumns:
             _row_cell(identifier_cell, GIT_STATE_OFFSET).get_by_text("Import Error", exact=True)
         ).to_be_visible()
 
-    async def test_branch_without_git_sync_lists_read_only_repositories_only(
+    async def test_branch_without_git_sync_reads_not_synced_or_leads_with_a_read_only_repository(
         self, admin_page: Page, infrahub_client: InfrahubClient, branch_without_git_sync: str
     ) -> None:
         # Read-only repositories list every branch, and other tests in this shard may leave one behind.
