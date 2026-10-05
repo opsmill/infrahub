@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import base64
 import os
+import shlex
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse, urlunparse
 
@@ -10,10 +13,17 @@ import pytest
 from testcontainers.core.container import DockerContainer
 
 from infrahub import config
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from tests.helpers.git import GogsServer
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Awaitable, Callable, Generator
+
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.core.protocols import CoreRepository
+    from infrahub.database import InfrahubDatabase
 
 GOGS_ADMIN = "gogsadmin"
 GOGS_PASSWORD = "admin1234"
@@ -203,6 +213,93 @@ def gogs_repo_branch_commit(container: DockerContainer, repo_name: str, branch: 
 def gogs_repo_tag(container: DockerContainer, repo_name: str, tag_name: str, commit_ish: str = "master") -> None:
     """Create a lightweight tag in the remote."""
     _gogs_git(container, repo_name, "tag", tag_name, commit_ish, failure=f"Tagging {repo_name} failed")
+
+
+def write_files_script(files: dict[str, str]) -> str:
+    """Return shell commands writing each file into the current directory, whatever characters it holds."""
+    commands = []
+    for path, content in files.items():
+        encoded = base64.b64encode(content.encode()).decode()
+        commands.append(f"echo {encoded} | base64 -d > {shlex.quote(path)}")
+    return " && ".join(commands)
+
+
+def commit_to_remote_branch(
+    container: DockerContainer, repo_name: str, branch: str, files: dict[str, str], base: str = "main"
+) -> str:
+    """Commit files on a remote branch, creating it from ``base`` when absent, and return the new head.
+
+    Reuses the working clone that create_gogs_repo() left in /tmp/{repo_name}.
+    """
+    script = (
+        f"set -e && "
+        f"cd /tmp/{repo_name} && "
+        f"git fetch origin && "
+        f"if git rev-parse --verify --quiet origin/{branch} > /dev/null; "
+        f"then git checkout -B {branch} origin/{branch}; else git checkout -B {branch} origin/{base}; fi && "
+        f"{write_files_script(files)} && "
+        f"git add -A && "
+        f"git commit -m 'Remote commit on {branch}' && "
+        f"git push origin {branch}"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Remote commit failed (exit {result.exit_code}): {result.output.decode()}"
+    return gogs_repo_branch_commit(container, repo_name, branch)
+
+
+def tracked_branch_files(repo_name: str, version: int) -> dict[str, str]:
+    """Return a repository configuration declaring one query named after its version.
+
+    Query names are unique across repositories, so the name carries the repository's name too.
+    """
+    query_name = f"{repo_name.replace('-', '_')}_v{version}"
+    return {
+        ".infrahub.yml": f"---\nqueries:\n  - name: {query_name}\n    file_path: tracked_query.gql\n",
+        "tracked_query.gql": f"query {query_name} {{ BuiltinTag {{ edges {{ node {{ name {{ value }} }} }} }} }}\n",
+    }
+
+
+@dataclass(frozen=True)
+class TrackedBranchRepository:
+    name: str
+    node_id: str
+    branch_name: str
+    trunk_commit: str
+    imported_commit: str
+    """The head of the tracked branch that Infrahub imported and recorded in the graph."""
+
+
+@pytest.fixture
+def tracked_branch_repository(
+    db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer, import_every_remote_branch: None
+) -> Callable[[str, str], Awaitable[TrackedBranchRepository]]:
+    """Return a factory for a Gogs repository whose non-default branch Infrahub has already imported.
+
+    The branch carries one commit of its own, declaring the first version of a query.
+    """
+
+    async def create(repo_name: str, branch_name: str) -> TrackedBranchRepository:
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        imported_commit = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch_name, files=tracked_branch_files(repo_name=repo_name, version=1)
+        )
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
+        await node.save()
+
+        recorded: CoreRepository = await NodeManager.get_one(
+            db=db, id=node.id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
+        )
+        assert recorded.commit.value == imported_commit, "the tracked branch was not imported when it was added"
+
+        return TrackedBranchRepository(
+            name=repo_name,
+            node_id=node.id,
+            branch_name=branch_name,
+            trunk_commit=gogs_repo_branch_commit(gogs_server.container, repo_name, "main"),
+            imported_commit=imported_commit,
+        )
+
+    return create
 
 
 @pytest.fixture(scope="session")

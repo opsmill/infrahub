@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 from pathlib import Path
@@ -11,17 +12,26 @@ import git
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    RepositorySyncStatus,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+from infrahub.git.tasks import sync_remote_repositories
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
+    TrackedBranchRepository,
     bad_credentials_clone_url,
+    commit_to_remote_branch,
     create_gogs_repo,
     create_remote_ref,
     gogs_clone_url,
@@ -29,17 +39,21 @@ from tests.integration.git.conftest import (
     gogs_repo_tag,
     grant_read_access,
     readonly_clone_url,
+    tracked_branch_files,
+    write_files_script,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Awaitable, Callable, Generator
 
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
-    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from tests.helpers.git import GogsServer
+
+SYNC_LOGGER = "infrahub.tasks"
 
 
 def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename: str, branch: str = "main") -> None:
@@ -59,6 +73,27 @@ def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename:
     )
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Remote commit failed (exit {result.exit_code}): {result.output.decode()}"
+
+
+def _force_push_rewritten_branch(container: DockerContainer, repo_name: str, branch: str, files: dict[str, str]) -> str:
+    """Replace the last commit of a remote branch with a different one, force-push it and return the new head.
+
+    This is what an amended commit or a rebase leaves on the remote: the branch no longer contains the
+    commit it pointed at before. Reuses the working clone that create_gogs_repo() left in /tmp/{repo_name}.
+    """
+    script = (
+        f"set -e && "
+        f"cd /tmp/{repo_name} && "
+        f"git fetch origin && "
+        f"git checkout -B {branch} origin/{branch} && "
+        f"{write_files_script(files)} && "
+        f"git add -A && "
+        f"git commit --amend -m 'Rewritten commit on {branch}' && "
+        f"git push --force origin {branch}"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Force push failed (exit {result.exit_code}): {result.output.decode()}"
+    return gogs_repo_branch_commit(container, repo_name, branch)
 
 
 def _install_remote_branch_rejection_hook(container: DockerContainer, repo_name: str, branch: str = "main") -> None:
@@ -910,3 +945,110 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             raise_on_error=True,
         )
         assert created.name.value == repo_name
+
+
+async def _tracked_graph_state(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> tuple[str | None, str | None]:
+    """Return the commit and the synchronisation status the graph records for the tracked branch."""
+    repository: CoreRepository = await NodeManager.get_one(
+        db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=tracked.branch_name, raise_on_error=True
+    )
+    return repository.commit.value, repository.sync_status.value
+
+
+async def _tracked_query_names(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> set[str]:
+    queries: list[CoreGraphQLQuery] = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.GRAPHQLQUERY,
+        branch=tracked.branch_name,
+        filters={"repository__ids": [tracked.node_id]},
+    )
+    return {query.name.value for query in queries}
+
+
+def _tracked_reconciliation_messages(caplog: pytest.LogCaptureFixture, tracked: TrackedBranchRepository) -> list[str]:
+    prefix = f"Reconciled branch {tracked.branch_name} of repository {tracked.name} "
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and record.getMessage().startswith(prefix)
+    ]
+
+
+class TestRewrittenBranchSynchronisation(TestInfrahubApp):
+    """Periodic synchronisation cycles against a remote whose branches move or are rewritten.
+
+    The cycle visits every repository of the stack, so these tests run in a stack of their own.
+    """
+
+    @pytest.fixture(autouse=True)
+    def capture_sync_logs(self, caplog: pytest.LogCaptureFixture) -> None:
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+
+    async def test_a_force_pushed_branch_is_reconciled_and_imported_again(
+        self,
+        db: InfrahubDatabase,
+        gogs_server: GogsServer,
+        caplog: pytest.LogCaptureFixture,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        tracked = await tracked_branch_repository("force-pushed-repo", "force-pushed-branch")
+        rewritten = _force_push_rewritten_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+        )
+
+        await sync_remote_repositories()
+
+        assert await _tracked_graph_state(db=db, tracked=tracked) == (rewritten, RepositorySyncStatus.IN_SYNC.value)
+        assert await _tracked_query_names(db=db, tracked=tracked) == {"force_pushed_repo_v2"}
+        main: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert main.operational_status.value == RepositoryOperationalStatus.ONLINE.value
+        assert _tracked_reconciliation_messages(caplog=caplog, tracked=tracked) == [
+            f"Reconciled branch {tracked.branch_name} of repository {tracked.name} with the remote history: "
+            f"{tracked.imported_commit} was discarded and replaced by {rewritten}"
+        ]
+
+    async def test_a_fast_forwarded_branch_is_imported_without_a_reconciliation(
+        self,
+        db: InfrahubDatabase,
+        gogs_server: GogsServer,
+        caplog: pytest.LogCaptureFixture,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        tracked = await tracked_branch_repository("fast-forward-repo", "fast-forward-branch")
+        advanced = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+        )
+
+        await sync_remote_repositories()
+
+        assert await _tracked_graph_state(db=db, tracked=tracked) == (advanced, RepositorySyncStatus.IN_SYNC.value)
+        assert await _tracked_query_names(db=db, tracked=tracked) == {"fast_forward_repo_v2"}
+        assert _tracked_reconciliation_messages(caplog=caplog, tracked=tracked) == []
+
+    async def test_a_cycle_records_the_commit_a_worktree_already_holds(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """Nothing moved in git, so only the commits the cycle reads from the graph can show the gap."""
+        tracked = await tracked_branch_repository("graph-behind-repo", "graph-behind-branch")
+        repo = await InfrahubRepository.init(
+            id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        await repo.update_commit_value(branch_name=tracked.branch_name, commit=tracked.trunk_commit)
+
+        await sync_remote_repositories()
+
+        assert await _tracked_graph_state(db=db, tracked=tracked) == (
+            tracked.imported_commit,
+            RepositorySyncStatus.IN_SYNC.value,
+        )
