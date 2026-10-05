@@ -138,12 +138,17 @@ rather than a read-then-write.
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
 
-**That rule is close to dead code until branch creation writes a commit.** `git_branch_create`
-creates and pushes the branch but never calls `update_commit_value`, and `commit` is LOCAL, so the
-branch inherits the trunk's value as of its fork point. A read therefore almost always returns
-something, and the classifier compares a branch's remote head against a trunk commit that has
-nothing to do with it. That can classify a healthy branch `REWRITE`. Branch creation must write the
-commit.
+**A read must tell a written commit from an inherited one.** `git_branch_create` creates and
+pushes the branch but never calls `update_commit_value`, and `commit` is `LOCAL`, so the branch
+reads the trunk's value as of its fork point. A plain read therefore almost always returns
+something, and the classifier would compare a branch's remote head against a trunk commit that has
+nothing to do with it. That classifies a healthy branch `REWRITE`.
+
+Branch creation must write the commit, and the per-branch read must report a value the branch
+never had as absent. `get_repositories_commit_per_branch` returns `commit.value`, which the
+`LOCAL` fallback fills in, so the read needs to know which branch the value was written on. With
+that, a branch created before the write lands classifies `FAST_FORWARD` and takes the ordinary
+import path, and the rule above is live rather than unreachable.
 
 ### Rules
 

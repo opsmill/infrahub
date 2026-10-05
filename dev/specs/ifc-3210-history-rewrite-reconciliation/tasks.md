@@ -167,11 +167,16 @@ head, the imported objects match the rewritten tree, and the repository reports 
       commit to the graph after it creates and pushes the branch. It never does today, and `commit`
       is LOCAL, so the branch inherits the trunk's value at the fork point. The classifier then
       compares a branch's remote head against a trunk commit that has nothing to do with it, which
-      can classify a healthy branch `REWRITE`. It also makes the "no recorded commit means
-      `FAST_FORWARD`" rule in the contract dead code, because an inherited value is always present.
-      **No backfill is needed for branches created before this lands.** Their first synchronisation
-      writes the real commit through the ordinary import path, so the inherited value survives only
-      until the branch next moves. A migration would race that write for no gain.
+      can classify a healthy branch `REWRITE`. Together with the read below it also makes the "no
+      recorded commit means `FAST_FORWARD`" rule in the contract reachable, which an always-present
+      inherited value would otherwise leave unreachable.
+      **Branches created before this lands need no migration, and they do need the read to change.**
+      The classification runs before the import writes anything, so such a branch reaches the
+      detector carrying the trunk's value, not nothing. Make the per-branch read report a commit the
+      branch never had as absent: `get_repositories_commit_per_branch` returns `commit.value`, which
+      the `LOCAL` fallback fills in, so it must also know which branch wrote it. The branch then
+      classifies `FAST_FORWARD` and imports as usual. A migration would race the first sync for no
+      gain.
 - [ ] T020 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
 - [ ] T021 [US1] Give the divergent-branches case its own message in
