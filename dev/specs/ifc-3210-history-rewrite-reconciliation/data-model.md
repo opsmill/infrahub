@@ -195,7 +195,9 @@ The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields st
 message still populates them from its first pair. The first two are required, so a message that
 left them empty could not be constructed by a worker running the previous code. Five emission sites
 use them and are untouched by this epic. The handler prefers `branches` when present and falls back
-to the single-branch fields otherwise.
+to the single-branch fields otherwise. A message that sets `branches` lists at least one pair, and
+the model rejects one whose first pair differs from the single-branch fields, so a worker on the
+previous code converges the branch the list starts with.
 
 Under one lock acquisition and one fetch, the handler resets each pair in turn. This is why the
 list is coalesced rather than sent as N messages: the repository lock is contended by merges and

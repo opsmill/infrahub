@@ -239,11 +239,11 @@ healthy branch is still sent, and a second worker converges on it.
 
 **Maps to**: FR-006, SC-005. Depends on Phase 3 for `ReconciledBranch`.
 
-- [ ] T028 [US3] Add the optional `branches` field and its `BranchCommitPair` model to
+- [x] T028 [US3] Add the optional `branches` field and its `BranchCommitPair` model to
       `backend/infrahub/message_bus/messages/refresh_git_fetch.py`, per
       [data-model.md](data-model.md), "Message change". A coalesced message still populates the
       required single-branch fields from its first pair.
-- [ ] T029 [US3] Add a model validator to `RefreshGitFetch` asserting that
+- [x] T029 [US3] Add a model validator to `RefreshGitFetch` asserting that
       `infrahub_branch_name`, `infrahub_branch_id` and `commit` equal the first entry of `branches`
       whenever `branches` is set. A worker on the previous code reads only the single-branch fields,
       so a mismatch converges it onto a branch the message was not about. PR #10669 is no precedent
