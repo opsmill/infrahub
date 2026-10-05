@@ -196,6 +196,15 @@ def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo, gat
     assert classify(gateway, imported=imported, remote=remote).classification is RefClassification.REWRITE
 
 
+def test_a_real_repository_rewound_after_a_retarget_is_not_a_rewrite(repo: Repo, gateway: GitAncestryGateway) -> None:
+    remote = commit_file(repo=repo, content="one")
+    imported = commit_file(repo=repo, content="two")
+
+    result = classify(gateway, imported=imported, remote=remote, target_changed=True)
+
+    assert result.classification is RefClassification.RETARGET
+
+
 def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(
     repo: Repo, gateway: GitAncestryGateway
 ) -> None:
