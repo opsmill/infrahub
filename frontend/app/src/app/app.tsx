@@ -31,13 +31,13 @@ export function App() {
         <Provider store={store}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <ConfigProvider>
-                <ThemeProvider>
+              <ThemeProvider>
+                <ConfigProvider>
                   <DatePreferencesProvider>
                     <RouterProvider router={router} />
                   </DatePreferencesProvider>
-                </ThemeProvider>
-              </ConfigProvider>
+                </ConfigProvider>
+              </ThemeProvider>
             </AuthProvider>
             <TanStackQueryDevtools buttonPosition="bottom-left" />
           </QueryClientProvider>

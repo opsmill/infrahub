@@ -107,31 +107,23 @@ Two things manage the class, and one way reads it:
    duplicated there verbatim — renaming it means changing both files in the same commit. The key
    holds `light`, `dark`, or `system`; `system` is resolved by the script against
    `prefers-color-scheme`, so a desktop that changed appearance between visits reloads into its
-   current appearance. The script cannot see the `dark_theme` flag, so while the flag is off a
-   stored `dark` still paints the config loading screen dark before the provider forces light.
+   current appearance. A missing key resolves like `system`, so a first visit on a dark desktop
+   paints dark before the app boots.
 2. **`ThemeProvider`** (`entities/config/ui/theme-provider.tsx`) — the app's own implementation,
-   no library. It is mounted in `app/app.tsx` directly inside `ConfigProvider`, because it reads
-   the `dark_theme` flag through `useFeatureFlag`, and config only exists below that provider.
-   `infrahub.theme.choice` holds the user's pick; with the flag on, a browser with no stored choice
-   gets `system` saved so the pre-paint script can resolve it, and other tabs pick up a change through the `storage` event. The flag never touches
-   the key, so turning it back on restores the user's choice.
+   no library. In `app/app.tsx` it comes after the providers that render nothing and before every
+   provider that renders UI, so the config loading and error screens already follow it.
+   `infrahub.theme.choice` holds the user's pick; a browser with no stored choice follows
+   `system`, and other tabs pick up a change through the `storage` event.
 
    While the choice is `system` it follows the desktop live (`matchMedia`). It applies the class
    in a layout effect, so none of its own frames shows the wrong palette, and freezes transitions
-   during a flip so every surface changes palette at once. A first visit still shows the config
-   loading screen in light: the flag is unknown until config arrives, and a deployment without it
-   must never flash dark. The stored choice is validated by `ThemeSchema`
+   during a flip so every surface changes palette at once. The stored choice is validated by `ThemeSchema`
    (`entities/config/domain/model/theme.ts`). The app's control is `ThemeMenuItem`
    (`entities/config/ui/theme-menu-item.tsx`), the "Theme" submenu in the account menu.
 3. **Reading the painted theme** — `useTheme().resolvedTheme` (`light` or `dark`, with `system`
-   resolved and the flag applied); `useTheme().theme` is the choice, `system` included, which only
+   resolved); `useTheme().theme` is the choice, `system` included, which only
    the theme picker needs. `useTheme()` throws outside a `ThemeProvider`, so a test rendering a
    theme consumer mounts one. Components never read storage or the class for this.
-
-The deployment gate is `INFRAHUB_EXPERIMENTAL_DARK_THEME`, in the shared config block of both
-compose files: `development/docker-compose.yml` defaults it to `true` and the root compose file to
-`false`, so our own stacks carry the theme and a shipped deployment stays without it until an
-operator opts in.
 
 ## Content that carries its own colours
 
@@ -182,11 +174,10 @@ once. The two legitimate exceptions, both from
 
 | Concern | Test |
 |---|---|
-| Reading a feature flag | `entities/config/ui/hooks/use-feature-flag.test.ts` |
-| Choice, desktop tracking, flag override and restore, cross-tab sync, transition freeze | `entities/config/ui/theme-provider.test.tsx` |
-| The Theme submenu in the account menu, alpha tag, gating, no stray divider | `entities/user-profile/ui/account-menu.test.tsx` |
+| Choice, desktop tracking, cross-tab sync, transition freeze | `entities/config/ui/theme-provider.test.tsx` |
+| The Theme submenu in the account menu, alpha tag | `entities/user-profile/ui/account-menu.test.tsx` |
 | Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
-| First paint in both palettes, persistence, flag-off journeys | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
+| First paint in both palettes, persistence | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 
 The pre-paint script itself is reachable only by the e2e suite — it sits outside the module graph,

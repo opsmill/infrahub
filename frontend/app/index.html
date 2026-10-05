@@ -14,7 +14,7 @@
     try {
       const theme = localStorage.getItem("infrahub.theme.choice");
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (theme === "dark" || (theme === "system" && prefersDark)) {
+      if (theme === "dark" || (theme !== "light" && prefersDark)) {
         document.documentElement.classList.add("dark");
       }
     } catch {
