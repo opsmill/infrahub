@@ -6,7 +6,6 @@ from fastapi import APIRouter, Body, Depends, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from infrahub.api.dependencies import BranchParams, get_branch_params, get_current_user, get_db
-from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreGraphQLQuery
@@ -27,9 +26,8 @@ from infrahub.graphql.metrics import (
 from infrahub.graphql.middleware import raise_on_mutation_for_branch_status
 from infrahub.graphql.utils import extract_data
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
+from infrahub.groups.query_group import save_graphql_query_group
 from infrahub.log import get_logger
-from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
-from infrahub.workflows.utils import render_tags
 
 if TYPE_CHECKING:
     from infrahub.auth.session import AccountSession
@@ -59,8 +57,6 @@ async def execute_query(
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
         db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
     )
-
-    context = InfrahubContext.init(branch=branch_params.branch, account=account_session)
 
     gql_params = await prepare_graphql_params(
         db=db,
@@ -127,13 +123,8 @@ async def execute_query(
             subscribers=sorted(subscribers),
             params=params,
         )
-        await service.workflow.submit_workflow(
-            workflow=GRAPHQL_QUERY_GROUP_UPDATE,
-            context=context,
-            parameters={"model": model},
-            # Created with the tags the flow adds, so the flow sends no tag update of its own.
-            tags=sorted(render_tags(branches=[model.branch], nodes=model.related_nodes, namespace=False)),
-        )
+        # Updated within the request: as its own flow run, every query a transform runs cost a second run.
+        await save_graphql_query_group(db=db, model=model, account_session=account_session, service=service)
 
     return response_payload
 

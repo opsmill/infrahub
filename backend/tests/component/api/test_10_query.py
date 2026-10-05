@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import call, patch
 
 import pytest
+from infrahub_sdk.utils import dict_hash
 
 from infrahub import config
-from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType
-from infrahub.context import BranchContext, InfrahubContext
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGraphQLQueryGroup
 from infrahub.core.timestamp import Timestamp
-from infrahub.groups.models import RequestGraphQLQueryGroupUpdate
-from infrahub.workflows.catalogue import GRAPHQL_QUERY_GROUP_UPDATE
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -30,67 +28,52 @@ async def base_authentication(
     pass
 
 
+async def read_query_group(db: InfrahubDatabase, query_name: str, params: dict[str, str]) -> CoreGraphQLQueryGroup:
+    group = await NodeManager.get_one_by_default_filter(
+        db=db, id=f"{query_name}__{dict_hash(params)}", kind=CoreGraphQLQueryGroup
+    )
+    assert group is not None
+    return group
+
+
 async def test_query_endpoint_group_no_params(
     db: InfrahubDatabase,
     client: TestClient,
     admin_headers: dict[str, str],
-    create_test_admin: Node,
     default_branch: Branch,
+    create_test_admin: Node,
     car_person_data: dict[str, Node],
 ) -> None:
+    q1 = car_person_data["q1"]
+    p1 = car_person_data["p1"]
+    p2 = car_person_data["p2"]
+    c1 = car_person_data["c1"]
+    c2 = car_person_data["c2"]
+    c3 = car_person_data["c3"]
+
     # Must execute in a with block to execute the startup/shutdown events
-    with (
-        client,
-        patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
-        ) as mock_submit_workflow,
-    ):
+    with client:
         response = client.get(
-            "/api/query/query01?update_group=true&subscribers=AAAAAA&subscribers=BBBBBB", headers=admin_headers
+            f"/api/query/query01?update_group=true&subscribers={c1.id}&subscribers={c2.id}", headers=admin_headers
         )
 
-        context = InfrahubContext(
-            branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
-            account=AccountSession(
-                authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
-            ),
-        )
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
 
-        assert "errors" not in response.json()
-        assert response.status_code == 200
-        assert response.json()["data"] is not None
-        result = response.json()["data"]
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["Jane", "John"]
+    assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
+    assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
 
-        result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
-        assert sorted(result_per_name.keys()) == ["Jane", "John"]
-        assert len(result_per_name["John"]["node"]["cars"]["edges"]) == 2
-        assert len(result_per_name["Jane"]["node"]["cars"]["edges"]) == 1
-
-        q1 = car_person_data["q1"]
-        p1 = car_person_data["p1"]
-        p2 = car_person_data["p2"]
-        c1 = car_person_data["c1"]
-        c2 = car_person_data["c2"]
-        c3 = car_person_data["c3"]
-
-        model = RequestGraphQLQueryGroupUpdate(
-            query_id=q1.id,
-            query_name="query01",
-            branch="main",
-            related_node_ids=sorted([p1.id, p2.id, c1.id, c2.id, c3.id]),
-            subscribers=sorted(["AAAAAA", "BBBBBB"]),
-            params={},
-        )
-
-        expected_calls = [
-            call(
-                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
-                parameters={"model": model},
-                context=context,
-                tags=["infrahub.app/branch/main"],
-            ),
-        ]
-        mock_submit_workflow.assert_has_calls(expected_calls)
+    group = await read_query_group(db=db, query_name="query01", params={})
+    assert group.group_type.value.value == "internal"
+    query = await group.query.get_peer(db=db)
+    assert query is not None
+    assert query.id == q1.id
+    assert sorted(await group.members.get_peers(db=db)) == sorted([p1.id, p2.id, c1.id, c2.id, c3.id])
+    assert sorted(await group.subscribers.get_peers(db=db)) == sorted([c1.id, c2.id])
 
 
 async def test_query_endpoint_group_params(
@@ -102,49 +85,45 @@ async def test_query_endpoint_group_params(
     car_person_data: dict[str, Node],
 ) -> None:
     # Must execute in a with block to execute the startup/shutdown events
-    with (
-        client,
-        patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
-        ) as mock_submit_workflow,
-    ):
+    with client:
         response = client.get("/api/query/query02?update_group=true&person=John", headers=admin_headers)
 
-        assert "errors" not in response.json()
-        assert response.status_code == 200
-        assert response.json()["data"] is not None
-        result = response.json()["data"]
+    assert "errors" not in response.json()
+    assert response.status_code == 200
+    assert response.json()["data"] is not None
+    result = response.json()["data"]
 
-        result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
-        assert sorted(result_per_name.keys()) == ["John"]
+    result_per_name = {result["node"]["name"]["value"]: result for result in result["TestPerson"]["edges"]}
+    assert sorted(result_per_name.keys()) == ["John"]
 
-        q2 = car_person_data["q2"]
-        p1 = car_person_data["p1"]
+    group = await read_query_group(db=db, query_name="query02", params={"person": "John"})
+    assert group.parameters.value == {"person": "John"}
+    assert sorted(await group.members.get_peers(db=db)) == [car_person_data["p1"].id]
+    assert await group.subscribers.get_peers(db=db) == {}
 
-        model = RequestGraphQLQueryGroupUpdate(
-            query_id=q2.id,
-            query_name="query02",
-            branch="main",
-            related_node_ids={p1.id},
-            subscribers=[],
-            params={"person": "John"},
-        )
 
-        context = InfrahubContext(
-            branch=BranchContext(name=default_branch.name, id=str(default_branch.get_uuid())),
-            account=AccountSession(
-                authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
-            ),
-        )
-        expected_calls = [
-            call(
-                workflow=GRAPHQL_QUERY_GROUP_UPDATE,
-                parameters={"model": model},
-                context=context,
-                tags=["infrahub.app/branch/main"],
-            ),
-        ]
-        mock_submit_workflow.assert_has_calls(expected_calls)
+async def test_query_endpoint_group_update_keeps_one_group_per_query_and_params(
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
+) -> None:
+    c1 = car_person_data["c1"]
+    c2 = car_person_data["c2"]
+
+    with client:
+        for subscriber in (c1, c2):
+            response = client.get(
+                f"/api/query/query02?update_group=true&person=John&subscribers={subscriber.id}", headers=admin_headers
+            )
+            assert response.status_code == 200
+
+    groups = await NodeManager.query(db=db, schema=InfrahubKind.GRAPHQLQUERYGROUP)
+    assert len(groups) == 1
+    group = await read_query_group(db=db, query_name="query02", params={"person": "John"})
+    assert sorted(await group.subscribers.get_peers(db=db)) == sorted([c1.id, c2.id])
 
 
 async def test_query_endpoint_get_default_branch(
