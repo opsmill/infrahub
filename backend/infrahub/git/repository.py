@@ -467,6 +467,17 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             divergence = self._classify_against_graph(
                 branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
             )
+        except RepositoryError as exc:
+            # The classification only names a discarded history, so it must not keep the branch from being created.
+            log.warning(
+                "Unable to classify the new branch %s of repository %s against the graph: %s",
+                branch_name,
+                self.name,
+                exc.message,
+            )
+            divergence = None
+
+        try:
             try:
                 branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
             except GraphQLError as exc:

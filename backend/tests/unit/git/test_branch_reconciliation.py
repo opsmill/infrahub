@@ -374,6 +374,28 @@ async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_anot
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=imported, commit=rewritten)]
 
 
+async def test_a_branch_new_to_this_worker_is_created_even_when_it_cannot_be_classified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The classification only names a discarded history, so it must not keep the branch from being imported."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+    imported = tracked.imported_commits[TRACKED]
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"})
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [queued(commit=imported, divergence=None)]
+    assert tracked.client.recorded_commits == [(TRACKED, imported)]
+    assert [
+        record.getMessage() for record in caplog.records if record.getMessage().startswith("Unable to classify")
+    ] == [
+        f"Unable to classify the new branch {TRACKED} of repository tracked-repo against the graph: "
+        "'not-a-commit' is not a valid commit identifier"
+    ]
+
+
 async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_into_the_staging_branch(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
