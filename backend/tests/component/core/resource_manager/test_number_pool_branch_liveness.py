@@ -281,6 +281,7 @@ class TestOlderBranchLiveness:
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         pool: CoreNumberPool,
+        repository: NumberPoolRepository,
         dependency_provider: Provider,
     ) -> None:
         """The retirement pass a rebase runs may close the record only once no branch reaches the number."""
@@ -300,8 +301,8 @@ class TestOlderBranchLiveness:
         assert [record.is_open for record in records] == [True], (
             "the second older branch still holds the number, so the rebase must leave its record open"
         )
-        assert held in await pool.get_used(db=db, branch=default_branch_scope_class)
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) != held
+        assert held in await repository.get_used(pool=pool, branch=default_branch_scope_class)
+        assert await repository.get_free(pool=pool, branch=default_branch_scope_class) != held
 
         await rebase_branch(
             db=db, default_branch=default_branch_scope_class, branch=second, dependency_provider=dependency_provider
@@ -309,8 +310,8 @@ class TestOlderBranchLiveness:
 
         records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
         assert [record.is_open for record in records] == [False], "with no branch left holding it, the record closes"
-        assert held not in await pool.get_used(db=db, branch=default_branch_scope_class)
-        assert await pool.get_free(db=db, branch=default_branch_scope_class) == held
+        assert held not in await repository.get_used(pool=pool, branch=default_branch_scope_class)
+        assert await repository.get_free(pool=pool, branch=default_branch_scope_class) == held
 
     async def test_a_branch_being_deleted_holds_nothing(
         self,

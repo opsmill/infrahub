@@ -94,7 +94,7 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
         records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
         assert [record.is_open for record in records] == [True], f"no reservation record for the ticket {label}"
 
-    assert await pool.get_used(db=db, branch=default_branch) == [1, 2, 3]
+    assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch) == [1, 2, 3]
 
 
 async def test_allocate_reuses_value_when_attribute_not_globally_unique(
