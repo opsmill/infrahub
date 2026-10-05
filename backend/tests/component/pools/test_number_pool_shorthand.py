@@ -155,3 +155,27 @@ class TestNumberPoolShorthandMirror:
 
         reloaded = await _reload(db=db, pool=pool)
         assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200)
+
+    async def test_sync_shorthand_reads_the_ranges_held_at_the_given_time(
+        self, db: InfrahubDatabase, ticket_schema: None
+    ) -> None:
+        """A sync at a past time mirrors the ranges the pool held then, not the ones it holds now."""
+        pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
+        await pool.new(
+            db=db,
+            name="mirror-at-past-time",
+            node="TestingTicket",
+            node_attribute="ticket_id",
+            start_range=1,
+            end_range=10,
+        )
+        await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=100, end=200)
+        one_range_at = Timestamp()
+        await add_pool_range(db=db, pool=pool, start=300, end=400)
+
+        await shorthand_mirror(db=db).sync(pool=pool, at=one_range_at)
+
+        at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=one_range_at)
+        assert at_sync is not None
+        assert (at_sync.get_attribute("start_range").value, at_sync.get_attribute("end_range").value) == (100, 200)

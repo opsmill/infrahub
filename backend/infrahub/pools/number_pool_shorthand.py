@@ -43,7 +43,7 @@ class NumberPoolShorthandMirror:
 
         """
         if ranges is None:
-            ranges = await self.repository.get_ranges(pool_id=pool.get_id())
+            ranges = await self.repository.get_ranges(pool_id=pool.get_id(), at=at)
 
         start: int | None = None
         end: int | None = None
