@@ -36,7 +36,6 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
@@ -274,7 +273,6 @@ class NodeCreateAllQuery(NodeQuery):
             "status": RelationshipStatus.ACTIVE.value,
             "from": at.to_string(),
             "identifier": self.node.id,
-            "provenance": PoolRecordProvenance.ALLOCATED.value,
         }
 
         # set all the property strings that we reuse
@@ -295,7 +293,8 @@ class NodeCreateAllQuery(NodeQuery):
             CALL (a, attr) {
                 UNWIND attr.pool_prop AS prop
                 MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
-                CREATE (pool)-[:IS_RESERVED $pool_rel_prop]->(a)
+                CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
+                SET reserved.provenance = prop.provenance
             }""" % {"number_pool": InfrahubKind.NUMBERPOOL}
 
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"

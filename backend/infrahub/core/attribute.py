@@ -34,6 +34,7 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
+from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
@@ -78,6 +79,10 @@ def validate_string_length(value: str | None) -> None:
         raise ValidationError(f"Text attribute length should be less than {MAX_STRING_LENGTH} characters.")
 
 
+class PoolPropertyData(NodePropertyData):
+    provenance: PoolRecordProvenance
+
+
 class AttributeCreateData(BaseModel):
     uuid: str
     name: str
@@ -91,7 +96,7 @@ class AttributeCreateData(BaseModel):
     is_protected: bool
     source_prop: list[NodePropertyData] = Field(default_factory=list)
     owner_prop: list[NodePropertyData] = Field(default_factory=list)
-    pool_prop: list[NodePropertyData] = Field(default_factory=list)
+    pool_prop: list[PoolPropertyData] = Field(default_factory=list)
 
 
 class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
@@ -125,6 +130,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.is_default = is_default
         self.is_from_profile = is_from_profile
         self.from_pool: dict | None = None
+        self.pool_provenance = PoolRecordProvenance.ALLOCATED
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -733,7 +739,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Add the pool ID if this attribute came from a pool.
         if self.from_pool and self.value is not None and (pool_id := self.from_pool.get("id")):
-            data.pool_prop.append(NodePropertyData(name="pool", peer_id=pool_id))
+            data.pool_prop.append(PoolPropertyData(name="pool", peer_id=pool_id, provenance=self.pool_provenance))
 
         return data
 
