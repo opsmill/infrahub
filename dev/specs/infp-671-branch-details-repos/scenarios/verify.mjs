@@ -125,6 +125,7 @@ await browser.close();
 writeFileSync(join(out, "results.json"), JSON.stringify(results, null, 2));
 for (const r of results) {
   const failed = Object.entries(r.checks).filter(([, ok]) => !ok).map(([k]) => k);
+  if (failed.length) process.exitCode = 1;
   console.log(`${failed.length ? "FAIL" : "ok  "} ${r.name.padEnd(30)} ${failed.length ? `failed: ${failed.join(", ")}` : ""}`);
 }
 console.log(`screenshots in ${out}`);
