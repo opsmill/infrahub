@@ -567,12 +567,15 @@ async def git_branch_create(
         return
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
-        await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
+        created = await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
 
         try:
             pinned_commit: str | None = repo.get_commit_value(branch_name=branch, remote=False)
         except (ValueError, InvalidGitRepositoryError):
             pinned_commit = None
+        # Unwritten, the branch reads its origin branch's commit, and a sync would classify against that.
+        if created and pinned_commit is not None:
+            await repo.update_commit_value(branch_name=branch, commit=pinned_commit)
         # New branch has been pushed remotely, tell workers to fetch it and check out the SHA it
         # was created at so the pool converges even if upstream advances during fan-out.
         message = messages.RefreshGitFetch(

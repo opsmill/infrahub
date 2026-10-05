@@ -1052,3 +1052,32 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             tracked.imported_commit,
             RepositorySyncStatus.IN_SYNC.value,
         )
+
+    async def test_a_branch_created_in_infrahub_records_the_commit_it_was_created_at(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """This worker's trunk is ahead of the commit the graph records for it when the branch is created.
+
+        The new branch therefore starts at a commit its origin branch never recorded, which is the one
+        it must read.
+        """
+        tracked = await tracked_branch_repository("created-branch-repo", "created-branch-tracked")
+        repo = await InfrahubRepository.init(
+            id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        _push_commit_to_remote(gogs_server.container, tracked.name, "trunk_ahead.txt")
+        await repo.fetch()
+        await repo.pull(branch_name="main", update_commit_value=False)
+
+        branch = await client.branch.create(branch_name="created-in-infrahub", sync_with_git=True)
+
+        created_at = gogs_repo_branch_commit(gogs_server.container, tracked.name, branch.name)
+        assert created_at != tracked.trunk_commit
+        repository: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=branch.name, raise_on_error=True
+        )
+        assert repository.commit.value == created_at

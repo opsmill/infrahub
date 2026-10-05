@@ -177,7 +177,10 @@ head, the imported objects match the rewritten tree, and the repository reports 
       branch never had as absent: `get_repositories_commit_per_branch` returns `commit.value`, which
       the `LOCAL` fallback fills in, so it must also know which branch wrote it. The branch then
       classifies `FAST_FORWARD` and imports as usual. A migration would race the first sync for no
-      gain.
+      gain. T016 selects every branch whose graph commit differs from its remote head, so the first
+      cycle writes the real commit and imports such a branch once.
+      IFC-3281 landed the write in `git_branch_create`. The read that reports an inherited commit as
+      absent has not landed, so the task stays open.
 - [ ] T020 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
 - [ ] T021 [US1] Give the divergent-branches case its own message in
