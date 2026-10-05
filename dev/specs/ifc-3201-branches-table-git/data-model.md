@@ -1,4 +1,4 @@
-# Data Model: Repository, Git state and Commit columns on the branches table
+# Data Model: Repositories and Git state columns on the branches list
 
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 
@@ -58,7 +58,7 @@ export type BranchRepositorySummary =
 1. Every fetch `denied` (and at least one fetch) → every branch `denied`; a denied fetch among others is left out silently. The hook passes a denied repository list as the single fetch, so a list denial (either kind unviewable) denies every branch.
 2. Else any `pending` fetch → every branch `pending`.
 3. Else any `error` fetch → every branch `error` with the first error's message.
-4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), a branch absent from its rows that the repository could list (read-only repositories list every branch, read/write ones only synced branches, and no repository lists a merged or deleting branch) gets `{ status: "error" }` naming the cut repositories instead of a guessed summary.
+4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), every branch absent from its rows gets `{ status: "error" }` naming the cut repositories instead of a guessed summary. Which branches a repository lists is the backend's rule, so the client does not try to tell "absent" from "past the cut"; past 500 branches per repository, a branch the repository would never list (an unsynced branch for a read/write repository, a merged one) can read this error too. Accepted limit.
 5. The states are sorted by `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; any other value ranks with `unknown`), then by repository name, case-insensitive.
 6. `counts` has one entry per distinct `syncStatus.value`, with `label = label || value || "Unknown"`.
 7. A branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.

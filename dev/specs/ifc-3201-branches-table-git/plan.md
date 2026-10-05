@@ -1,4 +1,4 @@
-# Implementation Plan: Repository, Git state and Commit columns on the branches table
+# Implementation Plan: Repositories and Git state columns on the branches list
 
 **Branch**: `ple-branches-table-git-ifc-3201` (on `ple-branch-details-repos-infp-671`, PR #10779) | **Date**: 2026-09-30, rework 2026-10-01, rework A 2026-10-01 | **Spec**: [spec.md](./spec.md)
 

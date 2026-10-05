@@ -144,7 +144,7 @@ describe("useBranchRepositorySummaries", () => {
     expect(result.current.feature?.status).toBe("ok");
   });
 
-  test("marks every branch denied when a status read is denied", async () => {
+  test("marks every branch denied when every status read is denied", async () => {
     // GIVEN
     vi.mocked(getRepositoryBranchStatus).mockRejectedValue(
       new RepositoryBranchStatusError("PERMISSION_DENIED", "denied")

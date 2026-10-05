@@ -1,5 +1,3 @@
-import { BranchStatus } from "@/shared/api/graphql/generated/types";
-
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type {
   BranchRepositoryRef,
@@ -104,23 +102,16 @@ export function summarizeBranchRepositories(
   return Object.fromEntries(
     branches.map((branch) => {
       const states = statesByBranch.get(branch.name) ?? [];
+      // Which branches a repository lists is the backend's rule, so a branch missing from a cut page is
+      // reported as unknown rather than guessed absent.
       const cutBefore = truncated.filter(
-        ({ repository, rows }) =>
-          couldListBranch(repository, branch) && !rows.some((row) => row.name === branch.name)
+        ({ rows }) => !rows.some((row) => row.name === branch.name)
       );
       if (cutBefore.length > 0) return [branch.name, truncatedSummary(cutBefore)];
       const repositories = [...states].sort((a, b) => compareStates(compareSeverity, a, b));
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })
   );
-}
-
-// The status query lists no merged or deleting branch, and read/write repositories list only synced
-// ones, so such a branch is never behind a cut page.
-function couldListBranch(repository: BranchRepositoryRef, branch: BranchListItem): boolean {
-  if (branch.status === BranchStatus.MERGED || branch.status === BranchStatus.DELETING)
-    return false;
-  return repository.isReadOnly || Boolean(branch.sync_with_git);
 }
 
 function truncatedSummary(cutBefore: readonly LoadedFetch[]): BranchRepositorySummary {

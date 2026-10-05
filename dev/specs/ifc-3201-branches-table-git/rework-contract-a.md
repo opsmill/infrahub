@@ -81,9 +81,9 @@ message; else ok: for each branch collect the rows whose `name === branch.name`,
 `BranchRepositoryState`s, sort by severity then repository name (case-insensitive), count by
 `syncStatus.value` (label = `label || value || "Unknown"`). A branch with no rows → `ok` with
 empty `repositories` and `counts` (the cell decides the text from `branch.sync_with_git`).
-Cut page: when an `ok` fetch was cut short (`count > rows.length`), a branch absent from its rows
-that the repository could list (read-only repositories list every branch, read/write ones only
-synced branches, none lists a merged or deleting branch) → `error` naming the cut repositories.
+Cut page: when an `ok` fetch was cut short (`count > rows.length`), every branch absent from its
+rows → `error` naming the cut repositories. The client does not re-derive which branches a
+repository lists (FR-003); past 500 branches a branch the repository never lists can read this too.
 
 Severity: `entities/repository/domain/rules/sync-status-severity.ts` (new, repository entity):
 `compareSyncStatusSeverity(a, b)` ordering `error-import` > `unknown` > `syncing` > `in-sync`;

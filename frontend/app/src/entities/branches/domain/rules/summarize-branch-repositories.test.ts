@@ -182,15 +182,15 @@ describe("summarizeBranchRepositories", () => {
     });
   });
 
-  it("does not blame a cut read/write page for an unsynced branch it could never list", () => {
-    // GIVEN a read/write repository page cut short and an unsynced branch
+  it("reports a branch missing from a cut page as unknown, whatever its sync flag", () => {
+    // GIVEN a read/write repository page cut short and an unsynced branch absent from it
     const fetches = [fetched("read-write", [row("main")], false, 501)];
 
     // WHEN
     const summaries = summarizeBranchRepositories([local], fetches);
 
-    // THEN the unsynced branch keeps its empty ok summary
-    expect(summaries.local).toEqual({ status: "ok", repositories: [], counts: [] });
+    // THEN the row set stays the backend's: the branch is not guessed absent
+    expect(summaries.local).toMatchObject({ status: "error" });
   });
 
   it("leaves out a denied repository and summarises the rest", () => {

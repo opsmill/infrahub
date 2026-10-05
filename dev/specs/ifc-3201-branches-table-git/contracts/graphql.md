@@ -39,7 +39,7 @@ query REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int, $offset: Int, $name__v
 
 | Response | Use-case result | Table cells |
 |---|---|---|
-| data | `{ rows, count }`; `count > rows.length` marks the page as cut | pivoted per branch: pill + "+N more", Git state roll-up; or an empty text. A branch the repository could list but that is absent from a cut page reads "Could not load repositories" with the cut named in the reason |
+| data | `{ rows, count }`; `count > rows.length` marks the page as cut | pivoted per branch: pill + "+N more", Git state roll-up; or an empty text. A branch absent from a cut page reads "Could not load repositories" with the cut named in the reason (the client does not re-derive which branches the repository lists) |
 | `PERMISSION_DENIED` on every GraphQL error (`hasOnlyThrownCatalogueCode`) | throws `RepositoryBranchStatusError` with `code: "PERMISSION_DENIED"` | "No permission" on every row when every repository kind is denied; a denied kind among readable ones is left out silently |
 | any other error | throws `RepositoryBranchStatusError` with `code: "UNKNOWN"` and the message | "Could not load repositories" on every row, message as tooltip and `sr-only` text |
 

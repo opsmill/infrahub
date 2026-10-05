@@ -1,4 +1,4 @@
-# Feature Specification: Repository, Git state and Commit columns on the branches table
+# Feature Specification: Repositories and Git state columns on the branches list
 
 **Feature Branch**: `ple-branches-table-git-ifc-3201` (based on `ple-branch-details-repos-infp-671`, PR #10779, itself based on `cross-branch-repo-status-infp-671`)
 
