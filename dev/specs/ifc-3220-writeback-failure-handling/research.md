@@ -1096,7 +1096,7 @@ remote head, since Infrahub never force-pushes. Every earlier delivered commit i
 ancestor of the last one, until a rewrite. If the last one survived a rewrite, every earlier one
 did too.
 
-**Gate.** This slice waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
+**Gate.** Plan part L waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
 default branch makes the synchronisation fail, and nothing reaches the check.
 
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
@@ -1247,9 +1247,9 @@ A setting would be configurability for a hypothetical need (Principle VII).
   first adds the primitive, with one contract: `False` only for a missing object, a raise for every
   other failure. The other epic reuses it.
 - **The merge-path check.** IFC-3210's FR-005a makes `InfrahubRepository.merge` refuse a diverged
-  source or destination. After slice C, `merge_git_repository` no longer calls `merge`: the service
-  replays instead, and its checks of R4 steps 3 and 5 are that refusal for the replay. IFC-3210's
-  merge-path task therefore moves into the service. `merge` stays only for
+  source or destination. After plan part C, `merge_git_repository` no longer calls `merge`: the
+  service replays instead, and its checks of R4 steps 3 and 5 are that refusal for the replay.
+  IFC-3210's merge-path task therefore moves into the service. `merge` stays only for
   `InfrahubRepository.rebase`, which has no caller, and for the live-remote tests of #10465. Both
   methods can be removed once those tests move to the service.
 - **The synchronisation path.** Both epics change `collect_pending_imports`. R11's exclusion runs

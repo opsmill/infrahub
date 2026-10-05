@@ -62,9 +62,9 @@ either. While the import holds the repository lock, the recovery check starts no
 
 **Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
-entity slice. The stored history of the queue grows with the square of the merges in one outage:
-about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table at the end of
-[tasks.md](tasks.md).
+entity folder, `frontend/app/src/entities/repository/`. The stored history of the queue grows with
+the square of the merges in one outage: about 1.2 MB for 100 merges (`research.md` R23). The task
+count is in the table at the end of [tasks.md](tasks.md).
 
 ## Constitution Check
 
@@ -201,13 +201,13 @@ requests, not in Git. The service reaches the release only through a port it dec
 
 ## Delivery order
 
-Each slice is testable on its own.
+Each part is testable on its own.
 
-| Slice | User story | Depends on | Gate |
+| Part | User story | Depends on | Gate |
 |---|---|---|---|
 | **A. Typed failures and bounded Git commands** | Foundation | nothing | none |
 | **B. State, schema and store** | Foundation for US1 | A | schema sign-off, SDK PR |
-| **C. Queue and first attempt** | US1, part of US2, US7 #1 and #2 | B | none |
+| **C. Queue and first attempt** | US1, some scenarios of US2, US7 #1 and #2 | B | none |
 | **D. No other import of a pending destination** | US2 #3 | C | none |
 | **E. Automatic retry and recovery check** | US4 | C | none |
 | **F. Retry mutation and flow** | US2 | C | GraphQL and authorization sign-off |
@@ -220,13 +220,15 @@ Each slice is testable on its own.
 | **L. Reverted delivery** | US7 #3 | B, IFC-3210 rewrite classification | IFC-3210 |
 | **M. Documentation and e2e** | all | K | none |
 
-**MVP**: A, B, C, D, F, G, I1, I2, J and K. That gives a visible failure, a working retry, an exit
-for a stuck queue, no import that deletes undelivered objects, and no source branch lost. The
-regeneration of the generators and artifacts of a pending repository waits for the delivery, and an
-abandonment releases it.
+**First deployable set**: A, B, C, D, F, G, I1, I2, J and K, plus the recovery path of E: the task
+retries (T077), which also retry a failed release, and the recovery check (T079, with its tests in
+T080). That gives a visible failure, a working retry, an exit for a stuck queue, no import that
+deletes undelivered objects, and no source branch lost. The regeneration of the generators and
+artifacts of a pending repository waits for the delivery, and an abandonment releases it. Held work
+reaches a release also after a failed release or a crash.
 
-**No deployment ships C without D, G, I1, I2, J and the abandon part of K.** C alone is worse than
-today:
+**No deployment ships C without D, G, I1, I2, J, the abandonment UI of K, and the recovery path
+of E.** C alone is worse than today:
 
 - Without I1, it queues merges that nothing can clear.
 - Without D, it lets the synchronisation delete their objects.
@@ -236,13 +238,16 @@ today:
   remote, and nothing regenerates them again. Today, Infrahub never delivers a failed push, so the
   remote and the regenerated artifacts both reflect the commit recorded before the merge.
 - Without I2, an abandonment never releases the regeneration that G holds.
+- Without the recovery path of E, held work can wait until the next delivery of its repository,
+  which breaks FR-016. A release that fails needs the task retry of stage `release` (T077). A crash
+  between the settle and the clear needs the recovery check (T079 and its tests, T080).
 
-**Next**: E, then H. H needs coordination with IFC-3002. Until H ships, Python-transform computed
-attributes are not held, as today. After a delayed delivery, such an attribute can reflect the
-commit recorded before the merge until its next recompute. For these attributes, SC-004 and US3 #6
-hold only once H ships.
+**Next**: the rest of E (T078 and T081 to T084), then H. H needs coordination with IFC-3002. Until
+H ships, Python-transform computed attributes are not held, as today. After a delayed delivery, such
+an attribute can reflect the commit recorded before the merge until its next recompute. For these
+attributes, SC-004 and US3 #6 hold only once H ships.
 
-**What slice C changes for everyone.** From slice C on, `merge_git_repository` no longer calls
+**What part C changes for everyone.** From part C on, `merge_git_repository` no longer calls
 `InfrahubRepository.merge`. It delivers the queue. A merge with no failure behaves as today, plus
 one fetch and the ancestry checks. A clone with no `origin` no longer merges and records locally:
 the attempt fails and keeps the queue (`research.md` R3). `InfrahubRepository.merge` stays only for
@@ -263,7 +268,7 @@ the attempt fails and keeps the queue (`research.md` R3). `InfrahubRepository.me
 | **A branch forked during an outage.** | A later synchronisation import of that branch deletes the pending merges' objects there. | The reimport refuses on every branch. The synchronisation case is a known limitation, documented. |
 | **A push failure classification changes on a Git or server upgrade.** | A rejection moves to `unclassified`, which is never retried. | The safe direction. The reason comes from GitPython's flags, and the classifier's table test lists the known cases. |
 | **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), bounded Git commands. A persistent outage ends in `action-required` and frees the slot. |
-| **Existing tests assert the push rejection message.** | Slice A could break them. | The typed error keeps the message byte for byte. |
+| **Existing tests assert the push rejection message.** | Part A could break them. | The typed error keeps the message byte for byte. |
 | **The e2e stack has no Git server.** | The UI journeys cannot use Gogs. | The SDK `GitRepo` helper serves a bare repository, and a `pre-receive` hook in it rejects the push. `research.md` R15. |
 
 ## Rollback

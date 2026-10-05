@@ -204,8 +204,8 @@ that conflicts with a pending merge. The user can resolve the conflict on the re
 user with write access abandons the queue on purpose. The repository returns to a working state, and
 the system records what was dropped, by whom and when.
 
-**Why this priority**: Without it, a stuck repository stays stuck for ever. It ships with the MVP,
-because the queue must have an exit from the first day.
+**Why this priority**: Without it, a stuck repository stays stuck for ever. It ships in the first
+deployable set, because the queue must have an exit from the first day.
 
 **Independent Test**: Make a pending merge conflict with a change pushed directly to the remote.
 Trigger a retry. It must fail at that merge and push nothing. Abandon the queue. The queue must be
@@ -653,7 +653,7 @@ state from the repository node.
 - A delivery signal outside the repository page, such as on the proposed change or the repository
   list. INFP-671 owns those surfaces. The delivery runs appear in the repository's task list.
 - Gating a merge on the import state of a branch, a separate and genuinely unsafe condition, for a
-  later INFP-670 slice.
+  later part of INFP-670.
 - Bringing Python-transform computed attributes to parity with the coalesced families (IFC-3002).
   This work consumes that outcome and does not deliver it.
 - Unifying the generator and artifact regeneration path with the coalesced recompute path. The
