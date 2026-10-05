@@ -102,9 +102,10 @@ Not walked one by one by hand. `verify.mjs` covered the seeded pages (see "Live 
 - [ ] 2. Details tab order (Details, Git repositories, buttons, Tasks). Covered by
   `branch-details.test.tsx` ("renders Details, then Git repositories, then the action buttons,
   then Tasks") and e2e `test_git_repositories_card_renders_above_the_merge_button`.
-- [ ] 3. Repositories card rows (Import Error first, unreachable icon, read-only tag, commit).
-  Covered by `branch-repositories-card.test.tsx` (ranking, read-only tag, warning icon, Git
-  state).
+- [ ] 3. Repositories card rows (name order from the server, unreachable icon, read-only tag,
+  commit); failing repositories show in the bands above. Covered by
+  `branch-repositories-card.test.tsx` (read-only tag, warning icon, Git state) and
+  `repository-error-bands.test.tsx`.
 - [ ] 4. Red and amber bands, "View task log". Covered by `repository-error-bands.test.tsx` and
   e2e `test_import_error_band_links_to_the_task_page` (not run).
 - [ ] 5. Merge unchanged by failures. No automated test asserts the button is unaffected;
