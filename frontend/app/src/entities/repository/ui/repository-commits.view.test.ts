@@ -53,21 +53,38 @@ describe("getLoadedCommits", () => {
 describe("getEmptyState", () => {
   test("uses the worker's message when the log is not available yet", () => {
     // WHEN
-    const emptyState = getEmptyState({
-      reason: RepositoryGitUnavailableReason.NOT_CLONED,
-      message: "Not cloned",
-    });
+    const emptyState = getEmptyState(
+      { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "Not cloned" },
+      { isRetrying: true }
+    );
 
     // THEN
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Not cloned" });
   });
 
+  test("asks for a refresh instead of the worker's message once retrying has stopped", () => {
+    // WHEN
+    const emptyState = getEmptyState(
+      { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "Not cloned" },
+      { isRetrying: false }
+    );
+
+    // THEN
+    expect(emptyState).toEqual({
+      title: "Commit log not available yet",
+      message: "No worker has answered yet. Refresh to check again.",
+    });
+  });
+
   test("says the log is not available, without a yet, when reading commits is not implemented", () => {
     // WHEN
-    const emptyState = getEmptyState({
-      reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
-      message: "Reading commits is not implemented",
-    });
+    const emptyState = getEmptyState(
+      {
+        reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
+        message: "Reading commits is not implemented",
+      },
+      { isRetrying: false }
+    );
 
     // THEN
     expect(emptyState).toEqual({
@@ -78,10 +95,10 @@ describe("getEmptyState", () => {
 
   test("falls back to a version message when not implemented carries an empty message", () => {
     // WHEN
-    const emptyState = getEmptyState({
-      reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
-      message: "",
-    });
+    const emptyState = getEmptyState(
+      { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, message: "" },
+      { isRetrying: false }
+    );
 
     // THEN
     expect(emptyState).toEqual({
@@ -92,10 +109,10 @@ describe("getEmptyState", () => {
 
   test("still says not available yet when the read timed out", () => {
     // WHEN
-    const emptyState = getEmptyState({
-      reason: RepositoryGitUnavailableReason.TIMEOUT,
-      message: "Timed out",
-    });
+    const emptyState = getEmptyState(
+      { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
+      { isRetrying: true }
+    );
 
     // THEN
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Timed out" });
@@ -106,7 +123,7 @@ describe("getEmptyState", () => {
     { reason: null, message: "" },
   ])("falls back to a waiting message when $reason carries an empty message", (unavailable) => {
     // WHEN
-    const emptyState = getEmptyState(unavailable);
+    const emptyState = getEmptyState(unavailable, { isRetrying: true });
 
     // THEN
     expect(emptyState).toEqual({
@@ -338,21 +355,32 @@ describe("getCommitLogWithoutPages", () => {
     const failureReason = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
 
     // WHEN
-    const state = getCommitLogWithoutPages({ error: null, failureReason });
+    const state = getCommitLogWithoutPages({ error: null, failureReason, isFetching: true });
 
     // THEN
-    expect(state).toEqual({ kind: "unavailable", error: failureReason });
+    expect(state).toEqual({ kind: "unavailable", error: failureReason, isRetrying: true });
   });
 
   test("reports an unavailable answer that is no longer retried", () => {
     // GIVEN
-    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED);
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
 
     // WHEN
-    const state = getCommitLogWithoutPages({ error, failureReason: error });
+    const state = getCommitLogWithoutPages({ error, failureReason: error, isFetching: false });
 
     // THEN
-    expect(state).toEqual({ kind: "unavailable", error });
+    expect(state).toEqual({ kind: "unavailable", error, isRetrying: false });
+  });
+
+  test("reports an unavailable answer as retried again while a refresh after the last retry runs", () => {
+    // GIVEN
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
+
+    // WHEN
+    const state = getCommitLogWithoutPages({ error, failureReason: null, isFetching: true });
+
+    // THEN
+    expect(state).toEqual({ kind: "unavailable", error, isRetrying: true });
   });
 
   test("reports any other error as a failed read", () => {
@@ -360,7 +388,7 @@ describe("getCommitLogWithoutPages", () => {
     const error = new Error("Permission denied");
 
     // WHEN
-    const state = getCommitLogWithoutPages({ error, failureReason: error });
+    const state = getCommitLogWithoutPages({ error, failureReason: error, isFetching: false });
 
     // THEN
     expect(state).toEqual({ kind: "failed", error });
@@ -368,7 +396,11 @@ describe("getCommitLogWithoutPages", () => {
 
   test("reports a first load that has not failed yet as loading", () => {
     // WHEN
-    const state = getCommitLogWithoutPages({ error: null, failureReason: null });
+    const state = getCommitLogWithoutPages({
+      error: null,
+      failureReason: null,
+      isFetching: true,
+    });
 
     // THEN
     expect(state).toEqual({ kind: "loading" });
@@ -416,6 +448,13 @@ describe("isShowingStaleCommits", () => {
       isRefetching: true,
       failureReason,
       expected: true,
+    },
+    {
+      name: "a refresh runs after an older page failed",
+      isRefetchError: true,
+      isRefetching: true,
+      failureReason: null,
+      expected: false,
     },
     {
       name: "a refetch has not failed yet",

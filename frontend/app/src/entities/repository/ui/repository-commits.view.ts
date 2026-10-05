@@ -24,7 +24,7 @@ export function getLoadedCommits(
 
 export type CommitLogWithoutPages =
   | { kind: "loading" }
-  | { kind: "unavailable"; error: RepositoryGitUnavailableError }
+  | { kind: "unavailable"; error: RepositoryGitUnavailableError; isRetrying: boolean }
   | { kind: "failed"; error: Error };
 
 interface CommitLogFailure {
@@ -36,10 +36,11 @@ interface CommitLogFailure {
 export function getCommitLogWithoutPages({
   error,
   failureReason,
-}: CommitLogFailure): CommitLogWithoutPages {
+  isFetching,
+}: CommitLogFailure & { isFetching: boolean }): CommitLogWithoutPages {
   const failure = error ?? failureReason;
   if (failure instanceof RepositoryGitUnavailableError)
-    return { kind: "unavailable", error: failure };
+    return { kind: "unavailable", error: failure, isRetrying: isFetching };
   if (failure) return { kind: "failed", error: failure };
   return { kind: "loading" };
 }
@@ -59,7 +60,7 @@ export function isShowingStaleCommits({
   isRefetchError: boolean;
   isRefetching: boolean;
 }): boolean {
-  return isRefetchError || (isRefetching && failureReason !== null);
+  return (isRefetchError && !isRefetching) || (isRefetching && failureReason !== null);
 }
 
 export type NextPageState = "idle" | "loading" | "failed" | "retry-pending";
@@ -82,14 +83,20 @@ export interface CommitLogEmptyState {
   message: string;
 }
 
-export function getEmptyState({
-  reason,
-  message,
-}: Pick<RepositoryGitUnavailableError, "reason" | "message">): CommitLogEmptyState {
+export function getEmptyState(
+  { reason, message }: Pick<RepositoryGitUnavailableError, "reason" | "message">,
+  { isRetrying }: { isRetrying: boolean }
+): CommitLogEmptyState {
   if (reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
     return {
       title: "Commit log not available",
       message: message || "Reading commits is not available in this version of Infrahub.",
+    };
+  }
+  if (!isRetrying) {
+    return {
+      title: "Commit log not available yet",
+      message: "No worker has answered yet. Refresh to check again.",
     };
   }
   return {

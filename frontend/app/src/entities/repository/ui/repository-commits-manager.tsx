@@ -43,6 +43,7 @@ export function RepositoryCommitsManager({
     failureReason,
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isFetchNextPageError,
     isRefetchError,
@@ -52,7 +53,7 @@ export function RepositoryCommitsManager({
   const [log] = pages;
 
   if (!log) {
-    const withoutPages = getCommitLogWithoutPages({ error, failureReason });
+    const withoutPages = getCommitLogWithoutPages({ error, failureReason, isFetching });
 
     switch (withoutPages.kind) {
       case "unavailable":
@@ -60,7 +61,9 @@ export function RepositoryCommitsManager({
           <RepositoryCommitsEmptyState
             log={withoutPages.error.log}
             repositoryId={repositoryId}
-            emptyState={getEmptyState(withoutPages.error)}
+            emptyState={getEmptyState(withoutPages.error, {
+              isRetrying: withoutPages.isRetrying,
+            })}
           />
         );
       case "failed":

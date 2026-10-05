@@ -8,7 +8,10 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
-import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/queries/repository-commits.constants";
+import {
+  REPOSITORY_COMMITS_MAX_RETRIES,
+  REPOSITORY_COMMITS_RETRY_DELAY_MS,
+} from "@/entities/repository/ui/queries/repository-commits.constants";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -372,6 +375,29 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("asks for a refresh once it stops retrying an unavailable answer", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(NOT_CLONED_MESSAGE)).toBeVisible();
+
+    // WHEN
+    for (let retry = 1; retry <= REPOSITORY_COMMITS_MAX_RETRIES; retry++) {
+      await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+      await expect.poll(() => apiMock.mock.calls.length).toBe(retry + 1);
+    }
+
+    // THEN
+    await expect
+      .element(component.getByText("No worker has answered yet. Refresh to check again."))
+      .toBeVisible();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    expect(component.getByText(NOT_CLONED_MESSAGE).query()).toBeNull();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    expect(apiMock).toHaveBeenCalledTimes(REPOSITORY_COMMITS_MAX_RETRIES + 1);
+  });
+
   test.each([
     {
       name: "reading commits is not implemented",
@@ -502,6 +528,44 @@ describe("RepositoryCommitsManager", () => {
     await queryClient.refetchQueries();
     await expect.poll(() => staleNotice.query()).toBeNull();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+  });
+
+  test("hides the stale notice while a refresh runs after an older page failed", async () => {
+    // GIVEN
+    let answerRefresh: (result: ApiResult) => void = () => {};
+    apiMock
+      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockReturnValueOnce(
+        new Promise<ApiResult>((resolve) => {
+          answerRefresh = resolve;
+        })
+      )
+      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+    const component = await renderTab();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+    const staleNotice = component.getByText(STALE_NOTICE);
+
+    // WHEN
+    await component.getByRole("button", { name: "Refresh data" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Refresh data" }))
+      .toHaveAttribute("aria-disabled", "true");
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(staleNotice.query()).toBeNull();
+    answerRefresh(apiResult(generateFirstCommitsPage()));
+    await expect
+      .element(component.getByRole("button", { name: "Refresh data" }))
+      .not.toHaveAttribute("aria-disabled", "true");
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    expect(staleNotice.query()).toBeNull();
   });
 
   test("drops the previous branch's rows when the branch changes", async () => {
