@@ -51,7 +51,7 @@ def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
     return NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db))
 
 
-async def add_pool_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end: int) -> Node:
+async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int) -> Node:
     pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
     await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
     await pool_range.save(db=db)
