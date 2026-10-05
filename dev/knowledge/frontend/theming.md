@@ -104,14 +104,15 @@ Two things manage the class, and one way reads it:
 1. **The pre-paint script** in `frontend/app/index.html` — a blocking inline script in `<head>`
    that applies the class before the first frame, from the `infrahub.theme.choice` localStorage key. It
    is deliberately outside the module graph (it must run before any bundle loads), so the key is
-   duplicated there verbatim — renaming it means changing both files in the same commit. The key
-   holds `light`, `dark`, or `system`; `system` is resolved by the script against
-   `prefers-color-scheme`, so a desktop that changed appearance between visits reloads into its
-   current appearance. A missing key resolves like `system`, so a first visit on a dark desktop
-   paints dark before the app boots.
+   duplicated there, along with the rule that resolves it. The key holds `light`, `dark`, or
+   `system`; `system` is resolved by the script against `prefers-color-scheme`, so a desktop that
+   changed appearance between visits reloads into its current appearance. A missing key, a value
+   that is not a theme, and blocked site data all resolve like `system`, so a first visit on a dark
+   desktop paints dark before the app boots. Unit tests run the script, so a renamed key or a broken
+   rule fails `pnpm test`.
 2. **`ThemeProvider`** (`entities/config/ui/theme-provider.tsx`) — the app's own implementation,
-   no library. In `app/app.tsx` it comes after the providers that render nothing and before every
-   provider that renders UI, so the config loading and error screens already follow it.
+   no library. It is the outermost component in `app/app.tsx`, above the error boundary, because
+   it depends on nothing and every screen, the error fallback included, can then read it.
    `infrahub.theme.choice` holds the user's pick; a browser with no stored choice follows
    `system`, and other tabs pick up a change through the `storage` event.
 
@@ -174,11 +175,11 @@ once. The two legitimate exceptions, both from
 
 | Concern | Test |
 |---|---|
-| Choice, desktop tracking, cross-tab sync, transition freeze | `entities/config/ui/theme-provider.test.tsx` |
+| Choice, desktop tracking, cross-tab sync, transition freeze, pre-paint script | `entities/config/ui/theme-provider.test.tsx` |
 | The Theme submenu in the account menu, alpha tag | `entities/user-profile/ui/account-menu.test.tsx` |
 | Mermaid renders in the active theme, reacts to a flip, author directive wins | `shared/components/editor/markdown/markdown-with-mermaid.test.tsx` (asserts the colours baked into the real SVG) |
 | First paint in both palettes, persistence | `tests/e2e/test_theme.py` (pytest-playwright, needs a stack) |
 | Docs screenshots stay light | pinned in `tests/e2e/helpers.py::save_screenshot_for_docs` |
 
-The pre-paint script itself is reachable only by the e2e suite — it sits outside the module graph,
-so no vitest test can import it.
+The pre-paint script sits outside the module graph, so the unit tests read it through
+`index.html?raw` and runs it in the test page; the e2e suite covers it in a real first load.

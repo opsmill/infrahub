@@ -26,23 +26,23 @@ addCollection(mdiIcons);
 
 export function App() {
   return (
-    <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
-      <NuqsAdapter>
-        <Provider store={store}>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <ThemeProvider>
+    <ThemeProvider>
+      <ErrorBoundary FallbackComponent={ErrorBoundaryApp}>
+        <NuqsAdapter>
+          <Provider store={store}>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
                 <ConfigProvider>
                   <DatePreferencesProvider>
                     <RouterProvider router={router} />
                   </DatePreferencesProvider>
                 </ConfigProvider>
-              </ThemeProvider>
-            </AuthProvider>
-            <TanStackQueryDevtools buttonPosition="bottom-left" />
-          </QueryClientProvider>
-        </Provider>
-      </NuqsAdapter>
-    </ErrorBoundary>
+              </AuthProvider>
+              <TanStackQueryDevtools buttonPosition="bottom-left" />
+            </QueryClientProvider>
+          </Provider>
+        </NuqsAdapter>
+      </ErrorBoundary>
+    </ThemeProvider>
   );
 }

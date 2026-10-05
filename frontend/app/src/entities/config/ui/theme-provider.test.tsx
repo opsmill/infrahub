@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { ResolvedTheme } from "@/entities/config/domain/model/theme";
 import { ThemeProvider, useTheme } from "@/entities/config/ui/theme-provider";
 
+import indexHtml from "../../../../index.html?raw";
 import { render } from "../../../../tests/components/render";
 
 const Probe = () => {
@@ -21,9 +23,9 @@ const Probe = () => {
 
 const isDark = () => document.documentElement.classList.contains("dark");
 
-function mockDesktop(prefersDark: boolean) {
+function mockSystemTheme(systemTheme: ResolvedTheme) {
   const listeners = new Set<() => void>();
-  let matches = prefersDark;
+  let matches = systemTheme === "dark";
   vi.spyOn(window, "matchMedia").mockImplementation(
     (query) =>
       ({
@@ -36,10 +38,16 @@ function mockDesktop(prefersDark: boolean) {
       }) as unknown as MediaQueryList
   );
 
-  return (nextPrefersDark: boolean) => {
-    matches = nextPrefersDark;
+  return (nextSystemTheme: ResolvedTheme) => {
+    matches = nextSystemTheme === "dark";
     listeners.forEach((listener) => listener());
   };
+}
+
+function runPrePaintScript() {
+  const script = document.createElement("script");
+  script.textContent = indexHtml.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? "";
+  document.head.append(script);
 }
 
 describe("ThemeProvider", () => {
@@ -56,7 +64,7 @@ describe("ThemeProvider", () => {
 
   test("follows the desktop for a visitor who never chose", async () => {
     // GIVEN
-    mockDesktop(true);
+    mockSystemTheme("dark");
 
     // WHEN
     const component = await render(
@@ -73,7 +81,7 @@ describe("ThemeProvider", () => {
 
   test("tracks a desktop that changes appearance while the page is open", async () => {
     // GIVEN
-    const setDesktop = mockDesktop(false);
+    const setSystemTheme = mockSystemTheme("light");
     await render(
       <ThemeProvider>
         <Probe />
@@ -82,7 +90,7 @@ describe("ThemeProvider", () => {
     expect(isDark()).toBe(false);
 
     // WHEN
-    setDesktop(true);
+    setSystemTheme("dark");
 
     // THEN
     await expect.poll(isDark).toBe(true);
@@ -90,7 +98,7 @@ describe("ThemeProvider", () => {
 
   test("prefers an explicit choice over the desktop", async () => {
     // GIVEN
-    mockDesktop(true);
+    mockSystemTheme("dark");
     localStorage.setItem("infrahub.theme.choice", "light");
 
     // WHEN
@@ -107,7 +115,7 @@ describe("ThemeProvider", () => {
 
   test("persists a choice and paints it", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     const component = await render(
       <ThemeProvider>
         <Probe />
@@ -124,7 +132,7 @@ describe("ThemeProvider", () => {
 
   test("lets transitions run again once the palette has switched", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     const component = await render(
       <ThemeProvider>
         <Probe />
@@ -142,7 +150,7 @@ describe("ThemeProvider", () => {
 
   test("picks up a choice made in another tab", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     const component = await render(
       <ThemeProvider>
         <Probe />
@@ -160,7 +168,7 @@ describe("ThemeProvider", () => {
 
   test("falls back to system when another tab clears storage", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     localStorage.setItem("infrahub.theme.choice", "dark");
     const component = await render(
       <ThemeProvider>
@@ -180,7 +188,7 @@ describe("ThemeProvider", () => {
 
   test("still applies a choice when the browser blocks storage", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     const blocked = () => {
       throw new DOMException("Site data is blocked", "SecurityError");
     };
@@ -203,7 +211,7 @@ describe("ThemeProvider", () => {
 
   test("ignores a stored value that is not a theme", async () => {
     // GIVEN
-    mockDesktop(false);
+    mockSystemTheme("light");
     localStorage.setItem("infrahub.theme.choice", "sepia");
 
     // WHEN
@@ -215,5 +223,38 @@ describe("ThemeProvider", () => {
 
     // THEN
     await expect.element(component.getByTestId("theme")).toHaveTextContent("system");
+  });
+
+  test.each([
+    { stored: "light", systemTheme: "dark", paintsDark: false },
+    { stored: "dark", systemTheme: "light", paintsDark: true },
+    { stored: "system", systemTheme: "dark", paintsDark: true },
+  ] as const)(
+    "index.html for a stored $stored on a $systemTheme system, paints dark: $paintsDark",
+    ({ stored, systemTheme, paintsDark }) => {
+      // GIVEN
+      mockSystemTheme(systemTheme);
+      localStorage.setItem("infrahub.theme.choice", stored);
+
+      // WHEN
+      runPrePaintScript();
+
+      // THEN
+      expect(isDark()).toBe(paintsDark);
+    }
+  );
+
+  test("index.html follows the system theme when storage is blocked", () => {
+    // GIVEN
+    mockSystemTheme("dark");
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Site data is blocked", "SecurityError");
+    });
+
+    // WHEN
+    runPrePaintScript();
+
+    // THEN
+    expect(isDark()).toBe(true);
   });
 });
