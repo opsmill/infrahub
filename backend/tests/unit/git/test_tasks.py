@@ -118,28 +118,55 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 class ImportStatusCase:
     name: str
     sync_status: str | None
+    internal_status: str
 
 
 PASSING_IMPORT_STATUS_CASES = [
-    ImportStatusCase(name="not_written_on_branch", sync_status=None),
-    ImportStatusCase(name="in_sync", sync_status=RepositorySyncStatus.IN_SYNC.value),
-    ImportStatusCase(name="syncing", sync_status=RepositorySyncStatus.SYNCING.value),
-    ImportStatusCase(name="unknown", sync_status=RepositorySyncStatus.UNKNOWN.value),
+    ImportStatusCase(
+        name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE.value
+    ),
+    ImportStatusCase(
+        name="in_sync",
+        sync_status=RepositorySyncStatus.IN_SYNC.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="syncing",
+        sync_status=RepositorySyncStatus.SYNCING.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="unknown",
+        sync_status=RepositorySyncStatus.UNKNOWN.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="inactive_after_import_error",
+        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=RepositoryInternalStatus.INACTIVE.value,
+    ),
 ]
 
 
 @pytest.mark.parametrize("case", PASSING_IMPORT_STATUS_CASES, ids=[case.name for case in PASSING_IMPORT_STATUS_CASES])
 def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCase) -> None:
     outcome = evaluate_import_status(
-        sync_status=case.sync_status, repository_name="dealership-car", branch_name="remove-ca"
+        sync_status=case.sync_status,
+        internal_status=case.internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
     )
 
     assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
 
-def test_evaluate_import_status_fails_on_import_error() -> None:
+@pytest.mark.parametrize(
+    "internal_status", [RepositoryInternalStatus.ACTIVE.value, RepositoryInternalStatus.STAGING.value]
+)
+def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> None:
     outcome = evaluate_import_status(
         sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=internal_status,
         repository_name="dealership-car",
         branch_name="remove-ca",
     )

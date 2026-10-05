@@ -252,6 +252,9 @@ class CheckRepositoryImportStatus(BaseModel):
     proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the Repository")
+    repository_internal_status: str = Field(
+        ..., description="The internal status of the Repository on the source branch"
+    )
     source_branch: str = Field(..., description="The source branch")
 
 

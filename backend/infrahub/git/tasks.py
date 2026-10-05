@@ -54,7 +54,7 @@ from ..workflows.catalogue import (
     REQUEST_ARTIFACT_GENERATE,
 )
 from ..workflows.utils import add_branch_tag, add_tags
-from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME
+from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -113,12 +113,18 @@ class ImportStatusOutcome:
     message: str
 
 
-def evaluate_import_status(*, sync_status: str | None, repository_name: str, branch_name: str) -> ImportStatusOutcome:
+def evaluate_import_status(
+    *, sync_status: str | None, internal_status: str, repository_name: str, branch_name: str
+) -> ImportStatusOutcome:
     """Decide whether the objects of a repository are usable on a branch.
 
     `sync_status` is the status written on the branch itself, or None when the branch only inherits one.
+    A repository that is inactive on the branch passes, so disabling it clears an earlier import failure.
     """
-    if sync_status != RepositorySyncStatus.ERROR_IMPORT.value:
+    if (
+        internal_status == RepositoryInternalStatus.INACTIVE.value
+        or sync_status != RepositorySyncStatus.ERROR_IMPORT.value
+    ):
         return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
 
     return ImportStatusOutcome(
@@ -1169,6 +1175,7 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
         proposed_change=model.proposed_change,
         repository_id=model.repository,
         repository_name=repository.name.value,
+        repository_internal_status=repository.internal_status.value,
         source_branch=model.source_branch,
     )
     check_coroutines = [
@@ -1203,6 +1210,13 @@ async def trigger_internal_checks(model: TriggerRepositoryInternalChecks, contex
                 expected_return=ValidatorConclusion,
             )
         )
+    else:
+        await validator.checks.fetch()
+        for relationship in validator.checks.peers:
+            check_peer = relationship.peer
+            if check_peer.typename == InfrahubKind.FILECHECK and check_peer.kind.value == MERGE_CONFLICT_CHECK_KIND:
+                log.info(f"Removing merge conflict check '{check_peer.name.value}', which no longer applies")
+                await check_peer.delete()
 
     checks_in_execution = ",".join(check_execution_ids)
     log.info(f"Checks in execution {checks_in_execution}")
@@ -1240,6 +1254,7 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
 
     outcome = evaluate_import_status(
         sync_status=sync_status,
+        internal_status=model.repository_internal_status,
         repository_name=model.repository_name,
         branch_name=model.source_branch,
     )
@@ -1308,7 +1323,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
     existing_checks = {}
     for relationship in validator.checks.peers:
         existing_check = relationship.peer
-        if existing_check.typename == InfrahubKind.FILECHECK and existing_check.kind.value == "MergeConflictCheck":
+        if existing_check.typename == InfrahubKind.FILECHECK and existing_check.kind.value == MERGE_CONFLICT_CHECK_KIND:
             check_key = ""
             if existing_check.files.value:
                 check_key = "".join(existing_check.files.value)
@@ -1329,7 +1344,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
                     data={
                         "name": conflict,
                         "origin": "ConflictCheck",
-                        "kind": "MergeConflictCheck",
+                        "kind": MERGE_CONFLICT_CHECK_KIND,
                         "validator": model.validator_id,
                         "created_at": Timestamp().to_string(),
                         "files": [conflict],
@@ -1352,7 +1367,7 @@ async def run_check_merge_conflicts(model: CheckRepositoryMergeConflicts) -> Val
             data={
                 "name": "Merge Conflict Check",
                 "origin": "ConflictCheck",
-                "kind": "MergeConflictCheck",
+                "kind": MERGE_CONFLICT_CHECK_KIND,
                 "validator": model.validator_id,
                 "created_at": Timestamp().to_string(),
                 "conclusion": validator_conclusion.value,

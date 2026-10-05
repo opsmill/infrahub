@@ -5,12 +5,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreGenericRepository, CoreProposedChange, CoreStandardCheck
+from infrahub_sdk.protocols import CoreFileCheck, CoreGenericRepository, CoreProposedChange, CoreStandardCheck
 
-from infrahub.core.constants import InfrahubKind, RepositorySyncStatus, ValidatorConclusion, ValidatorState
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositorySyncStatus,
+    ValidatorConclusion,
+    ValidatorState,
+)
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreValidator
-from infrahub.git.constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME
+from infrahub.git.constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 from tests.helpers.file_repo import FileRepo
@@ -28,6 +34,7 @@ if TYPE_CHECKING:
 BRANCH_NAME = "repository-import-status"
 INHERITED_BRANCH_NAME = "repository-import-status-inherited"
 REBASED_BRANCH_NAME = "repository-import-status-rebased"
+DEACTIVATED_BRANCH_NAME = "repository-import-status-deactivated"
 MANAGED_REPOSITORY = "core-repo"
 READ_ONLY_REPOSITORY = "read-only-repo"
 RERUN_REPOSITORY_CHECKS = """
@@ -291,3 +298,56 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
             assert [(check.name.value, check.conclusion.value) for check in checks] == [
                 (IMPORT_STATUS_CHECK_NAME, ValidatorConclusion.FAILURE.value)
             ]
+
+    async def test_deactivating_the_repository_clears_the_failure(
+        self, db: InfrahubDatabase, repository_ids: dict[str, str], client: InfrahubClient
+    ) -> None:
+        """Deactivating a repository on the branch passes its import check and drops its merge-conflict check."""
+        await client.branch.create(branch_name=DEACTIVATED_BRANCH_NAME, sync_with_git=True)
+        for repository_id in repository_ids.values():
+            await self._set_sync_status(
+                client=client,
+                repository_id=repository_id,
+                branch=DEACTIVATED_BRANCH_NAME,
+                status=RepositorySyncStatus.ERROR_IMPORT,
+            )
+
+        proposed_change = await client.create(
+            kind=CoreProposedChange,
+            data={"source_branch": DEACTIVATED_BRANCH_NAME, "destination_branch": "main", "name": "deactivated"},
+        )
+        await proposed_change.save()
+
+        managed_validator = await self._wait_for_repository_validator(
+            db=db,
+            proposed_change_id=proposed_change.id,
+            name=MANAGED_REPOSITORY,
+            conclusion=ValidatorConclusion.FAILURE,
+        )
+        merge_conflict_checks = await client.filters(kind=CoreFileCheck, validator__ids=managed_validator.id)
+        assert [check.kind.value for check in merge_conflict_checks] == [MERGE_CONFLICT_CHECK_KIND]
+
+        for repository_id in repository_ids.values():
+            repository = await client.get(kind=CoreGenericRepository, id=repository_id, branch=DEACTIVATED_BRANCH_NAME)
+            repository.internal_status.value = RepositoryInternalStatus.INACTIVE.value
+            await repository.save()
+        await client.execute_graphql(query=RERUN_REPOSITORY_CHECKS, variables={"id": proposed_change.id})
+
+        for repository_name in repository_ids:
+            validator = await self._wait_for_repository_validator(
+                db=db,
+                proposed_change_id=proposed_change.id,
+                name=repository_name,
+                conclusion=ValidatorConclusion.SUCCESS,
+            )
+            standard_checks = await client.filters(kind=CoreStandardCheck, validator__ids=validator.id)
+            assert [(check.name.value, check.conclusion.value) for check in standard_checks] == [
+                (IMPORT_STATUS_CHECK_NAME, ValidatorConclusion.SUCCESS.value)
+            ]
+            assert await client.filters(kind=CoreFileCheck, validator__ids=validator.id) == []
+
+        proposed_change.state.value = ProposedChangeState.MERGED.value
+        await proposed_change.save()
+
+        proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change.id)
+        assert proposed_change_after.state.value == ProposedChangeState.MERGED.value

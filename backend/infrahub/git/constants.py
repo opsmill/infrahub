@@ -9,3 +9,4 @@ WRITE_ACCESS_PROBE_REF = "infrahub-write-access-probe-do-not-create"
 
 IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
 IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
+MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"
