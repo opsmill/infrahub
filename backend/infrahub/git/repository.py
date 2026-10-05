@@ -537,6 +537,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     ) -> None:
         """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
 
+        The branch is classified first, so a branch that git cannot classify keeps its worktree.
+
         Raises:
             RepositoryError: When git cannot classify the branch or move its worktree.
             ValueError: When the graph has no ``import_branch``, or the branch has no worktree here.
@@ -615,9 +617,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     ) -> str | None:
         """Bring this worker's worktree of a branch onto the remote head and return the commit to import.
 
-        Whether the worktree moves is decided from the worktree itself, never from the classification:
-        a worker whose graph already records the remote head still resets a worktree that holds a
-        history the remote discarded. Returns None when there is nothing to import.
+        The worktree head against the remote head decides how the worktree moves, so a worker whose
+        graph already records the remote head still resets a worktree that holds a history the remote
+        discarded. The classification decides one case only: a worktree already on the remote head is
+        left alone unless the graph records another commit. Returns None when there is nothing to import.
 
         Raises:
             ValueError: When the branch has no worktree on this worker.
