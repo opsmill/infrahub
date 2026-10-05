@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
+    from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 
@@ -21,7 +22,8 @@ class NumberPoolShorthandMirror:
     range set is expected to sync afterwards.
     """
 
-    def __init__(self, repository: NumberPoolRepository) -> None:
+    def __init__(self, db: InfrahubDatabase, repository: NumberPoolRepository) -> None:
+        self.db = db
         self.repository = repository
 
     async def sync(
@@ -52,4 +54,7 @@ class NumberPoolShorthandMirror:
         if pool.get_attribute("start_range").value == start and pool.get_attribute("end_range").value == end:
             return
 
-        await self.repository.save_shorthand(pool=pool, start=start, end=end, at=at, user_id=user_id)
+        pool.get_attribute("start_range").value = start
+        pool.get_attribute("end_range").value = end
+        # Only the two bounds are saved, so other pending changes on the caller's node stay unsaved.
+        await pool.save(db=self.db, at=at, user_id=user_id, fields=["start_range", "end_range"])

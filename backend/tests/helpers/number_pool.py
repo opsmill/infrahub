@@ -48,7 +48,7 @@ async def register_and_provision_number_pools(db: InfrahubDatabase, branch: Bran
 
 
 def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
-    return NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db))
+    return NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db))
 
 
 async def add_pool_range(db: InfrahubDatabase, pool: CoreNumberPool, start: int, end: int) -> Node:

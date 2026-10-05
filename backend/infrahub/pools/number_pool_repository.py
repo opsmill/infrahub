@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.resource_manager import (
@@ -89,16 +88,3 @@ class NumberPoolRepository:
             at=at,
         )
         await query.execute(db=self.db)
-
-    async def save_shorthand(
-        self,
-        pool: CoreNumberPool,
-        start: int | None,
-        end: int | None,
-        at: Timestamp | None = None,
-        user_id: str = SYSTEM_USER_ID,
-    ) -> None:
-        """Write the pool's deprecated bounds, leaving every other pending change on the node unsaved."""
-        pool.get_attribute("start_range").value = start
-        pool.get_attribute("end_range").value = end
-        await pool.save(db=self.db, at=at, user_id=user_id, fields=["start_range", "end_range"])
