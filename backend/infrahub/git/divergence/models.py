@@ -37,6 +37,8 @@ class RefDivergence:
             RefClassification.UNCHANGED,
         ):
             raise ValueError(f"A branch with no remote head cannot be {self.classification}")
+        if self.remote_head is not None and self.classification is RefClassification.REMOTE_ABSENT:
+            raise ValueError(f"A branch whose remote head reads {self.remote_head} is not remote-absent")
 
         # Nothing moved and something moved are the same question asked twice, so the two commits
         # matching decides unchanged on its own.

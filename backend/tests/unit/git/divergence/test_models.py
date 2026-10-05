@@ -117,6 +117,13 @@ COMBINATION_TEST_CASES: list[CombinationTestCase] = [
         message=f"A branch is not unchanged when {IMPORTED} was imported and the remote reads None",
     ),
     CombinationTestCase(
+        name="remote_absent_while_the_remote_still_has_a_head",
+        classification=RefClassification.REMOTE_ABSENT,
+        imported=IMPORTED,
+        remote=REMOTE,
+        message=f"A branch whose remote head reads {REMOTE} is not remote-absent",
+    ),
+    CombinationTestCase(
         name="unchanged_absent_from_both_sides",
         classification=RefClassification.UNCHANGED,
         imported=None,
