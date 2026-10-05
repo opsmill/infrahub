@@ -1,5 +1,12 @@
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import type { RepositoryBranchStatusDropdown } from "@/entities/repository/domain/model/repository-branch-status";
+import type {
+  RepositoryBranchStatusDropdown,
+  RepositoryBranchStatusRow,
+} from "@/entities/repository/domain/model/repository-branch-status";
+
+export type { RepositoryBranchStatusDropdown, RepositoryBranchStatusRow };
+
+export type CompareSyncStatusSeverity = (a: string | null, b: string | null) => number;
 
 export type BranchRepositoryRef = Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">;
 

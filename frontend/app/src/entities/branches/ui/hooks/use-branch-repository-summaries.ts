@@ -23,6 +23,7 @@ import {
   RepositoryBranchStatusError,
   type RepositoryBranchStatusPage,
 } from "@/entities/repository/domain/model/repository-branch-status";
+import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
 
@@ -107,7 +108,8 @@ export function useBranchRepositorySummaries(
         branches,
         listFetch
           ? [listFetch]
-          : results.map((result, index) => toStatusFetch(repositories[index]!, result))
+          : results.map((result, index) => toStatusFetch(repositories[index]!, result)),
+        compareSyncStatusSeverity
       ),
   });
 }

@@ -5,14 +5,20 @@ import {
   REPOSITORY_SYNC_STATUS_IN_SYNC,
 } from "@/entities/repository/domain/model/repository";
 import { mapRepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
+import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 import { generateDropdown } from "../../../../../tests/fake/dropdown";
 import { generateRepositoryBranchStatus } from "../../../../../tests/fake/repository";
 import {
   type RepositoryStatusFetch,
-  summarizeBranchRepositories,
+  summarizeBranchRepositories as summarize,
 } from "./summarize-branch-repositories";
+
+const summarizeBranchRepositories = (
+  branches: Parameters<typeof summarize>[0],
+  fetches: Parameters<typeof summarize>[1]
+) => summarize(branches, fetches, compareSyncStatusSeverity);
 
 const IMPORT_ERROR = generateDropdown({
   value: REPOSITORY_SYNC_STATUS_ERROR_VALUE,

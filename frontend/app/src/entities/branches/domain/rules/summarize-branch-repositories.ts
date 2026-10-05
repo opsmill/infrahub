@@ -5,13 +5,11 @@ import type {
   BranchRepositoryRef,
   BranchRepositoryState,
   BranchRepositorySummary,
-  SyncStatusCount,
-} from "@/entities/branches/domain/model/branch-repository-summary";
-import type {
+  CompareSyncStatusSeverity,
   RepositoryBranchStatusDropdown,
   RepositoryBranchStatusRow,
-} from "@/entities/repository/domain/model/repository-branch-status";
-import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
+  SyncStatusCount,
+} from "@/entities/branches/domain/model/branch-repository-summary";
 
 export type RepositoryStatusFetch =
   | { status: "pending" }
@@ -48,9 +46,13 @@ function getSharedSummary(
   return null;
 }
 
-function compareStates(a: BranchRepositoryState, b: BranchRepositoryState): number {
+function compareStates(
+  compareSeverity: CompareSyncStatusSeverity,
+  a: BranchRepositoryState,
+  b: BranchRepositoryState
+): number {
   return (
-    compareSyncStatusSeverity(a.syncStatus.value, b.syncStatus.value) ||
+    compareSeverity(a.syncStatus.value, b.syncStatus.value) ||
     a.repository.name.localeCompare(b.repository.name, undefined, { sensitivity: "base" })
   );
 }
@@ -89,7 +91,8 @@ function countBySyncStatus(states: readonly BranchRepositoryState[]): SyncStatus
 
 export function summarizeBranchRepositories(
   branches: readonly BranchListItem[],
-  fetches: readonly RepositoryStatusFetch[]
+  fetches: readonly RepositoryStatusFetch[],
+  compareSeverity: CompareSyncStatusSeverity
 ): Record<string, BranchRepositorySummary> {
   const shared = getSharedSummary(fetches);
   if (shared) return Object.fromEntries(branches.map((branch) => [branch.name, shared]));
@@ -106,7 +109,7 @@ export function summarizeBranchRepositories(
           couldListBranch(repository, branch) && !rows.some((row) => row.name === branch.name)
       );
       if (cutBefore.length > 0) return [branch.name, truncatedSummary(cutBefore)];
-      const repositories = [...states].sort(compareStates);
+      const repositories = [...states].sort((a, b) => compareStates(compareSeverity, a, b));
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })
   );

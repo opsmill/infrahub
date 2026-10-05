@@ -6,13 +6,14 @@ import type {
   BranchRepositoryState,
   BranchRepositorySummary,
 } from "@/entities/branches/domain/model/branch-repository-summary";
-import { summarizeBranchRepositories } from "@/entities/branches/domain/rules/summarize-branch-repositories";
+import { summarizeBranchRepositories as summarize } from "@/entities/branches/domain/rules/summarize-branch-repositories";
 import { toBranchTableRows } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
 import { mapRepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
+import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { render } from "../../../../../tests/components/render";
@@ -20,6 +21,11 @@ import { initPointerTracking } from "../../../../../tests/components/utils";
 import { generateBranch } from "../../../../../tests/fake/branch";
 import { SYNC_STATUS } from "../../../../../tests/fake/branch-repositories";
 import { generateRepositoryBranchStatus } from "../../../../../tests/fake/repository";
+
+const summarizeBranchRepositories = (
+  branches: Parameters<typeof summarize>[0],
+  fetches: Parameters<typeof summarize>[1]
+) => summarize(branches, fetches, compareSyncStatusSeverity);
 
 vi.mock("@/entities/authentication/ui/auth-provider");
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-changes.query");
