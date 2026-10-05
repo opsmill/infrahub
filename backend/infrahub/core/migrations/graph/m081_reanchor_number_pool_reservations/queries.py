@@ -177,8 +177,7 @@ WHERE size(records) > 1
 WITH
     head(records) AS survivor,
     tail(records) AS losers,
-    reduce(earliest = head(records).from, record IN records |
-        CASE WHEN record.from < earliest THEN record.from ELSE earliest END) AS earliest
+    last(records).from AS earliest
 CALL (survivor, losers, earliest) {
     SET survivor.from = earliest
     WITH losers

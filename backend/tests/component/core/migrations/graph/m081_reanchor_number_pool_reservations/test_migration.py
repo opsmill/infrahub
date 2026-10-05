@@ -16,7 +16,6 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
-from infrahub.core.manager import NodeManager
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
@@ -25,14 +24,13 @@ from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservation
     POOL_END,
     POOL_START,
     TRACKED_ATTRIBUTE_NAME,
+    Builder,
+    LegacyCase,
     MigrationRun,
     ReservationRecord,
     allocate_from_pool,
-    attribute_id_of,
     convert_legacy_records,
     create_legacy_record,
-    create_legacy_source_edge,
-    create_pool,
     create_ticket,
     create_ticket_allocated_on_update,
     create_ticket_with_value,
@@ -197,6 +195,379 @@ def carried(properties: dict[str, Any]) -> dict[str, Any]:
     return {name: properties.get(name) for name in CARRIED_PROPERTIES}
 
 
+# -----------------------------------------------------------------------------------------------
+# The legacy cases
+# -----------------------------------------------------------------------------------------------
+
+
+class MigratedCopy(LegacyCase):
+    """A kind migration leaves two `Node` vertices on one uuid, both owning the original attribute."""
+
+    open_legacy_records = ("migrated_copy",)
+
+    async def before_tickets(self) -> None:
+        # The kind-change branch must see no ticket but this one, so the kind migration only affects it.
+        self.keep(
+            "migrated_copy",
+            await create_ticket_with_value(db=self.db, title="migrated_copy", value=MIGRATED_COPY_VALUE),
+        )
+        await create_legacy_record(db=self.db, pool_id=self.pools["gamma"].id, node_id=self.id("migrated_copy"))
+        kind_change = await create_branch(db=self.db, branch_name="kind-change")
+        kind_migration = await migrate_ticket_inheritance(db=self.db, branch=kind_change)
+        assert kind_migration.errors == []
+        assert kind_migration.nbr_migrations_executed == 1
+
+
+class OnMain(LegacyCase):
+    """Two plain allocations on the default branch, each with a stored source edge.
+
+    on_main_a's value also carries a record whose identifier names no object.
+    """
+
+    allocated = (("on_main_a", "alpha"), ("on_main_b", "alpha"))
+
+    async def before_feature(self) -> None:
+        await create_legacy_record(
+            db=self.db, pool_id=self.pools["alpha"].id, node_id=self.id("on_main_a"), identifier=ORPHAN_IDENTIFIER
+        )
+        for name, pool in self.allocated:
+            await self.legacy_source_edge(name, pool=pool)
+
+
+class OnFeature(LegacyCase):
+    """Allocated on the feature branch only."""
+
+    async def after_feature(self, feature: Branch) -> None:
+        self.keep(
+            "on_feature",
+            await create_ticket(db=self.db, title="on_feature", pool=self.pools["alpha"], branch=feature),
+        )
+        assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=[self.id("on_feature")]) == 1
+        await self.legacy_source_edge("on_feature", pool="alpha", branch=feature)
+
+
+class RePooled(LegacyCase):
+    """A second pool claimed the object without ending the first pool's record; both are stored as its source."""
+
+    allocated = (("re_pooled", "alpha"),)
+    earliest_from = ("re_pooled",)
+
+    async def before_feature(self) -> None:
+        await create_legacy_record(
+            db=self.db,
+            pool_id=self.pools["beta"].id,
+            node_id=self.id("re_pooled"),
+            at=Timestamp().subtract(seconds=60),
+        )
+        for pool in ("alpha", "beta"):
+            await self.legacy_source_edge("re_pooled", pool=pool)
+
+
+class DeletedOnBranch(LegacyCase):
+    """Deleted on the feature branch only, so the default branch still holds its number."""
+
+    allocated = (("deleted_on_branch", "alpha"),)
+    open_legacy_records = ("deleted_on_branch",)
+
+    async def before_feature(self) -> None:
+        await self.legacy_source_edge("deleted_on_branch", pool="alpha")
+
+    async def after_feature(self, feature: Branch) -> None:
+        await self.delete("deleted_on_branch", branch=feature)
+
+
+class FromBeta(LegacyCase):
+    """The only allocation of the second pool whose figures are compared across the upgrade."""
+
+    allocated = (("from_beta", "beta"),)
+
+    async def before_feature(self) -> None:
+        await self.legacy_source_edge("from_beta", pool="beta")
+
+
+class AttributeGone(LegacyCase):
+    """The record names an attribute its object no longer carries."""
+
+    allocated = (("attribute_gone", "alpha"),)
+
+    async def before_feature(self) -> None:
+        await self.legacy_source_edge("attribute_gone", pool="alpha")
+
+    async def after_feature(self, feature: Branch) -> None:
+        await rename_tracked_attribute(db=self.db, node_id=self.id("attribute_gone"), new_name=RENAMED_ATTRIBUTE_NAME)
+
+
+class Moved(LegacyCase):
+    """An untouched legacy record."""
+
+    allocated = (("moved", "gamma"),)
+
+
+class Deleted(LegacyCase):
+    """Deleted before any branch existed, so no branch reads the number."""
+
+    allocated = (("deleted", "gamma"),)
+    open_legacy_records = ("deleted",)
+
+    async def before_feature(self) -> None:
+        await self.delete("deleted")
+
+
+class DeletedAfterBranching(LegacyCase):
+    """Deleted on the default branch after the feature branch forked, so the feature branch still reads it."""
+
+    allocated = (("deleted_after_branching", "gamma"),)
+    open_legacy_records = ("deleted_after_branching",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        await self.delete("deleted_after_branching")
+
+
+class Updated(LegacyCase):
+    """Moved off the number before any branch existed."""
+
+    allocated = (("updated", "gamma"),)
+    open_legacy_records = ("updated",)
+
+    async def before_feature(self) -> None:
+        await update_tracked_value(db=self.db, node_id=self.id("updated"), value=UPDATED_VALUE)
+
+
+class UpdatedAfterBranching(LegacyCase):
+    """Moved off the number on the default branch after the feature branch forked."""
+
+    allocated = (("updated_after_branching", "gamma"),)
+    open_legacy_records = ("updated_after_branching",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        await update_tracked_value(
+            db=self.db, node_id=self.id("updated_after_branching"), value=UPDATED_AFTER_BRANCHING_VALUE
+        )
+
+
+class Duplicated(LegacyCase):
+    """One pool holds several records for one object, written at different moments."""
+
+    allocated = (("duplicated", "gamma"),)
+    earliest_from = ("duplicated",)
+
+    async def before_feature(self) -> None:
+        for seconds in (600, 60):
+            await create_legacy_record(
+                db=self.db,
+                pool_id=self.pools["gamma"].id,
+                node_id=self.id("duplicated"),
+                at=Timestamp().subtract(seconds=seconds),
+            )
+
+
+class SameMoment(LegacyCase):
+    """One pool holds several records for one object, written at the same moment."""
+
+    allocated = (("same_moment", "gamma"),)
+
+    async def before_feature(self) -> None:
+        shared_moment = Timestamp().subtract(seconds=60)
+        for _ in range(2):
+            await create_legacy_record(
+                db=self.db, pool_id=self.pools["gamma"].id, node_id=self.id("same_moment"), at=shared_moment
+            )
+
+
+class Converted(LegacyCase):
+    """Conversion deletes the object and re-creates it under a new uuid holding the same number."""
+
+    allocated = (("converted_from", "converted"),)
+    open_legacy_records = ("converted_to",)
+
+    async def before_feature(self) -> None:
+        await self.legacy_source_edge("converted_from", pool="converted")
+        converted_number = self.number("converted_from")
+        await self.delete("converted_from")
+        self.keep(
+            "converted_to", await create_ticket_with_value(db=self.db, title="converted_to", value=converted_number)
+        )
+        assert (
+            await convert_legacy_records(
+                db=self.db, from_node_id=self.id("converted_from"), to_node_id=self.id("converted_to")
+            )
+            == 1
+        )
+
+
+class Retired(LegacyCase):
+    """The pool that reserved the number has been deleted."""
+
+    allocated = (("retired", "retired"),)
+
+    async def before_feature(self) -> None:
+        await self.pools["retired"].delete(db=self.db)
+
+
+class BranchUpdatedMainUpdated(LegacyCase):
+    """The branch moves off the reserved number, then main moves off it too."""
+
+    allocated = (("branch_updated_main_updated", "gamma"),)
+    open_legacy_records = ("branch_updated_main_updated",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        node_id = self.id("branch_updated_main_updated")
+        await update_tracked_value(
+            db=self.db, node_id=node_id, value=BRANCH_VALUES["branch_updated_main_updated"], branch=feature
+        )
+        await update_tracked_value(db=self.db, node_id=node_id, value=MAIN_VALUE_AFTER_BRANCH_UPDATE)
+
+
+class BranchUpdatedMainDeleted(LegacyCase):
+    """The branch moves off the reserved number, then main deletes the object."""
+
+    allocated = (("branch_updated_main_deleted", "gamma"),)
+    open_legacy_records = ("branch_updated_main_deleted",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        await update_tracked_value(
+            db=self.db,
+            node_id=self.id("branch_updated_main_deleted"),
+            value=BRANCH_VALUES["branch_updated_main_deleted"],
+            branch=feature,
+        )
+        await self.delete("branch_updated_main_deleted")
+
+
+class SetBackMain(LegacyCase):
+    """Main leaves the reserved number and comes back to it before any branch exists."""
+
+    allocated = (("set_back_main", "gamma"),)
+    open_legacy_records = ("set_back_main",)
+
+    async def before_feature(self) -> None:
+        node_id = self.id("set_back_main")
+        await update_tracked_value(db=self.db, node_id=node_id, value=SET_BACK_MAIN_DETOUR)
+        await update_tracked_value(db=self.db, node_id=node_id, value=self.number("set_back_main"))
+
+
+class SetBackBranch(LegacyCase):
+    """Main moves off the number for good; the branch leaves it and comes back."""
+
+    allocated = (("set_back_branch", "gamma"),)
+    open_legacy_records = ("set_back_branch",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        node_id = self.id("set_back_branch")
+        await update_tracked_value(db=self.db, node_id=node_id, value=SET_BACK_BRANCH_MAIN_VALUE)
+        await update_tracked_value(db=self.db, node_id=node_id, value=SET_BACK_BRANCH_DETOUR, branch=feature)
+        await update_tracked_value(db=self.db, node_id=node_id, value=self.number("set_back_branch"), branch=feature)
+
+
+class RepooledOnMainAfterBranching(LegacyCase):
+    """A second pool claims the object on main while the first pool's number stays readable on the branch."""
+
+    allocated = (("repooled_on_main_after_branching", "repool_a"),)
+    open_legacy_records = ("repooled_on_main_after_branching",)
+    earliest_from = ("repooled_on_main_after_branching",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        node_id = self.id("repooled_on_main_after_branching")
+        await allocate_from_pool(db=self.db, node_id=node_id, pool=self.pools["repool_b"])
+        assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=[node_id]) == 1
+
+
+class RepooledOnBranch(LegacyCase):
+    """A second pool claims the object on the branch while the first pool's number stays readable on main."""
+
+    allocated = (("repooled_on_branch", "repool_a"),)
+    open_legacy_records = ("repooled_on_branch",)
+    earliest_from = ("repooled_on_branch",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        node_id = self.id("repooled_on_branch")
+        await allocate_from_pool(db=self.db, node_id=node_id, pool=self.pools["repool_b"], branch=feature)
+        assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=[node_id]) == 1
+
+
+class AllocatedOnUpdate(LegacyCase):
+    """The pre-upgrade code reserved after the attribute existed on update."""
+
+    async def create_tickets(self) -> None:
+        self.keep(
+            "allocated_on_update",
+            await create_ticket_allocated_on_update(db=self.db, title="allocated_on_update", pool=self.pools["gamma"]),
+        )
+        assert (
+            await rewrite_records_to_legacy_shape(
+                db=self.db, node_ids=[self.id("allocated_on_update")], backdate_seconds=0
+            )
+            == 1
+        )
+
+
+class SharedValue(LegacyCase):
+    """Three objects hold one number, which sits on a single shared value vertex."""
+
+    open_legacy_records = ("shared_dead", "shared_owner")
+
+    async def before_feature(self) -> None:
+        # shared_dead held the shared number with a record of its own, then was deleted.
+        self.keep("shared_dead", await create_ticket_with_value(db=self.db, title="shared_dead", value=SHARED_VALUE))
+        await create_legacy_record(db=self.db, pool_id=self.pools["gamma"].id, node_id=self.id("shared_dead"))
+        await self.delete("shared_dead")
+
+    async def after_feature(self, feature: Branch) -> None:
+        # shared_owner reserved the shared number on main after shared_dead let it go, and
+        # shared_hand_set holds the same number by hand on a branch that never saw shared_owner.
+        self.keep("shared_owner", await create_ticket_with_value(db=self.db, title="shared_owner", value=SHARED_VALUE))
+        await create_legacy_record(db=self.db, pool_id=self.pools["gamma"].id, node_id=self.id("shared_owner"))
+        self.keep(
+            "shared_hand_set",
+            await create_ticket_with_value(db=self.db, title="shared_hand_set", value=SHARED_VALUE, branch=feature),
+        )
+
+
+class Doomed(LegacyCase):
+    """The only copy lives on a branch that is being deleted."""
+
+    open_legacy_records = ("doomed",)
+
+    async def after_feature(self, feature: Branch) -> None:
+        doomed_branch = await create_branch(db=self.db, branch_name="doomed")
+        self.keep(
+            "doomed",
+            await create_ticket(db=self.db, title="doomed", pool=self.pools["gamma"], branch=doomed_branch),
+        )
+        assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=[self.id("doomed")]) == 1
+        await set_branch_status(db=self.db, branch_name=doomed_branch.name, status="DELETING")
+
+
+# Tickets are allocated in this order, which fixes the numbers the pool figures test pins.
+CASES: list[type[LegacyCase]] = [
+    MigratedCopy,
+    OnMain,
+    OnFeature,
+    RePooled,
+    DeletedOnBranch,
+    FromBeta,
+    AttributeGone,
+    Moved,
+    Deleted,
+    DeletedAfterBranching,
+    Updated,
+    UpdatedAfterBranching,
+    Duplicated,
+    SameMoment,
+    Converted,
+    Retired,
+    BranchUpdatedMainUpdated,
+    BranchUpdatedMainDeleted,
+    SetBackMain,
+    SetBackBranch,
+    RepooledOnMainAfterBranching,
+    RepooledOnBranch,
+    AllocatedOnUpdate,
+    SharedValue,
+    Doomed,
+]
+
+
 @dataclass
 class MigratedDatabase:
     default_branch: Branch
@@ -223,226 +594,8 @@ class TestMigration081:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema_scope_class: None
     ) -> MigratedDatabase:
         default_branch = default_branch_scope_class
-        # alpha and beta carry the cases whose pool figures are compared across the upgrade, so they
-        # allocate first and their numbers are known.
-        pools = {
-            name: await create_pool(db=db, name=name)
-            for name in ("alpha", "beta", "gamma", "converted", "retired", "repool_a", "repool_b")
-        }
-
-        # migrated_copy is the only ticket the kind-change branch can see, so the kind migration
-        # only affexts this object.
-        tickets: dict[str, Node] = {
-            "migrated_copy": await create_ticket_with_value(db=db, title="migrated_copy", value=MIGRATED_COPY_VALUE)
-        }
-        await create_legacy_record(db=db, pool_id=pools["gamma"].id, node_id=tickets["migrated_copy"].id)
-        kind_change = await create_branch(db=db, branch_name="kind-change")
-        kind_migration = await migrate_ticket_inheritance(db=db, branch=kind_change)
-        assert kind_migration.errors == []
-        assert kind_migration.nbr_migrations_executed == 1
-
-        for name, pool in (
-            ("on_main_a", "alpha"),
-            ("on_main_b", "alpha"),
-            ("re_pooled", "alpha"),
-            ("deleted_on_branch", "alpha"),
-            ("from_beta", "beta"),
-            ("attribute_gone", "alpha"),
-            ("moved", "gamma"),
-            ("deleted", "gamma"),
-            ("deleted_after_branching", "gamma"),
-            ("updated", "gamma"),
-            ("updated_after_branching", "gamma"),
-            ("duplicated", "gamma"),
-            ("same_moment", "gamma"),
-            ("converted_from", "converted"),
-            ("retired", "retired"),
-            ("branch_updated_main_updated", "gamma"),
-            ("branch_updated_main_deleted", "gamma"),
-            ("set_back_main", "gamma"),
-            ("set_back_branch", "gamma"),
-            ("repooled_on_main_after_branching", "repool_a"),
-            ("repooled_on_branch", "repool_a"),
-        ):
-            tickets[name] = await create_ticket(db=db, title=name, pool=pools[pool])
-        tickets["allocated_on_update"] = await create_ticket_allocated_on_update(
-            db=db, title="allocated_on_update", pool=pools["gamma"]
-        )
-        attribute_ids = {name: attribute_id_of(node=ticket) for name, ticket in tickets.items()}
-
-        # The pre-upgrade code reserved before the attribute existed on create, and after it on update.
-        created = [
-            ticket.id for name, ticket in tickets.items() if name not in {"allocated_on_update", "migrated_copy"}
-        ]
-        assert await rewrite_records_to_legacy_shape(db=db, node_ids=created) == len(created)
-        assert (
-            await rewrite_records_to_legacy_shape(
-                db=db, node_ids=[tickets["allocated_on_update"].id], backdate_seconds=0
-            )
-            == 1
-        )
-
-        # re_pooled: a second pool claimed the object without the first pool's record being ended,
-        # and both pools stored themselves as its source.
-        await create_legacy_record(
-            db=db, pool_id=pools["beta"].id, node_id=tickets["re_pooled"].id, at=Timestamp().subtract(seconds=60)
-        )
-        await create_legacy_record(
-            db=db, pool_id=pools["alpha"].id, node_id=tickets["on_main_a"].id, identifier=ORPHAN_IDENTIFIER
-        )
-        for name, pool in (
-            ("on_main_a", "alpha"),
-            ("on_main_b", "alpha"),
-            ("re_pooled", "alpha"),
-            ("re_pooled", "beta"),
-            ("deleted_on_branch", "alpha"),
-            ("from_beta", "beta"),
-            ("attribute_gone", "alpha"),
-            ("converted_from", "converted"),
-        ):
-            await create_legacy_source_edge(
-                db=db, node_id=tickets[name].id, pool_id=pools[pool].id, branch=default_branch
-            )
-
-        await create_legacy_record(
-            db=db, pool_id=pools["gamma"].id, node_id=tickets["duplicated"].id, at=Timestamp().subtract(seconds=600)
-        )
-        await create_legacy_record(
-            db=db, pool_id=pools["gamma"].id, node_id=tickets["duplicated"].id, at=Timestamp().subtract(seconds=60)
-        )
-        shared_moment = Timestamp().subtract(seconds=60)
-        for _ in range(2):
-            await create_legacy_record(
-                db=db, pool_id=pools["gamma"].id, node_id=tickets["same_moment"].id, at=shared_moment
-            )
-
-        # shared_dead held the shared number with a record of its own, then was deleted.
-        tickets["shared_dead"] = await create_ticket_with_value(db=db, title="shared_dead", value=SHARED_VALUE)
-        attribute_ids["shared_dead"] = attribute_id_of(node=tickets["shared_dead"])
-        await create_legacy_record(db=db, pool_id=pools["gamma"].id, node_id=tickets["shared_dead"].id)
-        shared_dead = await NodeManager.get_one(db=db, id=tickets["shared_dead"].id, raise_on_error=True)
-        await shared_dead.delete(db=db)
-
-        set_back_number = tickets["set_back_main"].get_attribute(name=TRACKED_ATTRIBUTE_NAME).value
-        assert isinstance(set_back_number, int)
-        await update_tracked_value(db=db, node_id=tickets["set_back_main"].id, value=SET_BACK_MAIN_DETOUR)
-        await update_tracked_value(db=db, node_id=tickets["set_back_main"].id, value=set_back_number)
-
-        # These objects are only visible on the default branch.
-        # The data removed is not readable from any other branch.
-        deleted = await NodeManager.get_one(db=db, id=tickets["deleted"].id, raise_on_error=True)
-        await deleted.delete(db=db)
-        await update_tracked_value(db=db, node_id=tickets["updated"].id, value=UPDATED_VALUE)
-        await pools["retired"].delete(db=db)
-        # Conversion deletes the object and re-creates it under a new uuid holding the same number.
-        converted_number = tickets["converted_from"].get_attribute(name=TRACKED_ATTRIBUTE_NAME).value
-        assert isinstance(converted_number, int)
-        converted_from = await NodeManager.get_one(db=db, id=tickets["converted_from"].id, raise_on_error=True)
-        await converted_from.delete(db=db)
-        tickets["converted_to"] = await create_ticket_with_value(db=db, title="converted_to", value=converted_number)
-        attribute_ids["converted_to"] = attribute_id_of(node=tickets["converted_to"])
-        assert (
-            await convert_legacy_records(
-                db=db, from_node_id=tickets["converted_from"].id, to_node_id=tickets["converted_to"].id
-            )
-            == 1
-        )
-
-        feature = await create_branch(db=db, branch_name="feature")
-        tickets["on_feature"] = await create_ticket(db=db, title="on_feature", pool=pools["alpha"], branch=feature)
-        attribute_ids["on_feature"] = attribute_id_of(node=tickets["on_feature"])
-        assert await rewrite_records_to_legacy_shape(db=db, node_ids=[tickets["on_feature"].id]) == 1
-        await create_legacy_source_edge(
-            db=db, node_id=tickets["on_feature"].id, pool_id=pools["alpha"].id, branch=feature
-        )
-        on_feature_branch = await NodeManager.get_one(
-            db=db, id=tickets["deleted_on_branch"].id, branch=feature, raise_on_error=True
-        )
-        await on_feature_branch.delete(db=db)
-
-        # The branch moves off the reserved number, then main moves off it too, before any later branch
-        # is created that could still read it.
-        for name, value in BRANCH_VALUES.items():
-            await update_tracked_value(db=db, node_id=tickets[name].id, value=value, branch=feature)
-        await update_tracked_value(
-            db=db, node_id=tickets["branch_updated_main_updated"].id, value=MAIN_VALUE_AFTER_BRANCH_UPDATE
-        )
-        branch_updated_main_deleted = await NodeManager.get_one(
-            db=db, id=tickets["branch_updated_main_deleted"].id, raise_on_error=True
-        )
-        await branch_updated_main_deleted.delete(db=db)
-
-        await rename_tracked_attribute(db=db, node_id=tickets["attribute_gone"].id, new_name=RENAMED_ATTRIBUTE_NAME)
-
-        # shared_owner reserved the shared number on main after shared_dead let it go, and
-        # shared_hand_set holds the same number by hand on a branch that never saw shared_owner.
-        tickets["shared_owner"] = await create_ticket_with_value(db=db, title="shared_owner", value=SHARED_VALUE)
-        await create_legacy_record(db=db, pool_id=pools["gamma"].id, node_id=tickets["shared_owner"].id)
-        tickets["shared_hand_set"] = await create_ticket_with_value(
-            db=db, title="shared_hand_set", value=SHARED_VALUE, branch=feature
-        )
-        for name in ("shared_owner", "shared_hand_set"):
-            attribute_ids[name] = attribute_id_of(node=tickets[name])
-
-        # Main moves off the number for good; the branch leaves it and comes back.
-        set_back_branch_number = tickets["set_back_branch"].get_attribute(name=TRACKED_ATTRIBUTE_NAME).value
-        assert isinstance(set_back_branch_number, int)
-        await update_tracked_value(db=db, node_id=tickets["set_back_branch"].id, value=SET_BACK_BRANCH_MAIN_VALUE)
-        await update_tracked_value(
-            db=db, node_id=tickets["set_back_branch"].id, value=SET_BACK_BRANCH_DETOUR, branch=feature
-        )
-        await update_tracked_value(
-            db=db, node_id=tickets["set_back_branch"].id, value=set_back_branch_number, branch=feature
-        )
-
-        # A second pool claims each object while the first pool's number stays readable on another branch.
-        await allocate_from_pool(db=db, node_id=tickets["repooled_on_main_after_branching"].id, pool=pools["repool_b"])
-        await allocate_from_pool(
-            db=db, node_id=tickets["repooled_on_branch"].id, pool=pools["repool_b"], branch=feature
-        )
-        for name in ("repooled_on_main_after_branching", "repooled_on_branch"):
-            assert await rewrite_records_to_legacy_shape(db=db, node_ids=[tickets[name].id]) == 1
-
-        # feature was created before these, so it still reads the object and its old value.
-        deleted_after_branching = await NodeManager.get_one(
-            db=db, id=tickets["deleted_after_branching"].id, raise_on_error=True
-        )
-        await deleted_after_branching.delete(db=db)
-        await update_tracked_value(
-            db=db, node_id=tickets["updated_after_branching"].id, value=UPDATED_AFTER_BRANCHING_VALUE
-        )
-
-        # The only copy lives on a branch that is being deleted.
-        doomed_branch = await create_branch(db=db, branch_name="doomed")
-        tickets["doomed"] = await create_ticket(db=db, title="doomed", pool=pools["gamma"], branch=doomed_branch)
-        attribute_ids["doomed"] = attribute_id_of(node=tickets["doomed"])
-        assert await rewrite_records_to_legacy_shape(db=db, node_ids=[tickets["doomed"].id]) == 1
-        await set_branch_status(db=db, branch_name=doomed_branch.name, status="DELETING")
-
-        legacy_open = {
-            record.properties["identifier"]
-            for record in await reservation_records(db=db)
-            if record.anchor == "AttributeValue" and record.properties.get("to") is None
-        }
-        for name in (
-            "deleted",
-            "deleted_after_branching",
-            "updated",
-            "updated_after_branching",
-            "deleted_on_branch",
-            "branch_updated_main_updated",
-            "branch_updated_main_deleted",
-            "shared_dead",
-            "shared_owner",
-            "set_back_main",
-            "set_back_branch",
-            "repooled_on_main_after_branching",
-            "repooled_on_branch",
-            "doomed",
-            "converted_to",
-            "migrated_copy",
-        ):
-            assert tickets[name].id in legacy_open, f"the {name} fixture must leave its legacy record open"
+        legacy = await Builder(db=db, default_branch=default_branch).build(cases=CASES)
+        pools, tickets = legacy.pools, legacy.tickets
 
         moved_record_before = next(
             record
@@ -455,7 +608,8 @@ class TestMigration081:
                 for record in await reservation_records(db=db)
                 if record.properties["identifier"] == tickets[name].id
             )
-            for name in ("re_pooled", "duplicated", "repooled_on_main_after_branching", "repooled_on_branch")
+            for case in CASES
+            for name in case.earliest_from
         }
         figures_before = {
             name: await legacy_figures(db=db, pool=pools[name], branch=default_branch) for name in ("alpha", "beta")
@@ -469,7 +623,7 @@ class TestMigration081:
             default_branch=default_branch,
             pools=pools,
             tickets=tickets,
-            attribute_ids=attribute_ids,
+            attribute_ids=legacy.attribute_ids,
             moved_record_before=moved_record_before,
             earliest_from=earliest_from,
             figures_before=figures_before,

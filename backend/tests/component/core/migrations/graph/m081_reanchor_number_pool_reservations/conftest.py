@@ -13,13 +13,14 @@ because what the migration moves is the edge itself.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pytest
 from rich.console import Console
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, SchemaPathType
+from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m081_reanchor_number_pool_reservations import Migration081
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
@@ -410,3 +411,117 @@ async def stored_source_pool_ids(
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
     return sorted(result["pool_id"] for result in results)
+
+
+# -----------------------------------------------------------------------------------------------
+# Building one database that holds every legacy case
+# -----------------------------------------------------------------------------------------------
+
+POOL_NAMES = ("alpha", "beta", "gamma", "converted", "retired", "repool_a", "repool_b")
+
+
+@dataclass(frozen=True)
+class LegacyDatabase:
+    pools: dict[str, CoreNumberPool]
+    tickets: dict[str, Node]
+
+    attribute_ids: dict[str, str]
+    """Each ticket's tracked attribute, read before any second `Node` vertex was added on its uuid."""
+
+
+class LegacyCase:
+    """One legacy shape; each hook runs at its moment in the history every case shares."""
+
+    allocated: ClassVar[tuple[tuple[str, str], ...]] = ()
+    """(ticket, pool) pairs allocated by today's code, then rewritten into the legacy shape together."""
+
+    open_legacy_records: ClassVar[tuple[str, ...]] = ()
+    """The tickets whose legacy record must still be open when the migration starts."""
+
+    earliest_from: ClassVar[tuple[str, ...]] = ()
+    """The tickets whose earliest legacy `from` is read before the migration."""
+
+    def __init__(self, db: InfrahubDatabase, default_branch: Branch, pools: dict[str, CoreNumberPool]) -> None:
+        self.db = db
+        self.default_branch = default_branch
+        self.pools = pools
+        self.tickets: dict[str, Node] = {}
+        self.attribute_ids: dict[str, str] = {}
+
+    async def before_tickets(self) -> None:
+        """Runs while the database holds no ticket yet."""
+
+    async def create_tickets(self) -> None:
+        for name, pool in self.allocated:
+            self.keep(name, await create_ticket(db=self.db, title=name, pool=self.pools[pool]))
+
+    async def before_feature(self) -> None:
+        """Runs once every allocated ticket is in the legacy shape, before the feature branch exists."""
+
+    async def after_feature(self, feature: Branch) -> None:
+        """Runs once the feature branch has forked from the default branch."""
+
+    def keep(self, name: str, ticket: Node) -> None:
+        self.tickets[name] = ticket
+        self.attribute_ids[name] = attribute_id_of(node=ticket)
+
+    def id(self, name: str) -> str:
+        return self.tickets[name].id
+
+    def number(self, name: str) -> int:
+        """The number the ticket held when it was created."""
+        value = self.tickets[name].get_attribute(name=TRACKED_ATTRIBUTE_NAME).value
+        assert isinstance(value, int)
+        return value
+
+    async def legacy_source_edge(self, name: str, pool: str, branch: Branch | None = None) -> None:
+        await create_legacy_source_edge(
+            db=self.db, node_id=self.id(name), pool_id=self.pools[pool].id, branch=branch or self.default_branch
+        )
+
+    async def delete(self, name: str, branch: Branch | None = None) -> None:
+        ticket = await NodeManager.get_one(db=self.db, id=self.id(name), branch=branch, raise_on_error=True)
+        await ticket.delete(db=self.db)
+
+
+class Builder:
+    """Runs every case through the shared history, one step at a time across all cases."""
+
+    def __init__(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        self.db = db
+        self.default_branch = default_branch
+
+    async def build(self, cases: list[type[LegacyCase]]) -> LegacyDatabase:
+        pools = {name: await create_pool(db=self.db, name=name) for name in POOL_NAMES}
+        built = [case(db=self.db, default_branch=self.default_branch, pools=pools) for case in cases]
+
+        for case in built:
+            await case.before_tickets()
+        for case in built:
+            await case.create_tickets()
+        # The pre-upgrade code reserved before the attribute existed on create.
+        created = [case.id(name) for case in built for name, _ in case.allocated]
+        assert await rewrite_records_to_legacy_shape(db=self.db, node_ids=created) == len(created)
+
+        for case in built:
+            await case.before_feature()
+        feature = await create_branch(db=self.db, branch_name="feature")
+        for case in built:
+            await case.after_feature(feature=feature)
+
+        legacy_open = {
+            record.properties["identifier"]
+            for record in await reservation_records(db=self.db)
+            if record.anchor == "AttributeValue" and record.properties.get("to") is None
+        }
+        tickets: dict[str, Node] = {}
+        attribute_ids: dict[str, str] = {}
+        for case in built:
+            for name in case.open_legacy_records:
+                assert case.id(name) in legacy_open, f"the {name} fixture must leave its legacy record open"
+            shared_names = tickets.keys() & case.tickets.keys()
+            assert not shared_names, f"{type(case).__name__} reuses the ticket names {sorted(shared_names)}"
+            tickets |= case.tickets
+            attribute_ids |= case.attribute_ids
+
+        return LegacyDatabase(pools=pools, tickets=tickets, attribute_ids=attribute_ids)
