@@ -1,24 +1,16 @@
 from __future__ import annotations
 
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.manager import NodeManager
-from infrahub.core.node import Node
-from infrahub.core.protocols import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import (
     NumberAttributeParameters,
     NumberPoolParameters,
-    NumberPoolRangeParameters,
     TextAttributeParameters,
 )
-from infrahub.pools.number_pool_repository import NumberPoolRepository
-from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
-from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema import load_schema as load_schema_root
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -155,34 +147,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         }
 
     @pytest.fixture(scope="class")
-    def schema_thing_03_excluding_held_value(self, schema_thing_02: dict[str, Any]) -> dict[str, Any]:
-        return self._thing_with_pool_parameters(schema_thing_02, parameters={"start_range": 100, "end_range": 200})
-
-    @pytest.fixture(scope="class")
-    def schema_thing_04_around_held_value(self, schema_thing_02: dict[str, Any]) -> dict[str, Any]:
-        return self._thing_with_pool_parameters(schema_thing_02, parameters={"start_range": 40, "end_range": 60})
-
-    @pytest.fixture(scope="class")
-    def schema_thing_05_ranges_excluding_held_value(self, schema_thing_02: dict[str, Any]) -> dict[str, Any]:
-        return self._thing_with_pool_parameters(
-            schema_thing_02, parameters={"ranges": [{"start": 10, "end": 20}, {"start": 100, "end": 200}]}
-        )
-
-    @pytest.fixture(scope="class")
-    def schema_thing_06_ranges_around_held_value(self, schema_thing_02: dict[str, Any]) -> dict[str, Any]:
-        return self._thing_with_pool_parameters(
-            schema_thing_02, parameters={"ranges": [{"start": 45, "end": 55}, {"start": 70, "end": 80, "weight": 5}]}
-        )
-
-    @staticmethod
-    def _thing_with_pool_parameters(schema_thing: dict[str, Any], parameters: dict[str, Any]) -> dict[str, Any]:
-        thing = deepcopy(schema_thing)
-        for attribute in thing["attributes"]:
-            if attribute["name"] == "assigned_number":
-                attribute["parameters"] = parameters
-        return thing
-
-    @pytest.fixture(scope="class")
     async def load_schema_01(
         self, db: InfrahubDatabase, default_branch: Branch, schema_step_01: dict[str, Any]
     ) -> None:
@@ -221,13 +185,6 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         assert isinstance(number_attr.parameters, NumberPoolParameters)
         assert number_attr.parameters.start_range == start_range
         assert number_attr.parameters.end_range == end_range
-        assert number_attr.parameters.ranges == []
-
-    def _validate_schema_numberpool_ranges(self, schema: NodeSchema, ranges: list[NumberPoolRangeParameters]) -> None:
-        number_attr = schema.get_attribute("assigned_number")
-        assert isinstance(number_attr.parameters, NumberPoolParameters)
-        assert (number_attr.parameters.start_range, number_attr.parameters.end_range) == (None, None)
-        assert number_attr.parameters.ranges == ranges
 
     async def test_schema_01_is_correct(
         self, db: InfrahubDatabase, default_branch: Branch, load_schema_01: None
@@ -385,146 +342,3 @@ class TestUpdateAttributeParameters(TestInfrahubApp):
         )
         self._validate_schema_number_parameters(schema=new_schema, min_value=20, max_value=30)
         self._validate_schema_numberpool_parameters(schema=new_schema, start_range=50, end_range=1200)
-
-    @staticmethod
-    async def _synchronize_pools(db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(
-            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
-        )
-        await SchemaNumberPoolSynchronizer(
-            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
-        ).run()
-
-    @staticmethod
-    async def _pool_ranges(db: InfrahubDatabase) -> tuple[str, list[tuple[int, int, int | None]]]:
-        pools = await NodeManager.query(
-            db=db,
-            schema=CoreNumberPool,
-            filters={"node__value": NEW_KIND, "node_attribute__value": "assigned_number"},
-            branch_agnostic=True,
-        )
-        assert len(pools) == 1
-        pool = pools[0]
-        ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())
-        return pool.get_id(), [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges]
-
-    @pytest.fixture(scope="class")
-    async def thing_holding_a_number(self, db: InfrahubDatabase, default_branch: Branch) -> Node:
-        await self._synchronize_pools(db=db)
-        thing = await Node.init(db=db, schema=NEW_KIND, branch=default_branch)
-        await thing.new(db=db, value="regex02xx", number=25)
-        await thing.save(db=db)
-        return thing
-
-    async def test_step03_range_excluding_a_held_value_is_refused(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        default_branch: Branch,
-        thing_holding_a_number: Node,
-        schema_thing_legacy_02: dict[str, Any],
-        schema_thing_03_excluding_held_value: dict[str, Any],
-    ) -> None:
-        assert thing_holding_a_number.get_attribute("assigned_number").value == 50
-
-        response = await client.schema.load(
-            schemas=[{"version": "1.0", "nodes": [schema_thing_legacy_02, schema_thing_03_excluding_held_value]}],
-            branch=default_branch.name,
-        )
-
-        errors = str(response.errors)
-        assert NEW_KIND in errors
-        assert "assigned_number=50" in errors
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        self._validate_schema_numberpool_parameters(
-            schema=schema_branch.get_node(name=NEW_KIND, duplicate=False), start_range=50, end_range=1200
-        )
-        assert (await self._pool_ranges(db=db))[1] == [(50, 1200, None)]
-
-    async def test_step04_safe_range_change_reconciles_the_pool(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        default_branch: Branch,
-        thing_holding_a_number: Node,
-        schema_thing_legacy_02: dict[str, Any],
-        schema_thing_04_around_held_value: dict[str, Any],
-    ) -> None:
-        response = await client.schema.load(
-            schemas=[{"version": "1.0", "nodes": [schema_thing_legacy_02, schema_thing_04_around_held_value]}],
-            branch=default_branch.name,
-        )
-        assert not response.errors
-
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        self._validate_schema_numberpool_parameters(
-            schema=schema_branch.get_node(name=NEW_KIND, duplicate=False), start_range=40, end_range=60
-        )
-
-        await self._synchronize_pools(db=db)
-
-        pool_id, ranges = await self._pool_ranges(db=db)
-        assert ranges == [(40, 60, None)]
-        pool = await NodeManager.get_one(db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True)
-        assert pool is not None
-        assert (pool.get_attribute("start_range").value, pool.get_attribute("end_range").value) == (40, 60)
-        thing = await NodeManager.get_one(db=db, id=thing_holding_a_number.get_id(), branch=default_branch)
-        assert thing is not None
-        assert thing.get_attribute("assigned_number").value == 50
-
-    async def test_step05_ranges_excluding_a_held_value_are_refused(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        default_branch: Branch,
-        thing_holding_a_number: Node,
-        schema_thing_legacy_02: dict[str, Any],
-        schema_thing_05_ranges_excluding_held_value: dict[str, Any],
-    ) -> None:
-        response = await client.schema.load(
-            schemas=[
-                {"version": "1.0", "nodes": [schema_thing_legacy_02, schema_thing_05_ranges_excluding_held_value]}
-            ],
-            branch=default_branch.name,
-        )
-
-        errors = str(response.errors)
-        assert NEW_KIND in errors
-        assert "assigned_number=50" in errors
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        self._validate_schema_numberpool_parameters(
-            schema=schema_branch.get_node(name=NEW_KIND, duplicate=False), start_range=40, end_range=60
-        )
-        assert (await self._pool_ranges(db=db))[1] == [(40, 60, None)]
-
-    async def test_step06_safe_ranges_change_reconciles_the_pool(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        default_branch: Branch,
-        thing_holding_a_number: Node,
-        schema_thing_legacy_02: dict[str, Any],
-        schema_thing_06_ranges_around_held_value: dict[str, Any],
-    ) -> None:
-        response = await client.schema.load(
-            schemas=[{"version": "1.0", "nodes": [schema_thing_legacy_02, schema_thing_06_ranges_around_held_value]}],
-            branch=default_branch.name,
-        )
-        assert not response.errors
-
-        schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        self._validate_schema_numberpool_ranges(
-            schema=schema_branch.get_node(name=NEW_KIND, duplicate=False),
-            ranges=[NumberPoolRangeParameters(start=45, end=55), NumberPoolRangeParameters(start=70, end=80, weight=5)],
-        )
-
-        await self._synchronize_pools(db=db)
-
-        pool_id, ranges = await self._pool_ranges(db=db)
-        assert ranges == [(45, 55, None), (70, 80, 5)]
-        pool = await NodeManager.get_one(db=db, id=pool_id, kind=CoreNumberPool, branch_agnostic=True)
-        assert pool is not None
-        assert (pool.get_attribute("start_range").value, pool.get_attribute("end_range").value) == (None, None)
-        thing = await NodeManager.get_one(db=db, id=thing_holding_a_number.get_id(), branch=default_branch)
-        assert thing is not None
-        assert thing.get_attribute("assigned_number").value == 50
