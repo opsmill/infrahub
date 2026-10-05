@@ -1,9 +1,10 @@
 # 03 — Decisions (refined: Readiness rail)
 
 Prototype: `http://localhost:8080/_proto/branch-details`. Parameters:
-- `?scenario=`: `incident`, `import-error`, `generator-failed`, `running`, `many-errors`,
+- `?dj.k.scenario=`: `incident`, `import-error`, `generator-failed`, `running`, `many-errors`,
   `tasks-unknown`, `all-clear`, `no-repos`, `loading`, `denied`
-- `repos`, `repos_page`, `bands`, `rail`, `upstream=0|1`
+- `dj.k.repos`, `dj.k.bands`, `dj.k.rail`, `dj.k.upstream=0|1`, with `dj.variant=` and `dj.rev=`
+  (namespaced since the URL change noted below); the table page is `repos_page`.
 
 Code: `frontend/app/src/pages/_proto/branch-details/`: `index.tsx`, `data.ts`,
 `git-repositories-card.tsx`, `merge-rail.tsx`, `branch-actions-menu.tsx`, `table-pagination.tsx`.

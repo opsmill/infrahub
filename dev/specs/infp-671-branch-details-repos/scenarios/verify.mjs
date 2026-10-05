@@ -30,7 +30,12 @@ const scenarios = [
       readOnlyTag: t.includes("Read-only"),
     }),
   },
-  { branch: "scn-all-clear", query: "?repositories_page=2", shot: "scn-all-clear-repos-page-2", checks: (t) => ({ page2: /Showing 11 to 1\d of 1\d/.test(t) }) },
+  {
+    branch: "scn-all-clear",
+    query: "?repositories_page=2",
+    shot: "scn-all-clear-repos-page-2",
+    checks: (t) => ({ page2: /Showing 11 to 1\d of 1\d/.test(t) }),
+  },
   {
     branch: "scn-import-error",
     checks: (t) => ({
@@ -56,7 +61,14 @@ const scenarios = [
     }),
     after: async (page) => {
       await page.getByRole("button", { name: "Show all" }).click();
-      await page.waitForTimeout(1500);
+      // The bands mounted by "Show all" fetch their logs after the click.
+      await page.waitForFunction(
+        () =>
+          (document.body.innerText.match(/— import failed/g) ?? []).length >= 5 &&
+          !document.body.innerText.includes("Loading the import log"),
+        null,
+        { timeout: 30_000 }
+      );
       return {
         name: "scn-many-errors-expanded",
         checks: (t) => ({
@@ -70,10 +82,18 @@ const scenarios = [
   },
   {
     branch: "scn-generator-failed",
-    checks: (t) => ({ failedCount: /\d+ failed/.test(t), taskPager: /Showing 1 to 10 of \d+/.test(t) }),
+    checks: (t) => ({
+      failedCount: /\d+ failed/.test(t),
+      taskPager: /Showing 1 to 10 of \d+/.test(t),
+    }),
   },
   { branch: "scn-many-tasks", checks: (t) => ({ taskPager: /Showing 1 to 10 of \d+/.test(t) }) },
-  { branch: "scn-many-tasks", query: "?tasks_page=2", shot: "scn-many-tasks-tasks-page-2", checks: (t) => ({ tasksPage2: /Showing 11 to \d+ of \d+/.test(t) }) },
+  {
+    branch: "scn-many-tasks",
+    query: "?tasks_page=2",
+    shot: "scn-many-tasks-tasks-page-2",
+    checks: (t) => ({ tasksPage2: /Showing 11 to \d+ of \d+/.test(t) }),
+  },
   {
     branch: "scn-no-git",
     checks: (t) => ({
@@ -84,7 +104,10 @@ const scenarios = [
   // Set SCN_MANY_BRANCHES=1 after `seed.py up --many-branches`.
   ...(process.env.SCN_MANY_BRANCHES === "1"
     ? [
-        { branch: "scn-b-04", checks: (t) => ({ band: t.includes("scn-fixtures — import failed") }) },
+        {
+          branch: "scn-b-04",
+          checks: (t) => ({ band: t.includes("scn-fixtures — import failed") }),
+        },
         { branch: "scn-b-02", checks: (t) => ({ noImportBand: !t.includes("— import failed") }) },
       ]
     : []),
@@ -99,14 +122,14 @@ await page.getByText("Log in with your credentials").click();
 await page.getByLabel("Username").fill(process.env.INFRAHUB_USERNAME ?? "admin");
 await page.getByLabel("Password").fill(process.env.INFRAHUB_PASSWORD ?? "infrahub");
 await page.getByRole("button", { name: "Log in", exact: true }).click();
-await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15000 });
+await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 15_000 });
 
 const results = [];
 for (const scenario of scenarios) {
   const name = scenario.shot ?? scenario.branch;
   await page.emulateMedia({ colorScheme: scenario.colorScheme ?? "light" });
   await page.goto(`${base}/branches/${scenario.branch}${scenario.query ?? ""}`);
-  await page.getByText("Git repositories").first().waitFor({ timeout: 15000 });
+  await page.getByText("Git repositories").first().waitFor({ timeout: 15_000 });
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(1500);
   const text = await page.locator("body").innerText();
@@ -124,8 +147,12 @@ await browser.close();
 
 writeFileSync(join(out, "results.json"), JSON.stringify(results, null, 2));
 for (const r of results) {
-  const failed = Object.entries(r.checks).filter(([, ok]) => !ok).map(([k]) => k);
+  const failed = Object.entries(r.checks)
+    .filter(([, ok]) => !ok)
+    .map(([k]) => k);
   if (failed.length) process.exitCode = 1;
-  console.log(`${failed.length ? "FAIL" : "ok  "} ${r.name.padEnd(30)} ${failed.length ? `failed: ${failed.join(", ")}` : ""}`);
+  console.log(
+    `${failed.length ? "FAIL" : "ok  "} ${r.name.padEnd(30)} ${failed.length ? `failed: ${failed.join(", ")}` : ""}`
+  );
 }
 console.log(`screenshots in ${out}`);

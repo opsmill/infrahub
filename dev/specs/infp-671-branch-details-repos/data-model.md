@@ -67,7 +67,7 @@ type RepositoryImportError =
 
 - `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasOnlyThrownCatalogueCode`, so every GraphQL error must carry it), else `"UNKNOWN"`.
 - `getBranchRepositoryHealth({ branchName, syncWithGit }) → BranchRepositoryHealth`.
-- `getRepositoryImportTask({ branchName, repositoryId }) → string | null` — the newest FAILED or CRASHED import task's id. A failed lookup returns `null` (the band never disappears).
+- `getRepositoryImportTask({ branchName, repositoryId }) → RepositoryImportTaskLookup` — `{ status: "running" }` while an import of the repository is still scheduled, pending or running (the caller keeps polling and doesn't look at older failed runs); `{ status: "failed", taskId }` for the newest FAILED or CRASHED import; `{ status: "not-found" }` otherwise. Only consecutive `not-found` results count against `MAX_IMPORT_TASK_LOOKUPS`. A failed request rejects, so the query retries it on the slowed poll.
 - `getImportTaskErrorMessage(taskId) → string | null` — `getLastErrorLine` over that task's log.
 - `getRepositoryNames({ branchName, ids }) → Record<string, string>` — for the Tasks card's Related column; ids that aren't repositories are absent.
 
