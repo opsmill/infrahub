@@ -96,6 +96,7 @@ def test_account_cascade_reaches_its_internal_children() -> None:
         InfrahubKind.EXTERNALIDENTITY,
         InfrahubKind.ACCOUNTTOKEN,
         InfrahubKind.REFRESHTOKEN,
+        InfrahubKind.GENERATORINSTANCE,
     }
 
 
@@ -116,3 +117,26 @@ def test_account_cascade_uses_the_paired_relationships() -> None:
         (InfrahubKind.ACCOUNT, "account__token", InfrahubKind.ACCOUNTTOKEN),
         (InfrahubKind.ACCOUNT, "account__refreshtoken", InfrahubKind.REFRESHTOKEN),
     }
+
+
+def _cascading_relationships(index: NodeDeleteIndex, source_kind: str) -> set[tuple[str, str]]:
+    return {
+        (full_id.identifier, full_id.destination_kind)
+        for full_id in index.get_relationship_identifiers()
+        if full_id.source_kind == source_kind
+        and DeleteRelationshipType.CASCADE_DELETE
+        in index.get_relationship_types(src_kind=full_id.source_kind, relationship_identifier=full_id.identifier)
+    }
+
+
+def test_deleting_a_node_cascades_to_its_generator_instances() -> None:
+    """A generator instance cannot outlive its target, yet node kinds never declare the reverse cascade."""
+    index = _index_for(InfrahubKind.TAG)
+
+    assert _cascading_relationships(index, InfrahubKind.TAG) == {("generator__node", InfrahubKind.GENERATORINSTANCE)}
+
+
+def test_deleting_a_generator_instance_does_not_cascade_to_itself() -> None:
+    index = _index_for(InfrahubKind.GENERATORINSTANCE)
+
+    assert _cascade_closure(index, InfrahubKind.GENERATORINSTANCE) == set()
