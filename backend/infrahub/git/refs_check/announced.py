@@ -31,9 +31,8 @@ async def record_announced_head(
         )
     except Exception as exc:  # noqa: BLE001
         log.warning(
-            "Could not record the announced head of branch %s of repository %s: %s",
+            "Could not record the announced head of Infrahub branch %s of repository %s: %s",
             branch_name,
             repository_name,
             exc,
-            extra={"repository": repository_name, "branch": branch_name, "reason": str(exc)},
         )

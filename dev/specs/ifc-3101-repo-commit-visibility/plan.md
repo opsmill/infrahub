@@ -335,9 +335,11 @@ determinism logic, no test and no documentation entry.
   user-visible flow run per repository per tick. The burst is bounded because the due check already
   spreads repositories across ticks: with the default interval and the every-minute cron, roughly a
   fifteenth of read-only repositories come due on any given tick.
-- **Observability (FR-027).** One structured record per tick carrying checked, moved, failed and
-  duration, and one per detected movement carrying repository, ref, previous head and new head.
-  Failures carry repository and reason. No metrics stack is introduced for this.
+- **Observability (FR-027).** One record per tick carrying checked, moved, failed and duration, and
+  one per detected movement naming repository, ref, previous head and new head. Failures carry
+  repository and reason. The check logs plain text through the task logger, so these reach the flow
+  run's logs; the fields are carried structurally in the check's result, not in the log record. No
+  metrics stack is introduced for this.
 - **Check time (FR-007).** Every check writes `git:refs_check:last:<id>` with the current timestamp,
   on success and on failure alike, so `checked_at` reflects the last attempt rather than the last
   success. The resolver reads it; nothing on the worker records it, because a refs listing writes no
