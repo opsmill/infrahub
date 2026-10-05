@@ -119,7 +119,7 @@ RETURN collect(DISTINCT node.uuid) AS node_uuids
 
 class NodesToCheckForGlobalEdgesQuery(Query):
     """Return the uuids of objects to check for branch-agnostic edges that may need to be retired.
-    
+
     Includes both objects deleted on the branch within the timestamps and objects with pool-reserved
     attributes that lost their owning edge on the branch in the same window. Not all objects actually
     need to have branch-agnostic retirement applied, but they all do need to be checked.
