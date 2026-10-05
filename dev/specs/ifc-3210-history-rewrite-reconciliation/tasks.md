@@ -275,7 +275,7 @@ healthy branch is still sent, and a second worker converges on it.
       repository in `sync_repository_from_origin`, and do not retry it inside the same cycle
       (FR-018). Do **not** let it propagate: `sync_remote_repositories` loops over every repository
       with no per-repository `try`, so a raise would abort the cycle for every repository after it.
-- [ ] T034 [US3] Wrap the per-repository call in
+- [x] T034 [US3] Wrap the per-repository call in
       `backend/infrahub/git/tasks.py::sync_remote_repositories` in its own `try`, so no failure in
       one repository can stop the others (FR-018a). This guard is missing today, independently of
       this feature.
@@ -285,10 +285,13 @@ healthy branch is still sent, and a second worker converges on it.
 - [x] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
       recorded against the repository, and that it does **not** propagate out of
       `sync_repository_from_origin` (FR-018).
-- [ ] T037 [US3] Component-test that one repository failing does not stop the repositories after it
+- [x] T037 [US3] Component-test that one repository failing does not stop the repositories after it
       in the same cycle (FR-018a). `sync_remote_repositories` has no per-repository guard today, so
       this test holds the one this phase adds. It is the repository-level version of the outage US3
       removes at branch level.
+      *As landed:* in `backend/tests/component/git/test_sync_repository.py`. The failure it uses is
+      real and reaches the loop today: on a worker with no clone yet, the first import of a schema
+      the server rejects raises the SDK's `ValidationError`, which the clone step does not catch.
 - [x] T038 [P] [US3] Unit-test the handler fan-out in
       `backend/tests/unit/message_bus/test_refresh_git_fetch_fanout.py`: N pairs are reset inside
       one lock acquisition and one fetch. Use a fake lock registry, not a mock.

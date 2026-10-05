@@ -35,7 +35,7 @@ from infrahub.git.sync import (
     SyncOutcome,
     SyncReport,
 )
-from infrahub.git.tasks import sync_repository_from_origin
+from infrahub.git.tasks import sync_remote_repositories, sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import clear_singletons
@@ -871,3 +871,52 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
         )
         assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+
+BROKEN_SCHEMA_FILES = {
+    ".infrahub.yml": "---\nschemas:\n  - schema.yml\n",
+    "schema.yml": '---\nversion: "1.0"\nnodes:\n  - name: Broken\n',
+}
+
+
+class TestSynchronisationCycleIsolation(TestInfrahubApp):
+    """A synchronization cycle over repositories this worker holds no clone of yet.
+
+    The cycle visits every repository of the stack, so these tests run in a stack of their own.
+    """
+
+    async def test_a_repository_that_fails_does_not_stop_the_cycle_for_the_others(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The first import of a schema the server rejects raises out of that repository's clone."""
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        broken = LocalRemote.create(directory=tmp_path / "broken-schema-repo", trunk="main", branches=[])
+        broken.commit(branch_name="main", files=BROKEN_SCHEMA_FILES)
+        healthy = LocalRemote.create(directory=tmp_path / "healthy-cycle-repo", trunk="main", branches=[])
+        healthy_head = healthy.commit(branch_name="main", files={"data.txt": "healthy v2\n"})
+        for name, remote in (("broken-schema-repo", broken), ("healthy-cycle-repo", healthy)):
+            await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+
+        await sync_remote_repositories()
+
+        recorded = await NodeManager.query(
+            db=db, schema=CoreRepositoryNode, filters={"name__value": "healthy-cycle-repo"}
+        )
+        assert [repository.commit.value for repository in recorded] == [healthy_head]
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
+        ] == ["Unable to synchronize repository broken-schema-repo, continuing with the other repositories"]

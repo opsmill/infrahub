@@ -78,6 +78,7 @@ from .models import (
     GitRepositoryImportObjects,
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
+    RepositoryData,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
     TriggerRepositoryInternalChecks,
@@ -575,44 +576,58 @@ async def sync_repository_from_origin(
         log.info(failure.message)
 
 
+async def sync_remote_repository(
+    repo_name: str, repository_data: RepositoryData, branches: dict[str, BranchData], client: InfrahubClient
+) -> None:
+    """Synchronize one repository with its origin, cloning it on this worker first when needed."""
+    repository: CoreRepository = repository_data.repository
+
+    default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
+    staging_branch = None
+    if default_internal_status != RepositoryInternalStatus.ACTIVE.value:
+        staging_branch = repository_data.get_staging_branch()
+
+    infrahub_branch = staging_branch or registry.default_branch
+
+    repo = await bootstrap_local_repository(
+        repo_name=repo_name,
+        repository=repository,
+        infrahub_branch=infrahub_branch,
+        client=client,
+    )
+    if repo is None:
+        return
+
+    await sync_repository_from_origin(
+        repository=repository,
+        repo=repo,
+        staging_branch=staging_branch,
+        infrahub_branch=infrahub_branch,
+        default_branch_id=branches[registry.default_branch].id,
+        client=client,
+        graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
+    )
+
+
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     db = await get_database()
 
     client = get_client()
+    log = get_run_logger()
 
     branches = await client.branch.all()
     async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
-        repository: CoreRepository = repository_data.repository
-
-        default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
-        staging_branch = None
-        if default_internal_status != RepositoryInternalStatus.ACTIVE.value:
-            staging_branch = repository_data.get_staging_branch()
-
-        infrahub_branch = staging_branch or registry.default_branch
-
-        repo = await bootstrap_local_repository(
-            repo_name=repo_name,
-            repository=repository,
-            infrahub_branch=infrahub_branch,
-            client=client,
-        )
-        if repo is None:
-            continue
-
-        await sync_repository_from_origin(
-            repository=repository,
-            repo=repo,
-            staging_branch=staging_branch,
-            infrahub_branch=infrahub_branch,
-            default_branch_id=branches[registry.default_branch].id,
-            client=client,
-            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
-        )
+        try:
+            await sync_remote_repository(
+                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
+            )
+        # One repository that fails must not stop the cycle for the repositories after it.
+        except Exception:
+            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(
