@@ -176,6 +176,8 @@ It's presentation copy, not a filter, so it doesn't break "backend is authoritat
 
 ## R2 verification results
 
+> **Correction 2026-10-05**: the seeded stack (`scenarios/`) contradicts the periodic-sync row below. A failed `sync-git-repo-with-origin` run was tagged with the default branch only, so `InfrahubTask(branch: <other branch>, related_node__ids: [<repo>])` found nothing and the band showed its fallback. The cause is not traced (follow-ups.md). The same stack found the "Import current commit" task on a non-default branch. The other rows are still verified by code reading only (tasks.md T001).
+
 **Method**: code reading of this worktree's backend, not a live reproduction. The only running stack belongs to another branch and is read-only, so no repository could be put in Import Error. One read-only `InfrahubTask(state: [FAILED, CRASHED])` query against it confirmed the log shape of a failed flow (see "Last error line" below).
 
 **Correction to the R2 table**: every import goes through `git/integrator.py::InfrahubRepositoryIntegrator.build_import_plan`, whose first graph-facing step is `add_tags(branches=[infrahub_branch_name], nodes=[str(self.id)])`. `add_tags` tags the **current** flow run (`prefect.runtime.flow_run.id`). So every flow that reaches an import is tagged with the branch it imports into and the repository id, whatever the flow tags itself at start. The `InfrahubTask` filter is `tags all_ [namespace, branch/<b>, related_node/<id>]` (`task_manager/flow_run/filters.py`), which these tags satisfy.
