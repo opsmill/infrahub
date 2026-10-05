@@ -4,9 +4,9 @@ title: Remove a generator
 
 # Remove a generator
 
-Removing a Generator involves two separate things: the **Generator definition** registered from `.infrahub.yml`, and the **objects the Generator created** in Infrahub. Removing the definition stops the Generator from running, but it does not delete the objects it already created — those stay in Infrahub until you remove them.
+Removing a Generator involves three separate things: the **Generator definition** registered from `.infrahub.yml`, the **objects the Generator created** in Infrahub, and the **groups** that track those objects and the Generator's query. Removing the definition stops the Generator from running and deletes its Generator instances, but it does not delete the objects it already created or the groups — those stay in Infrahub until you remove them.
 
-Handle the objects first, then the definition.
+Handle the objects first, then the definition, then the groups.
 
 ## Delete the objects the Generator created
 
@@ -29,6 +29,27 @@ generator_definitions:
 ```
 
 Remove the Generator's Python file, and any query used only by this Generator. Commit the changes and merge the branch through a [Proposed Change](../proposed-changes/overview). Infrahub removes the `CoreGeneratorDefinition` registration on the next repository sync.
+
+## Delete the groups the Generator leaves behind
+
+Infrahub does not delete a Generator's groups when you remove the definition. Two kinds of group remain:
+
+- **Generator groups** (`CoreGeneratorGroup`, or `CoreGeneratorAwareGroup` when the definition set `execute_after_merge: false`) — named `<generator definition name>-<parameters hash>`, one for each set of parameters the Generator ran with. Their members are the objects the Generator created.
+- **GraphQL query groups** (`CoreGraphQLQueryGroup`) — named `<query name>__<parameters hash>`, with the label `Query <query name> Hash(<first 8 characters of the hash>)`. The name comes from the query, not from the Generator, so another definition that runs the same query with the same parameters uses the same group. Delete a query group only if no other definition uses that query.
+
+Find these groups by kind and name, then delete them as described in [Delete a group](../groups/delete). With the Python SDK, `partial_match=True` matches every group whose name contains the value, ignoring case, so check the list before you delete:
+
+```python
+groups = client.filters(kind="CoreGeneratorGroup", name__value="<your_generator>-", partial_match=True)
+for group in groups:
+    print(group.name.value)
+
+# After checking the list:
+for group in groups:
+    group.delete()
+```
+
+Deleting a group does not delete its members.
 
 ## Verify the removal
 
