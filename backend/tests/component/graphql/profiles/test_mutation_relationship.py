@@ -193,7 +193,6 @@ async def test_profile_peer_change_submits_the_refresh_of_the_changed_peers(
             ],
         )
     ]
-    # The request applies nothing itself: the peers it linked hold no profile value yet.
     for peer in changed:
         reloaded = await NodeManager.get_one(
             db=db, id=peer.id, branch=default_branch, include_metadata=MetadataOptions.SOURCE, raise_on_error=True

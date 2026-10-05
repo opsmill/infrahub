@@ -635,7 +635,6 @@ async def _detach_relationship_from_profiles(
 async def _submit_profile_peers_refresh(
     graphql_context: GraphqlContext, source: Node, relationship_name: str, peer_ids: list[str]
 ) -> None:
-    """Refresh the profiles of the nodes or templates added to, or removed from, a profile."""
     if not peer_ids or not source.get_schema().is_profile_schema:
         return
     if relationship_name not in PROFILE_PEER_RELATIONSHIP_NAMES:
