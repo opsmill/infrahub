@@ -84,7 +84,7 @@ interface RefreshButtonProps extends ButtonProps {
 }
 ```
 
-- Busy while any query under one of the keys is fetching; invalidates every key on press; "Last data refresh" is the newest `dataUpdatedAt` among the **active queries under those keys** (it used to read every active query in the app).
+- Busy only while a refresh the user started is running (from the press until every key's invalidation has settled), not while a background poll fetches a query under the same keys; invalidates every key on press; "Last data refresh" is the newest `dataUpdatedAt` among the **active queries under those keys** (it used to read every active query in the app).
 - _(2026-10-02: `queryKey` is gone; the Tasks page passes `queryKeys={[tasksQueryKeys.all]}`. The button stays in `entities/nodes/object/ui/object-details/`: moving it would touch five callers for no behaviour change.)_
 
 ## `BranchDetails` — `entities/branches/ui/branch-details.tsx` (changed)
