@@ -55,7 +55,7 @@ export type BranchRepositorySummary =
 
 `summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[]): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own models (`entities/branches/domain/model/branch.ts`, `branch-repository-summary.ts`), `BranchStatus` from `shared/api/graphql/generated/types`, the status row types from `entities/repository/domain/model/repository-branch-status.ts`, and `entities/repository/domain/rules/sync-status-severity.ts`.
 
-1. Every fetch `denied` (and at least one fetch) → every branch `denied`. Permission is checked per repository kind, so a denied kind among others is left out silently.
+1. Every fetch `denied` (and at least one fetch) → every branch `denied`; a denied fetch among others is left out silently. The hook passes a denied repository list as the single fetch, so a list denial (either kind unviewable) denies every branch.
 2. Else any `pending` fetch → every branch `pending`.
 3. Else any `error` fetch → every branch `error` with the first error's message.
 4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), a branch absent from its rows that the repository could list (read-only repositories list every branch, read/write ones only synced branches, and no repository lists a merged or deleting branch) gets `{ status: "error" }` naming the cut repositories instead of a guessed summary.

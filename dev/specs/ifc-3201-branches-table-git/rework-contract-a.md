@@ -168,8 +168,9 @@ command carries `-c tests/e2e/pytest.ini`); the knowledge note drops the ticket 
 
 ## Spec consequences
 
-Permission is checked per repository kind: when every kind is denied, every row reads "No
-permission"; a denied kind among readable ones is left out silently. Merged branches, if the
+The repository list reads both kinds in one query, so lacking view on either kind reads "No
+permission" on every row; with the list readable, a denied status read leaves that repository
+out silently, and only when every status read is denied does every row read "No permission". Merged branches, if the
 list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the
 fork-point commit, as the backend resolves it. Cache is no longer shared with the branch details
 page (different query); the backend `repository_ids` follow-up collapses 1 + R to 2 requests

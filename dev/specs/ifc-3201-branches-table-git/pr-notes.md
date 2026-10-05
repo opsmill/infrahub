@@ -29,7 +29,7 @@ Not lifted: #10658's `get-repository-branch-status.query.ts` hook, which forces 
 
 **Merge note, `branchStatus` key**: `repositoryQueryKeys.branchStatus(params)` is added to #10779's `repository.query-keys.ts` with #10658's member name and key shape. Both PRs touch that file, so merging #10658 gives one small, visible conflict there; resolve it by keeping one `branchStatus` member. #10658's `all` is `["repository"]`, this base's is `["repositories"]`; pick one when resolving.
 
-**Consequences for users**: permission is checked per repository kind, so a denial of every kind reads "No permission" on every row, and a denied kind among readable ones is left out silently; one failed status request reads "Could not load repositories" on every row. Merged branches, if the list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the fork-point commit. The cache is no longer shared with the branch details page.
+**Consequences for users**: the repository list reads both kinds in one query, so lacking view on either kind reads "No permission" on every row; with the list readable, a denied status read leaves that repository out silently, and only when every status read is denied does every row read "No permission"; one failed status request reads "Could not load repositories" on every row. Merged branches, if the list filter shows them, read "No repositories". The commit shown for a fresh synced branch is the fork-point commit. The cache is no longer shared with the branch details page.
 
 **Cubic findings folded in** (local run 2026-10-01):
 
@@ -114,6 +114,7 @@ Rounds on rework A (shape A):
 - Round A7: 3 P3 findings. Fixed: the GraphQL contract, plan and research R11 now describe cut-page detection and per-kind denial; the delete mutations' status invalidation is tested like create, merge and rebase. Declined, same reason as before: unused variables and row fields in the byte-identical #10658 status query document.
 - PR threads (2026-10-02): the 43 unresolved PR threads were triaged (14 outdated or already fixed, 29 fixed); two local rounds after that fixed the reload spinner scope, the mixed-error denial rule, status queries firing for an unusable repository list, E2E paging (the tests search for their branch first), and awaiting the repository invalidation in create/delete.
 - After the rebase onto #10779's moved tip (2026-10-02): links on the default branch's row now carry `branch=<default>` (the base replaced `getBranchQspOverride` with `getBranchQsp`); the no-sync E2E test tolerates read-only repositories other tests leave behind; spec cache-sharing line corrected (no query is shared with the details card). Declined again: unused variables and fields in the lifted status query document.
+- Final local rounds (2026-10-05): the branch summary rule no longer imports the repository entity's rules (comparator injected, types through the branches model); the no-sync E2E test asserts the lead read-only repository by membership and is named for what it checks; the first rework contract is marked superseded; the permission wording now says the repository list needs both kinds while a single denied status read is left out. Declined again: unused variables and fields in the lifted status query document.
 
 
 Round 1 (`cubic review -b ple-branch-details-repos-infp-671`): 7 findings, no P0/P1.
