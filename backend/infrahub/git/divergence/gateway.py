@@ -13,7 +13,13 @@ if TYPE_CHECKING:
 COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 OBJECT_ABSENT_STATUS = 1
-"""What `git rev-parse --verify` returns for a name that answers to no commit."""
+"""What `git rev-parse --verify` returns for a name that answers to no commit.
+
+Git returns the same status when it holds the object but cannot read it, so an unreadable pack
+file looks exactly like a pruned commit. A second lookup separates the two, but only when the
+whole object database is unreadable. One unreadable pack beside a readable one still reads as
+absent.
+"""
 
 NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
@@ -68,6 +74,9 @@ class GitAncestryGateway:
             resolved = self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
         except GitCommandError as exc:
             if exc.status == OBJECT_ABSENT_STATUS:
+                # A false absence is reported as a rewrite, so prove the database is readable.
+                if not self._reads_its_own_head():
+                    raise self._read_failed(commit=commit, detail="the object database is unreadable") from exc
                 return False
             raise self._read_failed(commit=commit, detail=exc.stderr or str(exc)) from exc
         except (OSError, GitError) as exc:
@@ -76,6 +85,13 @@ class GitAncestryGateway:
         # Peeling walks an annotated tag through to its commit, so a name that resolves to
         # another object is not a commit itself.
         return str(resolved).strip() == commit
+
+    def _reads_its_own_head(self) -> bool:
+        try:
+            self.repo.git.rev_parse("--verify", "--quiet", "HEAD^{commit}")
+        except (GitCommandError, OSError, GitError):
+            return False
+        return True
 
     def _require_full_sha(self, commit: str) -> None:
         if not COMMIT_SHA_PATTERN.fullmatch(commit):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -7,7 +8,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.exceptions import RepositoryError
-from tests.unit.git.divergence.conftest import ABSENT, break_object_database, commit_file
+from tests.unit.git.divergence.conftest import (
+    ABSENT,
+    break_object_database,
+    commit_file,
+    deny_access_to_packs,
+    pack_objects,
+)
 
 if TYPE_CHECKING:
     from git import Repo
@@ -73,6 +80,22 @@ def test_a_name_that_is_not_a_commit_holds_no_commit(repo: Repo, gateway: GitAnc
     assert gateway.has_commit(commit=tree) is False
     assert gateway.has_commit(commit=blob) is False
     assert gateway.has_commit(commit=str(annotated.hexsha)) is False
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="chmod does not restrict root")
+def test_an_unreadable_pack_is_an_error_not_an_absence(repo: Repo, gateway: GitAncestryGateway) -> None:
+    """Git returns the absent status for a commit it holds but cannot read."""
+    commit = commit_file(repo=repo, content="one")
+    commit_file(repo=repo, content="two")
+    pack_objects(repo=repo)
+    packs = deny_access_to_packs(repo=repo)
+
+    try:
+        with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
+            gateway.has_commit(commit=commit)
+    finally:
+        for pack in packs:
+            pack.chmod(0o644)
 
 
 def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitAncestryGateway) -> None:

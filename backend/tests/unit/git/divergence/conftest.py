@@ -34,3 +34,16 @@ def commit_file(repo: Repo, content: str) -> str:
 def break_object_database(repo: Repo) -> None:
     """Leave git unable to answer anything about this repository."""
     shutil.rmtree(Path(str(repo.git_dir), "objects"))
+
+
+def pack_objects(repo: Repo) -> None:
+    repo.git.gc("--prune=now")
+
+
+def deny_access_to_packs(repo: Repo) -> list[Path]:
+    """Leave the packed objects present but unreadable, and return what to restore."""
+    pack_directory = Path(str(repo.git_dir), "objects", "pack")
+    packs = sorted(pack_directory.glob("*.pack")) + sorted(pack_directory.glob("*.idx"))
+    for pack in packs:
+        pack.chmod(0o000)
+    return packs
