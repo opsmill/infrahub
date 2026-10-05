@@ -40,10 +40,6 @@ async def _refresh_node_profiles(client: InfrahubClient, branch_name: str, node_
 
 @flow(name="object-profiles-refresh", flow_run_name="Refresh profiles for {node_id}")
 async def object_profiles_refresh(branch_name: str, node_id: str) -> None:
-    """Refresh the profiles of one node.
-
-    No code submits this flow. It stays registered so that the runs queued before an upgrade can still finish.
-    """
     log = get_run_logger()
     client = get_client()
 
@@ -56,7 +52,6 @@ async def object_profiles_refresh(branch_name: str, node_id: str) -> None:
 async def objects_profiles_refresh_multiple(
     branch_name: str,
     node_ids: list[str],
-    # None lets the runs queued before an upgrade, which carry no context, still start.
     context: EventContext | None = None,
 ) -> None:
     """Refresh the profiles of a chunk of nodes, one node after the other.

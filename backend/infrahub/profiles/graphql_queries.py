@@ -4,8 +4,6 @@ from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 
 class ProfileNodeIDQuery(NodeIDQuery):
-    """Fetch the ids of the nodes of a kind that are linked to one profile."""
-
     query_name: ClassVar[str] = "ProfileFetchNodeIDs"
     profile_id: str
 
