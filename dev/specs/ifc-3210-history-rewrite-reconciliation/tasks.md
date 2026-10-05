@@ -667,6 +667,9 @@ read-write repository's configured default branch. Neither writes a record.
       number when the release note should link that issue, and a `+slug` otherwise. The epic lists
       #6299 under "Advances", not "Closes", so a slug is the safer default. Confirm with Patrick
       whether this closes #6299; if it does, the stem is `6299`.
+      IFC-3281 already adds `changelog/+rewritten-branch-sync.fixed.md`, because that PR fixes the
+      reported bug and can ship before the rest of the stack. Extend that fragment instead of adding
+      a second one. Rename it to `6299.fixed.md` if this work closes #6299.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
