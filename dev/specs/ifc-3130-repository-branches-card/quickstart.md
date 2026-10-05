@@ -27,26 +27,24 @@ regenerated output as though it were this feature's.
 
 ---
 
-## The preview window — what you will actually see
+## What you will actually see
 
-IFC-3127 has not merged. The backend serves **real** rows, paging, ordering and permission denials,
-but the four attribute values are **fabricated from the branch name**.
+IFC-3127 has landed on the base, so the backend serves real rows, paging, ordering, permission
+denials **and** real attribute values read from the graph. There is no preview window left: nothing
+on screen is fabricated.
 
-They are stable across reloads and every dropdown value appears, so the card is fully buildable and
-screenshottable. What you must **not** do is let anything depend on the values being real (SC-008) —
-when IFC-3127 lands, the values become real with no contract change and no code change here.
+This was written while the four attribute values were fabricated from the branch name, and SC-008 —
+nothing may depend on those values being real — was the rule that made the card survive the switch.
+It did: the values became real with no contract change and no code change here.
 
-Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — were **rejected
-with a `ValidationError`** when this was written. IFC-3127 has since landed on the base and the
-resolver applies all three. This feature still never sends them: they are not declared in the
-gql.tada document at all, which is what keeps FR-016 true. See
-[the UI contract](contracts/repository-branch-status-ui.md).
+Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — were rejected
+with a `ValidationError` at that time and are applied by the resolver now. This feature still never
+sends them: they are not declared in the gql.tada document at all, which is what keeps FR-016 true
+whatever the backend accepts. See [the UI contract](contracts/repository-branch-status-ui.md).
 
-**Who sees the fabricated values**: you do, running the card locally, which is exactly what makes it
-buildable and screenshottable today. **No end user does**, as long as this stays on the
-`cross-branch-repo-status-infp-671` epic branch, where IFC-3127 also lands — which is why there is no
-preview banner. If the epic branch is ever released with IFC-3127 outstanding, revisit it — see open
-question Q2 in [plan.md](plan.md).
+**Nobody sees fabricated values now**, locally or otherwise: IFC-3127 sits on the same epic branch
+this one targets, so every value on screen comes from the graph. That is also why the card carries no
+preview banner, and why open question Q2 in [plan.md](plan.md) is closed.
 
 ---
 

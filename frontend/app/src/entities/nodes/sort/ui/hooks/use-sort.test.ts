@@ -2,6 +2,7 @@ import { type OnUrlUpdateFunction, withNuqsTestingAdapter } from "nuqs/adapters/
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
+import { FilterScopeProvider } from "@/entities/nodes/filters/ui/filter-scope-context";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
 
 import { generateAttributeSchema, generateNodeSchema } from "../../../../../../tests/fake/schema";
@@ -185,5 +186,28 @@ describe("useSort", () => {
 
     // THEN
     expect(result.current.appliedSort).toEqual([]);
+  });
+
+  it("clears the scope's page when a scoped sort changes", async () => {
+    // GIVEN a surface with its own keys, already on a later page
+    const onUrlUpdate = vi.fn<OnUrlUpdateFunction>();
+    const wrapper = withNuqsTestingAdapter({
+      searchParams: "?branches_sort=name__value__asc&branches_page=3",
+      onUrlUpdate,
+    });
+    const { result } = await renderHook(() => useSort(schema), {
+      wrapper: ({ children }) =>
+        wrapper({ children: FilterScopeProvider({ urlKey: "branches", children }) }),
+    });
+
+    // WHEN
+    result.current.setCustomSort([{ field: "priority__value", direction: "DESC" }]);
+
+    // THEN the page chosen against the old order does not survive it
+    await vi.waitFor(() => {
+      const search = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams;
+      expect(search?.get("branches_sort")).toBe("priority__value__desc");
+      expect(search?.get("branches_page")).toBeNull();
+    });
   });
 });

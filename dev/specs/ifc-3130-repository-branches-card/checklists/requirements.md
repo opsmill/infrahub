@@ -36,8 +36,10 @@ User Scenarios, Functional Requirements or Success Criteria sections. Two delibe
 both judged correct rather than leakage:
 
 - **Contract vocabulary is named where a requirement is about the contract.** FR-016 names the three
-  backend arguments the preview resolver rejects (`sync_status__value`, `internal_status__value`,
-  own-values-only) because the requirement *is* "do not send these". Naming them is what makes the
+  backend arguments this feature does not send (`sync_status__value`, `internal_status__value`,
+  own-values-only) because the requirement *is* "do not send these". They were rejected by the
+  resolver when FR-016 was written and are applied by it now, which changes why they are left out —
+  a scope choice rather than a constraint — but not the requirement itself. Naming them is what makes the
   requirement testable; paraphrasing them would make it unverifiable. The same applies to
   `sync_status`, `CoreRepository` and `CoreReadOnlyRepository`, which are domain terms in this
   product, not implementation choices.
@@ -51,5 +53,6 @@ requirements (FR-005, FR-006, FR-016, FR-020) so they cannot be quietly reopened
 
 One requirement is a regression guard rather than new behaviour — FR-017, that the paging
 component's three existing call sites keep behaving exactly as today. It is stated as a requirement
-because the paging change is a generalisation of a shared component, and that is the failure this
-feature is most likely to cause elsewhere.
+because this feature deliberately leaves the legacy paging component untouched and builds a new one
+beside it, and silently altering those three pages is the failure such a split is most likely to
+cause elsewhere.

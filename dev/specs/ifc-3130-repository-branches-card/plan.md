@@ -614,8 +614,9 @@ test that proves nothing is worse than an honest note.
 
 ## Work units
 
-Parallel groups separated by `───`. Units within a group share no file and have no sequential
-dependency.
+Parallel groups separated by `───`. Units within a group share no file. They are also free of
+sequential dependencies except where the Dependencies paragraph below names one — unit 7 needs unit
+6's partition rule, so the two are listed together but not startable together.
 
 > The spec carries **33** requirement statements — FR-001…FR-028 **plus** FR-003a, FR-010a, FR-011a,
 > FR-011b and FR-018a. Enumerate them individually; a range like "002–006" silently omits FR-003a.

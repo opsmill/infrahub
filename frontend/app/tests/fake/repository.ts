@@ -19,16 +19,22 @@ export type RepositoryBranchStatusPageWire = {
   edges: Array<{ node: RepositoryBranchStatusWire }>;
 };
 
+// Only the default branch is named `main` on the contract, so a row renamed without saying otherwise
+// would claim a marker the server would never send with that name.
 export const generateRepositoryBranchStatus = (
   overrides?: Partial<RepositoryBranchStatusWire>
-): RepositoryBranchStatusWire => ({
-  name: { value: "main" },
-  is_default: { value: true },
-  commit: { value: "9f1c0d4e2b7a6f8c3d5e1a0b4c7d9e2f1a3b5c7d" },
-  sync_status: generateDropdown(),
-  ref: null,
-  ...overrides,
-});
+): RepositoryBranchStatusWire => {
+  const name = overrides?.name ?? { value: "main" };
+
+  return {
+    name,
+    is_default: { value: name.value === "main" },
+    commit: { value: "9f1c0d4e2b7a6f8c3d5e1a0b4c7d9e2f1a3b5c7d" },
+    sync_status: generateDropdown(),
+    ref: null,
+    ...overrides,
+  };
+};
 
 export const generateReadOnlyRepositoryBranchStatus = (
   overrides?: Partial<RepositoryBranchStatusWire>

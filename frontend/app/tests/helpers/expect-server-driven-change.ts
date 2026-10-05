@@ -20,11 +20,14 @@ export async function expectServerDrivenChange<TVariables extends object, TPaylo
   await vi.waitFor(() => {
     expect(apiMock.mock.calls.length).toBeGreaterThan(callIndex);
     expect(apiMock.mock.calls.at(callIndex)?.[0]).toMatchObject(variables);
-    expect(apiMock.mock.settledResults.at(callIndex)).toEqual({
-      type: "fulfilled",
-      value: payload,
-    });
   });
+
+  // `results` is indexed by invocation, unlike `settledResults`, which fills in settlement order and
+  // would pair the variables of one call with the answer of another whenever two are in flight.
+  const result = apiMock.mock.results.at(callIndex);
+
+  expect(result?.type).toBe("return");
+  await expect(result?.value).resolves.toEqual(payload);
 
   await expect.element(page.getByRole("row", { name: rowVisibleAfter })).toBeVisible();
 }

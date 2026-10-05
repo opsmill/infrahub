@@ -211,9 +211,10 @@ PageWindow
 whole of the collision guarantee, and it is what keeps this independent of the legacy global
 `QSP.PAGINATION`.
 
-**Reset rule (FR-014)**: changing *any* filter resets the window to page 1. Because the filters and
-the page live under independent URL keys, this reset is a manual call — so it goes **inside a single
-`setFilters` wrapper**, never at each filter's own call site (risk 5).
+**Reset rule (FR-014)**: changing *any* filter **or the order** resets the window to page 1. Filters,
+order and page live under three independent URL keys, so the reset is a manual call — made inside
+`useFilters`'s and `useSort`'s own setters, in the same write as the change, never at each call site
+(risk 5). A surface that declares no filter scope has no page key to clear and is unaffected.
 
 **Counting rule (FR-009, FR-010a)**: the stated total is always `count` from the server — the number
 of rows after all filters and **before** limit/offset. It is never the number of rows received.
@@ -286,7 +287,8 @@ Repository (CoreRepository | CoreReadOnlyRepository)
    │                      ├─▶ repositoryWide  ──▶ derived ModelSchema ──▶ ObjectDetailsCard ("Details")
    │                      └─▶ branchScoped    ──▶ derived ModelSchema ──▶ ObjectDetailsCard ("On this branch"
    │                            relationships: []                            + branch-name caption)
-   └── InfrahubRepositoryBranchStatus(id, limit, offset, name__value, partial_match, status__value)
+   └── InfrahubRepositoryBranchStatus(id, limit, offset, name__value, partial_match, status__value,
+   │                                  order)
           │
           ├── count ──────────────────────────▶ the stated total (title pill + window statement)
           └── edges[].node ──▶ mapper ──▶ RepositoryBranchStatusRow[] ──▶ DataTable ("Branches"

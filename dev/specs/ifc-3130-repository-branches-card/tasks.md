@@ -10,8 +10,8 @@
 **Tests are required for this feature** — the constitution's Test Discipline principle applies, and
 every FR carries a stated verification method.
 
-**Status**: T001–T064 (there is no T007), T034a, T078 and T080–T084 are on the branch — work units
-1–7 complete, US3 filters and ordering included.
+**Status**: T001–T064 (there is no T007), T034a, T070, T078, T080–T084 and T086–T090 are on the
+branch — work units 1–7 complete, plus 5b and 5c, US3 filters and ordering included.
 Outstanding: T065–T066 (e2e), T067–T069 (documentation) and T071–T077 (gates).
 T085 is a follow-up blocked on backend work; T079 is unblocked but deliberately out of this slice.
 A ticked box means the file exists at the path named.
@@ -616,7 +616,10 @@ Phase 2 — unit 4 (T002–T006)          BLOCKING: no card test may precede T00
          unit 7   T043–T055                    (needs BOTH unit 3 and unit 6)
               │
               ├──────────────▶ unit 5b (filters, order) T056–T064, T080–T084
-              │                                              (needs units 2, 4, 6)
+              │                        │                     (needs units 2, 4, 6)
+              │                        ▼
+              │                   unit 5c (scoped url keys) T086–T090
+              │                                             (needs unit 5b)
               ▼
          unit 8   T065–T066
               │
@@ -631,7 +634,7 @@ Phase 2 — unit 4 (T002–T006)          BLOCKING: no card test may precede T00
 | A | T002, T003, T004 (distinct factory files/exports) |
 | B | T008/T009 (pagination utils), T015/T016 (query + model), T040 (partition rule) |
 | C | T022/T023 (`CommitHash`) alongside any of group B |
-| D | T067, T068, T069, T070 (four separate documentation files) |
+| D | T067, T068, T069 (three separate documentation files) |
 
 **Serial by necessity**: T006 before every `*.test.tsx` in the branches card. T040 before T044.
 T031 before T054. T012 before T027. T076 before T012.
@@ -683,5 +686,6 @@ T079, T085). The numbering skips T007; nothing is renumbered, so every other tas
 assigned, including the three the 5b rework supersedes (T056–T058, struck through rather than deleted
 so the reversal stays legible).
 
-**70 done** (T001–T064 less T007, plus T034a, T078 and T080–T084) · **15 open** (T065–T077, plus T079
-unblocked but out of this slice and T085 blocked on a contract change).
+**76 done** of 90 (T001–T064 less T007, plus T034a, T070, T078, T080–T084 and T086–T090) ·
+**14 open** (T065–T069 and T071–T077, plus T079 unblocked but out of this slice and T085 blocked on
+a contract change).

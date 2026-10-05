@@ -5,7 +5,7 @@ import {
   mapRepositoryBranchStatusRow,
 } from "@/entities/repository/domain/model/repository-branch-status";
 
-import { generateDropdown } from "../../../../../tests/fake/dropdown";
+import { generateDropdown, generateInventedDropdown } from "../../../../../tests/fake/dropdown";
 import {
   generateReadOnlyRepositoryBranchStatus,
   generateRepositoryBranchStatus,
@@ -70,20 +70,15 @@ describe("mapRepositoryBranchStatusRow", () => {
   });
 
   it("keeps the dropdown label and colour the payload supplied", () => {
+    const invented = generateInventedDropdown();
     const row = mapRepositoryBranchStatusRow(
-      generateRepositoryBranchStatus({
-        sync_status: generateDropdown({
-          value: "quarantined",
-          label: "Quarantined",
-          color: "#4c1d95",
-        }),
-      })
+      generateRepositoryBranchStatus({ sync_status: invented })
     );
 
     expect(row.syncStatus).toMatchObject({
-      value: "quarantined",
-      label: "Quarantined",
-      color: "#4c1d95",
+      value: invented.value,
+      label: invented.label,
+      color: invented.color,
     });
   });
 });

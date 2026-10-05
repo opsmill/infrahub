@@ -15,7 +15,8 @@ interface PagedCardProps {
 const PagedCard = ({ totalCount, initialPage = 1 }: PagedCardProps) => {
   const [page, setPage] = useState(initialPage);
   const { firstRow, lastRow } = getPageWindow(page, PAGE_SIZE, totalCount);
-  const rows = Array.from({ length: Math.max(lastRow - firstRow + 1, 0) }, (_, index) => (
+  const rowCount = totalCount === 0 ? 0 : lastRow - firstRow + 1;
+  const rows = Array.from({ length: rowCount }, (_, index) => (
     <li key={firstRow + index}>{`Branch ${firstRow + index}`}</li>
   ));
 

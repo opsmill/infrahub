@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { type Filter, SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
 import {
   NODE_METADATA_SORT_FIELDS,
   SORT_DIRECTION,
@@ -15,6 +15,31 @@ import {
 const [CREATED_AT, UPDATED_AT] = NODE_METADATA_SORT_FIELDS;
 
 describe("toRepositoryBranchArguments", () => {
+  it("narrows on the name for free text typed into the search field", () => {
+    // GIVEN the toolbar's search writes the any-field filter
+    const filters: Filter[] = [{ name: SEARCH_ANY_FILTER, value: "release" }];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN the contract narrows names only, so searching means searching the name
+    expect(result).toEqual({ name__value: "release", partial_match: true });
+  });
+
+  it("prefers an explicit name filter over the search field", () => {
+    // GIVEN both are set
+    const filters: Filter[] = [
+      { name: SEARCH_ANY_FILTER, value: "typed-into-search" },
+      { name: "name__value", value: "chosen-in-the-filter" },
+    ];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN the more specific of the two wins
+    expect(result).toEqual({ name__value: "chosen-in-the-filter", partial_match: true });
+  });
+
   it("orders by the first timestamp alone when both are sorted on", () => {
     // GIVEN the server refuses an order naming both timestamps
     const sorts: Sort[] = [
