@@ -110,7 +110,8 @@ export function RepositoryCommitsManager({
         scrollX
         className="bg-table-frame"
         hasNextPage={hasNextPage}
-        onLoadMore={fetchNextPage}
+        // Scrolling must not cancel a refresh that is still retrying, which fetchNextPage does by default.
+        onLoadMore={() => fetchNextPage({ cancelRefetch: false })}
       >
         <DataTable
           columns={getRepositoryCommitsColumns({
