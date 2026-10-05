@@ -3,6 +3,8 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
+import { retryBackgroundQuery } from "@/shared/api/background-query";
+
 import { useBranchRepositorySummaries } from "@/entities/branches/ui/hooks/use-branch-repository-summaries";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import {
@@ -47,7 +49,10 @@ const pageOf = (...names: string[]): RepositoryBranchStatusPage => ({
 });
 
 const renderSummaries = async () => {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // A query with its own retry policy retries at once, so a test doesn't wait on the backoff.
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
+  });
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
   const rendered = await renderHook(() => useBranchRepositorySummaries([primary, feature]), {
@@ -177,31 +182,43 @@ describe("getRepositoryBranchStatusQueryOptions", () => {
     limit: 500,
   });
 
-  const refetchIntervalFor = (data: RepositoryBranchStatusPage | undefined) => {
+  const refetchIntervalFor = (
+    data: RepositoryBranchStatusPage | undefined,
+    failure?: { status: "error"; error: Error }
+  ) => {
     const { refetchInterval } = options;
     if (typeof refetchInterval !== "function")
       throw new Error("refetchInterval must be a function");
-    return refetchInterval({ state: { data } } as unknown as Parameters<typeof refetchInterval>[0]);
+    return refetchInterval({
+      state: { data, status: "success", error: null, ...failure },
+    } as unknown as Parameters<typeof refetchInterval>[0]);
   };
+
+  const syncingPage = (): RepositoryBranchStatusPage => ({
+    rows: [
+      ...pageOf("primary").rows,
+      mapRepositoryBranchStatusRow(
+        generateRepositoryBranchStatus({ name: { value: "feature" }, sync_status: SYNCING })
+      ),
+    ],
+    count: 2,
+  });
 
   test("keeps the status fresh for a minute", () => {
     expect(options.staleTime).toBe(60_000);
   });
 
   test("polls every 10 seconds only while a row is syncing", () => {
-    const syncing: RepositoryBranchStatusPage = {
-      rows: [
-        ...pageOf("primary").rows,
-        mapRepositoryBranchStatusRow(
-          generateRepositoryBranchStatus({ name: { value: "feature" }, sync_status: SYNCING })
-        ),
-      ],
-      count: 2,
-    };
-
-    expect(refetchIntervalFor(syncing)).toBe(10_000);
+    expect(refetchIntervalFor(syncingPage())).toBe(10_000);
     expect(refetchIntervalFor(pageOf("primary", "feature"))).toBe(false);
     expect(refetchIntervalFor(undefined)).toBe(false);
+  });
+
+  test("polls a syncing row more slowly after a failed refetch, like the branch cards", () => {
+    expect(
+      refetchIntervalFor(syncingPage(), { status: "error", error: new Error("Network error") })
+    ).toBe(60_000);
+    expect(options.retry).toBe(retryBackgroundQuery);
   });
 
   test("reports an error on every branch when the repository list itself was cut short", async () => {
