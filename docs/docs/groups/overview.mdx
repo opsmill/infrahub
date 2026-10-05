@@ -35,8 +35,10 @@ Infrahub provides three group types, each for a different use case:
 | Type | Class | Membership managed by | Use when |
 |---|---|---|---|
 | **Standard** | `CoreStandardGroup` | You | You want to hand-pick members based on business logic |
-| **Generator** | `CoreGeneratorGroup` | The Generator that owns it | Objects are produced by a Generator and should track back to their origin |
+| **Generator** | `CoreGeneratorGroup` or `CoreGeneratorAwareGroup` | The Generator that owns it | Objects are produced by a Generator and should track back to their origin |
 | **Query** | `CoreGraphQLQueryGroup` | A live GraphQL query | Membership should change dynamically as the underlying data changes |
+
+Infrahub does not delete Generator groups or Query groups automatically, including when you remove the Generator or the target object. See [What Infrahub deletes when a target or definition is removed](../generators/overview#what-infrahub-deletes-when-a-target-or-definition-is-removed).
 
 **Choosing between types:**
 
