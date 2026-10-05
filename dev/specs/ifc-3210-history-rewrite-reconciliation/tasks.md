@@ -108,22 +108,22 @@ head, the imported objects match the rewritten tree, and the repository reports 
 
 ### Test harness
 
-- [ ] T012 [US1] Add a force-push helper to
+- [x] T012 [US1] Add a force-push helper to
       `backend/tests/integration/git/test_git_live_remote.py`, beside the existing
       `_push_commit_to_remote`, which lives in that module and not in `conftest.py`. It builds a
       divergent history inside the Gogs container and pushes it with `--force`.
-- [ ] T013 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
+- [x] T013 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
       already imported, in `backend/tests/integration/git/conftest.py`. The rewrite tests all start
       from that state.
 
 ### Implementation
 
-- [ ] T014 [US1] Classify the staging-mode trunk pull too, in
+- [x] T014 [US1] Classify the staging-mode trunk pull too, in
       `backend/infrahub/git/repository.py::InfrahubRepository._collect_staging_imports`. It calls
       `self.pull(branch_name=self.default_branch)` outside the `ACTIVE` loop, so a rewritten trunk
       on a staging repository would be neither classified nor recorded, and before T041 would still
       fail with the old message.
-- [ ] T015 [US1] Thread the per-branch graph commits down to
+- [x] T015 [US1] Thread the per-branch graph commits down to
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`. They are
       loaded once per cycle by `get_repositories_commit_per_branch` and live on
       `RepositoryData.branches` in `sync_remote_repositories`. Neither
@@ -131,18 +131,18 @@ head, the imported objects match the rewritten tree, and the repository reports 
       `sync_git_repo_with_origin_and_tag_on_failure`, receives them today, so passing them through
       both is part of this task. The collector has no graph read of its own, and `get_commit_value`
       reads git rather than the graph, so without this the classifier has no input (FR-001b).
-- [ ] T016 [US1] Build the candidate set in `collect_pending_imports` as the **union** of two
+- [x] T016 [US1] Build the candidate set in `collect_pending_imports` as the **union** of two
       comparisons: the branches `compare_local_remote` returns (local head against remote head), and
       the branches whose **graph commit** differs from the remote head. `compare_local_remote` alone
       misses a `default_branch` edit, which moves no ref, and misses a worker whose graph already
       matches the remote.
-- [ ] T017 [US1] Classify each candidate after `fetch()` and before the per-branch `pull()`,
+- [x] T017 [US1] Classify each candidate after `fetch()` and before the per-branch `pull()`,
       **using the graph commit** as `imported_commit` and never the local worktree head. Keep the
       existing per-branch failure isolation: a branch that fails classification joins
       `failed_imports` and the cycle continues. See
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1, "Two
       comparisons, not one".
-- [ ] T018 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
+- [x] T018 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
       against the remote head**, not from the classification. Reset whenever the worktree does not
       lead to the remote head, which covers both a parted history and a worktree left ahead by a
       rewind. Pull as today when the worktree is behind. Do nothing when the worktree already is
@@ -181,22 +181,22 @@ head, the imported objects match the rewritten tree, and the repository reports 
       cycle writes the real commit and imports such a branch once.
       IFC-3281 landed the write in `git_branch_create`. The read that reports an inherited commit as
       absent has not landed, so the task stays open.
-- [ ] T020 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
+- [x] T020 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
-- [ ] T021 [US1] Give the divergent-branches case its own message in
+- [x] T021 [US1] Give the divergent-branches case its own message in
       `backend/infrahub/git/base.py::InfrahubRepositoryBase._raise_enriched_error_static`. It names
       a divergent history and does not use the word "conflict" (FR-003, FR-017).
-- [ ] T022 [US1] Log each reconciliation in `collect_pending_imports` with the repository, the
+- [x] T022 [US1] Log each reconciliation in `collect_pending_imports` with the repository, the
       branch, the discarded commit and the new commit (FR-019).
 
 ### Tests
 
-- [ ] T023 [US1] Rename `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict`
+- [x] T023 [US1] Rename `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict`
       and change it to assert the corrected message: a diverged pull names a divergent history and
       never says "conflict" (FR-003, FR-017). **Do not** assert that `pull` resets the branch here.
       That behaviour is built in Phase 5, so asserting it in Phase 3 fails.
       The reset assertion belongs to the Phase 5 component test, which is its only home.
-- [ ] T024 [P] [US1] Leave the `"Need to specify how to reconcile"` parameter in
+- [x] T024 [P] [US1] Leave the `"Need to specify how to reconcile"` parameter in
       `backend/tests/integration/git/test_repository.py::test_repository_operational_status`
       **unchanged**. It is the stderr the test injects into `GitCommandError`, not a message the
       test asserts, and git still emits that text. Replacing it with Infrahub's new wording would
@@ -204,14 +204,19 @@ head, the imported objects match the rewritten tree, and the repository reports 
       test would keep passing while no longer exercising the divergent-branches case at all.
       Instead, add an assertion that the resulting message does not contain the word "conflict"
       (FR-003, SC-003).
-- [ ] T025 [US1] Component-test the reconciliation log line (FR-019): it names the repository, the
+- [x] T025 [US1] Test the reconciliation log line (FR-019): it names the repository, the
       branch, the discarded commit and the new commit. Until INFP-671 ships a view, this line is the
       only way an operator learns a reconciliation happened, so nothing else holds it.
-- [ ] T026 [US1] Add a live-remote test in
+      It is held at the unit tier, in `backend/tests/unit/git/test_branch_reconciliation.py`: the
+      collector runs against a local remote and a recording client, so no database is needed. T026
+      asserts the same line once more against the live remote.
+- [x] T026 [US1] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a rewritten non-default branch
       reconciles and re-imports, and the repository reports healthy.
-- [ ] T027 [US1] Add a live-remote test asserting a fast-forward still fast-forwards and writes
+- [x] T027 [US1] Add a live-remote test asserting a fast-forward still fast-forwards and writes
       no record, in `backend/tests/integration/git/test_git_live_remote.py`.
+      No record exists before Phase 6, so the test asserts that no reconciliation is logged. Phase 6
+      adds to the same test the assertion that the four attributes stay empty.
 
 **Checkpoint**: a rewritten non-default branch is healthy again with no user action. SC-001 and
 SC-003 hold.
@@ -284,9 +289,9 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on
       it.
-      **This test needs the widened broadcast of T030, for the same reason T026 does.** The second
-      worker converges on a branch that is not the trunk, which only the widened broadcast
-      delivers.
+      **This test needs the widened broadcast of T030.** The second worker converges on a branch
+      that is not the trunk, which only the widened broadcast delivers. T026 runs on one worker and
+      does not need it.
 
 **Checkpoint**: SC-005 holds. One developer's rebase is no longer a repository-wide event.
 
