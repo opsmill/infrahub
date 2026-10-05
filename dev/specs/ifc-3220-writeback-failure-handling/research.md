@@ -486,7 +486,7 @@ and `release`. It reads the exception type first. Per-ref push rejections get a 
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
-| import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-failed` | yes |
+| import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-interrupted` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |

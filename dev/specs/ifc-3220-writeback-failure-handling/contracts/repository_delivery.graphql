@@ -54,8 +54,8 @@ type CoreRepository {
 # delivery_status values:          none | pending | action-required
 # delivery_failure_cause values:   remote-unreachable | remote-advanced | record-failed |
 #                                  not-found | certificate | credentials | permission |
-#                                  import-failed | replay-conflict | source-discarded |
-#                                  destination-rewritten | unclassified
+#                                  import-interrupted | import-failed | replay-conflict |
+#                                  source-discarded | destination-rewritten | unclassified
 #
 # The JSON shapes are the Pydantic models of data-model.md, each with "format": 1.
 #

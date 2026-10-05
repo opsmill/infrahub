@@ -327,8 +327,9 @@ unreplayable, with a cause that names the discarded source commit.
   remote, and the queue stays. The next attempt sees that the remote already holds the merges. It
   records the commit and clears the queue by observation, never by replay.
 - **The import fails after a successful push.** The commit is recorded, and the obligation to
-  import stays. A database or connection fault retries. A content fault stops with the cause "import
-  failed" until the content is fixed on the remote and a retry runs.
+  import stays. A database or connection fault gets the cause "import interrupted" and retries. A
+  content fault stops with the cause "import failed" until the content is fixed on the remote and a
+  retry runs.
 - **A merge lands during the import of a delivered commit.** The desired-state import can delete the
   new merge's repository objects, which the delivered commit does not hold yet. The obligation to
   import then stays, and the next attempt imports a commit that holds them. Their object ids can
@@ -537,7 +538,8 @@ system, and the new delivery path must keep them true.*
     automatic retry waits), or action required.
   - **Failure cause**: why the last attempt failed. At least remote unreachable, credentials,
     permission or branch protection, repository not found, certificate, replay conflict, source
-    commit no longer on the remote, destination history rewritten, import failed, and unclassified.
+    commit no longer on the remote, destination history rewritten, import interrupted, import
+    failed, and unclassified.
   - **Error message**: the remote's message, verbatim, with credentials removed.
   - **Delivery queue**: the ordered entries. Each entry names the remote source branch, the source
     commit, the Infrahub branch it came from and the time of the merge. The queue carries a version
