@@ -103,18 +103,26 @@ apart, because they drive different outcomes:
   flows.
 - **This worker's worktree head against the remote head** says whether the clone moves. A worktree
   behind the remote is pulled. A worktree that does not lead to the remote head, because the remote
-  was rewritten or rewound, is hard-reset onto it. A worktree already on the remote head stays where
-  it is, but when the graph records another commit, the sync writes the commit and imports the branch
-  again: a pull would move nothing, so it would record nothing.
+  was rewritten or rewound, is hard-reset onto it. That includes a worktree ahead of the remote, and
+  the reset discards its local commits. No path leaves such a commit: `InfrahubRepository.merge`
+  pushes before it records the commit, and resets the destination worktree when either step fails
+  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
+  already on the remote head stays there. When the graph records another commit, the sync resets the
+  worktree onto the same commit, which records it, and imports the branch again: a pull would move
+  nothing, so it would record nothing.
 
 A worker whose graph already holds the remote head can still hold the discarded history on disk. It
-resets, and its classification stays unchanged, so the rewrite is not counted a second time.
+resets and logs the reconciliation, and its classification stays unchanged.
 
 The sync considers the branches whose local head differs from the remote, and also the local
-branches whose graph commit differs from the remote head. It classifies a branch new to this worker
-too, because the graph can hold a commit that another worker imported and the remote has since
-discarded. Each reset or lineage break logs one line with the branch, the discarded commit and the
-commit that replaced it. The add flow passes no graph commits, so it classifies nothing.
+branches whose graph commit differs from the remote head. Only branches that can still record a
+commit take part in the second comparison: a merged branch, a branch being deleted or a branch
+Infrahub no longer lists would be selected again on every cycle. It classifies a branch new to this
+worker too, because the graph can hold a commit that another worker imported and the remote has
+since discarded. A new branch that git cannot classify is still created, but a branch this worker
+holds fails before its worktree moves. Each reset or lineage break logs one line with the branch,
+the discarded commit and the commit that replaced it. The add flow passes no graph commits, so it
+classifies nothing.
 
 ## Cloning and the repository lock
 
