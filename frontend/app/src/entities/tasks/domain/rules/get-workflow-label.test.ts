@@ -51,4 +51,12 @@ describe("getWorkflowLabel", () => {
   it("humanizes the id of an unknown workflow", () => {
     expect(getWorkflowLabel("some-new_workflow")).toBe("Some new workflow");
   });
+
+  it.each([
+    ["constructor", "Constructor"],
+    ["toString", "ToString"],
+    ["__proto__", "Proto"],
+  ])("humanizes %s instead of reading an inherited object property", (workflow, label) => {
+    expect(getWorkflowLabel(workflow)).toBe(label);
+  });
 });

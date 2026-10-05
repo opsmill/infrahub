@@ -12,7 +12,7 @@ export function getWorkflowLabel(workflow: string | null): string {
   if (!workflow) return "—";
 
   return (
-    WORKFLOW_LABELS[workflow] ??
+    (Object.hasOwn(WORKFLOW_LABELS, workflow) ? WORKFLOW_LABELS[workflow] : undefined) ??
     WORKFLOW_PREFIX_LABELS.find(([prefix]) => workflow.startsWith(prefix))?.[1] ??
     humanize(workflow)
   );
