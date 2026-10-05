@@ -308,7 +308,14 @@ unreplayable, with a cause that names the discarded source commit.
   Specification".
 - **The worker that performed the merge never returns.** Nothing on a worker's disk is
   load-bearing. The queue names merge inputs that are on the remote, so any worker can perform the
-  delivery. The next synchronisation cycle starts a new attempt once the lost one is stale.
+  delivery. The next synchronisation cycle starts a new attempt once the lost one is stale. Two
+  cases delay or stop this:
+  - A worker that dies while it holds the repository's lock keeps the lock until the existing
+    clean-up of locks from dead workers removes it. By default, the clean-up removes such a lock
+    once it is 15 minutes old. Until then, neither the automatic recovery nor a manual retry can
+    deliver.
+  - A delivery run that the orchestrator accepted but never starts stops the automatic recovery
+    for as long as it waits. A manual retry still works.
 - **The remote destination advanced between the failure and the retry.** The replay merges onto the
   freshly fetched remote head. No force-push happens. Infrahub records the delivered commit, then
   imports it, with a durable obligation to import that survives a crash.
@@ -342,7 +349,11 @@ unreplayable, with a cause that names the discarded source commit.
   times. If every try fails, the merge follow-up sees no pending delivery. It regenerates the work of
   that repository against the commit recorded before the merge. The delivery records the entry
   before its first attempt. After the delivery, the release regenerates every definition of that
-  repository against the delivered commit. Work runs twice, and no stale result stays.
+  repository against the delivered commit. Work runs twice, and no stale result stays. The
+  delivery retries its own record with its automatic retries. If that record fails at every
+  attempt too, the delivery fails and logs at error level the repository, the source branch and
+  the source commit, so that an operator can deliver the merge by hand. That merge's repository
+  content is then neither queued nor delivered, and nothing retries it later.
 - **Several repositories fail delivery after the same merge.** Each keeps its own queue and its own
   held set, and each releases independently.
 - **A held definition is deleted before the release.** It is skipped, and its absence widens the
@@ -379,8 +390,8 @@ unreplayable, with a cause that names the discarded source commit.
   artifact definitions, and the recorded commit lacks the abandoned merges' files. The released
   regeneration can then fail for those definitions. The repository says so and offers the reimport
   of the current commit.
-- **A late first attempt of an abandoned merge.** A merge flow that starts after its entry was
-  abandoned does not put the entry back.
+- **A late first attempt of an abandoned merge.** A run of `merge_git_repository` that starts
+  after its entry was abandoned does not put the entry back.
 - **A direct edit, or a live event of another writer, while a delivery is pending.** It runs
   transforms against the recorded commit, which is the commit on the remote. It is not held. Only
   the merge follow-up path is held.
@@ -433,8 +444,10 @@ system, and the new delivery path must keep them true.*
   starts, and before the merge follow-up consults the regeneration barrier. When the record fails,
   the system MUST retry it a bounded number of times. If every retry fails, the delivery MUST record
   the entry before its first attempt, and the regeneration that the merge follow-up dispatched for
-  that repository without a hold MUST run again after the delivery. A failure to record one
-  repository's entry MUST NOT stop the delivery of any repository.
+  that repository without a hold MUST run again after the delivery. A failure of that first record
+  for one repository MUST NOT stop the delivery of any repository. When the delivery cannot record
+  the entry either, after its own bounded retries, the system MUST log the merge at error level with
+  what an operator needs to deliver it by hand.
 - **FR-005b**: An entry that left the queue MUST NOT come back.
 - **FR-006**: The system MUST NOT force-push to the remote under any circumstance.
 
@@ -683,8 +696,8 @@ These were settled without asking. Three of them need confirmation, and say so.
    delivery and regenerates against the old commit. So FR-005a also requires a bounded retry, and a
    second run of that regeneration after the delivery. A block of the delivery for that repository
    was rejected: the remote would then never receive the merge.
-6. **FR-005b is added.** A merge flow can start after its entry was abandoned. Without the rule, it
-   would put the entry back and push it.
+6. **FR-005b is added.** A run of `merge_git_repository` can start after its entry was abandoned.
+   Without the rule, it would put the entry back and push it.
 7. **FR-022 is added.** It carries IFC-3210's FR-005b, "the system MUST NOT push a commit the remote
    has already discarded", onto the replay. A source branch forked from a discarded trunk carries the
    discarded commits. Replaying it onto the rewritten trunk and pushing would restore them.

@@ -19,8 +19,8 @@ repository content appends its inputs to the queue before anything is submitted.
 delivers the queue: it fetches, checks that nothing it would push was discarded by a rewrite,
 replays the pending merges on the fresh remote head, pushes once, records the commit with a durable
 import obligation, imports when the remote had moved, broadcasts, and then, outside the repository
-lock, releases the held regeneration. The merge flow, a new retry flow and a recovery check in the
-periodic synchronisation call the same service. A Prefect task retries transient failures three
+lock, releases the held regeneration. `merge_git_repository`, a new retry flow and a recovery check
+in the periodic synchronisation call the same service. A Prefect task retries transient failures three
 times, and every Git command of the adapter is bounded in time. While a delivery is pending, no
 other path imports the default branch. A regeneration barrier, consulted at every dispatch point of
 the merge follow-up, holds the definitions of a repository with a pending delivery as identifiers
@@ -148,14 +148,15 @@ backend/infrahub/
 │   └── tasks.py                           # merge, retry and abandon flows; bootstrap skip; delete guard;
 │                                          # recovery check; repository filters on the blanket flow
 ├── core/
-│   ├── constants/__init__.py              # RepositoryDeliveryStatus, RepositoryDeliveryFailureCause
+│   ├── constants/__init__.py              # RepositoryDeliveryStatus, RepositoryDeliveryFailureCause,
+│   │                                      # FullRegenerationReason, moved here, with new members
 │   ├── schema/definitions/core/repository.py   # the nine attributes
 │   ├── merge/
 │   │   ├── regeneration_barrier.py        # NEW
 │   │   ├── regeneration_release.py        # NEW
-│   │   ├── regeneration_dispatcher.py     # barrier at four sites, new fallback reason
+│   │   ├── regeneration_dispatcher.py     # barrier at four sites, reasons on the widen markers
 │   │   ├── repository_merge_dispatcher.py # enqueue before submit, bounded retry,
-│   │   │                                  # per-repository guard, context
+│   │   │                                  # per-repository guard, context, state port
 │   │   ├── recompute_coalescing.py        # barrier on the Python family
 │   │   ├── python_target_sources.py       # owner_of
 │   │   ├── builder.py                     # wiring
@@ -299,6 +300,6 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query is more code and has no precedent for node attributes here. |
+| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The branch merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query is more code and has no precedent for node attributes here. |
 | Four JSON attributes, which are structured values (Principle VII, and the sibling's rejection of a structured record). | The queue and the held set are lists by nature, and an abandonment record carries a list of entries. | One attribute per entry field cannot hold a list. A related node per entry is diff-visible and needs its own permission model, which the PRD rejects. The status, the cause, the message and the last commit, which a server-side query or a display needs, stay scalar. |
 | A cache of narrowed selections, which is a second store for held work (Principle VII). | Without it, nearly every git-synced merge that carries content would recompute whole kinds (SC-008). | Persisting the narrowing in the graph breaks FR-014. Waiting for the first attempt delays every git-synced merge, by minutes when the remote is down. A miss only over-executes. |

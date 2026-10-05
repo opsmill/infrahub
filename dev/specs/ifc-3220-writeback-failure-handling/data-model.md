@@ -117,7 +117,7 @@ untyped dictionaries for this data.
 | `format` | `Literal[1]` | |
 | `version` | `int` | Starts at 0 for an empty queue that was never used. A null `delivery_queue` reads as version 0. Increases by one when an entry is added or removed. A flag change on an entry does not move it. An abandonment names it. |
 | `entries` | `tuple[PendingMerge, ...]` | In merge order. |
-| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: the merge flow writes an entry only when it is `False`, that is, when no try of the dispatcher's enqueue returned (`research.md` R3). |
+| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: `merge_git_repository` writes an entry only when it is `False`, that is, when no try of the dispatcher's enqueue returned (`research.md` R3). |
 | `import_owed_commit` | `str \| None` | A recorded commit whose import has not succeeded yet (FR-023). Set only while the queue is non-empty. |
 
 ### `DeliveryProgress`
@@ -157,18 +157,47 @@ destination branch.
 
 `HeldItem` is `id: str`, `hold_seq: int`. `HeldPythonAttribute` is `kind: str`, `attribute: str`,
 `hold_seq: int`. A repeated hold of the same identifier keeps one item and raises its `hold_seq`.
-`HeldWiden` is `scope: Literal["all", "terminals"]`, `hold_seq: int`; a wider scope replaces a
-narrower one. Scope `all` covers every definition and Python attribute of the repository. Scope
-`terminals` covers only its artifact definitions, so the held generator items and Python items stay
-owed. The barrier sets either scope. `merge_git_repository` sets scope `all` in the save that
-writes an entry that the dispatcher could not write (`research.md` R3). `ReleaseLease` is
-`lease_id: str`, `from_seq: int`, `up_to_seq: int`, `expires_at: datetime`.
+
+`HeldWiden` is `scope: Literal["all", "terminals"]`, `reason: FullRegenerationReason`,
+`hold_seq: int`. It is one item, the `widen` marker. A repeated hold of the marker keeps one marker
+and raises its `hold_seq`. A wider scope replaces a narrower one, and a narrower hold keeps the
+wider scope. The marker keeps the reason of the latest hold of the scope that it has. Scope `all`
+covers every definition and Python attribute of the repository. Scope `terminals` covers only its
+artifact definitions, so the held generator items and Python items stay owed. The barrier sets
+either scope, with the reason of the fallback that set it. `merge_git_repository` sets scope `all`,
+with the reason `UNHELD_FOLLOW_UP`, in the save that writes an entry that the dispatcher could not
+write (`research.md` R3). The release logs the marker's reason ("New fallback reasons" below).
+
+`ReleaseLease` is `lease_id: str`, `artifact_definitions: tuple[HeldItem, ...]`,
+`generator_definitions: tuple[HeldItem, ...]`, `python_attributes: tuple[HeldPythonAttribute, ...]`,
+`widen: HeldWiden | None`, `expires_at: datetime`. A lease names the exact items that it covers.
+Each named item has its key (the artifact or generator definition id, the `(kind, attribute)` pair,
+or the `widen` marker) and the `hold_seq` that the item had when the lease was taken. These named
+items are the lease's **window**. A window is a set, not a range of sequences: the items that no
+live lease covers can have gaps, and a range over them could overlap another live lease
+(`research.md` R10).
+
+A lease is live until its `expires_at`. A live lease covers an item that it names while the item
+keeps the named `hold_seq`. A hold of that item after the lease was taken raises its `hold_seq`, so
+the lease no longer covers it, and the next lease can take it.
 
 `HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence, and reports the
-previous sequence of each refreshed item. `lease_window(now)` returns the items that no live lease
-covers. `without_window(lease)` removes the items of a lease's window, and the lease, and keeps the
-rest. A lease is live until its `expires_at`. When its release fails, its run sets `expires_at` to
-now and keeps the items, so the next lease covers them (`research.md` R10, rule 4).
+previous sequence of each refreshed item. `lease_window(now)` returns the held items that no live
+lease covers, each with its current `hold_seq`. `with_lease(lease, now)` adds a lease that names
+such items. `without_window(lease, now)` removes each item that the lease names and that still has
+the named `hold_seq`, then removes the lease. An item held again after the lease was taken has a
+higher `hold_seq`, so it stays. When its release fails, its run sets `expires_at` to now and keeps
+the items, so the next lease takes them (`research.md` R10, rule 4).
+
+`with_lease` and `without_window` also clean up the expired leases, so the clean-up is part of the
+save that takes or clears a lease:
+
+- When a new lease takes an item that an expired lease names, the item moves to the new lease.
+- An expired lease drops each item that the held set no longer holds at the named `hold_seq`.
+- An expired lease that names no item any more is removed.
+
+The expired leases that stay are therefore only those that expired after the last take or clear,
+and the next take or clear cleans them up in the same way.
 
 No member, target or node id is stored (FR-014). The set grows with the number of definitions that
 the queued merges touched, not with the data.
@@ -231,7 +260,7 @@ its progress timestamps and never changes the status.
 | From | Event | To | Writes |
 |---|---|---|---|
 | any | enqueue | `pending` | append entry, bump version, `last_progress_at` |
-| any | enqueue by `merge_git_repository`, after a failed first write | `pending` | as enqueue, plus a `widen` marker of scope `all` with the next sequence, in the same save; nothing when the id is refused (`research.md` R3) |
+| any | enqueue by `merge_git_repository`, after a failed first write | `pending` | as enqueue, plus a `widen` marker of scope `all` with the reason `UNHELD_FOLLOW_UP` and the next sequence, in the same save; nothing when the id is refused (`research.md` R3) |
 | `pending`, `action-required` | attempt with entries starts | `pending` | `attempt_started_at`, `last_progress_at`, clear `retry_due_at` |
 | `pending` | step boundary of an attempt | unchanged | `last_progress_at` |
 | `pending` | retryable failure, not the final attempt | `pending` | cause, error, `retry_due_at`, `last_progress_at` |
@@ -239,14 +268,18 @@ its progress timestamps and never changes the status.
 | `pending` | an import becomes owed | unchanged | `import_owed_commit` |
 | `pending` | the owed import succeeds | unchanged | clear `import_owed_commit` |
 | any but `none` | barrier holds | unchanged | items with the next sequence |
-| any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease over the uncovered held items up to the snapshot's highest sequence, clear cause and error when `none` |
-| any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease over the uncovered held items |
+| any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease that names the uncovered held items whose `hold_seq` is not above the snapshot's highest, clear cause and error when `none` |
+| any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease that names every uncovered held item |
+| `none` | held-only run takes a lease, through `lease_owed_release` | unchanged | a release lease that names every uncovered held item; nothing when a live lease covers them all |
 | any | release renews | unchanged | the lease's `expires_at` |
-| any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held for the next lease (`research.md` R10, rule 4) |
-| any | release clears | unchanged | remove the items of the lease's window, and the lease |
+| any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held, and the next lease takes them (`research.md` R10, rule 4) |
+| any | release clears | unchanged | remove each item of the lease's window that still has the named `hold_seq`, then the lease; an item held again since stays |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
 | any | guard refuses a branch deletion | unchanged | `delete_source_git_branch` on every entry that names the branch; the version does not move |
+
+Every row that takes or clears a lease also cleans up the expired leases in the same save, as
+`HeldRegeneration` says.
 
 ### Invariants
 
@@ -258,23 +291,27 @@ its progress timestamps and never changes the status.
 4. Entries leave the queue only by a delivery that observed them on the remote, or by an
    abandonment that writes its record in the same save (FR-009, SC-006). Both happen under the
    repository lock.
-5. An entry id that left the queue is never appended again. The merge flow appends only when
-   `pending_merge_enqueued` is `False`, that is, when no try of the dispatcher's enqueue returned.
-   The entry is then not in the queue, except in one case: a try's write committed, but its call
-   raised, and every later try raised too. For that case, `enqueue` refuses an id that is still in
-   `entries`, and an id that left the queue and is in `removed_entry_ids` or in the last abandonment
-   record.
+5. An entry id that left the queue is never appended again. `merge_git_repository` appends only
+   when `pending_merge_enqueued` is `False`, that is, when no try of the dispatcher's enqueue
+   returned. The entry is then not in the queue, except in one case: a try's write committed, but
+   its call raised, and every later try raised too. For that case, `enqueue` refuses an id that is
+   still in `entries`, and an id that left the queue and is in `removed_entry_ids` or in the last
+   abandonment record.
 6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
-7. A hold recorded above a release's bound survives that release's clear (FR-015). For a delivery
-   the bound is the attempt's snapshot, so a hold for a merge that is still queued waits for that
-   merge's delivery.
+7. A hold recorded after a lease was taken survives that lease's clear (FR-015). The lease does
+   not name the item, or names it with a lower `hold_seq`, and the clear removes an item only when
+   it still has the named `hold_seq`. A delivery's lease takes only items whose `hold_seq` is not
+   above the attempt's snapshot, so a hold for a merge that is still queued waits for that merge's
+   delivery.
 8. `import_owed_commit` is saved before the commit it names is recorded (`research.md` R4 step 9).
 9. An owed import implies a non-empty queue.
-10. Two live leases never cover the same held item.
+10. Two live leases never cover the same held item. A new lease takes only items that no live lease
+    covers, and an item that it takes from an expired lease moves to it. So no two leases name the
+    same held item with its current `hold_seq`.
 11. No write emits a node mutation event (FR-026).
-12. An entry that `merge_git_repository` appends comes with a `widen` marker of scope `all` in the
-    same save. The follow-ups of that merge ran without a hold, so the release after the delivery
-    runs their work again (`research.md` R3).
+12. An entry that `merge_git_repository` appends comes with a `widen` marker of scope `all`, with
+    the reason `UNHELD_FOLLOW_UP`, in the same save. The follow-ups of that merge ran without a
+    hold, so the release after the delivery runs their work again (`research.md` R3).
 
 ---
 
@@ -286,7 +323,7 @@ unless stated otherwise.
 | Type | Kind | Fields | Meaning |
 |---|---|---|---|
 | `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `progress`, `last_delivered_commit` | The whole state of one repository, as the store reads it. Exposes `is_stale(now, lock_free, run_queued)` and `has_work(now)`. The caller reads the lock and the orchestrator and passes the two booleans in, so the model stays pure. |
-| `DeliveryStage` | `StrEnum` | `fetch`, `push`, `record`, `import`, `replay`, `release` | Where an attempt failed. An input of the classifier. |
+| `DeliveryStage` | `StrEnum` | `enqueue`, `fetch`, `push`, `record`, `import`, `replay`, `release` | Where an attempt failed. An input of the classifier. `enqueue` is the write of the entry that `merge_git_repository` makes after a failed dispatcher enqueue, as the first step of the attempt (`research.md` R3). |
 | `DeliveryFailure` | frozen dataclass | `cause`, `retryable: bool`, `message` | The classifier's output. `message` is already scrubbed. |
 | `DeliveryOutcome` | `StrEnum` | `nothing-pending`, `delivered`, `observed`, `released`, `failed`, `unreplayable`, `deferred` | What one attempt did. `deferred` means a retry chain was already due. |
 | `DeliveryAttemptResult` | frozen dataclass | `outcome`, `commit: str \| None`, `failure: DeliveryFailure \| None` | The service's return value. |
@@ -320,7 +357,7 @@ Every new field is optional with a default, so a run queued by the previous code
 | Model | Module | Field | Type |
 |---|---|---|---|
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
-| `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when one of its enqueue tries returned. Only `False` makes the flow write the entry, with a `widen` marker of scope `all`. |
+| `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when one of its enqueue tries returned. Only `False` makes `merge_git_repository` write the entry, with a `widen` marker of scope `all`, as the first step of its delivery task (`research.md` R3). |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
 | `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
 | `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
@@ -340,10 +377,24 @@ In `backend/infrahub/workflows/catalogue.py`, beside `GIT_REPOSITORIES_MERGE`, w
 | `GIT_REPOSITORY_DELIVERY_RETRY` | `git-repository-delivery-retry` | `retry_repository_delivery` |
 | `GIT_REPOSITORY_DELIVERY_ABANDON` | `git-repository-delivery-abandon` | `abandon_repository_delivery` |
 
-### New fallback reason
+### New fallback reasons
 
-`core/merge/regeneration_dispatcher.py::FullRegenerationReason.HELD_SET_UNRESOLVED`, "Held
-regeneration could not be resolved".
+`FullRegenerationReason` moves from `core/merge/regeneration_dispatcher.py` to
+`core/constants/__init__.py`, beside `RepositoryDeliveryStatus`. `HeldWiden` in
+`git/writeback/models.py` can then carry it, and `git/writeback/` still imports nothing from the
+merge layer. `regeneration_dispatcher.py` imports it from its new place.
+
+Each `widen` marker carries the reason of the code that set it, and the release logs that reason:
+
+| Source of the marker | Reason |
+|---|---|
+| `PostMergeRegenerationDispatcher._full_regeneration` | the reason it receives, one of the four that exist |
+| The flag-off path of `post_process_branch_merge` | `FEATURE_DISABLED`, which exists |
+| `PostMergeRegenerationDispatcher._submit_full_terminal_regeneration`, for both of its callers: a failed generator, and a failed selection from the cascade output | new: `TERMINAL_SELECTION_FAILED`, "Terminals could not be targeted from the cascade output" |
+| `merge_git_repository`, after a failed dispatcher enqueue (`research.md` R3) | new: `UNHELD_FOLLOW_UP`, "Merge follow-ups ran without a hold" |
+
+One more new member is not a marker's reason: `HELD_SET_UNRESOLVED`, "Held regeneration could not
+be resolved". The release logs it when a held identifier does not resolve (`research.md` R10).
 
 ---
 

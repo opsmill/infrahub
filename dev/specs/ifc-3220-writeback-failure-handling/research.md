@@ -165,8 +165,9 @@ merge, so the same trade-off does not hold here.
 passes the acting account's id, so the edge metadata names the user. Every other save names the
 system, which performed it.
 
-Every place that writes has database access: the merge flow, `post_process_branch_merge`, the
-computed-attribute flows, and the git task workers (`git/tasks.py` already calls `get_database()`).
+Every place that writes has database access: the branch merge flow, `post_process_branch_merge`,
+the computed-attribute flows, and the git task workers (`git/tasks.py` already calls
+`get_database()`).
 
 **Why one class.** FR-009 says that only an abandonment, which writes a record, may remove an
 undelivered entry. That rule can only be enforced in one place. Each method of the store is one
@@ -178,16 +179,16 @@ Two locks, always taken in this order:
 
 | Lock | Name | Held by | Held for | Time to live |
 |---|---|---|---|---|
-| Repository lock (exists) | `lock.registry.get(name=<repository name>, namespace="repository")` | The Git part of a delivery attempt, and the removal step of an abandonment. | The Git work. Never across a release, never across a retry delay. | none, as today |
+| Repository lock (exists) | `lock.registry.get(name=<repository name>, namespace="repository")` | The Git part of a delivery attempt, and the removal step of an abandonment. | The Git work. Never across a release, never across a retry delay. | none, as today. The deadlock cleanup deletes it after its holder died (R20). |
 | Delivery-state lock (new) | `lock.registry.get(name=<repository id>, namespace="repository-delivery")` | Every store transition. | One read-modify-write. | 30 seconds, acquire bounded to 10 seconds |
 
-**Why a second lock.** The enqueue runs in the merge flow, and the barrier runs in the merge flow
-(`dispatch_events`), in `post_process_branch_merge` and in the computed-attribute flows. Taking the
-repository lock there would make a branch merge wait behind a periodic sync or a running delivery.
-The state lock is held for one read and one write.
+**Why a second lock.** The enqueue runs in the branch merge flow, and the barrier runs in the
+branch merge flow (`dispatch_events`), in `post_process_branch_merge` and in the computed-attribute
+flows. Taking the repository lock there would make a branch merge wait behind a periodic sync or a
+running delivery. The state lock is held for one read and one write.
 
-**Why the state lock has a time to live.** It is taken inside the merge flow. A worker that died in
-the middle of a transition would otherwise hold it for ever, and every later merge of that
+**Why the state lock has a time to live.** It is taken inside the branch merge flow. A worker that
+died in the middle of a transition would otherwise hold it for ever, and every later merge of that
 repository would hang in its follow-ups. A transition is one read and one save, far under 30
 seconds. When the acquire times out, the caller acts as when the store raises (R3, R9).
 
@@ -207,8 +208,8 @@ this codebase uses for node attributes.
 enqueue is guarded on its own. A failed enqueue is retried with a bound. If the last retry fails
 too, the dispatcher logs at error level, and the merge is still submitted with `pending_merge` set.
 The dispatcher sets `GitRepositoryMerge.pending_merge_enqueued` to `True` only when one of its tries
-returned. The flow writes the entry before its first attempt only when that flag is `False`. The
-save that writes it also holds a `widen` marker of scope `all` for the repository.
+returned. `merge_git_repository` writes the entry before its first attempt only when that flag is
+`False`. The save that writes it also holds a `widen` marker of scope `all` for the repository.
 
 **Which merges are queued** (FR-005): only a repository whose internal status on the source branch
 is `active`, on a source branch that syncs with Git, and whose source commit carries repository
@@ -252,16 +253,16 @@ such a run would queue an entry that FR-005 forbids.
 **Why the graph commit and not the worktree head.** The graph merge merged the objects imported at
 that commit. Delivering exactly that commit keeps the remote content and the merged data aligned.
 
-**Why the first write is in the merge flow** (FR-005a). The coalesced recompute runs in
+**Why the first write is in the branch merge flow** (FR-005a). The coalesced recompute runs in
 `dispatch_events` right after `run_follow_ups`, and `post_process_branch_merge` is submitted at the
-end of `run_follow_ups`. Both consult the barrier. An entry written by the delivery flow would arrive
-after them.
+end of `run_follow_ups`. Both consult the barrier. An entry written by `merge_git_repository` would
+arrive after them.
 
 **When the first write fails** (FR-005a). If the entry is not in the queue when the follow-ups
 consult the barrier, the barrier sees no pending delivery for the repository and admits its work.
-That work runs against the recorded commit, which does not hold the merge. The delivery flow writes
-the entry later, but the barrier held nothing for that work, so no release would run it again. Two
-steps close this gap:
+That work runs against the recorded commit, which does not hold the merge. `merge_git_repository`
+writes the entry later, but the barrier held nothing for that work, so no release would run it
+again. Two steps close this gap:
 
 1. **A bounded retry.** The dispatcher retries a failed enqueue as the barrier retries a failed
    read (R9): `ENQUEUE_RETRIES` times, 3, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`, 2, 8
@@ -269,12 +270,12 @@ steps close this gap:
    expires within its 30-second time to live, and the last try starts at least 30 seconds after the
    first. `enqueue` is idempotent, so a try after a write that committed but raised finds the id
    present and returns.
-2. **A second run of the regeneration.** When every try fails, the delivery flow writes the entry
-   with `widen=True`. The save that appends the entry also holds a `widen` marker of scope `all` for
-   the repository. The queue is non-empty in that save, so the hold always succeeds, and the
-   attempt's snapshot comes after it. The release after the delivery then runs a full regeneration
-   of the repository's definitions against the delivered commit (R10). It covers every definition
-   that the follow-ups dispatched without a hold.
+2. **A second run of the regeneration.** When every try fails, `merge_git_repository` writes the
+   entry with `widen=True`. The save that appends the entry also holds a `widen` marker of scope
+   `all` for the repository, with the reason `UNHELD_FOLLOW_UP`. The queue is non-empty in that
+   save, so the hold always succeeds, and the attempt's snapshot comes after it. The release after
+   the delivery then runs a full regeneration of the repository's definitions against the delivered
+   commit (R10). It covers every definition that the follow-ups dispatched without a hold.
 
 A run that the previous code queued carries no `pending_merge`, and its follow-ups ran with no
 barrier. The flow holds the same marker when it writes the entry of that run.
@@ -282,10 +283,22 @@ barrier. The flow holds the same marker when it writes the entry of that run.
 When `enqueue` refuses the id, it holds no marker. A refusal means that a try of the dispatcher
 wrote the entry before the follow-ups ran, so the barrier saw it.
 
+**When the write of `merge_git_repository` fails too.** That write is the first step of the
+delivery task's first attempt, with the stage `enqueue` (R4 step 0, R5). A failure of it is retried
+like a transient failure: the task retry runs the write again before it delivers. The write is
+idempotent, so a retry after a write that committed but raised finds the id present and writes
+nothing. If every attempt fails, the run ends `Failed`. It logs at error level the repository, the
+source branch and the source commit, so that an operator can deliver the merge by hand, for example
+with a merge of the source branch on the remote. This is a residual, and it needs a store that fails
+at every try of the dispatcher and at every attempt of the task, about seven and a half minutes of
+delays (R6). That merge's repository content is then neither queued nor delivered, and nothing
+retries it later. No entry names its remote source branch, so the branch-deletion guard (R12) does
+not keep that branch either.
+
 **The cost.** When every try fails, and only then, the repository's definitions regenerate twice:
 once against the old commit, and once against the delivered commit. A stale result never stays. The
-retry delays the merge flow only while the store fails. The delays add up to 30 seconds for each
-repository whose enqueue fails. When the lock acquire times out, each try also waits up to
+retry delays the branch merge flow only while the store fails. The delays add up to 30 seconds for
+each repository whose enqueue fails. When the lock acquire times out, each try also waits up to
 `STATE_LOCK_ACQUIRE_SECONDS`, 10 seconds (R2).
 
 **Rejected: no delivery for the repository whose write failed.** The graph already holds the merge.
@@ -294,13 +307,13 @@ Without a delivery, the remote never receives it.
 **Rejected: an intent that the barrier reads, written before the follow-ups.** It is a write to the
 same store, which just failed.
 
-**Rejected: the follow-ups wait for the write with no bound.** The merge flow would then wait for the
-whole failure of the store.
+**Rejected: the follow-ups wait for the write with no bound.** The branch merge flow would then wait
+for the whole failure of the store.
 
 **When the flow writes the entry, and why that is safe** (FR-005b). The flow's write repairs a
-failed first write. It must not put an abandoned entry back: a merge flow can wait in the Prefect
-queue while a user abandons. So the flow writes the entry only when `pending_merge_enqueued` is
-`False`. Two runs have that value:
+failed first write. It must not put an abandoned entry back: a run of `merge_git_repository` can
+wait in the Prefect queue while a user abandons. So the flow writes the entry only when
+`pending_merge_enqueued` is `False`. Two runs have that value:
 
 - No try of the dispatcher's enqueue returned. The flow writes `model.pending_merge`.
 - The previous code queued the run, so it carries no `pending_merge`. The flow builds the entry from
@@ -327,12 +340,17 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual)`. The merge flow, the retry flow and the
-recovery check (R20) all call it (FR-007). Its end has the same shape as the abandonment of R8: the
-entries leave the queue under the repository lock, and the release runs after the lock is released,
-under a lease.
+flow, with one entry point, `deliver(final_attempt, manual, entry)`. `merge_git_repository`, the
+retry flow and the recovery check (R20) all call it (FR-007). Its end has the same shape as the
+abandonment of R8: the entries leave the queue under the repository lock, and the release runs
+after the lock is released, under a lease.
 
 ### The algorithm
+
+0. **Enqueue**, only when `entry` is not `None`. `merge_git_repository` passes the entry that the
+   dispatcher could not write (R3), and every other caller passes `None`. Under the state lock,
+   enqueue it with `widen=True`. A failure has the stage `enqueue` (R5): it records nothing on the
+   repository, and the task retries it like a transient failure. A refused id is not a failure.
 
 Under the repository lock:
 
@@ -382,8 +400,8 @@ Under the repository lock:
 14. **Settle.** Under the state lock, in one save: remove the snapshot's entries into
     `removed_entry_ids` and bump the version; set `delivery_last_delivered_commit` to M when
     something was pushed; set the status from what remains, and clear the cause and the message when
-    it is `none`; set the **release lease** over the held items up to the snapshot's highest
-    sequence (R10). The held items stay.
+    it is `none`; add a **release lease** that names the held items that no live lease covers, up
+    to the snapshot's highest sequence (R10). The held items stay.
 15. Leave the repository lock.
 
 Then, outside the repository lock:
@@ -391,7 +409,8 @@ Then, outside the repository lock:
 16. **Release** the held items of the lease window (R10). The releaser renews the lease after each
     awaited step. If the release fails, set the lease's expiry to now, then classify the failure
     (stage `release`, R5) and stop. The held items stay (R10, rule 4).
-17. **Clear.** Under the state lock: remove the held items of the lease window, and end the lease.
+17. **Clear.** Under the state lock: remove each held item of the lease window that still has the
+    sequence that the lease names, and end the lease. An item held again meanwhile stays.
 
 **Why the entries leave under the lock.** Two kinds of waiter take the repository lock the moment
 it is free: an abandonment and the branch-deletion guard. If the entries stayed queued until after
@@ -412,10 +431,11 @@ broadcast goes first so that most workers already hold M.
 
 **Why the release has a lease.** Between steps 15 and 17, a waking retry chain, a manual retry or
 the recovery check can start a run. That run must not release the same items again. While a lease
-is live, a run releases only the items held after the lease's window, and the recovery check does
-nothing for held work. A lease that expires, because the releasing worker died, makes the release
-owed again, and the recovery check starts it. A run whose release fails does not wait for that: it
-sets the lease's expiry to now, so the retry of its task releases the items again (R10, rule 4).
+is live, a run releases only the items that the lease does not cover, such as an item held again
+after the lease was taken, and the recovery check does nothing for the covered items. A lease that
+expires, because the releasing worker died, makes the release owed again, and the recovery check
+starts it. A run whose release fails does not wait for that: it sets the lease's expiry to now, so
+the retry of its task releases the items again (R10, rule 4).
 
 **Why the checks run before the replay.** A worker can hold a discarded commit in its object
 database long after the remote dropped it. A replay that merges it and pushes would restore it. A
@@ -470,12 +490,13 @@ Every other row that runs a Git command passes `kill_after_timeout` too (R6).
 ## R5. Classifying a failure, and keeping the remote's words
 
 **Decision**: a pure function, `classify_delivery_failure(error, stage) -> DeliveryFailure`, in
-`git/writeback/classifier.py`. `stage` is one of `fetch`, `push`, `record`, `import`, `replay`
-and `release`. It reads the exception type first. Per-ref push rejections get a typed error whose reason comes from GitPython's
-`PushInfo` flags, not from text.
+`git/writeback/classifier.py`. `stage` is one of `enqueue`, `fetch`, `push`, `record`, `import`,
+`replay` and `release`. It reads the exception type first. Per-ref push rejections get a typed
+error whose reason comes from GitPython's `PushInfo` flags, not from text.
 
 | Stage | Exception | Cause | Retried automatically |
 |---|---|---|---|
+| enqueue | any, while `merge_git_repository` writes the entry that the dispatcher could not write (R3) | left unchanged. The entry is not in the queue, and the store just failed, so the attempt records nothing on the repository. | yes. The task retry runs the write again before it delivers. After the final attempt, the run ends `Failed` with an error-level log line that names the repository, the source branch and the source commit (R3). |
 | fetch, push | `RepositoryConnectionError` (unreachable, timeout, 5xx, a killed Git command) | `remote-unreachable` | yes |
 | fetch, push | `RepositoryNotFoundError` (new subtype) | `not-found` | no |
 | fetch, push | `RepositoryTLSError` (new subtype) | `certificate` | no |
@@ -584,10 +605,10 @@ FR-027 covers it instead: while it runs, it holds the repository lock, so the de
 (R20, condition 4), and the recovery check starts no second attempt.
 
 **One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
-merge flow whose first attempt finds a retry already due in the future returns at once: that chain
-snapshots the queue at its next attempt and delivers the new entry too. A manual retry never
-returns early, because a user asked for it now. A chain that wakes after a manual retry delivered
-finds nothing and does nothing.
+run of `merge_git_repository` whose first attempt finds a retry already due in the future returns
+at once, after its enqueue of R4 step 0 when it has one: that chain snapshots the queue at its next
+attempt and delivers the new entry too. A manual retry never returns early, because a user asked
+for it now. A chain that wakes after a manual retry delivered finds nothing and does nothing.
 
 **Status while waiting**: `pending`, with the last cause and message, so a user sees "pending, last
 attempt failed: remote unreachable".
@@ -667,15 +688,17 @@ repository's queue, which outlives every task run, so the action belongs on the 
 1. Under the repository lock and the state lock, in one transition: refuse when the version differs
    or nothing is pending; otherwise remove every entry, add their ids to `removed_entry_ids`, bump
    the version, clear any owed import, write the abandonment record with the actor, the time, the
-   version, the recorded commit and the owed import, and set the release lease over the held items.
-   The save passes the actor's account id as `user_id`. The held items stay.
+   version, the recorded commit and the owed import, and add a release lease that names every held
+   item that no live lease covers. The save passes the actor's account id as `user_id`. The held
+   items stay.
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
    branch stays (R12).
 3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
    the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
    them (R10, rule 4).
-4. Under the state lock, remove the held items of the lease window, and end the lease.
+4. Under the state lock, remove each held item of the lease window that still has the sequence
+   that the lease names, and end the lease.
 
 **Why step 1 removes the entries before the release.** With the entries still queued, a delivery
 attempt could start between the release and the clear and push the merges the user is abandoning.
@@ -760,12 +783,16 @@ delivery, the barrier:
    `terminals` from `_submit_full_terminal_regeneration`, which deliberately never re-runs the
    generators that just failed. Scope `all` covers every definition of the repository. Scope
    `terminals` covers only its artifact definitions, so its release still dispatches the held
-   generator items and Python items;
+   generator items and Python items. The marker also carries the `FullRegenerationReason` of the
+   fallback that set it: the reason that `_full_regeneration` receives, `FEATURE_DISABLED` on the
+   flag-off path, and the new `TERMINAL_SELECTION_FAILED` from `_submit_full_terminal_regeneration`.
+   The release logs that reason (R10);
 2. submits the blanket triggers with a new optional parameter, `exclude_repository_ids`, naming the
    pending repositories.
 
-The barrier is not the only source of a marker. `merge_git_repository` holds one of scope `all` in
-the save that writes an entry that the dispatcher could not write (R3).
+The barrier is not the only source of a marker. `merge_git_repository` holds one of scope `all`,
+with the new reason `UNHELD_FOLLOW_UP`, in the save that writes an entry that the dispatcher could
+not write (R3).
 
 With no pending delivery, the triggers are submitted with no new parameter, byte for byte as today,
 which keeps the promise of ADR 0012 that the flag-off path is the blanket path exactly.
@@ -783,9 +810,15 @@ candidates are dispatched. An owed import implies a non-empty queue (R4), so the
 decides.
 
 Each hold gets the next value of a per-repository sequence, and every held item keeps the sequence
-of its latest hold. A release covers a window of sequences, from the end of the previous live lease
-to the highest sequence at its settle, and its clear removes only the items in that window. A
-definition held again while a release runs therefore survives the clear (FR-015).
+of its latest hold. A release lease names the exact items that it covers, each with the sequence
+that the item had when the lease was taken (R10). Its clear removes an item only when the item
+still has that sequence. A definition held again while a release runs has a higher sequence, so it
+survives the clear (FR-015).
+
+The lease names a set of items, not a range of sequences. The items that no live lease covers can
+have gaps, for example when an expired lease, a live lease and later holds follow each other. A
+range over the uncovered items would then overlap the live lease, and a clear by range would remove
+the items of the live lease before that lease releases them.
 
 **The fast path.** `pending_repository_ids` filters on the scalar `delivery_status` alone, which is
 `pending` or `action-required` exactly when the queue is non-empty. A held-only state behind an
@@ -832,8 +865,8 @@ The next regeneration of the same definition corrects it. FR-016 and SC-004 stat
 
 **The cost.** The retry delays a flow only while the store fails. The delays add up to 30 seconds
 for each consultation of the barrier. When the lock acquire times out, each read also waits up to
-`STATE_LOCK_ACQUIRE_SECONDS`, 10 seconds (R2). A flow that consults the barrier, the merge flow
-included, waits for that time.
+`STATE_LOCK_ACQUIRE_SECONDS`, 10 seconds (R2). A flow that consults the barrier, the branch merge
+flow included, waits for that time.
 
 ### The narrowed selection, kept for a short time (FR-014, SC-008)
 
@@ -879,30 +912,44 @@ merge by the Git round trip, and by minutes when the remote is down.
 
 **Decision**: the release runs at the end of a delivery (R4 step 16) or an abandonment (R8 step 3),
 outside the repository lock, through a component, `HeldRegenerationReleaser`, behind a port of the
-service. It runs under a release lease, dispatches first and clears second, by sequence window.
+service. It runs under a release lease, dispatches first and clears second. The clear removes only
+the items that its lease names, at the sequences that the lease names.
 
 ### The release lease
 
-The transition that settles a delivery or records an abandonment also adds a lease to the held set:
-a window of sequences and an expiry. The window holds every held item that no live lease covers,
-up to a bound:
+The transition that settles a delivery or records an abandonment also adds a lease to the held set.
+A lease names the exact items that it covers, and has an expiry. It names each item by its key, with
+the `hold_seq` that the item had when the lease was taken. The key is the artifact or generator
+definition id, the `(kind, attribute)` pair, or the `widen` marker. These named items are the
+lease's window. A live lease covers an item that it names while the item keeps the named sequence.
+
+A new lease takes every held item that no live lease covers, up to a bound:
 
 - for a delivery, the highest sequence at the attempt's **snapshot**. A hold recorded after the
   snapshot can belong to a merge whose entry is still queued and not delivered, so it must wait for
   that entry's delivery;
-- for an abandonment, and for a held-only run, the highest sequence at the transition. The queue is
-  then empty, so every held item belongs to an entry that has left it. The releaser renews the expiry after each awaited
-step, because a release awaits generator runs and can take minutes. Each renewal adds 15 minutes.
+- for an abandonment, and for a held-only run, no bound. The queue is then empty, so every held item
+  belongs to an entry that has left it.
+
+The releaser renews the expiry after each awaited step, because a release awaits generator runs and
+can take minutes. Each renewal adds 15 minutes.
+
+**Why a set and not a range.** The items that no live lease covers can have gaps. For example, lease
+A expired, lease B is live, and new holds came after B was taken. A range from A's items to the new
+holds would also span B's items. A clear by that range would remove B's items before B releases
+them, and their work would be lost (FR-016). A set names only the items that its own release
+dispatches.
 
 The rules:
 
-1. A release dispatches the items of its own window, and its clear removes those items and its own
-   lease. Items held later stay.
-2. While a lease is live, no other run releases its items. A held-only run and the recovery check
-   do nothing for them.
+1. A release dispatches the items of its own window. Its clear removes each of those items that
+   still has the named sequence, then its own lease. An item held again after the lease was taken
+   has a higher sequence, so it stays, and the next lease takes it.
+2. While a lease is live, no other run releases the items that it covers. A held-only run and the
+   recovery check do nothing for them.
 3. An expired lease protects nothing. A worker that died leaves one, and so does a release that
-   failed (rule 4). The next release covers its items again, and the recovery check starts one if
-   no delivery comes.
+   failed (rule 4). The next lease takes its items, and the recovery check starts a release if no
+   delivery comes.
 4. When a release fails, its run sets the lease's expiry to now, through `expire_lease`, and only
    then handles the failure. Nothing cleared the items, so they stay held. The next run takes a new
    lease over them and releases every one. For a delivery, that run is the retry of its task (stage
@@ -911,6 +958,11 @@ The rules:
    that part again. That over-executes, which is the accepted direction (FR-015). If the store
    cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
    live and does nothing, and the recovery check releases the items after the expiry.
+5. Expired leases are cleaned up in the save that takes or clears a lease. When a new lease takes an
+   item that an expired lease names, the item moves to the new lease. An expired lease also drops
+   each item that the held set no longer holds at the named sequence. An expired lease that names no
+   item any more is removed in the same save. A late clear by the run of an expired lease removes
+   only the items that its lease still names, or nothing when its lease is gone.
 
 | Held item | Released as |
 |---|---|
@@ -930,6 +982,11 @@ full `widen` release of that repository, as for scope `all` (FR-016). The PRD na
 further named fallback reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the
 four that exist.
 
+**The reason that a `widen` release logs.** Each marker carries the `FullRegenerationReason` of the
+code that set it (R9, R3): one of the four that exist, the new `TERMINAL_SELECTION_FAILED`, or the
+new `UNHELD_FOLLOW_UP`. The release of a marker logs that reason. It logs `HELD_SET_UNRESOLVED` only
+when a held identifier does not resolve.
+
 **Every release dispatch passes through the barrier, with `releasing` set to the repository being
 released.** Its own candidates are admitted, and a candidate owned by another repository that is
 still pending is held under that repository.
@@ -940,7 +997,8 @@ repeats it. The next clearing then releases again, which over-executes. That is 
 direction, and FR-015 and SC-004 state it.
 
 **Why clear by sequence.** A merge can append an entry, and its follow-up can hold an identifier
-again, while the release runs. A clear by value would drop the repeated hold.
+again, while the release runs. A clear by value would drop the repeated hold. A clear by a range of
+sequences would remove the items of another live lease (see "Why a set and not a range").
 
 **Why inline and not a separate workflow.** A separate release workflow whose submission fails
 leaves a held set that nothing would release. The lease and the recovery check of R20 cover the
@@ -1087,7 +1145,9 @@ list, and the status vocabulary (INFP-671).
 - the scrubber;
 - the queue model: append, idempotent enqueue, refusal of a removed id, snapshot removal, version;
 - the held set: a repeated hold of the same identifier during a release survives the clear; two
-  leases never cover one item; an expired lease protects nothing;
+  leases never cover one item; a lease over uncovered items with gaps never names the items of a
+  live lease; an expired lease protects nothing, gives its items to the next lease, and is removed
+  once it names none;
 - the service against an in-memory `DeliveryGitPort` and an in-memory store: observation, the two
   checks, replay conflict, push failure and reset, the obligation saved before the record, a crash
   between the two, the import condition, the reset to H on the observation path, the settle under
@@ -1125,7 +1185,8 @@ entries.
 - a transient fault: the Gogs port is blocked for the first attempt and opened before the second,
   with short delays. Stopping the port fails the push at once, where a paused container would hang
   it;
-- a lost attempt: the flow is killed after the snapshot, and the recovery check restarts it.
+- a lost attempt: the flow is killed after the snapshot, the test frees the repository lock as the
+  deadlock cleanup does for a dead worker (R20), and the recovery check restarts it.
 
 **Deferral**: the release count is asserted through the dispatched workflows. IFC-3048's scenario
 harness is the place for run counts on a real stack, if it has landed by then.
@@ -1142,8 +1203,8 @@ the push conflict, clicks "Abandon pending push", confirms the modal, and checks
 
 | File | Change |
 |---|---|
-| `dev/knowledge/backend/git-integration.md` | Replace the two volatile sections ("not ordered against post-merge regeneration", "writeback direction has no reconciliation"). The second one is already stale: `merge` pushes before it records since `7d1bab3d1`. Add the delivery queue, the barrier, the three import paths that wait, the recovery check, and the known limitation of branches forked during an outage. Update the known limitation on remote branch deletion. |
-| `dev/knowledge/backend/selective-merge-regeneration.md` | The barrier, the new fallback reason, the two repository filters, and the narrowed cache. |
+| `dev/knowledge/backend/git-integration.md` | Replace the two volatile sections ("not ordered against post-merge regeneration", "writeback direction has no reconciliation"). The second one is already stale: `merge` pushes before it records since `7d1bab3d1`. Add the delivery queue, the barrier, the three import paths that wait, the recovery check, and the known limitation of branches forked during an outage. Add the two known limitations of the recovery (R20): a repository lock that a dead worker held waits for the deadlock cleanup, and a delivery run that stays in `PENDING` stops the automatic recovery. Update the known limitation on remote branch deletion. |
+| `dev/knowledge/backend/selective-merge-regeneration.md` | The barrier, the new fallback reasons and the new place of `FullRegenerationReason`, the reason that a `widen` release logs, the two repository filters, and the narrowed cache. |
 | `dev/knowledge/backend/merge-recompute.md` | The barrier consultation for the Python family and the schema-scoped recompute. |
 | `docs/docs/git-integration/branch-synchronization.mdx` | What happens when a push fails, the status, the paused imports, retry and abandon, what abandon leaves behind, and the kept source branch. |
 | `docs/docs/git-integration/overview.mdx` | One paragraph pointing at the above. |
@@ -1186,11 +1247,11 @@ A setting would be configurability for a hypothetical need (Principle VII).
   first adds the primitive, with one contract: `False` only for a missing object, a raise for every
   other failure. The other epic reuses it.
 - **The merge-path check.** IFC-3210's FR-005a makes `InfrahubRepository.merge` refuse a diverged
-  source or destination. After slice C, the merge flow no longer calls `merge`: the service replays
-  instead, and its checks of R4 steps 3 and 5 are that refusal for the replay. IFC-3210's merge-path
-  task therefore moves into the service. `merge` stays only for `InfrahubRepository.rebase`, which
-  has no caller, and for the live-remote tests of #10465. Both methods can be removed once those
-  tests move to the service.
+  source or destination. After slice C, `merge_git_repository` no longer calls `merge`: the service
+  replays instead, and its checks of R4 steps 3 and 5 are that refusal for the replay. IFC-3210's
+  merge-path task therefore moves into the service. `merge` stays only for
+  `InfrahubRepository.rebase`, which has no caller, and for the live-remote tests of #10465. Both
+  methods can be removed once those tests move to the service.
 - **The synchronisation path.** Both epics change `collect_pending_imports`. R11's exclusion runs
   before the sibling's classification.
 - **The SDK.** One PR for both epics (R17).
@@ -1235,13 +1296,29 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   writes progress at each step. Condition 3 or 4 then fails, and the delivery is not stale.
 - A run whose worker died writes no more progress. Once the lock is free, conditions 3 and 4
   hold, also while the orchestrator still shows the run as `RUNNING`, and the check counts the run
-  as lost.
+  as lost. The first limitation below says when the lock of a dead worker becomes free.
 - A run that a worker started a moment ago, and that has not taken the lock yet, can count as lost
   for that moment. The extra run that the check then submits waits for the lock, then finds nothing
   to do or delivers what remains.
 
-A run that the orchestrator never starts stops only the automatic recovery. The manual retry stays
-available (R7).
+**Known limitations of the recovery.** Two cases delay or stop it:
+
+- **A repository lock that a dead worker held.** The repository lock has no time to live
+  (`lock.py::InfrahubLockRegistry.get`, R2). A worker that dies while it holds the lock leaves it
+  held. Condition 4 then fails, so the recovery check submits nothing, and a manual retry waits for
+  the lock too. This design adds no recovery of its own for that lock. The existing deadlock
+  cleanup, `locks/tasks.py::clean_up_deadlocks`, runs every minute. It deletes a lock whose holder
+  left the active-worker set, once the lock is older than `cache.clean_up_deadlocks_interval_mins`,
+  15 minutes by default. A delivery attempt stamps its progress after it takes the lock, so the lock
+  of a dead attempt is free at most about one minute after the delivery is stale. A lock that a
+  later holder took, such as a synchronisation, keeps the recovery waiting until that lock is 15
+  minutes old. A larger setting delays the recovery by the difference.
+- **A run that stays in `PENDING`.** Condition 5 counts a run in a state of type `PENDING` as a run
+  that waits to start. A delivery run that the orchestrator never starts therefore stops the
+  automatic recovery for as long as it stays in that state. The `crash-zombie-flows` automation does
+  not end such a run, because it watches a run only after a heartbeat or an `AwaitingRetry` event
+  (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`). A manual retry still works: it submits a new
+  run, which does not wait for the stuck one (R7).
 
 **The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
 repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
@@ -1319,10 +1396,12 @@ dependency.
 - The barrier logs each hold at info level, with the repository and the held identifiers, and each
   fail-open at error level, after the last retry, with the branch and the repositories of the
   candidates.
-- The merge flow's run log gains one line per queued repository, so the user who merged sees that a
-  push is pending.
+- The branch merge flow's run log gains one line per queued repository, so the user who merged sees
+  that a push is pending.
 - The dispatcher logs a failed enqueue at error level after the last retry, with the repository and
   the entry id.
+- `merge_git_repository` logs a failed enqueue of R4 step 0 at error level after the final attempt,
+  with the repository, the source branch and the source commit (R3).
 
 ---
 
