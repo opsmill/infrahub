@@ -265,10 +265,13 @@ healthy branch is still sent, and a second worker converges on it.
       `RefreshGitFetch` covering every reconciled branch, then re-raise the failures of branches
       **other than** the configured default branch, which keeps today's failure tagging working.
       A failed default branch never leaves this flow: T033 owns it.
+      *As landed:* the tagging flow below this function still raises for every failed branch, which
+      is what tags the run; this function catches that error, broadcasts from the outcome it
+      carries, and re-raises nothing. See contracts section 5, "The catch boundary".
       **Keep sending the trunk message every cycle, even when no branch advanced.** That message is
       what heals a worker which missed an earlier broadcast, and its replacement is the pull-path
       reset in Phase 5. Dropping it here would leave a gap with no self-heal on either side.
-- [ ] T033 [US3] Log a failed trunk reconciliation at error level and record it against the
+- [x] T033 [US3] Log a failed trunk reconciliation at error level and record it against the
       repository in `sync_repository_from_origin`, and do not retry it inside the same cycle
       (FR-018). Do **not** let it propagate: `sync_remote_repositories` loops over every repository
       with no per-repository `try`, so a raise would abort the cycle for every repository after it.
@@ -279,7 +282,7 @@ healthy branch is still sent, and a second worker converges on it.
 - [x] T035 [US3] Make the `fetch` handler's collaborators injectable before testing it. It reads
       the module-global `lock.registry` and calls `get_initialized_repo(get_client())`, neither of
       which a database-free, mock-free unit test can substitute.
-- [ ] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
+- [x] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
       recorded against the repository, and that it does **not** propagate out of
       `sync_repository_from_origin` (FR-018).
 - [ ] T037 [US3] Component-test that one repository failing does not stop the repositories after it

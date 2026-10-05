@@ -18,7 +18,12 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    RepositorySyncStatus,
+)
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
@@ -88,6 +93,8 @@ class FailedImport:
     branch_name: str
     step: ImportStep
     reason: str
+    on_default_branch: bool = False
+    """Whether the branch is the repository's configured default branch."""
 
 
 @dataclass
@@ -292,6 +299,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self.push(branch_name)
 
         return response
+
+    async def record_import_failure(self, infrahub_branch_name: str) -> None:
+        """Mark the synchronization status of the repository as failed to import on an Infrahub branch."""
+        await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
 
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.
@@ -565,7 +576,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError,
         ) as exc:
             collected.failed_imports.append(
-                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+                FailedImport(
+                    branch_name=branch_name,
+                    step=ImportStep.COLLECTION,
+                    reason=str(exc),
+                    on_default_branch=branch_name == self.default_branch,
+                )
             )
 
     async def _queue_advanced_branch(

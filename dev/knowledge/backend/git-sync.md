@@ -62,6 +62,10 @@ The read-write kind implements the mapping described below; the read-only kind r
   advanced branches, the branches it advanced with their commits, and the branches that failed. A
   failed branch does not raise there. Its callers report the skipped branches, then raise
   `RepositoryBranchesFailedError` carrying the outcome through `git/sync.py::raise_if_branches_failed`.
+- The periodic cycle catches that error, sends the fetch message, and raises nothing further. A
+  failed configured default branch is logged at error level and recorded as `error-import` on the
+  branch the trunk imports into, because a trunk failure while it is collected writes no status of
+  its own. The failure of any other branch is logged at info level.
 - The operator-facing record of the skip is a warning in the flow run's log, emitted through
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch

@@ -518,7 +518,9 @@ async def sync_repository_from_origin(
     """Sync the repository from its origin and send the worker pool the commits of the cycle.
 
     The message goes out before a failed branch is handled, so the failure never keeps the branches
-    that advanced from converging on the other workers.
+    that advanced from converging on the other workers. No failed branch is raised from here: a
+    failed default branch is logged as an error and recorded on the repository's synchronization
+    status, and the tagging flow has already linked and failed its own run.
     """
     log = get_run_logger()
     failure: RepositoryBranchesFailedError | None = None
@@ -558,7 +560,18 @@ async def sync_repository_from_origin(
     message_bus = await get_message_bus()
     await message_bus.send(message=message)
 
-    if failure is not None:
+    if failure is None:
+        return
+    # A failed trunk is loud but never raised, since a raise here would stop every repository after this one.
+    default_branch_failures = outcome.default_branch_failures
+    for failed in default_branch_failures:
+        log.error(
+            f"Unable to synchronize the default branch {repo.default_branch} of repository "
+            f"{repository.name.value} at step {failed.step.value}: {failed.reason}"
+        )
+    if default_branch_failures:
+        await repo.record_import_failure(infrahub_branch_name=infrahub_branch)
+    if len(default_branch_failures) < len(outcome.failed):
         log.info(failure.message)
 
 

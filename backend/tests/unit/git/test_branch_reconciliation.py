@@ -571,6 +571,7 @@ async def test_a_staging_trunk_whose_commit_the_graph_refuses_fails_without_rais
                 "An error occurred while executing the GraphQL Query None, "
                 "[{'message': 'Branch main must be rebased before any updates can be made'}]"
             ),
+            on_default_branch=True,
         )
     ]
     assert collected.imports == []

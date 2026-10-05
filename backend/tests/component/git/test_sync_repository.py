@@ -21,7 +21,9 @@ from infrahub.core.constants import (
     RepositorySyncStatus,
 )
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
@@ -817,3 +819,55 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
                 ),
             )
         ]
+
+    async def test_a_failed_default_branch_is_logged_as_an_error_and_recorded_without_being_raised(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The trunk fails while it is collected, where no import has recorded anything yet."""
+        caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
+        name = "failing-trunk-collection-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        advanced = remote.commit(branch_name="main", files={"data.txt": "trunk v2\n"})
+        # An occupied commit worktree directory makes the trunk fail after its worktree moved.
+        (repo.directory_commits / advanced).mkdir()
+        (repo.directory_commits / advanced / "blocker.txt").write_text("blocking worktree creation\n")
+        branches = await client.branch.all()
+
+        @flow(name="test-sync-a-repository-whose-trunk-fails")
+        async def _run_sync() -> None:
+            await sync_repository_from_origin(
+                repository=node,
+                repo=repo,
+                staging_branch=None,
+                infrahub_branch=registry.default_branch,
+                default_branch_id=branches[registry.default_branch].id,
+                client=client,
+            )
+
+        await _run_sync()
+
+        # The reason is the stderr of git, which names a temporary path.
+        prefix = f"Unable to synchronize the default branch main of repository {name} at step collection: "
+        default_branch_messages = [
+            (record.levelno, record.getMessage().startswith(prefix))
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize the default")
+        ]
+        assert default_branch_messages == [(logging.ERROR, True)]
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value

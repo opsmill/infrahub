@@ -456,10 +456,17 @@ Changed. `backend/infrahub/git/tasks.py`.
 It sends one coalesced `RefreshGitFetch` covering every reconciled branch, before any raise.
 
 **The catch boundary.** This function is the single owner of logging and recording a failed
-reconciliation. It never propagates a failure of the configured default branch. It re-raises the
-failure of any other branch, because the existing path tags the repository from that raise, and the
-per-repository `try` added to `sync_remote_repositories` keeps the raise from reaching the next
-repository.
+reconciliation, and it propagates no failed branch. The raise that tags the repository is the one
+the tagging flow `sync_git_repo_with_origin_and_tag_on_failure` makes for any failed branch: that
+flow links its run to the repository and fails it, as it did before, and this function catches the
+error. A failed configured default branch is then logged at error level and recorded on the
+repository's synchronisation status. The failure of any other branch is logged at info level, as
+it was before. The per-repository `try` added to `sync_remote_repositories` catches whatever else a
+repository raises.
+
+The original wording had this function re-raise the failures of the other branches so that they
+are tagged. The tagging already happens one level down, inside the tagging flow, so a re-raise here
+would only log the same failure a second time, in the next repository's way.
 
 ### Contract
 
@@ -496,7 +503,14 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
   `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
   default branch: log at error level and record the failure against the repository's
-  synchronisation status. It does **not** propagate out of the flow.
+  synchronisation status. It does **not** propagate out of the flow. The record writes
+  `error-import` on the branch the trunk imports into, through
+  `InfrahubRepository.record_import_failure`. An import failure has already written it; a failure
+  while the trunk is collected has not, and that is the case the record adds.
+  `FailedImport.on_default_branch` marks which failure is the trunk's.
+  A staging repository's trunk is covered too: the collector isolates it like any other branch, so
+  its failure is flagged as the default branch, and the record goes on the staging branch the trunk
+  imports into.
 
   Propagating would be a worse bug than the one it reports. `sync_remote_repositories` loops over
   every repository with no per-repository `try`, so a raise from one repository aborts the cycle
