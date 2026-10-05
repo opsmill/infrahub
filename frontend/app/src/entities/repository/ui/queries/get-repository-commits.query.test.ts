@@ -12,6 +12,7 @@ import { RepositoryGitUnavailableError } from "@/entities/repository/domain/mode
 import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
+  REPOSITORY_COMMITS_MAX_RETRIES,
   REPOSITORY_COMMITS_PAGE_SIZE,
   REPOSITORY_COMMITS_RETRY_DELAY_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
@@ -57,12 +58,12 @@ function buildUnavailableError(reason: RepositoryGitUnavailableReason | null) {
   });
 }
 
-function resolveRetry(error: Error) {
+function resolveRetry(error: Error, failureCount = 0) {
   const { retry } = getRepositoryCommitsQueryOptions(PARAMS);
   if (typeof retry !== "function") {
     throw new Error("retry is expected to be a function");
   }
-  return retry(0, error);
+  return retry(failureCount, error);
 }
 
 function observeCommits() {
@@ -92,6 +93,19 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // THEN
     expect(shouldRetry).toBe(true);
+  });
+
+  test("stops retrying a repository that stays not cloned", () => {
+    // GIVEN
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
+
+    // WHEN
+    const lastRetry = resolveRetry(error, REPOSITORY_COMMITS_MAX_RETRIES - 1);
+    const beyondCap = resolveRetry(error, REPOSITORY_COMMITS_MAX_RETRIES);
+
+    // THEN
+    expect(lastRetry).toBe(true);
+    expect(beyondCap).toBe(false);
   });
 
   test("does not retry when reading commits is not implemented", () => {
