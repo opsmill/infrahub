@@ -1,6 +1,5 @@
-import { CombinedError } from "@urql/core";
-
-import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
+import { ERROR_CODES } from "@/shared/api/errors";
+import { hasOnlyThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
 import type { BranchContextParams } from "@/shared/api/types";
 
 import { toBranchRepositories } from "@/entities/repository/api/branch-repository.mappers";
@@ -21,24 +20,11 @@ export type GetBranchRepositories = (
   params: GetBranchRepositoriesParams
 ) => Promise<BranchRepositoryPage>;
 
-// The transport throws a bare `Error` carrying the GraphQL errors on `.cause`. Denied only when
-// every one of them is a permission denial, so any other failure still reads as a failure.
-function isPermissionDenied(error: unknown): boolean {
-  const combined =
-    error instanceof CombinedError || !(error instanceof Error) ? error : error.cause;
-  const graphQLErrors = combined instanceof CombinedError ? combined.graphQLErrors : [];
-
-  return (
-    graphQLErrors.length > 0 &&
-    graphQLErrors.every(
-      ({ extensions }) => parseCatalogueError(extensions).code === ERROR_CODES.PERMISSION_DENIED
-    )
-  );
-}
-
 // A missing object permission rejects the whole query rather than dropping rows from it.
 function toBranchRepositoriesError(error: unknown): BranchRepositoriesError {
-  const code = isPermissionDenied(error) ? "PERMISSION_DENIED" : "UNKNOWN";
+  const code = hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)
+    ? "PERMISSION_DENIED"
+    : "UNKNOWN";
   const message = error instanceof Error ? error.message : "Failed to load the repositories";
 
   return new BranchRepositoriesError(code, message, { cause: error });

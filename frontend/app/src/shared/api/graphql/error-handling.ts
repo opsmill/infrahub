@@ -1,4 +1,4 @@
-import type { CombinedError } from "@urql/core";
+import { CombinedError } from "@urql/core";
 import React from "react";
 import { toast } from "react-toastify";
 
@@ -18,6 +18,30 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   return (
     error?.graphQLErrors?.some((e) => parseCatalogueError(e.extensions).code === code) ?? false
   );
+}
+
+// The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, and callers
+// may wrap that again, so the cause chain is walked until the GraphQL errors are found.
+function findThrownGraphQLErrors(error: unknown) {
+  let current = error;
+  while (current instanceof Error) {
+    if (current instanceof CombinedError) return current.graphQLErrors;
+    current = current.cause;
+  }
+  return [];
+}
+
+// True only when every GraphQL error carries the code, so a mixed failure isn't mistaken for it.
+export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
+  const graphQLErrors = findThrownGraphQLErrors(error);
+  return (
+    graphQLErrors.length > 0 &&
+    graphQLErrors.every(({ extensions }) => parseCatalogueError(extensions).code === code)
+  );
+}
+
+export function isThrownShed(error: unknown): boolean {
+  return findThrownGraphQLErrors(error).some(({ extensions }) => isShedErrorItem(extensions));
 }
 
 // Its own id so a page-load's worth of shed queries collapses into one toast
