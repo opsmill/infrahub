@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getBranchRepositoryHealthQueryOptions } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 
-import { generateBranchRepositoryHealth } from "../../../../../tests/fake/branch-repositories";
+import {
+  generateBranchRepository,
+  generateBranchRepositoryHealth,
+  SYNC_STATUS,
+} from "../../../../../tests/fake/branch-repositories";
 
 const pageParams = { branchName: "feature", syncWithGit: true, limit: 10, offset: 0 };
 
@@ -41,13 +46,24 @@ describe("getBranchRepositoryHealthQueryOptions", () => {
 });
 
 describe("getBranchRepositoriesQueryOptions", () => {
+  const pageRefetchIntervalFor = (isSyncing: boolean, rows: BranchRepository[] | undefined) => {
+    const { refetchInterval } = getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing });
+    if (typeof refetchInterval !== "function")
+      throw new Error("refetchInterval must be a function");
+    const data = rows && { repositories: rows, count: rows.length };
+    return refetchInterval({ state: { data } } as unknown as Parameters<typeof refetchInterval>[0]);
+  };
+
   it("polls the page only while a repository is syncing", () => {
-    expect(
-      getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: true }).refetchInterval
-    ).toBe(10_000);
-    expect(
-      getBranchRepositoriesQueryOptions({ ...pageParams, isSyncing: false }).refetchInterval
-    ).toBe(false);
+    expect(pageRefetchIntervalFor(true, [generateBranchRepository()])).toBe(10_000);
+    expect(pageRefetchIntervalFor(false, [generateBranchRepository()])).toBe(false);
+    expect(pageRefetchIntervalFor(false, undefined)).toBe(false);
+  });
+
+  it("fetches the page again after the sync ends while its rows still show it", () => {
+    const stale = generateBranchRepository({ syncStatus: SYNC_STATUS.syncing });
+
+    expect(pageRefetchIntervalFor(false, [stale])).toBe(10_000);
   });
 
   it("keys the page on its branch, list and window, not on the polling flag", () => {

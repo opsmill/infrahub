@@ -107,7 +107,7 @@ function BranchRepositoriesBody({
   page,
   onPageChange,
 }: BranchRepositoriesBodyProps) {
-  if (error) {
+  if (error && !data) {
     return error instanceof BranchRepositoriesError && error.code === "PERMISSION_DENIED" ? (
       <BranchRepositoriesDenied />
     ) : (
