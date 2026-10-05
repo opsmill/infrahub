@@ -247,6 +247,25 @@ describe("BranchTasksCard", () => {
     await expect.element(component.getByText("Task results didn't load.")).toBeVisible();
   });
 
+  test("offers the first page when a later page fails, as the pager came with the page", async () => {
+    // GIVEN
+    const tasks = generateTasks(11);
+    serve(tasks);
+    vi.mocked(getBranchTasks).mockImplementation(async ({ offset, limit }) => {
+      if (offset > 0) throw new Error("Something broke");
+      return { tasks: tasks.slice(offset, offset + limit), count: tasks.length };
+    });
+    const component = await renderCard("&tasks_page=2");
+    await expect.element(component.getByText("Task results didn't load.")).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Go to first page" }).click();
+
+    // THEN
+    await expect.poll(() => bodyRows(component.container)).toHaveLength(10);
+    expect(new URL(window.location.href).searchParams.get("tasks_page")).toBeNull();
+  });
+
   test("keeps the table height on a short page 2", async () => {
     // GIVEN
     serve(generateTasks(11));
@@ -279,7 +298,10 @@ describe("BranchTasksCard", () => {
       offset: 10,
       limit: 10,
     });
-    expect(getTaskCount).toHaveBeenCalledWith({ branchName: "feature", state: ["FAILED"] });
+    expect(getTaskCount).toHaveBeenCalledWith(
+      { branchName: "feature", state: ["FAILED"] },
+      { silenceErrors: true }
+    );
   });
 
   test("shows the last page for a page past the end, once the server's count is known", async () => {

@@ -106,7 +106,10 @@ function BranchTasksBody({
   onPageChange,
 }: BranchTasksBodyProps) {
   if (isPending) return <BranchTasksLoading />;
-  if (!data) return <BranchTasksFailed />;
+  // A failed page past the first has no pager to leave it, as the count came with the page.
+  if (!data) {
+    return <BranchTasksFailed onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined} />;
+  }
   if (data.count === 0) return <BranchTasksNone />;
 
   // A short last page would otherwise shrink the card and move everything below it.

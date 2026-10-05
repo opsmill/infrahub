@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { AlertCircleIcon, LockIcon } from "lucide-react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
@@ -67,16 +68,25 @@ export function BranchRepositoryHealthFailed() {
   return (
     <div role="alert" className="flex items-center gap-2 border-t px-4 py-2 text-danger text-xs">
       <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
-      Repository health couldn't be checked. Retrying…
+      Repository health couldn't be checked.
     </div>
   );
 }
 
-export function BranchRepositoriesFailed() {
+interface FailedStateProps {
+  onGoToFirstPage?: () => void;
+}
+
+export function BranchRepositoriesFailed({ onGoToFirstPage }: FailedStateProps) {
   return (
     <div role="alert" className="flex items-center gap-2 px-4 py-4 text-danger text-sm">
       <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
       Repositories couldn't be loaded.
+      {onGoToFirstPage && (
+        <Button variant="outline" size="xs" className="ml-auto" onPress={onGoToFirstPage}>
+          Go to first page
+        </Button>
+      )}
     </div>
   );
 }

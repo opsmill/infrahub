@@ -41,7 +41,8 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
     branchName,
     syncWithGit,
   });
-  const isSyncing = isAnyRepositorySyncing(health);
+  // A failed health check stops polling, so its last syncing count no longer drives the others.
+  const isSyncing = !isHealthError && isAnyRepositorySyncing(health);
   const { page: currentPage, query } = useGetBranchRepositories({
     branchName,
     syncWithGit,
@@ -111,7 +112,8 @@ function BranchRepositoriesBody({
     return error instanceof BranchRepositoriesError && error.code === "PERMISSION_DENIED" ? (
       <BranchRepositoriesDenied />
     ) : (
-      <BranchRepositoriesFailed />
+      // A failed page past the first has no pager to leave it, as the count came with the page.
+      <BranchRepositoriesFailed onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined} />
     );
   }
   if (isPending || !data) return <BranchRepositoriesLoading />;

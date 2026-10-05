@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { AlertCircleIcon } from "lucide-react";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
@@ -26,11 +27,20 @@ export function BranchTasksNone() {
   );
 }
 
-export function BranchTasksFailed() {
+interface BranchTasksFailedProps {
+  onGoToFirstPage?: () => void;
+}
+
+export function BranchTasksFailed({ onGoToFirstPage }: BranchTasksFailedProps) {
   return (
     <div role="alert" className="flex items-center gap-2 px-4 py-4 text-danger text-sm">
       <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
       Task results didn't load.
+      {onGoToFirstPage && (
+        <Button variant="outline" size="xs" className="ml-auto" onPress={onGoToFirstPage}>
+          Go to first page
+        </Button>
+      )}
     </div>
   );
 }

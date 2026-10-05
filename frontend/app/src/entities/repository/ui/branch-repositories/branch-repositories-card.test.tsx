@@ -287,6 +287,40 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
   });
 
+  test("offers the first page when a later page fails, as the pager came with the page", async () => {
+    // GIVEN
+    const repositories = buildBranchRepositoriesScenario("eleven");
+    serve(repositories);
+    vi.mocked(getBranchRepositories).mockImplementation(async ({ offset, limit }) => {
+      if (offset > 0) throw new BranchRepositoriesError("UNKNOWN", "Something broke");
+      return toBranchRepositoryPage(repositories, { offset, limit });
+    });
+    const component = await renderCard({ search: "&repositories_page=2" });
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Go to first page" }).click();
+
+    // THEN
+    await expect.poll(() => bodyRows(component.container)).toHaveLength(10);
+    expect(new URL(window.location.href).searchParams.get("repositories_page")).toBeNull();
+  });
+
+  test("doesn't offer the first page when the first page fails", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositories).mockRejectedValue(
+      new BranchRepositoriesError("UNKNOWN", "Something broke")
+    );
+    vi.mocked(getBranchRepositoryHealth).mockReturnValue(new Promise(() => {}));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    expect(component.container.querySelector("button")).toBeNull();
+  });
+
   test("says the repository health couldn't be checked, in place of the bands, while the table still shows", async () => {
     // GIVEN
     serve(buildBranchRepositoriesScenario("all-clear"));
@@ -297,7 +331,7 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect
-      .element(component.getByText("Repository health couldn't be checked. Retrying…"))
+      .element(component.getByText("Repository health couldn't be checked."))
       .toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(4);
     expect(
