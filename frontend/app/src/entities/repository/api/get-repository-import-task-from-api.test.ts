@@ -1,39 +1,63 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import { graphqlClient } from "@/shared/api/graphql/client";
+import { toast } from "react-toastify";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getImportTaskLogsFromApi,
   getRepositoryImportTaskFromApi,
 } from "./get-repository-import-task-from-api";
 
-vi.mock("@/shared/api/graphql/client", async () => ({
-  graphql: (await import("gql.tada")).graphql,
-  graphqlClient: { query: vi.fn() },
-}));
+vi.mock("react-toastify", () => ({ toast: vi.fn() }));
 
-const mockQuery = vi.mocked(graphqlClient.query);
+const lookupParams = { branch: "feature", repositoryId: "repo-1", workflows: [], states: [] };
+
+const respondWith = (body: unknown) => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    )
+  );
+};
 
 describe("repository import task fetchers", () => {
   beforeEach(() => {
-    mockQuery.mockReset();
-    mockQuery.mockResolvedValue({ data: { InfrahubTask: { edges: [] } } });
+    vi.mocked(toast).mockClear();
   });
 
-  it("leave a failed lookup to the band instead of showing the error toast", async () => {
-    // WHEN
-    await getRepositoryImportTaskFromApi({
-      branch: "feature",
-      repositoryId: "repo-1",
-      workflows: [],
-      states: [],
-    });
-    await getImportTaskLogsFromApi({ taskId: "task-1", logLimit: 10 });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-    // THEN
-    expect(mockQuery).toHaveBeenCalledTimes(2);
-    for (const [request] of mockQuery.mock.calls) {
-      expect(request.context?.processErrorMessage).toEqual(expect.any(Function));
-    }
+  it("return the id of the task the lookup found", async () => {
+    // GIVEN
+    respondWith({ data: { InfrahubTask: { edges: [{ node: { id: "task-1" } }] } } });
+
+    // WHEN / THEN
+    await expect(getRepositoryImportTaskFromApi(lookupParams)).resolves.toBe("task-1");
+  });
+
+  it("reject a failed task lookup without showing the error toast", async () => {
+    // GIVEN
+    respondWith({ data: null, errors: [{ message: "Lookup failed" }] });
+
+    // WHEN / THEN
+    await expect(getRepositoryImportTaskFromApi(lookupParams)).rejects.toThrow("Lookup failed");
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it("reject a failed log fetch without showing the error toast", async () => {
+    // GIVEN
+    respondWith({ data: null, errors: [{ message: "Log fetch failed" }] });
+
+    // WHEN / THEN
+    await expect(getImportTaskLogsFromApi({ taskId: "task-1", logLimit: 10 })).rejects.toThrow(
+      "Log fetch failed"
+    );
+    expect(toast).not.toHaveBeenCalled();
   });
 });
