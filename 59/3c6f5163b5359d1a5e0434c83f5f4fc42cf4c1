@@ -1,0 +1,19 @@
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_0bc59054fef4ea::t_07b603a5e6a3ce 214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "593c6f5163b5359d1a5e0434c83f5f4fc42cf4c1",
+  "prompts": {},
+  "sessions": {
+    "s_0bc59054fef4ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "373c6d27-fa2a-4490-8e9d-d14c775f400c",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
