@@ -41,7 +41,9 @@ Pagination (10/11 boundaries, fixed height, URL `repositories_page`/`tasks_page`
 (cd frontend/app && pnpm knip)
 (cd frontend/app && pnpm exec betterer ci)
 (cd frontend/app && pnpm test)
-uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py tests/e2e/branches/test_branch_details_repositories.py   # with the e2e stack up, see dev/guides/frontend/writing-e2e-tests.md
+uv run invoke dev.build   # the e2e run tests this branch's image, not a published one
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false \
+  uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details.py tests/e2e/branches/test_branch_details_repositories.py   # see dev/guides/frontend/writing-e2e-tests.md
 ```
 
 ## R2 verification (import task lookup)
