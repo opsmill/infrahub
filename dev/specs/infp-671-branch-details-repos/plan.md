@@ -94,6 +94,7 @@ frontend/app/src/
 │   ├── domain/rules/get-repository-list-kind.ts         # Sync with Git → list kind
 │   ├── domain/rules/repository-failures.ts (+ test)     # hasImportError, unreachable, failing, band kind
 │   ├── domain/rules/is-any-repository-syncing.ts        # the polling decision
+│   ├── domain/rules/is-repository-syncing.ts (+ test)   # one row's sync status
 │   ├── domain/rules/get-last-error-line.ts (+ test)     # Prefect wrapper stopgap
 │   ├── domain/use-cases/get-branch-repositories.ts (+ test)       # page + denied; also tests health
 │   ├── domain/use-cases/get-branch-repository-health.ts
@@ -150,7 +151,7 @@ Each card owns its page through IFC-3130's `useTablePagination({ urlKey })`: `re
 `count === 0` → "Not synchronised with Git" (Sync off) or "No Git repositories" ·
 otherwise → `BranchRepositoriesTable` (one server page in name order; min-height when `count > PAGE_SIZE`) + `TablePagination` → `RepositoryErrorBands` from the health query (first 3 or all; summary line + Show all/Collapse).
 
-Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the failed-task lookup (polled while syncing) and the log fetch (keyed on the task id, fetched once).
+Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the failed-task lookup (polled while syncing) and the log fetch (keyed on the task id, fetched once). _(2026-10-05: while no failed task is found, the lookup is also repeated on the sync interval, at most `MAX_IMPORT_TASK_LOOKUPS` times, because the repository can show `error-import` before its import run has ended as failed. A failed lookup reads as "details not found".)_
 
 ### Tasks card render tree
 
@@ -171,6 +172,14 @@ The page shows `/branches/:branchName`'s data while the branch selector may be o
 ### Freshness (critique P4, E6)
 
 Tasks page 1 and the failed count poll every 10s; later pages don't. The repositories page, the health query and the failed-task lookups poll every 10s only while the server counts a syncing repository (`isAnyRepositorySyncing`, computed once in the card from the health query); a task's log is never polled. Otherwise Refresh and window refocus. See research R4.
+
+_(2026-10-05, failures.)_ The interval constants are in `entities/repository/ui/queries/repository-polling.ts`. Every background query of the two cards (repositories page, health, import task, import log, repository names, tasks page, failed count) follows `shared/api/background-query.ts`:
+
+- its fetcher passes `processErrorMessage`, as the base's sync-count fetcher does, so a failed poll doesn't show the global error toast; the card shows its own error state.
+- it retries twice with the default backoff, but never a permission denial (`hasOnlyThrownCatalogueCode` in `shared/api/graphql/error-handling.ts`) or a request the transport already retried after a shed.
+- once a fetch has failed through its retries, polling stops until Refresh, a remount or window refocus. A failed health check no longer drives the other queries' polling.
+
+A failed page past the first shows "Go to first page" in the card's failed state, because the count, and so the pager, comes with the page. The header's Refresh button shows as busy only for the refresh the user started, not for background polls under its keys.
 
 ### Copy
 

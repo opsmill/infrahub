@@ -47,14 +47,14 @@
 
 ### Tests for User Story 1
 
-- [X] T010 [P] [US1] Unit tests `frontend/app/src/entities/repository/domain/rules/rank-repositories.test.ts`: `hasImportError`, `isRepositoryUnreachable` (`error-cred`, `error-connection`, `error` true; `online`, `unknown`, `null` false), `getRepositoryRank`, `rankRepositories` (import error → unreachable → rest, name order inside groups, stable, doesn't mutate input), `getFailingRepositories`, `getBandKind` (import error wins when both).
+- [X] T010 [P] [US1] Unit tests `frontend/app/src/entities/repository/domain/rules/rank-repositories.test.ts`: `hasImportError`, `isRepositoryUnreachable` (`error-cred`, `error-connection`, `error` true; `online`, `unknown`, `null` false), `getRepositoryRank`, `rankRepositories` (import error → unreachable → rest, name order inside groups, stable, doesn't mutate input), `getFailingRepositories`, `getBandKind` (import error wins when both). _(Superseded 2026-10-05: R003 removed `rankRepositories` and `getRepositoryRank`; the table keeps the server's order. The other rules and their tests are in `domain/rules/repository-failures.ts` and `repository-failures.test.ts`.)_
 - [X] T011 [P] [US1] Unit tests `frontend/app/src/entities/repository/domain/use-cases/get-branch-repositories.test.ts` with the api function mocked: maps nodes to `BranchRepository` (name fallback to `display_label` then `id`, `isReadOnly` from `__typename`, null commit); `syncWithGit: false` queries the read-only kind; `PERMISSION_DENIED` in `errors[].extensions` → `{ status: "denied" }`; other errors throw; `isTruncated` when `count > edges.length`.
 - [X] T012 [P] [US1] Scenario fixtures in `frontend/app/tests/fake/branch-repositories.ts`: builders for `BranchRepository` and the results of the prototype scenarios trimmed to real fields (`incident`/`import-error`, `unreachable`, `many-errors` = 40 repos with 5 import errors at positions 2, 3, 7, 12, 18, `all-clear`, `no-repos` Sync off, `exactly-10`, `eleven`), with schema-like `sync_status` label/colour values (`In Sync`, `Import Error`, `Syncing`, `Unknown`).
 
 ### Implementation for User Story 1
 
 - [X] T013 [P] [US1] Create `BranchRepository` and `BranchRepositoriesResult` types in `frontend/app/src/entities/repository/domain/model/branch-repository.ts` (data-model.md).
-- [X] T014 [US1] Implement the rules in `frontend/app/src/entities/repository/domain/rules/rank-repositories.ts` to pass T010. Depends on T007, T013.
+- [X] T014 [US1] Implement the rules in `frontend/app/src/entities/repository/domain/rules/rank-repositories.ts` to pass T010. Depends on T007, T013. _(Superseded 2026-10-05: there is no `rank-repositories.ts`; the rules are in `domain/rules/repository-failures.ts`, see R003.)_
 - [X] T015 [US1] Create `frontend/app/src/entities/repository/api/get-branch-repositories-from-api.ts`: two static `gql.tada` documents (`CoreGenericRepository`, `CoreReadOnlyRepository`) with the selection in `contracts/graphql-queries.md` Q1, called with `context: { branch: branchName }` and `limit: REPOSITORY_FETCH_LIMIT`; return `{ data, errors }` unthrown. Run `pnpm codegen` if the `gql.tada` cache needs regenerating.
 - [X] T016 [US1] Implement `getBranchRepositories({ branchName, syncWithGit })` in `frontend/app/src/entities/repository/domain/use-cases/get-branch-repositories.ts` to pass T011, detecting permission errors with `parseCatalogueError` and `ERROR_CODES.PERMISSION_DENIED` from `frontend/app/src/shared/api/errors` (research R11). Depends on T013, T015.
 - [X] T017 [US1] Create `repositoryQueryKeys` in `frontend/app/src/entities/repository/ui/queries/repository.query-keys.ts` (`all`, `branch`, `importError`, research R7) and `useGetBranchRepositories` + `getBranchRepositoriesQueryOptions` in `frontend/app/src/entities/repository/ui/queries/get-branch-repositories.query.ts`, with `refetchInterval` returning 10 000 only while a returned repository is syncing (research R4). Depends on T016.
@@ -116,7 +116,7 @@
 
 ### Tests for User Story 4
 
-- [X] T038 [P] [US4] Unit tests `frontend/app/src/entities/tasks/domain/model/workflow-labels.test.ts` for every mapping in research R9, `null` → "—", unknown id → itself.
+- [X] T038 [P] [US4] Unit tests `frontend/app/src/entities/tasks/domain/model/workflow-labels.test.ts` for every mapping in research R9, `null` → "—", unknown id → itself. _(Superseded 2026-10-05: `getWorkflowLabel` is in `domain/rules/get-workflow-label.ts` (+ test) and turns an unknown id into readable words, for example "some-new_workflow" → "Some new workflow".)_
 - [X] T039 [P] [US4] Unit tests `frontend/app/src/entities/tasks/domain/rules/get-task-related-label.test.ts`: known repository → its name; several related nodes → first known repository wins; none → "This branch"; other kind → `getKindLabel(kind)` or the kind.
 - [X] T040 [P] [US4] Unit tests `frontend/app/src/entities/tasks/domain/use-cases/get-branch-tasks.test.ts` with `getTaskListFromApi` mocked: returns `{ tasks, count }`, drops null nodes/related nodes, passes `branchName`, `offset`, `limit`; errors throw.
 

@@ -57,9 +57,10 @@ type RepositoryImportError =
 - `getRepositoryListKind(syncWithGit)` (`get-repository-list-kind.ts`) — `CoreReadOnlyRepository` when Sync with Git is off, else `CoreGenericRepository`. The GraphQL kind both queries list; not `BranchRepository.kind`.
 - `hasImportError(repo)`, `isRepositoryUnreachable(repo)` (`repository-failures.ts`) — `unknown` and `online` are not failing.
 - `getFailingRepositories(health)` — the band list: `importErrors`, then `unreachable` minus any already listed as an import error (one band per repository, import error wins: spec US2 scenario 5). Server order (name) within each group.
-- `countUnlistedFailures(health)` — failing repositories past the list limit (`importErrorCount + unreachableCount` minus the listed rows); the bands summary adds them as "and N more".
+- `countUnlistedFailures(health)` — failing repositories past the list limits (`importErrorCount + unreachableCount` minus the listed rows); the bands summary adds them as "and N more". _(2026-10-05: a listed repository that also fails the other way, and isn't listed there, is taken out of that list's remainder. One past both limits is still counted twice, because it can't be recognised from the capped lists.)_
 - `getBandKind(repo): "import-error" | "unreachable"`.
 - `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The single polling decision for the page query, the health query and the band lookups.
+- `isRepositorySyncing(repo)` (`is-repository-syncing.ts`) — `syncStatus.value === "syncing"`. Keeps the page query polling while its own rows still show a sync that the health query says has ended. _(Added 2026-10-05.)_
 - `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; follow-ups.md).
 
 ### Use cases (`entities/repository/domain/use-cases/`)

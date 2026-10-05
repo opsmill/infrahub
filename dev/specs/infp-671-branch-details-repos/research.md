@@ -170,7 +170,7 @@ It's presentation copy, not a filter, so it doesn't break "backend is authoritat
 
 ## R13 — Tests
 
-- Unit (vitest): `rankRepositories`, `isRepositoryUnreachable`, `getLastErrorLine`, `getWorkflowLabel`, `getTaskRelatedLabel`, table-pagination utils (including 10/11 boundaries and invalid pages).
+- Unit (vitest): `rankRepositories` _(removed 2026-10-02, restructure R003; the failure rules are in `repository-failures.ts`)_, `isRepositoryUnreachable`, `getLastErrorLine`, `getWorkflowLabel`, `getTaskRelatedLabel`, table-pagination utils (including 10/11 boundaries and invalid pages).
 - Component (vitest browser, `tests/components/render`): card per scenario fixture (the prototype's `buildData` scenarios, trimmed to real fields: incident/import-error, unreachable, many-errors (40 repos, 5 errors), all-clear, no-repos (Sync off), loading, denied, failed); bands (3 + Show all, not-found fallback); tasks table (loading, empty, failed, 11 rows pagination, title href); header (copy accessible name, refresh keys). Query hooks mocked with `vi.mock`, as `entities/repository/ui/repository-menu-section.test.tsx` does.
 - E2E (pytest-playwright, `tests/e2e/branches/test_branch_details.py`): the existing test targets `data-testid="tasks-accordion"`, which goes away; update it to the Tasks card. New: "import error band links to the task page" (handoff), and the card renders on a branch with a repository. Seeding a real failing import in e2e depends on the R2 verification; if it can't be made deterministic, the band-link e2e asserts on a repository seeded in Import Error with a tagged read-only import, and the gap is noted in the PR.
 

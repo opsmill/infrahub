@@ -49,6 +49,8 @@ All vitest runs are browser mode (chromium, vitest 4.1.10), run from `frontend/a
 | tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::test_import_error_band_links_to_the_task_page | e2e | `uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/ -m shard_branches_repo` | deferred — local E2E not supported | needs a dedicated stack | – |
 | tests/e2e/tutorial/tutorials/test_tutorial_1_object_create_update_diff_and_merge.py::…::test_4_view_diff_and_merge_into_main | e2e | `uv run pytest -c tests/e2e/pytest.ini <file>` | deferred — local E2E not supported | needs a dedicated stack | – |
 
+_(2026-10-05: `rank-repositories.ts` and its test were removed in the restructure (tasks.md R003); the rules it tested that remain are in `repository-failures.ts` and `repository-failures.test.ts`.)_
+
 The e2e files pass `py_compile`, `ruff check` and `ruff format --check`.
 
 ## 4. CI gate (final, run by the orchestrator at `eb3a658ea6`)
