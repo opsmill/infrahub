@@ -82,4 +82,27 @@ describe("copyTextToClipboard", () => {
     // THEN
     expect(document.body.textContent).toBe(bodyText);
   });
+
+  test("restores the selection the user had before the selection copy", async () => {
+    // GIVEN
+    vi.stubGlobal("isSecureContext", false);
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "selected by the user";
+    document.body.appendChild(paragraph);
+    const selection = window.getSelection();
+    selection?.selectAllChildren(paragraph);
+    let selectedDuringCopy = "";
+    vi.spyOn(document, "execCommand").mockImplementation(() => {
+      selectedDuringCopy = window.getSelection()?.toString() ?? "";
+      return true;
+    });
+
+    // WHEN
+    await copyTextToClipboard("abc1234");
+
+    // THEN
+    expect(selectedDuringCopy).toBe("abc1234");
+    expect(window.getSelection()?.toString()).toBe("selected by the user");
+    paragraph.remove();
+  });
 });

@@ -9,19 +9,22 @@ async function copyWithClipboardApi(value: string): Promise<boolean> {
 }
 
 function copyWithSelection(value: string): boolean {
+  const selection = window.getSelection();
+  if (!selection) return false;
+  const savedRanges = Array.from({ length: selection.rangeCount }, (_, index) =>
+    selection.getRangeAt(index)
+  );
   const textNode = document.createTextNode(value);
   document.body.appendChild(textNode);
   try {
-    const selection = window.getSelection();
-    if (!selection) return false;
     const range = document.createRange();
     range.selectNode(textNode);
     selection.removeAllRanges();
     selection.addRange(range);
-    const isCopied = document.execCommand("copy");
-    selection.removeAllRanges();
-    return isCopied;
+    return document.execCommand("copy");
   } finally {
+    selection.removeAllRanges();
+    for (const savedRange of savedRanges) selection.addRange(savedRange);
     document.body.removeChild(textNode);
   }
 }

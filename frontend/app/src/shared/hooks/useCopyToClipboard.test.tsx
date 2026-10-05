@@ -100,7 +100,7 @@ describe("useCopyToClipboard", () => {
   it("does not confirm a copy that failed", async () => {
     // GIVEN
     vi.stubGlobal("isSecureContext", false);
-    vi.spyOn(document, "execCommand").mockReturnValue(false);
+    const execCommand = vi.spyOn(document, "execCommand").mockReturnValue(false);
     const component = await render(<CopyButton value="test-value" />);
     const button = component.getByTestId("copy-btn");
 
@@ -108,6 +108,7 @@ describe("useCopyToClipboard", () => {
     await button.click();
 
     // THEN
+    await vi.waitFor(() => expect(execCommand).toHaveBeenCalledWith("copy"));
     await expect.element(button).toHaveAttribute("data-copy-count", "0");
     await expect.element(button).toHaveAttribute("data-copied", "false");
   });
