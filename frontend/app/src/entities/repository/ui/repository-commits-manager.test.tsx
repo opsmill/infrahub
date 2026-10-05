@@ -257,6 +257,31 @@ describe("RepositoryCommitsManager", () => {
     }
   );
 
+  test("refreshes only the current repository's commit log", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    const callsFor = (repositoryId: string) =>
+      apiMock.mock.calls.filter(([params]) => params.repositoryId === repositoryId).length;
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    const unsubscribeOtherLog = new InfiniteQueryObserver(
+      queryClient,
+      getRepositoryCommitsQueryOptions({ repositoryId: "repo-2", branchName: "test-branch" })
+    ).subscribe(() => {});
+    await expect.poll(() => callsFor("repo-2")).toBe(1);
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Refresh data" }).click();
+
+    // THEN
+    await expect.poll(() => callsFor("repo-1")).toBe(2);
+    expect(callsFor("repo-2")).toBe(1);
+    unsubscribeOtherLog();
+  });
+
   test("renders an error screen, not the not-yet-available state, when the query fails", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new Error("Worker did not answer in time"));

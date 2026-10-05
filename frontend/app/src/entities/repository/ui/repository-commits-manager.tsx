@@ -78,7 +78,7 @@ export function RepositoryCommitsManager({
     return (
       <Col className="h-full gap-0">
         <Row className="p-2">
-          <RepositoryCommitsRefreshButton />
+          <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
         </Row>
         <ErrorScreen message={error.message} />
       </Col>
@@ -95,7 +95,7 @@ export function RepositoryCommitsManager({
       return (
         <Col className="h-full gap-0">
           <Row className="p-2">
-            <RepositoryCommitsRefreshButton />
+            <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
           </Row>
           <NoDataFound title={emptyState.title} message={emptyState.message} />
         </Col>
@@ -105,7 +105,7 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} />
+      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
       {isShowingStaleCommits({
         firstPage: log,
         hasError: error !== null,

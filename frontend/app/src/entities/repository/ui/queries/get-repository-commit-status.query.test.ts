@@ -89,7 +89,7 @@ describe("getRepositoryCommitStatusQueryOptions", () => {
     const { queryKey } = getRepositoryCommitStatusQueryOptions(PARAMS);
 
     // THEN
-    expect(queryKey).toEqual(["repositories", "commitStatus", PARAMS]);
+    expect(queryKey).toEqual(["repositories", PARAMS, "commitStatus"]);
   });
 
   test("keeps a known status when a refresh answers unavailable", () => {

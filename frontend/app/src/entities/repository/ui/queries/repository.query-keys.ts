@@ -9,8 +9,10 @@ export interface RepositoryCommitsKeyParams extends RepositoryCommitStatusKeyPar
 
 export const repositoriesQueryKeys = {
   all: ["repositories"] as const,
-  commits: (params: RepositoryCommitsKeyParams) =>
-    [...repositoriesQueryKeys.all, "commits", params] as const,
+  repository: ({ repositoryId, branchName }: RepositoryCommitStatusKeyParams) =>
+    [...repositoriesQueryKeys.all, { repositoryId, branchName }] as const,
+  commits: ({ limit, ...params }: RepositoryCommitsKeyParams) =>
+    [...repositoriesQueryKeys.repository(params), "commits", { limit }] as const,
   commitStatus: (params: RepositoryCommitStatusKeyParams) =>
-    [...repositoriesQueryKeys.all, "commitStatus", params] as const,
+    [...repositoriesQueryKeys.repository(params), "commitStatus"] as const,
 } as const;
