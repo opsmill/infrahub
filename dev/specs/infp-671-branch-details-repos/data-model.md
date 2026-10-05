@@ -65,7 +65,7 @@ type RepositoryImportError =
 
 ### Use cases (`entities/repository/domain/use-cases/`)
 
-- `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasThrownCatalogueCode`), else `"UNKNOWN"`.
+- `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasOnlyThrownCatalogueCode`, so every GraphQL error must carry it), else `"UNKNOWN"`.
 - `getBranchRepositoryHealth({ branchName, syncWithGit }) → BranchRepositoryHealth`.
 - `getRepositoryImportTask({ branchName, repositoryId }) → string | null` — the newest FAILED or CRASHED import task's id. A failed lookup returns `null` (the band never disappears).
 - `getImportTaskErrorMessage(taskId) → string | null` — `getLastErrorLine` over that task's log.

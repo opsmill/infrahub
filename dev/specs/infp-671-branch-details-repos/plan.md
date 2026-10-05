@@ -82,7 +82,7 @@ frontend/app/src/
 │   ├── utils/table-pagination.ts (+ test)               # IFC-3130 verbatim: PAGE_SIZE, getOffset, …
 │   ├── hooks/use-table-pagination.ts (+ test)           # IFC-3130 verbatim: ${urlKey}_page, duplicate-key guard
 │   ├── hooks/use-count-clamped-query.ts (+ test)        # NEW clamp a page against the server's count
-│   └── api/graphql/error-handling.ts                    # + hasThrownCatalogueCode (IFC-3130 verbatim)
+│   └── api/graphql/error-handling.ts                    # + hasOnlyThrownCatalogueCode, isThrownShed
 ├── entities/repository/
 │   ├── api/get-branch-repositories-from-api.ts (+ test) # Q1 one page, ordered by name
 │   ├── api/get-branch-repository-health-from-api.ts     # Q1b failing + syncing, server-filtered
