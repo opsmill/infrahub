@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
+from git.exc import GitCommandError
+
+from infrahub.exceptions import CommitNotFoundError, RepositoryError
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 
@@ -11,6 +14,7 @@ if TYPE_CHECKING:
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
     from infrahub.lock import InfrahubLockRegistry
     from infrahub.message_bus.messages import RefreshGitFetch
+    from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 
 log = get_logger()
 
@@ -79,7 +83,11 @@ class WorktreeConverger:
         # operations on the same on-disk tree (merges, syncs, branch creation).
         async with self._lock_registry.get(name=message.repository_name, namespace="repository"):
             await repo.fetch()
-            if message.commit:
+            if message.branches is not None:
+                await self._reset_each_branch(
+                    repo=repo, repository_name=message.repository_name, branches=message.branches
+                )
+            elif message.commit:
                 await repo.reset_to_commit(
                     branch_name=message.infrahub_branch_name,
                     commit=message.commit,
@@ -93,4 +101,26 @@ class WorktreeConverger:
                     branch_id=message.infrahub_branch_id,
                     create_if_missing=True,
                     update_commit_value=False,
+                )
+
+    async def _reset_each_branch(
+        self, repo: ConvergingRepository, repository_name: str, branches: tuple[BranchCommitPair, ...]
+    ) -> None:
+        for branch in branches:
+            try:
+                await repo.reset_to_commit(
+                    branch_name=branch.infrahub_branch_name,
+                    commit=branch.commit,
+                    branch_id=branch.infrahub_branch_id,
+                    create_if_missing=True,
+                    update_commit_value=False,
+                )
+            # A branch that cannot converge must not keep the branches after it on their previous commit.
+            except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError):
+                log.exception(
+                    f"Unable to reset branch {branch.infrahub_branch_name} of repository {repository_name} "
+                    f"to commit {branch.commit}",
+                    repository=repository_name,
+                    branch=branch.infrahub_branch_name,
+                    commit=branch.commit,
                 )

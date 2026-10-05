@@ -248,7 +248,7 @@ healthy branch is still sent, and a second worker converges on it.
       whenever `branches` is set. A worker on the previous code reads only the single-branch fields,
       so a mismatch converges it onto a branch the message was not about. PR #10669 is no precedent
       here: it sends one message per moved ref and adds no field, so this coalescing is new.
-- [ ] T030 [US3] Read the list in
+- [x] T030 [US3] Read the list in
       `backend/infrahub/message_bus/operations/git/repository.py::fetch`. Reset every pair inside
       one lock acquisition and one fetch. Fall back to the single-branch fields when `branches` is
       absent. Log a failed pair with its branch and carry on with the rest.
@@ -286,7 +286,7 @@ healthy branch is still sent, and a second worker converges on it.
       in the same cycle (FR-018a). `sync_remote_repositories` has no per-repository guard today, so
       this test holds the one this phase adds. It is the repository-level version of the outage US3
       removes at branch level.
-- [ ] T038 [P] [US3] Unit-test the handler fan-out in
+- [x] T038 [P] [US3] Unit-test the handler fan-out in
       `backend/tests/unit/message_bus/test_refresh_git_fetch_fanout.py`: N pairs are reset inside
       one lock acquisition and one fetch. Use a fake lock registry, not a mock.
 - [ ] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
