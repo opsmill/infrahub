@@ -39,9 +39,9 @@ describe("getBranchRepositoryHealthQueryOptions", () => {
     expect(refetchIntervalFor(undefined)).toBe(false);
   });
 
-  it("stops polling once the health check has failed through its retries", () => {
-    expect(refetchIntervalFor(undefined, "error")).toBe(false);
-    expect(refetchIntervalFor(2, "error")).toBe(false);
+  it("slows the health check down once it has failed through its retries", () => {
+    expect(refetchIntervalFor(undefined, "error")).toBe(60_000);
+    expect(refetchIntervalFor(2, "error")).toBe(60_000);
   });
 });
 
@@ -60,7 +60,7 @@ describe("getBranchRepositoriesQueryOptions", () => {
     expect(pageRefetchIntervalFor(false, undefined)).toBe(false);
   });
 
-  it("stops polling the page once a fetch has failed", () => {
+  it("slows the page poll down once a fetch has failed", () => {
     const { refetchInterval } = getBranchRepositoriesQueryOptions({
       ...pageParams,
       isSyncing: true,
@@ -72,7 +72,7 @@ describe("getBranchRepositoriesQueryOptions", () => {
       refetchInterval({ state: { status: "error" } } as unknown as Parameters<
         typeof refetchInterval
       >[0])
-    ).toBe(false);
+    ).toBe(60_000);
   });
 
   it("fetches the page again after the sync ends while its rows still show it", () => {

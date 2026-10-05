@@ -15,9 +15,10 @@ export function getBranchRepositoryHealthQueryOptions(params: GetBranchRepositor
     queryKey: repositoryQueryKeys.branchHealth(params),
     queryFn: () => getBranchRepositoryHealth(params),
     retry: retryBackgroundQuery,
+    // A failed check is retried slowly even with nothing syncing, so the bands come back on their own.
     refetchInterval: (query) =>
       pollWhileHealthy(
-        isAnyRepositorySyncing(query.state.data),
+        isAnyRepositorySyncing(query.state.data) || query.state.status === "error",
         REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
         query
       ),

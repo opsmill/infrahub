@@ -24,20 +24,40 @@ describe("getRepositoryImportTask", () => {
   });
 
   it("asks for the newest failed or crashed import of the repository on the branch", async () => {
-    // GIVEN
-    vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValue("task-1");
+    // GIVEN no import is running
+    vi.mocked(getRepositoryImportTaskFromApi)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce("task-1");
 
     // WHEN
     const taskId = await getRepositoryImportTask(params);
 
     // THEN
     expect(taskId).toBe("task-1");
-    expect(getRepositoryImportTaskFromApi).toHaveBeenCalledWith({
+    expect(getRepositoryImportTaskFromApi).toHaveBeenNthCalledWith(1, {
+      branch: "feature",
+      repositoryId: "repo-1",
+      workflows: [...IMPORT_WORKFLOWS],
+      states: ["SCHEDULED", "PENDING", "RUNNING"],
+    });
+    expect(getRepositoryImportTaskFromApi).toHaveBeenNthCalledWith(2, {
       branch: "feature",
       repositoryId: "repo-1",
       workflows: [...IMPORT_WORKFLOWS],
       states: ["FAILED", "CRASHED"],
     });
+  });
+
+  it("returns null while an import is still running, so an older failed run isn't picked", async () => {
+    // GIVEN
+    vi.mocked(getRepositoryImportTaskFromApi).mockResolvedValueOnce("running-task");
+
+    // WHEN
+    const taskId = await getRepositoryImportTask(params);
+
+    // THEN
+    expect(taskId).toBeNull();
+    expect(getRepositoryImportTaskFromApi).toHaveBeenCalledTimes(1);
   });
 
   it("returns null when no failed import matches", async () => {

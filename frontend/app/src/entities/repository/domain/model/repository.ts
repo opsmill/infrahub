@@ -1,4 +1,10 @@
-import { TASK_STATE_CRASHED, TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
+import {
+  TASK_STATE_CRASHED,
+  TASK_STATE_FAILED,
+  TASK_STATE_PENDING,
+  TASK_STATE_RUNNING,
+  TASK_STATE_SCHEDULED,
+} from "@/entities/tasks/domain/model/task";
 
 export const REPOSITORY_OBJECTS_TAB = "repository_objects";
 export const REPOSITORY_GROUP = "CoreRepositoryGroup";
@@ -22,6 +28,11 @@ export const IMPORT_WORKFLOWS = [
   "sync-git-repo-with-origin",
 ] as const;
 export const IMPORT_FAILED_TASK_STATES = [TASK_STATE_FAILED, TASK_STATE_CRASHED] as const;
+export const IMPORT_ACTIVE_TASK_STATES = [
+  TASK_STATE_SCHEDULED,
+  TASK_STATE_PENDING,
+  TASK_STATE_RUNNING,
+] as const;
 // Logs come back oldest first, so anything below the backend's 10 000-line cap can cut off the final error line.
 export const IMPORT_LOG_LIMIT = 10_000;
 

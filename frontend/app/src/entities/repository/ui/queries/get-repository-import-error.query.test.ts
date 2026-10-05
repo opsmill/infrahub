@@ -53,11 +53,11 @@ describe("getRepositoryImportTaskQueryOptions", () => {
     expect(taskRefetchIntervalFor(false, { data: "task-1" })).toBe(false);
   });
 
-  it("stops polling once the lookup has failed", () => {
+  it("stops on a denied lookup and slows down after any other failure", () => {
     expect(
       taskRefetchIntervalFor(true, { status: "error", data: undefined, error: permissionDenied() })
     ).toBe(false);
-    expect(taskRefetchIntervalFor(false, { status: "error", data: null })).toBe(false);
+    expect(taskRefetchIntervalFor(false, { status: "error", data: null })).toBe(60_000);
   });
 });
 

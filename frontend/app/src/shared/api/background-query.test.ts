@@ -36,12 +36,22 @@ describe("retryBackgroundQuery", () => {
 
 describe("pollWhileHealthy", () => {
   it("polls while active and the last fetch succeeded", () => {
-    expect(pollWhileHealthy(true, 10_000, { state: { status: "success" } } as never)).toBe(10_000);
-    expect(pollWhileHealthy(false, 10_000, { state: { status: "success" } } as never)).toBe(false);
+    expect(
+      pollWhileHealthy(true, 10_000, { state: { status: "success", error: null } } as never)
+    ).toBe(10_000);
+    expect(
+      pollWhileHealthy(false, 10_000, { state: { status: "success", error: null } } as never)
+    ).toBe(false);
   });
 
-  it("stops polling once a fetch has failed", () => {
-    expect(pollWhileHealthy(true, 10_000, { state: { status: "error" } } as never)).toBe(false);
+  it("slows down after a failed fetch, so kept rows catch up once the backend recovers", () => {
+    const failed = { state: { status: "error", error: new Error("Network error") } } as never;
+    expect(pollWhileHealthy(true, 10_000, failed)).toBe(60_000);
+  });
+
+  it("stops polling once a fetch was denied", () => {
+    const denied = { state: { status: "error", error: permissionDenied() } } as never;
+    expect(pollWhileHealthy(true, 10_000, denied)).toBe(false);
   });
 });
 

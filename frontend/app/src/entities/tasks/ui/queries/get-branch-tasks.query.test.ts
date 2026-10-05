@@ -26,8 +26,8 @@ describe("getBranchTasksQueryOptions", () => {
     );
   });
 
-  it("stops polling once a fetch has failed", () => {
-    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval, "error")).toBe(false);
+  it("slows the poll down once a fetch has failed", () => {
+    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval, "error")).toBe(60_000);
   });
 
   it("keys the page on the branch and its window", () => {
@@ -69,10 +69,10 @@ describe("getBranchFailedTaskCountQueryOptions", () => {
     );
   });
 
-  it("polls every 10 seconds until a fetch fails", () => {
+  it("polls every 10 seconds, and every minute after a failed fetch", () => {
     const { refetchInterval } = getBranchFailedTaskCountQueryOptions({ branchName: "feature" });
 
     expect(intervalOf(refetchInterval)).toBe(10_000);
-    expect(intervalOf(refetchInterval, "error")).toBe(false);
+    expect(intervalOf(refetchInterval, "error")).toBe(60_000);
   });
 });

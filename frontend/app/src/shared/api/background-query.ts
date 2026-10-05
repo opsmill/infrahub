@@ -18,14 +18,18 @@ export function retryBackgroundQuery(failureCount: number, error: Error): boolea
   );
 }
 
-/**
- * Polls while `isActive`, and stops once a fetch has failed through its retries: the card shows its
- * error state, and the next fetch comes from a refresh, a remount or the window regaining focus.
- */
+// After a failure the poll slows down instead of stopping, so a card that kept its last rows
+// catches up on its own once the backend recovers; a denial can't recover, so it stops.
+const FAILED_POLL_SLOWDOWN = 6;
+
 export function pollWhileHealthy(
   isActive: boolean,
   intervalMs: number,
-  query: { state: { status: QueryStatus } }
+  query: { state: { status: QueryStatus; error: Error | null } }
 ): number | false {
-  return isActive && query.state.status !== "error" ? intervalMs : false;
+  if (!isActive) return false;
+  if (query.state.status !== "error") return intervalMs;
+  const { error } = query.state;
+  if (error && hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)) return false;
+  return intervalMs * FAILED_POLL_SLOWDOWN;
 }
