@@ -1,0 +1,39 @@
+dev/specs/infp-631-resource-telemetry/alignment-check.md
+  s_2dcffc265e72b7::t_cd30bd9c22ecad 1-24
+dev/specs/infp-631-resource-telemetry/checklists/requirements.md
+  s_2dcffc265e72b7::t_66d53996cb8298 1-37
+dev/specs/infp-631-resource-telemetry/contracts/telemetry-resources.md
+  s_2dcffc265e72b7::t_b67696a47b0444 1-75
+dev/specs/infp-631-resource-telemetry/critiques/critique-20260721-121437.md
+  s_2dcffc265e72b7::t_b7c2f19c55a038 1-81
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_2dcffc265e72b7::t_95169d50f4b136 1-95
+dev/specs/infp-631-resource-telemetry/opsmill-implement-report.md
+  s_2dcffc265e72b7::t_6849c95b17777e 1-76
+dev/specs/infp-631-resource-telemetry/plan.md
+  s_2dcffc265e72b7::t_61a3a0739a7826 1-127
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_2dcffc265e72b7::t_774a19a31b8bdf 1-69
+dev/specs/infp-631-resource-telemetry/research.md
+  s_2dcffc265e72b7::t_27195c2765cc4f 1-107
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_2dcffc265e72b7::t_957f7204d61962 1-113
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_2dcffc265e72b7::t_486f60fd56843c 1-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8f095eca5461b1ae47668455eccaed172881fe2",
+  "prompts": {},
+  "sessions": {
+    "s_2dcffc265e72b7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78aac985-d023-4ff2-aa1b-866be0dd0cde",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
