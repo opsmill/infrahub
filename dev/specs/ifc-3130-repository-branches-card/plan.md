@@ -89,13 +89,14 @@ dropdown value appears, so the card is fully buildable and screenshottable again
 
 Two consequences this plan must honour:
 
-- `sync_status__value`, `internal_status__value` and `own_values_only` are **rejected with a
-  `ValidationError`** while the stub serves placeholder values. The resolver raises it for any of the
-  three that would narrow the rows, and the frozen SDL's own field description says "rejected" in
-  those terms. IFC-3130's Jira description says the opposite — "accepted but ignored", so a filter
-  "appears to do nothing". **The ticket is wrong and needs editing by its owner**; see Q6 in
-  [Open questions](#open-questions--carried-not-invented). Nothing here is built against the ticket's
-  wording.
+- `sync_status__value`, `internal_status__value` and `own_values_only` were **rejected with a
+  `ValidationError`** when this plan was written, and the frozen SDL's field description still says
+  "rejected" in those terms. **IFC-3127 has since landed on the base**: the resolver declares all
+  three and applies them when paging. This feature still sends none of them — they are not declared
+  in the gql.tada document — but that is now a scope choice rather than a constraint, and the SDL
+  description is stale. IFC-3130's Jira description said "accepted but ignored", which was wrong
+  then and is close enough now to be beside the point; see Q6 in
+  [Open questions](#open-questions--carried-not-invented).
 
   **FR-016 is enforced structurally**: the gql.tada document does not declare those three variables,
   and a variable that cannot be expressed cannot be sent. The failure mode prevented is a **loud
@@ -766,7 +767,7 @@ not the implementer.
 | Q3 | IFC-3131 is this card's stated manual-validation gate, but its instructions are written by IFC-3132, which has not landed. Is the gate real? | Epic owner | [quickstart.md](quickstart.md)'s validation scenarios serve as the acceptance checklist. They are near-verbatim what IFC-3131 needs, so they can be lifted into it |
 | Q4 | Four user-facing state strings (loading, empty, denied, failed) are unpinned, including the "all branches have Git sync disabled" case. The canvas draws none of them | Product + designer | Strings are pinned in the [UI contract](contracts/repository-branch-status-ui.md) §4 so copy can be reviewed without reading code |
 | Q5 | Dropping `Last import` makes `Syncing` indistinguishable from stuck, and with no `import_error` and no task-log link a user reaches "branch X is in error" and stops | Epic IFC-3101 | Accepted for this slice. The dead-end is real and closes when the drift column and import-error surface land |
-| Q6 | **IFC-3130's Jira description is factually wrong** about the three preview arguments. It says they are "accepted but ignored" so a filter "appears to do nothing"; the frozen SDL and the resolver both **reject** them with a `ValidationError`. The ticket text needs editing — this is not a design choice left open | IFC-3130's ticket owner | Build against the contract: the arguments are rejected, and the gql.tada document declares none of them, so none is ever sent. No code changes when the ticket is corrected |
+| Q6 | **Resolved by IFC-3127 landing.** The ticket said the three preview arguments were "accepted but ignored" while the SDL and resolver rejected them with a `ValidationError`. The resolver now declares and applies all three, so the disagreement is moot; the SDL field description is the only thing left saying "rejected", and correcting it belongs to the backend | IFC-3130's ticket owner | None. The gql.tada document declares none of the three, so none is ever sent whatever the backend does |
 
 ## Phase 2 — Tasks
 

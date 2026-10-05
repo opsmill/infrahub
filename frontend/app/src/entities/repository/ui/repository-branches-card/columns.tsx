@@ -22,12 +22,11 @@ function findAttribute(schema: ModelSchema, name: string): AttributeSchema | und
   return schema.attributes?.find((attribute) => attribute.name === name);
 }
 
-// None of these can be ordered by, and only sync status can be narrowed on — a filter the card does
-// not offer yet — so their headers are disabled rather than offering a menu that goes nowhere.
-
 function getSyncStatusColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
+  // Disabled because nothing in this column's menu could be honoured: the contract orders by branch
+  // node metadata alone, and this card offers no sync-status filter.
   return columnHelper.display({
     id: "sync_status",
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
@@ -42,6 +41,7 @@ function getSyncStatusColumn(
 function getCommitColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
+  // Disabled: the contract can neither order nor filter by a commit.
   return columnHelper.display({
     id: "commit",
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
@@ -56,6 +56,7 @@ function getCommitColumn(
 function getRefColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
+  // Disabled: the contract can neither order nor filter by a ref.
   return columnHelper.display({
     id: "ref",
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,

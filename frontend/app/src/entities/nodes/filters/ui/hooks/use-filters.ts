@@ -27,9 +27,8 @@ export function useFilters(): [Array<Filter>, (filter: Array<Filter>) => void] {
       setFiltersInQueryString(cleanedFilters);
     }
 
-    // A page number was chosen against the old row set, so it cannot be honoured against the new
-    // one. Clearing it here rather than reacting to the change is what keeps the card from spending
-    // a request on the old window first.
+    // A page number chosen against the old row set cannot be honoured against the new one, and
+    // clearing it in the same write avoids a request for a window that no longer exists.
     if (pageKey) setPage(null);
   };
 

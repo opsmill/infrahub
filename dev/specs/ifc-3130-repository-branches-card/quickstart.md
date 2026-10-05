@@ -36,10 +36,10 @@ They are stable across reloads and every dropdown value appears, so the card is 
 screenshottable. What you must **not** do is let anything depend on the values being real (SC-008) —
 when IFC-3127 lands, the values become real with no contract change and no code change here.
 
-Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — are **rejected
-with a `ValidationError`** today. IFC-3130's Jira description says the opposite, "accepted but
-ignored"; the ticket is wrong and needs editing by its owner (plan.md open question Q6). This feature
-never sends them: they are not declared in the gql.tada document at all. See
+Three arguments — `sync_status__value`, `internal_status__value`, `own_values_only` — were **rejected
+with a `ValidationError`** when this was written. IFC-3127 has since landed on the base and the
+resolver applies all three. This feature still never sends them: they are not declared in the
+gql.tada document at all, which is what keeps FR-016 true. See
 [the UI contract](contracts/repository-branch-status-ui.md).
 
 **Who sees the fabricated values**: you do, running the card locally, which is exactly what makes it
