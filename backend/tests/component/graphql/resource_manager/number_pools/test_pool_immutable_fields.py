@@ -266,6 +266,7 @@ class TestNumberPoolUpsertImmutableFields:
         pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
         assert pool is not None
         assert pool.get_attribute("end_range").value == 25
+        assert await range_bounds(db=db, pool_id=pool_id) == [(10, 25)]
 
     async def test_update_rejects_node_attribute_change(
         self,
