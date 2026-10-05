@@ -794,6 +794,10 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
     expect(component.getByText(/of \d+ results/).query()).toBeNull();
     expect(component.getByText(/\d+ commits$/).query()).toBeNull();
+    expect(component.getByText(/^counts?$/).query()).toBeNull();
+    const grid = component.getByTestId("data-table-row").first().element().parentElement;
+    // Footer cells carry no accessible role; only they carry the sticky-bottom class.
+    expect(grid?.querySelectorAll(":scope > .bottom-0")).toHaveLength(0);
     expect(component.getByRole("navigation").query()).toBeNull();
   });
 });
