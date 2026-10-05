@@ -16,7 +16,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
 
-
 # Kinds that exist only for the node at the end of their mandatory relationship to the implicit CoreNode generic.
 TARGET_OWNED_KINDS = frozenset({InfrahubKind.GENERATORINSTANCE})
 
