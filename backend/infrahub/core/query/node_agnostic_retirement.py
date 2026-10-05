@@ -118,12 +118,11 @@ RETURN collect(DISTINCT node.uuid) AS node_uuids
 
 
 class NodesToCheckForGlobalEdgesQuery(Query):
-    """Return the uuids of the nodes deleted on a branch between two timestamps, both included.
-
-    Also returns the nodes whose pool-reserved attribute lost its owning edge on the branch in the same
-    window. A kind or inheritance change deletes the superseded vertex of a node that stays live under
-    the same uuid, and an attribute rename leaves the node in place, so a returned uuid is a node whose
-    retention needs re-evaluating, not proof that it is gone.
+    """Return the uuids of objects to check for branch-agnostic edges that may need to be retired.
+    
+    Includes both objects deleted on the branch within the timestamps and objects with pool-reserved
+    attributes that lost their owning edge on the branch in the same window. Not all objects actually
+    need to have branch-agnostic retirement applied, but they all do need to be checked.
     """
 
     name: str = "nodes_to_check_for_global_edges"
