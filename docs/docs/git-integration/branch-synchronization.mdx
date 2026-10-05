@@ -265,7 +265,7 @@ A branch with no repository to show reads one of these texts in its **Repositori
 | **No permission** | Your account cannot view one of the two repository kinds (read-write or read-only), or cannot view any repository's status on every branch, so every branch reads this text. If you can list repositories but cannot read one repository's status on every branch, that repository is left out silently. |
 | **Could not load repositories** | The branch list, the repository list or a repository's status could not be read, or the repository list was cut short, so every branch reads this text; or one repository's status list was cut short before this branch, so only this branch reads it. Hover the text to read the reason. |
 
-A branch created outside this page, such as by a Git import or by another user, can read **No repositories** or **Not synced with Git** until the page reads the repository status lists again. The page reads them again when you reload it, or when you return to the browser window at least a minute after the last read. A branch created from this page reads its repositories once its creation finishes.
+A branch created outside this page, such as by a Git import or by another user, can read **No repositories** or **Not synced with Git** until the page reads the repository status lists again. The page reads them again when you reload it, or when you return to the browser window at least a minute after the last read. A branch created from this page shows these texts only until that reading finishes, because creating a branch starts it.
 
 The branch columns load normally in every one of these states. While a repository is syncing on any branch, Infrahub refreshes that repository's state on every branch until the sync finishes.
 

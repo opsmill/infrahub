@@ -72,20 +72,20 @@ class TestBranchesGitColumns:
     async def test_branch_without_git_sync_reads_not_synced_or_leads_with_a_read_only_repository(
         self, admin_page: Page, infrahub_client: InfrahubClient, branch_without_git_sync: str
     ) -> None:
-        # Read-only repositories list every branch, and other tests in this shard may leave one behind.
-        read_only = await infrahub_client.all(kind="CoreReadOnlyRepository")
-
         await admin_page.goto("/branches")
         await admin_page.get_by_role("searchbox", name="Search").fill(branch_without_git_sync)
 
         identifier_cell = _identifier_cell(admin_page, branch_without_git_sync)
         await expect(identifier_cell).to_have_count(1)
         repositories_cell = _row_cell(identifier_cell, REPOSITORIES_OFFSET)
-        if not read_only:
+        lead = repositories_cell.get_by_role("link").first
+        await expect(lead.or_(repositories_cell.get_by_text("Not synced with Git", exact=True))).to_be_visible()
+
+        # Read-only repositories list every branch, and other tests in this shard may leave one behind,
+        # so they are read once the cell has rendered.
+        names = [repository.name.value for repository in await infrahub_client.all(kind="CoreReadOnlyRepository")]
+        if not names:
             await expect(repositories_cell).to_have_text("Not synced with Git")
             return
         # The lead pill is the worst sync status, so only membership is stable across leftovers.
-        names = {repository.name.value for repository in read_only}
-        lead = repositories_cell.get_by_role("link").first
-        await expect(lead).to_be_visible()
-        assert (await lead.inner_text()).strip() in names
+        await expect(lead).to_have_text(re.compile(rf"^\s*({'|'.join(re.escape(name) for name in names)})\s*$"))
