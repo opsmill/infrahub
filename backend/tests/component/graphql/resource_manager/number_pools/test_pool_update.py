@@ -5,7 +5,6 @@ import pytest
 from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
@@ -21,7 +20,7 @@ from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import BoundsCase, bounds_input, create_pool, execute, range_bounds, range_details, shorthand
+from .helpers import BoundsCase, bounds_input, create_pool, execute, load_pool, range_bounds, range_details, shorthand
 
 CLEARED_BOUND_CASES = [
     BoundsCase(name="start_null", bounds={"start_range": {"value": None}}),
@@ -203,7 +202,7 @@ class TestNumberPoolUpdate:
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
         pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds={})
-        pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        pool = await load_pool(db=db, pool_id=pool_id)
         high = await add_pool_range(db=db, pool=pool, start=205, end=300)
         low = await add_pool_range(db=db, pool=pool, start=100, end=200)
 
@@ -294,7 +293,7 @@ class TestNumberPoolUpdate:
             while not pool_lock.local._waiters:  # noqa: ASYNC110
                 await asyncio.sleep(0.01)
             await repository.save_range_bounds(pool_range=pool_range, start=12, end=22)
-            pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+            pool = await load_pool(db=db, pool_id=pool_id)
             await NumberPoolShorthandMirror(db=db, repository=repository).sync(pool=pool)
         result = await update
 

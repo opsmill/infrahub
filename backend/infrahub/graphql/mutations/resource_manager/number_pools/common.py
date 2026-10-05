@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from infrahub import lock
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.lock_utils import RESOURCE_POOL_LOCK_NAMESPACE
-from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.pools.number_pool_range_validation import NumberRangeBounds
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
@@ -42,7 +42,7 @@ async def sync_shorthand(
     db: InfrahubDatabase, pool_id: str, ranges: Sequence[CoreNumberPoolRange], user_id: str
 ) -> None:
     # Loaded here so the mirror's no-op check compares against the stored shorthand.
-    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+    pool = await NodeManager.get_one(db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
     await NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db)).sync(
         pool=pool, ranges=ranges, user_id=user_id
     )

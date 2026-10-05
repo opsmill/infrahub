@@ -3,7 +3,6 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -15,7 +14,7 @@ from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import SNOW_TICKET_SCHEMA, load_schema
 
-from .helpers import DELETE_NUMBER_POOL, QUERY_NUMBER_POOL, UPDATE_NUMBER_POOL, range_details
+from .helpers import DELETE_NUMBER_POOL, QUERY_NUMBER_POOL, UPDATE_NUMBER_POOL, load_pool, range_details
 
 UPSERT_NUMBER_POOL_BOUNDS_BY_ID = """
 mutation UpsertNumberPoolBounds($id: String!, $start_range: BigInt!, $end_range: BigInt!) {
@@ -131,7 +130,7 @@ class TestSchemaNumberPools:
         number_pool_attribute = node_schema.get_attribute(name="number")
         assert isinstance(number_pool_attribute.parameters, NumberPoolParameters)
         pool_id = number_pool_attribute.parameters.number_pool_id
-        pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        pool = await load_pool(db=db, pool_id=pool_id)
         bounds_before = (pool.start_range.value, pool.end_range.value)
         ranges_before = await range_details(db=db, pool_id=pool_id)
         assert bounds_before[0] is not None
@@ -148,6 +147,6 @@ class TestSchemaNumberPools:
         assert [error.message for error in result.errors or []] == [
             "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
         ]
-        pool_after = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+        pool_after = await load_pool(db=db, pool_id=pool_id)
         assert (pool_after.start_range.value, pool_after.end_range.value) == bounds_before
         assert await range_details(db=db, pool_id=pool_id) == ranges_before

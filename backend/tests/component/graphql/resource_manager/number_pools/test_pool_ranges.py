@@ -17,6 +17,8 @@ from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
+from .helpers import load_pool
+
 CREATE_RANGE = """
 mutation CreateRange($pool_id: String!, $start: BigInt!, $end: BigInt!, $weight: BigInt) {
     CoreNumberPoolRangeCreate(data: {
@@ -563,7 +565,7 @@ mutation UpdatePoolRanges($pool_id: String!, $ranges: [RelatedNodeInput]) {
 async def _shorthand_and_ranges(
     db: InfrahubDatabase, pool_id: str
 ) -> tuple[tuple[int | None, int | None], list[tuple[int, int]]]:
-    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+    pool = await load_pool(db=db, pool_id=pool_id)
     ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
     return (
         (pool.start_range.value, pool.end_range.value),

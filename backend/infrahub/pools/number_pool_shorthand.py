@@ -7,7 +7,7 @@ from infrahub.core.constants import SYSTEM_USER_ID
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+    from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -28,7 +28,7 @@ class NumberPoolShorthandMirror:
 
     async def sync(
         self,
-        pool: CoreNumberPool,
+        pool: Node,
         ranges: Sequence[CoreNumberPoolRange] | None = None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,

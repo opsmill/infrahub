@@ -200,9 +200,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         pool_id = obj.get_id()
         async with pool_lock(pool_id=pool_id), within_transaction(db=db) as dbt:
             # Re-read under the lock so a bound left out of the payload keeps what a concurrent range write stored.
-            obj = await NodeManager.get_one_by_id_or_default_filter(
-                db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch
-            )
+            obj = await NodeManager.get_one(db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch, raise_on_error=True)
             repository = NumberPoolRepository(db=dbt)
             shorthand_range = None
             if shorthand_supplied:

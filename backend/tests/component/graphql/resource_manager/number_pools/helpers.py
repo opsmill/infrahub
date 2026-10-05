@@ -4,8 +4,9 @@ from typing import Any
 from graphql import ExecutionResult
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -158,6 +159,10 @@ async def range_details(db: InfrahubDatabase, pool_id: str) -> list[tuple[str, i
     ]
 
 
+async def load_pool(db: InfrahubDatabase, pool_id: str) -> Node:
+    return await NodeManager.get_one(db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
+
+
 async def shorthand(db: InfrahubDatabase, pool_id: str) -> tuple[int | None, int | None]:
-    pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
+    pool = await load_pool(db=db, pool_id=pool_id)
     return pool.start_range.value, pool.end_range.value
