@@ -45,6 +45,18 @@ def test_a_broken_repository_fails_the_comparison(repo: Repo, gateway: GitAncest
         gateway.is_ancestor(ancestor_commit=commit, descendant_commit=commit)
 
 
+def test_the_error_message_is_one_line(repo: Repo, gateway: GitAncestryGateway) -> None:
+    """GitPython wraps what git wrote in a newline and a quoted prefix."""
+    present = commit_file(repo=repo, content="one")
+
+    with pytest.raises(RepositoryError) as caught:
+        gateway.is_ancestor(ancestor_commit=ABSENT, descendant_commit=present)
+
+    assert "\n" not in str(caught.value)
+    assert "stderr:" not in str(caught.value)
+    assert str(caught.value).endswith("Not a valid commit name " + ABSENT)
+
+
 def test_a_commit_in_the_object_database_is_present(repo: Repo, gateway: GitAncestryGateway) -> None:
     assert gateway.has_commit(commit=commit_file(repo=repo, content="one")) is True
 

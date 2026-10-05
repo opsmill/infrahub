@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 
 COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
+GITPYTHON_STDERR_PREFIX = "stderr: '"
+"""GitPython wraps the text git wrote in a newline, this prefix and a closing quote."""
+
 OBJECT_ABSENT_STATUS = 1
 """What `git rev-parse --verify` returns for a name that answers to no commit.
 
@@ -47,7 +50,7 @@ class GitAncestryGateway:
             if exc.status == NOT_AN_ANCESTOR_STATUS:
                 return False
             raise self._comparison_failed(
-                ancestor_commit=ancestor_commit, descendant_commit=descendant_commit, detail=exc.stderr or str(exc)
+                ancestor_commit=ancestor_commit, descendant_commit=descendant_commit, detail=self._git_detail(exc)
             ) from exc
         except (OSError, GitError) as exc:
             raise self._comparison_failed(
@@ -78,7 +81,7 @@ class GitAncestryGateway:
                 if not self._reads_its_own_head():
                     raise self._read_failed(commit=commit, detail="the object database is unreadable") from exc
                 return False
-            raise self._read_failed(commit=commit, detail=exc.stderr or str(exc)) from exc
+            raise self._read_failed(commit=commit, detail=self._git_detail(exc)) from exc
         except (OSError, GitError) as exc:
             raise self._read_failed(commit=commit, detail=str(exc)) from exc
 
@@ -93,11 +96,26 @@ class GitAncestryGateway:
             return False
         return True
 
+    def require_commit(self, commit: str) -> None:
+        """Reject an identifier git would read as a name rather than a commit.
+
+        Raises:
+            RepositoryError: When the identifier is not forty lowercase hexadecimal characters.
+
+        """
+        self._require_full_sha(commit=commit)
+
     def _require_full_sha(self, commit: str) -> None:
         if not COMMIT_SHA_PATTERN.fullmatch(commit):
             raise RepositoryError(
                 identifier=self.repository_name, message=f"{commit!r} is not a valid commit identifier"
             )
+
+    def _git_detail(self, exc: GitCommandError) -> str:
+        text = (exc.stderr or "").strip()
+        if text.startswith(GITPYTHON_STDERR_PREFIX):
+            text = text[len(GITPYTHON_STDERR_PREFIX) :].removesuffix("'")
+        return text or str(exc)
 
     def _comparison_failed(self, ancestor_commit: str, descendant_commit: str, detail: str) -> RepositoryError:
         return RepositoryError(
