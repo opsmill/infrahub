@@ -1,0 +1,29 @@
+backend/tests/component/proposed_change/test_request_generator_definition_check.py
+  s_06345c7791eb4e::t_c96bb6937d6aa5 504-507
+  s_06345c7791eb4e::t_0a7d3fb3b56e50 459-464,469
+  s_06345c7791eb4e::t_6f55967ee34032 422-438
+  s_06345c7791eb4e::t_12d051991fd6d8 370-390,421
+  s_06345c7791eb4e::t_1e9638e664ffbd 642-669
+backend/tests/unit/core/node/test_delete_validator.py
+  s_06345c7791eb4e::t_081ca2752f0d9b 99
+  s_06345c7791eb4e::t_5ef19945addb42 120-142
+backend/tests/component/core/test_node_manager_delete.py
+  s_06345c7791eb4e::t_30e4b9ae5d6896 10
+  s_06345c7791eb4e::t_f31789a3178213 629-678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc482ff06c464e411053108b0fceacc1d46a6ca5",
+  "prompts": {},
+  "sessions": {
+    "s_06345c7791eb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13a0a049-a9b5-4717-b3ac-ed553d3e2d70",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benoit Kohler <Kohler.benoit@bearchitek.com>"
+    }
+  }
+}
