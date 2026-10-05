@@ -87,8 +87,8 @@ class FailedImport:
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
 
-    ``imports`` are the branches ready to have their objects imported, and ``reconciled`` holds one
-    entry per import naming the Infrahub branch it advances and the commit it advances to.
+    ``imports`` are the branches ready to have their objects imported, and ``reconciled`` holds, at the
+    same position, the entry naming the Infrahub branch each import advances and the commit it advances to.
     ``failed_imports`` are the branches whose git or branch setup failed, each carrying the phase that
     failed and the reason. ``skipped_branches`` are the remote branches left out because their name
     collides with Infrahub's default branch, and ``advanced_skipped_branches`` the subset of them whose
@@ -101,9 +101,27 @@ class CollectedImports:
     skipped_branches: list[str] = field(default_factory=list)
     advanced_skipped_branches: list[str] = field(default_factory=list)
 
-    def add_import(self, pending_import: PendingObjectImport, reconciled: ReconciledBranch) -> None:
-        self.imports.append(pending_import)
-        self.reconciled.append(reconciled)
+    def add_import(
+        self,
+        infrahub_branch_name: str,
+        infrahub_branch_id: str,
+        commit: str,
+        divergence: RefDivergence | None,
+        git_branch_name: str | None = None,
+    ) -> None:
+        self.imports.append(
+            PendingObjectImport(
+                infrahub_branch_name=infrahub_branch_name, commit=commit, git_branch_name=git_branch_name
+            )
+        )
+        self.reconciled.append(
+            ReconciledBranch(
+                infrahub_branch_name=infrahub_branch_name,
+                infrahub_branch_id=infrahub_branch_id,
+                commit=commit,
+                divergence=divergence,
+            )
+        )
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -370,6 +388,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         new_branches, updated_branches = await self.compare_local_remote()
         if graph_commits is not None:
+            # An empty commit is one the graph never recorded.
+            graph_commits = {name: commit or None for name, commit in graph_commits.items()}
             behind_in_graph = await self._find_branches_behind_in_graph(graph_commits=graph_commits)
             updated_branches = sorted({*updated_branches, *behind_in_graph})
 
@@ -377,6 +397,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return collected
 
         log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
+
+        # Only an active repository imports its branches, and a staging one imports its trunk alone.
+        stages_trunk = (
+            self.internal_status == RepositoryInternalStatus.STAGING
+            and bool(staging_branch)
+            and self.default_branch in updated_branches
+        )
+        if self.internal_status != RepositoryInternalStatus.ACTIVE and not stages_trunk:
+            return collected
 
         remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
         graph_branches = await self.sdk.branch.all()
@@ -403,22 +432,20 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     await self._collect_updated_branch(
                         collected=collected,
                         branch_name=branch_name,
-                        remote_head=remote_heads.get(branch_name),
+                        remote_heads=remote_heads,
                         graph_commits=graph_commits,
                         graph_branches=graph_branches,
                     )
 
-        elif (
-            self.internal_status == RepositoryInternalStatus.STAGING
-            and staging_branch
-            and self.default_branch in updated_branches
-        ):
-            await self._collect_staging_import(
+        elif staging_branch:
+            await self._queue_advanced_branch(
                 collected=collected,
-                staging_branch=staging_branch,
-                remote_head=remote_heads.get(self.default_branch),
+                branch_name=self.default_branch,
+                import_branch=staging_branch,
+                remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
+                git_branch_name=self.default_branch,
             )
 
         return collected
@@ -468,17 +495,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 branch_name=branch_name, discarded_commit=divergence.discarded_commit, commit=commit
             )
         collected.add_import(
-            pending_import=PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit),
-            reconciled=ReconciledBranch(
-                infrahub_branch_name=infrahub_branch, infrahub_branch_id=branch.id, commit=commit, divergence=divergence
-            ),
+            infrahub_branch_name=infrahub_branch, infrahub_branch_id=branch.id, commit=commit, divergence=divergence
         )
 
     async def _collect_updated_branch(
         self,
         collected: CollectedImports,
         branch_name: str,
-        remote_head: str | None,
+        remote_heads: dict[str, str],
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
     ) -> None:
@@ -487,28 +511,50 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         Git failures are recorded against the branch so the other branches are still collected, while
         graph errors propagate.
         """
-        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         try:
-            branch_id = self._get_branch_id(infrahub_branch=infrahub_branch, graph_branches=graph_branches)
-            divergence = self._classify_against_graph(
-                branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+            await self._queue_advanced_branch(
+                collected=collected,
+                branch_name=branch_name,
+                import_branch=self._get_mapped_target_branch(branch_name=branch_name),
+                remote_heads=remote_heads,
+                graph_commits=graph_commits,
+                graph_branches=graph_branches,
             )
-            commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
             collected.failed_imports.append(
                 FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
             )
-            return
 
+    async def _queue_advanced_branch(
+        self,
+        collected: CollectedImports,
+        branch_name: str,
+        import_branch: str,
+        remote_heads: dict[str, str],
+        graph_commits: Mapping[str, str | None] | None,
+        graph_branches: dict[str, BranchData],
+        git_branch_name: str | None = None,
+    ) -> None:
+        """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
+
+        Raises:
+            RepositoryError: When git cannot classify the branch or move its worktree.
+            ValueError: When the graph has no ``import_branch``, or the branch has no worktree here.
+
+        """
+        branch_id = self._get_branch_id(infrahub_branch=import_branch, graph_branches=graph_branches)
+        remote_head = remote_heads.get(branch_name)
+        divergence = self._classify_against_graph(
+            branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+        )
+        commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         if commit is not None:
             collected.add_import(
-                pending_import=PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit),
-                reconciled=ReconciledBranch(
-                    infrahub_branch_name=infrahub_branch,
-                    infrahub_branch_id=branch_id,
-                    commit=commit,
-                    divergence=divergence,
-                ),
+                infrahub_branch_name=import_branch,
+                infrahub_branch_id=branch_id,
+                commit=commit,
+                divergence=divergence,
+                git_branch_name=git_branch_name,
             )
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
@@ -530,7 +576,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 or self._collides_with_infrahub_default_branch(branch_name=branch_name)
             ):
                 continue
-            if (graph_commits[infrahub_branch] or None) != remote_branch.commit:
+            if graph_commits[infrahub_branch] != remote_branch.commit:
                 behind.append(branch_name)
         return behind
 
@@ -546,7 +592,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return RemoteDivergenceDetector(gateway=self._get_ancestry_gateway()).classify(
             branch_name=branch_name,
             infrahub_branch_name=infrahub_branch,
-            imported_commit=graph_commits.get(infrahub_branch) or None,
+            imported_commit=graph_commits.get(infrahub_branch),
             remote_head=remote_head,
             target_changed=False,
         )
@@ -580,19 +626,16 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         worktree = self._get_branch_worktree(branch_name)
         worktree_head = str(worktree.head.commit) if worktree is not None else None
-        discarded_commit = divergence.discarded_commit if divergence is not None else None
+        if worktree_head == remote_head and (
+            divergence is None or divergence.classification is RefClassification.UNCHANGED
+        ):
+            return None
 
-        if worktree_head == remote_head:
-            if divergence is None or divergence.classification is RefClassification.UNCHANGED:
-                return None
-            # A pull would find nothing to move and return before recording the commit.
-            self.create_commit_worktree(commit=remote_head)
-            await self.update_commit_value(
-                branch_name=self._get_mapped_target_branch(branch_name=branch_name), commit=remote_head
-            )
-            commit = remote_head
-        elif worktree_head is None or self._get_ancestry_gateway().is_ancestor(
-            ancestor_commit=worktree_head, descendant_commit=remote_head
+        discarded_commit = divergence.discarded_commit if divergence is not None else None
+        if (
+            worktree_head is not None
+            and worktree_head != remote_head
+            and self._get_ancestry_gateway().is_ancestor(ancestor_commit=worktree_head, descendant_commit=remote_head)
         ):
             commit_after = await self.pull(branch_name=branch_name)
             if commit_after is True:
@@ -606,9 +649,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 return None
             commit = commit_after
         else:
+            # Unlike a pull, a reset records the commit of a worktree that is already on the remote head.
             await self.reset_to_commit(branch_name=branch_name, commit=remote_head)
             commit = remote_head
-            discarded_commit = discarded_commit or worktree_head
+            if worktree_head != remote_head:
+                discarded_commit = discarded_commit or worktree_head
 
         if discarded_commit is not None:
             self._log_reconciliation(branch_name=branch_name, discarded_commit=discarded_commit, commit=commit)
@@ -676,33 +721,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return (
             [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
             [name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
-        )
-
-    async def _collect_staging_import(
-        self,
-        collected: CollectedImports,
-        staging_branch: str,
-        remote_head: str | None,
-        graph_commits: Mapping[str, str | None] | None,
-        graph_branches: dict[str, BranchData],
-    ) -> None:
-        """Advance the trunk worktree and queue its commit for import into the staging branch."""
-        branch_id = self._get_branch_id(infrahub_branch=staging_branch, graph_branches=graph_branches)
-        divergence = self._classify_against_graph(
-            branch_name=self.default_branch, remote_head=remote_head, graph_commits=graph_commits
-        )
-        commit = await self._advance_branch(
-            branch_name=self.default_branch, remote_head=remote_head, divergence=divergence
-        )
-        if commit is None:
-            return
-        collected.add_import(
-            pending_import=PendingObjectImport(
-                infrahub_branch_name=staging_branch, git_branch_name=self.default_branch, commit=commit
-            ),
-            reconciled=ReconciledBranch(
-                infrahub_branch_name=staging_branch, infrahub_branch_id=branch_id, commit=commit, divergence=divergence
-            ),
         )
 
     async def push(self, branch_name: str) -> bool:

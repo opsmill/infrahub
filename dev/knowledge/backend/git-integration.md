@@ -208,8 +208,8 @@ LOCAL attribute, not on a related node.
 A repository being validated inside a proposed change carries `internal_status` of `staging`
 (`InfrahubRepository.internal_status`, a required field read from the node). The staging branch is resolved per sync
 from `RepositoryData.get_staging_branch` (`git/models.py`), which scans `branch_info` for the entry
-whose `internal_status` is `staging`. `InfrahubRepository._collect_staging_imports` pairs that branch
-with the repository's trunk.
+whose `internal_status` is `staging`. `InfrahubRepository.collect_pending_imports` pairs that branch
+with the repository's trunk: it advances the trunk worktree and imports its commit into the staging branch.
 
 ## Deleting a repository is destructive
 

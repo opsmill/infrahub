@@ -314,10 +314,6 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
     the repository is online. A successful run where nothing moved on the remote is not linked.
 
-    Args:
-        graph_commits: The commit the graph records for this repository, per Infrahub branch, which is
-            what a rewritten history is detected against.
-
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
         RepositoryError: When the repository cannot be read or synchronized.
@@ -453,13 +449,7 @@ async def sync_repository_from_origin(
     client: InfrahubClient,
     graph_commits: dict[str, str | None] | None = None,
 ) -> None:
-    """Sync the repository from its origin and notify the worker pool of the resulting commit.
-
-    Args:
-        graph_commits: The commit the graph records for this repository, per Infrahub branch, read
-            once for the whole cycle.
-
-    """
+    """Sync the repository from its origin and notify the worker pool of the resulting commit."""
     log = get_run_logger()
     try:
         await sync_git_repo_with_origin_and_tag_on_failure(

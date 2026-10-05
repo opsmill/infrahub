@@ -213,10 +213,6 @@ class RepositorySyncer:
     ) -> SyncReport:
         """Synchronize the repository and report what the run did.
 
-        Args:
-            graph_commits: The commit the graph records for this repository, per Infrahub branch, which
-                is what a rewritten history is detected against.
-
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
             RepositoryCredentialsError: When the credentials for the remote repository are invalid.
