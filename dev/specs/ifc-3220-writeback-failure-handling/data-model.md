@@ -40,7 +40,9 @@ Every attribute has these settings in common:
 | `delivery_progress` | `JSON` | Push progress | See `DeliveryProgress`. Kept apart from the queue, so a progress write never rewrites the queue. |
 
 Order weights place them after `sync_status`, in the order above. Each description ends with "Live
-on the default branch only; another branch holds a copy from its fork point."
+on the default branch only." and stays within the 128-character limit of
+`AttributeSchema.description`. The rest of the rule, that another branch holds a copy from its fork
+point, lives in the GraphQL contract's comment and in this document.
 
 The labels are provisional. INFP-671 owns the status vocabulary, and a label change needs no
 migration. The attribute names never carry the label.

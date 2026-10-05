@@ -135,7 +135,8 @@ Slices A and B of the plan.
 - [ ] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
-      `allow_override=NONE`, the labels, the descriptions and the order weights. **Gate: schema
+      `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
+      `AttributeSchema.description`) and the order weights. **Gate: schema
       sign-off.**
 - [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to

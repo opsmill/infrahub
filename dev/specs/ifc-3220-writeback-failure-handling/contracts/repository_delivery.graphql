@@ -19,33 +19,35 @@
 #
 # Only the default branch holds the live value. A query on another branch returns the value as it
 # was when that branch forked. Clients that show the state query the default branch.
+# Each description stays within the 128-character limit of AttributeSchema.description, so it says
+# only "Live on the default branch only."; this comment carries the rest.
 
 type CoreRepository {
-  """The required action for pushing merged changes to the remote. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The required action for pushing merged changes to the remote. Live on the default branch only."""
   delivery_status: Dropdown
 
-  """Why the last push of merged changes failed. Live on the default branch only; another branch holds a copy from its fork point."""
+  """Why the last push of merged changes failed. Live on the default branch only."""
   delivery_failure_cause: Dropdown
 
-  """The remote's message for the last failed push, verbatim, with credentials removed. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The remote's message for the last failed push, without credentials. Live on the default branch only."""
   delivery_error: TextAttribute
 
-  """Merges waiting to be pushed, in order. Live on the default branch only; another branch holds a copy from its fork point."""
+  """Merges waiting to be pushed, in order. Live on the default branch only."""
   delivery_queue: JSONAttribute
 
-  """Regeneration held until the pending merges are pushed. Live on the default branch only; another branch holds a copy from its fork point."""
+  """Regeneration held until the pending merges are pushed. Live on the default branch only."""
   delivery_held_regeneration: JSONAttribute
 
-  """The last abandoned set of pending merges, with who abandoned it and when. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The last abandoned pending merges, with who abandoned them and when. Live on the default branch only."""
   delivery_last_abandonment: JSONAttribute
 
-  """The commit of the last push of merged changes. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The commit of the last push of merged changes. Live on the default branch only."""
   delivery_last_delivered_commit: TextAttribute
 
-  """A pushed commit that a rewrite of the remote history later discarded. Live on the default branch only; another branch holds a copy from its fork point."""
+  """A pushed commit that a rewrite of the remote history later discarded. Live on the default branch only."""
   delivery_reverted: JSONAttribute
 
-  """The progress of the push of merged changes: the last progress, the start of the last attempt, and when a waiting retry is due. Live on the default branch only; another branch holds a copy from its fork point."""
+  """The last progress, attempt start and retry due time of the push. Live on the default branch only."""
   delivery_progress: JSONAttribute
 }
 
