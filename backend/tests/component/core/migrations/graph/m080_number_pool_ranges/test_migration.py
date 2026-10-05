@@ -120,12 +120,6 @@ async def test_migration_080(
 
     await verify_graph(db=db)
 
-
-async def test_migration_080_is_idempotent(
-    db: InfrahubDatabase,
-    pre_migration_pools: tuple[CoreNumberPool, CoreNumberPool],
-) -> None:
-    await _migrate(db=db)
     range_ids = [await _range_ids(db=db, pool=pool) for pool in pre_migration_pools]
 
     await _migrate(db=db)
