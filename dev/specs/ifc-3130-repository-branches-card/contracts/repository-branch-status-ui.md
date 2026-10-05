@@ -45,21 +45,17 @@ own_values_only           ✗
 **This is how FR-016 is enforced — structurally.** A variable that cannot be expressed cannot be
 sent. There is no code path to forget to guard, and no reviewer needs to remember the rule.
 
-**What actually happens if one is sent**: the backend **rejects it with a `ValidationError`** while
-the stub serves placeholder values — the resolver raises it for any of the three that would narrow the
-rows, and the frozen SDL says so in terms. So the failure mode being prevented is a **loud whole-card
-failure**, not a silently-wrong row set.
+**What actually happens if one is sent**: the resolver **applies it**, since IFC-3127 landed on the
+base. It narrows on the repository's own attributes rather than the branch's, so a declared argument
+would quietly change which rows come back — a **silently-wrong row set**, not the loud whole-card
+failure the rejecting resolver used to give. The frozen SDL still says "rejected"; that description
+is stale and correcting it belongs to the backend.
 
-> IFC-3130's Jira description says these are "accepted but ignored", so that a filter "appears to do
-> nothing". That contradicts the frozen SDL and the resolver. **The ticket is wrong and needs editing
-> by its owner** — tracked as open question Q6 in [plan.md](../plan.md). The contract is what this
-> feature is built against.
+They are **deferred, not dropped** — nothing blocks building them now, and doing so is follow-on work
+outside this spec.
 
-They are **deferred, not dropped** — once IFC-3127 lifts the restriction they become buildable as
-follow-on work outside this spec.
-
-FR-016's component test pins the absence anyway, asserting these arguments appear in no request the
-feature makes.
+FR-016 is pinned by a test on the query document itself
+(`get-repository-branch-status-from-api.test.ts`), which fails if any of the three is ever declared.
 
 ### Selection set
 

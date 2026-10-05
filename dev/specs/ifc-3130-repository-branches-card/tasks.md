@@ -394,13 +394,13 @@ total** narrow — proving the narrowing happened before the page boundary, not 
 - [x] T062 [US3] Component-test FR-014: the request after a filter change carries a zero offset.
 - [x] T063 [US3] Component-test FR-015: a filter change issues a **new request** rather than reducing
       the rendered rows in place. This is the test that catches a client-side filter.
-- [x] T064 [US3] Component-test FR-016: `sync_status__value`, `internal_status__value` and
-      `own_values_only` are absent from **every** request the feature makes. The gql.tada document
-      cannot express them (T015), so this pins a structural fact rather than guarding a runtime one.
-      **`expectServerDrivenChange` cannot carry this assertion** — it matches variables with
-      `toMatchObject`, which is partial and passes when an extra argument is present.
-      Walk every recorded call in the test itself and assert none carries any of the three names.
-      One assertion in one test does not earn a helper.
+- [x] T064 [US3] Test FR-016 on the query document: `sync_status__value`,
+      `internal_status__value` and `own_values_only` are never declared by it, in
+      `get-repository-branch-status-from-api.test.ts`. The document not declaring a variable is the
+      whole of the guarantee, so pinning the document is what can fail; walking the recorded calls
+      instead only restates that the mapper has no code path to emit them. The guard matters more
+      now than when it was written: the resolver used to reject all three, and since IFC-3127 it
+      applies them, so a declared argument would change the rows rather than fail the card.
 
 ### Work unit 5b rework — the object table's own filter and order controls
 
@@ -481,7 +481,8 @@ ownership".
       `frontend/app/src/entities/repository/ui/repository-branches-card/branch-row-fields.ts`, built
       from the repository schema's own `sync_status` attribute so the picker offers its dropdown
       values; map that filter onto the new variable in `to-repository-branch-arguments.ts`; and drop
-      `sync_status__value` from the deferred-arguments list the card's component test pins. The
+      `sync_status__value` from the undeclared-arguments list that
+      `get-repository-branch-status-from-api.test.ts` pins. The
       picker, the active-filter tags and the count all follow from the definition list, and the
       by-name map is derived from it, so nothing else has to be added in two places. The values sent
       are the schema's own **hyphenated** wire values (`in-sync`, `error-import`) — not the
@@ -489,10 +490,10 @@ ownership".
       menu on the sync-status column at the same time, which is disabled today only because the
       contract can neither narrow nor order on it.
 
-      **Retire FR-016 and T064 in the same change.** FR-016 requires `sync_status__value` to be
-      absent from every request, and T064's absence assertion pins it; both exist only for
-      the preview window and would otherwise fail the moment this filter works. `internal_status__value`
-      and `own_values_only` stay deferred — nothing in this card needs them.
+      **Narrow FR-016 and T064 in the same change.** FR-016 requires `sync_status__value` never to
+      be declared, and T064 pins that on the query document, so both fail the moment this filter
+      declares it. Drop that one name from each; `internal_status__value` and `own_values_only` stay
+      deferred, and the guard stays meaningful for them — nothing in this card needs either.
 
 ### Work unit 5b follow-up — ordering by the card's own columns · **BLOCKED on a contract change**
 
