@@ -152,6 +152,7 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 - A branch whose repositories change from loading to loaded: the row keeps its position; the two new columns have fixed widths, so no column shifts sideways. The row may grow taller if the cell wraps.
 - A repository that is currently syncing: its status query refreshes every 10 s, the cadence the branch details page already uses, and stops when the sync settles.
 - A branch page loaded by scrolling: it is summarized from the status rows already loaded, with no new status request.
+- A branch created outside this page (Git import, another user): it may read "No repositories" until the 60 s status stale time passes or the list is reloaded. Branches created, deleted, merged or rebased from this UI refresh the status cache immediately. Accepted: re-reading every repository's status on every new branch name would turn scrolling and search into R requests each.
 - The default branch: it stays first in the list; its repository link carries `branch=<default name>` like every other row (the base's `getBranchQsp`).
 - Existing filters (status, name, created-by, dates) continue to filter by branch; no filter or sort is offered on the two new columns.
 - Column count changes: the table's column layout accommodates the two new columns without misplacing the existing ones.

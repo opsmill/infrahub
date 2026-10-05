@@ -51,9 +51,9 @@ export type BranchRepositorySummary =
 
 `repositories` is ordered worst first; `repositories[0]` is the pill, the Git state and the base of "+N more".
 
-## `summarizeBranchRepositories(branches, fetches, compareSeverity[, unconfirmedBranchNames])` invariants
+## `summarizeBranchRepositories(branches, fetches, compareSeverity)` invariants
 
-`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[], compareSeverity: CompareSyncStatusSeverity, unconfirmedBranchNames: readonly string[] = []): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own models (`entities/branches/domain/model/branch.ts`, `branch-repository-summary.ts`). The status row types and `UNKNOWN_SYNC_STATUS` reach it through `branch-repository-summary.ts`; the hook passes `compareSyncStatusSeverity` as `compareSeverity`. `findBranchesAbsentFromEveryPage(branches, fetches)`, in the same file, lists the branches no loaded page mentions (none while any fetch is pending, denied or failed, or when there is no page).
+`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[], compareSeverity: CompareSyncStatusSeverity): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own models (`entities/branches/domain/model/branch.ts`, `branch-repository-summary.ts`). The status row types and `UNKNOWN_SYNC_STATUS` reach it through `branch-repository-summary.ts`; the hook passes `compareSyncStatusSeverity` as `compareSeverity`.
 
 1. Every fetch `denied` (and at least one fetch) → every branch `denied`; a denied fetch among others is left out silently. The hook passes a denied repository list as the single fetch, so a list denial (either kind unviewable) denies every branch.
 2. Else any `pending` fetch → every branch `pending`.
@@ -61,7 +61,7 @@ export type BranchRepositorySummary =
 4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), every branch absent from its rows gets `{ status: "error" }` naming the cut repositories instead of a guessed summary. Which branches a repository lists is the backend's rule, so the client does not try to tell "absent" from "past the cut"; past 500 branches per repository, a branch the repository would never list (an unsynced branch for a read/write repository, a merged one) can read this error too. Accepted limit.
 5. The states are sorted by `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; any other value ranks with `unknown`), then by repository name, case-insensitive.
 6. A row with no `sync_status` reads as `UNKNOWN_SYNC_STATUS` (`{ value: "unknown", label: "Unknown", color: null, description: null }`), so it counts with real `unknown` rows. `counts` has one entry per distinct `syncStatus.value`, with `label = label || value || "Unknown"`.
-7. A branch with no rows that is in `unconfirmedBranchNames` → `{ status: "pending" }`: the pages may predate it (see `contracts/ui-cells.md` § `useBranchRepositorySummaries`). Any other branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.
+7. A branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.
 8. The record is keyed by branch name; structural sharing in `combine` keeps untouched branches' summaries by reference.
 
 ## Row: `BranchTableRow` (`entities/branches/ui/branches-table/branch-table-row.ts`)

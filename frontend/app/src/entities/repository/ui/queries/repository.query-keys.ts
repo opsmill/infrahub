@@ -11,9 +11,8 @@ export const repositoryQueryKeys = {
     [...repositoryQueryKeys.all, "branch-repositories", params] as const,
   branchHealth: (params: GetBranchRepositoryHealthParams) =>
     [...repositoryQueryKeys.all, "branch-health", params] as const,
-  branchStatuses: () => [...repositoryQueryKeys.all, "branch-status"] as const,
   branchStatus: (params: GetRepositoryBranchStatusParams) =>
-    [...repositoryQueryKeys.branchStatuses(), params] as const,
+    [...repositoryQueryKeys.all, "branch-status", params] as const,
   importTask: (params: GetRepositoryImportTaskParams) =>
     [...repositoryQueryKeys.all, "import-task", params] as const,
   importLog: (taskId: string) => [...repositoryQueryKeys.all, "import-log", taskId] as const,

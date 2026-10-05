@@ -22,8 +22,6 @@ export type RepositoryStatusFetch =
 
 type LoadedFetch = Extract<RepositoryStatusFetch, { status: "ok" }>;
 
-const PENDING: BranchRepositorySummary = { status: "pending" };
-
 function getSharedSummary(
   fetches: readonly RepositoryStatusFetch[]
 ): BranchRepositorySummary | null {
@@ -82,24 +80,10 @@ function countBySyncStatus(states: readonly BranchRepositoryState[]): SyncStatus
   return [...counts.values()];
 }
 
-// Only meaningful once every page has loaded: with no page there is nothing to be absent from.
-export function findBranchesAbsentFromEveryPage(
-  branches: readonly BranchListItem[],
-  fetches: readonly RepositoryStatusFetch[]
-): string[] {
-  if (getSharedSummary(fetches)) return [];
-  const loaded = fetches.filter((fetch): fetch is LoadedFetch => fetch.status === "ok");
-  if (loaded.length === 0) return [];
-  const listed = new Set(loaded.flatMap(({ rows }) => rows.map((row) => row.name)));
-  return branches.filter(({ name }) => !listed.has(name)).map(({ name }) => name);
-}
-
-// `unconfirmedBranchNames` are branches the pages may predate, so their absence is not yet an answer.
 export function summarizeBranchRepositories(
   branches: readonly BranchListItem[],
   fetches: readonly RepositoryStatusFetch[],
-  compareSeverity: CompareSyncStatusSeverity,
-  unconfirmedBranchNames: readonly string[] = []
+  compareSeverity: CompareSyncStatusSeverity
 ): Record<string, BranchRepositorySummary> {
   const shared = getSharedSummary(fetches);
   if (shared) return Object.fromEntries(branches.map((branch) => [branch.name, shared]));
@@ -107,7 +91,6 @@ export function summarizeBranchRepositories(
   const loaded = fetches.filter((fetch): fetch is LoadedFetch => fetch.status === "ok");
   const statesByBranch = groupStatesByBranch(loaded);
   const truncated = loaded.filter(({ rows, count }) => count > rows.length);
-  const unconfirmed = new Set(unconfirmedBranchNames);
 
   return Object.fromEntries(
     branches.map((branch) => {
@@ -118,7 +101,6 @@ export function summarizeBranchRepositories(
         ({ rows }) => !rows.some((row) => row.name === branch.name)
       );
       if (cutBefore.length > 0) return [branch.name, truncatedSummary(cutBefore)];
-      if (states.length === 0 && unconfirmed.has(branch.name)) return [branch.name, PENDING];
       const repositories = [...states].sort((a, b) => compareStates(compareSeverity, a, b));
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })

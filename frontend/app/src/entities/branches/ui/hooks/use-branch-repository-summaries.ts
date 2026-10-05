@@ -1,5 +1,4 @@
-import { type UseQueryResult, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { type UseQueryResult, useQueries, useQuery } from "@tanstack/react-query";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import type {
@@ -8,7 +7,6 @@ import type {
 } from "@/entities/branches/domain/model/branch-repository-summary";
 import { findSelectedBranch } from "@/entities/branches/domain/rules/find-selected-branch";
 import {
-  findBranchesAbsentFromEveryPage,
   type RepositoryStatusFetch,
   summarizeBranchRepositories,
 } from "@/entities/branches/domain/rules/summarize-branch-repositories";
@@ -28,7 +26,6 @@ import {
 import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 // Data first: a failed background refetch keeps the list that was already loaded.
 function toRepositoryListFetch(
@@ -98,11 +95,7 @@ export function useBranchRepositorySummaries(
         }))
       : [];
 
-  // For each branch, the oldest status read already answered when the branch first showed up: a page read
-  // no later than that may predate the branch, so its absence there is not yet an answer.
-  const [lastReadAtFirstSight, setLastReadAtFirstSight] = useState<Record<string, number>>({});
-
-  const status = useQueries({
+  return useQueries({
     queries: repositories.map(({ id }) =>
       getRepositoryBranchStatusQueryOptions({
         id,
@@ -110,46 +103,13 @@ export function useBranchRepositorySummaries(
         limit: REPOSITORY_BRANCH_STATUS_LIMIT,
       })
     ),
-    combine: (results) => {
-      const fetches = listFetch
-        ? [listFetch]
-        : results.map((result, index) => toStatusFetch(repositories[index]!, result));
-      // A failed read counts as answered too, so a failing refetch is not re-triggered in a loop.
-      const lastReadAt =
-        results.length > 0
-          ? Math.min(...results.map((r) => Math.max(r.dataUpdatedAt, r.errorUpdatedAt)))
-          : 0;
-      const unconfirmed = findBranchesAbsentFromEveryPage(branches, fetches).filter(
-        (name) => !(name in lastReadAtFirstSight) || lastReadAt <= lastReadAtFirstSight[name]!
-      );
-      return {
-        summaries: summarizeBranchRepositories(
-          branches,
-          fetches,
-          compareSyncStatusSeverity,
-          unconfirmed
-        ),
-        lastReadAt,
-        unconfirmedKey: unconfirmed.join("\n"),
-        isFetching: results.some((result) => result.isFetching),
-      };
-    },
+    combine: (results) =>
+      summarizeBranchRepositories(
+        branches,
+        listFetch
+          ? [listFetch]
+          : results.map((result, index) => toStatusFetch(repositories[index]!, result)),
+        compareSyncStatusSeverity
+      ),
   });
-
-  const unseen = branches.filter(({ name }) => !(name in lastReadAtFirstSight));
-  if (unseen.length > 0) {
-    setLastReadAtFirstSight({
-      ...lastReadAtFirstSight,
-      ...Object.fromEntries(unseen.map(({ name }) => [name, status.lastReadAt])),
-    });
-  }
-
-  const queryClient = useQueryClient();
-  const { unconfirmedKey, isFetching } = status;
-  useEffect(() => {
-    if (!unconfirmedKey || isFetching) return;
-    queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.branchStatuses() });
-  }, [unconfirmedKey, isFetching, queryClient]);
-
-  return status.summaries;
 }
