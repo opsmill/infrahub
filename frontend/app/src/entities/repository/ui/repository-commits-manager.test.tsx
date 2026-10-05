@@ -603,11 +603,13 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(PAGE_ONE_LAST).elements()).toHaveLength(1);
   });
 
-  test("offers a retry when a later page answers unavailable, and loads only that page on retry", async () => {
+  test("keeps the retry pending while a later page answering unavailable is retried, then offers it", async () => {
     // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
     apiMock
       .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
       .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
       .mockResolvedValue(apiResult(generateSecondCommitsPage()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
@@ -615,18 +617,25 @@ describe("RepositoryCommitsManager", () => {
     await expect
       .element(component.getByText("Older commits could not be loaded right now."))
       .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .toHaveAttribute("data-pending");
     await expect.element(component.getByText(PAGE_ONE_LAST)).toBeVisible();
     expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
-    expect(component.getByRole("status").query()).toBeNull();
     expect(apiMock).toHaveBeenCalledTimes(2);
 
     // WHEN
-    await component.getByRole("button", { name: "Retry" }).click();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
 
     // THEN
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .not.toHaveAttribute("data-pending");
+    await component.getByRole("button", { name: "Retry" }).click();
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
-    expect(apiMock).toHaveBeenCalledTimes(3);
-    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
+    expect(apiMock).toHaveBeenCalledTimes(4);
+    expect(apiMock).toHaveBeenNthCalledWith(4, expect.objectContaining({ offset: 20, limit: 20 }));
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 

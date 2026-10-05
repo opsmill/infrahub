@@ -516,7 +516,7 @@ describe("getNextPageState", () => {
       isFetchNextPageError: false,
       isFetchingNextPage: true,
       failureReason,
-      expected: "failed",
+      expected: "retry-pending",
     },
     {
       name: "a page failed",
@@ -524,6 +524,13 @@ describe("getNextPageState", () => {
       isFetchingNextPage: false,
       failureReason,
       expected: "failed",
+    },
+    {
+      name: "a failed page is being retried after an unavailable answer",
+      isFetchNextPageError: true,
+      isFetchingNextPage: true,
+      failureReason,
+      expected: "retry-pending",
     },
     {
       name: "a failed page is loading again",

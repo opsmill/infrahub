@@ -74,8 +74,8 @@ export function getNextPageState({
   isFetchingNextPage: boolean;
 }): NextPageState {
   if (!isFetchingNextPage) return isFetchNextPageError ? "failed" : "idle";
-  if (failureReason !== null) return "failed";
-  return isFetchNextPageError ? "retry-pending" : "loading";
+  // Pressing Retry while the query still retries on its own would cancel that retry.
+  return failureReason !== null || isFetchNextPageError ? "retry-pending" : "loading";
 }
 
 export interface CommitLogEmptyState {
