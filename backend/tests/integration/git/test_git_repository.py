@@ -10,7 +10,7 @@ from infrahub_sdk.protocols import CoreCheckDefinition, CoreGraphQLQuery, CoreTr
 
 from infrahub import config
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import first_time_initialization, initialization
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -21,8 +21,9 @@ from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workers.dependencies import build_database, clear_singletons
-from infrahub.workflows.initialization import setup_task_manager
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.task_manager import setup_task_manager_once
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.test_client import InfrahubTestClient
 from tests.integration.conftest import IntegrationHelper
@@ -47,12 +48,18 @@ async def load_infrastructure_schema(db: InfrahubDatabase) -> None:
     await registry.schema.update_schema_branch(schema=tmp_schema, db=db, branch=default_branch_name, update_db=True)
 
 
+@pytest.fixture(scope="session")
+def git_repo_same_repo_trigger_rule(git_sources_dir: Path) -> FileRepo:
+    """Repository whose objects reference a generator definition declared in the same repository."""
+    return FileRepo(name="same-repo-trigger-rule", sources_directory=git_sources_dir)
+
+
 class TestInfrahubClient:
     @pytest.fixture(scope="class")
     async def workflow_local(self, prefect_test_fixture: None) -> AsyncGenerator[WorkflowLocalExecution, None]:
         original = config.OVERRIDE.workflow
         workflow = WorkflowLocalExecution()
-        await setup_task_manager()
+        await setup_task_manager_once()
         config.OVERRIDE.workflow = workflow
         yield workflow
         config.OVERRIDE.workflow = original
@@ -82,7 +89,7 @@ class TestInfrahubClient:
         # rebuilds them against the current db_class.
         clear_singletons()
 
-        with dependency_provider.scope(build_database, _db):
+        with override_dependency(build_database, _db, dependency_provider=dependency_provider):
             async with lifespan(app):
                 yield InfrahubTestClient(app=app)
 
@@ -118,7 +125,8 @@ class TestInfrahubClient:
             db=db,
             name=git_repo_infrahub_demo_edge_integration.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_infrahub_demo_edge_integration.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
@@ -128,6 +136,7 @@ class TestInfrahubClient:
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
     async def test_import_schema_files(
@@ -366,6 +375,52 @@ class TestInfrahubClient:
         with pytest.raises(NodeNotFoundError):
             await client.get(kind=InfrahubKind.USERVALIDATOR, id=validator.id)
 
+    @pytest.fixture
+    async def repo_trigger_rule(
+        self,
+        test_client: InfrahubTestClient,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        git_repo_same_repo_trigger_rule: FileRepo,
+        git_repos_dir: Path,
+    ) -> InfrahubRepository:
+        obj = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
+        await obj.new(
+            db=db,
+            name=git_repo_same_repo_trigger_rule.name,
+            description="trigger rule test repository",
+            location="git@github.com:mock/trigger-rule.git",
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+        )
+        await obj.save(db=db)
+
+        return await InfrahubRepository.new(
+            id=obj.id,
+            name=git_repo_same_repo_trigger_rule.name,
+            location=git_repo_same_repo_trigger_rule.path,
+            client=client,
+            infrahub_branch_name="main",
+        )
+
+    async def test_import_resolves_trigger_rules_referencing_generator_definition(
+        self, db: InfrahubDatabase, client: InfrahubClient, repo_trigger_rule: InfrahubRepository
+    ) -> None:
+        """A first import must resolve trigger-rule objects against a same-repo generator definition.
+
+        The generator action's mandatory ``generator`` relationship points at a generator
+        definition that the import creates from the ``generator_definitions`` section, so on an
+        empty graph the objects have to be reconciled around the definitions for the action and
+        the trigger rule that references it to resolve.
+        """
+        await repo_trigger_rule.import_objects_from_files(infrahub_branch_name="main")  # type: ignore[call-overload]
+
+        generator_definition = await client.get(kind="CoreGeneratorDefinition", name__value="tags_generator")
+        action = await client.get(kind="CoreGeneratorAction", name__value="run-tags-generator")
+        assert action.generator.id == generator_definition.id
+
+        trigger = await client.get(kind="CoreNodeTriggerRule", name__value="trigger-tags-generator-update")
+        assert trigger.action.id == action.id
+
 
 class TestGetMissingFile(TestInfrahubApp):
     async def test_get_missing_file(
@@ -382,13 +437,18 @@ class TestGetMissingFile(TestInfrahubApp):
             db=db,
             name=git_repo_car_dealership.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo_car_dealership.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await obj.save(db=db)
 
         # Initialize the repository on the file system
         repo = await InfrahubRepository.new(
-            id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
+            id=obj.id,
+            name=git_repo_car_dealership.name,
+            location=git_repo_car_dealership.path,
+            client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")

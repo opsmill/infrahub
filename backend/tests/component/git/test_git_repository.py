@@ -1,11 +1,15 @@
+import json
 import re
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import anyio
+import httpx
 import pytest
+from fast_depends import Provider
 from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
@@ -17,8 +21,10 @@ from pytest_httpx._httpx_mock import HTTPXMock
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
+from infrahub.core.node import Node
 from infrahub.core.registry import registry
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
@@ -37,19 +43,23 @@ from infrahub.git.integrator import (
     ArtifactGenerateResult,
     CheckDefinitionInformation,
 )
-from infrahub.git.models import RequestArtifactGenerate
+from infrahub.git.models import GitRepositoryMerge, RequestArtifactGenerate
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
+from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
-from infrahub.services import InfrahubServices
 from infrahub.utils import find_first_file_in_directory
+from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
+from tests.helpers.git import build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -63,7 +73,7 @@ async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], gi
 
 
 async def test_new_empty_dir(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -92,14 +102,13 @@ async def test_new_invalid_branch(
         RepositoryError,
         match=f"The branch non-existent-branch isn't a valid branch for the repository {repo_name} at {repo_path}",
     ):
-        await InfrahubRepository.new(
+        await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
-            default_branch_name="non-existent-branch",
+            default_branch="non-existent-branch",
             infrahub_branch_name="main",
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
-            service=await InfrahubServices.new(),
         )
 
 
@@ -108,7 +117,7 @@ async def test_new_existing_directory(git_upstream_repo_01: dict[str, str | Path
     (git_repos_dir / git_upstream_repo_01["name"]).mkdir()
     (git_repos_dir / git_upstream_repo_01["name"] / "file1.txt").touch()
 
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -126,7 +135,7 @@ async def test_new_existing_file(git_upstream_repo_01: dict[str, str | Path], gi
     # Create a file where the repository will be created
     (git_repos_dir / git_upstream_repo_01["name"]).touch()
 
-    repo = await InfrahubRepository.new(
+    repo = await clone_repository(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -144,7 +153,7 @@ async def test_new_wrong_location(
     git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path
 ) -> None:
     with pytest.raises(RepositoryError) as exc:
-        await InfrahubRepository.new(
+        await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(tmp_path),
@@ -158,11 +167,11 @@ async def test_new_wrong_branch(
     git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path, tmp_path: Path
 ) -> None:
     with pytest.raises(RepositoryInvalidBranchError) as exc:
-        await InfrahubRepository.new(
+        await clone_repository(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(git_upstream_repo_01["path"]),
-            default_branch_name="notvalid",
+            default_branch="notvalid",
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
 
@@ -170,7 +179,12 @@ async def test_new_wrong_branch(
 
 
 async def test_init_existing_repository(git_repo_01: InfrahubRepository) -> None:
-    repo = await InfrahubRepository.init(id=git_repo_01.id, name=git_repo_01.name)
+    repo = await open_repository(
+        id=git_repo_01.id,
+        name=git_repo_01.name,
+        location=git_repo_01.get_location(),
+        client=git_repo_01.get_client(),
+    )
 
     # Check if all the directories are present
     assert repo.has_origin is True
@@ -237,7 +251,9 @@ async def test_init_fetches_missing_commit_under_repo_lock(
         repo.create_commit_worktree(commit=new_commit)
 
     # init() recovers by fetching the missing commit and materializing its worktree.
-    recovered = await InfrahubRepository.init(id=repo.id, name=repo.name, commit=new_commit, client=repo.client)
+    recovered = await open_repository(
+        id=repo.id, name=repo.name, location=repo.get_location(), commit=new_commit, client=repo.get_client()
+    )
     assert recovered.has_worktree(identifier=new_commit) is True
 
 
@@ -248,7 +264,9 @@ async def test_init_missing_commit_without_origin_raises(git_repo_01: InfrahubRe
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
     with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
-        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+        await open_repository(
+            id=repo.id, name=repo.name, location=repo.get_location(), commit=commit, client=repo.get_client()
+        )
 
 
 async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: InfrahubRepository) -> None:
@@ -258,7 +276,9 @@ async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: Infrahub
 
     # The commit exists neither locally nor on the remote, so init fetches once and still raises.
     with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
-        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+        await open_repository(
+            id=repo.id, name=repo.name, location=repo.get_location(), commit=commit, client=repo.get_client()
+        )
 
 
 async def test_get_worktrees(git_repo_01: InfrahubRepository) -> None:
@@ -398,7 +418,7 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
 @pytest.mark.xfail(reason="Failing at reproducing conflicts without remote branches to trigger the function to test")
 async def test_has_conflicting_changes(git_repos_source_dir_module_scope: Path) -> None:
     test_repo = MultipleStagesFileRepo(name="conflicting-branches", sources_directory=git_repos_source_dir_module_scope)
-    repository = await InfrahubRepository.new(
+    repository = await clone_repository(
         id=UUIDT.new(),
         name=test_repo.name,
         location=test_repo.path,
@@ -519,23 +539,41 @@ async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository, branch0
 
 
 async def test_merge_writes_back_to_non_main_default_branch(
-    git_repo_01: InfrahubRepository,
     git_upstream_repo_01: dict[str, str | Path],
+    git_repos_dir: Path,
     branch01: BranchData,
 ) -> None:
     """Merging into Infrahub main writes the merge commit back to a non-main git default branch.
 
     Reproduces a worker whose clone only ever checked out `main`, so it holds `develop` only as a
-    remote-tracking ref with no local branch of that name. The push that maps Infrahub `main` onto
-    the configured git default branch must still advance the remote `develop`.
+    remote-tracking ref with no local branch of that name -- the state a worker is left in when the
+    configured trunk is changed after it cloned. The push that maps Infrahub `main` onto the
+    configured git default branch must still advance the remote `develop`.
     """
     upstream_path = str(git_upstream_repo_01["path"])
     upstream = Repo(upstream_path)
     upstream.git.branch("develop", "main")
 
-    repo = git_repo_01
+    repo_id = UUIDT.new()
+    client = InfrahubClient(config=Config(requester=dummy_async_request))
+    await clone_repository(
+        id=repo_id,
+        name=git_upstream_repo_01["name"],
+        location=upstream_path,
+        default_branch="main",
+        client=client,
+    )
+
+    # The trunk has since been changed to `develop`, so the next construction resolves it while the
+    # on-disk clone still has only a local `main`.
+    repo = await open_repository(
+        id=repo_id,
+        name=git_upstream_repo_01["name"],
+        location=upstream_path,
+        default_branch="develop",
+        client=client,
+    )
     await repo.fetch()
-    repo.default_branch_name = "develop"
 
     local_branch_names = {branch.name for branch in repo.get_git_repo_main().branches}
     assert local_branch_names == {"main"}
@@ -547,6 +585,65 @@ async def test_merge_writes_back_to_non_main_default_branch(
 
     assert merge_commit != develop_before
     assert Repo(upstream_path).commit("develop").hexsha == merge_commit
+
+
+async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    dependency_provider: Provider,
+    prefect_test_fixture: None,
+    git_upstream_repo_01: dict[str, str | Path],
+    git_repos_dir: Path,
+    branch01: BranchData,
+    helper: TestHelper,
+) -> None:
+    """The merge flow resolves the trunk itself now that the merge model no longer carries one.
+
+    Asserts the remote trunk ref advanced, and that the node was read on the destination branch.
+    """
+    upstream_path = str(git_upstream_repo_01["path"])
+    Repo(upstream_path).git.branch("develop", "main")
+
+    repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+    await repo_node.new(db=db, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="develop")
+    await repo_node.save(db=db)
+
+    client = build_repository_client(
+        repository_id=repo_node.id,
+        name=str(git_upstream_repo_01["name"]),
+        location=upstream_path,
+        default_branch="develop",
+    )
+    repo = await clone_repository(
+        id=repo_node.id,
+        name=git_upstream_repo_01["name"],
+        location=upstream_path,
+        default_branch="main",
+        client=client,
+    )
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+
+    model = GitRepositoryMerge(
+        repository_id=repo_node.id,
+        repository_name=str(git_upstream_repo_01["name"]),
+        source_branch=branch01.name,
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
+    assert "default_branch" not in model.model_dump()
+
+    develop_before = Repo(upstream_path).commit("develop").hexsha
+    bus_simulator = await helper.get_message_bus_simulator()
+    with (
+        dependency_provider.scope(build_client, lambda: client),
+        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
+    ):
+        await merge_git_repository(model=model)
+
+    assert Repo(upstream_path).commit("develop").hexsha != develop_before
 
 
 async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
@@ -669,8 +766,10 @@ async def test_sync_continues_after_branch_pull_failure(
     assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)
 
     # A branch failure surfaces as an error once all branches have been processed.
-    expected_message = f"Unable to synchronize the following branches of repository {repo.name}: branch01"
-    with pytest.raises(RepositoryError, match=re.escape(expected_message)):
+    expected_prefix = re.escape(
+        f"Unable to synchronize the following branches of repository {repo.name}: branch01 (step=collection):"
+    )
+    with pytest.raises(RepositoryError, match=expected_prefix):
         await _sync(repo)
 
     assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
@@ -991,6 +1090,171 @@ async def test_render_artifact_python_without_payload(
     assert artifact_node_01.status.value == "Pending"
     assert artifact_node_01.checksum.value is None
     assert artifact_node_01.storage_id.value is None
+
+
+STORED_ARTIFACT_URL = "http://mock/api/storage/object/13c8914b-0ac0-4c8c-83ec-a79a1f8ad483"
+RENDERED_CHECKSUM = "e889b9fab24aab3b23ea01d5342b514a"
+RENDERED_CONTENT = '{\n  "KEY1": "value1",\n  "KEY2": "value2"\n}'
+
+
+@pytest.fixture
+def main_branch(monkeypatch: pytest.MonkeyPatch) -> Branch:
+    branch = Branch(name="main", uuid=uuid4())
+    monkeypatch.setitem(registry.branch, branch.name, branch)
+    return branch
+
+
+@pytest.fixture
+def event_recorder(dependency_provider: Provider) -> Generator[MemoryInfrahubEvent, None, None]:
+    recorder = MemoryInfrahubEvent()
+    with override_dependency(build_event_service, lambda: recorder, dependency_provider=dependency_provider):
+        yield recorder
+
+
+def render_again_request(repo: InfrahubRepository, branch: Branch, check_stored_file: bool) -> RequestArtifactGenerate:
+    """Request rendering the stored artifact again with the Transformation that produced its recorded checksum."""
+    return RequestArtifactGenerate(
+        artifact_name="artifact01",
+        artifact_definition="c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        artifact_definition_name="artifactdef01",
+        commit=repo.get_commit_value(branch_name=branch.name, remote=False),
+        content_type="application/json",
+        transform_type=InfrahubKind.TRANSFORMPYTHON,
+        transform_location="transform01.py::Transform01",
+        repository_id=str(repo.id),
+        repository_name=repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        branch_name=branch.name,
+        target_id="b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
+        target_kind="TestElectricCar",
+        target_name="bolt",
+        query="my_query",
+        query_id="47800bff-adf1-450d-8388-b04ef2ffb129",
+        timeout=10,
+        variables={"name": "bolt"},
+        context=InfrahubContext(branch=BranchContext(name=branch.name), account=AnonymousSession()),
+        check_stored_file=check_stored_file,
+    )
+
+
+@pytest.mark.parametrize("check_stored_file", [False, True], ids=["not-checked", "checked-and-intact"])
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_keeps_the_stored_file(
+    check_stored_file: bool,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    if check_stored_file:
+        httpx_mock.add_response(
+            method="GET",
+            url=STORED_ARTIFACT_URL,
+            text=RENDERED_CONTENT,
+            match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+        )
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_02,
+        artifact_created=False,
+        message=render_again_request(
+            repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=check_stored_file
+        ),
+    )
+
+    assert result == ArtifactGenerateResult(
+        changed=False,
+        checksum=RENDERED_CHECKSUM,
+        storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        artifact_id=artifact_node_02.id,
+    )
+    assert len(httpx_mock.get_requests(method="GET", url=STORED_ARTIFACT_URL)) == int(check_stored_file)
+    assert event_recorder.events == []
+
+
+@pytest.mark.parametrize(
+    ("status_code", "body"),
+    [
+        (404, '{"data": null, "errors": [{"message": "Unable to find the node", "extensions": {"code": 404}}]}'),
+        (409, '{"data": null, "errors": [{"message": "does not match its checksum", "extensions": {"code": 409}}]}'),
+        (200, '{\n  "KEY1": "modified in the object storage"\n}'),
+    ],
+    ids=["missing", "refused", "modified-and-served"],
+)
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_stores_a_bad_stored_file_again_when_checked(
+    status_code: int,
+    body: str,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=STORED_ARTIFACT_URL,
+        status_code=status_code,
+        text=body,
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_02,
+        artifact_created=False,
+        message=render_again_request(repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=True),
+    )
+
+    assert result == ArtifactGenerateResult(
+        changed=True,
+        checksum=RENDERED_CHECKSUM,
+        storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id=artifact_node_02.id,
+    )
+    updates = httpx_mock.get_requests(
+        method="POST", match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
+    )
+    assert len(updates) == 1
+    assert re.search(
+        r'storage_id: \{\s+value: "ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a"\s+\}', json.loads(updates[0].content)["query"]
+    )
+    assert len(event_recorder.events) == 1
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_fails_when_the_checked_stored_file_is_unreadable(
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=STORED_ARTIFACT_URL,
+        status_code=500,
+        json={"data": None, "errors": [{"message": "storage unavailable", "extensions": {"code": 500}}]},
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+
+    with pytest.raises(httpx.HTTPStatusError, match="500 Internal Server Error"):
+        await git_repo_transforms_w_client.render_artifact(
+            artifact=artifact_node_02,
+            artifact_created=False,
+            message=render_again_request(repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=True),
+        )
+
+    assert artifact_node_02.storage_id.value == "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483"
+    assert event_recorder.events == []
 
 
 async def test_execute_python_transform_file_missing(
@@ -1336,11 +1600,11 @@ async def test_init_reinitialized_after_missing_directory(
     shutil.rmtree(git_repo_02.directory_root)
     assert not git_repo_02.directory_root.exists()
 
-    recovered = await InfrahubRepository.init(
+    recovered = await open_repository(
         id=repo_id,
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
-        default_branch_name="main",
+        default_branch="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
 

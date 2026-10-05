@@ -3,33 +3,52 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
+from uuid import UUID  # noqa: TC003
 
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
-from infrahub_sdk.protocols import CoreReadOnlyRepository, CoreRepository
+from infrahub_sdk.protocols import CoreReadOnlyRepository
 from prefect import task
 from prefect.cache_policies import NONE
 from pydantic import Field
+from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
     RepositoryError,
 )
+from infrahub.git.branch_mapping import get_mapped_remote_branch
+from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
-from infrahub.log import get_logger
+from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
+    from git import Repo
     from infrahub_sdk.client import InfrahubClient
 
-log = get_logger()
+log = get_run_logger()
+
+
+def _describe_push_rejection(summary: str) -> str:
+    """Prefix a per-ref push rejection summary with the likely reason the remote refused it.
+
+    A rejected ref is not a failed ``git push`` command, so the ref's status summary is the
+    only signal available to classify.
+    """
+    lowered = summary.lower()
+    if any(marker in lowered for marker in ("hook declined", "protected branch", "permission denied", "not allowed")):
+        return f"the remote refused the update (for example missing push permission or branch protection): {summary}"
+    if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
+        return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
+    return summary
 
 
 @dataclass
@@ -63,10 +82,15 @@ class CollectedImports:
 
     ``imports`` are the branches ready to have their objects imported. ``failed_imports`` are the
     branches whose git or branch setup failed, each carrying the phase that failed and the reason.
+    ``skipped_branches`` are the remote branches left out because their name collides with Infrahub's
+    default branch, and ``advanced_skipped_branches`` the subset of them whose remote head moved
+    during this run's fetch.
     """
 
     imports: list[PendingObjectImport] = field(default_factory=list)
     failed_imports: list[FailedImport] = field(default_factory=list)
+    skipped_branches: list[str] = field(default_factory=list)
+    advanced_skipped_branches: list[str] = field(default_factory=list)
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -75,23 +99,160 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     Eventually we should rename this class InfrahubIntegratedRepository
     """
 
+    default_branch: str = Field(
+        ..., description="Remote branch this repository maps onto Infrahub's own default branch"
+    )
+    internal_status: RepositoryInternalStatus = Field(..., description="Internal status: Active, Inactive, Staging")
+
     @classmethod
-    async def new(cls, update_commit_value: bool = True, **kwargs: Any) -> InfrahubRepository:
-        self = cls(**kwargs)
-        await self.create_locally(
-            infrahub_branch_name=self.infrahub_branch_name, update_commit_value=update_commit_value
+    async def init(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        commit: str | None = None,
+        location: str | None = None,
+    ) -> InfrahubRepository:
+        """Build the repository object for an operation running on a given Infrahub branch."""
+        self = await cls._build(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            location=location,
         )
-        log.info("Created new repository locally.", repository=self.name)
+        await self.initialize_local(commit=commit)
         return self
 
-    async def resolve_checkout_ref(self) -> str:
-        if not self.default_branch_name:
-            repository = await self.sdk.get(
-                kind=CoreRepository, name__value=self.name, exclude=["tags", "credential"], raise_when_missing=True
-            )
-            self.default_branch_name = repository.default_branch.value
+    @classmethod
+    async def new(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        location: str | None = None,
+        update_commit_value: bool = True,
+    ) -> InfrahubRepository:
+        """Clone the repository locally for an operation running on a given Infrahub branch."""
+        self = await cls._build(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            location=location,
+        )
+        await self.create_locally(
+            checkout_ref=self.default_branch,
+            infrahub_branch_name=infrahub_branch_name,
+            update_commit_value=update_commit_value,
+        )
+        log.info("Created new repository locally: %s", self.name)
+        return self
 
+    @classmethod
+    async def _build(
+        cls,
+        *,
+        id: str | UUID,
+        name: str,
+        client: InfrahubClient,
+        infrahub_branch_name: str,
+        location: str | None,
+    ) -> InfrahubRepository:
+        """Resolve the repository's graph-held configuration once, then construct the object with it.
+
+        A caller-supplied location wins over the node's: it is the one value a caller can
+        legitimately know better, and both a local test remote and the add flow rely on that.
+        """
+        settings = await resolve_graph_settings(
+            client=client,
+            repository_id=str(id),
+            repository_name=name,
+            infrahub_branch_name=infrahub_branch_name,
+        )
+        return cls(
+            id=id,
+            name=name,
+            client=client,
+            infrahub_branch_name=infrahub_branch_name,
+            default_branch=settings.default_branch,
+            internal_status=settings.internal_status,
+            location=location or settings.location,
+        )
+
+    async def resolve_checkout_ref(self) -> str:
         return self.default_branch
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        return get_mapped_remote_branch(
+            branch_name=branch_name,
+            repository_default_branch=self.default_branch,
+            infrahub_default_branch=registry.default_branch,
+        )
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return registry.default_branch
+        return branch_name
+
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return "main"
+        return branch_name
+
+    def _collides_with_infrahub_default_branch(self, branch_name: str) -> bool:
+        """Whether the branch is named like Infrahub's default branch while that name maps to another branch."""
+        return branch_name == registry.default_branch and branch_name != self.default_branch
+
+    def validate_remote_branch(self, branch_name: str) -> bool:
+        """Process a remote branch to validate that we can use it safely.
+
+        - Make sure that the branch name won't conflict with infrahub's default branch
+        - Make sure that a representation of the branch can be created in the database
+        - Warn (but do not block) when the branch would conflict with the default branch on merge
+        """
+        if self._collides_with_infrahub_default_branch(branch_name=branch_name):
+            # If the default branch of Infrahub and the git repository differs we map the repository
+            # default branch to that of Infrahub. In that scenario we can't import a branch from the
+            # repository if it matches the default branch of Infrahub
+            log.warning("Ignoring import of mismatched default branch %s of repository %s", branch_name, self.name)
+            return False
+
+        try:
+            # Check if the branch can be created in the database
+            Branch(name=branch_name)
+        except PydanticValidationError as e:
+            log.warning(
+                "Git branch %s failed validation: %s",
+                branch_name,
+                ", ".join(error["msg"] for error in e.errors()),
+            )
+            return False
+
+        # Surface a warning when the branch conflicts with the default branch so users
+        # know a future merge will be rejected, but still allow the import to proceed.
+        try:
+            has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
+        except GitCommandError as exc:
+            log.error(
+                "Unable to determine merge conflicts for branch %s of repository %s: %s",
+                branch_name,
+                self.name,
+                exc,
+            )
+            return True
+
+        if has_conflicts:
+            log.warning(
+                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
+                "the merge will be rejected until the conflict is resolved upstream"
+            )
+
+        return True
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         branches = {}
@@ -126,18 +287,28 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return
 
         for failed in failed_imports:
+            # extra= preserves step and reason as discrete LogRecord fields so log shippers
+            # and alert rules can filter on them, even though the message already contains them.
             log.warning(
-                "Failed to synchronize branch, skipping it.",
-                repository=self.name,
-                branch=failed.branch_name,
-                step=failed.step.value,
-                reason=failed.reason,
+                "Failed to synchronize branch %s of repository %s at step %s: %s",
+                failed.branch_name,
+                self.name,
+                failed.step.value,
+                failed.reason,
+                extra={
+                    "repository": self.name,
+                    "branch": failed.branch_name,
+                    "step": failed.step.value,
+                    "reason": failed.reason,
+                },
             )
 
-        branches = ", ".join(failed.branch_name for failed in failed_imports)
+        branch_summaries = "; ".join(
+            f"{failed.branch_name} (step={failed.step.value}): {failed.reason}" for failed in failed_imports
+        )
         raise RepositoryError(
             identifier=self.name,
-            message=f"Unable to synchronize the following branches of repository {self.name}: {branches}",
+            message=f"Unable to synchronize the following branches of repository {self.name}: {branch_summaries}",
         )
 
     async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
@@ -154,29 +325,40 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError: When a branch or commit update against the database fails.
 
         """
-        log.info("Starting the synchronization.", repository=self.name)
+        log.info("Starting the synchronization of %s.", self.name)
+
+        # The remote-tracking ref still holds the previous fetch's head, which is what tells a skipped
+        # branch that received a commit apart from one that is merely skipped again.
+        colliding_branch = self._get_colliding_branch_name()
+        head_before_fetch = self._get_remote_tracking_commit(colliding_branch) if colliding_branch else None
 
         await self.fetch()
 
+        # Decided from the remote alone: a clone whose remote HEAD is the colliding branch holds it as a
+        # local branch too, so the local/remote comparison below does not list it until it moves.
+        skipped_branches, advanced_skipped_branches = self._find_skipped_branches(
+            colliding_branch=colliding_branch, head_before_fetch=head_before_fetch
+        )
         new_branches, updated_branches = await self.compare_local_remote()
 
         if not new_branches and not updated_branches:
-            return CollectedImports()
+            return CollectedImports(
+                skipped_branches=skipped_branches, advanced_skipped_branches=advanced_skipped_branches
+            )
 
-        log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
+        log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
 
         imports: list[PendingObjectImport] = []
         failed_imports: list[FailedImport] = []
 
         # TODO need to handle properly the situation when a branch is not valid.
-        if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
+        if self.internal_status == RepositoryInternalStatus.ACTIVE:
             # A branch that has been merged (or is being deleted) is read-only: recording its commit
             # would be rejected by the graph and abort the whole sync, so drop those branches here.
             new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
 
             for branch_name in new_branches:
-                is_valid = self.validate_remote_branch(branch_name=branch_name)
-                if not is_valid:
+                if not self.validate_remote_branch(branch_name=branch_name):
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
@@ -193,10 +375,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit = self.get_commit_value(branch_name=branch_name, remote=False)
                     self.create_commit_worktree(commit=commit)
                     await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    # The remote itself is unreachable or unauthorized; iterating the remaining
-                    # branches is pointless, so let it abort the whole sync.
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -208,16 +386,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
-                is_valid = self.validate_remote_branch(branch_name=branch_name)
-                if not is_valid:
+                if not self.validate_remote_branch(branch_name=branch_name):
                     continue
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
 
                 try:
                     commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryConnectionError, RepositoryCredentialsError):
-                    raise
                 except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
                     # Isolate per-branch git failures so the other branches are still collected;
                     # graph errors are left to propagate.
@@ -231,15 +406,53 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 elif commit_after is True:
                     log.warning(
-                        f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                        repository=self.name,
-                        branch=branch_name,
+                        "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
+                        commit_after,
+                        branch_name,
+                        self.name,
                     )
 
-        imports.extend(
-            await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
+        return CollectedImports(
+            imports=imports
+            + await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches),
+            failed_imports=failed_imports,
+            skipped_branches=skipped_branches,
+            advanced_skipped_branches=advanced_skipped_branches,
         )
-        return CollectedImports(imports=imports, failed_imports=failed_imports)
+
+    def _get_colliding_branch_name(self) -> str | None:
+        """Return the name a remote branch cannot be imported under, or None when no name collides.
+
+        Only an active repository imports branches, so only an active repository has one to skip.
+        """
+        if not self.has_origin or self.internal_status != RepositoryInternalStatus.ACTIVE:
+            return None
+        if not self._collides_with_infrahub_default_branch(branch_name=registry.default_branch):
+            return None
+        return registry.default_branch
+
+    def _get_remote_tracking_commit(self, branch_name: str) -> str | None:
+        """Return the commit of the branch's remote-tracking ref, or None when the clone has no such ref."""
+        remote_refs = self.get_git_repo_main().remotes.origin.refs
+        if branch_name not in remote_refs:
+            return None
+        return str(remote_refs[branch_name].commit)
+
+    def _find_skipped_branches(
+        self, colliding_branch: str | None, head_before_fetch: str | None
+    ) -> tuple[list[str], list[str]]:
+        """Return the skipped branches the remote holds, and the subset whose head moved during the fetch.
+
+        A branch with no head before the fetch counts as moved: the clone is taken before that read, so a
+        head missing from it means the branch was pushed to the remote since this clone last fetched.
+        """
+        if colliding_branch is None:
+            return [], []
+        head_after_fetch = self._get_remote_tracking_commit(colliding_branch)
+        if head_after_fetch is None:
+            return [], []
+        advanced = [colliding_branch] if head_after_fetch != head_before_fetch else []
+        return [colliding_branch], advanced
 
     async def _exclude_read_only_branches(
         self, new_branches: list[str], updated_branches: list[str]
@@ -261,7 +474,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         self, staging_branch: str | None, updated_branches: list[str]
     ) -> list[PendingObjectImport]:
         if not (
-            self.internal_status == RepositoryInternalStatus.STAGING.value
+            self.internal_status == RepositoryInternalStatus.STAGING
             and staging_branch
             and self.default_branch in updated_branches
         ):
@@ -277,9 +490,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         if commit_after is True:
             log.warning(
-                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                repository=self.name,
-                branch=self.default_branch,
+                "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
+                commit_after,
+                self.default_branch,
+                self.name,
             )
         return []
 
@@ -287,14 +501,19 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository.
 
         Raises:
-            RepositoryError: When the remote rejects the push.
+            RepositoryError: When the remote rejects the push at the ref level.
+            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryCredentialsError: When authentication fails at push time.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
 
         """
         if not self.has_origin:
             return False
 
         log.debug(
-            f"Pushing the latest update to the remote origin for the branch '{branch_name}'", repository=self.name
+            "Pushing the latest update to the remote origin for the branch '%s' of repository %s.",
+            branch_name,
+            self.name,
         )
 
         repo = self.get_git_repo_worktree(identifier=branch_name)
@@ -302,12 +521,21 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
-        push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        try:
+            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+        except GitCommandError as exc:
+            # A transport-level failure raises here with no porcelain status line to classify from flags.
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
                 raise RepositoryError(
                     identifier=self.name,
-                    message=f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: {push_info.summary.strip()}",
+                    message=(
+                        f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
+                        f"{_describe_push_rejection(summary=push_info.summary.strip())}"
+                    ),
                 )
 
         return True
@@ -317,14 +545,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
 
+        On any failure the destination worktree is reset to its pre-merge commit. Whether the remote
+        received the merge is not always knowable, since a push can be accepted just before the
+        connection drops, so the reset leaves the destination either at the pre-merge state, where a
+        later merge attempt re-derives the merge, or trailing the remote, which the periodic
+        synchronization repairs by pulling the pushed merge commit and recording it.
+
         Raises:
-            ValueError: When no worktree exists for the destination branch.
-            RepositoryError: When the underlying ``git merge`` command fails.
+            RepositoryError: When no worktree exists for the destination branch, when the
+                underlying ``git merge`` command fails, or when the remote rejects the push.
 
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
-        if not repo:
-            raise ValueError(f"Unable to identify the worktree for the branch : {dest_branch}")
 
         commit_before = str(repo.head.commit)
         commit = self.get_commit_value(branch_name=source_branch, remote=False)
@@ -343,12 +575,49 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         if commit_after == commit_before:
             return False
 
-        self.create_commit_worktree(commit_after)
-        await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
         if self.has_origin and push_remote:
-            await self.push(branch_name=dest_branch)
+            pushed = False
+            try:
+                await self.push(branch_name=dest_branch)
+                pushed = True
+            finally:
+                if not pushed:
+                    # Left on the unpushed merge commit, a retry would find nothing to merge
+                    # and return before ever reaching the push again.
+                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
+
+        recorded = False
+        try:
+            self.create_commit_worktree(commit_after)
+            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
+            recorded = True
+        finally:
+            if not recorded:
+                # Trailing the remote is a state the periodic synchronization repairs by pulling
+                # and recording the missing commit; a worktree left on a merge commit that is
+                # recorded nowhere is never revisited.
+                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
+
+    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+        """Best-effort reset of a merge destination worktree while recovering from a failed merge.
+
+        This never raises: the failure being recovered from is the one that explains why the merge
+        was not delivered, and it must propagate unmasked.
+        """
+        try:
+            repo.git.reset("--hard", commit_before)
+        except Exception:
+            # Raising here would replace the failure being recovered from with a less useful one.
+            log.exception(
+                "Failed to reset the worktree of branch %s of repository %s to %s while recovering from a "
+                "failed merge; manual reconciliation may be required before the merge can be retried.",
+                dest_branch,
+                self.name,
+                commit_before,
+                extra={"repository": self.name, "branch": dest_branch},
+            )
 
     async def rebase(
         self, branch_name: str, source_branch: str = "main", push_remote: bool = True
@@ -372,16 +641,38 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     ref: str | None = Field(default=None, description="Ref to track on the external repository")
 
     @classmethod
+    async def init(cls, commit: str | None = None, **kwargs: Any) -> InfrahubReadOnlyRepository:
+        self = cls(**kwargs)
+        await self.initialize_local(commit=commit)
+        return self
+
+    @classmethod
     async def new(cls, **kwargs: Any) -> InfrahubReadOnlyRepository:
-        if "ref" not in kwargs or "infrahub_branch_name" not in kwargs:
+        """Clone a read-only repository locally on the ref it tracks.
+
+        Raises:
+            ValueError: When the ref or the Infrahub branch is missing, either absent or None. The
+                clone has to check something out, so neither can be defaulted.
+
+        """
+        if not kwargs.get("ref") or not kwargs.get("infrahub_branch_name"):
             raise ValueError("ref and infrahub_branch_name are mandatory to initialize a new Read-Only repository")
 
         self = cls(**kwargs)
-        await self.create_locally(checkout_ref=self.ref, infrahub_branch_name=self.infrahub_branch_name)
-        log.info("Created new repository locally.", repository=self.name)
+        await self.create_locally(
+            checkout_ref=await self.resolve_checkout_ref(), infrahub_branch_name=self.infrahub_branch_name
+        )
+        log.info("Created new repository locally: %s", self.name)
         return self
 
     async def resolve_checkout_ref(self) -> str:
+        """Return the single ref this repository tracks, reading it from the graph when unset.
+
+        Raises:
+            RepositoryError: When the node carries no ref. The attribute is mandatory in the schema,
+                so this is a corrupted node rather than a case to paper over with a default.
+
+        """
         ref = self.ref
         if not ref:
             repository = await self.sdk.get(
@@ -390,12 +681,23 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 exclude=["tags", "credential"],
                 raise_when_missing=True,
             )
-            # `ref` is a mandatory attribute defaulting to "main", so the fallback is unreachable in
-            # practice; it keeps the return type honest the way the CoreRepository sibling above does.
-            ref = repository.ref.value or self.default_branch
+            ref = repository.ref.value
+            if not ref:
+                raise RepositoryError(
+                    identifier=self.name, message=f"Read-only repository {self.name} has no ref configured."
+                )
             self.ref = ref
 
         return ref
+
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        return branch_name
+
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        return branch_name
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
         """Always get the latest commit for this repository's ref on the remote.
@@ -416,7 +718,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             except BadName:
                 ...
         if not commit:
-            log.error(f"No object found for refs {refs} on repository {self.name}")
+            log.error("No object found for refs %s on repository %s", refs, self.name)
             raise ValueError(f"Ref {self.ref} not found.")
 
         return str(commit)
@@ -452,7 +754,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             try:
                 latest_commit = git_repo.git.rev_parse(self.ref)
             except GitCommandError as err:
-                log.error(f"No object found for ref {self.ref} on repository {self.name}")
+                log.error("No object found for ref %s on repository %s", self.ref, self.name)
                 raise ValueError(f"Ref {self.ref} not found.") from err
         latest_commit = str(git_repo.commit(latest_commit))
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)
@@ -463,7 +765,11 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 @cached(
     TTLCache(maxsize=100, ttl=30),
     key=lambda *_, **kwargs: hashkey(
-        kwargs.get("repository_id"), kwargs.get("name"), kwargs.get("repository_kind"), kwargs.get("commit")
+        kwargs.get("repository_id"),
+        kwargs.get("name"),
+        kwargs.get("repository_kind"),
+        kwargs.get("commit"),
+        kwargs.get("infrahub_branch_name"),
     ),
 )
 async def _get_initialized_repo(
@@ -471,13 +777,18 @@ async def _get_initialized_repo(
     repository_id: str,
     name: str,
     repository_kind: str,
+    infrahub_branch_name: str,
     commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     if repository_kind == InfrahubKind.REPOSITORY:
-        return await InfrahubRepository.init(id=repository_id, name=name, commit=commit, client=client)
+        return await InfrahubRepository.init(
+            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
+        )
 
     if repository_kind == InfrahubKind.READONLYREPOSITORY:
-        return await InfrahubReadOnlyRepository.init(id=repository_id, name=name, commit=commit, client=client)
+        return await InfrahubReadOnlyRepository.init(
+            id=repository_id, name=name, commit=commit, client=client, infrahub_branch_name=infrahub_branch_name
+        )
 
     raise NotImplementedError(f"The repository kind {repository_kind} has not been implemented")
 
@@ -492,6 +803,7 @@ async def get_initialized_repo(
     repository_id: str,
     name: str,
     repository_kind: str,
+    infrahub_branch_name: str,
     commit: str | None = None,
 ) -> InfrahubReadOnlyRepository | InfrahubRepository:
     return await _get_initialized_repo(
@@ -499,5 +811,6 @@ async def get_initialized_repo(
         repository_id=repository_id,
         name=name,
         repository_kind=repository_kind,
+        infrahub_branch_name=infrahub_branch_name,
         commit=commit,
     )

@@ -66,8 +66,16 @@ describe("DatePreferencesProvider", () => {
 
   test("resolves the preferred pattern + timezone from a USER preference", async () => {
     const component = await renderWithEffective({
-      dateFormat: { value: "EU_DATETIME", source: "USER" },
-      timezone: { value: "Europe/Paris", source: "USER" },
+      dateFormat: {
+        value: "EU_DATETIME",
+        source: "USER",
+        inherited: null,
+      },
+      timezone: {
+        value: "Europe/Paris",
+        source: "USER",
+        inherited: null,
+      },
     });
 
     await expect
@@ -78,8 +86,16 @@ describe("DatePreferencesProvider", () => {
 
   test("resolves an organisation (GLOBAL) default the same way", async () => {
     const component = await renderWithEffective({
-      dateFormat: { value: "ISO_DATETIME", source: "GLOBAL" },
-      timezone: { value: "Asia/Tokyo", source: "GLOBAL" },
+      dateFormat: {
+        value: "ISO_DATETIME",
+        source: "GLOBAL",
+        inherited: "ISO_DATETIME",
+      },
+      timezone: {
+        value: "Asia/Tokyo",
+        source: "GLOBAL",
+        inherited: "Asia/Tokyo",
+      },
     });
 
     await expect
@@ -90,8 +106,8 @@ describe("DatePreferencesProvider", () => {
 
   test("resolves to null (browser fallback) when both fields are DEFAULT", async () => {
     const component = await renderWithEffective({
-      dateFormat: { value: null, source: "DEFAULT" },
-      timezone: { value: null, source: "DEFAULT" },
+      dateFormat: { value: null, source: "DEFAULT", inherited: null },
+      timezone: { value: null, source: "DEFAULT", inherited: null },
     });
 
     await expect.element(component.getByTestId("pattern")).toHaveTextContent("null");

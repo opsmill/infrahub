@@ -10,7 +10,7 @@ an in-memory value object, a wire message, a cache key, an enum or a configurati
 | Kind | Attribute | Branch support | Role |
 | --- | --- | --- | --- |
 | `CoreGenericRepository` | `commit` (Text, optional) | LOCAL on `CoreRepository`, AWARE on `CoreReadOnlyRepository` | The imported commit for the request branch |
-| `CoreRepository` | `default_branch` (Text) | AGNOSTIC | Remote branch the Infrahub default branch maps to; other Infrahub branches map to the same-named remote branch via `InfrahubRepositoryBase._get_mapped_remote_branch` |
+| `CoreRepository` | `default_branch` (Text) | AGNOSTIC | Remote branch the Infrahub default branch maps to; other Infrahub branches map to the same-named remote branch via `infrahub.git.branch_mapping.get_mapped_remote_branch` |
 | `CoreReadOnlyRepository` | `ref` (Text) | AWARE | Branch or tag whose history the log describes; may differ per Infrahub branch |
 | `Branch` (registry) | `sync_with_git` | n/a | Selects the drift list's row set for the read-write kind; a branch with `sync_with_git = false` is excluded rather than shown as drifted |
 

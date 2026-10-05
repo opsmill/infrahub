@@ -122,12 +122,12 @@ function NodeContextMenu({
         onClick={onClose}
       />
       <div
-        className="fixed z-50 min-w-[180px] rounded-md border bg-popover py-1 shadow-lg backdrop-blur-lg"
+        className="fixed z-50 min-w-45 rounded-md border bg-popover py-1 shadow-lg backdrop-blur-lg"
         style={{ left: menu.x, top: menu.y }}
       >
         <div className="border-b px-3 py-1.5">
           <div className="truncate font-medium text-xs">{menu.nodeLabel}</div>
-          <div className="truncate text-[10px] text-subtle-muted">{menu.nodeKind}</div>
+          <div className="truncate text-subtle-muted text-xxs">{menu.nodeKind}</div>
         </div>
         <a
           href={detailsUrl}

@@ -28,8 +28,8 @@ dependencies = [
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
     "click>=8.3,<9",
-    "prefect==3.7.5",
-    "prefect-redis==0.2.14",
+    "prefect==3.8.6",
+    "prefect-redis==0.2.15",
     "ujson>=5,<6",
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
@@ -48,7 +48,7 @@ dependencies = [
     "python-multipart==0.0.31", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt==2.13.0", # Used to manage JWT tokens
+    "pyjwt==2.15.0", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.65b0",
     "opentelemetry-instrumentation-fastapi==0.65b0",
@@ -124,6 +124,7 @@ dev = [
     "prek>=0.3.0",
     "coverage==7.14.1",
     "pytest-playwright-asyncio>=0.8.0",
+    "zizmor>=1.30.0",
 ]
 
 # test-scale = [
@@ -171,6 +172,7 @@ INFRAHUB_LOG_LEVEL = "CRITICAL"
 INFRAHUB_PRODUCTION = false
 
 [tool.mypy]
+plugins = ["pydantic.mypy"]
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
@@ -256,14 +258,6 @@ disable_error_code = [
     "return-value",
 ]
 
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.diff"
-disable_error_code = [
-    "assignment",
-    "call-overload",
-]
-
 [[tool.mypy.overrides]]
 module = "infrahub.core.query.node"
 disable_error_code = [
@@ -279,14 +273,6 @@ disable_error_code = [
     "assignment",
     "union-attr",
     "valid-type",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.query.subquery"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "index",
 ]
 
 [[tool.mypy.overrides]]
@@ -431,13 +417,6 @@ disable_error_code = [
     "return-value",
 ]
 
-[[tool.mypy.overrides]]
-module = "infrahub.message_bus.operations"
-disable_error_code = [
-    "operator",
-    "return",
-]
-
 [tool.ruff]
 line-length = 120
 target-version = "py312"
@@ -532,6 +511,9 @@ ignorelist = [
     "property",
     "type",
 ]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"infrahub.workflows.initialization.setup_task_manager".msg = "The raw setup belongs to the application's own startup. Tests use tests.helpers.task_manager.setup_task_manager_once(), which runs it once per Prefect server and bounds it with a timeout."
 
 [tool.ruff.lint.isort]
 known-first-party = ["infrahub"]
@@ -1158,7 +1140,6 @@ invalid-return-type = "ignore"
 invalid-type-form = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
-possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unresolved-reference = "ignore"
 unsupported-operator = "ignore"
@@ -1199,8 +1180,6 @@ include = ["models/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-argument-type = "ignore"
-invalid-assignment = "ignore"
-missing-argument = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 unresolved-attribute = "ignore"
@@ -1216,7 +1195,6 @@ include = ["python_testcontainers/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-assignment = "ignore"
-possibly-missing-attribute = "ignore"
 possibly-missing-submodule = "ignore"
 too-many-positional-arguments = "ignore"
 unresolved-attribute = "ignore"
@@ -1265,10 +1243,8 @@ include = [
     "backend/infrahub/core/merge/**",
     "backend/infrahub/core/node/**",
     "backend/infrahub/core/query/__init__.py",
-    "backend/infrahub/core/query/diff.py",
     "backend/infrahub/core/query/node.py",
     "backend/infrahub/core/query/relationship.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/relationship/**",
     "backend/infrahub/core/schema/**",
     "backend/infrahub/core/validators/**",
@@ -1282,7 +1258,6 @@ invalid-argument-type = "ignore"
 include = [
     "backend/infrahub/core/manager.py",
     "backend/infrahub/core/node/__init__.py",
-    "backend/infrahub/core/query/subquery.py",
     "backend/infrahub/core/regeneration/members.py",
     "backend/infrahub/core/schema/basenode_schema.py",
     "backend/infrahub/core/schema/manager.py",
@@ -1316,15 +1291,6 @@ include = [
 
 [tool.ty.overrides.rules]
 invalid-return-type = "ignore"
-
-[[tool.ty.overrides]]
-include = [
-    "backend/infrahub/core/diff/coordinator.py",
-    "backend/infrahub/core/relationship/model.py",
-]
-
-[tool.ty.overrides.rules]
-no-matching-overload = "ignore"
 
 [[tool.ty.overrides]]
 include = [
@@ -1730,7 +1696,6 @@ include = ["backend/infrahub/computed_attribute/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unresolved-attribute = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
@@ -1772,32 +1737,6 @@ include = ["backend/infrahub/message_bus/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-call-top-callable = "ignore"
-invalid-await = "ignore"
-no-matching-overload = "ignore"
-unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/message_bus/operations/__init__.py"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# COMMAND_MAP is a heterogeneous dispatch table: each handler takes a specific InfrahubMessage   #
-# subtype, but the dispatch site only has the base type. Scoped to this file so the rest of      #
-# message_bus/ stays enforced.                                                                    #
-##################################################################################################
-invalid-argument-type = "ignore"
-
-[[tool.ty.overrides]]
-include = ["backend/infrahub/artifacts/tasks.py"]
-
-[tool.ty.overrides.rules]
-##################################################################################################
-# The ignored rules below should be removed once the code has been updated, they are included    #
-# like this so that we can reactivate them one by one.                                           #
-##################################################################################################
-invalid-argument-type = "ignore"
-invalid-assignment = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
@@ -1819,7 +1758,6 @@ include = ["backend/infrahub/tasks/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 missing-argument = "ignore"
-unknown-argument = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
@@ -1854,7 +1792,6 @@ include = ["backend/infrahub/api/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-return-type = "ignore"
-unresolved-attribute = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
@@ -2010,7 +1947,6 @@ missing-argument = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 not-iterable = "ignore"
-unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
 unused-awaitable = "ignore"
@@ -2058,7 +1994,6 @@ invalid-assignment = "ignore"
 invalid-return-type = "ignore"
 no-matching-overload = "ignore"
 not-iterable = "ignore"
-unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
 unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments

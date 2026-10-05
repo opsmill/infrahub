@@ -41,7 +41,7 @@ Universal content viewer that renders data based on MIME type. Handles text, ima
 | Code/Text | `application/json`, `application/yaml`, `application/x-yaml`, `application/hcl`, `application/graphql`, `application/xml`, `application/javascript`, `application/typescript`, `application/x-sh`, `application/x-python`, `application/toml`, `application/x-toml`, `text/plain` | Syntax-highlighted via `CodeViewer` |
 | Markdown | `text/markdown` | `MarkdownViewer` with view/raw toggle |
 | CSV | `text/csv` | `CsvTable` component |
-| SVG | `image/svg+xml` | `Svg` component |
+| SVG | `image/svg+xml` | `Svg` component inside `PanZoom` (drag to pan, wheel or buttons to zoom) |
 | Images | `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/bmp`, `image/x-icon` | Native `<img>` with base64 data URL |
 | PDF | `application/pdf` | Embedded `<iframe>` with base64 |
 | Other text | Any other `text/*` type | Plain text via `CodeViewer` |
@@ -194,6 +194,7 @@ Location: `shared/utils/file.ts`
 - `shared/components/editor/markdown/markdown-viewer.tsx` - Markdown render
 - `shared/components/editor/csv-table.tsx` - CSV table
 - `shared/components/display/svg.tsx` - SVG display
+- `shared/components/display/pan-zoom.tsx` - Pan/zoom viewport (SVG, Mermaid diagrams)
 
 **Utilities:**
 - `shared/utils/file.ts` - File utilities

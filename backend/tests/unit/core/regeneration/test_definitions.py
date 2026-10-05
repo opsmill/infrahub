@@ -80,7 +80,7 @@ def test_computed_closure_is_carried_through() -> None:
     parsed = parse_artifact_definitions(
         [
             _artifact_definition_edge(
-                dependencies=[".infrahub.yml", "templates/config.j2"],
+                dependencies=["partials/header.j2", "templates/config.j2"],
                 dependencies_complete=True,
                 fingerprint="abc123",
             )
@@ -88,7 +88,7 @@ def test_computed_closure_is_carried_through() -> None:
     )
 
     definition = parsed[0]
-    assert definition.dependencies == [".infrahub.yml", "templates/config.j2"]
+    assert definition.dependencies == ["partials/header.j2", "templates/config.j2"]
     assert definition.dependencies_complete is True
     assert definition.fingerprint == "abc123"
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -7,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -21,16 +21,18 @@ from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestGeneratorDefinitionCheck
 from infrahub.proposed_change.tasks import request_generator_definition_check
 from infrahub.server import app
-from infrahub.workers.dependencies import build_client, build_workflow
+from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import RUN_GENERATOR_AS_CHECK
 from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
+from tests.helpers.workflow_override import override_workflow
 
-from .conftest import QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
+from .conftest import FLOW_RUN_LOGGER, QUERY_NON_UNIQUE_TARGETS, QUERY_UNIQUE_TARGETS, make_node_diff
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator
 
     from fast_depends import Provider
 
@@ -38,6 +40,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreAccount
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
     from tests.adapters.cache import MemoryCache
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.test_client import InfrahubTestClient
@@ -58,6 +61,15 @@ query GetDeviceWithTags($ids: [ID!]!) {
                 }
             }
         }
+    }
+}
+"""
+
+# Reads the tag name through an inline fragment, a hop that cannot be mapped back to the owning device.
+QUERY_UNIQUE_WITH_FRAGMENT_TAGS = """
+query GetDeviceWithFragmentTags($ids: [ID!]!) {
+    TestNetworkDevice(ids: $ids) {
+        edges { node { name { value } tags { edges { node { ... on BuiltinTag { name { value } } } } } } }
     }
 }
 """
@@ -179,22 +191,66 @@ GENERATOR_DISPATCH_CASES = [
 ]
 
 
-class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
+@dataclass
+class GeneratorWideningLogCase:
+    name: str
+    definition_key: str
+    diff: list[DiffEntry]
+    expected_warnings: list[str]
+    expected_keys: list[str]
+
+
+ALL_INSTANCES = ["dev1_id", "dev2_id", "dev3_id", "dev4_id"]
+
+GENERATOR_WIDENING_LOG_CASES = [
+    GeneratorWideningLogCase(
+        name="non_unique_query_names_target_uniqueness",
+        definition_key="gendef_non_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[
+            "Generator definition device-generator: the query does not guarantee unique targets. "
+            "All targets will be processed."
+        ],
+        expected_keys=ALL_INSTANCES,
+    ),
+    GeneratorWideningLogCase(
+        name="change_on_a_related_kind_names_that_kind_not_target_uniqueness",
+        definition_key="gendef_fragment_tags",
+        diff=[
+            DiffEntry(
+                id_key="00000000-0000-0000-0000-000000000000", kind=InfrahubKind.TAG, fields=["name"], literal_id=True
+            )
+        ],
+        expected_warnings=[
+            f"Generator definition device-generator: the query reads {InfrahubKind.TAG} through a relationship, "
+            "and a change there cannot be traced back to specific targets. All targets will be processed."
+        ],
+        expected_keys=ALL_INSTANCES,
+    ),
+    GeneratorWideningLogCase(
+        name="narrowed_selection_logs_no_widening",
+        definition_key="gendef_unique",
+        diff=[DiffEntry(id_key="dev1_id", kind="TestNetworkDevice", fields=["name"])],
+        expected_warnings=[],
+        expected_keys=["dev1_id"],
+    ),
+]
+
+
+class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
     @pytest.fixture(scope="class", autouse=True)
     async def workflow_recorder(
         self,
-        prefect: Generator[str, None, None],
+        service: InfrahubServices,
         dependency_provider: Provider,
     ) -> AsyncGenerator[WorkflowRecorder, None]:
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(scope="class", autouse=True)
-    async def service(self, test_client: InfrahubTestClient) -> InfrahubServices:
+    async def service(
+        self, workflow_local: WorkflowLocalExecution, test_client: InfrahubTestClient
+    ) -> InfrahubServices:
         return app.state.service
 
     @pytest.fixture(scope="class")
@@ -215,9 +271,11 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
         sdk_client = InfrahubClient(config=sdk_config)
         original_client = service._client
         service._client = sdk_client
-        with dependency_provider.scope(build_client, lambda: sdk_client):
-            yield sdk_client
-        service._client = original_client
+        try:
+            with override_dependency(build_client, lambda: sdk_client, dependency_provider=dependency_provider):
+                yield sdk_client
+        finally:
+            service._client = original_client
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:
@@ -275,6 +333,10 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
         query_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
         await query_tags.new(db=db, name="GetDeviceWithTags", query=QUERY_UNIQUE_WITH_TAGS)
         await query_tags.save(db=db)
+
+        query_fragment_tags = await Node.init(db=db, schema="CoreGraphQLQuery")
+        await query_fragment_tags.new(db=db, name="GetDeviceWithFragmentTags", query=QUERY_UNIQUE_WITH_FRAGMENT_TAGS)
+        await query_fragment_tags.save(db=db)
 
         # --- Target group with the four devices that have instances ---
         targets_group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
@@ -406,6 +468,9 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
             "gendef_tags": build_definition(
                 "GetDeviceWithTags", query_tags.id, QUERY_UNIQUE_WITH_TAGS, targets_group.id
             ),
+            "gendef_fragment_tags": build_definition(
+                "GetDeviceWithFragmentTags", query_fragment_tags.id, QUERY_UNIQUE_WITH_FRAGMENT_TAGS, targets_group.id
+            ),
             "gendef_new": build_definition("GetNetworkDevice", query_unique.id, QUERY_UNIQUE_TARGETS, new_group.id),
         }
 
@@ -501,3 +566,43 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppBase):
         )
         expected_targets = {generator_dataset[key] for key in case.expected_keys}
         assert self._dispatched_target_ids(workflow_recorder) == expected_targets
+
+    @pytest.mark.parametrize("case", GENERATOR_WIDENING_LOG_CASES, ids=lambda case: case.name)
+    async def test_widening_warning_names_the_actual_reason(
+        self,
+        case: GeneratorWideningLogCase,
+        generator_dataset: dict[str, Any],
+        memory_cache: MemoryCache,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+        client: InfrahubClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        diff_summary = [
+            make_node_diff(
+                entry.id_key if entry.literal_id else generator_dataset[entry.id_key],
+                entry.kind,
+                SOURCE_BRANCH,
+                entry.fields,
+                element_type=entry.element_type,
+            )
+            for entry in case.diff
+        ]
+        with caplog.at_level(logging.INFO, logger=FLOW_RUN_LOGGER):
+            await self._run(
+                generator_dataset[case.definition_key],
+                generator_dataset,
+                self._make_context(admin_account, default_branch),
+                diff_summary,
+                memory_cache,
+                default_branch,
+            )
+
+        warnings = [
+            record.getMessage()
+            for record in caplog.records
+            if record.levelno == logging.WARNING and record.getMessage().startswith("Generator definition ")
+        ]
+        assert warnings == case.expected_warnings
+        assert self._dispatched_target_ids(workflow_recorder) == {generator_dataset[key] for key in case.expected_keys}

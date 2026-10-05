@@ -41,7 +41,7 @@ core_standard_webhook = NodeSchema(
 | `name` | `str` | *required* | Relationship name (lowercase, 3-64 chars) |
 | `peer` | `str` | *required* | Kind of the peer object (e.g., `InfrahubKind.KEYVALUE`) |
 | `kind` | `RelationshipKind` | `GENERIC` | Relationship type (see below) |
-| `identifier` | `str \| None` | `None` | Unique identifier; auto-generated if omitted |
+| `identifier` | `str \| None` | `None` | Names the shared relationship edge; auto-generated if omitted. Not unique within a node schema, see Direction |
 | `cardinality` | `RelationshipCardinality` | `MANY` | `ONE` or `MANY` |
 | `optional` | `bool` | `True` | Whether the relationship is mandatory |
 | `order_weight` | `int \| None` | `None` | Frontend display ordering (lower = first) |
@@ -71,13 +71,26 @@ When wiring a new cascade, inspect every schema for a mandatory relationship tha
 | `GENERIC` | Standard association between nodes |
 | `ATTRIBUTE` | Peer is semantically part of the parent (e.g., headers on a webhook) |
 | `COMPONENT` | Triggers template generation for the peer (see [Object Templates](templates.md)) |
-| `PARENT` | Hierarchical parent-child relationship |
+| `PARENT` | Marks the peer as the owning parent of this node |
 | `GROUP` | Group membership |
+| `HIERARCHY` | The generated `parent` / `children` pair on a hierarchical node |
+| `PROFILE` | Links a node to its profile |
+| `TEMPLATE` | Links an instance to the object template it came from |
 
 ### Direction
 
 - **`BIDIR`** (default) — traversable both ways. Use when peers are different kinds.
 - **`OUTBOUND`** / **`INBOUND`** — needed when the same model appears on both sides (self-referencing relationships).
+
+Both sides of one relationship share a single `identifier`, so it is not unique within a node
+schema. A hierarchical node carries two relationships under the identifier `parent__child`
+(`PARENT_CHILD_IDENTIFIER` in `core/constants/schema.py`): `parent` (`OUTBOUND`, cardinality
+`ONE`) and `children` (`INBOUND`, cardinality `MANY`). Both come from
+`SchemaBranch.add_hierarchy_node()` and `add_hierarchy_generic()`.
+
+`get_relationship_by_identifier()` therefore cannot resolve a hierarchy. It returns whichever side
+is declared first. Use `get_relationships_by_identifier()` instead and select the side whose
+`direction` equals the local relationship's `direction.neighbor_direction`.
 
 ### Branch Support Auto-Determination
 
@@ -184,7 +197,22 @@ shipped inside the published package.
 `validate_schema()` (`python_sdk/infrahub_sdk/schema/validate.py`) from the
 `validate_write_contract` validator on `SchemaLoadAPI` (`backend/infrahub/api/schema.py`).
 The same validator runs offline in the SDK, so a client gets the identical field-level
-verdict before submitting. After changing a field's `visibility` (or adding a field), run
+verdict before submitting. A rejected payload gets a standard 422 request-validation response
+with one `detail` entry per violation: `loc` runs from `["body", "schemas", <index>]` down to
+the offending field, `input` is the value received there and `msg` is the reason on its own.
+The three map one-to-one onto the `loc`, `input` and `reason` of the SDK validator's error
+details, so `infrahubctl` and any other client can name the field without parsing text.
+The mapping requires the SDK error detail to expose `loc`, `input` and `reason`; bump the
+`python_sdk` pointer alongside any change to that shape.
+
+Each entry carries its reason twice, in `msg` and in `ctx.reason`, because it is built from a
+message *template* whose placeholder the reason fills at render time. The template parameter is
+typed as a literal, so passing the runtime reason in its place would need a type-checker
+suppression the repo does not allow. The duplication is the cost of that constraint, not a
+signal that consumers should read `ctx`: `msg` is the rendered reason and stays the field to
+read.
+
+After changing a field's `visibility` (or adding a field), run
 `invoke backend.generate` and commit the regenerated SDK models alongside the backend
 change; CI fails if the generated artifact is stale.
 

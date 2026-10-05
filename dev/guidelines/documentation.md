@@ -1,6 +1,6 @@
 # Writing Documentation
 
-> Part of: `dev/guidelines/` | Related: [Markdown Standards](markdown.md), `docs/AGENTS.md`
+> Part of: `dev/guidelines/` | Related: [Markdown Standards](markdown.md)
 
 Guidelines for writing documentation in the Infrahub project. These principles apply to all documentation, regardless of format.
 
@@ -59,7 +59,8 @@ agents with a job to finish.
   explanation for `dev/knowledge/`, not a guideline
 - **Relative numbers, not absolute ones**: a measurement is only meaningful as a comparison, since the
   absolute figure depends on the environment it was taken in. Write "cuts merge wall time by roughly
-  4x", not "runs in 10s"
+  4x", not "runs in 10s". A count of code artifacts goes stale the same way — put the command that
+  reproduces it beside the number, or drop the count
 - **Pay for it**: cut the prose the new rule supersedes, and check the file against its size range
   in [Repository Organization](repository-organization.md) before appending. A file over its range
   gets split or compressed, not extended
@@ -97,7 +98,9 @@ agents with a job to finish.
 - Link to topic/explanation docs for background information (in guides)
 - Link to guides for task instructions (in topics)
 - Define technical terms on first use
-- Before citing a specific test as verifying a scenario (a spec table, a status doc), confirm that test function actually exists in the change or repo — label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
+- Before citing a concrete name — a test function, a flow or automation's registered name, a config key, a file path — grep for it and copy it verbatim: a near-miss name sends the reader (and every grep) to nothing. Label not-yet-written coverage as planned/unverified instead of naming a test that isn't there
+- Run every command a doc tells the reader to run, as written and from the stated starting point. The recurring failures are a missing required subcommand, a service name the compose file doesn't define, `cd`s that compound when a block is pasted as one, and an env var that expands on the host when the value only exists inside the container (wrap it in `docker compose exec <svc> sh -c '...'`)
+- Before restating a claim inherited from working notes, a spec, or a code comment, re-verify the behavior against the current code: a source recording the claim does not confirm the claim is still true
 
 ### Don't
 
@@ -116,6 +119,10 @@ agents with a job to finish.
 - Reference Jira tickets, GitHub issues, PR numbers, or spec files as the reason for a rule — describe the underlying behavior or constraint instead. These rot once the item closes and the spec is forgotten, and a reader can't verify a closed reference the way a reviewer could at review time. Work-item IDs belong in commit messages, PR descriptions, and changelog fragments; track a significant architectural decision in `dev/adr/` (see `dev/adr/README.md`) instead, written as a self-contained Context/Decision/Consequences record independent of the spec that prompted it
 - Cite a `file.py:123` or `file.py:100-140` line location — reference the module path and symbol only (`some/module.py::SomeClass`). A symbol reference survives the code moving within a file or being renamed at the call site; a line number does not, and a spec's own line-numbered citations routinely rot before the feature it describes even merges
 - Reference another step by its number ("see step 4") — numbering shifts when a step is added or removed; name the action instead ("after restarting the workers")
+- Enumerate the events that cause a behavior when you can state its condition ("the window moves when new commits reach the worker's copy", not a list of the operations that fetch) — a trigger list is wrong the moment a caller is added or removed
+- Bake a temporary feature switch's per-state semantics into durable docs — instead state what it gates and how to run each leg; per-state semantics leave the docs when the switch does
+- Write a shipped counterexample into a rule as a carve-out — the rule states the target; existing code that violates it is debt the rule deliberately flags, and it gets fixed in its own change rather than excused in the guideline
+- Edit the body of a dated review record (a `dev/specs/*/critiques/` file, an implement report) after the fact — it is a point-in-time record of a review that happened; append an erratum footer carrying the correction instead
 
 ## Documentation Workflow
 
@@ -148,5 +155,4 @@ uv run invoke docs.format        # Auto-format markdown files
 - [Markdown Standards](markdown.md) - Markdown formatting standards
 - [Writing a Guide](../guides/docs/writing-a-guide.md) - Step-by-step guide for writing guides
 - [Writing a Topic](../guides/docs/writing-a-topic.md) - Step-by-step guide for writing topics
-- `docs/AGENTS.md` - Main documentation guidelines
 - [Diataxis Framework](https://diataxis.fr/) - Documentation framework

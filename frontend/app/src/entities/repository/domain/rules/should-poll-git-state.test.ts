@@ -28,12 +28,12 @@ describe("shouldPollGitState", () => {
     expect(shouldPollGitState({ condition, unavailable: null })).toBe(false);
   });
 
-  test.each([
-    RepositoryGitUnavailableReason.NOT_CLONED,
-    RepositoryGitUnavailableReason.TIMEOUT,
-  ])("UNAVAILABLE with reason %s may resolve, so it polls", (reason) => {
-    expect(shouldPollGitState(unavailableStatus(reason))).toBe(true);
-  });
+  test.each([RepositoryGitUnavailableReason.NOT_CLONED, RepositoryGitUnavailableReason.TIMEOUT])(
+    "UNAVAILABLE with reason %s may resolve, so it polls",
+    (reason) => {
+      expect(shouldPollGitState(unavailableStatus(reason))).toBe(true);
+    }
+  );
 
   test("UNAVAILABLE with reason NOT_IMPLEMENTED never resolves, so it does not poll", () => {
     expect(

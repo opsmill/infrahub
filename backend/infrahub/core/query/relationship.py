@@ -76,33 +76,15 @@ class NodePropertyData:
 @dataclass
 class RelationshipPeerData:
     branch: str
-
     source_id: UUID
-    """UUID of the Source Node."""
-
     source_db_id: str
-    """Internal DB ID of the Source Node."""
-
     source_kind: str
-    """Kind of the Source Node."""
-
     peer_id: UUID
-    """UUID of the Peer Node."""
-
     peer_db_id: str
-    """Internal DB ID of the Peer Node."""
-
     peer_kind: str
-    """Kind of the Peer Node."""
-
     properties: dict[str, FlagPropertyData | NodePropertyData]
-    """UUID of the Relationship Node."""
-
     rel_node_id: UUID
-    """UUID of the Relationship Node."""
-
     rel_node_db_id: str | None = None
-    """Internal DB ID of the Relationship Node."""
 
     rels: list[RelData] | None = None
     """Both relationships pointing at this Relationship Node."""
@@ -1061,6 +1043,8 @@ RETURN updated_at, updated_by
         # ----------------------------------------------------------------------------
         await self._add_peer_order_by(db=db, peer_schema=peer_schema, branch_filter=branch_filter)
         self.order_by.append("peer.uuid ASC")
+        # Source nodes can share a peer, and a read in pages needs a total order to not skip rows.
+        self.order_by.append("source_node.uuid ASC")
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
@@ -1152,10 +1136,6 @@ class RelationshipGetByIdentifierQuery(Query):
             self.identifiers = identifiers
             self.full_identifiers = []
         self.excluded_namespaces = excluded_namespaces or []
-
-        # Always exclude relationships with internal nodes
-        if "Internal" not in self.excluded_namespaces:
-            self.excluded_namespaces.append("Internal")
 
         super().__init__(**kwargs)
 
@@ -1472,14 +1452,17 @@ class RelationshipDeleteAllQuery(Query):
     def get_deleted_relationships_changelog(
         self, node_schema: NodeSchema
     ) -> list[RelationshipCardinalityOneChangelog | RelationshipCardinalityManyChangelog]:
-        rel_identifier_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
+        # Both sides of a hierarchy share one identifier, so it cannot be the key.
+        rel_name_to_changelog_mapper: dict[str, ChangelogRelationshipMapper] = {}
 
         for item in self.get_data():
             if item.uuid == self.node_id:
                 continue
 
             deleted_rel_schemas = [
-                rel_schema for rel_schema in node_schema.relationships if rel_schema.identifier == item.rel_identifier
+                rel_schema
+                for rel_schema in node_schema.relationships
+                if rel_schema.get_identifier() == item.rel_identifier
             ]
 
             if len(deleted_rel_schemas) == 0:
@@ -1501,14 +1484,14 @@ class RelationshipDeleteAllQuery(Query):
                 deleted_rel_schema = deleted_rel_schemas[0]
 
             try:
-                changelog_mapper = rel_identifier_to_changelog_mapper[item.rel_identifier]
+                changelog_mapper = rel_name_to_changelog_mapper[deleted_rel_schema.name]
             except KeyError:
                 changelog_mapper = ChangelogRelationshipMapper(schema=deleted_rel_schema)
-                rel_identifier_to_changelog_mapper[item.rel_identifier] = changelog_mapper
+                rel_name_to_changelog_mapper[deleted_rel_schema.name] = changelog_mapper
 
             changelog_mapper.delete_relationship(peer_id=item.uuid, peer_kind=item.kind, rel_schema=deleted_rel_schema)
 
-        return [changelog_mapper.changelog for changelog_mapper in rel_identifier_to_changelog_mapper.values()]
+        return [changelog_mapper.changelog for changelog_mapper in rel_name_to_changelog_mapper.values()]
 
 
 class GetAllPeersIds(Query):

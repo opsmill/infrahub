@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import (
@@ -9,7 +11,7 @@ from infrahub.core.changelog.models import (
     RelationshipChangelogGetter,
     RelationshipPeerChangelog,
 )
-from infrahub.core.constants import DiffAction
+from infrahub.core.constants import DiffAction, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
@@ -480,3 +482,250 @@ async def test_node_changelog_parent(db: InfrahubDatabase, default_branch: Branc
     await car1_delete1.delete(db=db)
     assert car1_delete1.node_changelog.parent.node_id == person2.id
     assert car1_delete1.node_changelog.parent.node_kind == "TestPerson"
+
+
+async def test_secondary_changelog_names_the_hierarchy_children_relationship(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """A hierarchy peer must be told that `children` moved, not that its own `parent` did."""
+    region = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
+    await region.new(db=db, name="region-1")
+    await region.save(db=db)
+
+    site = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    await site.new(db=db, name="site-1", parent=region)
+    await site.save(db=db)
+
+    rack = await Node.init(db=db, schema="LocationRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1", parent=site)
+    await rack.save(db=db)
+
+    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    attached = await getter.get_changelogs(primary_changelog=rack.node_changelog)
+
+    assert [changelog.node_id for changelog in attached] == [site.id]
+    assert attached[0].node_kind == "LocationSite"
+    assert attached[0].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.ADDED)],
+        )
+    }
+
+    to_delete = await NodeManager.get_one(id=rack.id, db=db, raise_on_error=True)
+    await to_delete.delete(db=db)
+    detached = await getter.get_changelogs(primary_changelog=to_delete.node_changelog)
+
+    assert [changelog.node_id for changelog in detached] == [site.id]
+    assert detached[0].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[
+                RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.REMOVED)
+            ],
+        )
+    }
+
+
+async def test_deleted_middle_node_reports_both_hierarchy_sides(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Deleting a node with a parent and a child must report both sides, each on its own relationship."""
+    top = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
+    await top.new(db=db, name="top")
+    await top.save(db=db)
+
+    mid = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
+    await mid.new(db=db, name="mid", parent=top)
+    await mid.save(db=db)
+
+    leaf = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP, branch=default_branch)
+    await leaf.new(db=db, name="leaf", parent=mid)
+    await leaf.save(db=db)
+
+    to_delete = await NodeManager.get_one(id=mid.id, db=db, raise_on_error=True)
+    await to_delete.delete(db=db)
+
+    assert to_delete.node_changelog.relationships == {
+        "parent": RelationshipCardinalityOneChangelog(
+            name="parent", peer_id_previous=top.id, peer_kind_previous=InfrahubKind.STANDARDGROUP
+        ),
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=leaf.id, peer_kind=InfrahubKind.STANDARDGROUP, peer_status=DiffAction.REMOVED
+                )
+            ],
+        ),
+    }
+
+    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    secondaries = await getter.get_changelogs(primary_changelog=to_delete.node_changelog)
+
+    by_node = {changelog.node_id: changelog for changelog in secondaries}
+    assert sorted(by_node) == sorted([top.id, leaf.id])
+    assert by_node[top.id].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[
+                RelationshipPeerChangelog(
+                    peer_id=mid.id, peer_kind=InfrahubKind.STANDARDGROUP, peer_status=DiffAction.REMOVED
+                )
+            ],
+        )
+    }
+    assert by_node[leaf.id].relationships == {
+        "parent": RelationshipCardinalityOneChangelog(
+            name="parent", peer_id_previous=mid.id, peer_kind_previous=InfrahubKind.STANDARDGROUP
+        )
+    }
+
+
+async def test_secondary_changelog_hierarchy_move_reports_both_parents(
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema_simple: SchemaRoot
+) -> None:
+    """Moving a rack must tell the old site and the new site that `children` changed."""
+    region = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
+    await region.new(db=db, name="region-1")
+    await region.save(db=db)
+
+    site_1 = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    await site_1.new(db=db, name="site-1", parent=region)
+    await site_1.save(db=db)
+
+    site_2 = await Node.init(db=db, schema="LocationSite", branch=default_branch)
+    await site_2.new(db=db, name="site-2", parent=region)
+    await site_2.save(db=db)
+
+    rack = await Node.init(db=db, schema="LocationRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1", parent=site_1)
+    await rack.save(db=db)
+
+    moved = await NodeManager.get_one(id=rack.id, db=db, raise_on_error=True)
+    await moved.parent.update(data=site_2, db=db)
+    await moved.save(db=db)
+
+    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    secondaries = await getter.get_changelogs(primary_changelog=moved.node_changelog)
+
+    by_node = {changelog.node_id: changelog for changelog in secondaries}
+    assert sorted(by_node) == sorted([site_1.id, site_2.id])
+    assert by_node[site_1.id].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[
+                RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.REMOVED)
+            ],
+        )
+    }
+    assert by_node[site_2.id].relationships == {
+        "children": RelationshipCardinalityManyChangelog(
+            name="children",
+            peers=[RelationshipPeerChangelog(peer_id=rack.id, peer_kind="LocationRack", peer_status=DiffAction.ADDED)],
+        )
+    }
+
+
+# A generic whose two members name their side of `shared__link` differently.
+DIFFERING_PEER_NAMES: dict[str, Any] = {
+    "generics": [
+        {
+            "name": "Place",
+            "namespace": "Zzz",
+            "default_filter": "name__value",
+            "display_label": "name__value",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+        }
+    ],
+    "nodes": [
+        {
+            "name": "Device",
+            "namespace": "Zzz",
+            "default_filter": "name__value",
+            "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+            "relationships": [
+                {
+                    "name": "location",
+                    "peer": "ZzzPlace",
+                    "cardinality": "one",
+                    "identifier": "shared__link",
+                    "optional": True,
+                }
+            ],
+        },
+        {
+            "name": "Site",
+            "namespace": "Zzz",
+            "inherit_from": ["ZzzPlace"],
+            "relationships": [
+                {
+                    "name": "devices",
+                    "peer": "ZzzDevice",
+                    "cardinality": "many",
+                    "identifier": "shared__link",
+                    "optional": True,
+                }
+            ],
+        },
+        {
+            "name": "Rack",
+            "namespace": "Zzz",
+            "inherit_from": ["ZzzPlace"],
+            "relationships": [
+                {
+                    "name": "equipment",
+                    "peer": "ZzzDevice",
+                    "cardinality": "many",
+                    "identifier": "shared__link",
+                    "optional": True,
+                }
+            ],
+        },
+    ],
+}
+
+
+async def test_secondary_changelog_names_the_previous_peer_own_relationship(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, data_schema: None
+) -> None:
+    """A moved peer must be described by its own schema, not by the schema of the new peer."""
+    registry.schema.register_schema(schema=SchemaRoot(**DIFFERING_PEER_NAMES), branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+    site = await Node.init(db=db, schema="ZzzSite", branch=default_branch)
+    await site.new(db=db, name="site-1")
+    await site.save(db=db)
+
+    rack = await Node.init(db=db, schema="ZzzRack", branch=default_branch)
+    await rack.new(db=db, name="rack-1")
+    await rack.save(db=db)
+
+    device = await Node.init(db=db, schema="ZzzDevice", branch=default_branch)
+    await device.new(db=db, name="device-1", location=site)
+    await device.save(db=db)
+
+    moved = await NodeManager.get_one(id=device.id, db=db, raise_on_error=True)
+    await moved.location.update(data=rack, db=db)
+    await moved.save(db=db)
+
+    getter = RelationshipChangelogGetter(db=db, branch=default_branch)
+    by_node = {
+        changelog.node_id: changelog
+        for changelog in await getter.get_changelogs(primary_changelog=moved.node_changelog)
+    }
+
+    assert sorted(by_node) == sorted([site.id, rack.id])
+    assert by_node[site.id].relationships == {
+        "devices": RelationshipCardinalityManyChangelog(
+            name="devices",
+            peers=[RelationshipPeerChangelog(peer_id=device.id, peer_kind="ZzzDevice", peer_status=DiffAction.REMOVED)],
+        )
+    }
+    assert by_node[rack.id].relationships == {
+        "equipment": RelationshipCardinalityManyChangelog(
+            name="equipment",
+            peers=[RelationshipPeerChangelog(peer_id=device.id, peer_kind="ZzzDevice", peer_status=DiffAction.ADDED)],
+        )
+    }

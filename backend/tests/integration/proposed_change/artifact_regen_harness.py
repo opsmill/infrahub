@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from infrahub import config
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
@@ -14,10 +13,10 @@ from infrahub.message_bus.types import ProposedChangeBranchDiff, ProposedChangeR
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestProposedChangeRefreshArtifacts
 from infrahub.proposed_change.tasks import refresh_artifacts
-from infrahub.workers.dependencies import build_workflow
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_CHECK
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -47,12 +46,8 @@ class ArtifactRegenGateHarness(TestInfrahubApp):
     ) -> AsyncGenerator[WorkflowRecorder, None]:
         # workflow_local scopes build_workflow to the live local backend; depend on it so it runs
         # first, then re-scope to the recorder as the inner (active) provider for refresh_artifacts.
-        original = config.OVERRIDE.workflow
-        recorder = WorkflowRecorder()
-        config.OVERRIDE.workflow = recorder
-        with dependency_provider.scope(build_workflow, lambda: recorder):
+        with override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as recorder:
             yield recorder
-        config.OVERRIDE.workflow = original
 
     @pytest.fixture(autouse=True)
     def clear_recorder(self, workflow_recorder: WorkflowRecorder) -> None:

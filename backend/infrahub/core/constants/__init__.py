@@ -431,6 +431,7 @@ class MetadataOptions(Flag):
     USER_TIMESTAMPS = TIMESTAMPS | USERS
 
 
+INTERNAL_NAMESPACE = "Internal"
 PROFILE_NAMESPACE = "Profile"
 TEMPLATE_NAMESPACE = "Template"
 

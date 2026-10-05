@@ -114,6 +114,7 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Vertical flex layout | `Col` | `shared/components/container.tsx` |
 | Resizable panels | `ResizablePanelGroup` | `@infrahub/ui` |
 | Scrollable area | `ScrollArea` | `@infrahub/ui` |
+| Pan/zoom viewport with zoom controls | `PanZoom` | `shared/components/display/pan-zoom.tsx` |
 | Tooltip | `Tooltip` | `@infrahub/ui` |
 | Popover | `Popover` | `shared/components/ui/popover.tsx` |
 | Accordion | `Accordion` | `shared/components/ui/accordion.tsx` |

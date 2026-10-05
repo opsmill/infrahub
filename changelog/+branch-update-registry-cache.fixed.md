@@ -1,1 +1,0 @@
-Update the in-memory cache for branches after a branch change is saved to prevent the cache diverging from the database. The BranchUpdate mutation and the Prefect task to run database migrations against a branch are both fixed.

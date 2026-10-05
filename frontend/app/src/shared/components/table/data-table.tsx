@@ -5,6 +5,7 @@ import {
   getCoreRowModel,
   type RowSelectionOptions,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import React from "react";
 
@@ -25,6 +26,7 @@ import {
 interface DataTableBaseProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
+  columnVisibility?: VisibilityState;
   count?: number;
   data: Array<T>;
   isLoading?: boolean;
@@ -51,12 +53,21 @@ interface DataTableGridProps<T> extends DataTableBaseProps<T> {
   renderSelectionToolbar?: (selectedRows: T[], onClose: () => void) => React.ReactNode;
 }
 
-// `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare
-// `auto` track has no ceiling, so a single long value grows the column past the
-// viewport — and because the first column is sticky, it then paints over the row
-// action menu and the horizontal scrollbar.
+/**
+ * `fit-content` keeps short columns shrink-to-fit while capping long ones. A bare `auto` track has
+ * no ceiling, so a single long value grows the column past the viewport — and because the first
+ * column is sticky, it then paints over the row action menu and the horizontal scrollbar.
+ *
+ * The last two tracks belong to the identity and actions columns, so only the columns in between get
+ * a capped track. `repeat()` requires a positive integer: with nothing in between, `repeat(0, …)`
+ * makes the CSSOM reject the whole declaration — collapsing the grid to one implicit column and
+ * splitting every row in two. Column visibility clamps to at least one field column, so this arm is
+ * unreachable from the picker; it stays for any surface that builds its own column set.
+ */
 const defaultGridTemplateColumns = (columnCount: number) =>
-  `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
+  columnCount <= 2
+    ? "1fr 2.5rem"
+    : `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
 const getNodeId = (row: NodeCore) => row.id;
 
@@ -87,6 +98,7 @@ export function DataTable<T>(props: NodeDataTableProps<T & NodeCore> | PlainData
 function DataTableGrid<T>({
   columnOrder,
   columns,
+  columnVisibility,
   count,
   data,
   isLoading,
@@ -108,6 +120,7 @@ function DataTableGrid<T>({
     getRowId,
     state: {
       columnOrder,
+      columnVisibility,
     },
   });
 

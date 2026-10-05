@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { render } from "vitest-browser-react";
 import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 
 import { FloatingPanel } from "./floating-panel";
 
@@ -10,7 +10,7 @@ describe("FloatingPanel", () => {
     const component = await render(
       <FloatingPanel title="Filters" description="Refine results" onClose={() => {}}>
         <p>Body content</p>
-      </FloatingPanel>,
+      </FloatingPanel>
     );
 
     // THEN
@@ -24,7 +24,7 @@ describe("FloatingPanel", () => {
     const component = await render(
       <FloatingPanel title="Filters" isOpen={false} onClose={() => {}}>
         <p>Body content</p>
-      </FloatingPanel>,
+      </FloatingPanel>
     );
 
     // THEN
@@ -38,7 +38,7 @@ describe("FloatingPanel", () => {
     const component = await render(
       <FloatingPanel title="Filters" onClose={onClose}>
         <p>Body</p>
-      </FloatingPanel>,
+      </FloatingPanel>
     );
 
     // WHEN
@@ -54,7 +54,7 @@ describe("FloatingPanel", () => {
     await render(
       <FloatingPanel title="Filters" onClose={onClose} dismissable>
         <p>Body</p>
-      </FloatingPanel>,
+      </FloatingPanel>
     );
 
     // WHEN
@@ -70,7 +70,7 @@ describe("FloatingPanel", () => {
     await render(
       <FloatingPanel title="Filters" onClose={onClose}>
         <p>Body</p>
-      </FloatingPanel>,
+      </FloatingPanel>
     );
 
     // WHEN

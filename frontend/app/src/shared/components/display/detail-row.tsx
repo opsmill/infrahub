@@ -16,7 +16,7 @@ export interface DetailRowProps {
 // Object-details-style row (icon + muted term, value cell) with no schema/query coupling.
 export function DetailRow({ icon, label, labelId, children, className }: DetailRowProps) {
   return (
-    <dl className={classNames("grid grid-cols-[200px_auto] gap-4 px-3 py-2 text-sm", className)}>
+    <dl className={classNames("grid grid-cols-detail-row gap-4 px-3 py-2 text-sm", className)}>
       <dt className="flex items-center gap-1.5 font-medium text-foreground-muted">
         {typeof icon === "string" ? <Icon icon={icon} /> : icon}
         <span id={labelId}>{label}</span>

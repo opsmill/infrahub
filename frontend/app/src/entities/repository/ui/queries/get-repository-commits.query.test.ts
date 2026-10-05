@@ -157,20 +157,20 @@ describe("getRepositoryCommitsQueryOptions", () => {
       interval: REPOSITORY_COMMITS_POLL_INTERVAL_MS,
     },
     { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, interval: false },
-  ])("polls as for $reason after that answer arrives over loaded commits", ({
-    reason,
-    interval,
-  }) => {
-    // GIVEN
-    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
-    const { result } = resolveStructuralSharing(loaded, [buildUnavailableLog(reason)]);
+  ])(
+    "polls as for $reason after that answer arrives over loaded commits",
+    ({ reason, interval }) => {
+      // GIVEN
+      const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
+      const { result } = resolveStructuralSharing(loaded, [buildUnavailableLog(reason)]);
 
-    // WHEN
-    const nextInterval = resolveRefetchInterval(result.pages);
+      // WHEN
+      const nextInterval = resolveRefetchInterval(result.pages);
 
-    // THEN
-    expect(nextInterval).toBe(interval);
-  });
+      // THEN
+      expect(nextInterval).toBe(interval);
+    }
+  );
 
   test("appends a page fetched after a refetch answered unavailable", () => {
     // GIVEN

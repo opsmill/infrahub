@@ -6,10 +6,6 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 
 Infrahub's branching model allows teams to work on features, fixes, or experiments in isolated environments. Each branch represents a separate line of development, enabling parallel work streams without interference. Unlike traditional version control systems, Infrahub's approach combines the familiar Git branching concepts with the unique data management capabilities of its graph database foundation.
 
-<center>
-  <VideoPlayer url='https://www.youtube.com/watch?v=_I7liNBkNC8' light />
-</center>
-
 Key aspects of branching in Infrahub:
 
 - **Isolated realities**: Each branch provides a complete, isolated environment where changes can be made without affecting other branches or the production environment.
@@ -76,6 +72,8 @@ Unlike Git where all content is branch-specific, Infrahub introduces a nuanced a
 :::note
 You can define in the schema the branch behavior for a given node or attribute of a node.
 :::
+
+Because a branch-agnostic value is stored once and shared by every branch, deleting the object that holds it on a single branch does not remove the value. It is released only once no branch can still read that object, which may take a later delete, merge, rebase or branch deletion — see [Branch-agnostic data](./branch-agnostic-data.mdx).
 
 ### The default branch
 
@@ -153,3 +151,4 @@ This approach means creating a branch has minimal overhead, and storage grows on
 - [Proposed Changes](../proposed-changes/overview.mdx)
 - [Immutable History](../immutable-history/overview.mdx)
 - [Schema](../schema/overview)
+- [Branch awareness](../schema/branch-awareness)

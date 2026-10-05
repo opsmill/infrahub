@@ -143,8 +143,9 @@ and remove them when touching the code:
   (`peer`, `enum`, `dropdown`, `pool-select`, `relationship-one`/`-many`, `node-kind-select`,
   `kind-multi-select`), plus `shared/components/display/slide-over.tsx`,
   `shared/components/display/meta-details-tooltips.tsx`, `shared/components/table/data-table.tsx`,
-  `shared/components/ui/id.tsx`, and `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
-  reaches `nodes/object`'s `api/`).
+  `shared/components/ui/id.tsx`, `shared/libs/graphiql/use-graphiql-fetcher.ts` (which even
+  reaches `nodes/object`'s `api/`), and `shared/components/editor/markdown/markdown-with-mermaid.tsx`
+  (reads `useTheme` from `config` to bake the palette into its diagrams).
 <!-- Extracted from specs/001-entities-arch-migration on 2026-07-03 -->
 - Backend-authoritative violation: `path-traversal/domain/rules/visible-namespace.ts`
   (`HIDDEN_NAMESPACES`) is a client-side mirror of the backend `DEFAULT_EXCLUDED_NAMESPACES` —
@@ -324,6 +325,20 @@ The object views tier a node's attributes and relationships by the schema `displ
 `display` is read off the loaded schema like any other schema fact (see
 [Backend is authoritative](#backend-is-authoritative)); there is no client-side list of which fields
 are advanced.
+
+The list-view rules above take an optional second argument that opts named `extra` fields back in —
+see [Column Visibility](column-visibility.md).
+
+## Column visibility: the `columns` entity
+
+`entities/nodes/columns/` owns show/hide columns for every schema-driven table. It is the entity
+with **no `api/` layer and no `domain/use-cases/`**: it does no I/O — it reads the loaded schema and
+two URL params, so everything is `model` + `rules` + `ui`.
+
+Its folder layout, its URL contract, the `ColumnSurface` config that describes one table's column
+rules as data, which surfaces can reveal a hidden field rather than only hide a visible one, and the
+query-key consequences of a reveal are documented on their own page — see
+[Column Visibility](column-visibility.md).
 
 ## Reference Example: branches
 
