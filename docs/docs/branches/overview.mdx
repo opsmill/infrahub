@@ -145,6 +145,8 @@ Infrahub blocks some actions on a branch while a merge is running, after a merge
 | `MERGE_FAILED` | Infrahub, when the worker running the merge is no longer live | Writes to the branch and to the default branch, and deleting the branch | [`infrahub recover merge`](./merge.mdx#recovering-the-failed-merge) |
 | `MERGED` | A completed merge | Every change to the branch except deleting it | Not cleared: a merged branch stays read-only |
 
+In the web interface, Infrahub shows a badge on the branch: **Rebase needed** for `NEED_REBASE`, **Rebase needed (upgrade)** for `NEED_UPGRADE_REBASE`, and **Merged** for `MERGED`. It shows no badge for `MERGING` or `MERGE_FAILED`, so query the branch's `status` to see those.
+
 `OPEN` does not mean a branch is up to date with the default branch. Rebase the branch to include changes merged there since.
 
 ## Implementation details

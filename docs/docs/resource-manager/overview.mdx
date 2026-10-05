@@ -266,6 +266,10 @@ Because an allocation is reserved across every branch, deleting the object it wa
 
 The resource returns to the pool as soon as no branch can reach the object, whether that happens through the delete itself or through a later merge, rebase or branch deletion. Removing the allocated attribute or relationship from the schema releases it too, without deleting any object — again only once no branch still declares the field. See [Branch-agnostic data](../branches/branch-agnostic-data.mdx) for the full rule.
 
+When you create a device with `from_pool` on its `primary_ip` relationship, Infrahub takes the next free address from the pool, creates an IP address object for it, and links that object to the device. The two are separate objects. If you delete the device, Infrahub leaves the IP address object in place, and the pool still counts that address as in use. To return the address to the pool, delete the IP address object.
+
+The exception is a relationship that cascades: one whose schema sets `on_delete: cascade`, or whose `kind` is `Component`, which Infrahub treats as cascading by default. Infrahub then deletes the IP address when you delete the device.
+
 ## Idempotent allocation
 
 To get the same value back from an IP address pool or an IP prefix pool each time a script or a [Generator](../generators/overview) runs, pass an `identifier` when you allocate through the GraphQL API. For a later request to the same pool with the same identifier, Infrahub returns the value already reserved under it instead of allocating a new one:
