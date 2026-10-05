@@ -63,7 +63,7 @@ query GET_BRANCH_REPOSITORY_HEALTH(
 ```
 
 - Same two-kind split as Q1. Variables: `{ importErrorStatuses: ["error-import"], unreachableStatuses: REPOSITORY_OPERATIONAL_ERRORS, syncingStatuses: ["syncing"] }`. `__values` is an exact-match list filter (checked on a live stack).
-- No `limit`: failing repositories are expected to be a handful. The bands need every one of them (the "N more … with errors" summary names them all).
+- `limit: REPOSITORY_HEALTH_LIST_LIMIT` (50) on each list, with its `count`. Failures past the limit have no band; the summary line counts them from the server's `count` ("and N more"), without double-counting a repository that fails both ways.
 - Independent of the table page: feeds the bands and decides polling for Q1, Q1b and Q2.
 - Query key: `repositoryQueryKeys.branchHealth({ branchName, syncWithGit })`. `refetchInterval`: 10s while `syncing.count > 0`.
 

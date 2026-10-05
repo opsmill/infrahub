@@ -183,7 +183,7 @@ Follows the accepted architecture review of PR #10779 (research.md § "Restructu
 3. **Two `TablePagination` additions** (`aria-label`, focus ring) need to land in IFC-3130, or this PR's version wins the merge.
 4. **IFC-3130's `DataTable` vs hand-written tables** (D8). If the branches card's look should become the standard, both tables here move onto `DataTable` once IFC-3130 lands.
 5. **Sync-off branch with a `CoreRepository` created on it** (D10). The card lists read-only repositories only and says "imports and generators don't run on it", yet such a repository does import there and can fail. Keep the rule, or list every kind when the branch has its own repositories.
-6. **Failing repositories are unbounded in the health query.** No `limit`: fine for a handful, heavy if hundreds fail. A limit would need the summary line to use the server's count instead of listing names.
+6. ~~**Failing repositories are unbounded in the health query.**~~ Resolved 2026-10-05: each list is capped at 50, and the summary line counts the rest from the server's `count`.
 7. **URL keys** (D9): `repos_page` is now `repositories_page`; no alias kept, since the feature hasn't shipped.
 
 ---
