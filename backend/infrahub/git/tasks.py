@@ -307,11 +307,16 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     operational_status: str,
     infrahub_branch: str,
     staging_branch: str | None = None,
+    graph_commits: dict[str, str | None] | None = None,
 ) -> None:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
     A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
     the repository is online. A successful run where nothing moved on the remote is not linked.
+
+    Args:
+        graph_commits: The commit the graph records for this repository, per Infrahub branch, which is
+            what a rewritten history is detected against.
 
     Raises:
         RepositoryBranchesFailedError: When at least one branch failed to synchronize.
@@ -337,7 +342,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
     try:
-        report = await syncer.sync(repo, staging_branch=staging_branch)
+        report = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
     except RepositoryBranchesFailedError as exc:
         await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
         raise
@@ -446,8 +451,15 @@ async def sync_repository_from_origin(
     infrahub_branch: str,
     infrahub_branch_id: str,
     client: InfrahubClient,
+    graph_commits: dict[str, str | None] | None = None,
 ) -> None:
-    """Sync the repository from its origin and notify the worker pool of the resulting commit."""
+    """Sync the repository from its origin and notify the worker pool of the resulting commit.
+
+    Args:
+        graph_commits: The commit the graph records for this repository, per Infrahub branch, read
+            once for the whole cycle.
+
+    """
     log = get_run_logger()
     try:
         await sync_git_repo_with_origin_and_tag_on_failure(
@@ -458,6 +470,7 @@ async def sync_repository_from_origin(
             operational_status=repository.operational_status.value,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
+            graph_commits=graph_commits,
         )
         try:
             pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -520,6 +533,7 @@ async def sync_remote_repositories() -> None:
             infrahub_branch=infrahub_branch,
             infrahub_branch_id=branches[infrahub_branch].id,
             client=client,
+            graph_commits=dict(repository_data.branches),
         )
 
 

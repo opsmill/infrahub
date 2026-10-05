@@ -175,7 +175,7 @@ broadcast is built from them but carries `BranchCommitPair`, which holds no dive
 | `infrahub_branch_name` | `str` | The Infrahub branch. |
 | `infrahub_branch_id` | `str` | The branch UUID, not the database element id. A worker missing the worktree creates it under whatever it is given. |
 | `commit` | `str` | The commit the cycle pinned. |
-| `divergence` | `RefDivergence \| None` | Set when the branch was reconciled from a rewrite, `None` for an ordinary fast-forward. |
+| `divergence` | `RefDivergence \| None` | How the remote head compares to the commit the graph records, whatever the classification. `None` when the cycle had no graph commits to compare against, as in the add flow. |
 
 ---
 

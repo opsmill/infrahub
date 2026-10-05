@@ -757,15 +757,20 @@ async def test_sync_updated_branch(
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_sync_continues_after_branch_pull_failure(
+async def test_sync_continues_after_branch_collection_failure(
     prefect_test_fixture: None, git_repo_07: InfrahubRepository, mock_branch_all: AsyncMock
 ) -> None:
-    """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
+    """A branch whose collection fails must not prevent the synchronization of the remaining branches."""
     repo = git_repo_07
 
     for branch_name in ["branch01", "branch02"]:
         branch = Branch(name=branch_name, uuid=uuid4())
         registry.branch[branch.name] = branch
+
+    # The diverged branch01 is reset onto its remote head, which then fails to get a commit worktree.
+    blocked_commit = repo.get_commit_value(branch_name="branch01", remote=True)
+    (repo.directory_commits / blocked_commit).mkdir()
+    (repo.directory_commits / blocked_commit / "blocker.txt").write_text("blocking worktree creation\n")
 
     remote_commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
     assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)

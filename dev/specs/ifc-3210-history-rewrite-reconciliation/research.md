@@ -127,8 +127,9 @@ which is still the true answer to "what did Infrahub hold".
 
 ## R2. Where the read-write detection runs
 
-**Decision**: inside `git/repository.py::InfrahubRepository.collect_pending_imports`, over the
-`updated_branches` list returned by `compare_local_remote`, after `fetch()` and before `pull()`.
+**Decision**: inside `git/repository.py::InfrahubRepository.collect_pending_imports`, over every
+candidate branch, after `fetch()` and before `pull()`. The candidates are the union described below,
+plus the branches new to this worker.
 
 **Rationale**: the fetch that precedes it has already brought the remote objects in, so the
 ancestry test needs no network.

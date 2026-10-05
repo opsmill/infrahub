@@ -127,6 +127,11 @@ The collector therefore takes the union of two sets:
 
 Both are needed. Neither is a subset of the other.
 
+**A branch new to this worker is classified too.** The periodic sync runs on whichever worker picks
+it up, and that worker may never have held the branch. The graph can still record a commit another
+worker imported and the remote has since discarded. Skipping the classification there would leave
+the rewrite unrecorded whenever the cycle lands on such a worker.
+
 ### Where the graph commit comes from
 
 `collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not

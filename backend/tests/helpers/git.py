@@ -75,6 +75,21 @@ class LocalRemote:
         self.repo.git.checkout(remote_head)
         return commit
 
+    def rewrite_branch(self, branch_name: str, files: dict[str, str]) -> str:
+        """Replace the last commit of a branch with a new one, so the branch no longer holds the commit it replaced."""
+        remote_head = self.repo.active_branch.name
+        self.repo.git.checkout(branch_name)
+        for name, content in files.items():
+            (self.directory / name).write_text(content, encoding="utf-8")
+        self.repo.index.add(list(files))
+        self.repo.git.commit("--amend", "-m", f"Rewritten on {branch_name}")
+        commit = self.repo.head.commit.hexsha
+        self.repo.git.checkout(remote_head)
+        return commit
+
+    def move_branch(self, branch_name: str, commit: str) -> None:
+        self.repo.git.branch("-f", branch_name, commit)
+
     def delete_branch(self, branch_name: str) -> None:
         self.repo.git.branch("-D", branch_name)
 

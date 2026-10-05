@@ -29,6 +29,7 @@ from infrahub.exceptions import (
     RepositoryInvalidBranchError,
 )
 from infrahub.git import InfrahubRepository
+from infrahub.git.base import BranchInRemote
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -668,8 +669,11 @@ class _BranchSyncRepository(InfrahubRepository):
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         return (["branch01", "branch02"], [])
 
-    async def _exclude_read_only_branches(
-        self, new_branches: list[str], updated_branches: list[str]
+    def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
+        return {}
+
+    def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
         return (new_branches, updated_branches)
 
@@ -710,11 +714,6 @@ class _BranchSyncRepository(InfrahubRepository):
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         return True
 
-    async def _collect_staging_imports(
-        self, staging_branch: str | None, updated_branches: list[str]
-    ) -> list[PendingObjectImport]:
-        return []
-
 
 async def test_collect_pending_imports_isolates_per_branch_push_failure() -> None:
     """A connection failure while pushing one new branch is recorded, not raised over the others."""
@@ -729,7 +728,7 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
         internal_status=RepositoryInternalStatus.ACTIVE,
         reinitialized=False,
         infrahub_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        client=BranchListingClient(),
         connection_error_branch="branch01",
     )
 

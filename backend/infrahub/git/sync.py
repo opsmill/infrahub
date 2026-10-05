@@ -11,6 +11,8 @@ from .import_errors import RepositoryImportError, log_import_failure
 from .repository import FailedImport, ImportStep, InfrahubRepository, PendingObjectImport
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.lock import InfrahubLockRegistry
@@ -203,8 +205,17 @@ class RepositorySyncer:
         self._lock_registry = lock_registry
         self._importer = importer
 
-    async def sync(self, repo: InfrahubRepository, staging_branch: str | None = None) -> SyncReport:
+    async def sync(
+        self,
+        repo: InfrahubRepository,
+        staging_branch: str | None = None,
+        graph_commits: Mapping[str, str | None] | None = None,
+    ) -> SyncReport:
         """Synchronize the repository and report what the run did.
+
+        Args:
+            graph_commits: The commit the graph records for this repository, per Infrahub branch, which
+                is what a rewritten history is detected against.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -216,7 +227,7 @@ class RepositorySyncer:
 
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
-            collected = await repo.collect_pending_imports(staging_branch=staging_branch)
+            collected = await repo.collect_pending_imports(staging_branch=staging_branch, graph_commits=graph_commits)
 
         failed_imports = list(collected.failed_imports)
         imported_branches: list[str] = []
