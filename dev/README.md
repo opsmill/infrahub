@@ -99,6 +99,7 @@ Architecture Decision Records in [adr/](adr/):
 - [0017-coalesced-merge-rebase-recompute.md](adr/0017-coalesced-merge-rebase-recompute.md) - Coalesced deduplicated recompute pass on merge and rebase
 - [0018-static-transform-lifecycle-triggers.md](adr/0018-static-transform-lifecycle-triggers.md) - Static kind-scoped lifecycle triggers for Python-transform recompute
 - [0019-transform-lifecycle-owns-node-input-reconciliation.md](adr/0019-transform-lifecycle-owns-node-input-reconciliation.md) - Transform lifecycle flow owns node-input automation reconciliation
+- [0021-resource-allocation-telemetry.md](adr/0021-resource-allocation-telemetry.md) - Resource-allocation telemetry: container limits, carried by the heartbeat, in new blocks
 
 Start a new ADR from [template.md](adr/template.md).
 
