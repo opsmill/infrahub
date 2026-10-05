@@ -307,6 +307,25 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("renders the error screen with the message when the repository cannot be read", async () => {
+    // GIVEN
+    apiMock.mockRejectedValue(
+      new Error("Unable to find the node repo-1 / CoreRepository in the database.")
+    );
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect
+      .element(
+        component.getByText("Unable to find the node repo-1 / CoreRepository in the database.")
+      )
+      .toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+    expect(component.getByText(/Commit log not available/).query()).toBeNull();
+  });
+
   test("offers a refresh on the error screen when the first load fails", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new Error("Worker did not answer in time"));
@@ -510,12 +529,11 @@ describe("RepositoryCommitsManager", () => {
     expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
   });
 
-  test("offers a retry when a later page answers unavailable, and loads it on retry", async () => {
+  test("offers a retry when a later page answers unavailable, and loads only that page on retry", async () => {
     // GIVEN
     apiMock
       .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
       .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
       .mockResolvedValue(apiResult(generateSecondCommitsPage()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
@@ -532,8 +550,8 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
-    expect(apiMock).toHaveBeenCalledTimes(4);
-    expect(apiMock).toHaveBeenNthCalledWith(4, expect.objectContaining({ offset: 20, limit: 20 }));
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
@@ -561,28 +579,6 @@ describe("RepositoryCommitsManager", () => {
     expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
-  });
-
-  test("keeps offering the retry after a later poll succeeds without the missing page", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
-      .mockResolvedValue(apiResult(generateFirstCommitsPage()));
-    const component = await renderTab();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-    await expect
-      .element(component.getByText("Older commits could not be loaded right now."))
-      .toBeVisible();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
-    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
-    expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
   });
 
   test("settles the retry and offers it again when the retry fails too", async () => {
@@ -635,7 +631,7 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
-  test("hides the retry notice while a scroll-triggered page load is in flight", async () => {
+  test("keeps the retry pending while a scroll-triggered page load is in flight", async () => {
     // GIVEN
     let answerNextPage: (result: ApiResult) => void = () => {};
     apiMock
@@ -649,9 +645,7 @@ describe("RepositoryCommitsManager", () => {
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-    await expect
-      .element(component.getByText("Older commits could not be loaded right now."))
-      .toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
 
     // WHEN
     const nextPage = new InfiniteQueryObserver(
@@ -661,12 +655,12 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     await expect
-      .poll(() => component.getByText("Older commits could not be loaded right now.").query())
-      .toBeNull();
-    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
+      .element(component.getByRole("button", { name: "Retry" }))
+      .toHaveAttribute("data-pending");
     answerNextPage(apiResult(generateSecondCommitsPage()));
     await nextPage;
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
+    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
   });
 
   test("shows both the check time and the update time when they differ", async () => {

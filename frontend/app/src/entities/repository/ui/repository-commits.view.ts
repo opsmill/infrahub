@@ -9,7 +9,7 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
-import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
+import type { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 
 // Offset paging over a moving log can repeat a commit at a page boundary.
 export function getLoadedCommits(
@@ -22,58 +22,31 @@ export function getLoadedCommits(
   ];
 }
 
-export type HistoryRetry = "fetch-next-page" | "refetch";
-
-// A failed fetch leaves its page out of `pages`; an UNAVAILABLE answer is kept and ends paging, so only a refetch re-reads it.
-export function getHistoryRetry(
-  pages: Pick<RepositoryCommitLog, "condition">[],
-  { isFetchNextPageError }: { isFetchNextPageError: boolean }
-): HistoryRetry | null {
-  if (isFetchNextPageError) return "fetch-next-page";
-  const lastPage = pages.at(-1);
-  if (pages.length > 1 && lastPage !== undefined && !isGitStateAvailable(lastPage)) {
-    return "refetch";
-  }
-  return null;
-}
-
-export function isShowingStaleCommits({
-  firstPage,
-  hasError,
-  isFetchNextPageError,
-  loadedCommitCount,
-}: {
-  firstPage: Pick<RepositoryCommitLog, "condition">;
-  hasError: boolean;
-  isFetchNextPageError: boolean;
-  loadedCommitCount: number;
-}): boolean {
-  if (loadedCommitCount === 0) return false;
-  return (hasError && !isFetchNextPageError) || !isGitStateAvailable(firstPage);
-}
-
 export interface CommitLogEmptyState {
   title: string;
   message: string;
 }
 
 export function getEmptyState({
+  reason,
+  message,
+}: Pick<RepositoryGitUnavailableError, "reason" | "message">): CommitLogEmptyState {
+  if (reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
+    return {
+      title: "Commit log not available",
+      message: message || "Reading commits is not available in this version of Infrahub.",
+    };
+  }
+  return {
+    title: "Commit log not available yet",
+    message: message || "Waiting for a worker to answer.",
+  };
+}
+
+export function getNoCommitLogState({
   condition,
-  unavailable,
-}: Pick<RepositoryCommitLog, "condition" | "unavailable">): CommitLogEmptyState | null {
+}: Pick<RepositoryCommitLog, "condition">): CommitLogEmptyState | null {
   switch (condition) {
-    case RepositoryGitCondition.UNAVAILABLE:
-      if (unavailable?.reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
-        return {
-          title: "Commit log not available",
-          message:
-            unavailable.message || "Reading commits is not available in this version of Infrahub.",
-        };
-      }
-      return {
-        title: "Commit log not available yet",
-        message: unavailable?.message ?? "Waiting for a worker to answer.",
-      };
     case RepositoryGitCondition.NOT_TRACKED:
       return { title: "No commit log", message: "This branch tracks no remote ref." };
     case RepositoryGitCondition.NO_REMOTE:

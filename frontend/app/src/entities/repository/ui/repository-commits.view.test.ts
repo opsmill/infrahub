@@ -10,10 +10,9 @@ import {
   getConditionNotice,
   getEmptyState,
   getFreshness,
-  getHistoryRetry,
   getLoadedCommits,
+  getNoCommitLogState,
   getStateBadges,
-  isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 
 const IMPORTED_HASH = "a".repeat(40);
@@ -47,32 +46,23 @@ describe("getLoadedCommits", () => {
 });
 
 describe("getEmptyState", () => {
-  test("uses the worker's message when the log is unavailable", () => {
-    // GIVEN
-    const log = {
-      condition: RepositoryGitCondition.UNAVAILABLE,
-      unavailable: { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "Not cloned" },
-    };
-
+  test("uses the worker's message when the log is not available yet", () => {
     // WHEN
-    const emptyState = getEmptyState(log);
+    const emptyState = getEmptyState({
+      reason: RepositoryGitUnavailableReason.NOT_CLONED,
+      message: "Not cloned",
+    });
 
     // THEN
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Not cloned" });
   });
 
   test("says the log is not available, without a yet, when reading commits is not implemented", () => {
-    // GIVEN
-    const log = {
-      condition: RepositoryGitCondition.UNAVAILABLE,
-      unavailable: {
-        reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
-        message: "Reading commits is not implemented",
-      },
-    };
-
     // WHEN
-    const emptyState = getEmptyState(log);
+    const emptyState = getEmptyState({
+      reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
+      message: "Reading commits is not implemented",
+    });
 
     // THEN
     expect(emptyState).toEqual({
@@ -82,14 +72,11 @@ describe("getEmptyState", () => {
   });
 
   test("falls back to a version message when not implemented carries an empty message", () => {
-    // GIVEN
-    const log = {
-      condition: RepositoryGitCondition.UNAVAILABLE,
-      unavailable: { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, message: "" },
-    };
-
     // WHEN
-    const emptyState = getEmptyState(log);
+    const emptyState = getEmptyState({
+      reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED,
+      message: "",
+    });
 
     // THEN
     expect(emptyState).toEqual({
@@ -99,30 +86,32 @@ describe("getEmptyState", () => {
   });
 
   test("still says not available yet when the read timed out", () => {
-    // GIVEN
-    const log = {
-      condition: RepositoryGitCondition.UNAVAILABLE,
-      unavailable: { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
-    };
-
     // WHEN
-    const emptyState = getEmptyState(log);
+    const emptyState = getEmptyState({
+      reason: RepositoryGitUnavailableReason.TIMEOUT,
+      message: "Timed out",
+    });
 
     // THEN
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Timed out" });
   });
 
-  test("falls back to a waiting message when the unavailable log has no reason", () => {
-    // GIVEN
-    const log = { condition: RepositoryGitCondition.UNAVAILABLE, unavailable: null };
-
+  test.each([
+    { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "" },
+    { reason: null, message: "" },
+  ])("falls back to a waiting message when $reason carries an empty message", (unavailable) => {
     // WHEN
-    const emptyState = getEmptyState(log);
+    const emptyState = getEmptyState(unavailable);
 
     // THEN
-    expect(emptyState?.message).toBe("Waiting for a worker to answer.");
+    expect(emptyState).toEqual({
+      title: "Commit log not available yet",
+      message: "Waiting for a worker to answer.",
+    });
   });
+});
 
+describe("getNoCommitLogState", () => {
   test.each([
     { condition: RepositoryGitCondition.NOT_TRACKED, message: "This branch tracks no remote ref." },
     {
@@ -131,7 +120,7 @@ describe("getEmptyState", () => {
     },
   ])("explains why $condition has no commit log", ({ condition, message }) => {
     // WHEN
-    const emptyState = getEmptyState({ condition, unavailable: null });
+    const emptyState = getNoCommitLogState({ condition });
 
     // THEN
     expect(emptyState).toEqual({ title: "No commit log", message });
@@ -144,7 +133,7 @@ describe("getEmptyState", () => {
     RepositoryGitCondition.ORPHANED,
   ])("leaves %s to the table's own empty row", (condition) => {
     // WHEN
-    const emptyState = getEmptyState({ condition, unavailable: null });
+    const emptyState = getNoCommitLogState({ condition });
 
     // THEN
     expect(emptyState).toBeNull();
@@ -319,145 +308,5 @@ describe("getConditionNotice", () => {
 
     // THEN
     expect(notice).toBeNull();
-  });
-});
-
-describe("getHistoryRetry", () => {
-  const available = { condition: RepositoryGitCondition.IN_SYNC };
-  const cold = { condition: RepositoryGitCondition.UNAVAILABLE };
-
-  test("offers no retry for a single unavailable first page", () => {
-    // GIVEN
-    const pages = [cold];
-
-    // WHEN
-    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
-
-    // THEN
-    expect(retry).toBeNull();
-  });
-
-  test("refetches when a later page answers unavailable", () => {
-    // GIVEN
-    const pages = [available, cold];
-
-    // WHEN
-    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
-
-    // THEN
-    expect(retry).toBe("refetch");
-  });
-
-  test("fetches the next page again when fetching it failed", () => {
-    // GIVEN
-    const pages = [available, available];
-
-    // WHEN
-    const retry = getHistoryRetry(pages, { isFetchNextPageError: true });
-
-    // THEN
-    expect(retry).toBe("fetch-next-page");
-  });
-
-  test("prefers fetching the next page when it failed after an unavailable page", () => {
-    // GIVEN
-    const pages = [available, cold];
-
-    // WHEN
-    const retry = getHistoryRetry(pages, { isFetchNextPageError: true });
-
-    // THEN
-    expect(retry).toBe("fetch-next-page");
-  });
-
-  test("offers no retry when every loaded page is available", () => {
-    // GIVEN
-    const pages = [available, available];
-
-    // WHEN
-    const retry = getHistoryRetry(pages, { isFetchNextPageError: false });
-
-    // THEN
-    expect(retry).toBeNull();
-  });
-});
-
-describe("isShowingStaleCommits", () => {
-  test("flags loaded commits kept over a failed refresh", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
-      hasError: true,
-      isFetchNextPageError: false,
-      loadedCommitCount: 3,
-    });
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  test("leaves a failed next page to the history retry", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
-      hasError: true,
-      isFetchNextPageError: true,
-      loadedCommitCount: 3,
-    });
-
-    // THEN
-    expect(result).toBe(false);
-  });
-
-  test("does not flag a failure with nothing loaded", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
-      hasError: true,
-      isFetchNextPageError: false,
-      loadedCommitCount: 0,
-    });
-
-    // THEN
-    expect(result).toBe(false);
-  });
-
-  test("does not flag loaded commits without an error", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.IN_SYNC },
-      hasError: false,
-      isFetchNextPageError: false,
-      loadedCommitCount: 3,
-    });
-
-    // THEN
-    expect(result).toBe(false);
-  });
-
-  test("flags loaded commits kept over an unavailable first page", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.UNAVAILABLE },
-      hasError: false,
-      isFetchNextPageError: false,
-      loadedCommitCount: 3,
-    });
-
-    // THEN
-    expect(result).toBe(true);
-  });
-
-  test("does not flag an unavailable first page with nothing loaded", () => {
-    // WHEN
-    const result = isShowingStaleCommits({
-      firstPage: { condition: RepositoryGitCondition.UNAVAILABLE },
-      hasError: false,
-      isFetchNextPageError: false,
-      loadedCommitCount: 0,
-    });
-
-    // THEN
-    expect(result).toBe(false);
   });
 });
