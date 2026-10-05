@@ -152,7 +152,8 @@ backend/infrahub/
 │   │   ├── regeneration_barrier.py        # NEW
 │   │   ├── regeneration_release.py        # NEW
 │   │   ├── regeneration_dispatcher.py     # barrier at four sites, new fallback reason
-│   │   ├── repository_merge_dispatcher.py # enqueue before submit, per-repository guard, context
+│   │   ├── repository_merge_dispatcher.py # enqueue before submit, bounded retry,
+│   │   │                                  # per-repository guard, context
 │   │   ├── recompute_coalescing.py        # barrier on the Python family
 │   │   ├── python_target_sources.py       # owner_of
 │   │   ├── builder.py                     # wiring

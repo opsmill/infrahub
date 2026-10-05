@@ -337,6 +337,11 @@ unreplayable, with a cause that names the discarded source commit.
   detected but commit unchanged" loop.
 - **The delivery completes before the merge follow-up runs.** The barrier sees an empty queue and
   dispatches as usual. It holds nothing, and no release runs. Nothing regenerates twice.
+- **The merge cannot record its queue entry.** The merge retries the record a bounded number of
+  times. If every try fails, the merge follow-up sees no pending delivery. It regenerates the work of
+  that repository against the commit recorded before the merge. The delivery records the entry
+  before its first attempt. After the delivery, the release regenerates every definition of that
+  repository against the delivered commit. Work runs twice, and no stale result stays.
 - **Several repositories fail delivery after the same merge.** Each keeps its own queue and its own
   held set, and each releases independently.
 - **A held definition is deleted before the release.** It is skipped, and its absence widens the
@@ -424,7 +429,10 @@ system, and the new delivery path must keep them true.*
   repository MUST NOT be queued. A worker whose clone of the repository has no remote MUST NOT
   record a commit, and MUST NOT remove an entry from the queue.
 - **FR-005a**: The system MUST record a merge in the queue before the first delivery attempt for it
-  starts, and before the merge follow-up consults the regeneration barrier. A failure to record one
+  starts, and before the merge follow-up consults the regeneration barrier. When the record fails,
+  the system MUST retry it a bounded number of times. If every retry fails, the delivery MUST record
+  the entry before its first attempt, and the regeneration that the merge follow-up dispatched for
+  that repository without a hold MUST run again after the delivery. A failure to record one
   repository's entry MUST NOT stop the delivery of any repository.
 - **FR-005b**: An entry that left the queue MUST NOT come back.
 - **FR-006**: The system MUST NOT force-push to the remote under any circumstance.
@@ -569,8 +577,10 @@ state from the repository node.
   the definitions that the repository owns. Outside the widened fallback, it covers only the
   definitions that the affected merges touched. No artifact, generator or transform-based computed
   attribute on the merge follow-up path runs against a commit other than the one that is finally on
-  the remote, except when the barrier cannot read the delivery state after a bounded retry, which it
-  logs at error level.
+  the remote. Two exceptions are logged at error level. First, the barrier cannot read the delivery
+  state after a bounded retry. Second, the merge cannot record its queue entry after a bounded retry.
+  In the second case, the release after the delivery runs that regeneration again, so no result of
+  the earlier commit stays.
   A failure between the dispatch and the clear can repeat a release, and it can never drop one.
 - **SC-005**: No deferred regeneration is ever dropped. The clear of the held work and its dispatch
   are inseparable, on the abandonment path and on the delivery path.
@@ -666,7 +676,10 @@ These were settled without asking. Three of them need confirmation, and say so.
 5. **FR-005a is added.** The PRD states it as an implementation decision: "Delivery state is recorded
    before the delivery workflow is submitted, which makes the barrier race-free". It is a
    requirement in fact, because without it the barrier can see an empty queue for a merge whose
-   delivery has not started.
+   delivery has not started. The record itself can fail. The merge follow-up then sees no pending
+   delivery and regenerates against the old commit. So FR-005a also requires a bounded retry, and a
+   second run of that regeneration after the delivery. A block of the delivery for that repository
+   was rejected: the remote would then never receive the merge.
 6. **FR-005b is added.** A merge flow can start after its entry was abandoned. Without the rule, it
    would put the entry back and push it.
 7. **FR-022 is added.** It carries IFC-3210's FR-005b, "the system MUST NOT push a commit the remote

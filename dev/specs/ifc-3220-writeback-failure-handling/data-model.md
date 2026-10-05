@@ -112,7 +112,7 @@ untyped dictionaries for this data.
 | `format` | `Literal[1]` | |
 | `version` | `int` | Starts at 0 for an empty queue that was never used. A null `delivery_queue` reads as version 0. Increases by one when an entry is added or removed. A flag change on an entry does not move it. An abandonment names it. |
 | `entries` | `tuple[PendingMerge, ...]` | In merge order. |
-| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: the merge flow writes an entry only when it is `False`, that is, when the dispatcher's enqueue did not return (`research.md` R3). |
+| `removed_entry_ids` | `tuple[str, ...]` | The last 256 entry ids that left the queue. `enqueue` refuses them, and the ids of `delivery_last_abandonment.entries` too. This is the second guard of FR-005b. The first guard is `GitRepositoryMerge.pending_merge_enqueued`: the merge flow writes an entry only when it is `False`, that is, when no try of the dispatcher's enqueue returned (`research.md` R3). |
 | `import_owed_commit` | `str \| None` | A recorded commit whose import has not succeeded yet (FR-023). Set only while the queue is non-empty. |
 
 ### `DeliveryProgress`
@@ -147,7 +147,7 @@ destination branch.
 | `artifact_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
 | `generator_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
 | `python_attributes` | `tuple[HeldPythonAttribute, ...]` | One item per `(kind, attribute)`. |
-| `widen` | `HeldWiden \| None` | Set when a blanket regeneration of the repository is owed (`research.md` R9, R10). |
+| `widen` | `HeldWiden \| None` | Set when a blanket regeneration of the repository is owed: by a full-regeneration fallback of the barrier, or by `merge_git_repository` after a failed first write (`research.md` R3, R9, R10). |
 | `release_leases` | `tuple[ReleaseLease, ...]` | The releases in progress (`research.md` R10). |
 
 `HeldItem` is `id: str`, `hold_seq: int`. `HeldPythonAttribute` is `kind: str`, `attribute: str`,
@@ -155,7 +155,9 @@ destination branch.
 `HeldWiden` is `scope: Literal["all", "terminals"]`, `hold_seq: int`; a wider scope replaces a
 narrower one. Scope `all` covers every definition and Python attribute of the repository. Scope
 `terminals` covers only its artifact definitions, so the held generator items and Python items stay
-owed. `ReleaseLease` is `lease_id: str`, `from_seq: int`, `up_to_seq: int`, `expires_at: datetime`.
+owed. The barrier sets either scope. `merge_git_repository` sets scope `all` in the save that
+writes an entry that the dispatcher could not write (`research.md` R3). `ReleaseLease` is
+`lease_id: str`, `from_seq: int`, `up_to_seq: int`, `expires_at: datetime`.
 
 `HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence, and reports the
 previous sequence of each refreshed item. `lease_window(now)` returns the items that no live lease
@@ -224,6 +226,7 @@ its progress timestamps and never changes the status.
 | From | Event | To | Writes |
 |---|---|---|---|
 | any | enqueue | `pending` | append entry, bump version, `last_progress_at` |
+| any | enqueue by `merge_git_repository`, after a failed first write | `pending` | as enqueue, plus a `widen` marker of scope `all` with the next sequence, in the same save; nothing when the id is refused (`research.md` R3) |
 | `pending`, `action-required` | attempt with entries starts | `pending` | `attempt_started_at`, `last_progress_at`, clear `retry_due_at` |
 | `pending` | step boundary of an attempt | unchanged | `last_progress_at` |
 | `pending` | retryable failure, not the final attempt | `pending` | cause, error, `retry_due_at`, `last_progress_at` |
@@ -251,10 +254,11 @@ its progress timestamps and never changes the status.
    abandonment that writes its record in the same save (FR-009, SC-006). Both happen under the
    repository lock.
 5. An entry id that left the queue is never appended again. The merge flow appends only when
-   `pending_merge_enqueued` is `False`, that is, when the dispatcher's enqueue did not return. The
-   entry is then not in the queue, except in one case: the dispatcher's write committed, but its call
-   raised. For that case, `enqueue` refuses an id that is still in `entries`, and an id that left
-   the queue and is in `removed_entry_ids` or in the last abandonment record.
+   `pending_merge_enqueued` is `False`, that is, when no try of the dispatcher's enqueue returned.
+   The entry is then not in the queue, except in one case: a try's write committed, but its call
+   raised, and every later try raised too. For that case, `enqueue` refuses an id that is still in
+   `entries`, and an id that left the queue and is in `removed_entry_ids` or in the last abandonment
+   record.
 6. Every read and write happens on Infrahub's default branch, under the delivery-state lock.
 7. A hold recorded above a release's bound survives that release's clear (FR-015). For a delivery
    the bound is the attempt's snapshot, so a hold for a merge that is still queued waits for that
@@ -263,6 +267,9 @@ its progress timestamps and never changes the status.
 9. An owed import implies a non-empty queue.
 10. Two live leases never cover the same held item.
 11. No write emits a node mutation event (FR-026).
+12. An entry that `merge_git_repository` appends comes with a `widen` marker of scope `all` in the
+    same save. The follow-ups of that merge ran without a hold, so the release after the delivery
+    runs their work again (`research.md` R3).
 
 ---
 
@@ -308,7 +315,7 @@ Every new field is optional with a default, so a run queued by the previous code
 | Model | Module | Field | Type |
 |---|---|---|---|
 | `GitRepositoryMerge` | `git/models.py` | `pending_merge` | `PendingMerge \| None = None`. `None` makes the flow build the entry itself. |
-| `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when its own enqueue returned. Only `False` makes the flow write the entry. |
+| `GitRepositoryMerge` | `git/models.py` | `pending_merge_enqueued` | `bool = False`. The dispatcher sets `True` only when one of its enqueue tries returned. Only `False` makes the flow write the entry, with a `widen` marker of scope `all`. |
 | `RequestArtifactDefinitionGenerate` | `git/models.py` | `repository_id` | `str \| None = None` |
 | `generate_artifact_definition` flow | `git/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |
 | `run_generator_definition` flow | `generators/tasks.py` | `exclude_repository_ids`, `include_repository_ids` | `list[str] \| None = None` |

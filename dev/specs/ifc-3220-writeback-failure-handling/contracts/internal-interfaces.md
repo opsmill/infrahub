@@ -14,8 +14,8 @@ parameters, per-run values are entry-point arguments, and each flow builds the g
 ```text
 backend/infrahub/git/writeback/          # NEW
 ├── __init__.py
-├── constants.py     # retry bounds, barrier read retries, Git timeouts, STALE_AFTER,
-│                    # cache time to live and size bound
+├── constants.py     # retry bounds, enqueue retries, barrier read retries, Git timeouts,
+│                    # STALE_AFTER, cache time to live and size bound
 ├── models.py        # DeliveryQueue, PendingMerge, HeldRegeneration, AbandonmentRecord,
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
 ├── classifier.py    # classify_delivery_failure, scrub_credentials
@@ -45,7 +45,7 @@ class DeliveryStatePort(Protocol):
     async def pending_repository_ids(self) -> frozenset[str]: ...
     async def references_source_branch(self, *, repository_id: str, git_branch: str) -> bool: ...
 
-    async def enqueue(self, *, repository_id: str, entry: PendingMerge) -> WritebackIntent: ...
+    async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent: ...
     async def start_attempt(self, *, repository_id: str) -> WritebackIntent: ...
     async def record_failure(
         self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
@@ -81,7 +81,7 @@ Every method except the first three runs under the delivery-state lock (30-secon
 | `read` | A consistent snapshot of one node on the default branch. |
 | `pending_repository_ids` | One query on the scalar `delivery_status`: every `CoreRepository` on the default branch whose status is not `none`. The barrier's fast path. An owed import implies a non-empty queue, so the status covers it. |
 | `references_source_branch` | The guard of FR-011. |
-| `enqueue` | Appends unless the id is present, in `removed_entry_ids`, or in the last abandonment record. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. The refusals are the second guard of FR-005b. The first guard is the flag `pending_merge_enqueued` of section 10. |
+| `enqueue` | Appends unless the id is present, in `removed_entry_ids`, or in the last abandonment record. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. The refusals are the second guard of FR-005b. The first guard is the flag `pending_merge_enqueued` of section 10. With `widen=True`, and only when it appends, the same save holds a `widen` marker of scope `all` with the next hold sequence, as `hold` does. `merge_git_repository` passes `True`, and the dispatcher passes `False` (`research.md` R3). `widen` has no default, so a caller cannot forget it. |
 | `start_attempt` | Returns the snapshot. Stamps `attempt_started_at` and `last_progress_at`, and clears `retry_due_at`. Sets `pending` only when the queue is non-empty. Keeps the cause, so a waiting retry still shows the last failure. |
 | `record_failure` | Writes the cause, the scrubbed message, `last_progress_at`, and `retry_due_at`. With a non-empty queue, `final=True` sets `action-required` and clears `retry_due_at`. With an empty queue it never changes the status. |
 | `progress` | Moves `last_progress_at` at a step boundary. |
@@ -224,7 +224,7 @@ Three callers, one task:
 
 | Flow | Caller |
 |---|---|
-| `git-repository-merge` (`merge_git_repository`) | first attempt. Before it, the flow enqueues `model.pending_merge`, or the entry it builds when that is `None`, only when `model.pending_merge_enqueued` is `False` |
+| `git-repository-merge` (`merge_git_repository`) | first attempt. Before it, the flow enqueues `model.pending_merge`, or the entry it builds when that is `None`, only when `model.pending_merge_enqueued` is `False`. It passes `widen=True`, so the same save holds a `widen` marker of scope `all`, and the release after this delivery runs again the regeneration that the follow-ups dispatched without a hold (`research.md` R3) |
 | `git-repository-delivery-retry` (`retry_repository_delivery`) | manual retry (`manual=True`), and the recovery check (`manual=False`) |
 
 ```python
@@ -453,9 +453,9 @@ Contract:
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
-| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Before it delivers, the default path enqueues only when `pending_merge_enqueued` is `False`: it enqueues `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). When the flag is `True`, it never enqueues and only delivers (`research.md` R3). |
+| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Before it delivers, the default path enqueues only when `pending_merge_enqueued` is `False`: it enqueues `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). It passes `widen=True`: the save that appends the entry also holds a `widen` marker of scope `all` for the repository, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When the flag is `True`, it never enqueues and only delivers (`research.md` R3). |
 | `git/tasks.py::git_branch_delete` | When `references_source_branch` is true: calls `request_branch_deletion`, skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
-| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard, passes it in the model, and passes the merge's `context`. Sets `pending_merge_enqueued` to `True` only when its own enqueue returned. Submits no merge workflow for an `active` repository whose source commit carries no content. |
+| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Takes a `sleep` callable in its constructor, as the barrier does, so a unit test records the delays and returns at once. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
 | `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |
 | `core/merge/selective_regen/definition_selector/artifact_selector.py::ArtifactSelector._build_request` | Fills `repository_id`. |

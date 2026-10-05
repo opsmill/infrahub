@@ -204,10 +204,11 @@ this codebase uses for node attributes.
 
 **Decision**: `RepositoryMergeDispatcher.merge_core_repositories` writes the entry before it submits
 `GIT_REPOSITORIES_MERGE`, and passes it in `GitRepositoryMerge.pending_merge`. Each repository's
-enqueue is guarded on its own: a failed enqueue is logged, and the merge is still submitted with
-`pending_merge` set. The dispatcher sets `GitRepositoryMerge.pending_merge_enqueued` to `True` only
-when its own enqueue returned. The flow writes the entry before its first attempt only when that flag
-is `False`.
+enqueue is guarded on its own. A failed enqueue is retried with a bound. If the last retry fails
+too, the dispatcher logs at error level, and the merge is still submitted with `pending_merge` set.
+The dispatcher sets `GitRepositoryMerge.pending_merge_enqueued` to `True` only when one of its tries
+returned. The flow writes the entry before its first attempt only when that flag is `False`. The
+save that writes it also holds a `widen` marker of scope `all` for the repository.
 
 **Which merges are queued** (FR-005): only a repository whose internal status on the source branch
 is `active`, on a source branch that syncs with Git, and whose source commit carries repository
@@ -256,12 +257,52 @@ that commit. Delivering exactly that commit keeps the remote content and the mer
 end of `run_follow_ups`. Both consult the barrier. An entry written by the delivery flow would arrive
 after them.
 
+**When the first write fails** (FR-005a). If the entry is not in the queue when the follow-ups
+consult the barrier, the barrier sees no pending delivery for the repository and admits its work.
+That work runs against the recorded commit, which does not hold the merge. The delivery flow writes
+the entry later, but the barrier held nothing for that work, so no release would run it again. Two
+steps close this gap:
+
+1. **A bounded retry.** The dispatcher retries a failed enqueue as the barrier retries a failed
+   read (R9): `ENQUEUE_RETRIES` times, 3, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`, 2, 8
+   and 20 seconds. The values are the barrier's, for the same reason: a lock that a dead worker left
+   expires within its 30-second time to live, and the last try starts at least 30 seconds after the
+   first. `enqueue` is idempotent, so a try after a write that committed but raised finds the id
+   present and returns.
+2. **A second run of the regeneration.** When every try fails, the delivery flow writes the entry
+   with `widen=True`. The save that appends the entry also holds a `widen` marker of scope `all` for
+   the repository. The queue is non-empty in that save, so the hold always succeeds, and the
+   attempt's snapshot comes after it. The release after the delivery then runs a full regeneration
+   of the repository's definitions against the delivered commit (R10). It covers every definition
+   that the follow-ups dispatched without a hold.
+
+A run that the previous code queued carries no `pending_merge`, and its follow-ups ran with no
+barrier. The flow holds the same marker when it writes the entry of that run.
+
+When `enqueue` refuses the id, it holds no marker. A refusal means that a try of the dispatcher
+wrote the entry before the follow-ups ran, so the barrier saw it.
+
+**The cost.** When every try fails, and only then, the repository's definitions regenerate twice:
+once against the old commit, and once against the delivered commit. A stale result never stays. The
+retry delays the merge flow only while the store fails. The delays add up to 30 seconds for each
+repository whose enqueue fails. When the lock acquire times out, each try also waits up to
+`STATE_LOCK_ACQUIRE_SECONDS`, 10 seconds (R2).
+
+**Rejected: no delivery for the repository whose write failed.** The graph already holds the merge.
+Without a delivery, the remote never receives it.
+
+**Rejected: an intent that the barrier reads, written before the follow-ups.** It is a write to the
+same store, which just failed.
+
+**Rejected: the follow-ups wait for the write with no bound.** The merge flow would then wait for the
+whole failure of the store.
+
 **When the flow writes the entry, and why that is safe** (FR-005b). The flow's write repairs a
 failed first write. It must not put an abandoned entry back: a merge flow can wait in the Prefect
 queue while a user abandons. So the flow writes the entry only when `pending_merge_enqueued` is
 `False`. Two runs have that value:
 
-- The dispatcher's enqueue did not return. The flow writes `model.pending_merge`.
+- No try of the dispatcher's enqueue returned. The flow writes `model.pending_merge`.
 - The previous code queued the run, so it carries no `pending_merge`. The flow builds the entry from
   the source branch's graph commit, as the dispatcher would.
 
@@ -270,11 +311,13 @@ paragraph names the one exception. When the flag is `True`, the flow never write
 delivers. If a user abandoned the entry meanwhile, the snapshot does not contain it, and the attempt
 pushes nothing. This is the guarantee of FR-005b.
 
-**The second guard.** One case remains: the dispatcher's write committed, but its call raised after
-it. The flag is then `False` while the entry is in the queue. For this case, `enqueue` refuses an id
-that is present, in `removed_entry_ids` (the last 256 ids that left the queue), or in
-`delivery_last_abandonment.entries`. Both bounds expire. The entry can come back only when 256 other
-entries leave the queue and a second abandonment replaces the record, all before the late flow runs.
+**The second guard.** One case remains: a try of the dispatcher committed its write but raised
+after it, and every later try raised too. If a later try returns, it finds the id present, and the
+dispatcher sets the flag. The flag is then `False` while the entry is in the queue. For this case,
+`enqueue` refuses an id that is present, in `removed_entry_ids` (the last 256 ids that left the
+queue), or in `delivery_last_abandonment.entries`. Both bounds expire. The entry can come back only
+when 256 other entries leave the queue and a second abandonment replaces the record, all before the
+late flow runs.
 
 **Rejected**: keying the queue on the Infrahub branch. The Infrahub branch can be deleted right
 after the merge (`delete_branch_after_merge`), while the remote branch is protected by FR-011.
@@ -721,6 +764,9 @@ delivery, the barrier:
 2. submits the blanket triggers with a new optional parameter, `exclude_repository_ids`, naming the
    pending repositories.
 
+The barrier is not the only source of a marker. `merge_git_repository` holds one of scope `all` in
+the save that writes an entry that the dispatcher could not write (R3).
+
 With no pending delivery, the triggers are submitted with no new parameter, byte for byte as today,
 which keeps the promise of ADR 0012 that the flag-off path is the blanket path exactly.
 
@@ -874,7 +920,8 @@ The rules:
 | `widen` marker, scope `all` | Full regeneration of that repository's definitions: both blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
 | `widen` marker, scope `terminals` | The artifact blanket trigger, with `include_repository_ids=[repository]`. The release then continues: it dispatches the generator items and the Python items of the window as the rows above say. The trigger covers the artifact items of the window, so they need no separate dispatch. |
 
-A marker of scope `all` covers every held item, so its release dispatches nothing else. A marker of
+A marker of scope `all` covers every held item, so its release dispatches nothing else. The marker
+that `merge_git_repository` holds after a failed first write (R3) releases the same way. A marker of
 scope `terminals` covers only the artifact definitions. If its release stopped after the trigger,
 the clear would remove the held generator items and Python items without a dispatch (FR-016).
 
@@ -1056,7 +1103,9 @@ list, and the status vocabulary (INFP-671).
 **Component, with a database**: the store's transitions and the lock time to live; `read_only`
 keeping the attributes out of the update input; the branch-safety test (no delivery attribute in a
 diff, never merged, the inherited copy on a new branch); the data-only skip (fork, trunk advances,
-data-only merge, no entry); the mutations refuse on another branch; a long queue of 200 entries.
+data-only merge, no entry); the enqueue retry, and the `widen` marker that `merge_git_repository`
+holds after the last retry fails; the mutations refuse on another branch; a long queue of 200
+entries.
 
 **Integration, live Gogs remote** (`backend/tests/integration/git/test_git_live_remote.py`), reusing
 `rejected_push_to_main` and `_install_remote_branch_rejection_hook`:
@@ -1121,9 +1170,10 @@ No `GRAPH_VERSION` bump: optional attributes are added by the schema migration t
 
 ## R18. Configuration
 
-No new setting. The retry bounds, the read retries of the barrier, the Git timeouts (fetch, push
-and local commands, R6), the stale bound and the cache time to live are constants in
-`git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES` is in `webhook/constants.py`.
+No new setting. The retry bounds, the enqueue retries of the dispatcher (R3), the read retries of
+the barrier, the Git timeouts (fetch, push and local commands, R6), the stale bound and the cache
+time to live are constants in `git/writeback/constants.py`, as `WEBHOOK_SEND_RETRIES` is in
+`webhook/constants.py`.
 A setting would be configurability for a hypothetical need (Principle VII).
 
 ---
@@ -1209,6 +1259,8 @@ one read.
   candidates.
 - The merge flow's run log gains one line per queued repository, so the user who merged sees that a
   push is pending.
+- The dispatcher logs a failed enqueue at error level after the last retry, with the repository and
+  the entry id.
 
 ---
 

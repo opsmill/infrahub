@@ -106,9 +106,10 @@ Slices A and B of the plan.
       `LOCAL_GIT_TIMEOUT_SECONDS`, `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`,
       `NARROWED_HOLD_TTL_SECONDS` (derived from the delays and the fetch and push timeouts, not a
       literal), `NARROWED_HOLD_MAX_BYTES`, `RELEASE_LEASE_SECONDS`,
-      `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
+      `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `ENQUEUE_RETRIES`,
+      `ENQUEUE_RETRY_DELAYS_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
       `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
-      [research.md](research.md) R2, R6, R9, R10 and R20.
+      [research.md](research.md) R2, R3, R6, R9, R10 and R20.
 - [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden` and
       `ReleaseLease`, `AbandonmentRecord`, `RevertedDelivery`, `WritebackIntent` with
@@ -232,17 +233,22 @@ SC-002, SC-007.
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
       repository, on a branch that syncs with Git, whose source commit carries content
       (R3: compare with the default branch's commit at `branched_from` and with the recorded commit).
-      Guard each enqueue on its own. Pass `pending_merge` and the merge's `context` to the workflow.
-      Set `pending_merge_enqueued` to `True` only when this repository's enqueue returned (R3).
+      Guard each enqueue on its own, and pass `widen=False`. Retry a failed enqueue
+      `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`, through a
+      `sleep` callable that the constructor takes. If the last retry fails too, log at error level
+      and still submit. Pass `pending_merge` and the merge's `context` to the workflow. Set
+      `pending_merge_enqueued` to `True` only when one of this repository's tries returned (R3).
       Submit no merge workflow for an `active` repository whose merge carries no content.
 - [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
       repository, when `model.pending_merge_enqueued` is `False`, enqueue `model.pending_merge`, or build
-      it from the source branch's graph commit when it is `None`, after the content test of R3. When the flag is `True`, never
-      enqueue (R3, FR-005b). Then run the delivery through `deliver_pending_merges`. Keep the
-      read-only and the staging paths unchanged. Add no path that merges and records locally: a
-      clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag the run
-      with the repository node and the default branch, log one line per transition, and set the run
-      state from the outcome (R21).
+      it from the source branch's graph commit when it is `None`, after the content test of R3.
+      Pass `widen=True`, so the save that appends the entry also holds a `widen` marker of scope
+      `all` (R3, FR-005a). The marker has no effect until T069 wires the releaser. When the flag is
+      `True`, never enqueue (R3, FR-005b). Then run the delivery through `deliver_pending_merges`.
+      Keep the read-only and the staging paths unchanged. Add no path that merges and records
+      locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag
+      the run with the repository node and the default branch, log one line per transition, and set
+      the run state from the outcome (R21).
 - [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with no retry
       yet. Phase 6 adds the retries.
 
@@ -272,9 +278,13 @@ SC-002, SC-007.
 - [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only branch
       forked before the trunk moved queues nothing (US1 #7); a staging repository queues nothing; a
       clone with no `origin` fails the attempt, records no commit and keeps the queue; a failed
-      enqueue of one repository still submits the others; `pending_merge_enqueued` is `True` after
-      an enqueue that returned and `False` after one that raised; a merge with no content submits no
-      merge workflow; and a run with no `pending_merge` and no content queues nothing.
+      enqueue of one repository still submits the others; an enqueue that fails once and then
+      returns sets `pending_merge_enqueued` to `True`, after the first delay of
+      `ENQUEUE_RETRY_DELAYS_SECONDS`, through a `sleep` that records the delays; an enqueue whose
+      every try raises logs at error level and sets the flag to `False`, and the flow then appends
+      the entry and a `widen` marker of scope `all` in one save; a flow whose `enqueue` refuses the
+      id holds no marker; a merge with no content submits no merge workflow; and a run with no
+      `pending_merge` and no content queues nothing.
 - [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
@@ -405,7 +415,9 @@ X once after the delivery.
       a resolved target and a widened target are both filtered, and a rebase admits everything.
 - [ ] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
       one release for X after the delivery, against the delivered commit; a deleted held definition
-      widens to X only.
+      widens to X only; and, after an enqueue of X whose every try raised, the follow-ups dispatch
+      the work of X at once, and the release after the delivery regenerates every definition of X
+      against the delivered commit (R3).
 - [ ] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
       release survives the clear and is released again.
 - [ ] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
