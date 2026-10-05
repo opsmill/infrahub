@@ -351,6 +351,9 @@ after the lock is released, under a lease.
    dispatcher could not write (R3), and every other caller passes `None`. Under the state lock,
    enqueue it with `widen=True`. A failure has the stage `enqueue` (R5): it records nothing on the
    repository, and the task retries it like a transient failure. A refused id is not a failure.
+   When step 0 fails on the final attempt, the run stops there, so it also delivers none of the
+   entries that were already queued. They wait for the recovery check, a manual retry, or the next
+   delivery run of that repository.
 
 Under the repository lock:
 
@@ -1203,7 +1206,7 @@ the push conflict, clicks "Abandon pending push", confirms the modal, and checks
 
 | File | Change |
 |---|---|
-| `dev/knowledge/backend/git-integration.md` | Replace the two volatile sections ("not ordered against post-merge regeneration", "writeback direction has no reconciliation"). The second one is already stale: `merge` pushes before it records since `7d1bab3d1`. Add the delivery queue, the barrier, the three import paths that wait, the recovery check, and the known limitation of branches forked during an outage. Add the two known limitations of the recovery (R20): a repository lock that a dead worker held waits for the deadlock cleanup, and a delivery run that stays in `PENDING` stops the automatic recovery. Update the known limitation on remote branch deletion. |
+| `dev/knowledge/backend/git-integration.md` | Replace the two volatile sections ("not ordered against post-merge regeneration", "writeback direction has no reconciliation"). This spec's PR already corrected the second one to describe `develop` after `7d1bab3d1`; the implementation replaces both with the delivery design. Add the delivery queue, the barrier, the three import paths that wait, the recovery check, and the known limitation of branches forked during an outage. Add the two known limitations of the recovery (R20): a repository lock that a dead worker held waits for the deadlock cleanup, and a delivery run that stays in `PENDING` stops the automatic recovery. Update the known limitation on remote branch deletion. |
 | `dev/knowledge/backend/selective-merge-regeneration.md` | The barrier, the new fallback reasons and the new place of `FullRegenerationReason`, the reason that a `widen` release logs, the two repository filters, and the narrowed cache. |
 | `dev/knowledge/backend/merge-recompute.md` | The barrier consultation for the Python family and the schema-scoped recompute. |
 | `docs/docs/git-integration/branch-synchronization.mdx` | What happens when a push fails, the status, the paused imports, retry and abandon, what abandon leaves behind, and the kept source branch. |
@@ -1313,6 +1316,14 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   of a dead attempt is free at most about one minute after the delivery is stale. A lock that a
   later holder took, such as a synchronisation, keeps the recovery waiting until that lock is 15
   minutes old. A larger setting delays the recovery by the difference.
+- **A deadlock cleanup that frees a lock from a live holder.** `dev/knowledge/backend/async-tasks.md`
+  records that the deadlock cleanup can delete a lock that a live holder still has, after a short
+  loss of connection between that worker and the cache. Two delivery attempts can then run Git work
+  for the same repository at the same time. Each one works in its own worker's clone, and the state
+  lock still serialises every store transition. The worst outcome is a second push that the remote
+  rejects as a non-fast-forward, which is retried, or a second attempt that observes the first
+  one's delivery and records nothing new. This is a limitation of the lock layer, not of this
+  design.
 - **A run that stays in `PENDING`.** Condition 5 counts a run in a state of type `PENDING` as a run
   that waits to start. A delivery run that the orchestrator never starts therefore stops the
   automatic recovery for as long as it stays in that state. The `crash-zombie-flows` automation does
