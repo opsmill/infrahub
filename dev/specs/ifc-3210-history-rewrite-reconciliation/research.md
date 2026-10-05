@@ -63,15 +63,22 @@ git command through GitPython. Exit status 1 is the answer "not an ancestor", no
 it needs no extra network round trip because the fetch already brought the objects in. The full
 classification is:
 
+Rows are read in order. The first match wins.
+
 | Imported commit vs remote head | Classification |
 |---|---|
+| The remote carries no such ref, and the branch was imported | `REMOTE_ABSENT` |
+| The remote carries no such ref, and the branch was never imported | `UNCHANGED` |
+| The branch was never imported | `FAST_FORWARD` |
 | Equal | `UNCHANGED` |
-| Imported is an ancestor of remote head | `FAST_FORWARD` |
+| The imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
+| The imported commit is not present locally, tracking target changed | `RETARGET` |
+| The imported commit is an ancestor of the remote head | `FAST_FORWARD` |
 | The remote head does not contain the imported commit, tracking target unchanged | `REWRITE` |
 | The remote head does not contain the imported commit, tracking target changed | `RETARGET` |
-| The remote carries no such ref | `REMOTE_ABSENT` |
-| Imported commit is not present locally, tracking target unchanged | `REWRITE` (safe classification, see below) |
-| Imported commit is not present locally, tracking target changed | `RETARGET` |
+
+The two rows for a commit that is not present come before the three ancestry rows, in the order
+contract section 1 uses. An ancestry question cannot be answered once the object is gone.
 
 **A remote head behind the imported commit is a rewound remote.** The imported commit comes from
 the graph, and an audit of every `update_commit_value` write site found no path that records a
@@ -91,12 +98,15 @@ longer arises and such a worktree has been rewound. The reset moves it onto the 
 also removes the once-a-minute "update was detected but the commit remained the same after
 pull()" log line.
 
-**The missing-object case.** If the imported commit is no longer in the local object database, the
-ancestry test cannot run. `git merge-base --is-ancestor` exits with an error rather than an answer,
-so the gateway raises. The branch is then classified `REWRITE`, because the only other reading is
-that the local clone lost an object, and a reset to the remote repairs both readings. The record
-names the imported commit as the previous commit, which is still the true answer to "what did
-Infrahub hold".
+**The missing-object case.** The detector asks whether the imported commit is present before it
+asks any ancestry question, so the branch classifies `REWRITE`, or `RETARGET` when the tracking
+target changed. It never reaches the ancestry call for a commit that is gone. A failure of the
+ancestry call itself is a different outcome: it leaves the gateway as a `RepositoryError` and the
+branch joins `failed_imports`.
+
+`REWRITE` is the safe reading here. The other reading is that the local clone lost an object, and
+a reset to the remote repairs both. The record names the imported commit as the previous commit,
+which is still the true answer to "what did Infrahub hold".
 
 **Alternatives rejected**:
 
