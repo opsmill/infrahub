@@ -5,10 +5,13 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
+from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
@@ -42,3 +45,14 @@ async def register_and_provision_number_pools(db: InfrahubDatabase, branch: Bran
     upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
     synchronizer = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
     await synchronizer.run()
+
+
+def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
+    return NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db))
+
+
+async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int) -> Node:
+    pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
+    await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
+    await pool_range.save(db=db)
+    return pool_range
