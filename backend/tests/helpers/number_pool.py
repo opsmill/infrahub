@@ -42,8 +42,10 @@ async def register_and_provision_number_pools(db: InfrahubDatabase, branch: Bran
     """Register the schema and provision the number pools defined by its NumberPool attributes."""
     registry.schema.register_schema(schema=schema, branch=branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-    synchronizer = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    synchronizer = SchemaNumberPoolSynchronizer(
+        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+    )
     await synchronizer.run()
 
 

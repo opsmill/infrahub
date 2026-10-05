@@ -16,6 +16,7 @@ from infrahub.core.validators.attribute.number_pool import (
 from infrahub.core.validators.enum import ConstraintIdentifier
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -26,8 +27,10 @@ async def build_snow_incident(db: InfrahubDatabase, branch: Branch) -> Node:
     registry.schema.register_schema(schema=schema, branch=branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-    snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    snps = SchemaNumberPoolSynchronizer(
+        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+    )
     await snps.run()
 
     incident_1 = await Node.init(db=db, schema="SnowIncident", branch=branch)

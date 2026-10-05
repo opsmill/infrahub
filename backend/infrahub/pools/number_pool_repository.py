@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
@@ -22,7 +22,23 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NumberPoolRepository:
+class NumberPoolRangeStore(Protocol):
+    """Reads and writes the ranges a number pool allocates from."""
+
+    async def get_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[CoreNumberPoolRange]: ...
+
+    async def create_range(
+        self, pool: Node, start: int, end: int, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> CoreNumberPoolRange: ...
+
+
+class NumberPoolRangeStoreFactory(Protocol):
+    """Builds a range store writing through the given database."""
+
+    def __call__(self, db: InfrahubDatabase) -> NumberPoolRangeStore: ...
+
+
+class NumberPoolRepository(NumberPoolRangeStore):
     """Database access for number pools: the ranges they allocate from and the numbers they account for."""
 
     def __init__(self, db: InfrahubDatabase) -> None:

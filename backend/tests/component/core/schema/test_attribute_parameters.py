@@ -25,6 +25,7 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
@@ -32,8 +33,10 @@ from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 
 def build_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSynchronizer:
     """Helper to build a SchemaNumberPoolSynchronizer with its dependencies."""
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-    return SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    return SchemaNumberPoolSynchronizer(
+        db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+    )
 
 
 def test_number_pool_with_range() -> None:

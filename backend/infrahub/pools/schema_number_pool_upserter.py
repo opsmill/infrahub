@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_pool_repository import NumberPoolRangeStoreFactory
 
 
 @dataclass
@@ -42,6 +43,8 @@ class SchemaNumberPoolUpserter:
     Args:
         db: Database connection.
         schema_manager: Schema manager for looking up schemas.
+        range_store_factory: Builds the store that writes a new pool's ranges, from the database running
+            the pool's creation transaction.
 
     """
 
@@ -49,9 +52,11 @@ class SchemaNumberPoolUpserter:
         self,
         db: InfrahubDatabase,
         schema_manager: SchemaManager,
+        range_store_factory: NumberPoolRangeStoreFactory,
     ) -> None:
         self.db = db
         self.schema_manager = schema_manager
+        self._range_store_factory = range_store_factory
         self._cache: dict[str, CoreNumberPool] = {}
 
     async def get_existing_number_pool_id(

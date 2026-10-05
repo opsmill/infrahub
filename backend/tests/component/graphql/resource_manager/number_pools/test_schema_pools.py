@@ -9,6 +9,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.manager import registry as graphql_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.graphql import graphql
@@ -39,8 +40,12 @@ class TestSchemaNumberPools:
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> None:
         await load_schema(db=db, schema=SNOW_TICKET_SCHEMA)
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        )
         await snps.run()
         registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
         graphql_registry.clear_cache()

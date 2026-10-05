@@ -31,6 +31,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -86,11 +87,12 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
 
 @pytest.fixture
 async def run_number_pool_validation(db: InfrahubDatabase) -> None:
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     snps = SchemaNumberPoolSynchronizer(
         db=db,
         schema_manager=registry.schema,
         upserter=upserter,
+        range_store_factory=NumberPoolRepository,
     )
     await snps.run()
 
