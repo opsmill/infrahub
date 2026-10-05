@@ -190,3 +190,8 @@ is wrong for the parent flow: `generator-definition-run` ("Run all generators",
 `generators/tasks.py:153`) is tagged with the branch only. Its child runs are tagged with the
 definition and can be placed. The prototype still has no footnote: the parent flow appears in the
 Tasks table as a branch task ("This branch"), which needs no explanation.
+
+**Object layout rev 6 (2026-10-05 note):** this log stops at rev 5. Rev 6 is the set of fixes the
+design review (`04-review.md`) made to rev 5, and it is the revision the handoff (`05-handoff.md`)
+proposes. Decisions made after the handoff, during implementation, are recorded in the spec set:
+`research.md` (amendments and "Restructure (2026-10-02)") and `plan.md`.
