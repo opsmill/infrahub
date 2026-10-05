@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import {
+  RepositoryCommitState,
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
@@ -12,7 +13,7 @@ import {
   BEHIND_HEAD,
   fullHash,
   generateBehindCommitsResponse,
-  generateNotClonedCommitsResponse,
+  generateRepositoryCommitNode,
   generateRepositoryCommitsResponse,
   NOT_CLONED_MESSAGE,
 } from "../../../../../tests/fake/repository-commit";
@@ -46,8 +47,21 @@ describe("getRepositoryCommits", () => {
 
   test("throws the unavailable answer as a typed error that keeps the whole log", async () => {
     // GIVEN
+    const remoteHead = fullHash("c0ffee1");
+    const importedCommit = fullHash("dec0de2");
     apiMock.mockResolvedValueOnce({
-      data: { InfrahubRepositoryCommits: generateNotClonedCommitsResponse() },
+      data: {
+        InfrahubRepositoryCommits: generateRepositoryCommitsResponse({
+          condition: "UNAVAILABLE",
+          imported_commit: importedCommit,
+          remote_head: remoteHead,
+          pending_count: 1,
+          fetched_at: "2025-03-10T12:00:00Z",
+          checked_at: "2025-03-11T08:30:00Z",
+          unavailable: { reason: "NOT_CLONED", message: NOT_CLONED_MESSAGE },
+          edges: [{ node: generateRepositoryCommitNode({ short_hash: "c0ffee1", state: "HEAD" }) }],
+        }),
+      },
     } as ApiResponse);
 
     // WHEN
@@ -60,7 +74,31 @@ describe("getRepositoryCommits", () => {
       name: "RepositoryGitUnavailableError",
       message: NOT_CLONED_MESSAGE,
       reason: RepositoryGitUnavailableReason.NOT_CLONED,
-      log: { git_ref: "main", condition: RepositoryGitCondition.UNAVAILABLE },
+    });
+    expect(error).toHaveProperty("log", {
+      repository_id: "repo-1",
+      branch_name: "test-branch",
+      git_ref: "main",
+      condition: RepositoryGitCondition.UNAVAILABLE,
+      imported_commit: importedCommit,
+      remote_head: remoteHead,
+      pending_count: 1,
+      fetched_at: "2025-03-10T12:00:00Z",
+      checked_at: "2025-03-11T08:30:00Z",
+      unavailable: {
+        reason: RepositoryGitUnavailableReason.NOT_CLONED,
+        message: NOT_CLONED_MESSAGE,
+      },
+      commits: [
+        {
+          hash: remoteHead,
+          short_hash: "c0ffee1",
+          summary: "Add device inventory",
+          author_name: "Ada Lovelace",
+          authored_at: "2025-03-10T10:00:00Z",
+          state: RepositoryCommitState.HEAD,
+        },
+      ],
     });
   });
 
