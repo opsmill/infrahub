@@ -219,15 +219,27 @@ Each slice is testable on its own.
 | **L. Reverted delivery** | US7 #3 | B, IFC-3210 rewrite classification | IFC-3210 |
 | **M. Documentation and e2e** | all | K | none |
 
-**MVP**: A, B, C, D, F, I1, J and K. That gives a visible failure, a working retry, an exit for a
-stuck queue, no import that deletes undelivered objects, and no source branch lost.
+**MVP**: A, B, C, D, F, G, I1, I2, J and K. That gives a visible failure, a working retry, an exit
+for a stuck queue, no import that deletes undelivered objects, and no source branch lost. The
+regeneration of the generators and artifacts of a pending repository waits for the delivery, and an
+abandonment releases it.
 
-**No deployment ships C without D, I1, J and the abandon part of K.** C alone queues merges that
-nothing can clear, lets the synchronisation delete their objects, and lets the branch deletion
-remove the commit they need. That is worse than today.
+**No deployment ships C without D, G, I1, I2, J and the abandon part of K.** C alone is worse than
+today:
 
-**Next**: E, then G and I2, then H. Until G lands, regeneration still runs against the commit
-recorded before the merge, which is today's behaviour.
+- Without I1, it queues merges that nothing can clear.
+- Without D, it lets the synchronisation delete their objects.
+- Without J, it lets the branch deletion remove the commit they need.
+- Without G, a merge follow-up regenerates the generators and artifacts of a pending repository
+  against the commit recorded before the merge. A later delivery puts the new content on the
+  remote, and nothing regenerates them again. Today, Infrahub never delivers a failed push, so the
+  remote and the regenerated artifacts both reflect the commit recorded before the merge.
+- Without I2, an abandonment never releases the regeneration that G holds.
+
+**Next**: E, then H. H needs coordination with IFC-3002. Until H ships, Python-transform computed
+attributes are not held, as today. After a delayed delivery, such an attribute can reflect the
+commit recorded before the merge until its next recompute. For these attributes, SC-004 and US3 #6
+hold only once H ships.
 
 **What slice C changes for everyone.** From slice C on, `merge_git_repository` no longer calls
 `InfrahubRepository.merge`. It delivers the queue. A merge with no failure behaves as today, plus

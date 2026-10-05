@@ -38,10 +38,24 @@ Deployment has one extra rule, below.
 
 ## Deployment rule
 
-**No release ships Phase 3 without Phase 7's T085 to T093 and Phase 8.** Phase 3 queues merges.
-Without the abandonment, a stuck queue has no exit. Without the branch guard, the deletion after
-merge can remove the commit a delivery needs. Phase 3 already contains the import deferral, which
-stops the synchronisation from deleting undelivered objects.
+**No deployment ships Phase 3 without T061 to T069 and T074 to T076 of Phase 5, T085 to T093 of
+Phase 7, and Phase 8.** Phase 3 queues merges.
+
+- Without the abandonment, a stuck queue has no exit.
+- Without the branch guard, the deletion after merge can remove the commit a delivery needs.
+- Without the barrier and the release of Phase 5 (plan slice G), a merge follow-up regenerates the
+  generators and artifacts of a pending repository against the commit recorded before the merge.
+  The later delivery does not regenerate them again, so they do not match the remote.
+- Without the release step of T086 (plan slice I2), an abandonment never releases the regeneration
+  that the barrier holds. That step needs T069.
+
+Phase 3 already contains the import deferral, which stops the synchronisation from deleting
+undelivered objects.
+
+The Python-family tasks T070 to T073 of Phase 5 (plan slice H) can follow, coordinated with
+IFC-3002. Until they ship, Python-transform computed attributes are not held, as today. After a
+delayed delivery, such an attribute can reflect the commit recorded before the merge until its next
+recompute.
 
 ---
 
@@ -366,7 +380,8 @@ SC-002, SC-007.
 **Independent test**: two repositories, one rejected; a merge touching both; Y regenerates at once,
 X once after the delivery.
 
-**Maps to**: FR-013 to FR-017, SC-004, SC-005, SC-008.
+**Maps to**: FR-013 to FR-017, SC-004, SC-005, SC-008. **T061 to T069 and T074 to T076 are part of
+the deployment rule.** T070 to T073 are not.
 
 - [ ] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
       `backend/infrahub/git/models.py`, and fill it in `ArtifactSelector._build_request` in
@@ -406,7 +421,7 @@ X once after the delivery.
       attribute in one window release all three: the artifact trigger, the generator request and the
       Python submission.
 - [ ] T069 [US3] Wire the releaser into `build_writeback_service` in
-      `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 14).
+      `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
 - [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
       `backend/infrahub/core/merge/python_target_sources.py`.
 - [ ] T071 [US3] Consult the barrier in `_resolve_python_targets` in
@@ -498,8 +513,10 @@ release.
       `GIT_REPOSITORY_DELIVERY_ABANDON`, per [research.md](research.md) R8. The actor comes from the
       workflow context. The abandonment sends `RefreshGitRepositoryBranchDeleted` for every abandoned
       entry that carried the deletion flag, then releases under its lease. When the release raises,
-      it calls `expire_lease` on its lease and re-raises. **Gate: spec decision 15 for the
-      broadcast.**
+      it calls `expire_lease` on its lease and re-raises. Write `build_writeback_abandoner` in
+      `backend/infrahub/git/writeback/factory.py`, with the same releaser as
+      `build_writeback_service`. After T069, that releaser dispatches the held work. **Gate: spec
+      decision 15 for the broadcast.**
 - [ ] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
@@ -598,7 +615,7 @@ and is not re-imported; retry; the branch is gone.
 | 4 US2 | 3 |
 | 5 US3 | 3 |
 | 6 US4 | 3 |
-| 7 US5 | 3, and 5 for the release part of T086 |
+| 7 US5 | 3, and T069 of Phase 5 for the release part of T086 |
 | 8 US6 | 3 |
 | 9 US7 | 3. T101 also needs IFC-3210. |
 | 10 Polish | every phase it documents |
@@ -636,14 +653,17 @@ Inside a phase, a test task can start as soon as the code it covers has a signat
 
 ## Implementation strategy
 
-**First increment (MVP, deployable)**: Phases 1, 2, 3 and 4, plus T085 to T093 of Phase 7 and
-Phase 8. A failed delivery is visible, a retry delivers everything, a stuck queue has an exit, the
-synchronisation never deletes undelivered objects, and no source branch is lost. Regeneration still
-runs as today until Phase 5.
+**First increment (MVP, deployable)**: Phases 1, 2, 3 and 4, plus T061 to T069 and T074 to T076
+of Phase 5, T085 to T093 of Phase 7, and Phase 8. A failed delivery is visible, a retry delivers
+everything, a stuck queue has an exit, the synchronisation never deletes undelivered objects, and no
+source branch is lost. The regeneration of generators and artifacts on the merge follow-up path
+waits for the final content, and an abandonment releases it. Python-transform computed attributes
+are not held yet, as today.
 
-**Second increment**: Phase 5. Regeneration on the merge follow-up path waits for the final content.
+**Second increment**: Phase 6. Transient faults and lost workers need no user action.
 
-**Third increment**: Phase 6. Transient faults and lost workers need no user action.
+**Third increment**: T070 to T073 of Phase 5, coordinated with IFC-3002. Python-transform computed
+attributes wait for the final content too.
 
 **Then**: the e2e part of Phase 7 (T094), Phase 9, Phase 10.
 
