@@ -15,15 +15,14 @@ from infrahub.core.constants import (
     SYSTEM_USER_ID,
     BranchSupportType,
     ComputedAttributeKind,
-    InfrahubKind,
     MetadataOptions,
     RelationshipCardinality,
     RelationshipKind,
 )
-from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaElementPathType
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX as RESOURCE_POOL_REL_SUFFIX
+from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
-from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
 from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.query.node_agnostic_retirement import RetireNodeAgnosticFieldsQuery
@@ -35,9 +34,12 @@ from infrahub.core.schema import (
     RelationshipSchema,
     TemplateSchema,
 )
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters as NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
+from infrahub.exceptions import InitializationError, NodeNotFoundError, ValidationError
+from infrahub.exceptions import PoolExhaustedError as PoolExhaustedError
+from infrahub.pools.attribute_pool_applier import LoadedNodePoolApplier
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.profiles.mandatory_fields_checker import ProfilesMandatoryFieldGetter
@@ -57,9 +59,11 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.creation_context import NodeCreationContext
+    from infrahub.core.protocols import CoreObjectTemplate
     from infrahub.core.relationship import Relationship
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 SchemaProtocol = TypeVar("SchemaProtocol")
 
@@ -403,111 +407,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         return cls(**attrs)
 
-    async def handle_pool(
-        self,
-        db: InfrahubDatabase,
-        attribute: BaseAttribute,
-        allocate_resources: bool = True,
-    ) -> None:
-        """Evaluate if a resource has been requested from a pool and apply the resource.
-
-        This method only works on number pools, currently Integer is the only type that has the from_pool
-        within the create code.
-
-        Supports two cases:
-        1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
-        2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
-
-        Raises:
-            ValidationError: When `from_pool` is used on a template, when no pool ID is provided,
-                when the pool cannot be used for the attribute, or when the pool is exhausted.
-            NodeNotFoundError: When the requested number pool cannot be located by id or name.
-
-        """
-        number_pool_id: str | None = None
-        # Templates must use _from_resource_pool relationships, not from_pool
-        if isinstance(self._schema, TemplateSchema) and attribute.from_pool:
-            pool_rel_name = f"{attribute.name}{RESOURCE_POOL_REL_SUFFIX}"
-            raise ValidationError(
-                {
-                    f"{attribute.name}.from_pool": (
-                        f"'from_pool' is not supported on template attributes. Set the '{pool_rel_name}' relationship on this template instead."
-                    )
-                }
-            )
-
-        # Case 1: Schema-defined NumberPool attribute
-        if (
-            not number_pool_id
-            and attribute.schema.kind == "NumberPool"
-            and isinstance(attribute.schema.parameters, NumberPoolParameters)
-        ):
-            number_pool_id = attribute.schema.parameters.number_pool_id
-            if not number_pool_id:
-                raise ValidationError(
-                    {f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."}
-                )
-            attribute.from_pool = {"id": number_pool_id}
-            attribute.is_default = False
-        # Case 2: User-specified from_pool on a regular Number attribute
-        elif not number_pool_id and attribute.from_pool:
-            number_pool_id = attribute.from_pool.get("id")
-            if not number_pool_id:
-                raise ValidationError({f"{attribute.name}.from_pool": "No pool ID specified in from_pool."})
-
-        if not number_pool_id:
-            # no pool allocation necessary
-            return
-
-        try:
-            if is_valid_uuid(number_pool_id):
-                number_pool = await registry.manager.get_one(
-                    db=db, id=number_pool_id, kind=CoreNumberPool, raise_on_error=True
-                )
-            else:
-                results = await registry.manager.query(
-                    db=db, schema=InfrahubKind.NUMBERPOOL, filters={"name__value": number_pool_id}
-                )
-                if not results:
-                    raise NodeNotFoundError(node_type=InfrahubKind.NUMBERPOOL, identifier=number_pool_id)
-                number_pool = results[0]
-        except NodeNotFoundError as exc:
-            raise ValidationError(
-                {f"{attribute.name}.from_pool": f"The pool requested {attribute.from_pool} was not found."}
-            ) from exc
-
-        # A pool named rather than identified still has to be recorded by its id: the reservation is
-        # written by matching the pool vertex on `uuid`.
-        attribute.from_pool = {"id": number_pool.get_id()}
-
-        if not allocate_resources:
-            return
-
-        if (
-            number_pool.node.value in [self._schema.kind] + self._schema.inherit_from
-            and number_pool.node_attribute.value == attribute.name
-        ):
-            try:
-                next_free = await number_pool.get_resource(
-                    db=db,
-                    branch=self._branch,
-                    identifier=self.get_id(),
-                    attribute=attribute.schema,
-                    attribute_id=attribute.id,
-                )
-            except PoolExhaustedError as exc:
-                raise ValidationError(
-                    {f"{attribute.name}.from_pool": f"The pool {number_pool.node.value} is exhausted."}
-                ) from exc
-
-            attribute.value = next_free
-        else:
-            raise ValidationError(
-                {
-                    f"{attribute.name}.from_pool": f"The {number_pool.name.value} pool can't be used for '{attribute.name}'."
-                }
-            )
-
     async def _read_object_template(self, db: InfrahubDatabase, object_template_field: dict) -> CoreObjectTemplate:
         """Read the template this node is created from, together with the relationships it is read for."""
         branch = self.get_branch_based_on_support_type()
@@ -595,7 +494,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             mandatory_rel_names=mandatory_rels_to_check,
         )
 
-    async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
+    async def _process_fields(
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool = True,
+    ) -> None:
         if "_source" in fields.keys():
             self._source = fields["_source"]
         if "_owner" in fields.keys():
@@ -644,7 +549,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         errors.extend(await self._process_fields_relationships(fields=fields, db=db))
         errors.extend(
             await self._process_fields_attributes(
-                fields=fields, db=db, process_pools=process_pools, template_pools=template_pools
+                fields=fields,
+                db=db,
+                pool_applier=pool_applier,
+                process_pools=process_pools,
+                template_pools=template_pools,
             )
         )
 
@@ -719,7 +628,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return errors
 
     async def _process_fields_attributes(
-        self, fields: dict, db: InfrahubDatabase, process_pools: bool, template_pools: TemplatePoolFields | None = None
+        self,
+        fields: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool,
+        template_pools: TemplatePoolFields | None = None,
     ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
@@ -751,7 +665,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         # one accounts for it, it does not ask for a second number.
                         attribute.from_pool = {"id": allocated_pool_id}
                     else:
-                        await self.handle_pool(db=db, attribute=attribute, allocate_resources=process_pools)
+                        await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools)
 
                     if attr_schema.name in self._profile_provided_attrs:
                         continue
@@ -1034,7 +948,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             self.label.value = " ".join([word.title() for word in self.name.value.split("_")])
             self.label.is_default = False
 
-    async def new(self, db: InfrahubDatabase, id: str | None = None, process_pools: bool = True, **kwargs: Any) -> Self:
+    async def new(
+        self,
+        db: InfrahubDatabase,
+        id: str | None = None,
+        process_pools: bool = True,
+        pool_applier: AttributePoolApplierInterface | None = None,
+        **kwargs: Any,
+    ) -> Self:
         if id and not is_valid_uuid(id):
             raise ValidationError({"id": f"{id} is not a valid UUID"})
         if id:
@@ -1044,7 +965,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         self.id = id or str(UUIDT())
 
-        await self._process_fields(db=db, fields=kwargs, process_pools=process_pools)
+        # Callers that create nodes outside the mutation entry points rely on the applier being built here.
+        await self._process_fields(
+            db=db,
+            fields=kwargs,
+            pool_applier=pool_applier or build_attribute_pool_applier(db=db),
+            process_pools=process_pools,
+        )
         await self._process_macros(db=db)
 
         return self
@@ -1117,7 +1044,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                     node_schema=self._schema, template=self._schema.display_label, value=display_label
                 )
 
-        await self._process_fields(db=db, fields=kwargs)
+        await self._process_fields(db=db, fields=kwargs, pool_applier=LoadedNodePoolApplier())
         return self
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> NodeChangelog:
@@ -1435,14 +1362,22 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 data["updated_at"] = updated_at.to_datetime() if updated_at else None
         return data
 
-    async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
+    async def from_graphql(
+        self,
+        data: dict,
+        db: InfrahubDatabase,
+        pool_applier: AttributePoolApplierInterface,
+        process_pools: bool = True,
+    ) -> bool:
         """Update object from a GraphQL payload."""
         changed = False
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
-                changed |= await attribute.from_graphql(data=value, db=db, process_pools=process_pools)
+                changed |= await attribute.from_graphql(
+                    data=value, process_pools=process_pools, pool_applier=pool_applier
+                )
 
             if key in self._relationships:
                 rel: RelationshipManager = getattr(self, key)

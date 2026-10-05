@@ -18,6 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.number_pool import add_pool_range, shorthand_mirror
@@ -84,7 +85,9 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
     updated_by_name = await Node.init(db=db, schema=TICKET.kind)
     await updated_by_name.new(db=db, title="updated-by-name", ticket_id=None)
     await updated_by_name.save(db=db)
-    await updated_by_name.from_graphql(db=db, data={"ticket_id": {"from_pool": {"id": "pool1"}}})
+    await updated_by_name.from_graphql(
+        db=db, data={"ticket_id": {"from_pool": {"id": "pool1"}}}, pool_applier=build_attribute_pool_applier(db=db)
+    )
     await updated_by_name.save(db=db)
 
     tickets = {"created by id": created_by_id, "created by name": created_by_name, "updated by name": updated_by_name}
