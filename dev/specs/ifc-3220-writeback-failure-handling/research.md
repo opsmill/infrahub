@@ -211,10 +211,18 @@ is `False`.
 
 **Which merges are queued** (FR-005): only a repository whose internal status on the source branch
 is `active`, on a source branch that syncs with Git, and whose source commit carries repository
-content. A staging repository keeps today's path and is never queued. Whether a clone has a remote
-is a fact of a worker's disk, which the dispatcher cannot read. So the flow's no-remote path merges
-and records locally, as today, and then removes the entry it finds, as a delivery by observation
-would. A repository with no remote therefore never stays queued.
+content. A staging repository keeps today's path and is never queued. The dispatcher does not test
+for a remote: `location` is mandatory on every repository
+(`core/schema/definitions/core/repository.py::core_generic_repository`), so every queued repository
+has one.
+
+**A clone with no `origin`.** Whether a clone has `origin` (`InfrahubRepositoryBase.has_origin`) is
+a fact of one worker's disk. Because the location is mandatory, such a clone is broken. It is not a
+repository without a remote. The flow has no separate path for it. The attempt fails at the fetch
+(R4 step 2), records nothing, and keeps every entry in the queue. A local merge and record on that
+worker would record a commit that the remote does not have (FR-001). It would also remove the
+entries of earlier merges that the remote does not have yet (FR-009). A manual retry on another
+worker, or after a fresh clone, delivers the queue.
 
 **When a merge carries no repository content.** The dispatcher reads, for the source branch, the
 `commit` value and the branch's `branched_from`, then reads the default branch's `commit` at that
@@ -291,7 +299,9 @@ Under the repository lock:
    `nothing-pending`. If only held work remains, take a lease through `lease_owed_release`, leave
    the repository lock, and go to step 16.
 2. **Fetch**, bounded in time (R6). Let **H** be the remote head of the destination, and **R** the
-   commit recorded for the destination. Move `last_progress_at`.
+   commit recorded for the destination. Move `last_progress_at`. On a clone with no `origin`, the
+   fetch raises, and the attempt stops here, before any check. It pushes nothing, records nothing
+   and keeps every entry (R3). R5 classifies the failure as `unclassified`.
 3. **Destination check** (FR-022). If R is neither H nor an ancestor of H, the destination was
    rewritten. Mark the queue unreplayable with the cause `destination-rewritten`. Push nothing. A
    worker that does not hold R locally treats it as rewritten, which is the safe reading.
@@ -397,7 +407,7 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 
 | Port method | Built on |
 |---|---|
-| `fetch()` | `InfrahubRepositoryBase.fetch`, with `kill_after_timeout`. |
+| `fetch()` | `InfrahubRepositoryBase.fetch`, with `kill_after_timeout`. That method returns `False` on a clone with no `origin`. The adapter then raises `RepositoryError` and never treats it as a fetch. |
 | `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, bounded. Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
 | `is_ancestor(ancestor, descendant)` | `git merge-base --is-ancestor`. Exit 1 means no. A missing object means no. Any other failure raises. Shared with IFC-3210 (R19). |
 | `replay(base, commits)` | `reset --hard`, then `merge` per commit, aborting on a conflict. |
@@ -425,6 +435,7 @@ and `release`. It reads the exception type first. Per-ref push rejections get a 
 | fetch, push | `RepositoryNotFoundError` (new subtype) | `not-found` | no |
 | fetch, push | `RepositoryTLSError` (new subtype) | `certificate` | no |
 | fetch, push | `RepositoryCredentialsError` | `credentials` | no |
+| fetch | `RepositoryError` for a clone with no `origin` (R3) | `unclassified` | no. An automatic retry runs on the same worker and fails again. The message names the repository and says that the clone on this worker has no `origin`. It names no path. |
 | push | `RepositoryPermissionError` | `permission` | no |
 | push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`) | `permission` | no |
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
@@ -1113,8 +1124,9 @@ A setting would be configurability for a hypothetical need (Principle VII).
 - **The merge-path check.** IFC-3210's FR-005a makes `InfrahubRepository.merge` refuse a diverged
   source or destination. After slice C, the merge flow no longer calls `merge`: the service replays
   instead, and its checks of R4 steps 3 and 5 are that refusal for the replay. IFC-3210's merge-path
-  task therefore moves into the service. `merge` keeps only the no-origin path and the live-remote
-  tests of #10465, and can be removed once those tests move to the service.
+  task therefore moves into the service. `merge` stays only for `InfrahubRepository.rebase`, which
+  has no caller, and for the live-remote tests of #10465. Both methods can be removed once those
+  tests move to the service.
 - **The synchronisation path.** Both epics change `collect_pending_imports`. R11's exclusion runs
   before the sibling's classification.
 - **The SDK.** One PR for both epics (R17).

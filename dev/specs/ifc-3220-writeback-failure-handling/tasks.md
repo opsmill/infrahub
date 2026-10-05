@@ -187,7 +187,8 @@ SC-002, SC-007.
 - [ ] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
-      object, and raises otherwise. Every Git command it runs is bounded, per
+      object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
+      Every Git command it runs is bounded, per
       [research.md](research.md) R6: `FETCH_TIMEOUT_SECONDS` for the fetch, `PUSH_TIMEOUT_SECONDS`
       for the push and `delete_remote_branch`, and `LOCAL_GIT_TIMEOUT_SECONDS` for each local
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
@@ -195,7 +196,7 @@ SC-002, SC-007.
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
 - [ ] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
-      `replay` with a clean merge and a conflict; `reset`.
+      `replay` with a clean merge and a conflict; `reset`; `fetch` on a clone with no `origin`.
 - [ ] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
       `backend/tests/unit/git/writeback/fakes.py`. The Git fake records every call in order, and can
       fail at any step.
@@ -224,18 +225,19 @@ SC-002, SC-007.
       `GitRepositoryMerge.pending_merge_enqueued: bool = False` to `backend/infrahub/git/models.py`.
 - [ ] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
-      repository with a remote, on a branch that syncs with Git, whose source commit carries content
+      repository, on a branch that syncs with Git, whose source commit carries content
       (R3: compare with the default branch's commit at `branched_from` and with the recorded commit).
       Guard each enqueue on its own. Pass `pending_merge` and the merge's `context` to the workflow.
       Set `pending_merge_enqueued` to `True` only when this repository's enqueue returned (R3).
       Submit no merge workflow for an `active` repository whose merge carries no content.
-- [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for a repository with a
-      remote, when `model.pending_merge_enqueued` is `False`, enqueue `model.pending_merge`, or build
+- [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
+      repository, when `model.pending_merge_enqueued` is `False`, enqueue `model.pending_merge`, or build
       it from the source branch's graph commit when it is `None`, after the content test of R3. When the flag is `True`, never
       enqueue (R3, FR-005b). Then run the delivery through `deliver_pending_merges`. Keep the
-      read-only and the staging paths unchanged. The no-remote path merges and records locally as
-      today, then removes the entry it finds by observation. Tag the run with the repository node and
-      the default branch, log one line per transition, and set the run state from the outcome (R21).
+      read-only and the staging paths unchanged. Add no path that merges and records locally: a
+      clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag the run
+      with the repository node and the default branch, log one line per transition, and set the run
+      state from the outcome (R21).
 - [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with no retry
       yet. Phase 6 adds the retries.
 
@@ -263,11 +265,11 @@ SC-002, SC-007.
 - [ ] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
       recorded, the remote updated, the broadcast sent.
 - [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only branch
-      forked before the trunk moved queues nothing (US1 #7); a staging repository and a repository
-      with no remote queue nothing; a failed enqueue of one repository still submits the others;
-      `pending_merge_enqueued` is `True` after an enqueue that returned and `False` after one that
-      raised; a merge with no content submits no merge workflow; and a run with no `pending_merge`
-      and no content queues nothing.
+      forked before the trunk moved queues nothing (US1 #7); a staging repository queues nothing; a
+      clone with no `origin` fails the attempt, records no commit and keeps the queue; a failed
+      enqueue of one repository still submits the others; `pending_merge_enqueued` is `True` after
+      an enqueue that returned and `False` after one that raised; a merge with no content submits no
+      merge workflow; and a run with no `pending_merge` and no content queues nothing.
 - [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.

@@ -226,9 +226,10 @@ remove the commit they need. That is worse than today.
 recorded before the merge, which is today's behaviour.
 
 **What slice C changes for everyone.** From slice C on, `merge_git_repository` no longer calls
-`InfrahubRepository.merge` for a repository with a remote. It delivers the queue. A merge with no
-failure behaves as today, plus one fetch and the ancestry checks. `InfrahubRepository.merge` stays
-for the no-remote path and the live-remote tests of #10465.
+`InfrahubRepository.merge`. It delivers the queue. A merge with no failure behaves as today, plus
+one fetch and the ancestry checks. A clone with no `origin` no longer merges and records locally:
+the attempt fails and keeps the queue (`research.md` R3). `InfrahubRepository.merge` stays only for
+`InfrahubRepository.rebase`, which has no caller, and for the live-remote tests of #10465.
 
 ## Risks
 

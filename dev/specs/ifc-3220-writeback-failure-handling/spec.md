@@ -357,8 +357,11 @@ unreplayable, with a cause that names the discarded source commit.
   fork point, no entry is queued.
 - **A staging repository.** It is never queued. It is delivered when its proposed change merges, as
   today.
-- **A repository with no remote.** The merge happens locally and is recorded, as today. Nothing is
-  queued.
+- **A worker whose clone of the repository has no remote.** Every repository has a location, so
+  such a clone is broken. A delivery attempt on that worker fails. It records no commit, and every
+  entry stays in the queue. The failure is unclassified and is not retried automatically. Its
+  message names the broken clone. A retry on another worker, or after a fresh clone, can deliver
+  the queue.
 - **An abandonment while a delivery attempt runs.** The two never interleave. The abandonment waits
   for the attempt. The attempt removes the entries it delivered before it lets the abandonment in,
   so the version has moved and the abandonment is refused as stale. The release that follows a
@@ -418,7 +421,8 @@ system, and the new delivery path must keep them true.*
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub
   imported, and never the merge result. A merge that carries no repository content and a staging
-  repository MUST NOT be queued. A repository with no remote MUST NOT stay queued.
+  repository MUST NOT be queued. A worker whose clone of the repository has no remote MUST NOT
+  record a commit, and MUST NOT remove an entry from the queue.
 - **FR-005a**: The system MUST record a merge in the queue before the first delivery attempt for it
   starts, and before the merge follow-up consults the regeneration barrier. A failure to record one
   repository's entry MUST NOT stop the delivery of any repository.

@@ -144,6 +144,11 @@ class RegenerationReleasePort(Protocol):
 conflicted. `replay` resets to `base` first, and on a conflict aborts the merge and resets to
 `base` again.
 
+`fetch` raises `RepositoryError` on a clone with no `origin`. `InfrahubRepositoryBase.fetch` returns
+`False` there, and the adapter never treats that as a fetch. The message names the repository and
+says that the clone on this worker has no `origin`, with no path. The service classifies it as
+`unclassified` (`research.md` R5).
+
 `is_ancestor` returns `True` for equal commits. It returns `False` when the answer is no, or when
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
@@ -229,8 +234,9 @@ its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3`
 `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through
 `deliver_pending_merges.with_options(retry_delay_seconds=...)`.
 
-A repository with no remote never reaches the task: `merge_git_repository` keeps today's local merge
-and record through `InfrahubRepository.merge`.
+`merge_git_repository` has no path around the task: no repository merges and records locally. A
+clone with no `origin` fails the attempt at the fetch. The attempt records nothing and keeps every
+entry in the queue (`research.md` R3, R4).
 
 ---
 
@@ -435,7 +441,7 @@ Contract:
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
-| `git/tasks.py::merge_git_repository` | The default path, with a remote, builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. The no-remote path merges and records locally as today, then removes the entry it finds by observation. Before it delivers, the default path enqueues only when `pending_merge_enqueued` is `False`: it enqueues `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). When the flag is `True`, it never enqueues and only delivers (`research.md` R3). |
+| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Before it delivers, the default path enqueues only when `pending_merge_enqueued` is `False`: it enqueues `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). When the flag is `True`, it never enqueues and only delivers (`research.md` R3). |
 | `git/tasks.py::git_branch_delete` | When `references_source_branch` is true: calls `request_branch_deletion`, skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
 | `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard, passes it in the model, and passes the merge's `context`. Sets `pending_merge_enqueued` to `True` only when its own enqueue returned. Submits no merge workflow for an `active` repository whose source commit carries no content. |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
