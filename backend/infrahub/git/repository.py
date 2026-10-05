@@ -711,16 +711,28 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     def _exclude_read_only_branches(
         self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
-        """Drop branches whose Infrahub branch is in a terminal status (merged or being deleted).
+        """Drop the branches whose commit the graph cannot record.
 
-        Such branches are read-only, so recording their commit is rejected by the graph. The default
-        branch is never terminal, so filtering here does not affect the staging-import path.
+        A branch in a terminal status (merged or being deleted) is read-only, so the graph rejects its
+        commit. An updated branch whose Infrahub branch is gone has nowhere to record it, and its
+        worktree would never move, so it would fail again on every cycle. A new branch is kept, because
+        collecting it creates its Infrahub branch. The default branch is never terminal, so filtering
+        here does not affect the staging-import path.
         """
         terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
         read_only = {name for name, branch in graph_branches.items() if branch.status.value in terminal_status_values}
+        orphaned = [
+            name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in graph_branches
+        ]
+        if orphaned:
+            log.debug("Ignoring branches %s of repository %s, which have no Infrahub branch", orphaned, self.name)
         return (
             [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
-            [name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+            [
+                name
+                for name in updated_branches
+                if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in read_only
+            ],
         )
 
     async def push(self, branch_name: str) -> bool:

@@ -319,6 +319,24 @@ async def test_a_branch_that_cannot_be_classified_fails_alone_and_keeps_its_work
     assert tracked.worktree_head(branch_name=TRACKED) == imported
 
 
+async def test_a_branch_whose_infrahub_branch_is_gone_is_left_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The graph has nowhere to record its commit, so trying would only fail again on every cycle."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    imported = tracked.imported_commits[TRACKED]
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    tracked.client.branch_names = ("main", OTHER)
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+
+    assert collected.failed_imports == []
+    assert collected.imports == [PendingObjectImport(infrahub_branch_name=OTHER, commit=advanced)]
+    assert tracked.client.recorded_commits == [(OTHER, advanced)]
+    assert tracked.worktree_head(branch_name=TRACKED) == imported
+
+
 async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_another_worker_imported(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
