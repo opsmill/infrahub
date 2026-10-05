@@ -60,20 +60,20 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 **Goal**: every existing pool gets one range; the shorthand becomes a mirror of the range set
 
-**Independent Test**: `cd backend && uv run pytest tests/component/core/migrations/graph/m079_number_pool_ranges && uv run pytest tests/unit/core/graph/test_graph_version.py`
+**Independent Test**: `cd backend && uv run pytest tests/component/core/migrations/graph/m080_number_pool_ranges && uv run pytest tests/unit/core/graph/test_graph_version.py`
 
 ### Tests
 
-- [ ] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m079_number_pool_ranges/test_migration.py`: pre-79 fixture with a user pool and a schema pool holding allocations; after the run each pool has one range with the old bounds and no weight, allocated values and utilization unchanged, shorthand still populated; second run creates no range; `validate_migration` passes; the range kind and the `ranges` relationship exist in the database schema
-- [ ] T013 [P] [US2] Component test in `backend/tests/component/core/resource_manager/test_number_pool.py`: `sync_shorthand_from_ranges` sets the bounds for one range and `None` for zero or two ranges
+- [X] T012 [P] [US2] Component tests in `backend/tests/component/core/migrations/graph/m080_number_pool_ranges/test_migration.py`: pre-80 fixture with a user pool and a schema pool, run through the upgrade runner; after the run the range kind and the `ranges` relationship exist in the database schema, the branch carries the stored schema's hash, each pool has one range with the old bounds and no weight, and the shorthand is still populated; a second run creates no range and no second range schema node; the graph passes the integrity checks after each run
+- [X] T013 [P] [US2] Component test in `backend/tests/component/pools/test_number_pool_shorthand.py`: `NumberPoolShorthandMirror.sync` sets the bounds for one range and `None` for zero or two ranges
 
 ### Implementation
 
-- [ ] T014 [US2] Add `load_ranges(db) -> list[PoolRange-like]` and `sync_shorthand_from_ranges(db, pool, ranges)` on `CoreNumberPool` in `backend/infrahub/core/node/resource_manager/number_pool.py` (the single writer of the shorthand)
-- [ ] T015 [US2] Create `backend/infrahub/core/migrations/graph/m079_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind and the `ranges` relationship into the database schema when absent (m073 pattern), create one range per live pool without ranges through the Node API, call the shorthand sync, `validate_migration` counts pools without ranges, `minimum_version = 78`
-- [ ] T016 [US2] Bump `GRAPH_VERSION = 79` in `backend/infrahub/core/graph/__init__.py`
+- [X] T014 [US2] Add `NumberPoolRepository` in `backend/infrahub/pools/number_pool_repository.py` (`get_ranges` through `NodeManager`, plus the used, free, taken and reservation reads and writes moved off `CoreNumberPool`) and `NumberPoolShorthandMirror` in `backend/infrahub/pools/number_pool_shorthand.py` (the single writer of the shorthand)
+- [X] T015 [US2] Create `backend/infrahub/core/migrations/graph/m080_number_pool_ranges/` (`__init__.py`, `migration.py`) as an `ArbitraryMigration`: bootstrap the range kind (m073 pattern) and only the `ranges` relationship into the database schema when absent, create one range per live pool that carries a bound and holds no range through the Node API, leaving the shorthand as it is, `validate_migration` counts pools that carry a bound and hold no range, `minimum_version = 79`
+- [X] T016 [US2] Bump `GRAPH_VERSION = 80` in `backend/infrahub/core/graph/__init__.py`
 
-**Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the mirror keeps correct
+**Checkpoint**: upgrade path verified; allocation still reads the shorthand, which the migration leaves as it is. Until PR 4 (T034) and PR 5 (T038, T039) land, the pool mutations and the schema pool upserter and synchronizer still write the shorthand directly and never call the mirror, and the generated range mutations leave it stale; the mirror is the single writer only from PR 5 onwards
 
 ---
 
@@ -95,7 +95,7 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 - [ ] T022 [P] [US1] Create `backend/infrahub/pools/number_ranges.py` with frozen `PoolRange`, `EffectiveSegment`, and `EffectiveSpace` (clip to `[min_value, max_value]`, subtract excluded singles and ranges, order `(-weight, start)`, `segments`, `size`, `as_query_ranges()`, `contains()`, `range_for()`, `is_empty`) per data-model.md
 - [ ] T023 [P] [US1] Replace `$start_range`/`$end_range` with `$ranges: list[list[int]]` and `any(r IN $ranges WHERE v >= r[0] AND v <= r[1])` in `NumberPoolGetUsed`, `NumberPoolGetAllocated`, `NumberPoolGetTaken` in `backend/infrahub/core/query/resource_manager.py`; make both bounds required on `NumberPoolGetFree`
-- [ ] T024 [US1] Add `build_effective_space(db, attribute)` on `CoreNumberPool`; `get_used`/`get_taken` pass `space.as_query_ranges()` and return early on an empty space; rewrite `get_next` to walk `space.segments` with `NumberPoolGetFree(cursor, segment.end)`, skipping hand-set values by advancing the cursor, falling through on `None`, raising `PoolExhaustedError` when no segment yields; delete the `skip_excluded` closure and `get_attribute_nb_excluded_values`
+- [ ] T024 [US1] Build the `EffectiveSpace` from `NumberPoolRepository.get_ranges` and the attribute, with no persistence method on `CoreNumberPool`; `NumberPoolRepository.get_used`/`get_taken` pass `space.as_query_ranges()` and return early on an empty space; rewrite `get_next` to walk `space.segments` with `NumberPoolGetFree(cursor, segment.end)`, skipping hand-set values by advancing the cursor, falling through on `None`, raising `PoolExhaustedError` when no segment yields; delete the `skip_excluded` closure and `get_attribute_nb_excluded_values`
 - [ ] T025 [US1] Rework `NumberUtilizationGetter` in `backend/infrahub/pools/number.py` to take the `EffectiveSpace`: `total_pool_size = space.size`, ratios return `0.0` on size 0, used values grouped by `space.range_for`
 - [ ] T026 [US1] Replace the bounds filter of T010 in `resolve_number_pool_utilization` with the getter's per-range figures; `weight = allocation_weight or 0`
 
@@ -119,9 +119,9 @@ PR 2 must land before PR 3: without the migration, allocation over ranges would 
 
 ### Implementation
 
-- [ ] T032 [US3] Add `InfrahubNumberPoolRangeMutation` in `backend/infrahub/graphql/mutations/resource_manager.py`: pool lock (`resource_pool.<pool_id>`), parent pool lookup, `start <= end`, overlap check naming clashing ranges, `sync_shorthand_from_ranges` after create/update/delete; register it under `InfrahubKind.NUMBERPOOLRANGE` in the `mutation_map` of `backend/infrahub/graphql/manager.py`
+- [ ] T032 [US3] Add `InfrahubNumberPoolRangeMutation` in `backend/infrahub/graphql/mutations/resource_manager.py`: pool lock (`resource_pool.<pool_id>`), parent pool lookup, `start <= end`, overlap check naming clashing ranges, `NumberPoolShorthandMirror.sync` after create/update/delete; register it under `InfrahubKind.NUMBERPOOLRANGE` in the `mutation_map` of `backend/infrahub/graphql/manager.py`
 - [ ] T033 [US2] In `InfrahubNumberPoolMutation.mutate_create`: drop the T008 guard; accept shorthand, `ranges`, or neither; refuse shorthand combined with `ranges`; create the single range from the shorthand; keep the existing bound checks; take the pool lock when the shorthand or `ranges` is present
-- [ ] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `sync_shorthand_from_ranges`
+- [ ] T034 [US3] In `InfrahubNumberPoolMutation.mutate_update`: pool lock; range-count rule for the shorthand (0 creates, 1 rewrites in place, more than 1 refused with the range list per contract); refuse shorthand combined with `ranges`; overlap validation after a `ranges` edit; `NumberPoolShorthandMirror.sync`
 
 **Checkpoint**: user-created pools fully manageable through GraphQL
 
