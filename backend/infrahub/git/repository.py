@@ -393,7 +393,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
 
-        # Only an active repository imports its branches, and a staging one imports its trunk alone.
+        # Listing the branches costs a query, which a repository with nothing to import would pay every cycle.
         stages_trunk = (
             self.internal_status == RepositoryInternalStatus.STAGING
             and bool(staging_branch)
