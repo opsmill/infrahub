@@ -387,10 +387,9 @@ describe("RepositoryCommitsManager", () => {
 
     // THEN
     await expect
-      .element(component.getByText("No worker has answered yet. Refresh to check again."))
+      .element(component.getByText(`${NOT_CLONED_MESSAGE} Refresh to check again.`))
       .toBeVisible();
     await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
-    expect(component.getByText(NOT_CLONED_MESSAGE).query()).toBeNull();
     await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
     expect(apiMock).toHaveBeenCalledTimes(REPOSITORY_COMMITS_MAX_RETRIES + 1);
   });

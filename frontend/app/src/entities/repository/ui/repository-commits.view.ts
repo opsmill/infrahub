@@ -93,6 +93,12 @@ export function getEmptyState(
       message: message || "Reading commits is not available in this version of Infrahub.",
     };
   }
+  if (!isRetrying && reason === RepositoryGitUnavailableReason.NOT_CLONED) {
+    return {
+      title: "Commit log not available yet",
+      message: `${message || "No worker holds a copy of this repository yet."} Refresh to check again.`,
+    };
+  }
   if (!isRetrying) {
     return {
       title: "Commit log not available yet",

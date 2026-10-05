@@ -62,10 +62,24 @@ describe("getEmptyState", () => {
     expect(emptyState).toEqual({ title: "Commit log not available yet", message: "Not cloned" });
   });
 
-  test("asks for a refresh instead of the worker's message once retrying has stopped", () => {
+  test("keeps the worker's not-cloned message and asks for a refresh once retrying has stopped", () => {
     // WHEN
     const emptyState = getEmptyState(
-      { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "Not cloned" },
+      { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "Not cloned." },
+      { isRetrying: false }
+    );
+
+    // THEN
+    expect(emptyState).toEqual({
+      title: "Commit log not available yet",
+      message: "Not cloned. Refresh to check again.",
+    });
+  });
+
+  test("says no worker answered and asks for a refresh once retrying a timeout has stopped", () => {
+    // WHEN
+    const emptyState = getEmptyState(
+      { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "Timed out" },
       { isRetrying: false }
     );
 
