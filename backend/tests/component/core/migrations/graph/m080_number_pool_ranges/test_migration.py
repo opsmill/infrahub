@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from infrahub.cli.db import migrate_database
@@ -14,10 +16,12 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.component.core.migrations.graph.m076_heal_missing_attribute_rows.conftest import delete_attribute_rows
 from tests.helpers.schema import TICKET
 
 USER_POOL_BOUNDS = (1, 10)
 SCHEMA_POOL_BOUNDS = (100, 200)
+OPEN_ENDED_POOL_START = 20
 
 
 def _downgrade_schema(schema_branch: SchemaBranch) -> None:
@@ -42,8 +46,8 @@ async def pre_migration_pools(
     reset_registry: None,
     default_branch: Branch,
     register_internal_models_schema: SchemaBranch,
-) -> tuple[CoreNumberPool, CoreNumberPool]:
-    """Persist a core schema that predates the range kind, then a user pool and a schema pool under it."""
+) -> tuple[CoreNumberPool, CoreNumberPool, CoreNumberPool]:
+    """Persist a core schema that predates the range kind, then a user pool, a schema pool and a pool missing its end row."""
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
     _downgrade_schema(schema_branch)
@@ -61,6 +65,7 @@ async def pre_migration_pools(
     for name, (start, end), pool_type in (
         ("user-pool", USER_POOL_BOUNDS, NumberPoolType.USER),
         ("schema-pool", SCHEMA_POOL_BOUNDS, NumberPoolType.SCHEMA),
+        ("open-ended-pool", (OPEN_ENDED_POOL_START, OPEN_ENDED_POOL_START + 10), NumberPoolType.USER),
     ):
         pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
         await pool.new(
@@ -75,9 +80,11 @@ async def pre_migration_pools(
         await pool.save(db=db)
         pools.append(pool)
 
+    await delete_attribute_rows(db=db, node_uuid=pools[2].get_id(), attribute_names=["end_range"])
+
     # The upgrade runners start the graph migrations with no schema loaded.
     registry.delete_all()
-    return pools[0], pools[1]
+    return pools[0], pools[1], pools[2]
 
 
 async def _migrate(db: InfrahubDatabase) -> None:
@@ -91,7 +98,7 @@ async def _range_ids(db: InfrahubDatabase, pool: CoreNumberPool) -> set[str]:
 async def test_migration_080(
     db: InfrahubDatabase,
     default_branch: Branch,
-    pre_migration_pools: tuple[CoreNumberPool, CoreNumberPool],
+    pre_migration_pools: tuple[CoreNumberPool, CoreNumberPool, CoreNumberPool],
 ) -> None:
     await _migrate(db=db)
 
@@ -110,13 +117,23 @@ async def test_migration_080(
         == registry.schema.get_schema_branch(name=default_branch.name).get_hash_full().main
     )
 
-    for pool, bounds in zip(pre_migration_pools, (USER_POOL_BOUNDS, SCHEMA_POOL_BOUNDS), strict=True):
+    for pool, bounds in zip(pre_migration_pools[:2], (USER_POOL_BOUNDS, SCHEMA_POOL_BOUNDS), strict=True):
         migrated = await NodeManager.get_one(db=db, id=pool.get_id(), kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=migrated.get_id())
         assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [
             (*bounds, None)
         ]
         assert (migrated.get_attribute("start_range").value, migrated.get_attribute("end_range").value) == bounds
+
+    open_ended = await NodeManager.get_one(
+        db=db, id=pre_migration_pools[2].get_id(), kind=InfrahubKind.NUMBERPOOL, raise_on_error=True
+    )
+    open_ended_ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=open_ended.get_id())
+    assert [(item.start.value, item.end.value) for item in open_ended_ranges] == [(OPEN_ENDED_POOL_START, sys.maxsize)]
+    assert (open_ended.get_attribute("start_range").value, open_ended.get_attribute("end_range").value) == (
+        OPEN_ENDED_POOL_START,
+        None,
+    ), "a bound with no row has nothing to write the resolved end into"
 
     await verify_graph(db=db)
 
