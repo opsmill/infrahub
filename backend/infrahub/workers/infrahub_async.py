@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import typer
 from anyio.abc import TaskStatus
@@ -208,6 +209,11 @@ class InfrahubWorkerAsync(BaseWorker):
     async def _propose_submitting_state(self, flow_run: FlowRun) -> None:  # noqa: ARG002
         # Prefect>=3.6.22 proposes Submitting before every run, but a flow starts in this event loop right after
         # its claim, so the state would only cost the task manager one more state transition per run.
+        return
+
+    async def _give_worker_labels_to_flow_run(self, flow_run_id: UUID) -> None:  # noqa: ARG002
+        # Prefect>=3.1.2 labels every claimed run with the worker and its work pool; nothing reads these labels, and
+        # adding them costs the task manager one more request per run.
         return
 
     def _build_flow_run_reservations(self) -> FlowRunReservations:
