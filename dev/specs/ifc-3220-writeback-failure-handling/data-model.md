@@ -74,7 +74,7 @@ the pending pushes clear."
 | `certificate` | Certificate verification failed | no | Fix the certificate configuration, then retry. |
 | `credentials` | Credentials rejected | no | Fix the credential, then retry. |
 | `permission` | Push refused by the remote | no | Grant push permission or lift the branch protection, then retry. |
-| `import-interrupted` | Import of the delivered commit was interrupted | yes | Wait, or retry once the database is reachable. The remote has the content. |
+| `import-interrupted` | Import of the delivered commit was interrupted | yes | Wait, or retry once the database and the remote are reachable. The remote has the content. |
 | `import-failed` | Import of the delivered commit failed | no | Fix the content on the remote, then retry. |
 | `replay-conflict` | A pending merge conflicts with the remote | no | Merge the source branch on the remote by hand, then retry. Or abandon. |
 | `source-discarded` | A source commit is no longer on the remote | no | Abandon. |

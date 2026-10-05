@@ -446,9 +446,10 @@ system, and the new delivery path must keep them true.*
 - **FR-008**: Users with write access to a repository MUST be able to abandon its pending queue. The
   request MUST name the queue state it abandons, and the system MUST refuse it when the queue
   changed. The system MUST durably record what was abandoned, by whom and when.
-- **FR-009**: The system MUST NOT clear a pending delivery by any path that does not produce that
-  record. The generic repository create and update operations MUST NOT be able to write the delivery
-  state.
+- **FR-009**: The system MUST NOT remove an undelivered entry from the queue by any path other than
+  an abandonment that produces that record. A delivery MUST remove an entry only when the remote
+  holds it. The generic repository create and update operations MUST NOT be able to write the
+  delivery state.
 - **FR-010**: The system MUST NOT block a branch merge because a repository's delivery is
   outstanding.
 - **FR-011**: The system MUST NOT delete a remote branch while a delivery that references its commit

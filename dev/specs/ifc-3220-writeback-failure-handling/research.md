@@ -168,9 +168,9 @@ system, which performed it.
 Every place that writes has database access: the merge flow, `post_process_branch_merge`, the
 computed-attribute flows, and the git task workers (`git/tasks.py` already calls `get_database()`).
 
-**Why one class.** FR-009 says no path may clear a pending delivery without a record. That rule can
-only be enforced in one place. Each method of the store is one state transition, and the record and
-the clear are one `save`.
+**Why one class.** FR-009 says that only an abandonment, which writes a record, may remove an
+undelivered entry. That rule can only be enforced in one place. Each method of the store is one
+state transition, and the record and the removal are one `save`.
 
 ### The locks
 

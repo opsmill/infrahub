@@ -175,7 +175,7 @@ Slices A and B of the plan.
 - [ ] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
       attribute in a branch diff or a proposed change, never merged, and a branch created while the
       default branch holds a queue reads a copy that the store never returns.
-- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the eight
+- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
 - [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
