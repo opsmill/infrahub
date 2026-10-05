@@ -47,7 +47,9 @@ export function getRepositoryCommitsColumns({
       header: () => <ColumnHeader>Author</ColumnHeader>,
       cell: ({ cell }) => (
         <TableCell>
-          <span className="truncate">{cell.getValue()}</span>
+          <span className="truncate" title={cell.getValue()}>
+            {cell.getValue()}
+          </span>
         </TableCell>
       ),
     }),

@@ -197,6 +197,19 @@ describe("RepositoryCommitsManager", () => {
     }
   });
 
+  test("keeps the tracked ref and the refresh button above the not-yet-available state", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByText(NOT_CLONED_MESSAGE)).toBeVisible();
+    await expect.element(component.getByText("Tracking main")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+  });
+
   test("renders the not-yet-available message when no worker holds a copy", async () => {
     // GIVEN
     apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));

@@ -94,9 +94,7 @@ export function RepositoryCommitsManager({
     if (emptyState) {
       return (
         <Col className="h-full gap-0">
-          <Row className="p-2">
-            <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
-          </Row>
+          <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
           <NoDataFound title={emptyState.title} message={emptyState.message} />
         </Col>
       );

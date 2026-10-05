@@ -32,6 +32,29 @@ describe("getRepositoryCommitStatus", () => {
     expect(status).toEqual({ condition: "BEHIND", pending_count: 2, unavailable: null });
   });
 
+  test("returns the unavailable reason of a status no worker has answered yet", async () => {
+    // GIVEN
+    apiMock.mockResolvedValueOnce({
+      data: {
+        InfrahubRepositoryCommits: {
+          condition: "UNAVAILABLE",
+          pending_count: null,
+          unavailable: { reason: "NOT_CLONED" },
+        },
+      },
+    } as ApiResponse);
+
+    // WHEN
+    const status = await getRepositoryCommitStatus(PARAMS);
+
+    // THEN
+    expect(status).toEqual({
+      condition: "UNAVAILABLE",
+      pending_count: null,
+      unavailable: { reason: "NOT_CLONED" },
+    });
+  });
+
   test("throws with every message when the response carries errors", async () => {
     // GIVEN
     apiMock.mockResolvedValueOnce({
