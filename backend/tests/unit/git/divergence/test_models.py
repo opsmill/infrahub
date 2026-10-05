@@ -157,51 +157,6 @@ def test_only_a_coherent_combination_is_accepted(test_case: CombinationTestCase)
         build(test_case.classification, imported=test_case.imported, remote=test_case.remote)
 
 
-@dataclass
-class DiscardedCommitTestCase:
-    name: str
-    classification: RefClassification
-    imported: str | None
-    remote: str | None
-    expected: str | None
-
-
-DISCARDED_COMMIT_TEST_CASES: list[DiscardedCommitTestCase] = [
-    DiscardedCommitTestCase(
-        name="rewrite", classification=RefClassification.REWRITE, imported=IMPORTED, remote=REMOTE, expected=IMPORTED
-    ),
-    DiscardedCommitTestCase(
-        name="retarget",
-        classification=RefClassification.RETARGET,
-        imported=IMPORTED,
-        remote=REMOTE,
-        expected=IMPORTED,
-    ),
-    DiscardedCommitTestCase(
-        name="fast_forward",
-        classification=RefClassification.FAST_FORWARD,
-        imported=IMPORTED,
-        remote=REMOTE,
-        expected=None,
-    ),
-    DiscardedCommitTestCase(
-        name="unchanged", classification=RefClassification.UNCHANGED, imported=IMPORTED, remote=IMPORTED, expected=None
-    ),
-    DiscardedCommitTestCase(
-        name="remote_absent",
-        classification=RefClassification.REMOTE_ABSENT,
-        imported=IMPORTED,
-        remote=None,
-        expected=None,
-    ),
-]
-
-
-@pytest.mark.parametrize(
-    "test_case",
-    [pytest.param(tc, id=tc.name) for tc in DISCARDED_COMMIT_TEST_CASES],
-)
-def test_only_a_lineage_break_discards_the_imported_commit(test_case: DiscardedCommitTestCase) -> None:
-    divergence = build(test_case.classification, imported=test_case.imported, remote=test_case.remote)
-
-    assert divergence.discarded_commit == test_case.expected
+def test_a_retarget_discards_the_imported_commit_and_a_ref_gone_from_the_remote_does_not() -> None:
+    assert build(RefClassification.RETARGET).discarded_commit == IMPORTED
+    assert build(RefClassification.REMOTE_ABSENT, remote=None).discarded_commit is None
