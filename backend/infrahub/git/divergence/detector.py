@@ -34,10 +34,9 @@ class RemoteDivergenceDetector:
             target_changed: Whether the repository was re-pointed at a different tracking target.
 
         Raises:
-            RepositoryError: When a comparison is needed and git cannot complete it, either
-                because the imported commit is a malformed identifier or because the presence or
-                ancestry check failed. A ref the remote still carries unchanged needs no
-                comparison and raises nothing.
+            RepositoryError: When a comparison is needed and cannot be completed, either because
+                one of the two identifiers is malformed or because the presence or ancestry check
+                failed. A ref that needs no comparison raises nothing, whatever it holds.
 
         """
         return RefDivergence(
@@ -61,6 +60,10 @@ class RemoteDivergenceDetector:
 
         if remote_head == imported_commit:
             return RefClassification.UNCHANGED
+
+        # Both identifiers reach git from here on, and a malformed one must not read as a rewrite.
+        self.gateway.require_commit(commit=imported_commit)
+        self.gateway.require_commit(commit=remote_head)
 
         # Asked before the ancestry question because it cannot be answered once the object is
         # gone: the ancestry call raises instead.

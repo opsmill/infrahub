@@ -25,11 +25,17 @@ class FakeAncestryGateway:
         present: set[str] | None = None,
         ancestors: set[tuple[str, str]] | None = None,
         fail_with: RepositoryError | None = None,
+        well_formed: set[str] | None = None,
     ) -> None:
         self.present = present if present is not None else {IMPORTED, REMOTE}
+        self.well_formed = well_formed if well_formed is not None else {IMPORTED, REMOTE}
         self.ancestors = ancestors or set()
         self.fail_with = fail_with
         self.is_ancestor_calls: list[tuple[str, str]] = []
+
+    def require_commit(self, commit: str) -> None:
+        if commit not in self.well_formed:
+            raise RepositoryError(identifier="repo", message=f"{commit!r} is not a valid commit identifier")
 
     def has_commit(self, commit: str) -> bool:
         return commit in self.present
@@ -141,6 +147,23 @@ def test_absent_object_is_decided_without_asking_about_ancestry() -> None:
 
     assert result.classification is RefClassification.REWRITE
     assert gateway.is_ancestor_calls == []
+
+
+def test_a_malformed_remote_head_raises_even_when_the_imported_commit_is_gone() -> None:
+    """The absent commit alone would answer, so nothing else checks the other identifier."""
+    gateway = FakeAncestryGateway(present=set(), well_formed={IMPORTED})
+
+    with pytest.raises(RepositoryError, match=r"is not a valid commit identifier"):
+        classify(gateway, imported=IMPORTED, remote=REMOTE)
+
+
+def test_an_unchanged_ref_is_not_validated() -> None:
+    """It needs no comparison, so the contract promises it raises nothing."""
+    gateway = FakeAncestryGateway(well_formed=set())
+
+    result = classify(gateway, imported=IMPORTED, remote=IMPORTED)
+
+    assert result.classification is RefClassification.UNCHANGED
 
 
 def test_git_failure_reaches_the_caller() -> None:
