@@ -447,13 +447,13 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
     for (let sample = 0; sample < 5; sample += 1) {
       await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(
+        page
+          .getByRole("alert")
+          .elements()
+          .map((alert) => alert.textContent)
+      ).toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
     }
-    expect(
-      page
-        .getByRole("alert")
-        .elements()
-        .map((alert) => alert.textContent)
-    ).toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
     await expect
       .element(component.getByText("Repository index unavailable", { exact: true }))
       .toBeVisible();

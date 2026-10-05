@@ -27,6 +27,13 @@ import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sy
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
 
+function toFailedFetch(error: Error): RepositoryStatusFetch {
+  const isDenied =
+    (error instanceof BranchRepositoriesError || error instanceof RepositoryBranchStatusError) &&
+    error.code === "PERMISSION_DENIED";
+  return isDenied ? { status: "denied" } : { status: "error", message: error.message };
+}
+
 // Data first: a failed background refetch keeps the list that was already loaded.
 function toRepositoryListFetch(
   list: UseQueryResult<BranchRepositoryPage>
@@ -40,10 +47,7 @@ function toRepositoryListFetch(
     };
   }
   if (!list.error) return { status: "pending" };
-  if (list.error instanceof BranchRepositoriesError && list.error.code === "PERMISSION_DENIED") {
-    return { status: "denied" };
-  }
-  return { status: "error", message: list.error.message };
+  return toFailedFetch(list.error);
 }
 
 // Data first: a failed background refetch keeps the rows that were already loaded.
@@ -55,13 +59,7 @@ function toStatusFetch(
     return { status: "ok", repository, rows: result.data.rows, count: result.data.count };
   }
   if (!result.error) return { status: "pending" };
-  if (
-    result.error instanceof RepositoryBranchStatusError &&
-    result.error.code === "PERMISSION_DENIED"
-  ) {
-    return { status: "denied" };
-  }
-  return { status: "error", message: result.error.message };
+  return toFailedFetch(result.error);
 }
 
 export function useBranchRepositorySummaries(
