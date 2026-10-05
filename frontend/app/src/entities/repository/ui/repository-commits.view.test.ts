@@ -533,11 +533,11 @@ describe("getNextPageState", () => {
       expected: "retry-pending",
     },
     {
-      name: "a failed page is loading again",
+      name: "a page loads after a refresh failed, before any page failed",
       isFetchNextPageError: true,
       isFetchingNextPage: true,
       failureReason: null,
-      expected: "retry-pending",
+      expected: "loading",
     },
   ])("is $expected when $name", ({ expected, ...state }) => {
     // WHEN

@@ -75,7 +75,9 @@ export function getNextPageState({
 }): NextPageState {
   if (!isFetchingNextPage) return isFetchNextPageError ? "failed" : "idle";
   // Pressing Retry while the query still retries on its own would cancel that retry.
-  return failureReason !== null || isFetchNextPageError ? "retry-pending" : "loading";
+  // isFetchNextPageError alone is not enough: after a failed refresh TanStack keeps the error
+  // status, so a fresh scroll load reports it before any older page has failed.
+  return failureReason !== null ? "retry-pending" : "loading";
 }
 
 export interface CommitLogEmptyState {

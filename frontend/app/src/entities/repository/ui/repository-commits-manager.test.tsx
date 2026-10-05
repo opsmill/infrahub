@@ -701,9 +701,7 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
     await component.getByRole("button", { name: "Retry" }).click();
-    await expect
-      .element(component.getByRole("button", { name: "Retry" }))
-      .toHaveAttribute("data-pending");
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
 
     // WHEN
     useBranch("feature");
@@ -715,7 +713,7 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
-  test("keeps the retry pending while a scroll-triggered page load is in flight", async () => {
+  test("shows no Retry while a page load after a failed page is in flight", async () => {
     // GIVEN
     let answerNextPage: (result: ApiResult) => void = () => {};
     apiMock
@@ -738,9 +736,8 @@ describe("RepositoryCommitsManager", () => {
     ).fetchNextPage();
 
     // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Retry" }))
-      .toHaveAttribute("data-pending");
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect.poll(() => component.getByRole("button", { name: "Retry" }).query()).toBeNull();
     answerNextPage(apiResult(generateSecondCommitsPage()));
     await nextPage;
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
