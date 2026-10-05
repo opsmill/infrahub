@@ -435,6 +435,15 @@ class TestRequestGeneratorDefinitionCheck(TestInfrahubAppWithoutLocalWorkflow):
             await instance.save(db=db)
             orphan_instances[name] = instance
         await dev_deleted.delete(db=db)
+        live_query_group = await Node.init(db=db, schema="CoreGraphQLQueryGroup", branch=source_branch_obj)
+        await live_query_group.new(
+            db=db,
+            name="qg-orphan-def-live",
+            query=str(query_unique.id),
+            members=[dev1],
+            subscribers=[orphan_instances["live"]],
+        )
+        await live_query_group.save(db=db)
 
         pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
         await pc.new(
