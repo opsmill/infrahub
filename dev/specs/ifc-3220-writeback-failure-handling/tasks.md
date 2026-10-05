@@ -373,11 +373,16 @@ X once after the delivery.
       builder in `backend/infrahub/core/branch/tasks.py`.
 - [ ] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
       `backend/infrahub/core/merge/regeneration_release.py`, per contracts section 9, with the renew
-      callback after each awaited step and both `widen` scopes.
+      callback after each awaited step and both `widen` scopes. After the artifact trigger of a
+      `terminals` marker, the release continues with the generator items and Python items of the
+      window.
 - [ ] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit dispatches
       the narrowed request, a miss dispatches the identifier, an unresolvable identifier widens with
-      `include_repository_ids`, a `terminals` marker submits the artifact trigger only, `releasing`
-      reaches every dispatch, the lease is renewed, and a dispatch failure raises.
+      `include_repository_ids`, a `terminals` marker with no other item submits the artifact trigger
+      and no generator trigger, `releasing` reaches every dispatch, the lease is renewed, and a
+      dispatch failure raises. A `terminals` marker, a held generator definition and a held Python
+      attribute in one window release all three: the artifact trigger, the generator request and the
+      Python submission.
 - [ ] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 14).
 - [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in

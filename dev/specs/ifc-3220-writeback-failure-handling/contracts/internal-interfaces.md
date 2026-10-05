@@ -398,19 +398,25 @@ queries the selectors use (`GATHER_ARTIFACT_DEFINITIONS`, `client.filters(kind=C
 
 Contract:
 
-1. If `held.widen` is set, or any held identifier does not resolve, run the `widen` release of the
-   repository with reason `HELD_SET_UNRESOLVED` and stop. Scope `all`: both blanket triggers with
-   `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every Python computed
-   attribute whose transform the repository owns. Scope `terminals`: the artifact trigger only.
-2. For each held item, take the narrowed request from the cache under its `hold_seq`, or build the
+1. If `held.widen` has scope `all`, or any held identifier does not resolve, run the full `widen`
+   release of the repository with reason `HELD_SET_UNRESOLVED` and stop. The full release submits
+   both blanket triggers with `include_repository_ids=[repository_id]`, plus a whole-kind recompute
+   of every Python computed attribute whose transform the repository owns. It covers every held item,
+   so the other steps have nothing to dispatch.
+2. If `held.widen` has scope `terminals`, submit the artifact trigger with
+   `include_repository_ids=[repository_id]`, then continue at step 3. The trigger covers the artifact
+   items of the window, so steps 3 and 4 skip them. It does not cover the generator items or the
+   Python items, so steps 3 to 5 still dispatch them. If the release stopped here, the clear would
+   remove those items without a dispatch (FR-016).
+3. For each held item, take the narrowed request from the cache under its `hold_seq`, or build the
    request with no member or target narrowing when the cache misses.
-3. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
+4. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
    `releasing=repository_id`, so the cascade runs as on a merge and every dispatch passes through the
    barrier.
-4. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
+5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
    `coalesced=True` and `widened=True`.
-5. Renew the lease after each awaited step, through a callback the caller passes.
-6. Raise on a dispatch failure. The caller has not cleared anything yet, so the lease expires and a
+6. Renew the lease after each awaited step, through a callback the caller passes.
+7. Raise on a dispatch failure. The caller has not cleared anything yet, so the lease expires and a
    later release covers the items again (`research.md` R10).
 
 ---

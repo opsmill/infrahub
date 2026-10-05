@@ -697,10 +697,12 @@ never skips.
 The blanket triggers take a branch and enumerate every definition. When a repository has a pending
 delivery, the barrier:
 
-1. holds a `widen` marker for that repository, which releases as a full regeneration of that
-   repository's definitions (R10). The marker has a scope: `all` from `_full_regeneration` and the
-   flag-off path, `terminals` from `_submit_full_terminal_regeneration`, which deliberately never
-   re-runs the generators that just failed;
+1. holds a `widen` marker for that repository, which releases as a blanket regeneration of that
+   repository (R10). The marker has a scope: `all` from `_full_regeneration` and the flag-off path,
+   `terminals` from `_submit_full_terminal_regeneration`, which deliberately never re-runs the
+   generators that just failed. Scope `all` covers every definition of the repository. Scope
+   `terminals` covers only its artifact definitions, so its release still dispatches the held
+   generator items and Python items;
 2. submits the blanket triggers with a new optional parameter, `exclude_repository_ids`, naming the
    pending repositories.
 
@@ -848,11 +850,16 @@ The rules:
 | Generator definition | The cached narrowed request if present, else `RequestGeneratorDefinitionRun` with no `target_members`, through `_dispatch_plan`, so the generator-to-artifact cascade runs as on a merge. |
 | Python `(kind, attribute)` | The cached narrowed submission if present, else `TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES` with `coalesced=True` and `widened=True`, as the coalesced pass submits a widened target, so the chain continues. |
 | `widen` marker, scope `all` | Full regeneration of that repository's definitions: both blanket triggers with `include_repository_ids=[repository]`, plus every Python computed attribute whose transform that repository owns, over its whole kind. |
-| `widen` marker, scope `terminals` | The artifact blanket trigger only, with `include_repository_ids=[repository]`. |
+| `widen` marker, scope `terminals` | The artifact blanket trigger, with `include_repository_ids=[repository]`. The release then continues: it dispatches the generator items and the Python items of the window as the rows above say. The trigger covers the artifact items of the window, so they need no separate dispatch. |
+
+A marker of scope `all` covers every held item, so its release dispatches nothing else. A marker of
+scope `terminals` covers only the artifact definitions. If its release stopped after the trigger,
+the clear would remove the held generator items and Python items without a dispatch (FR-016).
 
 An identifier that no longer resolves, for example a deleted definition, turns the release into the
-`widen` release of that repository (FR-016). The PRD names this as "a further named fallback
-reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the four that exist.
+full `widen` release of that repository, as for scope `all` (FR-016). The PRD names this as "a
+further named fallback reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the
+four that exist.
 
 **Every release dispatch passes through the barrier, with `releasing` set to the repository being
 released.** Its own candidates are admitted, and a candidate owned by another repository that is

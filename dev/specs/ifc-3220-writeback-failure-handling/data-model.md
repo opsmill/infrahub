@@ -147,14 +147,15 @@ destination branch.
 | `artifact_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
 | `generator_definitions` | `tuple[HeldItem, ...]` | Sorted by id, one item per id. |
 | `python_attributes` | `tuple[HeldPythonAttribute, ...]` | One item per `(kind, attribute)`. |
-| `widen` | `HeldWiden \| None` | Set when a full regeneration of the repository is owed (`research.md` R9, R10). |
+| `widen` | `HeldWiden \| None` | Set when a blanket regeneration of the repository is owed (`research.md` R9, R10). |
 | `release_leases` | `tuple[ReleaseLease, ...]` | The releases in progress (`research.md` R10). |
 
 `HeldItem` is `id: str`, `hold_seq: int`. `HeldPythonAttribute` is `kind: str`, `attribute: str`,
 `hold_seq: int`. A repeated hold of the same identifier keeps one item and raises its `hold_seq`.
 `HeldWiden` is `scope: Literal["all", "terminals"]`, `hold_seq: int`; a wider scope replaces a
-narrower one. `ReleaseLease` is `lease_id: str`, `from_seq: int`, `up_to_seq: int`,
-`expires_at: datetime`.
+narrower one. Scope `all` covers every definition and Python attribute of the repository. Scope
+`terminals` covers only its artifact definitions, so the held generator items and Python items stay
+owed. `ReleaseLease` is `lease_id: str`, `from_seq: int`, `up_to_seq: int`, `expires_at: datetime`.
 
 `HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence, and reports the
 previous sequence of each refreshed item. `lease_window(now)` returns the items that no live lease
