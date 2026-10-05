@@ -15,7 +15,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import AccountStatus, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.database import InfrahubDatabase
-from infrahub.services.component import InfrahubComponent
+from infrahub.services.component import COMPONENT_API_SERVER, COMPONENT_GIT_AGENT, InfrahubComponent
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
@@ -28,11 +28,14 @@ from .models import (
     TelemetryAccountData,
     TelemetryActivity24hData,
     TelemetryBranchData,
+    TelemetryComponentData,
     TelemetryData,
+    TelemetryPerWorkerData,
     TelemetrySchemaData,
     TelemetryWorkerData,
 )
 from .repository import TelemetrySnapshotRepository
+from .resources import WorkerResourceReading
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_activity_24h, gather_prefect_information
 from .utils import determine_infrahub_type, safe_metric
@@ -125,6 +128,41 @@ class DefaultActiveBranchCounter:
         return await count_active_branches(db=self.db)
 
 
+def _per_worker_share(readings: list[WorkerResourceReading]) -> TelemetryPerWorkerData:
+    """Return one worker's share of its container's CPU and memory, so that share times active workers is the total.
+
+    Every copy of a component is assumed to run with the same settings, so one
+    container stands for all of them. The processes in a container share it, so its
+    figures are divided by how many of them reported: a task worker has its
+    container to itself, while each API server process gets part of its container.
+    If a process could read only some of its figures, the most complete reading is
+    used. A process whose whole read failed is not counted.
+    """
+    usable = [reading for reading in readings if not reading.is_failed]
+    if not usable:
+        return TelemetryPerWorkerData()
+    chosen = max(usable, key=_reported_field_count)
+    sharers = sum(reading.host == chosen.host for reading in usable)
+    return TelemetryPerWorkerData(
+        processor_available=_processor_share(chosen.processor_available, sharers),
+        processor_assigned=_processor_share(chosen.processor_assigned, sharers),
+        memory_total=_memory_share(chosen.memory_total, sharers),
+        memory_available=_memory_share(chosen.memory_available, sharers),
+    )
+
+
+def _reported_field_count(reading: WorkerResourceReading) -> int:
+    return sum(value is not None for value in reading.model_dump(exclude={"host"}).values())
+
+
+def _processor_share(processors: int | None, sharers: int) -> float | None:
+    return None if processors is None else round(processors / sharers, 2)
+
+
+def _memory_share(memory: int | None, sharers: int) -> int | None:
+    return None if memory is None else memory // sharers
+
+
 class AnonymousTelemetryGatherer:
     """Assemble the full telemetry payload from its injected metric sources."""
 
@@ -148,6 +186,11 @@ class AnonymousTelemetryGatherer:
 
         default_branch = registry.get_branch_from_registry()
         workers = await self.component.list_workers(branch=default_branch.name, schema_hash=False)
+        # The server and task_workers blocks break the workers count down by component.
+        task_workers = [worker for worker in workers if worker.component == COMPONENT_GIT_AGENT]
+        api_workers = [worker for worker in workers if worker.component == COMPONENT_API_SERVER]
+
+        readings_by_component = await safe_metric(self.component.read_worker_resources()) or {}
 
         accounts = await safe_metric(self.account_gatherer.gather())
         activity_24h = await safe_metric(self.activity_gatherer.gather())
@@ -161,7 +204,17 @@ class AnonymousTelemetryGatherer:
             platform=platform.machine(),
             workers=TelemetryWorkerData(
                 total=len(workers),
-                active=len([w for w in workers if w.active]),
+                active=len([worker for worker in workers if worker.active]),
+            ),
+            server=TelemetryComponentData(
+                total=len(api_workers),
+                active=len([worker for worker in api_workers if worker.active]),
+                per_worker=_per_worker_share(readings_by_component.get(COMPONENT_API_SERVER, [])),
+            ),
+            task_workers=TelemetryComponentData(
+                total=len(task_workers),
+                active=len([worker for worker in task_workers if worker.active]),
+                per_worker=_per_worker_share(readings_by_component.get(COMPONENT_GIT_AGENT, [])),
             ),
             branches=TelemetryBranchData(
                 total=len(registry.branch),
