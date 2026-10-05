@@ -6,7 +6,7 @@ A `Generator` is a generic plugin that queries data and creates new nodes and re
 
 :::success Examples
 
-- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other nodes.
+- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other objects.
 - Want to read how Generators can be used to create a service catalog? See our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
 :::
 
@@ -20,7 +20,7 @@ Generators are defined as a **Generator definition** within an [.infrahub.yml](.
 
 ![Generator overview diagram](../media/topics/generator/generator_overview.excalidraw.svg)
 
-Running a Generator definition will create new nodes as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
+Running a Generator definition will create new objects as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
 The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
 
