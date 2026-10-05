@@ -26,7 +26,7 @@ from infrahub.exceptions import (
     RepositoryError,
 )
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
-from infrahub.git.divergence.gateway import GitPythonAncestryGateway
+from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -597,8 +597,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 behind.append(branch_name)
         return behind
 
-    def _get_ancestry_gateway(self) -> GitPythonAncestryGateway:
-        return GitPythonAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
+    def _get_ancestry_gateway(self) -> GitAncestryGateway:
+        return GitAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
 
     def _classify_against_graph(
         self, branch_name: str, remote_head: str | None, graph_commits: Mapping[str, str | None] | None
