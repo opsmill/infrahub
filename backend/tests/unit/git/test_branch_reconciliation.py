@@ -288,6 +288,21 @@ async def test_a_worktree_on_the_remote_head_reports_the_commit_the_graph_held_a
     assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=UNKNOWN_COMMIT, commit=imported)]
 
 
+async def test_an_empty_graph_commit_is_one_the_graph_never_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    imported = tracked.imported_commits[TRACKED]
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(**{TRACKED: ""}))
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(commit=imported, divergence=divergence(None, imported, RefClassification.FAST_FORWARD))
+    ]
+    assert tracked.client.recorded_commits == [(TRACKED, imported)]
+
+
 async def test_a_branch_on_the_remote_head_in_both_git_and_the_graph_is_left_alone(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
