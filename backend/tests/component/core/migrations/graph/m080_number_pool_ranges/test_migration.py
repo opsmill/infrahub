@@ -111,7 +111,7 @@ async def test_migration_080(
     )
 
     for pool, bounds in zip(pre_migration_pools, (USER_POOL_BOUNDS, SCHEMA_POOL_BOUNDS), strict=True):
-        migrated = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool.get_id(), kind=CoreNumberPool)
+        migrated = await NodeManager.get_one(db=db, id=pool.get_id(), kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
         ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=migrated.get_id())
         assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [
             (*bounds, None)
