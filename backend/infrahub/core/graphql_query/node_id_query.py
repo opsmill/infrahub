@@ -21,7 +21,6 @@ class NodeIDQuery(BaseModel):
     kind: str
 
     def extra_filters(self) -> dict[str, Any]:
-        """Return the filters that narrow the query to a subset of the kind, none by default."""
         return {}
 
     def render_query(self) -> str:
