@@ -60,7 +60,7 @@ time, the local ones included. The import has no bound, and the Git commands ins
 either. While the import holds the repository lock, the recovery check starts no second attempt
 (`research.md` R6, R20).
 
-**Scale/Scope**: one new package of eleven files (`backend/infrahub/git/writeback/`), two new
+**Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
 entity slice. The stored history of the queue grows with the square of the merges in one outage:
 about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table at the end of
@@ -75,7 +75,7 @@ about 1.2 MB for 100 merges (`research.md` R23). The task count is in the table 
 | **I. Schema-Driven Integrity** | Pass. Nine attributes declared in the schema layer. Protocols, the GraphQL schema and the frontend types are regenerated, never hand-edited. |
 | **II. Branch-Safe by Default** | Pass, and it is a central decision. `LOCAL` makes the state diff-invisible and never merged. The read inheritance of `LOCAL` is specified (FR-025) and handled: the store reads the default branch only, and no generic UI surface shows the inherited copy. A branch-safety test asserts both. |
 | **III. Type Safety & Explicit Contracts** | Pass. The queue, the held set and the records are versioned Pydantic models, not dictionaries. The causes are a closed enum. Per-ref rejections get a typed exception whose reason comes from GitPython's flags. Both contracts are written before implementation. |
-| **IV. Test Discipline** | Pass. The classifier, the queue model, the service, the abandoner, the recovery check and the barrier are unit-testable without a database, through three ports. Integration tests run against a live Gogs remote. Two e2e tests cover the user-facing actions. |
+| **IV. Test Discipline** | Pass. The classifier, the queue model, the service, the abandoner, the recovery check and the barrier are unit-testable without a database, through four ports. Integration tests run against a live Gogs remote. Two e2e tests cover the user-facing actions. |
 | **V. Query Performance** | Pass. The barrier's fast path is one query for every pending repository, not one per definition. The release resolves held identifiers with the selectors' existing queries. No N+1. |
 | **VI. Security & Input Boundaries** | Pass with a sign-off. Both mutations refuse off the default branch and check object update, `manage_repositories` and `edit_default_branch` explicitly. The stored message is the remote's own lines and the typed message, never raw stderr, and every URL is scrubbed of credentials. The abandonment record names the account in its value and in the edge metadata. The credential-versus-actor point is a governance item, below. |
 | **VII. Simplicity & Maintainability** | Pass with three notes, all in Complexity Tracking. No new node kind, no new event type, no new setting. Rejected on this principle: a Git bundle, a related node, a new trigger, gating inside the transform executor, a separate release workflow, a re-import inside the abandonment, prefix delivery, a liveness heartbeat, and a fallback setting for rollback. |
@@ -131,9 +131,11 @@ backend/infrahub/
 │   │   │                                  # stale bound, cache bounds
 │   │   ├── models.py                      # queue, held set, records, intent, outcomes, actor
 │   │   ├── classifier.py                  # classify_delivery_failure, scrub_credentials
-│   │   ├── ports.py                       # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort
+│   │   ├── ports.py                       # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort,
+│   │   │                                  # DeliveryRunQuery
 │   │   ├── store.py                       # WritebackIntentStore, the only read/write path
 │   │   ├── git_adapter.py                 # the only Git code of the package
+│   │   ├── runs.py                        # delivery run tags, the only orchestrator query
 │   │   ├── service.py                     # RepositoryWritebackService.deliver
 │   │   ├── abandoner.py                   # WritebackAbandoner.abandon
 │   │   ├── recovery.py                    # DeliveryRecoveryCheck.run
@@ -168,6 +170,7 @@ backend/infrahub/
 │   ├── mutations/repository.py            # two mutations, ProcessRepository refusal
 │   └── schema.py                          # registration
 ├── workflows/catalogue.py                 # two workflows
+├── workflows/constants.py                 # the delivery marker tag
 └── core/schema/generated/, core/protocols.py   # regenerated
 
 frontend/app/src/entities/

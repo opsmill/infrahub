@@ -19,9 +19,10 @@ backend/infrahub/git/writeback/          # NEW
 ├── models.py        # DeliveryQueue, PendingMerge, HeldRegeneration, AbandonmentRecord,
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
 ├── classifier.py    # classify_delivery_failure, scrub_credentials
-├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort
+├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort, DeliveryRunQuery
 ├── store.py         # WritebackIntentStore, the only read and write path
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
+├── runs.py          # delivery_run_tags, PrefectDeliveryRunQuery, the only orchestrator query here
 ├── service.py       # RepositoryWritebackService
 ├── abandoner.py     # WritebackAbandoner
 ├── recovery.py      # DeliveryRecoveryCheck
@@ -33,7 +34,8 @@ backend/infrahub/core/merge/
 ```
 
 `models.py`, `classifier.py`, `service.py`, `abandoner.py` and `recovery.py` import no Git library
-and no database code, so their tests need neither.
+and no database code, so their tests need neither. `recovery.py` reads the orchestrator only through
+`DeliveryRunQuery`, so its tests need no orchestrator either.
 
 ---
 
@@ -138,6 +140,10 @@ class RegenerationReleasePort(Protocol):
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
     ) -> None: ...
+
+
+class DeliveryRunQuery(Protocol):
+    async def has_queued_run(self, *, repository_id: str) -> bool: ...
 ```
 
 `held` is the window of one lease. `renew` moves that lease's expiry.
@@ -177,6 +183,26 @@ for it. `notify_branch_deleted` only sends `RefreshGitRepositoryBranchDeleted`.
 destination worktree. `HeldRegenerationReleaser` implements `RegenerationReleasePort`. Both are
 shapes the service defines, so neither the Git adapter nor the merge layer is imported by
 `service.py`.
+
+`has_queued_run` returns whether the orchestrator holds a delivery run of the repository that waits
+to start: a run that carries both delivery tags and has a state of type `SCHEDULED` or `PENDING`
+(`research.md` R20, condition 5). It raises when the orchestrator does not answer.
+`PrefectDeliveryRunQuery`, in `runs.py`, implements `DeliveryRunQuery` with one `read_flow_runs`
+call with `limit=1`, over a client that implements
+`task_manager/flow_run/prefect_client.py::FlowRunQuerying`. The filter is
+`FlowRunFilterTags(all_=delivery_run_tags(repository_id))` and
+`FlowRunFilterStateType(any_=[SCHEDULED, PENDING])`. It is the only orchestrator query of the
+package, so the recovery check's unit tests use a fake.
+
+```python
+def delivery_run_tags(repository_id: str) -> list[str]: ...
+```
+
+`delivery_run_tags`, in `runs.py`, returns the repository's node tag,
+`WorkflowTag.RELATED_NODE.render(identifier=repository_id)`, and the delivery marker,
+`WorkflowTag.REPOSITORY_DELIVERY.render()`. These render as `infrahub.app/node/<repository id>` and
+`infrahub.app/repository-delivery`. Every submitter of a delivery run and the adapter use it, so
+the tags that a submission writes and the tags that the query reads cannot disagree.
 
 ---
 
@@ -226,6 +252,11 @@ Three callers, one task:
 |---|---|
 | `git-repository-merge` (`merge_git_repository`) | first attempt. Before it, the flow enqueues `model.pending_merge`, or the entry it builds when that is `None`, only when `model.pending_merge_enqueued` is `False`. It passes `widen=True`, so the same save holds a `widen` marker of scope `all`, and the release after this delivery runs again the regeneration that the follow-ups dispatched without a hold (`research.md` R3) |
 | `git-repository-delivery-retry` (`retry_repository_delivery`) | manual retry (`manual=True`), and the recovery check (`manual=False`) |
+
+Every submission of a delivery run passes `tags=delivery_run_tags(repository_id)` to
+`submit_workflow`: the dispatcher for the merge flow of an `active` repository, and the retry
+mutation and the recovery check for the retry flow. The recovery check finds a run that waits in the
+queue by these tags (`research.md` R20, R21).
 
 ```python
 @task(
@@ -284,7 +315,12 @@ so the task run fails with the message of the GraphQL contract.
 ```python
 class DeliveryRecoveryCheck:
     def __init__(
-        self, state: DeliveryStatePort, workflow: InfrahubWorkflow, lock_registry: InfrahubLockRegistry, clock: Clock
+        self,
+        state: DeliveryStatePort,
+        workflow: InfrahubWorkflow,
+        runs: DeliveryRunQuery,
+        lock_registry: InfrahubLockRegistry,
+        clock: Clock,
     ) -> None: ...
 
     async def run(self, *, repository: RepositoryRef) -> bool: ...
@@ -292,11 +328,24 @@ class DeliveryRecoveryCheck:
 
 Called from the loop of `git/tasks.py::sync_remote_repositories`, for every repository, before the
 bootstrap and whatever the outcome of the sync, under its own guard. It submits
-`GIT_REPOSITORY_DELIVERY_RETRY` with a system context, then calls `state.touch(...)`, when the
-delivery is stale (four conditions, `research.md` R20), or when held items that no live lease
-covers wait and `last_progress_at` is older than `STALE_AFTER`. The lock condition needs the lock
-registry, which the check takes in its constructor. It returns whether it submitted. It never
-raises: a failure is logged and the next cycle checks again.
+`GIT_REPOSITORY_DELIVERY_RETRY` with a system context and `tags=delivery_run_tags(repository.id)`,
+then calls `state.touch(...)`, when:
+
+- the delivery is stale (five conditions, `research.md` R20); or
+- held items that no live lease covers wait, `last_progress_at` is older than `STALE_AFTER`, and
+  no delivery run of the repository waits to start.
+
+The lock condition needs the lock registry, and the orchestrator condition needs `runs`. The check
+takes both in its constructor. It reads the state and the lock first, and calls
+`runs.has_queued_run(...)` only when every other condition of a trigger holds. It then passes the
+answer to `WritebackIntent.is_stale(now, lock_free, run_queued)`. A repository with no work to
+recover, or with recent progress, costs no orchestrator query. When `has_queued_run` raises, the
+check submits nothing, does not call `state.touch(...)`, logs the failure at warning level, and
+returns `False`. It returns whether it submitted. It never raises: a failure is logged and the next
+cycle checks again.
+
+`build_recovery_check` builds `PrefectDeliveryRunQuery` over
+`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`.
 
 ---
 
@@ -455,7 +504,8 @@ Contract:
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
 | `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Before it delivers, the default path enqueues only when `pending_merge_enqueued` is `False`: it enqueues `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). It passes `widen=True`: the save that appends the entry also holds a `widen` marker of scope `all` for the repository, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When the flag is `True`, it never enqueues and only delivers (`research.md` R3). |
 | `git/tasks.py::git_branch_delete` | When `references_source_branch` is true: calls `request_branch_deletion`, skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
-| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Takes a `sleep` callable in its constructor, as the barrier does, so a unit test records the delays and returns at once. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. |
+| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Takes a `sleep` callable in its constructor, as the barrier does, so a unit test records the delays and returns at once. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
+| `workflows/constants.py::WorkflowTag` | Gains `REPOSITORY_DELIVERY = "repository-delivery"`, which renders as `infrahub.app/repository-delivery`. It marks a delivery run (`research.md` R20). |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
 | `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |
 | `core/merge/selective_regen/definition_selector/artifact_selector.py::ArtifactSelector._build_request` | Fills `repository_id`. |

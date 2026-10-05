@@ -1098,7 +1098,9 @@ list, and the status vocabulary (INFP-671).
 - the barrier: partition, the atomic hold, the fast path, unknown owners, `releasing`, a state error
   that clears within the retries, fail-open after the last retry, the narrowed cache hit and miss,
   and two holds of one item with different members, which release both members;
-- the retry condition and `final_attempt`.
+- the retry condition and `final_attempt`;
+- the recovery check against a fake `DeliveryRunQuery`: a run that waits in the queue, a run whose
+  worker died, and a query that fails.
 
 **Component, with a database**: the store's transitions and the lock time to live; `read_only`
 keeping the attributes out of the update input; the branch-safety test (no delivery attribute in a
@@ -1207,29 +1209,80 @@ never rewrites the queue (R23).
 boundary of an attempt: after the fetch, after the push, after the record, and before and after the
 import.
 
-A pending delivery is **stale** when all four hold:
+A pending delivery is **stale** when all five hold:
 
 1. its status is `pending`;
 2. no automatic retry is due in the future;
 3. `last_progress_at` is older than `STALE_AFTER`, 15 minutes, which exceeds the longest retry delay
    plus the fetch and push timeouts;
-4. the repository lock is free (`lock.py::InfrahubLock.locked`).
+4. the repository lock is free (`lock.py::InfrahubLock.locked`);
+5. the orchestrator holds no delivery run of the repository that waits to start, that is, no run in
+   a state of type `SCHEDULED` or `PENDING`. The type `SCHEDULED` includes the states
+   `AwaitingRetry` and `Late`.
 
 Condition 4 covers what the timestamps cannot: a long import, which is not a Git command and has no
 bound, and an attempt that waits behind a synchronisation for the lock.
+
+Condition 5 covers a run that waits in a busy work queue. Such a run holds no lock and writes no
+progress. Without condition 5, the check would count it as lost and submit one more run every
+`STALE_AFTER` while the backlog lasts, and each extra run would make the backlog longer.
+
+**How the five conditions combine.** All five must hold. Conditions 1 and 2 read the state: work
+waits, and no retry chain owns it. Condition 5 reads the orchestrator: no run waits to start.
+Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the state `RUNNING`:
+
+- A run whose worker is alive holds the repository lock, waits for it behind another holder, or
+  writes progress at each step. Condition 3 or 4 then fails, and the delivery is not stale.
+- A run whose worker died writes no more progress. Once the lock is free, conditions 3 and 4
+  hold, also while the orchestrator still shows the run as `RUNNING`, and the check counts the run
+  as lost.
+- A run that a worker started a moment ago, and that has not taken the lock yet, can count as lost
+  for that moment. The extra run that the check then submits waits for the lock, then finds nothing
+  to do or delivers what remains.
+
+A run that the orchestrator never starts stops only the automatic recovery. The manual retry stays
+available (R7).
 
 **The recovery check.** It runs from the loop of `git/tasks.py::sync_remote_repositories`, for every
 repository, before the bootstrap and whatever the outcome of the sync, under its own guard. A check
 inside `sync_repository_from_origin` would be skipped whenever one branch fails to synchronise,
 because that function catches the error that a failing branch raises. The check submits
-`GIT_REPOSITORY_DELIVERY_RETRY` with a system context, then moves `last_progress_at`, when:
+`GIT_REPOSITORY_DELIVERY_RETRY` with a system context and the delivery tags below, then moves
+`last_progress_at`, when:
 
 - the delivery is stale; or
-- held items wait that no live release lease covers, and `last_progress_at` is older than
-  `STALE_AFTER`.
+- held items wait that no live release lease covers, `last_progress_at` is older than
+  `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
 
-The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. A
-submission that finds an attempt running waits for the lock and then finds nothing to do.
+The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
+the submitted run waits to start, condition 5 also stops a second submission. A submission that
+finds an attempt running waits for the lock and then finds nothing to do.
+
+**How the check finds the delivery runs.** Every delivery run carries two tags from its submission:
+
+- the repository's node tag, `infrahub.app/node/<repository id>`. It is
+  `workflows/constants.py::WorkflowTag.RELATED_NODE`, the tag that `workflows/utils.py::add_tags`
+  writes for `nodes`;
+- a marker, `infrahub.app/repository-delivery`, from a new member
+  `WorkflowTag.REPOSITORY_DELIVERY`. The node tag alone also matches the other runs of the
+  repository, such as its synchronisation and import runs, and any of them that waits would then
+  stop the recovery.
+
+Three submitters pass these tags to `submit_workflow`: the dispatcher, for the
+`GIT_REPOSITORIES_MERGE` run of an `active` repository (R3), and the retry mutation and the
+recovery check, for `GIT_REPOSITORY_DELIVERY_RETRY`. One function,
+`git/writeback/runs.py::delivery_run_tags`, builds the tags for all three. A tag that the flow adds
+when it starts is too late, because a run that waits in the queue has not started.
+`services/adapters/workflow/worker.py::WorkflowWorkerExecution.submit_workflow` passes `tags` to
+`run_deployment`. `WorkflowLocalExecution` ignores them, but it runs the flow at once, so no run
+waits.
+
+**The query.** The port `DeliveryRunQuery.has_queued_run(repository_id)` answers condition 5. Its
+Prefect adapter makes one `read_flow_runs` call with `limit=1`, for the runs that carry both tags
+and have a state of type `SCHEDULED` or `PENDING`. The check asks it last, and only when every other
+condition of a trigger holds. A repository with no work to recover, or with recent progress, costs
+no query. If the query fails, the check submits nothing for that repository in this cycle, logs
+the failure at warning level, and asks again at the next cycle. It never submits without an answer.
 
 **Why this is not an unbounded retry.** A stale delivery has no failure to retry: its attempt was
 lost to a worker restart, a lost submission or a killed process. The new attempt is a first attempt
@@ -1242,6 +1295,11 @@ check stops.
 `import_objects_from_files`, a large unrelated method. The lock condition covers the same case with
 one read.
 
+**Rejected: a `RUNNING` run counts as live too.** A run whose worker died would then stop the
+recovery until the `crash-zombie-flows` automation (`trigger/system.py::TRIGGER_CRASH_ZOMBIE_FLOWS`)
+marks it `CRASHED`. Conditions 3 and 4 already judge a run that a worker took, with no such
+dependency.
+
 ---
 
 ## R21. Observability
@@ -1250,6 +1308,10 @@ one read.
 
 - Every delivery, retry and abandon run is tagged with the repository node and the default branch,
   so it appears in the repository's task list, as the synchronisation flow's runs do.
+- A delivery run gets two tags at submission, not only inside the flow: the repository's node tag
+  and the delivery marker, from `git/writeback/runs.py::delivery_run_tags` (R20). The recovery
+  check then finds a run that waits in the queue. When the flow starts, it adds the other tags
+  through `workflows/utils.py::add_tags`, which keeps the tags that the run already has.
 - Every store transition logs one line with the repository, the entry ids, the status, the cause and
   the attempt number.
 - A run ends `Failed` for the outcomes `failed` and `unreplayable`, and `Completed` for `delivered`,

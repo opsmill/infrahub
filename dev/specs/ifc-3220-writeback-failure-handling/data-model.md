@@ -86,13 +86,17 @@ FR-020 names `source-discarded`. FR-022 names `destination-rewritten`.
 #### Actions by status
 
 A delivery is **stale** when its status is `pending`, no retry is due in the future,
-`last_progress_at` is older than 15 minutes, and the repository lock is free (`research.md` R20).
-Staleness decides what the recovery check does. It no longer gates the user's actions.
+`last_progress_at` is older than 15 minutes, the repository lock is free, and the orchestrator
+holds no delivery run of the repository that waits to start (`research.md` R20). The last condition
+keeps a run that waits in a busy work queue from counting as lost: such a run holds no lock and
+writes no progress. A run that a worker took is judged by its progress and the lock, so a run whose
+worker died counts as lost once the lock is free, even while the orchestrator still shows it as
+running. Staleness decides what the recovery check does. It no longer gates the user's actions.
 
 | Status | Retry | Abandon |
 |---|---|---|
 | `none` | refused: nothing pending | refused: nothing pending |
-| `pending`, an attempt running or a retry due | allowed. It waits for the lock, and finds nothing if the running attempt delivered. | allowed. It waits for the lock, then checks the version. |
+| `pending`, an attempt running or waiting to start, or a retry due | allowed. It waits for the lock, and finds nothing if the running attempt delivered. | allowed. It waits for the lock, then checks the version. |
 | `pending`, stale | allowed | allowed |
 | `action-required` | allowed | allowed |
 
@@ -280,7 +284,7 @@ unless stated otherwise.
 
 | Type | Kind | Fields | Meaning |
 |---|---|---|---|
-| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `progress`, `last_delivered_commit` | The whole state of one repository, as the store reads it. Exposes `is_stale(now, lock_free)` and `has_work(now)`. |
+| `WritebackIntent` | frozen dataclass | `repository_id`, `status`, `cause`, `error`, `queue`, `held`, `progress`, `last_delivered_commit` | The whole state of one repository, as the store reads it. Exposes `is_stale(now, lock_free, run_queued)` and `has_work(now)`. The caller reads the lock and the orchestrator and passes the two booleans in, so the model stays pure. |
 | `DeliveryStage` | `StrEnum` | `fetch`, `push`, `record`, `import`, `replay`, `release` | Where an attempt failed. An input of the classifier. |
 | `DeliveryFailure` | frozen dataclass | `cause`, `retryable: bool`, `message` | The classifier's output. `message` is already scrubbed. |
 | `DeliveryOutcome` | `StrEnum` | `nothing-pending`, `delivered`, `observed`, `released`, `failed`, `unreplayable`, `deferred` | What one attempt did. `deferred` means a retry chain was already due. |

@@ -113,15 +113,15 @@ Slices A and B of the plan.
 - [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden` and
       `ReleaseLease`, `AbandonmentRecord`, `RevertedDelivery`, `WritebackIntent` with
-      `is_stale(now, lock_free)` and `has_work(now)`, `DeliveryStage` (with `fetch` and `release`),
-      `DeliveryFailure`, `DeliveryOutcome`, `DeliveryAttemptResult`, `HoldReceipt` and `Actor`, per
-      [data-model.md](data-model.md). Every JSON model carries `format: Literal[1]`.
+      `is_stale(now, lock_free, run_queued)` and `has_work(now)`, `DeliveryStage` (with `fetch`
+      and `release`), `DeliveryFailure`, `DeliveryOutcome`, `DeliveryAttemptResult`, `HoldReceipt`
+      and `Actor`, per [data-model.md](data-model.md). Every JSON model carries `format: Literal[1]`.
 - [ ] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
       of a removed id and of an id in the last abandonment record, the bound of `removed_entry_ids`,
       a version that moves only on add or remove, `with_hold` raising the sequence of a repeated
       identifier and reporting the previous one, `lease_window` skipping items of a live lease and
       covering items of an expired one, `without_window` keeping a later hold, a wider `widen` scope
-      replacing a narrower one, `is_stale` at each of its four conditions, and SHA validation.
+      replacing a narrower one, `is_stale` at each of its five conditions, and SHA validation.
 - [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
       table of [research.md](research.md) R5, and `scrub_credentials`.
 - [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
@@ -143,7 +143,7 @@ Slices A and B of the plan.
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
       `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**).
 - [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
-      `RegenerationReleasePort`, `ReplayResult`, `RepositoryRef` and `Clock`, per
+      `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
 - [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method of
       contracts section 2, on the default branch, through `NodeManager` and `node.save(fields=...)`,
@@ -238,7 +238,11 @@ SC-002, SC-007.
       `sleep` callable that the constructor takes. If the last retry fails too, log at error level
       and still submit. Pass `pending_merge` and the merge's `context` to the workflow. Set
       `pending_merge_enqueued` to `True` only when one of this repository's tries returned (R3).
-      Submit no merge workflow for an `active` repository whose merge carries no content.
+      Submit no merge workflow for an `active` repository whose merge carries no content. Add
+      `WorkflowTag.REPOSITORY_DELIVERY` to `backend/infrahub/workflows/constants.py`, and
+      `delivery_run_tags` to `backend/infrahub/git/writeback/runs.py`. Pass
+      `tags=delivery_run_tags(repository_id)` when you submit the merge of an `active` repository,
+      so a run that waits in the queue carries the node tag and the delivery marker (R20, R21).
 - [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
       repository, when `model.pending_merge_enqueued` is `False`, enqueue `model.pending_merge`, or build
       it from the source branch's graph commit when it is `None`, after the content test of R3.
@@ -325,7 +329,8 @@ SC-002, SC-007.
 - [ ] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`: refuse off the default branch, check the three
-      permissions explicitly, refuse when nothing is pending, submit, return the task. A running
+      permissions explicitly, refuse when nothing is pending, submit with
+      `tags=delivery_run_tags(repository_id)` (R20), return the task. A running
       attempt or a waiting automatic retry does not refuse it. **Gate: GraphQL and
       authorization sign-off.**
 - [ ] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
@@ -443,11 +448,24 @@ X once after the delivery.
       retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
 - [ ] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
-      repository, before the bootstrap and whatever the sync outcome, under its own guard.
-- [ ] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`: the retry condition
-      per cause, `final_attempt`, the deferred chain, the recovery check for a stale delivery (each of
-      the four conditions, the free lock included) and for uncovered held work behind an empty queue,
-      no submission while a lease is live, the `touch`, and a check that never raises.
+      repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits
+      with `tags=delivery_run_tags(repository.id)`. Write `PrefectDeliveryRunQuery` in
+      `backend/infrahub/git/writeback/runs.py`, which implements `DeliveryRunQuery` with one
+      `read_flow_runs` call, and wire it in `build_recovery_check`. The check queries the
+      orchestrator only when every other condition of a trigger holds, and submits nothing when the
+      query raises (R20, contracts section 7).
+- [ ] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
+      `DeliveryRunQuery` in `backend/tests/unit/git/writeback/fakes.py`: the retry condition per cause,
+      `final_attempt`, the deferred chain, the recovery check for a stale delivery (each of the five
+      conditions, the free lock included) and for uncovered held work behind an empty queue, no
+      submission while a lease is live, the `touch`, and a check that never raises. Add these cases:
+      a run that waits in the queue, with old progress and a free lock, is not stale and gets no
+      second submission; a run that the orchestrator still shows as running, with no progress for
+      `STALE_AFTER` and a free lock, is stale; a crashed run, with no run that waits, is stale; a
+      query that raises submits nothing and does not call `touch`; a repository with nothing pending makes
+      no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
+      fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
+      `PENDING`, with `limit=1`.
 - [ ] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
       attempt, open it, short delays through `with_options`.
@@ -630,7 +648,7 @@ runs as today until Phase 5.
 **Then**: the e2e part of Phase 7 (T094), Phase 9, Phase 10.
 
 **Test discipline**: the classifier, the models, the service, the abandoner, the recovery check and
-the barrier run in seconds without a database, through the three ports and their fakes. Every
+the barrier run in seconds without a database, through the four ports and their fakes. Every
 other test uses testcontainers or the Gogs harness. The failure paths are the point: a test that
 covers only the success path covers nothing that matters.
 
