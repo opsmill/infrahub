@@ -14,24 +14,33 @@ from infrahub.graphql.mutations.resource_manager.number_pools.pool import BOUNDS
 from tests.helpers.graphql import graphql
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import CREATE_NUMBER_POOL, CREATE_NUMBER_POOL_WITH_BOUNDS, BoundsCase, create_pool, execute, range_bounds
+from .helpers import (
+    CREATE_NUMBER_POOL,
+    CREATE_NUMBER_POOL_WITH_BOUNDS,
+    BoundsCase,
+    bounds_input,
+    create_pool,
+    execute,
+    range_bounds,
+    ticket_pool_input,
+)
 
 UNKNOWN_RANGE_ID = "ffffffff-ffff-ffff-ffff-ffffffffffff"
 
 
 MISSING_BOUND_CASES = [
-    BoundsCase(name="start_only", bounds="start_range: {value: 1}"),
-    BoundsCase(name="end_only", bounds="end_range: {value: 9}"),
-    BoundsCase(name="start_null", bounds="start_range: {value: null}, end_range: {value: 9}"),
-    BoundsCase(name="end_null", bounds="start_range: {value: 1}, end_range: {value: null}"),
+    BoundsCase(name="start_only", bounds={"start_range": {"value": 1}}),
+    BoundsCase(name="end_only", bounds={"end_range": {"value": 9}}),
+    BoundsCase(name="start_null", bounds={"start_range": {"value": None}, "end_range": {"value": 9}}),
+    BoundsCase(name="end_null", bounds={"start_range": {"value": 1}, "end_range": {"value": None}}),
 ]
 
 
 NO_BOUNDS_CASES = [
-    BoundsCase(name="neither_spelling", bounds=""),
-    BoundsCase(name="both_null", bounds="start_range: {value: null}, end_range: {value: null}"),
-    BoundsCase(name="empty_inputs", bounds="start_range: {}, end_range: {}"),
-    BoundsCase(name="empty_ranges", bounds="ranges: []"),
+    BoundsCase(name="neither_spelling", bounds={}),
+    BoundsCase(name="both_null", bounds={"start_range": {"value": None}, "end_range": {"value": None}}),
+    BoundsCase(name="empty_inputs", bounds={"start_range": {}, "end_range": {}}),
+    BoundsCase(name="empty_ranges", bounds={"ranges": []}),
 ]
 
 
@@ -81,8 +90,8 @@ class TestNumberPoolCreate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS % case.bounds,
-            variables={"name": f"bounds-pool-{case.name}"},
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={"data": ticket_pool_input(name=f"bounds-pool-{case.name}", bounds=case.bounds)},
         )
 
         assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
@@ -102,8 +111,8 @@ class TestNumberPoolCreate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS % case.bounds,
-            variables={"name": f"empty-pool-{case.name}"},
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={"data": ticket_pool_input(name=f"empty-pool-{case.name}", bounds=case.bounds)},
         )
 
         assert not result.errors
@@ -121,8 +130,10 @@ class TestNumberPoolCreate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS % ('ranges: [{id: "%s"}]' % UNKNOWN_RANGE_ID),
-            variables={"name": "unknown-range-pool"},
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={
+                "data": ticket_pool_input(name="unknown-range-pool", bounds={"ranges": [{"id": UNKNOWN_RANGE_ID}]})
+            },
         )
 
         assert [error.message for error in result.errors or []] == [UNKNOWN_RANGE_MESSAGE]
@@ -138,7 +149,7 @@ class TestNumberPoolCreate:
             db=db,
             branch=default_branch_scope_class,
             name="one-range-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
 
         read = await execute(
@@ -160,8 +171,8 @@ class TestNumberPoolCreate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 5}, end_range: {value: 5}",
-            variables={"name": "equal-bounds-pool"},
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={"data": ticket_pool_input(name="equal-bounds-pool", bounds=bounds_input(start=5, end=5))},
         )
 
         assert not result.errors
@@ -179,8 +190,12 @@ class TestNumberPoolCreate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=CREATE_NUMBER_POOL_WITH_BOUNDS % "start_range: {value: 1}, end_range: {value: 9}, ranges: []",
-            variables={"name": "both-spellings-pool"},
+            source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+            variables={
+                "data": ticket_pool_input(
+                    name="both-spellings-pool", bounds=bounds_input(start=1, end=9) | {"ranges": []}
+                )
+            },
         )
 
         assert [error.message for error in result.errors or []] == [SHORTHAND_WITH_RANGES]
@@ -302,7 +317,7 @@ class TestNumberPoolCreate:
             db=db,
             branch=default_branch_scope_class,
             name="allocating-pool",
-            bounds="start_range: {value: 100}, end_range: {value: 101}",
+            bounds=bounds_input(start=100, end=101),
         )
 
         allocated = []

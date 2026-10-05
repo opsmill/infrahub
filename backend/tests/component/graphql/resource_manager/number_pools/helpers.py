@@ -95,15 +95,8 @@ query NumberPool(
 
 
 CREATE_NUMBER_POOL_WITH_BOUNDS = """
-mutation CreateNumberPool($name: String!) {
-  CoreNumberPoolCreate(
-    data: {
-      name: {value: $name},
-      node: {value: "TestingTicket"},
-      node_attribute: {value: "ticket_id"},
-      %s
-    }
-  ) {
+mutation CreateNumberPool($data: CoreNumberPoolCreateInput!) {
+  CoreNumberPoolCreate(data: $data) {
     ok
     object { id start_range { value } end_range { value } ranges { count } }
   }
@@ -114,7 +107,19 @@ mutation CreateNumberPool($name: String!) {
 @dataclass
 class BoundsCase:
     name: str
-    bounds: str
+    bounds: dict[str, Any]
+
+
+def bounds_input(start: int, end: int) -> dict[str, Any]:
+    return {"start_range": {"value": start}, "end_range": {"value": end}}
+
+
+def ticket_pool_input(name: str, bounds: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "name": {"value": name},
+        "node": {"value": "TestingTicket"},
+        "node_attribute": {"value": "ticket_id"},
+    } | bounds
 
 
 async def execute(db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]) -> ExecutionResult:
@@ -128,9 +133,12 @@ async def execute(db: InfrahubDatabase, branch: Branch, source: str, variables: 
     )
 
 
-async def create_pool(db: InfrahubDatabase, branch: Branch, name: str, bounds: str) -> str:
+async def create_pool(db: InfrahubDatabase, branch: Branch, name: str, bounds: dict[str, Any]) -> str:
     result = await execute(
-        db=db, branch=branch, source=CREATE_NUMBER_POOL_WITH_BOUNDS % bounds, variables={"name": name}
+        db=db,
+        branch=branch,
+        source=CREATE_NUMBER_POOL_WITH_BOUNDS,
+        variables={"data": ticket_pool_input(name=name, bounds=bounds)},
     )
     assert not result.errors
     assert result.data

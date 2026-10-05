@@ -21,11 +21,11 @@ from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
-from .helpers import BoundsCase, create_pool, execute, range_bounds, range_details, shorthand
+from .helpers import BoundsCase, bounds_input, create_pool, execute, range_bounds, range_details, shorthand
 
 CLEARED_BOUND_CASES = [
-    BoundsCase(name="start_null", bounds="start_range: {value: null}"),
-    BoundsCase(name="end_null", bounds="end_range: {value: null}"),
+    BoundsCase(name="start_null", bounds={"start_range": {"value": None}}),
+    BoundsCase(name="end_null", bounds={"end_range": {"value": None}}),
 ]
 
 
@@ -40,8 +40,8 @@ mutation RenameNumberPool($id: String!, $name: String!) {
 
 
 UPDATE_NUMBER_POOL_BOUND = """
-mutation UpdateNumberPool($id: String!) {
-  CoreNumberPoolUpdate(data: {id: $id, %s}) {
+mutation UpdateNumberPool($data: CoreNumberPoolUpdateInput!) {
+  CoreNumberPoolUpdate(data: $data) {
     ok
     object { ranges { edges { node { start { value } end { value } } } } }
   }
@@ -50,8 +50,8 @@ mutation UpdateNumberPool($id: String!) {
 
 
 UPDATE_NUMBER_POOL_START = """
-mutation UpdateNumberPool($id: String!) {
-  CoreNumberPoolUpdate(data: {id: $id, %s}) {
+mutation UpdateNumberPool($data: CoreNumberPoolUpdateInput!) {
+  CoreNumberPoolUpdate(data: $data) {
     ok
     object { start_range { value } end_range { value } }
   }
@@ -103,14 +103,14 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name=f"clearing-pool-{case.name}",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % case.bounds,
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id} | case.bounds},
         )
 
         assert [error.message for error in result.errors or []] == [BOUNDS_NOT_CLEARABLE]
@@ -124,7 +124,7 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name="rewrite-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
         (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
         pool_range.allocation_weight.value = 7
@@ -133,8 +133,8 @@ class TestNumberPoolUpdate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % "start_range: {value: 15}, end_range: {value: 30}",
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id} | bounds_input(start=15, end=30)},
         )
 
         assert not result.errors
@@ -152,15 +152,15 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name="one-bound-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
         (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % "end_range: {value: 25}",
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id, "end_range": {"value": 25}}},
         )
 
         assert not result.errors
@@ -170,13 +170,13 @@ class TestNumberPoolUpdate:
     async def test_bounds_written_on_a_pool_without_range_create_it(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="grown-pool", bounds="")
+        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="grown-pool", bounds={})
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % "start_range: {value: 5}, end_range: {value: 9}",
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id} | bounds_input(start=5, end=9)},
         )
 
         assert not result.errors
@@ -186,13 +186,13 @@ class TestNumberPoolUpdate:
     async def test_one_bound_written_on_a_pool_without_range_is_refused(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="half-bound-pool", bounds="")
+        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="half-bound-pool", bounds={})
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % "start_range: {value: 5}",
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id, "start_range": {"value": 5}}},
         )
 
         assert [error.message for error in result.errors or []] == [BOUNDS_REQUIRED]
@@ -202,7 +202,7 @@ class TestNumberPoolUpdate:
     async def test_bounds_written_on_a_pool_with_several_ranges_are_refused_listing_them(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, ticket_schema: None
     ) -> None:
-        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds="")
+        pool_id = await create_pool(db=db, branch=default_branch_scope_class, name="multi-range-pool", bounds={})
         pool = await NodeManager.get_one_by_id_or_default_filter(db=db, id=pool_id, kind=CoreNumberPool)
         high = await add_pool_range(db=db, pool=pool, start=205, end=300)
         low = await add_pool_range(db=db, pool=pool, start=100, end=200)
@@ -210,8 +210,8 @@ class TestNumberPoolUpdate:
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % "start_range: {value: 1}, end_range: {value: 50}",
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id} | bounds_input(start=1, end=50)},
         )
 
         assert [error.message for error in result.errors or []] == [
@@ -228,16 +228,17 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name="both-spellings-update-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
         (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND
-            % ('start_range: {value: 1}, end_range: {value: 50}, ranges: [{id: "%s"}]' % pool_range.get_id()),
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={
+                "data": {"id": pool_id} | bounds_input(start=1, end=50) | {"ranges": [{"id": pool_range.get_id()}]}
+            },
         )
 
         assert [error.message for error in result.errors or []] == [SHORTHAND_WITH_RANGES]
@@ -251,15 +252,15 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name="ranges-only-update-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
         (pool_range,) = await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id)
 
         result = await execute(
             db=db,
             branch=default_branch_scope_class,
-            source=UPDATE_NUMBER_POOL_BOUND % ('ranges: [{id: "%s"}]' % pool_range.get_id()),
-            variables={"id": pool_id},
+            source=UPDATE_NUMBER_POOL_BOUND,
+            variables={"data": {"id": pool_id, "ranges": [{"id": pool_range.get_id()}]}},
         )
 
         assert not result.errors
@@ -275,7 +276,7 @@ class TestNumberPoolUpdate:
             db=db,
             branch=default_branch_scope_class,
             name="racing-bound-pool",
-            bounds="start_range: {value: 10}, end_range: {value: 20}",
+            bounds=bounds_input(start=10, end=20),
         )
         repository = NumberPoolRepository(db=db)
         (pool_range,) = await repository.get_ranges(pool_id=pool_id)
@@ -285,8 +286,8 @@ class TestNumberPoolUpdate:
             execute(
                 db=db,
                 branch=default_branch_scope_class,
-                source=UPDATE_NUMBER_POOL_START % "start_range: {value: 5}",
-                variables={"id": pool_id},
+                source=UPDATE_NUMBER_POOL_START,
+                variables={"data": {"id": pool_id, "start_range": {"value": 5}}},
             )
         )
         async with pool_lock, asyncio.timeout(30):
