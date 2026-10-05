@@ -369,49 +369,66 @@ where nothing else has moved the numbers.
       inferring it from the source the record produces. Cover both entry points in the same test so
       the uuid path cannot stand in for the name path.
 
-### 1f. Migration `m079`
+### 1f. Migration `m081` (planned as `m079`)
 
-- [ ] T025 [US1] Create the package
+- [X] T025 [US1] Create the package
       `core/migrations/graph/m079_reanchor_number_pool_reservations/` (`__init__.py`, `migration.py`,
       `queries.py`) exporting `Migration079`, an `ArbitraryMigration` with `minimum_version = 78`.
       Model on `m078_retire_agnostic_property_edges/`. Registration is filename-driven — **no registry
       list to edit**.
-- [ ] T026 [US1] Behaviour 1 — re-anchor every record. Resolve `identifier` to the **active** `Node`
+      *(Landed as `m081_reanchor_number_pool_reservations` / `Migration081`, `minimum_version =
+      80`: `m079` was taken by `m079_range_diff_indexes` and `m080` by `m080_number_pool_ranges`.)*
+- [X] T026 [US1] Behaviour 1 — re-anchor every record. Resolve `identifier` to the **active** `Node`
       vertex using the `graph_traversal/_cypher.py::_SOURCE_MATCH` idiom (latest `IS_PART_OF` without
       pre-filtering status, keep only if active, then `ORDER BY branch_level DESC, from DESC LIMIT 1`);
       find the `Attribute` by the pool's `node_attribute`; `CREATE … SET new = properties(old) …
       DELETE old` per `m066::_reassign_has_source`, which preserves `-global-`.
-- [ ] T027 [US1] Behaviour 2 — drop orphaned `IS_RESERVED` edges whose object no longer exists.
+      *(Landed differently: an edge is re-anchored only when some branch window — its own edges up
+      to now, its origin's up to `branched_from` — reads the attribute as owned and its current
+      value as the reserved one. Closed edges and edges whose number no branch holds are dropped,
+      not moved.)*
+- [X] T027 [US1] Behaviour 2 — drop orphaned `IS_RESERVED` edges whose object no longer exists.
       **Reports a pre-count and a post-count.** Orphan detection for re-anchored `IS_RESERVED` edges
       must use the same reachability predicate as T017a (`UNRETAINED_AGNOSTIC_FIELD_PREDICATE`), not
       existence on the default branch alone: an object deleted on the default branch can still be held
       by an older branch, and dropping its `IS_RESERVED` edge would free a number that branch holds.
-- [ ] T028 [US1] Behaviour 4 — delete **every** `(attr)-[:HAS_SOURCE]->(:CoreNumberPool)` edge,
+      *(Folded into the final step, which deletes every edge left on an `AttributeValue`; branch
+      windows give the reachability. No pre-count: counts come from query stats.)*
+- [X] T028 [US1] Behaviour 4 — delete **every** `(attr)-[:HAS_SOURCE]->(:CoreNumberPool)` edge,
       unconditionally. FR-030b says the pool is never a stored source, so a stored one is legacy
       whatever state that pool's record for the attribute is in; scoping the sweep to a live record
       spares a released reservation, a collapsed-away loser, and an attribute renamed out from under
       its record. Behaviour 4 still runs before behaviour 3 as defence-in-depth against that scoping
       coming back. Pre- and post-count. *(Critique E3 / risk R10.)*
-- [ ] T029 [US1] Behaviour 3 — collapse multi-pool records onto one `Attribute`; survivor is the
+      *(No pre-count: counts come from query stats.)*
+- [X] T029 [US1] Behaviour 3 — collapse multi-pool records onto one `Attribute`; survivor is the
       **greatest `from`**. Pre- and post-count. Note in the code comment that this is *not* `m066`'s
       rule — `m066` keeps the earliest, and it answers a different question.
-- [ ] T030 [US1] One transaction per behaviour, count read back before commit, and **no `return` from
+      *(Also sets the survivor's `from` to the earliest `from` among the collapsed edges.)*
+- [X] T030 [US1] One transaction per behaviour, count read back before commit, and **no `return` from
       inside a transaction context** — the documented `m066` partial-commit hazard. *(Critique E4.)*
-- [ ] T031 [US1] `validate_migration`: re-run a read query and turn leftovers into `result.errors`,
+      *(Superseded: every write is batched with `CALL … IN TRANSACTIONS`, and a failed step stops
+      the run so a re-run finishes it.)*
+- [X] T031 [US1] `validate_migration`: re-run a read query and turn leftovers into `result.errors`,
       following `m077::Migration077.validate_migration`.
-- [ ] T032 [US1] Set **both** `result.nbr_migrations_executed` and `console.log(...)` per count.
+- [X] T032 [US1] Set **both** `result.nbr_migrations_executed` and `console.log(...)` per count.
       Counts reach an operator **only** through the console — `cli/db.py::migrate_database` never
       prints `nbr_migrations_executed`. Emit a structured log line alongside. *(Critique E11.)*
-- [ ] T033 [US1] Bump `GRAPH_VERSION` 78 → 79 in `core/graph/__init__.py` and run
+- [X] T033 [US1] Bump `GRAPH_VERSION` 78 → 79 in `core/graph/__init__.py` and run
       `uv run pytest backend/tests/unit/core/graph/test_graph_version.py`.
-- [ ] T034 [P] [US1] Component tests under
+      *(Bumped 79 → 80.)*
+- [X] T034 [P] [US1] Component tests under
       `backend/tests/component/core/migrations/graph/m079_reanchor_number_pool_reservations/`: one per
       behaviour, the duplicate-uuid node case, idempotency, and the console counts (assert the logged
       string, as `m078`'s tests do).
-- [ ] T035 [US1] Component tests for the source sweep: two pools with live records on one attribute,
+      *(Under `…/m081_reanchor_number_pool_reservations/`: one shared dataset run twice, plus
+      `test_resume.py` for failures in each step.)*
+- [X] T035 [US1] Component tests for the source sweep: two pools with live records on one attribute,
       both carrying legacy pool source edges — after migration the attribute reports the surviving
       pool and has **no** stored source edge; plus the cases with no live record at all (a released
       reservation, and an attribute renamed out from under its record), whose edges must also be gone.
+      *(The released-reservation case became an object-conversion case: only conversion ever
+      closed a legacy edge.)*
 - [ ] T036 [P] [US1] `backend/tests/integration_docker/test_number_pool_migration.py` — the upgrade
       path end to end. **Module-level `pytestmark = pytest.mark.shard_a|shard_b` is mandatory**, with a
       matching entry in the `backend-docker-integration` `shard:` matrix in `.github/workflows/ci.yml`;
@@ -421,10 +438,12 @@ where nothing else has moved the numbers.
 
 ### 1g. SC-022 evidence
 
-- [ ] T037 [US1] Capture every figure a pool reports — utilization, the branch split, the in-use list
+- [X] T037 [US1] Capture every figure a pool reports — utilization, the branch split, the in-use list
       — on a database populated **before** the change; run the migration; re-capture. Assert identical
       except where FR-036a corrects a known defect. This is the strongest evidence the migration is
       safe, and it is only measurable at this boundary.
+      *(Component test `test_every_figure_a_pool_reports_survives_the_re_anchoring`, plus a run on
+      a restored 16,162-edge backup with identical figures on every branch.)*
 
 ### 1h. Docs
 
