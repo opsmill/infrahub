@@ -78,7 +78,7 @@ repository section with one row per repo plus an Artifacts row.
 
 | Gap | What it would take |
 |---|---|
-| **Readiness data: "latest run per repo and workflow on this branch"** | No query exists. The prototype builds it in the frontend: fetch `InfrahubTask(branch)` for repo-related workflows, then group by `related_node` (git tasks), by `GeneratorDefinition.repository` (generator tasks), or into a single "Artifacts" bucket (artifact tasks, which are tagged only with the target node). The real version is a backend query, recorded as a follow-up in `00-brief.md`. |
+| **Readiness data: "latest run per repo and workflow on this branch"** | No query exists. The prototype builds it in the frontend: fetch `InfrahubTask(branch)` for repo-related workflows, then group by `related_node` (git tasks), by `GeneratorDefinition.repository` (generator tasks), or into a single "Artifacts" bucket (artifact tasks, which are tagged with no repository). The real version is a backend query, recorded as a follow-up in `00-brief.md`. *(Corrected 2026-10-05: this said artifact tasks are tagged only with the target node. They are also tagged with the branch, so `InfrahubTask(branch)` returns them; they carry no repository tag. See "Correction (2026-10-05)" below the next table.)* |
 | **Repo query with commit, operational status and sync time** | The frontend queries `commit`, `operational_status` and `internal_status` nowhere. A `CoreGenericRepository` query on the branch is needed. Whether a "sync time" field exists on the repo node is **unverified**. If it doesn't, the best available stand-in is the latest import task's `updated_at`. |
 | **Readiness summary / repo status row** | No component shows "entity + several labelled sub-states + a link each". It's built from `Card`, `Badge`, `Tooltip` and `LinkButton`. If it turns out to be reusable (proposed changes want the same thing), it's a candidate for `shared/components/display`, not `@infrahub/ui`. |
 | **Prototype route** | The app has no prototype or playground route (`src/app/router.tsx` has none). Phase 2 adds one under the authenticated layout, for example `/_proto/branch-details`, with a `?variant=` switcher. It's deleted once the design is picked. |
@@ -93,9 +93,29 @@ and `workflows/catalogue.py`.
 |---|---|---|
 | Sync / import | `git_repositories_sync`, `git-repository-add-read-write`, `git-repository-add-read-only`, `git-repository-pull-read-only`, import last commit / import objects | `related_node` = repository ID |
 | Checks | `git-repository-user-checks-definition-trigger`, `git-repository-trigger-user-checks`, `git-repository-trigger-internal-checks`, `git-repository-check-merge-conflict` | `related_node` = repository ID (mostly; confirm per flow) |
-| Generators | `generator-definition-run`, `request-generator-definition-run`, `generator-run`, `run-generator-as-check` | generator definition ID → `GeneratorDefinition.repository`; some are tagged with the branch only (`add_tags(branches=[branch])` in `generators/tasks.py::run_generator_definition`) and can't be placed |
-| Artifacts | `artifact-definition-generate`, `request_artifact_definitions_generate`, `artifact-generate` | Target node only. Goes in its own **Artifacts row**, not under a repo (per the brief). |
+| Generators | `generator-definition-run`, `request-generator-definition-run`, `generator-run`, `run-generator-as-check` | Depends on the flow; see "Correction (2026-10-05)" below. Only `request-generator-definition-run` carries the generator definition ID. `generator-definition-run` is tagged with the branch only and can't be placed. *(Corrected 2026-10-05: this said every generator flow is placed through the generator definition ID.)* |
+| Artifacts | `artifact-definition-generate`, `request_artifact_definitions_generate`, `artifact-generate` | No repository tag: the branch and, for each artifact, the target node. Goes in its own **Artifacts row**, not under a repo (per the brief). *(Corrected 2026-10-05: this said "Target node only".)* |
 | Transforms | `transform_render_jinja2_template`, `transform_render_python` | Branch only: both flows call `add_branch_tag` (`transformations/tasks.py::transform_python`, `::transform_render_jinja2_template`), so they can't be tied to a repository. Probably out of the warning. **Open.** *(Corrected 2026-10-02: this row said `related_node` = transform ID and cited `computed_attribute/tasks.py:667`, which defines neither flow.)* |
+
+**Correction (2026-10-05).** The task tags, checked in `backend/infrahub/generators/tasks.py`,
+`backend/infrahub/artifacts/tasks.py`, `backend/infrahub/git/tasks.py` and
+`backend/infrahub/proposed_change/tasks.py`:
+
+- Generators:
+  - `generator-definition-run` ("Run all generators") is tagged with the branch only.
+  - `request-generator-definition-run` is tagged with the branch and the generator definition ID, so
+    it can be placed through `GeneratorDefinition.repository`.
+  - `generator-run` is tagged with the branch, the target node ID and, once its setup succeeds, the
+    generator instance ID. It carries no definition ID. Placing it under a repository needs another
+    lookup, from the generator instance to its definition and then to the repository. A run that
+    fails before its instance is created carries only the target node and can't be placed.
+  - `run-generator-as-check` is tagged with the branch and the proposed change ID. It can't be
+    placed under a repository from its tags.
+- Artifacts: `artifact-definition-generate` and `request_artifact_definitions_generate` are tagged
+  with the branch only. `artifact-generate` and `git-repository-check-artifact-create` are tagged
+  with the branch and the target node. So `InfrahubTask(branch)` returns every artifact task on the
+  branch, and none of them is tied to a repository. The branch tag gives branch scope, not a
+  repository association.
 
 ## Worst-case data the prototype must render
 
@@ -104,6 +124,8 @@ and `workflows/catalogue.py`.
 - A repo with `operational_status = error-cred` and `sync_status = error-import` at the same time.
 - A read-only repo (`CoreReadOnlyRepository`) next to read-write repos.
 - A generator task tagged only with the branch, which can't be tied to any repo.
+  *(2026-10-05: also a `run-generator-as-check` task, tagged with the branch and the proposed
+  change only.)*
 - An Artifacts row where 180 of 300 artifact tasks failed.
 - A repo with a failed generator on Monday, a passing re-run on Tuesday, and a failed check on
   Wednesday. Only Wednesday's failure counts.
