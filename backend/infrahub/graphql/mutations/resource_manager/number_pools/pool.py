@@ -204,25 +204,26 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 db=dbt, id=pool_id, kind=obj.get_kind(), branch=branch
             )
             repository = NumberPoolRepository(db=dbt)
-            ranges = await repository.get_ranges(pool_id=pool_id)
+            shorthand_range = None
             if shorthand_supplied:
-                validate_shorthand_target(ranges=range_bounds(ranges))
+                shorthand_range = await cls._get_shorthand_range(repository=repository, pool_id=pool_id)
 
             number_pool, result = await super()._call_mutate_update(
                 info=info, data=data, branch=branch, db=dbt, obj=obj, skip_uniqueness_check=skip_uniqueness_check
             )
-
             if shorthand_supplied:
                 await cls._write_shorthand_range(
                     repository=repository,
                     number_pool=number_pool,
-                    current_range=ranges[0] if ranges else None,
+                    shorthand_range=shorthand_range,
                     user_id=graphql_context.assigned_user_id,
                 )
 
-            ranges = await repository.get_ranges(pool_id=pool_id)
-            validate_number_pool_ranges(ranges=range_bounds(ranges))
-            await sync_shorthand(db=dbt, pool_id=pool_id, ranges=ranges, user_id=graphql_context.assigned_user_id)
+            updated_ranges = await repository.get_ranges(pool_id=pool_id)
+            validate_number_pool_ranges(ranges=range_bounds(updated_ranges))
+            await sync_shorthand(
+                db=dbt, pool_id=pool_id, ranges=updated_ranges, user_id=graphql_context.assigned_user_id
+            )
 
         return number_pool, result
 
@@ -244,25 +245,37 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
             raise ValidationError(input_value=SHORTHAND_WITH_RANGES)
 
     @classmethod
+    async def _get_shorthand_range(cls, repository: NumberPoolRepository, pool_id: str) -> CoreNumberPoolRange | None:
+        """Return the range a shorthand write rewrites, or None when the pool holds no range yet.
+
+        Raises:
+            ValidationError: When the pool holds more than one range.
+
+        """
+        stored_ranges = await repository.get_ranges(pool_id=pool_id)
+        validate_shorthand_target(ranges=range_bounds(stored_ranges))
+        return stored_ranges[0] if stored_ranges else None
+
+    @classmethod
     async def _write_shorthand_range(
         cls,
         repository: NumberPoolRepository,
         number_pool: Node,
-        current_range: CoreNumberPoolRange | None,
+        shorthand_range: CoreNumberPoolRange | None,
         user_id: str,
     ) -> None:
         start = number_pool.get_attribute("start_range").value
         end = number_pool.get_attribute("end_range").value
         if not isinstance(start, int) or not isinstance(end, int):
-            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if current_range else BOUNDS_REQUIRED)
+            raise ValidationError(input_value=BOUNDS_NOT_CLEARABLE if shorthand_range else BOUNDS_REQUIRED)
 
         if start > end:
             raise ValidationError(input_value="start_range can't be larger than end_range")
 
-        if current_range is None:
+        if shorthand_range is None:
             await repository.create_range(pool=number_pool, start=start, end=end, user_id=user_id)
         else:
-            await repository.save_range_bounds(pool_range=current_range, start=start, end=end, user_id=user_id)
+            await repository.save_range_bounds(pool_range=shorthand_range, start=start, end=end, user_id=user_id)
 
     @classmethod
     @retry_db_transaction(name="resource_manager_update")
