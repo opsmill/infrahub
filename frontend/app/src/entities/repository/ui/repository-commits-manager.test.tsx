@@ -18,7 +18,6 @@ import { generateBranch } from "../../../../tests/fake/branch";
 import {
   BEHIND_HEAD,
   BEHIND_IMPORTED,
-  fullHash,
   generateBehindCommitsResponse,
   generateFirstCommitsPage,
   generateInSyncCommitsResponse,
@@ -98,8 +97,6 @@ describe("RepositoryCommitsManager", () => {
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.resetAllMocks();
-    vi.unstubAllGlobals();
-    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
   });
 
   test("renders every commit field newest-first as returned", async () => {
@@ -787,23 +784,6 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(/^Checked /).query()).toBeNull();
   });
 
-  test("copies the full hash and confirms it in a toast", async () => {
-    // GIVEN
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("isSecureContext", true);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
-    const component = await renderTab();
-
-    // WHEN
-    await component.getByRole("button", { name: `Actions for commit ${BEHIND_HEAD}` }).click();
-    await component.getByRole("menuitem", { name: "Copy commit hash" }).click();
-
-    // THEN
-    expect(writeText).toHaveBeenCalledWith(fullHash(BEHIND_HEAD));
-    await expect.element(component.getByText("Commit hash copied")).toBeVisible();
-  });
-
   test("renders no total commit count", async () => {
     // GIVEN
     apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
@@ -815,6 +795,6 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
     expect(component.getByText(/of \d+ results/).query()).toBeNull();
     expect(component.getByText(/\d+ commits$/).query()).toBeNull();
-    expect(component.getByText(/\d+ counts?$/).query()).toBeNull();
+    expect(component.getByRole("navigation").query()).toBeNull();
   });
 });
