@@ -147,14 +147,16 @@ Slices A and B of the plan.
 - [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method of
       contracts section 2, on the default branch, through `NodeManager` and `node.save(fields=...)`,
       under the `repository-delivery` lock with its time to live and bounded acquire.
-      `settle_delivery` bounds its lease by the snapshot. `abandon` passes the actor's account id as
-      `user_id`. `pending_repository_ids` filters on the scalar `delivery_status` only.
+      `settle_delivery` bounds its lease by the snapshot. `expire_lease` sets the lease's expiry to
+      now and keeps its items. `abandon` passes the actor's account id as `user_id`.
+      `pending_repository_ids` filters on the scalar `delivery_status` only.
 - [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
 - [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
-      changes on an empty queue, and a progress write that leaves `delivery_queue` untouched.
+      changes on an empty queue, a progress write that leaves `delivery_queue` untouched, and an
+      `expire_lease` call whose items the next `lease_owed_release` covers.
 - [ ] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
       attribute in a branch diff or a proposed change, never merged, and a branch created while the
       default branch holds a queue reads a copy that the store never returns.
@@ -205,7 +207,8 @@ SC-002, SC-007.
       under the repository lock, the settle included. Step 6 always resets to H. The obligation is
       saved before the commit is recorded. The release and the clear run after the lock is released,
       under the lease the settle returned. A held-only run takes its lease through
-      `lease_owed_release`.
+      `lease_owed_release`. When the release raises, the service calls `expire_lease` on its lease,
+      then handles the failure with the stage `release` (R10, rule 4).
 - [ ] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; observation of
       every entry; the destination check; the source check with a missing branch; a replay conflict
       that resets and names the entry; a push failure that resets and records the cause; the
@@ -213,8 +216,10 @@ SC-002, SC-007.
       that grew during the import keeps the obligation; M is H on the observation path; the settle
       runs under the lock and bounds the lease by the snapshot; the release runs after the lock is
       released and renews the lease; the clear removes the lease window only; a held-only run under
-      a live lease does nothing; an abandonment and a deletion guard that wait for the lock find the
-      entries already settled.
+      a live lease does nothing; a release that fails once, through a releaser fake that raises on
+      its first call, and a second `deliver` call, as the task retry makes it, that releases every
+      item of the window under a new lease; an abandonment and a deletion guard that wait for the
+      lock find the entries already settled.
 - [ ] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
       one service per repository, with the adapter bound to the same repository. Until T069, it wires
       a releaser that does nothing, because no barrier holds anything yet.
@@ -462,8 +467,9 @@ release.
       flow `abandon_repository_delivery` in `backend/infrahub/git/tasks.py`, and the catalogue entry
       `GIT_REPOSITORY_DELIVERY_ABANDON`, per [research.md](research.md) R8. The actor comes from the
       workflow context. The abandonment sends `RefreshGitRepositoryBranchDeleted` for every abandoned
-      entry that carried the deletion flag, then releases under its lease. **Gate: spec decision 15
-      for the broadcast.**
+      entry that carried the deletion flag, then releases under its lease. When the release raises,
+      it calls `expire_lease` on its lease and re-raises. **Gate: spec decision 15 for the
+      broadcast.**
 - [ ] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
@@ -472,7 +478,8 @@ release.
       queue refuse; the entries leave and the lease is taken before the release; the broadcast is sent
       for flagged entries only; the release runs after the lock is released; `clear_released` keeps a
       later hold; a crash between the removal and the clear leaves a lease that expires, and the
-      recovery check then releases the work.
+      recovery check then releases the work; a release that fails sets the lease's expiry to now and
+      keeps the items held.
 - [ ] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
 - [ ] T090 [US5] Add `test_conflict_then_abandon` to

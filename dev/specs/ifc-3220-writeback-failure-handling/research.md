@@ -346,7 +346,8 @@ Under the repository lock:
 Then, outside the repository lock:
 
 16. **Release** the held items of the lease window (R10). The releaser renews the lease after each
-    awaited step.
+    awaited step. If the release fails, set the lease's expiry to now, then classify the failure
+    (stage `release`, R5) and stop. The held items stay (R10, rule 4).
 17. **Clear.** Under the state lock: remove the held items of the lease window, and end the lease.
 
 **Why the entries leave under the lock.** Two kinds of waiter take the repository lock the moment
@@ -370,7 +371,8 @@ broadcast goes first so that most workers already hold M.
 the recovery check can start a run. That run must not release the same items again. While a lease
 is live, a run releases only the items held after the lease's window, and the recovery check does
 nothing for held work. A lease that expires, because the releasing worker died, makes the release
-owed again, and the recovery check starts it.
+owed again, and the recovery check starts it. A run whose release fails does not wait for that: it
+sets the lease's expiry to now, so the retry of its task releases the items again (R10, rule 4).
 
 **Why the checks run before the replay.** A worker can hold a discarded commit in its object
 database long after the remote dropped it. A replay that merges it and pushes would restore it. A
@@ -445,7 +447,7 @@ and `release`. It reads the exception type first. Per-ref push rejections get a 
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
 | replay | a merge conflict | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
-| release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
+| release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -627,7 +629,9 @@ repository's queue, which outlives every task run, so the action belongs on the 
 2. For each abandoned entry with `delete_source_git_branch` set, send
    `RefreshGitRepositoryBranchDeleted`, so that every worker drops its local branch. The remote
    branch stays (R12).
-3. Leave both locks. Release the held items of the lease window (R10).
+3. Leave both locks. Release the held items of the lease window (R10). If the release fails, set
+   the lease's expiry to now and raise. The held items stay, and the recovery check of R20 releases
+   them (R10, rule 4).
 4. Under the state lock, remove the held items of the lease window, and end the lease.
 
 **Why step 1 removes the entries before the release.** With the entries still queued, a delivery
@@ -850,10 +854,17 @@ The rules:
    lease. Items held later stay.
 2. While a lease is live, no other run releases its items. A held-only run and the recovery check
    do nothing for them.
-3. An expired lease, left by a worker that died, protects nothing. The next release covers its
-   items again, and the recovery check starts one if no delivery comes.
-4. A release that fails is retried by its task (stage `release`, R5). If it still fails, its lease
-   expires, and rule 3 applies.
+3. An expired lease protects nothing. A worker that died leaves one, and so does a release that
+   failed (rule 4). The next release covers its items again, and the recovery check starts one if
+   no delivery comes.
+4. When a release fails, its run sets the lease's expiry to now, through `expire_lease`, and only
+   then handles the failure. Nothing cleared the items, so they stay held. The next run takes a new
+   lease over them and releases every one. For a delivery, that run is the retry of its task (stage
+   `release`, R5). For an abandonment, or when every retry fails, it is the run that the recovery
+   check starts (rule 3). A release that dispatched part of its window before it failed dispatches
+   that part again. That over-executes, which is the accepted direction (FR-015). If the store
+   cannot set the expiry, the lease expires at its own time. A retry before then finds the lease
+   live and does nothing, and the recovery check releases the items after the expiry.
 
 | Held item | Released as |
 |---|---|
@@ -1033,7 +1044,8 @@ list, and the status vocabulary (INFP-671).
 - the service against an in-memory `DeliveryGitPort` and an in-memory store: observation, the two
   checks, replay conflict, push failure and reset, the obligation saved before the record, a crash
   between the two, the import condition, the reset to H on the observation path, the settle under
-  the lock, the release outside the lock, release then clear;
+  the lock, the release outside the lock, release then clear, and a release that fails once, whose
+  task retry releases every item of the window under a new lease;
 - the interleavings: an abandonment and a deletion guard that wait for the attempt find the entries
   already settled; a held-only run during a live lease does nothing;
 - the barrier: partition, the atomic hold, the fast path, unknown owners, `releasing`, a state error

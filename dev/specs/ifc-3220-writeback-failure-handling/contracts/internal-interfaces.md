@@ -63,6 +63,7 @@ class DeliveryStatePort(Protocol):
     ) -> tuple[WritebackIntent, ReleaseLease | None]: ...
     async def lease_owed_release(self, *, repository_id: str) -> ReleaseLease | None: ...
     async def renew_lease(self, *, repository_id: str, lease_id: str) -> None: ...
+    async def expire_lease(self, *, repository_id: str, lease_id: str) -> None: ...
     async def clear_released(self, *, repository_id: str, lease_id: str) -> None: ...
     async def touch(self, *, repository_id: str) -> None: ...
     async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None: ...
@@ -92,6 +93,7 @@ Every method except the first three runs under the delivery-state lock (30-secon
 | `abandon` | Called under the repository lock. Refuses with `DeliveryQueueChangedError` when `queue_version` is not the current version, and with `NothingPendingError` when the queue is empty. Otherwise removes every entry into `removed_entry_ids`, bumps the version, clears the owed import, writes the record, sets `none`, and adds a lease as `settle_delivery` does, in one save that passes `actor.account_id` as `user_id`. |
 | `lease_owed_release` | For a held-only run, which needs an empty queue: adds a lease over every uncovered held item, or returns `None` when a live lease covers them all. |
 | `renew_lease` | Moves the lease's `expires_at`. |
+| `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
 | `clear_released` | Removes the items of the lease's window and the lease itself. Items held after the lease was taken stay. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
 | `record_reverted` | Overwrites `delivery_reverted`. |
@@ -203,7 +205,14 @@ disagree.
 
 - Steps 1 to 15 under the repository lock, the settle included. Steps 16 and 17, the release and
   the clear, after it is released, under the lease that the settle returned.
-- A held-only run calls `lease_owed_release` and does nothing when it returns `None`.
+- If the release raises, `deliver` calls `state.expire_lease(...)` on its lease first. Then it
+  handles the failure as the bullets below say, with the stage `release`. The clear does not run,
+  so the held items stay. The task retry takes a new lease over them and releases every one. After
+  the final attempt, the run that the recovery check starts does it (`research.md` R10, rule 4).
+- A held-only run calls `lease_owed_release` and does nothing when it returns `None`. A live lease
+  then covers every held item. The run of a failed release sets its lease's expiry to now, so that
+  live lease belongs to a release that still runs. The one exception is an `expire_lease` call
+  that failed (`research.md` R10, rule 4).
 - When `manual` is `False` and a retry of another chain is due in the future, it returns
   `deferred` at once (one chain per repository).
 - It never raises for a classified failure that is final: it records it and returns `failed` or
@@ -262,10 +271,11 @@ class WritebackAbandoner:
 Runs `research.md` R8: under the repository lock, `state.abandon(...)`, then
 `git.notify_branch_deleted(...)` for every abandoned entry that carried the deletion flag; then,
 with the lock released, `releaser.release(...)` on the lease window, then
-`state.clear_released(...)`. It uses the Git port only for that notification: it changes no Git
-state, deletes no remote branch and imports nothing. `DeliveryQueueChangedError` and
-`NothingPendingError` subclass `ValidationError`, so the task run fails with the message of the
-GraphQL contract.
+`state.clear_released(...)`. If the release raises, it calls `state.expire_lease(...)` on its lease
+and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). It uses
+the Git port only for that notification: it changes no Git state, deletes no remote branch and
+imports nothing. `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`,
+so the task run fails with the message of the GraphQL contract.
 
 ---
 
@@ -422,8 +432,10 @@ Contract:
 5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
    `coalesced=True` and `widened=True`.
 6. Renew the lease after each awaited step, through a callback the caller passes.
-7. Raise on a dispatch failure. The caller has not cleared anything yet, so the lease expires and a
-   later release covers the items again (`research.md` R10).
+7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
+   abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
+   The caller has not cleared anything yet, so the items stay held, and the next run releases them
+   under a new lease (`research.md` R10, rule 4).
 
 ---
 

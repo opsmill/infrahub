@@ -160,7 +160,8 @@ owed. `ReleaseLease` is `lease_id: str`, `from_seq: int`, `up_to_seq: int`, `exp
 `HeldRegeneration.with_hold(...)` adds or refreshes items with the next sequence, and reports the
 previous sequence of each refreshed item. `lease_window(now)` returns the items that no live lease
 covers. `without_window(lease)` removes the items of a lease's window, and the lease, and keeps the
-rest.
+rest. A lease is live until its `expires_at`. When its release fails, its run sets `expires_at` to
+now and keeps the items, so the next lease covers them (`research.md` R10, rule 4).
 
 No member, target or node id is stored (FR-014). The set grows with the number of definitions that
 the queued merges touched, not with the data.
@@ -233,6 +234,7 @@ its progress timestamps and never changes the status.
 | any but `none` | delivery settles, under the repository lock | `none`, or `pending` if entries remain | remove snapshot entries into `removed_entry_ids`, bump version, last delivered commit, a release lease over the uncovered held items up to the snapshot's highest sequence, clear cause and error when `none` |
 | any but `none` | abandonment, under the repository lock | `none` | remove every entry into `removed_entry_ids`, bump version, clear the owed import, the abandonment record, a release lease over the uncovered held items |
 | any | release renews | unchanged | the lease's `expires_at` |
+| any | release fails, so the lease expires | unchanged | the lease's `expires_at`, set to now; the items of its window stay held for the next lease (`research.md` R10, rule 4) |
 | any | release clears | unchanged | remove the items of the lease's window, and the lease |
 | any | recovery check submits | unchanged | `last_progress_at` |
 | any | rewrite discards the last delivered commit (FR-021) | unchanged | `delivery_reverted` |
