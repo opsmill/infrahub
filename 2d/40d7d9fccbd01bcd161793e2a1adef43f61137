@@ -1,0 +1,37 @@
+docs/docs/snippets/attribute-kind-params.mdx
+  s_c29bc2a8dbf032::t_6020c0688417c5 8-12,23-25
+frontend/app/src/entities/schema/ui/attribute-display.tsx
+  s_c29bc2a8dbf032::t_f39956ee3be30d 116-118,166-167
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_c29bc2a8dbf032::t_1c4fa72379f141 19-20
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_c29bc2a8dbf032::t_d45f0c6791ce90 2686,2688,2691,2693-2698,2709,2711,2714,2716-2721,2728-2763
+python_sdk
+  s_42b74b2708abe7::t_189bbc5e8e2e73 1
+schema/openapi.json
+  s_c29bc2a8dbf032::t_8188c85418a3f5 7113-7120,7122,7125-7132,7134-7142,7163-7170,7172,7175-7182,7184-7192,7210-7273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d40d7d9fccbd01bcd161793e2a1adef43f61137",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

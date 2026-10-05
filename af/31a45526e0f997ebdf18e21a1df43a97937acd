@@ -1,0 +1,19 @@
+backend/tests/component/core/constraint_validators/test_attribute_numberpool_constraints.py
+  s_c29bc2a8dbf032::t_65a31929591fe3 172,198,211,229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af31a45526e0f997ebdf18e21a1df43a97937acd",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
