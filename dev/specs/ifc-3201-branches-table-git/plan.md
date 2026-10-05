@@ -12,7 +12,7 @@ Frontend-only. The branches list (`/branches`) gains two columns after "Proposed
 
 Approach (rework A, research R15; R2, R7, R11, R12 stand; R1, R3–R6, R8, R13 and the per-branch parts of R5, R9, R10, R14 are superseded):
 
-- **Data**: the page owns the fetch. `useBranchRepositorySummaries(branches)` reads the repository list once with #10779's `useGetBranchRepositories({ branchName: <default branch>, syncWithGit: true })`, then runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default branch>, limit: 500 })` (the epic's `InfrahubRepositoryBranchStatus`), `staleTime: 60_000` and a 10 s `refetchInterval` while a row is syncing. `combine` calls the pure rule `summarizeBranchRepositories`, which pivots the rows to one `BranchRepositorySummary` per branch name. 1 + R requests, independent of pagination.
+- **Data**: the page owns the fetch. `useBranchRepositorySummaries(branches)` reads the repository list once with #10779's `useQuery(getBranchRepositoriesQueryOptions({ branchName, syncWithGit: true, limit: REPOSITORY_FETCH_LIMIT, offset: 0 }))`, then runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default branch>, limit: 500 })` (the epic's `InfrahubRepositoryBranchStatus`), `staleTime: 60_000` and a 10 s `refetchInterval` while a row is syncing. `combine` calls the pure rule `summarizeBranchRepositories`, which pivots the rows to one `BranchRepositorySummary` per branch name. 1 + R requests, independent of pagination.
 - **Ordering**: `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`), then repository name; `repositories[0]` is the pill and the worst state. Operational status no longer takes part.
 - **Rows**: `toBranchTableRows(branches, summaries)` builds `BranchTableRow` (`BranchListItem` + `repositorySummary`), the view-model the table renders. `getRowId: row.id`, selection, toolbar and delete modal unchanged.
 - **Cells**: pure, no hooks. `BranchRepositoriesCell({ branch })` reuses `LinkPill`, `Tooltip` and the Proposed changes cell's "+N more" link; `BranchGitStateCell({ summary })` reuses `GitStatePill` (#10779). The tooltip string comes from the pure `formatRepositoryState` / `formatSyncStatusCounts` rule.
@@ -24,7 +24,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **Language/Version**: TypeScript (strict), React 19 with the React Compiler (no `useMemo`/`useCallback`/`React.memo`).
 
-**Primary Dependencies**: TanStack Table v8 (8.21.3; unchanged row selection), TanStack Query (`useQueries` with `combine`; #10779's `useGetBranchRepositories` for the repository list), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`, `LinkPill`), Tailwind v4 theme tokens (`text-foreground-muted` for the state texts), `lucide-react`. No new dependency.
+**Primary Dependencies**: TanStack Table v8 (8.21.3; unchanged row selection), TanStack Query (`useQueries` with `combine`; #10779's `getBranchRepositoriesQueryOptions` for the repository list), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`, `LinkPill`), Tailwind v4 theme tokens (`text-foreground-muted` for the state texts), `lucide-react`. No new dependency.
 
 **Storage**: N/A (reads only).
 
@@ -70,7 +70,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **VII. Simplicity & Maintainability, in detail:**
 
-- **Reuse first**: #10658's status read (lifted), #10779's `useGetBranchRepositories`, `GitStatePill`, `LinkPill`, `Tooltip`, `TableCell`, `TableColumnHeaderSimple`, `Spinner` and the Proposed changes cell's "+N more" pattern.
+- **Reuse first**: #10658's status read (lifted), #10779's `getBranchRepositoriesQueryOptions`, `GitStatePill`, `LinkPill`, `Tooltip`, `TableCell`, `TableColumnHeaderSimple`, `Spinner` and the Proposed changes cell's "+N more" pattern.
 - **One owner for the data**: the hook fetches, the rule derives, the row view-model carries, the cells render. No derivation in `.tsx`.
 - **Kept deliberately simple**: the grid template names two fixed tracks as constants rather than a per-column tracks map (deferred to IFC-3146/3147).
 

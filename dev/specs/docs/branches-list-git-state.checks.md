@@ -18,7 +18,7 @@ Re-walked 2026-10-01 after the rework to one row per branch (Repositories and Gi
 12. A branch with no repository to show / reads — ok (UI property; the cell shows the text)
 13. [Not synced with Git] The branch / does not sync — ok
 14. [No repositories] The branch / syncs …, or the branch / is merged — ok (rework A)
-15. [No permission] Your account / cannot view any repository kind …, so every branch / reads; the repositories you cannot view / are left out — ok (per-kind denial, 2026-10-01)
+15. [No permission] Your account / cannot view both repository kinds …, or any repository's status on every branch, so every branch / reads; a repository whose status you cannot read / is left out — ok (list and status permission, 2026-10-05)
 16. [Could not load repositories] The branch list, the repository list or a repository's status / could not be read, or the list / was cut short, so every branch / reads; or one status list / was cut short before this branch — ok (truncation cases, 2026-10-01)
 17. (you) / Hover the text — ok
 18. The branch columns / load normally — ok (rework A; replaces "These states apply to one branch at a time")
