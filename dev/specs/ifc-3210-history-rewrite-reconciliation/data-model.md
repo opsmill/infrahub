@@ -152,10 +152,14 @@ A frozen dataclass. What one classification decided, for one branch.
 
 Validation:
 
-- `REWRITE` and `RETARGET` both require both commits to be set.
 - A branch with no imported commit can only be `UNCHANGED` or `FAST_FORWARD`.
-- A `None` `remote_head` can only be `REMOTE_ABSENT`, or `UNCHANGED` when the branch was never
-  imported either.
+- A branch with no remote head can only be `REMOTE_ABSENT` or `UNCHANGED`.
+- `UNCHANGED` holds exactly when the two commits match, counting a branch absent from both sides.
+  Every other classification requires them to differ.
+
+The third rule carries the other two further than they reach on their own. `REWRITE` and `RETARGET`
+need both commits set, because a missing one cannot differ from anything, and a branch whose remote
+head is gone is `REMOTE_ABSENT` rather than `UNCHANGED` once it has been imported.
 
 ### `ReconciledBranch`
 
