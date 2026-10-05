@@ -11675,7 +11675,7 @@ type NumberAttribute implements AttributeInterface {
 }
 
 input NumberAttributeCreate {
-  from_pool: GenericPoolInput = null
+  from_pool: GenericPoolInput
   is_protected: Boolean
   owner: String
   source: String
@@ -11683,7 +11683,7 @@ input NumberAttributeCreate {
 }
 
 input NumberAttributeUpdate {
-  from_pool: GenericPoolInput = null
+  from_pool: GenericPoolInput
   is_default: Boolean
   is_protected: Boolean
   owner: String
