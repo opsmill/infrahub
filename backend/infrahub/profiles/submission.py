@@ -19,11 +19,8 @@ async def submit_profile_refresh(
     context: EventContext,
     profile_id: str | None = None,
 ) -> None:
-    """Submit one profile refresh flow for each chunk of ``node_ids``.
-
-    The runs link to ``profile_id`` and not to each node. Every tag of a run becomes a related resource
-    on each event of that run, and one tag for each node would exceed the budget for them.
-    """
+    """Submit one profile refresh flow for each chunk of ``node_ids``."""
+    # A tag for each node would exceed the related-resource budget of every event of the run.
     tags = [WorkflowTag.BRANCH.render(identifier=branch_name)]
     if profile_id is not None:
         tags.append(WorkflowTag.RELATED_NODE.render(identifier=profile_id))
