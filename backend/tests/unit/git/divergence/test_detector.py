@@ -13,7 +13,7 @@ from tests.unit.git.divergence.conftest import ABSENT, IMPORTED, REMOTE, break_o
 if TYPE_CHECKING:
     from git import Repo
 
-    from infrahub.git.divergence.gateway import GitPythonAncestryGateway
+    from infrahub.git.divergence.gateway import GitAncestryGateway
     from infrahub.git.divergence.protocols import AncestryGateway
 
 
@@ -159,14 +159,14 @@ def test_result_carries_the_branch_and_both_commits() -> None:
     assert result.remote_head == REMOTE
 
 
-def test_a_real_repository_whose_remote_advanced_fast_forwards(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+def test_a_real_repository_whose_remote_advanced_fast_forwards(repo: Repo, gateway: GitAncestryGateway) -> None:
     imported = commit_file(repo=repo, content="one")
     remote = commit_file(repo=repo, content="two")
 
     assert classify(gateway, imported=imported, remote=remote).classification is RefClassification.FAST_FORWARD
 
 
-def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo, gateway: GitAncestryGateway) -> None:
     remote = commit_file(repo=repo, content="one")
     imported = commit_file(repo=repo, content="two")
 
@@ -174,7 +174,7 @@ def test_a_real_repository_rewound_onto_an_ancestor_is_a_rewrite(repo: Repo, gat
 
 
 def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(
-    repo: Repo, gateway: GitPythonAncestryGateway
+    repo: Repo, gateway: GitAncestryGateway
 ) -> None:
     imported = commit_file(repo=repo, content="one")
 
@@ -182,7 +182,7 @@ def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(
         classify(gateway, imported=imported, remote=ABSENT)
 
 
-def test_a_broken_object_database_reaches_the_caller(repo: Repo, gateway: GitPythonAncestryGateway) -> None:
+def test_a_broken_object_database_reaches_the_caller(repo: Repo, gateway: GitAncestryGateway) -> None:
     imported = commit_file(repo=repo, content="one")
     remote = commit_file(repo=repo, content="two")
     break_object_database(repo=repo)

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from git import Repo
 
-from infrahub.git.divergence.gateway import GitPythonAncestryGateway
+from infrahub.git.divergence.gateway import GitAncestryGateway
 
 IMPORTED = "a" * 40
 REMOTE = "b" * 40
@@ -19,8 +19,8 @@ def repo(tmp_path: Path) -> Repo:
 
 
 @pytest.fixture
-def gateway(repo: Repo) -> GitPythonAncestryGateway:
-    return GitPythonAncestryGateway(repository_name="test-repository", repo=repo)
+def gateway(repo: Repo) -> GitAncestryGateway:
+    return GitAncestryGateway(repository_name="test-repository", repo=repo)
 
 
 def commit_file(repo: Repo, content: str) -> str:

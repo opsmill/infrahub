@@ -19,7 +19,7 @@ NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
 
 
-class GitPythonAncestryGateway:
+class GitAncestryGateway:
     def __init__(self, repository_name: str, repo: Repo) -> None:
         self.repository_name = repository_name
         self.repo = repo
