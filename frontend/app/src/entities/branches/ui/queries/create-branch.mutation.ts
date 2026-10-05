@@ -25,8 +25,10 @@ export function useCreateBranchMutation() {
         };
       });
 
-      await queryClient.refetchQueries({ queryKey: branchesQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: branchesQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all }),
+      ]);
     },
   });
 }
