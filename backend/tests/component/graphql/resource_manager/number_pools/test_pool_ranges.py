@@ -607,9 +607,10 @@ async def test_shorthand_mirrors_the_range_set_after_every_write(
     assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((12, 22), [(12, 22)])
 
 
-async def test_pool_ranges_edit_brings_the_shorthand_back_in_step(
+async def test_pool_update_with_ranges_recomputes_the_shorthand_from_the_stored_ranges(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
+    """The second range is saved outside the mutations so the stored shorthand starts out of step with the ranges."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     pool, low = await _create_pool_with_range(db=db, start=10, end=20)
     high = await add_pool_range(db=db, pool=pool, start=30, end=40)
