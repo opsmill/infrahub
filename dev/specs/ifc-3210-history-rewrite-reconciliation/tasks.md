@@ -644,6 +644,9 @@ read-write repository's configured default branch. Neither writes a record.
       of its remote is re-reported every cycle because `pull()` returns `True` with no change. The
       reset reads the worktree against the remote head and moves such a branch onto it, so the
       once-a-minute log line stops.
+      The writeback spec of IFC-3220 rewrote the merge-ordering section and replaced its note.
+      IFC-3281 corrected the divergence gap and this known limitation. The note under "How git
+      errors are classified" waits for Phases 4 to 6.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
