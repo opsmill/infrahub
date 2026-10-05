@@ -1,0 +1,40 @@
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_e916d55fdf2dc0 157-162
+dev/knowledge/backend/events.md
+  s_cfd0841cea4d76::t_318f5f5da8dc3b 249-252
+  s_cfd0841cea4d76::t_be6ccd27deb1c9 184-196,208-212,234-248,253-264,275-277,282
+  s_cfd0841cea4d76::t_21a9017058a35f 265
+backend/AGENTS.md
+  s_cfd0841cea4d76::t_364bba32bc50a2 131
+dev/README.md
+  s_cfd0841cea4d76::t_279d58c973227a 67
+dev/specs/telemetry-collection-infp-589/research.md
+  s_cfd0841cea4d76::t_f76c32ace6a6f1 145
+dev/knowledge/backend/async-tasks.md
+  s_cfd0841cea4d76::t_364bba32bc50a2 455
+  s_cfd0841cea4d76::t_71f5703d8d6848 446-454,456,467
+dev/adr/0002-events-system.md
+  s_cfd0841cea4d76::t_15e09455517c5b 93-94
+  s_cfd0841cea4d76::t_e17ae6a888334d 68,73,87-92,95-109,123
+dev/knowledge/backend/task-manager-retention.md
+  s_cfd0841cea4d76::t_e9f10a9d8015c3 1-81,83-148
+  s_cfd0841cea4d76::t_785dd59d12e5b5 82
+dev/specs/telemetry-collection-infp-589/spec.md
+  s_cfd0841cea4d76::t_f76c32ace6a6f1 195,359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd907df985067b057e75d4bdc34dc9496feec8cd",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

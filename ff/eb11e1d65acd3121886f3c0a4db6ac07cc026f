@@ -1,0 +1,47 @@
+backend/infrahub/telemetry/models.py
+  s_1df8eb94da3d51::t_fbb46cc0ac08c8 1-2,76-86,102
+backend/tests/component/telemetry/test_tasks.py
+  s_1df8eb94da3d51::t_9487737b8e715d 5-6,8,10,12,24-25,44,48,52,56-57,59,176,187,332-399,401-441
+  s_1df8eb94da3d51::t_c32e9c0941589e 400
+  s_1df8eb94da3d51::t_bf7d3a5ddf78f4 442-449
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_50c7e76dfbcec5 188,193-195,201-202
+backend/tests/component/api/conftest.py
+  s_1df8eb94da3d51::t_a16e25acd2c444 1,18
+dev/specs/005-enterprise-licensing-infp-472/contracts/telemetry-license-block.md
+  s_1df8eb94da3d51::t_c9676812ab17f6 37-40
+dev/specs/005-enterprise-licensing-infp-472/plan.md
+  s_1df8eb94da3d51::t_c9676812ab17f6 148
+backend/infrahub/telemetry/tasks.py
+  s_1df8eb94da3d51::t_8ea3fb11f7a5dc 18-19,21,34,142,149,152,185,203
+  s_1df8eb94da3d51::t_4c6cd27afb0381 151,162
+  s_1df8eb94da3d51::t_601ee2d1ad08c1 150
+backend/tests/component/conftest.py
+  s_1df8eb94da3d51::t_c028d8a85d5943 74
+  s_1df8eb94da3d51::t_a16e25acd2c444 5-6,76,3183-3195
+  s_1df8eb94da3d51::t_a9d0a1bc512c55 3196-3197
+backend/tests/unit/license/test_reporting.py
+  s_1df8eb94da3d51::t_2ccbf32a8382a8 3,11,195-246,252-288
+  s_1df8eb94da3d51::t_c32e9c0941589e 247-251
+backend/infrahub/license/reporting.py
+  s_1df8eb94da3d51::t_fbb46cc0ac08c8 8,72-75,85-94
+  s_1df8eb94da3d51::t_c32e9c0941589e 76-84
+backend/infrahub/telemetry/constants.py
+  s_1df8eb94da3d51::t_4c6cd27afb0381 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffeb11e1d65acd3121886f3c0a4db6ac07cc026f",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+backend/tests/unit/cli/test_tasks_flush_flow_runs.py
+  s_cfd0841cea4d76::t_cdce3e4cca513f 214,222,228,261
+  s_cfd0841cea4d76::t_7b2c180886a09a 136-166
+  s_cfd0841cea4d76::t_7d797d40624771 205-213,215-221,223-227,229-260
+  s_cfd0841cea4d76::t_cd885d96891a19 22
+backend/tests/unit/task_manager/flow_run/test_cleanup.py
+  s_cfd0841cea4d76::t_a44ddbf7b66249 4,7,14-19,45
+  s_cfd0841cea4d76::t_7f1e6e035caf42 397
+  s_cfd0841cea4d76::t_bb432c990d57f7 36-37,40-41,43-44,46-47,53,57,62-63,116,118,132,167,169,181,223,232,236,258,260,265,312,315,318,358,360,372,393,399,407
+  s_cfd0841cea4d76::t_73863873e3c394 279,288-291,298-301,314
+  s_cfd0841cea4d76::t_ce82db5fdebe34 185-186,189,191,193-196,203,205-216,228-229,237-257,259,261-264,266-278,280-287,292-297,302-311,313,316-317
+backend/tests/unit/conftest.py
+  s_cfd0841cea4d76::t_712e6f54348428 22-27
+  s_cfd0841cea4d76::t_74416e0747833e 1-2,4
+  s_cfd0841cea4d76::t_6160c7c10f7c3c 21
+backend/infrahub/cli/tasks.py
+  s_cfd0841cea4d76::t_387e58eed3b5be 94-101,104-105,116,119-120,122,124,145-147,159,161-166
+  s_cfd0841cea4d76::t_885631c4c17f04 4
+  s_cfd0841cea4d76::t_f034c12d8abe75 160
+  s_cfd0841cea4d76::t_d2e176ce0b9a57 19-24
+  s_cfd0841cea4d76::t_12ca4d6d0022ba 167-168
+backend/infrahub/task_manager/flow_run/cleanup.py
+  s_cfd0841cea4d76::t_42f48dba5977c1 6,8,28-48,55-62,67,78-79,82-84,92,97,101,106,108,112,116,123-125,128,133-134,143-150
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_c1ddc0fa581b13 13,15,34
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_c1ddc0fa581b13 61
+backend/tests/unit/cli/test_upgrade_task_history.py
+  s_cfd0841cea4d76::t_63a18b9d111cb3 172,177-202,215-220
+  s_cfd0841cea4d76::t_681a4814e7ab46 22
+backend/infrahub/cli/upgrade.py
+  s_cfd0841cea4d76::t_89709c4e6bebc1 266-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "31a0cf27e39ff23591a608f16ca1aaf3faa7a88f",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}

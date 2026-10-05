@@ -1,0 +1,52 @@
+backend/tests/component/task_manager/test_task_history_routes.py
+  s_cfd0841cea4d76::t_86e85fb59fd456 113
+  s_cfd0841cea4d76::t_20f8fd65813640 93-94,99
+  s_cfd0841cea4d76::t_5710a5af945b0f 145-146
+  s_cfd0841cea4d76::t_06eccad10d2bb4 130,135
+dev/specs/infp-507-task-history-retention/contracts/task-manager-api.md
+  s_cfd0841cea4d76::t_fa9278febbd733 10,13-14,18,30-31
+dev/specs/infp-507-task-history-retention/tasks.md
+  s_cfd0841cea4d76::t_bdf62eb6ab06f7 53,61-63
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 59
+dev/specs/infp-507-task-history-retention/plan.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 11,141,159
+dev/specs/infp-507-task-history-retention/contracts/cli.md
+  s_cfd0841cea4d76::t_fa9278febbd733 10,12-14,33
+backend/tests/component/task_manager/test_task_history_cleanup.py
+  s_cfd0841cea4d76::t_e578bc55df8b7b 4,14-15,17,64,73-74,86,91,157,159
+  s_cfd0841cea4d76::t_4b18c2288e84ac 56
+  s_cfd0841cea4d76::t_a3629233b7b5e5 24
+  s_cfd0841cea4d76::t_a96632656976a4 97,100,108-109,112,118-119,122-142,151,154,161,166,168-169
+dev/specs/infp-507-task-history-retention/quickstart.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 16,20
+dev/specs/infp-507-task-history-retention/research.md
+  s_cfd0841cea4d76::t_ab9bdb0cce43bc 35,38,45
+backend/infrahub/prefect_server/task_history.py
+  s_cfd0841cea4d76::t_c1be3440c8a9b6 293
+  s_cfd0841cea4d76::t_38e33c5e64df5d 43-51,55-57,63-65
+  s_cfd0841cea4d76::t_5997485e955007 264,278,280,282,285-292
+  s_cfd0841cea4d76::t_7becef03168abe 437
+backend/tests/helpers/task_manager_seed.py
+  s_cfd0841cea4d76::t_40741bf4fee061 8-9,20,219-221,231,255-262,264-265,267,270-274,333
+  s_cfd0841cea4d76::t_e578bc55df8b7b 209-218,222-230,232-254,263,266,268-269,275-332,334-342
+dev/specs/infp-507-task-history-retention/spec.md
+  s_cfd0841cea4d76::t_18e9282daa767e 39,41,104-105,139,141,182,205
+dev/specs/infp-507-task-history-retention/data-model.md
+  s_cfd0841cea4d76::t_fa9278febbd733 49-50,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18ab306649e60777346a15030046b9b90a3e1bf7",
+  "prompts": {},
+  "sessions": {
+    "s_cfd0841cea4d76": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9acd83a-988e-4ad7-b6b4-f8da4ae196af",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

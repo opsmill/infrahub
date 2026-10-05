@@ -1,0 +1,50 @@
+dev/README.md
+  s_1df8eb94da3d51::t_da2e0ed3f82f96 70
+backend/tests/component/telemetry/test_tasks.py
+  s_1df8eb94da3d51::t_c0aac363efb55d 444-446
+  s_1df8eb94da3d51::t_428a03d0b3b77b 7,10,429-443,447-466
+  s_1df8eb94da3d51::t_4575bdbc7e2698 467-468
+dev/specs/005-enterprise-licensing-infp-472/checklists/release-gate.md
+  s_1df8eb94da3d51::t_b749e967dee8f2 1-25
+backend/AGENTS.md
+  s_1df8eb94da3d51::t_da2e0ed3f82f96 133
+dev/knowledge/backend/telemetry.md
+  s_1df8eb94da3d51::t_89637c2d59db91 8-10
+  s_1df8eb94da3d51::t_2f66405ba16931 58-59,65,68
+  s_1df8eb94da3d51::t_590f1769bcf6d7 3,44,56-57,60-64,66-67,69-83,150,157
+dev/specs/005-enterprise-licensing-infp-472/quickstart.md
+  s_1df8eb94da3d51::t_0e9580e10bea0c 54
+dev/knowledge/backend/licensing.md
+  s_1df8eb94da3d51::t_e251b3015f138c 166-167,173-174,176-179
+  s_1df8eb94da3d51::t_2cd998b4772243 14
+  s_1df8eb94da3d51::t_617a9429a8e3b4 1-8,11-13,15-35,38-47,50-79,85-106,109-156,165,168-172,175,180-194
+  s_1df8eb94da3d51::t_84edb765077e82 36-37,48-49
+  s_1df8eb94da3d51::t_3a9c13f141e71a 80-84,107-108
+  s_1df8eb94da3d51::t_89637c2d59db91 9-10
+  s_1df8eb94da3d51::t_a18b6e0b64ae61 157-164
+backend/tests/component/api/test_license_key_never_leaks.py
+  s_1df8eb94da3d51::t_d2bb8f57f990b0 1-91,96-117
+  s_1df8eb94da3d51::t_33756d3e4ddbc3 92-95
+dev/specs/005-enterprise-licensing-infp-472/tasks.md
+  s_1df8eb94da3d51::t_a18b6e0b64ae61 236-239
+  s_1df8eb94da3d51::t_b46b95c474f1f1 241,248,250
+backend/tests/unit/cli/test_upgrade_license.py
+  s_1df8eb94da3d51::t_0275e3b66962bc 7,12,15,92-125
+  s_1df8eb94da3d51::t_ae08f639b5d393 126-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f7344049bad8b3fa1aeab643e8a614ce3d878a5",
+  "prompts": {},
+  "sessions": {
+    "s_1df8eb94da3d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6a82980-5a58-459a-a19c-297b9025dff8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
