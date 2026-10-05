@@ -354,6 +354,17 @@ unreplayable, with a cause that names the discarded source commit.
   attempt too, the delivery fails and logs at error level the repository, the source branch and
   the source commit, so that an operator can deliver the merge by hand. That merge's repository
   content is then neither queued nor delivered, and nothing retries it later.
+- **The merge cannot record its queue entry, and the deletion after merge runs first.** While no
+  entry names the source branch, the branch-deletion guard has nothing to protect. With
+  `delete_git_branch_after_merge` enabled, the deletion can then remove the remote source branch
+  before the delivery writes the entry itself. The delivery then finds that the source commit is no
+  longer on the remote, pushes nothing, and marks the delivery unreplayable with the cause "source
+  commit no longer on the remote". A user abandons it and delivers the merge by hand, for example by
+  pushing the source branch again from a clone that still has it. This needs the delivery-state
+  store to fail for longer than the bounded retries of the merge's record, about 30 seconds, while
+  the deletion flow still succeeds. A deletion that waited for proof of delivery would close the
+  gap, but it would also keep every source branch whose content was never delivered, and the
+  synchronisation would import such a branch again as a new Infrahub branch.
 - **Several repositories fail delivery after the same merge.** Each keeps its own queue and its own
   held set, and each releases independently.
 - **A held definition is deleted before the release.** It is skipped, and its absence widens the

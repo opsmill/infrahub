@@ -1076,6 +1076,17 @@ repository lock, so one runs first:
 
 Either way the end state is today's, without the race.
 
+**A gap the guard cannot close.** The guard protects a branch only once an entry names it. When the
+merge's record fails after all its bounded retries (R3), no entry exists until the delivery writes
+it at R4 step 0. If the deletion after merge runs in that window, it deletes the remote source
+branch. The delivery's source check (R4 step 5) then marks the delivery `source-discarded`, and a
+user must abandon it and deliver the merge by hand. The window needs the delivery-state store to
+fail for longer than those retries while the deletion flow, which also writes to the database,
+still succeeds, so it is narrow. Closing it would need the guard to refuse every deletion whose
+branch head the remote default branch does not hold yet. That also keeps the branches of merges
+that were never delivered, which the synchronisation then imports again as new Infrahub branches.
+This plan accepts the gap and documents it.
+
 **After an abandonment.** The abandonment sends `RefreshGitRepositoryBranchDeleted` for every
 abandoned entry that carried the flag (R8 step 2), so every worker drops its local branch. No entry
 names the remote branch any more. With `git.import_sync_branch_names` empty, the next
