@@ -13,6 +13,7 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.timestamp import Timestamp
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import SERIAL_ATTRIBUTE_NAME, SERIAL_POOL_START, pooled_widget
 from tests.helpers.agnostic_edges import (
@@ -57,7 +58,7 @@ async def test_removing_a_pool_tracked_attribute_closes_its_record_and_frees_the
     await holder.save(db=db)
 
     assert holder.get_attribute(name=SERIAL_ATTRIBUTE_NAME).value == SERIAL_POOL_START
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
     before = await reservation_edges(db=db, pool_id=serial_pool.id)
     assert [edge.branch for edge in open_active_edges(before)] == [GLOBAL_BRANCH_NAME], (
@@ -69,10 +70,10 @@ async def test_removing_a_pool_tracked_attribute_closes_its_record_and_frees_the
 
     after = await reservation_edges(db=db, pool_id=serial_pool.id)
     assert open_active_edges(after) == [], "removing the attribute must close the record that described it"
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [], (
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [], (
         "an attribute that no longer exists holds no number"
     )
-    assert await serial_pool.get_free(db=db, branch=default_branch) == SERIAL_POOL_START, (
+    assert await NumberPoolRepository(db=db).get_free(pool=serial_pool, branch=default_branch) == SERIAL_POOL_START, (
         "the released number is the next one the pool offers"
     )
 
@@ -87,7 +88,7 @@ async def test_removing_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
     await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
     await holder.save(db=db)
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START]
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
     branch = await create_branch(db=db, branch_name="remove-on-a-branch")
     branch_schema = registry.schema.get_schema_branch(name=branch.name)
@@ -117,10 +118,10 @@ async def test_removing_a_pooled_attribute_on_a_branch_leaves_the_default_branch
     on_branch = await NodeManager.get_one(db=db, id=holder.id, branch=branch, raise_on_error=True)
     assert on_branch.get_attribute(name=SERIAL_ATTRIBUTE_NAME).value is None
 
-    assert await serial_pool.get_used(db=db, branch=default_branch) == [SERIAL_POOL_START], (
+    assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START], (
         "the default branch's number must stay reported as used"
     )
-    assert await serial_pool.get_free(db=db, branch=default_branch) != SERIAL_POOL_START, (
+    assert await NumberPoolRepository(db=db).get_free(pool=serial_pool, branch=default_branch) != SERIAL_POOL_START, (
         "a removal on a branch must not offer the default branch's number again"
     )
 

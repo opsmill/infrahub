@@ -51,7 +51,7 @@ values are valid.
 | `ranges` | absent | relationship to `CoreNumberPoolRange`, cardinality many, optional, `COMPONENT`, agnostic, identifier `numberpool__range` |
 | everything else | unchanged | unchanged |
 
-Invariant: after every write path that touches ranges (range mutation, pool mutation, upserter, synchronizer, migration), `sync_shorthand_from_ranges(pool)` has run. A pool whose shorthand disagrees with its range set is a bug.
+Invariant: after every write path that touches ranges (range mutation, pool mutation, upserter, synchronizer), `NumberPoolShorthandMirror.sync` has run for the pool. A pool whose shorthand disagrees with its range set is a bug.
 
 Shorthand write rule on a user pool:
 
@@ -152,16 +152,17 @@ PoolExhaustedError
 | per-range used | group used values by `space.range_for(value)` |
 | ratios | `used / size`, `0.0` when size is 0 |
 
-## Migration m079
+## Migration m080
 
 | Step | Detail |
 |------|--------|
-| Preconditions | `minimum_version = 78` |
-| Bootstrap | create the `CoreNumberPoolRange` schema node and the `ranges` relationship on `CoreNumberPool` in the database schema when absent (count guard) |
-| Data | for every live `CoreNumberPool` with no `ranges` peer: create one `CoreNumberPoolRange(start=start_range, end=end_range)` on `-global-` linked through `ranges`, no weight |
+| Preconditions | `minimum_version = 79` |
+| Bootstrap | when absent, create the `CoreNumberPoolRange` schema node and add the `ranges` relationship to the stored `CoreNumberPool` schema node; no other part of the stored pool schema is written, so the core schema update diffs and migrates the rest; the default branch schema hash is refreshed after the write |
+| Data | for every live `CoreNumberPool` with no `ranges` peer and at least one bound: create one `CoreNumberPoolRange(start=start_range, end=end_range)` on `-global-` linked through `ranges`, no weight; a missing start resolves to `1`, a missing end to `sys.maxsize`; a bound that is not an integer is reported as an error for that pool; a pool with no bound gets no range and is logged |
 | Idempotence | pools that already hold a range are skipped |
-| Validation | number of live pools without ranges must be 0 |
-| Version | `GRAPH_VERSION = 79` |
+| Failure | a failed pool is reported and the walk goes on; a failed page read ends the walk and is reported with the count of ranges already created |
+| Validation | number of live pools carrying at least one bound and no range must be 0; a pool carrying no bound is legal without a range |
+| Version | `GRAPH_VERSION = 80` |
 
 ## Schema-created pool reconciliation
 
@@ -172,6 +173,6 @@ Input: `effective_ranges()` of the default-branch declaration, sorted by start. 
 | both present | update bounds and weight in place when they differ |
 | desired only | create |
 | existing only | delete |
-| after any change | `sync_shorthand_from_ranges` |
+| after any change | `NumberPoolShorthandMirror.sync` |
 
 Records are never touched by reconciliation.
