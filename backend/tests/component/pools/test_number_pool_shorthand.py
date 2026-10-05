@@ -9,6 +9,7 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from tests.helpers.number_pool import add_pool_range, shorthand_mirror
 from tests.helpers.schema import TICKET, load_schema
 
@@ -32,7 +33,13 @@ class TestNumberPoolShorthandMirror:
         await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
         await initialize_registry(db=db)
 
-    async def test_sync_shorthand_from_ranges(self, db: InfrahubDatabase, ticket_schema: None) -> None:
+    @pytest.fixture(scope="class")
+    def mirror(self, db: InfrahubDatabase) -> NumberPoolShorthandMirror:
+        return shorthand_mirror(db=db)
+
+    async def test_sync_shorthand_from_ranges(
+        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
+    ) -> None:
         """The shorthand carries the bounds of a single range and is null for any other range count."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
         await pool.new(
@@ -45,17 +52,17 @@ class TestNumberPoolShorthandMirror:
         )
         await pool.save(db=db)
 
-        await shorthand_mirror(db=db).sync(pool=pool)
+        await mirror.sync(pool=pool)
         assert pool.start_range.value is None
         assert pool.end_range.value is None
 
         await add_pool_range(db=db, pool=pool, start=100, end=200)
-        await shorthand_mirror(db=db).sync(pool=pool)
+        await mirror.sync(pool=pool)
         assert pool.start_range.value == 100
         assert pool.end_range.value == 200
 
         await add_pool_range(db=db, pool=pool, start=300, end=400)
-        await shorthand_mirror(db=db).sync(pool=pool)
+        await mirror.sync(pool=pool)
         assert pool.start_range.value is None
         assert pool.end_range.value is None
 
@@ -64,7 +71,7 @@ class TestNumberPoolShorthandMirror:
         assert reloaded.end_range.value is None
 
     async def test_sync_shorthand_writes_only_the_shorthand_at_the_given_time(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
         """The mirror saves the two shorthand attributes at the caller's timestamp and nothing else."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
@@ -81,7 +88,7 @@ class TestNumberPoolShorthandMirror:
 
         sync_at = Timestamp()
         pool.description.value = "pending change owned by another writer"
-        await shorthand_mirror(db=db).sync(pool=pool, at=sync_at)
+        await mirror.sync(pool=pool, at=sync_at)
 
         at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=sync_at)
         assert at_sync is not None
@@ -91,7 +98,7 @@ class TestNumberPoolShorthandMirror:
         assert reloaded.description.value is None
 
     async def test_sync_shorthand_records_the_caller_and_leaves_a_correct_mirror_untouched(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
         """The write is recorded under the caller's account, and a mirror that is already right is not rewritten."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
@@ -107,7 +114,7 @@ class TestNumberPoolShorthandMirror:
         await add_pool_range(db=db, pool=pool, start=100, end=200)
 
         sync_at = Timestamp()
-        await shorthand_mirror(db=db).sync(pool=pool, at=sync_at, user_id="first-writer")
+        await mirror.sync(pool=pool, at=sync_at, user_id="first-writer")
 
         async def shorthand_metadata() -> list[tuple[str | None, str | None]]:
             loaded = await NodeManager.get_one(
@@ -127,7 +134,7 @@ class TestNumberPoolShorthandMirror:
         ]
 
         reloaded = await _reload(db=db, pool=pool)
-        await shorthand_mirror(db=db).sync(pool=reloaded, at=Timestamp(), user_id="second-writer")
+        await mirror.sync(pool=reloaded, at=Timestamp(), user_id="second-writer")
 
         assert await shorthand_metadata() == [
             ("first-writer", sync_at.to_string()),
@@ -135,7 +142,7 @@ class TestNumberPoolShorthandMirror:
         ]
 
     async def test_sync_shorthand_mirrors_the_ranges_the_caller_holds(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
         """Ranges handed in by the caller are mirrored as given, without reading the pool's ranges again."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
@@ -151,13 +158,13 @@ class TestNumberPoolShorthandMirror:
         held_range = await add_pool_range(db=db, pool=pool, start=100, end=200)
         await add_pool_range(db=db, pool=pool, start=300, end=400)
 
-        await shorthand_mirror(db=db).sync(pool=pool, ranges=[held_range])
+        await mirror.sync(pool=pool, ranges=[held_range])
 
         reloaded = await _reload(db=db, pool=pool)
         assert (reloaded.start_range.value, reloaded.end_range.value) == (100, 200)
 
     async def test_sync_shorthand_reads_the_ranges_held_at_the_given_time(
-        self, db: InfrahubDatabase, ticket_schema: None
+        self, db: InfrahubDatabase, ticket_schema: None, mirror: NumberPoolShorthandMirror
     ) -> None:
         """A sync at a past time mirrors the ranges the pool held then, not the ones it holds now."""
         pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
@@ -174,7 +181,7 @@ class TestNumberPoolShorthandMirror:
         one_range_at = Timestamp()
         await add_pool_range(db=db, pool=pool, start=300, end=400)
 
-        await shorthand_mirror(db=db).sync(pool=pool, at=one_range_at)
+        await mirror.sync(pool=pool, at=one_range_at)
 
         at_sync = await NodeManager.get_one(db=db, id=pool.get_id(), at=one_range_at)
         assert at_sync is not None
