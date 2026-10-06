@@ -448,10 +448,10 @@ emits no signal.
       appear in no branch diff on `CoreRepository` or `CoreReadOnlyRepository`, and merging a
       branch that carries a record does not carry it to the destination. The constitution's
       branch-safe principle requires this to be asserted rather than inferred from the declaration.
-- [ ] T062 [US1] Assert that `sync_status` is unchanged by a reconciliation (FR-013). The record is
+- [x] T062 [US1] Assert that `sync_status` is unchanged by a reconciliation (FR-013). The record is
       four attributes of its own, and folding any of it into the synchronisation status would take
       that status away from INFP-671, which is free to redefine it.
-- [ ] T063 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
+- [x] T063 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
       `backend/tests/integration/git/test_git_live_remote.py`.
 
 **Checkpoint**: SC-006 holds for the stored state. The human-facing view is INFP-671's.
