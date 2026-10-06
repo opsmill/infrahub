@@ -131,7 +131,8 @@ reserves is whatever the attribute holds.
 
 ## Scenario 6 — Re-pool in one update (SC-018)
 
-1. Move an object from pool A to pool B in a single update — naming B, with or without a value.
+1. Move an object from pool A to pool B in a single update — naming B with its value, or with
+   `value: null`. Naming B alone over a non-default number is refused (Scenario 7).
 2. **Expected**: A reports nothing for that object **and A's out-of-space bucket is empty**. B reports
    the number. No second call.
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from infrahub.core.query.resource_manager import NumberPoolSetReserved, PoolRecordProvenance
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
@@ -28,7 +29,7 @@ class _AllocatingNumberPool(Protocol):
 
 
 class NumberPoolAttributeAllocator:
-    """Draw a number for an attribute from a number pool."""
+    """Draw a number for an attribute from a number pool, or have the pool track the number it holds."""
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
@@ -50,3 +51,23 @@ class NumberPoolAttributeAllocator:
             attribute=attribute.schema,
             attribute_id=attribute.id,
         )
+
+    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
+        """Have the pool track the number the saved attribute already holds.
+
+        Raises:
+            InitializationError: When the attribute has not been saved yet.
+
+        """
+        if attribute.id is None:
+            raise InitializationError(f"'{attribute.name}' must be saved before a pool can track it")
+        query = await NumberPoolSetReserved.init(
+            db=self.db,
+            pool_id=pool.get_id(),
+            identifier=node.get_id(),
+            attribute_id=attribute.id,
+            provenance=PoolRecordProvenance.PROVIDED,
+            value=attribute.value,
+            branch=node.get_branch(),
+        )
+        await query.execute(db=self.db)

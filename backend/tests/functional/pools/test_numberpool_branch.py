@@ -41,6 +41,32 @@ INCIDENT = NodeSchema(
     ],
 )
 
+TICKET = NodeSchema(
+    name="Ticket",
+    namespace="Test",
+    label="Ticket",
+    attributes=[
+        AttributeSchema(name="title", kind="Text", unique=False, optional=False),
+        AttributeSchema(name="ticket_id", kind="Number", optional=True),
+    ],
+)
+
+ATTACH_TICKET_NUMBER = """
+mutation AttachTicketNumber($id: String!, $value: BigInt!, $pool_id: String!) {
+    TestTicketUpdate(data: { id: $id, ticket_id: { value: $value, from_pool: { id: $pool_id } } }) {
+        object { ticket_id { value } }
+    }
+}
+"""
+
+CREATE_TICKET_FROM_POOL = """
+mutation CreateTicketFromPool($title: String!, $pool_id: String!) {
+    TestTicketCreate(data: { title: { value: $title }, ticket_id: { from_pool: { id: $pool_id } } }) {
+        object { ticket_id { value } }
+    }
+}
+"""
+
 number_pool_allocation_query = Query(
     query={
         "InfrahubResourcePoolAllocated": {"@filters": {"pool_id": "$pool_id", "resource_id": "$pool_id"}, "count": None}
@@ -49,6 +75,7 @@ number_pool_allocation_query = Query(
 )
 
 BRANCH2 = "branch2"
+ATTACH_BRANCH = "attach-branch"
 
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
@@ -62,7 +89,7 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     def initial_schema(self) -> SchemaRoot:
         return SchemaRoot(
             version="1.0",
-            nodes=[INCIDENT, REQUEST],
+            nodes=[INCIDENT, REQUEST, TICKET],
         )
 
     @pytest.fixture(scope="class")
@@ -153,3 +180,50 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
 
         incidents = await client.all(kind=INCIDENT.kind, branch=default_branch.name)
         assert sorted([incident.number.value for incident in incidents]) == [1, 2, 3]
+
+    async def test_numberpool_attach_in_branch_survives_branch_delete(
+        self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient, default_branch: Branch
+    ) -> None:
+        """Attaching on a branch is global, so the pool keeps tracking the number once the branch is deleted."""
+        pool = await client.create(
+            kind="CoreNumberPool",
+            name="ticket-pool",
+            node=TICKET.kind,
+            node_attribute="ticket_id",
+            start_range=1,
+            end_range=10,
+            branch=default_branch.name,
+        )
+        await pool.save()
+        hand_set = await client.create(kind=TICKET.kind, title="hand-set", ticket_id=1, branch=default_branch.name)
+        await hand_set.save()
+
+        await client.branch.create(branch_name=ATTACH_BRANCH, sync_with_git=False)
+        attached = await client.execute_graphql(
+            query=ATTACH_TICKET_NUMBER,
+            variables={"id": hand_set.id, "value": 1, "pool_id": pool.id},
+            branch_name=ATTACH_BRANCH,
+        )
+        assert attached["TestTicketUpdate"]["object"]["ticket_id"]["value"] == 1
+
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 1
+        assert await self._allocate_ticket(client=client, pool_id=pool.id, title="before delete") == 2, (
+            "the number attached on the branch is taken on main, with no uniqueness constraint to skip it"
+        )
+
+        await client.branch.delete(branch_name=ATTACH_BRANCH)
+
+        assert await self._allocate_ticket(client=client, pool_id=pool.id, title="after delete") == 3
+        assert await self._allocation_count(client=client, pool_id=pool.id) == 3
+
+    async def _allocate_ticket(self, client: InfrahubClient, pool_id: str, title: str) -> int:
+        created = await client.execute_graphql(
+            query=CREATE_TICKET_FROM_POOL, variables={"title": title, "pool_id": pool_id}
+        )
+        return created["TestTicketCreate"]["object"]["ticket_id"]["value"]
+
+    async def _allocation_count(self, client: InfrahubClient, pool_id: str) -> int:
+        allocation = await client.execute_graphql(
+            query=number_pool_allocation_query.render(), variables={"pool_id": pool_id}
+        )
+        return allocation["InfrahubResourcePoolAllocated"]["count"]

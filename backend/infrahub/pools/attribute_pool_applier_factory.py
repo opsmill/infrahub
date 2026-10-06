@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.pools.attribute_pool_applier import AttributePoolApplier
+from infrahub.pools.intent import FromPoolIntentResolver
 from infrahub.pools.number_pool_attribute_allocator import NumberPoolAttributeAllocator
 from infrahub.pools.number_pool_lookup import NumberPoolLookup
 
@@ -16,4 +17,5 @@ def build_attribute_pool_applier(db: InfrahubDatabase) -> AttributePoolApplier:
     return AttributePoolApplier(
         pool_finder=NumberPoolLookup(db=db, node_manager=registry.manager),
         number_allocator=NumberPoolAttributeAllocator(db=db),
+        intent_resolver=FromPoolIntentResolver(),
     )

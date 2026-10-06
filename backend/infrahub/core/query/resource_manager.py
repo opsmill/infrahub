@@ -348,6 +348,53 @@ class NumberPoolGetReserved(Query):
         ]
 
 
+class NumberPoolGetTrackingPool(Query):
+    """Find the number pool whose live IS_RESERVED edge points at an Attribute vertex."""
+
+    name = "numberpool_get_tracking_pool"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        attribute_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.attribute_id = attribute_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_id"] = self.attribute_id
+        self.params["at"] = self.at.to_string()
+
+        query = """
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH attr
+        LIMIT 1
+        CALL (attr) {
+            // --------
+            // assumes IS_RESERVED is on the global branch
+            // --------
+            MATCH (pool:Node:%(number_pool)s)-[r:IS_RESERVED]->(attr)
+            WHERE r.from <= $at AND (r.to IS NULL OR r.to > $at)
+            ORDER BY r.from DESC, r.status ASC
+            RETURN pool.uuid AS pool_id, r.status = "active" AS is_active
+            LIMIT 1
+        }
+        WITH pool_id
+        WHERE is_active = TRUE
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        self.add_to_query(query)
+        self.return_labels = ["pool_id"]
+
+    def get_pool_id(self) -> str | None:
+        """Return the id of the tracking pool, or None if no live IS_RESERVED edge points at the attribute."""
+        result = self.get_result()
+        if result:
+            return result.get_as_type("pool_id", return_type=str)
+        return None
+
+
 class IPPoolChangeReserved(Query):
     """Point an IP pool's IS_RESERVED edges at a new identifier.
 
@@ -817,8 +864,13 @@ class NumberPoolGetTaken(Query):
 class NumberPoolSetReserved(Query):
     """Record that a number pool accounts for an attribute.
 
-    Check if the requested reservation already exists. If not, or if the provenance differs, then
-    close the active reservation and create the new one.
+    Takes a write lock on the Attribute vertex, then keeps this pool's live IS_RESERVED edge when its
+    provenance is one the write accepts, ends every other live IS_RESERVED edge on the attribute, and
+    creates an edge with the write's provenance when none was kept.
+
+    The write accepts its own provenance. With `value`, a `provided` write also accepts `allocated` when the
+    attribute already holds that value on the write's branch, so restating a number the pool allocated
+    keeps it recorded as allocated.
     """
 
     name = "numberpool_set_reserved"
@@ -830,12 +882,16 @@ class NumberPoolSetReserved(Query):
         identifier: str,
         attribute_id: str,
         provenance: PoolRecordProvenance,
+        value: int | None = None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
         self.attribute_id = attribute_id
         self.provenance = provenance
+        self.value = value
+        if value is not None and kwargs.get("branch") is None:
+            raise ValueError("A restated value can only be compared on the branch it is written to")
 
         super().__init__(**kwargs)
 
@@ -848,6 +904,33 @@ class NumberPoolSetReserved(Query):
         # reads as an allocation.
         self.params["allocated_provenance"] = PoolRecordProvenance.ALLOCATED.value
         self.params["attribute_id"] = self.attribute_id
+        accepted_provenances = "WITH pool, attr, [$provenance] AS accepted_provenances"
+        if self.value is not None:
+            self.params["value"] = self.value
+            self.params["provided_provenance"] = PoolRecordProvenance.PROVIDED.value
+            branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+            self.params.update(branch_params)
+            accepted_provenances = """
+        // ----------
+        // Read the value the attribute holds on the branch before this write saves its own
+        // ----------
+        CALL (attr) {
+            OPTIONAL MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
+            WHERE %(branch_filter)s
+            WITH r, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+            RETURN CASE WHEN r.status = "active" THEN av.value ELSE NULL END AS held_value
+        }
+        // ----------
+        // Don't overwrite provenance="allocated" with "provided" if the value does not change
+        // ----------
+        WITH pool, attr,
+            CASE WHEN $provenance = $provided_provenance AND toInteger(held_value) = $value
+                THEN [$provenance, $allocated_provenance]
+                ELSE [$provenance]
+            END AS accepted_provenances
+            """ % {"branch_filter": branch_filter}
 
         global_branch = registry.get_global_branch()
         self.params["rel_prop"] = {
@@ -868,26 +951,38 @@ class NumberPoolSetReserved(Query):
         WITH pool, attr
         LIMIT 1
         // ----------
-        // Only continue if the expected reservation is not active, accounting for change of provenance
+        // Lock the Attribute vertex until the transaction ends, so a concurrent write to this attribute waits
+        // and then reads the IS_RESERVED edges this one commits
         // ----------
-        WHERE NOT EXISTS {
-            MATCH (pool)-[mine:IS_RESERVED]->(attr)
-            WHERE mine.status = "active" AND mine.to IS NULL
-              AND coalesce(mine.provenance, $allocated_provenance) = $provenance
+        SET attr._number_pool_lock = TRUE
+        REMOVE attr._number_pool_lock
+        WITH pool, attr
+        %(accepted_provenances)s
+        // ----------
+        // Keep this pool's live IS_RESERVED edge when its provenance is one the write accepts
+        // ----------
+        OPTIONAL MATCH (pool)-[kept:IS_RESERVED]->(attr)
+        WHERE kept.status = "active"
+          AND kept.to IS NULL
+          AND coalesce(kept.provenance, $allocated_provenance) IN accepted_provenances
+        WITH pool, attr, collect(kept) AS kept_edges
+        // ----------
+        // End every other live IS_RESERVED edge on the attribute
+        // ----------
+        CALL (attr, kept_edges) {
+            MATCH ()-[live:IS_RESERVED]->(attr)
+            WHERE live.status = "active"
+              AND live.to IS NULL
+              AND NOT live IN kept_edges
+            SET live.to = $at
         }
         // ----------
-        // Only one active IS_RESERVED edge for any attribute exists at a time
+        // Create the expected IS_RESERVED edge unless one was kept
         // ----------
-        OPTIONAL MATCH ()-[live:IS_RESERVED]->(attr)
-        WHERE live.status = "active" AND live.to IS NULL
-        SET live.to = $at
-        WITH DISTINCT pool, attr
-        LIMIT 1
-        // ----------
-        // Create the new reservation
-        // ----------
+        WITH pool, attr, kept_edges
+        WHERE size(kept_edges) = 0
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "accepted_provenances": accepted_provenances}
 
         self.add_to_query(query)
         self.return_labels = ["attr.uuid AS attribute_id", "rel"]

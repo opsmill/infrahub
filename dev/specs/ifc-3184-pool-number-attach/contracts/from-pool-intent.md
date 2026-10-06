@@ -21,10 +21,8 @@ than left inline in `Node.handle_pool`, where it is reachable only through a dat
 
 | Input | Type | Source |
 |---|---|---|
-| `value_present` | `bool` | payload key membership — `"value" in data` |
-| `value` | `int \| None` | payload |
-| `from_pool_present` | `bool` | payload key membership — `"from_pool" in data` |
-| `from_pool_id` | `str \| None` | `from_pool["id"]` when present and non-null |
+| `value` | `Sent[int] \| None` | `None` when `"value" not in data`; otherwise `Sent` holding the payload value, `None` for an explicit `null` |
+| `from_pool` | `Sent[str] \| None` | `None` when `"from_pool" not in data`; otherwise `Sent` holding the resolved pool id, `None` for an explicit `null` |
 | `held_value_is_default` | `bool` | the attribute holds a schema default; read only when the write sends no `value` |
 | `tracking_pool_id` | `str \| None` | the pool whose live record is on this attribute, if any |
 | `held_value` | `int \| None` | the number the attribute holds; read only when the write sends no `value` |
@@ -106,11 +104,12 @@ This is the **only** refusal rule the resolver applies. Earlier drafts carried t
 A duplicate value reuses the **existing** uniqueness error and is raised by the constraint, not the
 pool (FR-028).
 
-### Row 4 and 12 — re-pool is not a refusal
+### Rows 4, 8 and 12 — re-pool is not a refusal
 
 Re-homing objects between pools is the brownfield journey this slice exists for, so naming pool B on
-an attribute pool A tracks moves the claim in a single update rather than erroring. "Tracked by a
-*different* pool" is therefore a dimension of the table, not an error case (FR-024a).
+an attribute pool A tracks moves the claim in a single update rather than erroring, once the write
+says which number to keep (row 4), asks for a new one (row 8), or the attribute holds no value or only
+its schema default (row 12). "Tracked by a *different* pool" is therefore a dimension of the table, not an error case (FR-024a).
 
 It is also unavoidable: the resolver must detect the case anyway to satisfy the one-record-per-
 attribute invariant (FR-024b).

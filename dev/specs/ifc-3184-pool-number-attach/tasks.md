@@ -371,7 +371,9 @@ where nothing else has moved the numbers.
 - [X] T024 [P] [US1] Fix the inaccurate comment in
       `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
       claiming graphene includes unset fields as `None` keys. It does not, and a reviewer will read
-      the new resolver against it.
+      the new resolver against it. *Correction: it does for that input — `RelatedNodeInput.from_pool`
+      is a mounted `Field` with a `null` default, so the original comment was accurate; see
+      research.md D3.*
 - [X] T024a [US1] Component test: allocating from a pool **named** rather than identified leaves a
       reservation record. `handle_pool` accepts either — `number_pool_id` is a uuid or a pool name,
       resolved through `registry.manager.query(filters={"name__value": ...})` — and the name path had
@@ -487,15 +489,16 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
 
 ### 2a. Tests first
 
-- [ ] T039 [P] [US2] Create `backend/tests/unit/pools/` (with its `__init__.py`, per
+- [X] T039 [P] [US2] Create `backend/tests/unit/pools/` (with its `__init__.py`, per
       `dev/knowledge/backend/package-init-files.md`) and write `test_intent.py` — **every cell** of the
       table in [`contracts/from-pool-intent.md`](./contracts/from-pool-intent.md), both re-pool cells,
-      the idempotent no-op, and an assertion that **exactly one** input combination produces `REFUSE`
-      (assert the count, so a future edit cannot quietly add a second refusal). No database.
+      the idempotent no-op, and an assertion that only the combinations of rows 10 and 12 produce
+      `REFUSE` (assert the exact list, so a future edit cannot quietly add another refusal). No
+      database. *(Revised 2026-10-05: row 12 refuses over a non-default number another pool tracks.)*
 
 ### 2b. Payload presence
 
-- [ ] T040 [US2] Carry payload **presence** into the create path: `core/attribute.py::BaseAttribute`
+- [X] T040 [US2] Carry payload **presence** into the create path: `core/attribute.py::BaseAttribute`
       records whether `value` and `from_pool` were present, not just their values.
       `BaseAttribute.__init__` uses `data.get(...)` today and drops the distinction;
       `BaseAttribute.from_graphql` already uses `"from_pool" in data` and keeps it. Add fields
@@ -503,47 +506,56 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
 
 ### 2c. The resolver
 
-- [ ] T041 [US2] Create `backend/infrahub/pools/intent.py` with `FromPoolIntentResolver` — pure, no
+- [X] T041 [US2] Create `backend/infrahub/pools/intent.py` with `FromPoolIntentResolver` — pure, no
       database, no node access. Intents are an **enum**. Inputs and the full table are in the contract.
-- [ ] T042 [US2] Rework `core/node/__init__.py::Node.handle_pool` into an executor driven by the
+- [X] T042 [US2] Rework `core/node/__init__.py::Node.handle_pool` into an executor driven by the
       resolver. It keeps the I/O — pool lookup by uuid **or** name, the FR-023 attachment check
       (`number_pool.node.value in [kind] + inherit_from and node_attribute.value == attribute.name`),
       the template refusal, the schema-`NumberPool` path. Stop it mutating `attribute.from_pool` and
       `attribute.is_default` on the preview pass, which is meant to be side-effect-free.
-- [ ] T043 [US2] Implement the attach path (FR-021, FR-024): a provided `value` alongside
+- [X] T043 [US2] Implement the attach path (FR-021, FR-024): a provided `value` alongside
       `from_pool` is **kept**, not discarded, and recorded with `provenance=provided`.
-- [ ] T044 [US2] Implement the single refusal — `from_pool` alone on a non-default untracked value —
-      naming **both** ways forward: restate the value to attach, or send `value: null` to discard and
-      allocate. Follow `dev/guidelines/backend/exceptions.md`.
-- [ ] T045 [US2] Implement re-pool (FR-024a): a write naming pool B on an attribute pool A reserves
-      ends A's record and begins B's in one operation, allocating or attaching.
-- [ ] T046 [US2] On attach onto an existing record from the same pool, update `provenance` to
+- [X] T044 [US2] Implement the refusal — `from_pool` alone on a non-default value the named pool does
+      not track — naming **both** ways forward: restate the value to attach, or send `value: null` to
+      discard and allocate. Follow `dev/guidelines/backend/exceptions.md`.
+- [X] T045 [US2] Implement re-pool (FR-024a): a write naming pool B on an attribute pool A reserves
+      ends A's record and begins B's in one operation, allocating or attaching. `from_pool: B` alone
+      over a non-default number is refused (T044).
+- [X] T046 [US2] On attach onto an existing record from the same pool, update `provenance` to
       `provided` — it describes how the number the attribute *currently* holds got there.
       *(Critique P5.)*
 
 ### 2d. Locking
 
-- [ ] T047 [US2] Contribute the lock name of the pool **currently tracking** the attribute in
-      `core/node/lock_utils.py::get_lock_names_on_object_mutation`, not only the pool named in the
-      payload. Without it two concurrent re-pools of one attribute into different pools each close the
-      other's record and both create. The update path already reads the node for uniqueness hashes, so
-      this is an extra field on an existing read. *(Risk R6.)*
-- [ ] T048 [P] [US2] Component test for concurrent re-pool of one attribute into two different pools:
+- [X] T047 [US2] Stop two concurrent re-pools of one attribute into different pools from each
+      closing the other's record and both creating. *(Risk R6.)* **Revised 2026-10-05**: first built
+      as an extra lock name for the pool currently tracking the attribute in
+      `core/node/lock_utils.py::get_lock_names_on_object_mutation`, which needed one tracking-pool read
+      per attribute before the locks were taken. Replaced, at the user's direction, by a write lock on
+      the `Attribute` vertex inside `NumberPoolSetReserved`: the query locks the vertex, ends every
+      live `IS_RESERVED` edge on it that does not match the expected pool and provenance, and creates
+      the expected edge only if it is not already live. The `lock_utils` change and
+      `BaseAttribute.tracking_pool_id` are removed. Without the vertex lock, T048's race test fails 3
+      runs out of 3.
+- [X] T048 [P] [US2] Component test for concurrent re-pool of one attribute into two different pools:
       one wins, exactly one live record remains (invariant I1).
 
 ### 2e. Component coverage
 
-- [ ] T049 [P] [US2] The ledger against a database: attach, and attach with duplicates present.
-- [ ] T050 [P] [US2] A plain value change writes **nothing** to the ledger and the number tracked
+- [X] T049 [P] [US2] The ledger against a database: attach, and attach with duplicates present.
+- [X] T050 [P] [US2] A plain value change writes **nothing** to the ledger and the number tracked
       follows the attribute (FR-031 deleted, SC-013). **No test exists today.**
-- [ ] T051 [P] [US2] Re-pool A→B ends A's record, B reports the number, **and A's out-of-space bucket
+- [X] T051 [P] [US2] Re-pool A→B ends A's record, B reports the number, **and A's out-of-space bucket
       is empty** (SC-018). The empty-bucket assertion is what catches a half-finished implementation.
-- [ ] T052 [P] [US2] Idempotent resend: the same `value` + `from_pool` for a number the object already
+      *Partial: no out-of-space bucket exists until T059+; the tests assert pool A holds no open
+      IS_RESERVED edge on any attribute instead. Add the bucket assertion with T059.*
+- [X] T052 [P] [US2] Idempotent resend: the same `value` + `from_pool` for a number the object already
       owns is a silent no-op.
-- [ ] T053 [P] [US2] Extend `backend/tests/functional/pools/test_numberpool_lifecycle.py` and
+- [X] T053 [P] [US2] Extend `backend/tests/functional/pools/test_numberpool_lifecycle.py` and
       `test_numberpool_branch.py` with the attach journey. **Extend — do not add parallel modules**:
       two-branch allocation, branch delete, node delete and allocation over pre-existing nodes are
       already covered (`research.md` D15).
+      *Written, not run locally — `TestInfrahubApp` wipes the database; runs in CI.*
 
 **Checkpoint**: attach, re-pool and the refusal work. The pool tracks numbers it did not hand out.
 
