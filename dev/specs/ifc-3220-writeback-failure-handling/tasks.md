@@ -120,7 +120,7 @@ Parts A and B of the plan.
 
 ### State model and classifier (plan part B, no database)
 
-- [ ] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
+- [X] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
       `DELIVERY_RETRY_DELAYS_SECONDS`, `FETCH_TIMEOUT_SECONDS`, `PUSH_TIMEOUT_SECONDS`,
       `LOCAL_GIT_TIMEOUT_SECONDS`, `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`,
       `NARROWED_HOLD_TTL_SECONDS` (derived from the delays and the fetch and push timeouts, not a
@@ -129,7 +129,7 @@ Parts A and B of the plan.
       `ENQUEUE_RETRY_DELAYS_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
       `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
       [research.md](research.md) R2, R3, R6, R9, R10 and R20.
-- [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
+- [X] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden`
       (with its `reason`) and `ReleaseLease`, `AbandonmentRecord`, `RevertedDelivery`,
       `WritebackIntent` with `is_stale(now, lock_free, run_queued)` and `has_work(now)`,
@@ -138,7 +138,7 @@ Parts A and B of the plan.
       `ReleaseLease` names its items, each with the `hold_seq` it had when the lease was taken, and
       `HeldRegeneration` has `lease_window`, `with_lease` and `without_window`, with the clean-up of
       expired leases. Every JSON model carries `format: Literal[1]`.
-- [ ] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
+- [X] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
       of a removed id and of an id in the last abandonment record, the bound of `removed_entry_ids`,
       a version that moves only on add or remove, `with_hold` raising the sequence of a repeated
       identifier and reporting the previous one, `lease_window` skipping the items that a live lease
