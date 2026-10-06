@@ -27,7 +27,9 @@ from infrahub.exceptions import (
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
     RepositoryInvalidFileSystemError,
+    RepositoryNotFoundError,
     RepositoryPermissionError,
+    RepositoryTLSError,
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
@@ -63,6 +65,18 @@ GIT_TLS_VERIFICATION_ERRORS = (
     "server verification failed",
     "certificate subject name",
 )
+
+
+def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
+    """Return the operational status that a repository records for a failed Git operation."""
+    # Class patterns match with isinstance in order, so a subclass that needs its own status goes above its parent.
+    match error:
+        case RepositoryConnectionError():
+            return RepositoryOperationalStatus.ERROR_CONNECTION
+        case RepositoryCredentialsError() | RepositoryPermissionError():
+            return RepositoryOperationalStatus.ERROR_CRED
+        case _:
+            return RepositoryOperationalStatus.ERROR
 
 
 class RepoFileInformation(BaseModel):
@@ -1103,14 +1117,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 error=error, name=self.name, location=self.location, branch_name=branch_name
             )
         except RepositoryError as exc:
-            status_by_error: dict[type[RepositoryError], RepositoryOperationalStatus] = {
-                RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
-                RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
-                RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
-            }
-            await self._update_operational_status(
-                status=status_by_error.get(type(exc), RepositoryOperationalStatus.ERROR)
-            )
+            await self._update_operational_status(status=operational_status_for_error(error=exc))
             raise
 
     @staticmethod
@@ -1133,8 +1140,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "Couldn't connect to server", "Operation timed out" (libcurl); and for a
             gateway/proxy in front of the server returning a 5xx,
             "The requested URL returned error: 5xx" (git http.c) plus
-            "RPC failed; HTTP 5xx" (git remote-curl.c).
-          - not-a-repo / missing: "Repository not found", "does not appear to be a git".
+            "RPC failed; HTTP 5xx" (git remote-curl.c); "does not appear to be a git";
+            and "process killed because it timed out", which GitPython reports when its
+            ``kill_after_timeout`` stops a fetch or a push.
+          - not found: "Repository not found".
           - TLS: the fragments in ``GIT_TLS_VERIFICATION_ERRORS``, one per family of wordings
             libcurl emits for a certificate it will not accept ("SSL certificate" for OpenSSL and for
             GnuTLS from curl 8.15, "certificate verification failed" for GnuTLS up to curl 8.9,
@@ -1150,18 +1159,22 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         git or libcurl change their wording.
 
         Raises:
-            RepositoryConnectionError: When the remote is unreachable or a gateway/proxy in
-                front of it returns a 5xx.
+            RepositoryNotFoundError: When the remote reports the repository as not found.
+            RepositoryTLSError: When the certificate of the remote is not accepted.
+            RepositoryConnectionError: When the remote is unreachable, a gateway/proxy in
+                front of it returns a 5xx, or GitPython stops a fetch or a push at its timeout.
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
             RepositoryError: For any other git failure, including the generic fallthrough.
 
         """
+        if "Repository not found" in error.stderr:
+            raise RepositoryNotFoundError(identifier=name) from error
+
         if any(
             err in error.stderr
             for err in (
-                "Repository not found",
                 "does not appear to be a git",
                 "Failed to connect to",
                 "Could not resolve host",
@@ -1169,6 +1182,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "Operation timed out",
                 "The requested URL returned error: 5",
                 "RPC failed; HTTP 5",
+                "process killed because it timed out",
             )
         ):
             raise RepositoryConnectionError(identifier=name) from error
@@ -1191,9 +1205,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             ) from error
 
         if any(err in error.stderr for err in GIT_TLS_VERIFICATION_ERRORS):
-            raise RepositoryConnectionError(
-                identifier=name, message=f"SSL verification failed for {name}, please validate the certificate chain."
-            ) from error
+            raise RepositoryTLSError(identifier=name) from error
 
         if "authentication failed for" in error.stderr.lower():
             raise RepositoryCredentialsError(identifier=name) from error
