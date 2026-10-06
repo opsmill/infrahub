@@ -9,6 +9,7 @@ from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreReadOnlyRepository
 from prefect import task
@@ -28,6 +29,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
     CommitNotFoundError,
+    RepositoryDivergentHistoryError,
     RepositoryError,
 )
 from infrahub.git.branch_status import accepts_commit_write
@@ -50,6 +52,20 @@ if TYPE_CHECKING:
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 
 log = get_run_logger()
+
+REPOSITORY_COMMIT_QUERY = """
+query RepositoryCommit($repository_id: ID!) {
+    CoreGenericRepository(ids: [$repository_id]) {
+        edges {
+            node {
+                commit {
+                    value
+                }
+            }
+        }
+    }
+}
+"""
 
 
 def _describe_push_rejection(summary: str) -> str:
@@ -909,6 +925,87 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 )
 
         return True
+
+    async def prepare_branches_for_merge(self, source_branch: str, dest_branch: str) -> None:
+        """Bring both branches of a merge onto their remote heads, or refuse the merge.
+
+        The merge reads the source from its local ref and builds on the local destination, so a branch
+        that does not lead to its remote head would put commits the remote discarded back on it. Such a
+        branch is reset when the graph already records its remote head. When the graph records another
+        commit, the rewrite is not reconciled yet: the merge is refused and no branch moves, so the next
+        synchronization still finds the rewrite to record and import.
+
+        Raises:
+            RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record.
+            RepositoryError: When git cannot fetch or compare a branch, or the graph commit cannot be read.
+
+        """
+        if not await self.fetch():
+            return
+
+        remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
+        local_source = self.get_branches_from_local(include_worktree=False).get(source_branch)
+        dest_worktree = self._get_branch_worktree(dest_branch)
+        local_heads = {
+            source_branch: local_source.commit if local_source is not None else None,
+            dest_branch: str(dest_worktree.head.commit) if dest_worktree is not None else None,
+        }
+
+        resets: list[tuple[str, str, str]] = []
+        for branch_name, local_head in local_heads.items():
+            remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=branch_name))
+            if (
+                local_head is None
+                or remote_head is None
+                or self._leads_to_remote_head(local_head=local_head, remote_head=remote_head)
+            ):
+                continue
+            graph_commit = await self._get_graph_commit(infrahub_branch_name=branch_name)
+            if graph_commit != remote_head:
+                raise RepositoryDivergentHistoryError(
+                    identifier=self.name,
+                    message=(
+                        f"Unable to merge {source_branch} into {dest_branch} for repository {self.name}. "
+                        f"The remote history of {branch_name} does not contain the local commit {local_head}. "
+                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, "
+                        f"not the remote head {remote_head}. "
+                        "Retry the merge after the next synchronization of the repository."
+                    ),
+                )
+            resets.append((branch_name, local_head, remote_head))
+
+        for branch_name, local_head, remote_head in resets:
+            await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=False)
+            log.info(
+                "Reset branch %s of repository %s onto the remote head %s before the merge, "
+                "the local commit %s does not lead to it",
+                branch_name,
+                self.name,
+                remote_head,
+                local_head,
+                extra={"repository": self.name, "branch": branch_name, "commit": remote_head},
+            )
+
+    async def _get_graph_commit(self, infrahub_branch_name: str) -> str | None:
+        try:
+            response = await self.sdk.execute_graphql(
+                query=REPOSITORY_COMMIT_QUERY,
+                variables={"repository_id": str(self.id)},
+                branch_name=infrahub_branch_name,
+                tracker="query-repository-commit",
+            )
+        except SdkError as exc:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Unable to read the commit of repository {self.name} on branch {infrahub_branch_name}: {exc}",
+            ) from exc
+        edges = response["CoreGenericRepository"]["edges"]
+        if not edges:
+            raise RepositoryError(
+                identifier=self.name,
+                message=f"Infrahub holds no repository {self.name} on branch {infrahub_branch_name}",
+            )
+        return edges[0]["node"]["commit"]["value"] or None
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> str | Literal[False]:
         """Merge the source branch into the destination branch.

@@ -339,7 +339,7 @@ emits no signal.
 - [x] T043 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
       FR-007 holds by construction rather than by a runtime check. Record the finding in the task's
       commit message.
-- [ ] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
+- [x] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
       `backend/infrahub/git/tasks.py::merge_git_repository`, fetch and compare the **source** branch
       and the **destination** branch against the remote before calling `repo.merge`. When either has
       diverged, compare the graph commit for that branch too. Refuse only when the **graph commit**

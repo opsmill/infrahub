@@ -1045,6 +1045,9 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
+            await repo.prepare_branches_for_merge(
+                source_branch=model.source_branch, dest_branch=model.destination_branch
+            )
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:
                 try:
