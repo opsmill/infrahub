@@ -100,7 +100,7 @@ specs/ifc-3184-pool-number-attach/
 ├── data-model.md                # Phase 1 — the record, its states, the migration
 ├── quickstart.md                # Phase 1 — how to validate the feature works
 ├── contracts/
-│   ├── graphql-pool-query.md    # The two new output fields + source provenance
+│   ├── graphql-pool-query.md    # The two output fields (carried by P3's number-pool surface) + source provenance
 │   ├── from-pool-intent.md      # The decision table, as a contract
 │   ├── effective-space.md       # The seam this slice consumes from P1
 │   └── reservation-ledger.md    # PoolRecordLedger's internal contract
@@ -141,7 +141,7 @@ backend/infrahub/
 │   ├── reporting.py                         # NEW — PoolUtilizationReporter (pure)
 │   └── effective_space.py                   # NEW — the P1 seam + single-range adapter
 └── graphql/
-    ├── queries/resource_manager.py          # provenance + out-of-space bucket
+    ├── queries/number_pool.py               # provenance + out-of-space rows, on P3's dedicated surface (generic queries unchanged)
     └── mutations/profile.py                 # fix the inaccurate unset-vs-null comment
 
 backend/tests/
@@ -217,7 +217,7 @@ first means writing it twice.
 | C1 | `PoolUtilizationReporter` (pure) + unit suite | FR-027, FR-028a, D10 |
 | C2 | `effective_space` seam + single-range adapter | D11, FR-002a |
 | C3 | `NumberUtilizationGetter` reduced to fetch-and-delegate | D10 |
-| C4 | GraphQL: `provenance` per in-use row; out-of-space bucket rows carrying value, holder, branch | FR-027a |
+| C4 | GraphQL: `provenance` per in-use row; out-of-space rows carrying value, holder, branch — on `InfrahubNumberPoolAllocations` and `InfrahubNumberPoolUtilization` (P3's dedicated surface), never on the generic pool queries | FR-027a |
 
 ### 2. The intent decision table
 
@@ -316,7 +316,7 @@ declared a `LineageSource`, so no contract shape changes — only what populates
 
 | Contract | Kind | Consumer |
 |---|---|---|
-| [`contracts/graphql-pool-query.md`](./contracts/graphql-pool-query.md) | **Published** (ADR 0010) | SDK, frontend, users |
+| [`contracts/graphql-pool-query.md`](./contracts/graphql-pool-query.md) | **Published** (ADR 0010); the two output fields ride on P3's `graphql-number-pool-surface.md` | SDK, frontend, users |
 | [`contracts/from-pool-intent.md`](./contracts/from-pool-intent.md) | Published behaviour, unpublished shape | GraphQL mutation callers |
 | [`contracts/effective-space.md`](./contracts/effective-space.md) | Internal, **consumed from P1** | this slice |
 | [`contracts/reservation-ledger.md`](./contracts/reservation-ledger.md) | Internal | `Node.handle_pool`, conversion |
@@ -356,7 +356,7 @@ pre-existing nodes are already covered (research.md D15). Extend those modules.
 | R2 | ~~**P1's FR-030a directly contradicts this slice's FR-030b.**~~ **RESOLVED 2026-09-16 by the PRD owner: P2 wins** — `source` can be cleared on pool-sourced attributes, P1's FR-030a and Decision 2 are superseded. | ~~High~~ Closed | Remaining action is mechanical: amend `POOL-RANGES-PRD.md` (delete FR-030a, Decision 2, and its resolved open question #2) before P1 enters spec-kit. No design impact on this slice — FR-030b/FR-030c were already written this way. |
 | R3 | FR-036a's per-branch resolution runs inside `get_resource`'s pool-wide lock, so allocation gains a live-branch-count dependency it does not have today. | Medium | Mandatory benchmark (D12). No numeric gate — SC-017 withdrawn for want of evidence. A superlinear curve or a large constant is a release decision. |
 | R4 | The migration deletes reservation data for the first time, and two of its four behaviours are destructive beyond the orphan drop. | Medium | Three reported counts; `validate_migration` post-condition following `m077`; component coverage per behaviour; one Docker upgrade test. Avoid `m066`'s documented partial-commit hazard. |
-| R5 | **Published contract (ADR 0010).** Two new output fields are a contract change; FR-030b is one the generated schema will **not** show, because the field and type are unchanged and only its provenance moves. | Medium | Name this slice explicitly in the contract review alongside P1 and P3's attribute-parameter changes, and name FR-030b within it. Regenerate, never hand-edit. |
+| R5 | **Published contract (ADR 0010).** Two output fields are a contract change, published on P3's dedicated number-pool surface; FR-030b is one the generated schema will **not** show, because the field and type are unchanged and only its provenance moves. | Medium | Name this slice explicitly in the contract review alongside P1 and P3's attribute-parameter changes, and name FR-030b within it. Regenerate, never hand-edit. |
 | R6 | Concurrent re-pool of one attribute into two different pools races: the close touches pool A while the mutation holds only pool B's lock. | Medium | D6, as revised 2026-10-05: `NumberPoolSetReserved` takes a write lock on the `Attribute` vertex before reading, so a second writer waits and then sees the first one's edges. |
 | R7 | `_add_source_to_query` returning an id rather than the pool vertex silently breaks `__kind__` resolution. | Medium | Called out in design §5; assert the resolved GraphQL kind in a component test, not just the uuid. |
 | R8 | `NumberPoolGetAllocated` today applies **no** status or branch predicate to the reservation edge. Harmless while nothing closes one; wrong the moment detach and re-pool do. | Medium | The rewrite adds the predicate. Listed explicitly so it is not lost in "rewrite the query". |

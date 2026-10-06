@@ -1,6 +1,6 @@
 # Research: Scoped number pools
 
-**Feature**: `dev/specs/ifc-3185-scoped-number-pools` | **Date**: 2026-10-02 | **Spec**: [spec.md](./spec.md)
+**Feature**: `dev/specs/ifc-3185-scoped-number-pools` | **Date**: 2026-10-02, surface decisions 2026-10-06 | **Spec**: [spec.md](./spec.md)
 
 Phase 0 of the plan. Every unknown in the technical context is resolved here as a decision with its
 rationale and the alternatives weighed. Symbols are cited as `module.py::Symbol`, never by line.
@@ -14,10 +14,33 @@ written on `feature-number-pools-1.12` at HEAD, and the plan is built on the cor
 
 | PRD assumption | What the code says | Consequence |
 |---|---|---|
-| "P1 (several weighted ranges) has landed: allocation walks a range set" | Only the `CoreNumberPoolRange` kind, its GraphQL contract and the per-range utilization rows shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still walks `start_range`–`end_range`; `NumberPoolParameters` has no `ranges`; the ranges checker does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; a coordination note is carried in the plan |
-| "The records lookup already resolves each record to its owning object" | `core/query/resource_manager.py::reserved_values_query` matches `(pool)-[:IS_RESERVED]->(attr:Attribute {name})` and reads `HAS_VALUE` forward; it never touches the owning `Node`. Only `NumberPoolGetAllocated` resolves the owner, and that one lacks the deleting-branch and fork-window logic the used/free fragment has | The scoped fragment adds the `(n)-[:HAS_ATTRIBUTE]->(attr)` hop and the per-entry division reads; the allocated query is brought onto the same fragment so utilization and allocation read the same liveness |
+| "P1 (several weighted ranges) has landed: allocation walks a range set" | The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, and `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several) shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still draws from the shorthand and raises the pool-exhausted error when it is null; `NumberPoolParameters` has no `ranges`; the shared effective-space calculation does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; the dedicated surface computes `size`, `used` and `in_space` from the range set and the attribute's limits, never from the shorthand, until P1's shared calculation replaces the computation |
+| "The records lookup already resolves each record to its owning object" | `core/query/resource_manager.py::reserved_values_query` matches `(pool)-[:IS_RESERVED]->(attr:Attribute {name})` and reads `HAS_VALUE` forward; it never touches the holder. Only `NumberPoolGetAllocated` resolves the holder, and that one lacks the deleting-branch and fork-window logic the used/free fragment has | The scoped fragment adds the `(n)-[:HAS_ATTRIBUTE]->(attr)` hop and the per-entry division reads; the allocated query is brought onto the same fragment so utilization and allocation read the same liveness |
 | "Relationships are processed before attributes when a node is written" | True on create: `core/node/__init__.py::Node._process_fields` runs relationships before attributes. False on update: `Node.from_graphql` applies the payload in dict order and `core/attribute.py::BaseAttribute.from_graphql` calls `handle_pool` inline | On update, pool handling is deferred until every field in the payload has been applied (D4) |
-| "P2 attach is in flight" | The ledger re-anchoring and the retirement of dead records are merged (the attribute-anchored `IS_RESERVED`, the forward liveness read, `provenance`). The attach, detach and intent-resolver work is not built; the attach tasks are unchecked | User Story 7 stays gated on attach. Everything else in this slice reads the ledger as it is today |
+| "P2 attach is in flight" | The ledger re-anchoring and the retirement of dead records are merged: the global `(pool)-[:IS_RESERVED {identifier, provenance}]->(:Attribute)` edge, migrated by `m081_reanchor_number_pool_reservations` (re-anchor, delete legacy pool source edges, collapse shared-attribute records, delete legacy records), the forward liveness read, closure through the branch-agnostic retirement queries on delete, rename, merge, rebase and branch delete, and `core/query/resource_manager.py::PoolRecordProvenance`. The attach, detach and intent-resolver work is not built; the attach tasks are unchecked | User Story 7 stays gated on attach. Everything else in this slice reads the ledger as it is today; `provenance` is real data from the first change set |
+
+Facts about the generic pool queries, which the frontend needs of 2026-10-06 turned into
+requirements:
+
+- `graphql/queries/resource_manager.py::PoolAllocated.resolve` requires `resource_id` and ignores
+  it for a number pool, so a range view lists the whole pool.
+- `resolve_number_pool_allocation` sets `display_label` to the value itself and returns the
+  holder's id and kind but not its own label or hfid.
+- `NumberPoolGetAllocated` filters `av.value >= $start_range and av.value <= $end_range` on the
+  deprecated shorthand, so a value held by no range is never listed and P2's out-of-space signal
+  has no carrier; on a pool holding several ranges the shorthand is null and the query lists
+  nothing.
+- `pools/number.py::NumberUtilizationGetter` reads `int(pool.start_range.value)` and sizes the pool
+  as `end_range - start_range + 1` minus the attribute's excluded values; on a pool holding several
+  ranges the shorthand is null and the getter raises before computing anything. The resolver
+  publishes percentages only, as `IPPrefixUtilizationEdge` / `IPPoolUtilizationResource` rows,
+  although the getter holds the absolute counts.
+- Three definitions of "in the pool" coexist: allocation (`get_next`) uses the shorthand bounds
+  narrowed to the attribute's `min_value` / `max_value` and skips its `excluded_values`;
+  utilization sizes the shorthand minus excluded values without the limits; the allocated rows use
+  the shorthand bounds alone. The dedicated surface uses one definition (inside a range, not
+  excluded, within the limits) and P1's shared calculation is meant to become the single
+  implementation.
 
 Two further facts the PRD does not mention:
 
@@ -32,7 +55,7 @@ Two further facts the PRD does not mention:
 A third fact shapes the create path: `Node._process_fields` calls the template applier before it
 applies relationships, and `templates/node_applier.py::NodeTemplateApplier._handle_pool_relationship`
 allocates through `pools/default_allocator.py::DefaultPoolAllocator` from the raw field dict, with no
-node in hand. A template-created object therefore has no division to read at that point (D4).
+node in hand. A template-created node therefore has no division to read at that point (D4).
 
 ---
 
@@ -45,12 +68,16 @@ node in hand. A template-created object therefore has no division to read at tha
 | Schema-created pool provisioning | `pools/schema_number_pool_upserter.py::SchemaNumberPoolUpserter`, `pools/schema_number_pool_synchronizer.py::SchemaNumberPoolSynchronizer._update_pool_from_schema` (copies bounds from the default-branch schema only) |
 | Allocation | `core/node/__init__.py::Node.handle_pool` → `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` (lock `resource_pool.<pool id>`) → `get_next` → `NumberPoolGetFree` |
 | Records fragment | `core/query/resource_manager.py::reserved_values_query`, consumed by `NumberPoolGetUsed` and `NumberPoolGetFree` |
+| Allocated rows | `core/query/resource_manager.py::NumberPoolGetAllocated` (holder id, branch, value, identifier; bounds filter on) |
 | Utilization | `graphql/queries/resource_manager.py::resolve_number_pool_utilization` over `pools/number.py::NumberUtilizationGetter`, which runs `NumberPoolGetAllocated` |
-| Pool mutation | `graphql/mutations/resource_manager.py::InfrahubNumberPoolMutation` (schema-pool refusal text lives in `mutate_update`) |
+| Generic pool queries | `graphql/queries/resource_manager.py::InfrahubResourcePoolAllocated`, `InfrahubResourcePoolUtilization`, registered in `graphql/schema.py::InfrahubBaseQuery` |
+| Pool mutation | `graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation` (shorthand parsing, `ranges` handling, the schema-pool refusal of a shorthand write in `_refuse_shorthand_conflicts`, the shorthand mirror sync); range mutations in `number_pools/pool_range.py`; shared lock and sync helpers in `number_pools/common.py` |
+| Range persistence | `pools/number_pool_repository.py::NumberPoolRepository` (`get_ranges` ordered by start, `create_range`, `save_range_bounds`, reservations) |
 | Schema-path parsing and validation | `core/schema/basenode_schema.py::parse_schema_path`, `SchemaAttributePath`; `core/schema/schema_branch.py::SchemaBranch.validate_schema_path` with `core/constants/schema.py::SchemaElementPathType` |
 | Runtime path values | `core/node/constraints/grouped_uniqueness.py::_get_unique_valued_paths` (peer id through `RelationshipManager.get_peer_id`, attribute through `.value`, enum unwrapped, `None` → `NULL_VALUE`) |
 | Schema-change checkers | `core/validators/__init__.py::CONSTRAINT_VALIDATOR_MAP`; constraints and migrations derived in `core/models.py::SchemaUpdateValidationResult.process_diff` (field removal is a migration, not a constraint) |
 | Schema pools per field | `pools/registration.py::get_branches_with_schema_number_pool` (schema side only; no pool-side lookup exists) |
+| Frontend consumers of the generic queries | `frontend/app/src/entities/resource-manager/api/get-pool-utilization-from-api.ts`, `get-resource-allocated-from-api.ts`, `pages/resource-manager/resource-pool-details.tsx`, `resource-allocation-details.tsx` (unchanged by this slice) |
 | Test helpers | `backend/tests/helpers/number_pool.py`, `backend/tests/helpers/agnostic_edges.py` |
 
 ---
@@ -62,7 +89,7 @@ node in hand. A template-created object therefore has no division to read at tha
 **Decision**: add `allocation_scope` to `core_number_pool` as `kind="List"`, optional, with the
 pool's branch support (agnostic). No graph migration: `cli/db.py::update_core_schema` diffs the
 stored core schema against the definitions and applies an added optional attribute as a schema
-update, as it did for `pool_type`. `GRAPH_VERSION` stays at 79.
+update, as it did for `pool_type`. `GRAPH_VERSION` stays at 81.
 
 **Rationale**: a list of strings is what uniqueness constraints already store on the schema side;
 `List` is the existing kind for that shape on core nodes (`CoreGraphQLQuery.models`,
@@ -104,7 +131,7 @@ copies).
 
 **Decision**: `reserved_values_query` gains an optional `division` parameter: the entries in force
 and the writer's value for each. When present, the fragment adds `(n:Node)-[:HAS_ATTRIBUTE]->(attr)`
-and, per entry, a `CALL (n, ...)` subquery that collects the values the object holds for that entry
+and, per entry, a `CALL (n, ...)` subquery that collects the values the holder holds for that entry
 on any live branch — a relationship entry through `IS_RELATED` → `Relationship {name: identifier}`
 → `IS_RELATED` → peer `uuid`, an attribute entry through `HAS_ATTRIBUTE {name}` → `HAS_VALUE` →
 `value`. The relationship hop renders its arrows from the relationship's `direction`, as
@@ -116,7 +143,7 @@ today (FR-005, SC-003).
 The fragment also takes a `with_branch` render flag, off for the used and free reads so their text
 is unchanged, and on for the allocated read: it projects `branch` from both legs (the open edge's
 branch; for the fork-window leg, each surviving window's name) and ends `WITH DISTINCT res, value,
-branch`, which is what the per-branch split and the in-use list need.
+branch`, which is what the per-branch split and the allocation list need.
 
 Two anchor orders are rendered behind the same `division` parameter — from the record side filtering
 on the division last, and from the division side (the writer's peers or values) joining to the
@@ -130,12 +157,13 @@ window still sees and has not hidden. That predicate is lifted into a named Cyph
 `core/query/resource_manager.py` because it now has three consumers (value, relationship peer,
 attribute value), which is the bar the query guideline sets for a shared fragment.
 
-The per-entry union is a superset of the per-branch tuple union: an object in (A, T1) on the default
+The per-entry union is a superset of the per-branch tuple union: a holder in (A, T1) on the default
 branch and (C, T1) on `b1` counts in `{A, C} × {T1}`. That can only add numbers to the taken set, so
-the error stays one-sided (FR-007).
+the error stays one-sided (FR-007). The same rule answers the `division` filter of the allocation
+list, so one value can be returned under two divisions (FR-025).
 
 **Rationale**: the PRD's FR-001 and FR-007 ask for exactly this read. Omitting the fork-window leg
-on the hop would free a number in a division an older branch still sees the object in, which breaks
+on the hop would free a number in a division an older branch still sees the holder in, which breaks
 "never free when taken on any branch". The cost is bounded by pool occupancy times entries, which
 SC-006 measures.
 
@@ -185,44 +213,74 @@ keep the applier allocating from the raw field dict (no node, so no division).
 **Rationale**: the PRD defers this to SC-005. A per-division key changes no contract and can be
 added later behind the same `get_resource` signature.
 
-### D6 — Utilization: one query returns rows with their division values; a pure reporter picks the fullest division
+### D6 — Utilization: one query returns rows with their division values; a pure reporter computes every figures block
 
 **Decision**: `NumberPoolGetAllocated` moves onto the shared records fragment (so it gains the
-deleting-branch and fork-window behaviour the used/free reads have) and, when the pool is scoped,
-returns per row the collected values of each entry in force. `pools/number.py::NumberUtilizationGetter`
-becomes a seam that loads rows and hands them to a pure `pools/division_report.py::DivisionReporter`,
-which expands each row into the divisions it occupies, counts distinct values per division per
-branch split, and names the fullest division. The headline and its branch split are computed over
-that division; each per-range row reports the fullest division within that range (FR-011, FR-017).
-A new `NumberPoolDivisions` query enumerates the distinct division tuples over
-`(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live branch so that a division with objects but no
+deleting-branch and fork-window behaviour the used/free reads have), projects the record's
+provenance, makes its bounds filter optional, and, when the pool is scoped, returns per row the
+collected values of each entry in force. `pools/number.py::NumberUtilizationGetter` becomes a seam
+that loads rows and hands them to a pure `pools/division_report.py::DivisionReporter`, which
+expands each row into the divisions it occupies, counts distinct values per division per branch
+split, and names the fullest division. The reporter answers every `NumberPoolUtilizationFigures`
+block: the pool's (the fullest division's on a scoped pool), each range's (the fullest division
+within the range, FR-017), each division's over the pool or over one range (FR-011, FR-022). A new
+`NumberPoolDivisions` query enumerates the distinct division tuples over
+`(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live branch so that a division with nodes but no
 records reports 0 (FR-011); relationship peers are resolved to display labels by one
 `NodeManager.get_many(..., branch_agnostic=True)` over the distinct peer ids, and a peer that still
-cannot be read (a division keyed by an object that exists only on a branch the reader cannot see)
+cannot be read (a division keyed by a node that exists only on a branch the reader cannot see)
 is labelled by its identifier so the non-null field never voids the list.
 
-The `InfrahubResourcePoolAllocated` query shares `NumberPoolGetAllocated`, so the row shape keeps
-owner id, branch, value and record identifier; the move onto the shared fragment is pinned by
-regression tests on that query's count, offset and limit and on the headline branch split.
+The generic `InfrahubResourcePoolAllocated` query shares `NumberPoolGetAllocated`, so the row shape
+keeps holder id, branch, value and record identifier and the generic resolver keeps the bounds
+filter on; the move onto the shared fragment is pinned by regression tests on that query's count,
+offset and limit and on the generic utilization figures.
 
-On an unscoped pool the getter returns one division with an empty key and the figures it computes
-today (FR-015). The IP pool branch of the resolver sets `divisions` to an empty list explicitly,
-since the field is non-null.
+On an unscoped pool the getter returns one division with no entry and the figures it computes
+today (FR-022).
 
-**Rationale**: one read for the figures keeps the headline and the breakdown consistent by
-construction. The enumeration is the one place the pool reads the kind's data, as the PRD decided.
+**Rationale**: one read for the figures keeps the headline, the range rows and the divisions
+consistent by construction. The enumeration is the one place the pool reads the kind's data, as
+the PRD decided.
 
 **Alternatives**: one query per division (N+1); a division breakdown inside every range row (more
-than the first per-division view needs; additive later).
+than the first division view needs; additive later).
 
-### D7 — Per-division rows ride on the existing utilization query
+### D7 — Number-pool reads are published on a surface dedicated to number pools; the generic queries are frozen
 
-**Decision**: `graphql/queries/resource_manager.py::PoolUtilization` gains
-`divisions: [PoolDivisionUtilization!]!`, each row carrying `division: [PoolDivisionEntry!]!` and
-the three figures. See [contracts/graphql-pool-utilization.md](./contracts/graphql-pool-utilization.md).
+**Decision**: three new root query fields, `InfrahubNumberPoolUtilization`,
+`InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`, with their types, input and
+enum, hand-written in a new module `graphql/queries/number_pool.py` and registered in
+`graphql/schema.py::InfrahubBaseQuery` beside the generic fields. Their shape follows the
+number-pool data model: one figures block with absolute counts reused for the pool, each range and
+each division; ranges typed as ranges; rows carrying the holder as a flat type (id, hfid, kind,
+display label), the provenance, the range and the division; a structured `division` filter
+mirroring the output entries; `allocation_scope` in force on the results. See
+[contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md).
 
-**Rationale**: the frontend reads this query for the pool detail; one round trip; the PRD's open
-question 1 resolved as the spec records.
+`InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated`, `PoolUtilization`,
+`PoolAllocated` and `PoolAllocatedNode` keep their shape and meaning for every pool kind; a scoped
+pool reports pool-wide figures there. Their descriptions gain a note pointing number-pool consumers
+at the dedicated queries. No `@deprecated`: GraphQL cannot deprecate a field for one pool kind.
+P2's provenance and out-of-space signal, which `dev/specs/ifc-3184-pool-number-attach` placed on
+the generic pool queries, are carried by the dedicated surface instead (`provenance` and
+`in_space` on each row, `range: null` for a value no range holds, `out_of_space_count`).
+
+Form A (several root fields, following the `Infrahub*` convention) is published; form B (one root
+object with sub-fields) is re-judged at the final review of the surface.
+
+**Rationale**: the frontend needs of 2026-10-06 (ranges with absolute figures, per-division rows
+with branch split, divisions per range, holder labels, provenance filter) cannot be met by the
+generic queries without number-pool-only arguments and fields that would be empty for IP pools;
+`resource_id` is already required and ignored for number pools. A surface shaped like number pools
+lets the frontend build every number pool screen against a frozen contract before the backend
+computes divisions.
+
+**Alternatives**: `divisions` on `PoolUtilization` and a `division` argument on
+`InfrahubResourcePoolAllocated` (always empty or ignored for IP pools, and the range rows stay IP
+types); one root object `InfrahubNumberPool` (kept as the open point); `edges { node }` wrapping on
+the dedicated lists (rejected for uniformity with `ranges` and `divisions`, which the frontend
+consumes as plain lists).
 
 ### D8 — FR-010 is a constraint checker over a pool-side lookup, registered for the removal migrations too
 
@@ -249,10 +307,10 @@ the list value (format-dependent).
 ### D9 — The attribute-add size check compares against the largest division
 
 **Decision**: when a `NumberPool` attribute being added declares `allocation_scope`,
-`NodeAttributeAddChecker` compares the pool size against the largest per-division object count
+`NodeAttributeAddChecker` compares the pool size against the largest per-division node count
 from `NumberPoolDivisions` rather than the kind's total count.
 
-**Rationale**: a scoped pool legitimately serves more objects than its size.
+**Rationale**: a scoped pool legitimately serves more nodes than its size.
 
 ### D10 — Schema-declared scope is reconciled from the default branch, like the bounds
 
@@ -260,8 +318,7 @@ from `NumberPoolDivisions` rather than the kind's total count.
 support `ALLOWED` (changing it moves no data, FR-006); FR-009's entry rules run in
 `_validate_number_pool_parameters` on the branch being loaded. `SchemaNumberPoolUpserter` writes it
 at creation; `SchemaNumberPoolSynchronizer._update_pool_from_schema` copies it from the
-default-branch schema as it copies the bounds. Those two writes belong to the contract change set,
-because User Story 1's "a schema-declared scope reads back on the pool" needs them.
+default-branch schema as it copies the bounds.
 `InfrahubNumberPoolMutation.mutate_update` refuses a scope change on a `pool_type == Schema` pool
 with the existing default-branch message (FR-013).
 
@@ -269,14 +326,34 @@ The SDK, OpenAPI and frontend REST models are not introspected from the Pydantic
 `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` lists the parameter fields by
 hand, so the new field is added there as a `List` field and the generators re-run.
 
-### D11 — Contract first, with an honest placeholder
+### D11 — Contract first, with real pool data and a deterministic mock partition for the divisions of a scoped pool
 
 **Decision**: the delivery order the spec records. The schema attribute and the parameters field
-land first; then the mutation validation and the `divisions` field, whose resolver returns the
-single empty-key division computed by today's getter for every pool. For an unscoped pool that is
-the final behaviour; for a scoped pool it is the FR-019 placeholder, replaced when D6 lands. The
-generated artefacts are regenerated once at the contract step and must not change afterwards
-(FR-018).
+land first; then the dedicated surface with every shape frozen. From that change set the pool,
+range and allocation data are real: every `size`, `used` and `in_space` computed from the range
+set, the attribute's `excluded_values` and its `min_value` / `max_value` (never from the deprecated
+shorthand, which is null on a pool holding several ranges); holder, branch, identifier, provenance
+(`coalesce(provenance, "allocated")` on the record) and range from the rows. The divisions of a
+scoped pool, the `division` on each row and the `division`
+filter come from `pools/division_mock.py`: each row is put in one of three divisions `mock-1`,
+`mock-2`, `mock-3` by a stable hash of its holder's id; the entries carry the real scope paths in
+force; the three queries read the same partition so lists, filters and counts agree (SC-010). An
+unscoped pool never reaches the mock. The headline and range figures of a scoped pool are pool-wide
+and range-wide at contract time, and become the fullest division's when the division reads land.
+The generated artefacts are regenerated once at the contract step and must not change afterwards
+(FR-018); a snapshot test pins the SDL. The last change set of the slice deletes the mock module
+and adds a test asserting that no value or label beginning with `mock-` is returned (FR-019,
+SC-011).
+
+**Rationale**: the user asked for real data mocks so the frontend builds against plausible data,
+not an empty or single-row placeholder. A deterministic partition keyed on the holder's id is
+stable across requests and across the three queries, which is what makes the contract testable
+before the internals exist. The model is the weighted-ranges contract change set, which published
+the whole GraphQL surface with indicative range figures and landed the allocation internals later.
+
+**Alternatives**: a single empty-key division on every pool (the frontend cannot build the division
+view against it); random partitions (lists and filters disagree between requests); waiting for the
+division reads (blocks the frontend).
 
 ### D12 — Measurement, not a gate
 
@@ -292,24 +369,30 @@ Both record their figures in `dev/specs/ifc-3185-scoped-number-pools/measurement
 ## 3. Sequencing and concurrency
 
 ```text
-A  schema attribute + parameters field + SDK generator entry   (one PR, small, first)
-B  GraphQL contract: mutation validation, schema-pool refusal,  (depends on A; unblocks frontend + SDK)
-   upserter/synchronizer writes, divisions field with the
-   placeholder, regen
-C  seams: DivisionResolver, get_resource(division) on all three (depends on A; parallel with B)
-   write paths, NumberUtilizationGetter → DivisionReporter
-D1 scoped records fragment + allocation                         (depends on C)       ┐
-D2 NumberPoolDivisions + real divisions resolver                (depends on B, C)    ├ parallel
-D3 schema-load validation + attribute-add size check            (depends on A)       │
-D4 ScopedPoolDependencyChecker + PoolsReferencingField          (depends on A)       ┘
-E  measurement, docs, changelog                                 (depends on D1, D2)
+A  schema attribute + parameters field + SDK generator entry       (one PR, small, first)
+B  dedicated GraphQL surface: three root fields, real pool/range/   (depends on A; unblocks frontend + SDK)
+   allocation data, mock partition for a scoped pool's divisions,
+   description notes on the generic queries, regen, SDL snapshot
+C  seams: DivisionKey, get_resource(division) on all three write    (depends on A; parallel with B)
+   paths, NumberUtilizationGetter → DivisionReporter
+D1 DivisionResolver + scoped records fragment + allocation          (depends on C)       ┐
+D2 NumberPoolDivisions + scoped allocated rows + real divisions     (depends on B, C)    ├ parallel
+   in the three queries
+D3 scope write path: ScopeValidator in the mutation, schema-pool    (depends on A)       │
+   refusal, upserter/synchronizer, schema-load validation,
+   attribute-add size check
+D4 ScopedPoolDependencyChecker + PoolsReferencingField              (depends on A)       ┘
+E  mock removal: delete division_mock.py, no-mock test              (depends on D2)
+F  measurement, docs, changelog                                     (depends on D1, E)
 ```
 
 P1's remaining allocation-over-ranges work touches `get_next`, `NumberPoolParameters`, the size
 calculation and the SDK regeneration; D1 touches the fragment those queries share and set A touches
 the same parameters class and generator. Whichever slice lands second rebases a small hunk, and each
 slice opens its own SDK regeneration PR when it lands. Which lands first is the P1 owner's call and
-is recorded as an open question in the critique.
+is recorded as an open question in the critique. When P1's shared effective-space calculation
+lands, the resolver-side computation of `size`, `used` and `in_space` is replaced by it without a
+contract change; the definition is the same.
 
 ---
 
@@ -327,5 +410,11 @@ is recorded as an open question in the critique.
   pins the observable order.
 - **P2's intent resolver** will also sit on `from_graphql`; D4 keeps the deferral in one place so the
   resolver slots in after it.
-- **`NumberPoolGetAllocated` on the shared fragment** changes which records the in-use list shows on
-  a deleting branch. That is the fix the P2 research already asked for; it is noted in the changelog.
+- **`NumberPoolGetAllocated` on the shared fragment** changes which records the allocation lists
+  show on a deleting branch. That is the fix the P2 research already asked for; it is noted in the
+  changelog.
+- **The mock partition mistaken for final data**: the contract states it, the division labels are
+  named `mock-N`, and the no-mock test of set E fails the slice until the real reads land.
+- **Form A versus form B**: a switch to one root object before ship would rename the three root
+  fields but keep every type; the frontend is told at contract time that this one point is
+  re-judged at the final review.

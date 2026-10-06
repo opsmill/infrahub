@@ -559,6 +559,6 @@ bucket have not yet moved them.
 | R2 | ~~P1's FR-030a contradicts this slice's FR-030b~~ **CLOSED 2026-09-16 — PRD owner confirmed P2 wins**; `source` can be cleared on pool-sourced attributes | Amend `POOL-RANGES-PRD.md` (delete FR-030a, Decision 2, open question #2) before P1 enters spec-kit. No design impact here |
 | R3 | FR-036a's per-branch resolution inside the pool lock | D12 benchmark; release decision on the curve |
 | R4 | The migration deletes reservation data for the first time | Four behaviours, three reporting counts; Docker integration coverage; `validate_migration` post-condition |
-| R5 | Published-contract gate (ADR 0010) | Two new output fields + a `source` provenance change the generated schema will not show; must be named explicitly in the contract review alongside P1/P3 |
+| R5 | Published-contract gate (ADR 0010) | Two output fields (on P3's dedicated number-pool surface) + a `source` provenance change the generated schema will not show; must be named explicitly in the contract review alongside P1/P3 |
 | R6 | Concurrent re-pool of one attribute into two pools | D6 write lock on the `Attribute` vertex (revised 2026-10-05) |
 | R7 | `IS_RESERVED` is undocumented in `dev/knowledge/backend/database-schema.md` | Document the edge, its shapes and its liveness rule as part of this work |

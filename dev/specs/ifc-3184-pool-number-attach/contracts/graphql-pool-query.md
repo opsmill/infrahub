@@ -3,9 +3,29 @@
 **Status**: **published contract change** — governed by
 [ADR 0010](../../../adr/0010-generated-user-facing-schema-contract.md).
 
-**Owner**: `backend/infrahub/graphql/queries/resource_manager.py`
+**Owner**: `backend/infrahub/graphql/queries/number_pool.py` for the two output fields (the
+surface dedicated to number pools, defined in
+[`dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md`](../../ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md));
+`backend/infrahub/core/query/node.py` for the `source` derivation.
 
 ---
+
+## Carrier of the two output fields
+
+The generic resource-pool queries `InfrahubResourcePoolUtilization` and
+`InfrahubResourcePoolAllocated` are frozen for number pools: they keep their shape and meaning and
+gain description notes only. Provenance and the out-of-space signal are published on the dedicated
+number-pool surface, which P3 ships as its first change set:
+
+| This contract | Carried as |
+|---|---|
+| `provenance` on each in-use row (section 1) | `NumberPoolAllocation.provenance: NumberPoolProvenance!` (`ALLOCATED`, `PROVIDED`) on `InfrahubNumberPoolAllocations` |
+| The out-of-space bucket (section 2) | `NumberPoolAllocation.in_space: Boolean!` with `range: null` for a value no range holds, the `in_space: false` filter of `InfrahubNumberPoolAllocations`, and `NumberPoolUtilization.out_of_space_count: BigInt!` |
+| Row shape value, holder, branch (FR-027a) | `value`, `holder { id hfid kind display_label }`, `branch` on the same row type as in-space rows |
+
+The semantics below (two provenance values, one row per (record, branch-resolved value), the bucket
+as a flat list with the branch on every row, re-entry into the space with no re-attach) are
+unchanged; only the GraphQL types that carry them are P3's.
 
 ## Governance
 
@@ -16,8 +36,8 @@ Two distinct kinds of change are in scope, and the second is the dangerous one:
 
 | Change | Visible in the generated schema? |
 |---|---|
-| `provenance` on each in-use row | **yes** |
-| The out-of-space bucket | **yes** |
+| `provenance` on each in-use row (on the dedicated number-pool surface) | **yes** |
+| The out-of-space signal (on the dedicated number-pool surface) | **yes** |
 | `source` populated by derivation instead of a stored edge (FR-030b) | **no** — the field name and type are unchanged; only its provenance moves |
 
 FR-030b **must be named in the review in words**, because nothing in the generated artefacts will
@@ -32,7 +52,8 @@ Generated files are regenerated, never hand-edited:
 
 ## 1. `provenance` on in-use rows
 
-Each row of a number pool's allocated/in-use list gains `provenance`, a closed set:
+Each row of a number pool's allocation list (`InfrahubNumberPoolAllocations`) carries
+`provenance`, a closed set:
 
 | Value | Meaning |
 |---|---|
@@ -56,9 +77,12 @@ exceed 100%.
 ## 2. The out-of-space bucket
 
 A tracked number outside the pool's effective space is reported in a **separate bucket**, not folded
-into the utilization fraction.
+into the utilization fraction. On the dedicated surface the bucket is the set of rows with
+`in_space: false` (and `range: null`), selectable with the `in_space` filter and counted by
+`out_of_space_count`.
 
-**Row shape matches the in-use row**: `value`, `holder`, `branch` (FR-027a).
+**Row shape matches the in-use row**: `value`, `holder`, `branch` (FR-027a); it is the same row
+type, `NumberPoolAllocation`.
 
 ### The bucket is a flat list, not per-branch buckets
 

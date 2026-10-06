@@ -26,11 +26,12 @@ INFRAHUB_USE_TEST_CONTAINERS=false uv run pytest backend/tests/component/core/re
 
 ```bash
 # Pure logic, no database
-uv run pytest backend/tests/unit/pools/
+uv run pytest backend/tests/unit/pools/ backend/tests/unit/graphql/test_number_pool_surface_contract.py
 
 # Queries, validators, mutations
 uv run pytest backend/tests/component/core/resource_manager/
-uv run pytest backend/tests/component/graphql/resource_manager/
+uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py
+uv run pytest backend/tests/component/graphql/resource_manager/number_pools/
 uv run pytest backend/tests/component/core/constraint_validators/
 uv run pytest backend/tests/component/pools/
 
@@ -44,11 +45,11 @@ GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
 
 Before pushing: `/pre-ci`. It includes `uv run invoke docs.validate`, which fails on any stale
 generated file; this slice regenerates the GraphQL schema, the OpenAPI schema, the protocols, the SDK
-models and the attribute-parameter docs.
+models, the frontend GraphQL types and the attribute-parameter docs.
 
 ---
 
-## Scenario 1 — the contract is up (User Story 1, FR-014 to FR-019, SC-007)
+## Scenario 1 — the contract is up (User Story 1, FR-014 to FR-019, FR-022 to FR-030, SC-007, SC-009, SC-010)
 
 ```bash
 uv run invoke backend.generate schema.generate-graphqlschema schema.generate-jsonschema docs.generate
@@ -56,19 +57,30 @@ rtk git diff --stat schema/ backend/infrahub/core/protocols.py python_sdk/
 cd frontend/app && pnpm codegen && cd ../..
 ```
 
-Expected: `schema/schema.graphql` shows `allocation_scope: ListAttribute` on `CoreNumberPool`, the
-three inputs, and `PoolUtilization.divisions`; the OpenAPI schema shows `allocation_scope` on
+Expected: `schema/schema.graphql` shows `allocation_scope: ListAttribute` on `CoreNumberPool` and
+its three inputs, the root fields `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions`
+and `InfrahubNumberPoolAllocations` with every type of the
+[contract](./contracts/graphql-number-pool-surface.md), and only description changes on
+`PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`, `IPPrefixUtilizationEdge` and
+`IPPoolUtilizationResource`; the OpenAPI schema shows `allocation_scope` on
 `NumberPoolParametersWrite` / `Read`. Then:
 
 ```graphql
 mutation { CoreNumberPoolCreate(data: {name: {value: "p"}, node: {value: "InfraDevice"},
   node_attribute: {value: "vlan_id"}, start_range: {value: 1}, end_range: {value: 100},
   allocation_scope: {value: ["site"]}}) { object { id allocation_scope { value } } } }
-query { InfrahubResourcePoolUtilization(pool_id: "<id>") { utilization divisions { division { path value } utilization } } }
+query { InfrahubNumberPoolUtilization(pool_id: "<id>") {
+  allocation_scope figures { size used utilization } ranges { display_label figures { size used } } out_of_space_count } }
+query { InfrahubNumberPoolDivisions(pool_id: "<id>") { count divisions { display_label entries { path value } figures { used } } } }
+query { InfrahubNumberPoolAllocations(pool_id: "<id>", division: [{path: "site", value: "mock-1"}]) {
+  count allocations { value branch provenance in_space holder { display_label } range { display_label } division { value } } } }
 ```
 
-Expected: the scope reads back `["site"]`; an unscoped pool's `divisions` holds one row with
-`division: []` and the headline figures.
+Expected: the scope reads back `["site"]`; the utilization carries `allocation_scope: ["site"]`
+and real figures; the divisions list holds `mock-1`, `mock-2` and `mock-3`; the filtered
+allocation list returns the rows of `mock-1`, and the number of distinct values among them equals
+the `used` of `mock-1`. On an unscoped pool, `allocation_scope` is `[]`, the divisions list holds
+one division with no entry, and the `division` filter is refused.
 
 ## Scenario 2 — one pool, every site (User Story 2, FR-001 to FR-007, SC-001, SC-002, SC-004)
 
@@ -78,11 +90,13 @@ the next allocation in A is 3; fifty concurrent creates in A are distinct. The t
 moved to C on `b1`; default branch allocates 6 in A, 6 in C, 5 in D; deleting `b1` frees 5 in C) is
 in `backend/tests/component/core/resource_manager/test_number_pool_scoped_query.py`.
 
-## Scenario 3 — which site is about to run out (User Story 3, FR-011, FR-015 to FR-017)
+## Scenario 3 — which site is about to run out (User Story 3, FR-011, FR-015 to FR-017, FR-022 to FR-025, SC-011)
 
-`backend/tests/component/graphql/queries/test_resource_pool_divisions.py`: A 50 records, B two
-objects no records, C no objects → headline 50 %, A 50/100, B 0/100, no row for C; per-range rows
-computed over A.
+`backend/tests/component/graphql/queries/test_number_pool_surface.py`: A 50 records, B two
+nodes no records, C no nodes → headline A's 50 of 100, A 50/100, B 0/100, no division for C; range
+rows computed over the fullest division within each range; the divisions query with `range_id`
+reports A 40 of 50; the allocation list filtered on A returns D1's two rows and so does the filter
+on C; no `mock-` value or label is returned on a scoped pool.
 
 ## Scenario 4 — scope in the schema (User Story 4, FR-012, FR-013)
 
@@ -91,25 +105,28 @@ computed over A.
 and reloading makes the next allocation 102; a direct update of the pool's scope is refused with the
 default-branch message.
 
-## Scenario 5 — refusals (User Story 5, FR-009, FR-010, SC-008)
+## Scenario 5 — refusals (User Story 5, FR-009, FR-010, FR-024, SC-008)
 
-`backend/tests/component/graphql/resource_manager/test_number_pool_scope_mutation.py` (seven refused
-entries, each naming the entry) and
+`backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py` (seven refused
+entries, each naming the entry),
 `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py` (optional,
 removed, cardinality many → refused naming the pool; a field that never existed on the branch →
-accepted). `backend/tests/integration_docker/test_number_pool_scope_schema_load.py` runs the removal
-case through the schema-load API.
+accepted) and `backend/tests/component/graphql/queries/test_number_pool_surface.py` (an IP pool as
+`pool_id`, a range of another pool, a division filter on an unscoped pool, a path not in force, a
+duplicate path). `backend/tests/integration_docker/test_number_pool_scope_schema_load.py` runs the
+removal case through the schema-load API.
 
-## Scenario 6 — the branch seam (User Story 6, FR-008, FR-009)
+## Scenario 6 — the branch seam (User Story 6, FR-008, FR-009, FR-027)
 
 `backend/tests/functional/pools/test_numberpool_scoped_branch.py`: `pod` exists only on `b1`;
 `["site", "pod"]` saves on `b1` and is refused on the default branch; the default branch allocates
-per site, `b1` per site and pod; utilization on the default branch groups by site only; after merge
-every branch allocates per the full scope.
+per site, `b1` per site and pod; `InfrahubNumberPoolDivisions` on the default branch reports
+`allocation_scope: ["site"]` with one-entry divisions and on `b1` `["site", "pod"]` with two-entry
+divisions; after merge every branch allocates per the full scope.
 
 ## Scenario 7 — consolidation (User Story 7)
 
-Blocked on P2 attach. When attach lands: P_A scoped by site, ten site-B objects attached → A 10/100,
+Blocked on P2 attach. When attach lands: P_A scoped by site, ten site-B nodes attached → A 10/100,
 B 10/100, next in B is 11.
 
 ## Scenario 8 — measurement (User Story 8, SC-005, SC-006)
@@ -124,11 +141,13 @@ uv run pytest backend/tests/functional/pools/test_numberpool_scoped_throughput.p
 Record the figures, the anchor order kept, and the `EXPLAIN` plan of the scoped free query in
 `dev/specs/ifc-3185-scoped-number-pools/measurements.md`.
 
-## Regression guard (FR-005, SC-003)
+## Regression guard (FR-005, FR-029, SC-003, SC-009)
 
 ```bash
-uv run pytest backend/tests/component/core/resource_manager/ backend/tests/functional/pools/ -k "not scoped"
+uv run pytest backend/tests/component/core/resource_manager/ backend/tests/component/graphql/queries/test_resource_pool.py backend/tests/functional/pools/ -k "not scoped"
 ```
 
-Expected: every pre-existing number-pool test passes with unchanged figures, and the unscoped
-`reserved_values_query` text is identical to today's (pinned by a snapshot test).
+Expected: every pre-existing number-pool test passes with unchanged figures, the unscoped
+`reserved_values_query` text is identical to today's (pinned by a snapshot test), and the generic
+`InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` reads return what they
+returned before the slice.

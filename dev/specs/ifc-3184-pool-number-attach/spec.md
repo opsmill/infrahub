@@ -528,16 +528,19 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
     arithmetic. Its three utilization properties are read directly by the pool query resolver, so
     the seam keeps this slice's contract diff limited to the two new fields. Its total-size property
     is deleted by P1.
-  - **Pool query surface** (GraphQL, extends): adds `provenance` and the out-of-space bucket.
+  - **Pool query surface** (GraphQL): `provenance` and the out-of-space signal are carried by the
+    number-pool surface P3 publishes (`InfrahubNumberPoolAllocations`,
+    `InfrahubNumberPoolUtilization`; `dev/specs/ifc-3185-scoped-number-pools`), not by the
+    generic resource-pool queries, which are frozen for number pools.
 - **Consumed, not built**: P1's effective-space calculator. Membership must not be reimplemented
   here.
 - **API surface**: no new input fields. `from_pool` changes meaning — explicit `null` is detach,
   `value: null` + `from_pool` discards and allocates — and absent versus explicit-null are
   distinguishable at the GraphQL input layer (verified on the pinned graphene, provided `from_pool`
-is declared without a `null` default). Two new output
-  fields on the pool query: `provenance` per in-use row, and the out-of-space bucket as a list of
-  rows carrying value, holder and branch (FR-027a). `source` keeps its existing field and type; only
-  what populates it changes (FR-030b).
+  is declared without a `null` default). Two output fields on the dedicated number-pool surface:
+  `provenance` per in-use row, and the out-of-space rows carrying value, holder and branch
+  (FR-027a) with `in_space: false`. `source` keeps its existing field and type; only what populates
+  it changes (FR-030b).
 - **Errors**: **one** new refusal — `from_pool` alone on a non-default untracked value. The
   out-of-range refusal earlier drafts carried is deleted, and the two `source` refusals go with
   FR-030a. A duplicate reuses the existing uniqueness error.
@@ -663,12 +666,13 @@ Using the "Ask First" list from `AGENTS.md`.
   collapse (FR-024b) and the deletion of legacy pool source edges (FR-030b). This is by some
   distance the heaviest gate the slice crosses and it lands in a release that also carries P1's
   range migration. It merges ahead of the feature work so that SC-022 can be measured against it.
-- [x] **GraphQL schema modification** — `from_pool` semantics, one new refusal, two new output
-  fields on the pool query, and a change to what populates `source` with no change to its shape.
+- [x] **GraphQL schema modification** — `from_pool` semantics, one new refusal, two output
+  fields carried by P3's dedicated number-pool surface, and a change to what populates `source`
+  with no change to its shape.
 - [x] **Published schema contract (ADR 0010)** — the two output fields are a published-contract
-  change. This slice must be named in the contract review alongside P1 and P3's attribute-parameter
-  changes. FR-030b must be named there too: the generated schema will not show it, because the field
-  and type are unchanged and only its provenance moves.
+  change, published with P3's dedicated surface. This slice must be named in the contract review
+  alongside P1 and P3's attribute-parameter changes. FR-030b must be named there too: the generated
+  schema will not show it, because the field and type are unchanged and only its provenance moves.
 - [ ] New dependency
 - [ ] CI/CD workflow change
 - [ ] Authentication / authorization change
@@ -754,8 +758,10 @@ Using the "Ask First" list from `AGENTS.md`.
 
 - **Ships with**: P1 (several ranges). This slice consumes P1's effective-space calculator and
   relies on P1's deletion of the hand-set-value scan (FR-011).
-- **Related ADR**: `dev/adr/0010-generated-user-facing-schema-contract.md` — the two new query
+- **Related ADR**: `dev/adr/0010-generated-user-facing-schema-contract.md` — the two output
   fields are part of the schema we publish and generate from.
+- **Related spec**: `dev/specs/ifc-3185-scoped-number-pools` — its dedicated number-pool surface
+  carries `provenance` and the out-of-space signal; the generic resource-pool queries are frozen.
 - **Related specs**: `dev/specs/ifc-1869-from-pool-prefix-mask`,
   `dev/specs/infp-431-ipam-closest-prefix`.
 - **Handoff to P1**: FR-028a is an invariant P1's read-query rewrite must preserve. Today's
