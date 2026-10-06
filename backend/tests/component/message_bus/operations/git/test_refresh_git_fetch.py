@@ -175,7 +175,7 @@ async def test_fan_out_to_a_read_only_repository_follows_a_tag_that_moved_upstre
         commit=moved_sha,
     )
 
-    with dependency_provider.scope(build_client, lambda: recording_client):
+    with override_dependency(build_client, lambda: recording_client, dependency_provider=dependency_provider):
         await fetch.fn(message=message)
 
     assert str(git_fixture_repo.get_git_repo_main().commit("release")) == moved_sha
