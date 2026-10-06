@@ -67,7 +67,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
 async def fetch(message: messages.RefreshGitFetch) -> None:
     converger = WorktreeConverger(
         lock_registry=lock.registry,
-        loader=InitializedRepositoryLoader(client=get_client()),
+        loader=InitializedRepositoryLoader(client_provider=get_client),
         worker_identity=WORKER_IDENTITY,
     )
     await converger.converge(message)

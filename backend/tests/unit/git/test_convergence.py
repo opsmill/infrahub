@@ -14,7 +14,7 @@ from infrahub import config
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
-from infrahub.git.convergence import WorktreeConverger
+from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair, RefreshGitFetch
@@ -248,6 +248,30 @@ async def test_a_message_this_worker_sent_is_ignored() -> None:
 
     assert loader.loaded == []
     assert repository.calls == []
+    assert timeline.acquire_sequence() == []
+
+
+@dataclass
+class RecordingClientProvider:
+    calls: int = 0
+
+    def __call__(self) -> InfrahubClient:
+        self.calls += 1
+        return InfrahubClient(config=Config(requester=dummy_async_request))
+
+
+async def test_a_message_this_worker_sent_builds_no_client() -> None:
+    timeline = LockTimeline()
+    client_provider = RecordingClientProvider()
+    converger = WorktreeConverger(
+        lock_registry=RecordingLockRegistry(timeline=timeline),
+        loader=InitializedRepositoryLoader(client_provider=client_provider),
+        worker_identity=THIS_WORKER,
+    )
+
+    await converger.converge(build_message(branches=(TRUNK, FEATURE), commit=TRUNK.commit, initiator_id=THIS_WORKER))
+
+    assert client_provider.calls == 0
     assert timeline.acquire_sequence() == []
 
 

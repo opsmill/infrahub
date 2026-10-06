@@ -9,6 +9,8 @@ from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger, get_run_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub_sdk import InfrahubClient
 
     from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -49,12 +51,13 @@ class ConvergingRepositoryLoader(Protocol):
 class InitializedRepositoryLoader:
     """Loads this worker's clone of the repository a fetch message names, cloning it when it is missing."""
 
-    def __init__(self, client: InfrahubClient) -> None:
-        self._client = client
+    def __init__(self, client_provider: Callable[[], InfrahubClient]) -> None:
+        # Building a client is costly, and a worker drops its own broadcast before it loads anything.
+        self._client_provider = client_provider
 
     async def load(self, message: RefreshGitFetch) -> InfrahubReadOnlyRepository | InfrahubRepository:
         return await get_initialized_repo(
-            client=self._client,
+            client=self._client_provider(),
             repository_id=message.repository_id,
             name=message.repository_name,
             repository_kind=message.repository_kind,
