@@ -35,6 +35,12 @@ ACCEPTED_CASES = [
     AcceptedCase(name="later_entries_name_other_branches", branches=(TRUNK, FEATURE)),
 ]
 
+TRUNK_TO_PULL = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=None)
+
+
+def test_a_branch_list_starting_with_a_branch_to_pull_matches_single_branch_fields_without_a_commit() -> None:
+    assert build_message(branches=(TRUNK_TO_PULL, FEATURE), commit=None).branches == (TRUNK_TO_PULL, FEATURE)
+
 
 @pytest.mark.parametrize("case", ACCEPTED_CASES, ids=[case.name for case in ACCEPTED_CASES])
 def test_a_branch_list_starting_with_the_single_branch_fields_is_accepted(case: AcceptedCase) -> None:

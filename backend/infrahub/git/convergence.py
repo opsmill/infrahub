@@ -108,18 +108,26 @@ class WorktreeConverger:
     ) -> None:
         for branch in branches:
             try:
-                await repo.reset_to_commit(
-                    branch_name=branch.infrahub_branch_name,
-                    commit=branch.commit,
-                    branch_id=branch.infrahub_branch_id,
-                    create_if_missing=True,
-                    update_commit_value=False,
-                )
+                if branch.commit:
+                    await repo.reset_to_commit(
+                        branch_name=branch.infrahub_branch_name,
+                        commit=branch.commit,
+                        branch_id=branch.infrahub_branch_id,
+                        create_if_missing=True,
+                        update_commit_value=False,
+                    )
+                else:
+                    await repo.pull(
+                        branch_name=branch.infrahub_branch_name,
+                        branch_id=branch.infrahub_branch_id,
+                        create_if_missing=True,
+                        update_commit_value=False,
+                    )
             # A branch that cannot converge must not keep the branches after it on their previous commit.
             except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError):
                 log.exception(
-                    f"Unable to reset branch {branch.infrahub_branch_name} of repository {repository_name} "
-                    f"to commit {branch.commit}",
+                    f"Unable to converge branch {branch.infrahub_branch_name} of repository {repository_name} "
+                    f"on commit {branch.commit or 'the remote head'}",
                     repository=repository_name,
                     branch=branch.infrahub_branch_name,
                     commit=branch.commit,

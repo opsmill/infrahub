@@ -497,8 +497,9 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
   the trunk worktree's local head is its commit. This is the unconditional trunk message above,
   carried in the coalesced message rather than sent beside it. When every branch failed, the
   message lists the trunk alone, because it is what heals a stale worker and nothing in this phase
-  replaces it. When the trunk commit cannot be read, the trunk is left out of the list, and a
-  message that lists nothing sets no `branches`, so every worker pulls the trunk as it did before.
+  replaces it. When the trunk commit cannot be read, the trunk is still listed first, with no
+  commit. A pair with no commit means "pull this branch", so every worker pulls the trunk as it did
+  before, also when other branches advanced.
 - **A trunk failure is made loud without being made fatal.** Today
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
   `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
@@ -537,7 +538,8 @@ Changed. `backend/infrahub/git/convergence.py::WorktreeConverger`, which the `fe
 
 1. It still ignores a message whose `meta.initiator_id` is this worker.
 2. It still takes the repository lock and fetches once.
-3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
+3. When `branches` is present, it resets each pair in turn, inside that one lock hold. A pair with
+   no commit is pulled instead.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
 6. **It resets with `reset_to_commit` and runs no ancestry check.** It moves the worktree onto

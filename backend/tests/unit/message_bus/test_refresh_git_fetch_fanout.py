@@ -18,6 +18,7 @@ THIS_WORKER = "this-worker"
 TRUNK = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit="a" * 40)
 FEATURE = BranchCommitPair(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit="b" * 40)
 REWRITTEN = BranchCommitPair(infrahub_branch_name="rewritten", infrahub_branch_id="rewritten-id", commit="c" * 40)
+TRUNK_TO_PULL = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=None)
 
 
 @dataclass(frozen=True)
@@ -127,6 +128,14 @@ def converged_reset(branch: BranchCommitPair) -> GitCall:
 
 
 FETCH = GitCall(operation="fetch", lock_held=True)
+TRUNK_PULL = GitCall(
+    operation="pull",
+    branch_name="main",
+    branch_id="main-id",
+    create_if_missing=True,
+    update_commit_value=False,
+    lock_held=True,
+)
 
 
 @dataclass
@@ -145,6 +154,12 @@ FAN_OUT_CASES = [
         expected_calls=[FETCH, converged_reset(TRUNK), converged_reset(FEATURE), converged_reset(REWRITTEN)],
     ),
     FanOutCase(
+        name="a_listed_branch_without_a_commit_is_pulled",
+        branches=(TRUNK_TO_PULL, FEATURE),
+        commit=None,
+        expected_calls=[FETCH, TRUNK_PULL, converged_reset(FEATURE)],
+    ),
+    FanOutCase(
         name="without_a_list_the_pinned_branch_is_reset",
         branches=None,
         commit=TRUNK.commit,
@@ -154,17 +169,7 @@ FAN_OUT_CASES = [
         name="without_a_list_or_a_commit_the_branch_is_pulled",
         branches=None,
         commit=None,
-        expected_calls=[
-            FETCH,
-            GitCall(
-                operation="pull",
-                branch_name="main",
-                branch_id="main-id",
-                create_if_missing=True,
-                update_commit_value=False,
-                lock_held=True,
-            ),
-        ],
+        expected_calls=[FETCH, TRUNK_PULL],
     ),
 ]
 
@@ -202,7 +207,7 @@ async def test_a_branch_that_cannot_be_reset_does_not_stop_the_others() -> None:
     assert [(record["log_level"], record["event"], record["branch"]) for record in records] == [
         (
             "error",
-            f"Unable to reset branch feature of repository {REPOSITORY_NAME} to commit {FEATURE.commit}",
+            f"Unable to converge branch feature of repository {REPOSITORY_NAME} on commit {FEATURE.commit}",
             "feature",
         )
     ]

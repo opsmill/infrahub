@@ -80,7 +80,8 @@ commit. A branch whose import failed is not listed. The receiving worker resets 
 one lock hold and after one fetch, and a branch it cannot reset is logged and skipped. The
 single-branch fields repeat the first entry, so a worker on older code still converges the trunk.
 The message is sent even when a branch of the cycle failed. Listing the trunk on an idle cycle is
-what brings back a worker that missed an earlier message.
+what brings back a worker that missed an earlier message. When the cycle cannot read the trunk's
+commit, the trunk entry carries no commit, and every worker pulls the trunk instead of resetting it.
 
 Pinning a SHA rather than a branch name is deliberate: the remote may advance between the
 initiating worker's operation and a receiving worker's fetch, and a pull would land that worker

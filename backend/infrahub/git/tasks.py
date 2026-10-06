@@ -473,37 +473,31 @@ def build_cycle_fetch_message(
 ) -> messages.RefreshGitFetch:
     """Build the one fetch message of a synchronization cycle: the trunk, then every other branch it advanced.
 
-    The trunk is listed on every cycle, even when it did not move, so a worker that missed an earlier
-    message converges on it again. Without a trunk commit the workers pull the trunk instead.
+    The trunk is listed first on every cycle, even when it did not move, so a worker that missed an
+    earlier message converges on it again. Without a trunk commit the workers pull the trunk instead.
     """
-    branches: list[BranchCommitPair] = []
-    if trunk_commit is not None:
-        branches.append(
-            BranchCommitPair(
-                infrahub_branch_name=registry.default_branch, infrahub_branch_id=default_branch_id, commit=trunk_commit
-            )
-        )
-    listed = {branch.infrahub_branch_name for branch in branches}
-    branches.extend(
+    trunk = BranchCommitPair(
+        infrahub_branch_name=registry.default_branch, infrahub_branch_id=default_branch_id, commit=trunk_commit
+    )
+    advanced = tuple(
         BranchCommitPair(
             infrahub_branch_name=branch.infrahub_branch_name,
             infrahub_branch_id=branch.infrahub_branch_id,
             commit=branch.commit,
         )
         for branch in reconciled
-        if branch.infrahub_branch_name not in listed
+        if branch.infrahub_branch_name != trunk.infrahub_branch_name
     )
-    first = branches[0] if branches else None
     return messages.RefreshGitFetch(
         meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
         location=location,
         repository_id=repository_id,
         repository_name=repository_name,
         repository_kind=repository_kind,
-        infrahub_branch_name=first.infrahub_branch_name if first else registry.default_branch,
-        infrahub_branch_id=first.infrahub_branch_id if first else default_branch_id,
-        commit=first.commit if first else None,
-        branches=tuple(branches) or None,
+        infrahub_branch_name=trunk.infrahub_branch_name,
+        infrahub_branch_id=trunk.infrahub_branch_id,
+        commit=trunk.commit,
+        branches=(trunk, *advanced),
     )
 
 

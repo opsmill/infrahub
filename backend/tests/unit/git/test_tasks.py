@@ -225,6 +225,7 @@ def test_only_a_branch_that_can_still_record_a_commit_keeps_its_commit() -> None
 TRUNK_COMMIT = "a" * 40
 FEATURE_COMMIT = "b" * 40
 TRUNK = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=TRUNK_COMMIT)
+TRUNK_TO_PULL = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=None)
 FEATURE = BranchCommitPair(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
 
 
@@ -234,7 +235,7 @@ class CycleMessageCase:
     trunk_commit: str | None
     reconciled: list[ReconciledBranch]
     expected_single_branch: tuple[str, str, str | None]
-    expected_branches: tuple[BranchCommitPair, ...] | None
+    expected_branches: tuple[BranchCommitPair, ...]
 
 
 CYCLE_MESSAGE_CASES = [
@@ -270,16 +271,16 @@ CYCLE_MESSAGE_CASES = [
         trunk_commit=None,
         reconciled=[],
         expected_single_branch=("main", "main-id", None),
-        expected_branches=None,
+        expected_branches=(TRUNK_TO_PULL,),
     ),
     CycleMessageCase(
-        name="without_a_trunk_commit_the_advanced_branch_comes_first",
+        name="without_a_trunk_commit_the_trunk_is_still_pulled_before_the_advanced_branch",
         trunk_commit=None,
         reconciled=[
             ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
         ],
-        expected_single_branch=("feature", "feature-id", FEATURE_COMMIT),
-        expected_branches=(FEATURE,),
+        expected_single_branch=("main", "main-id", None),
+        expected_branches=(TRUNK_TO_PULL, FEATURE),
     ),
 ]
 
