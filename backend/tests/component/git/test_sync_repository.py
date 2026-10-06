@@ -355,7 +355,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert error.message.startswith(
             f"Unable to synchronize the following branches of repository {name}: broken (step=import): "
         )
-        assert error.report == SyncReport(
+        assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
             failed_import_branches=("broken",),
@@ -607,10 +607,10 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert error.report.skipped_branches == ("main",)
-        assert error.report.imported_branches == ("main",)
-        assert sorted(error.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
-        assert error.report.advanced_skipped_branches == ()
+        assert error.outcome.report.skipped_branches == ("main",)
+        assert error.outcome.report.imported_branches == ("main",)
+        assert sorted(error.outcome.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
+        assert error.outcome.report.advanced_skipped_branches == ()
         assert error.message == (
             f"Unable to synchronize the following branches of repository {name}: "
             f"{failing_branch} (step=import): {invalid_yaml_config_message(name)}; "
@@ -653,7 +653,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert error.report == SyncReport(
+        assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
             failed_import_branches=("main",),

@@ -81,10 +81,6 @@ class RepositoryBranchesFailedError(RepositoryError):
         super().__init__(identifier=identifier, message=message)
         self.outcome = outcome
 
-    @property
-    def report(self) -> SyncReport:
-        return self.outcome.report
-
 
 def raise_if_branches_failed(repo: InfrahubRepository, outcome: SyncOutcome) -> None:
     """Log every branch the run failed to synchronize and raise them as one error.
