@@ -624,7 +624,7 @@ read-write repository's configured default branch. Neither writes a record.
       is no such workflow: `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
       `concurrency_limit=1` and `CANCEL_NEW`. The widened candidate set of T016 is what makes it
       readable, within one cycle.
-- [ ] T081 [US6] Sweep any marker still held for a repository when the cycle finishes with it. A
+- [x] T081 [US6] Sweep any marker still held for a repository when the cycle finishes with it. A
       re-point can leave the graph commit and the worktree both equal to the remote head, so the
       branch enters no candidate set and nothing reads the marker. Left in place it would turn a
       genuine trunk rewrite into a `RETARGET` for the rest of its hour: reset, no record, no trunk
@@ -636,7 +636,9 @@ read-write repository's configured default branch. Neither writes a record.
       `target_changed`. The recorder must **not** read the cache: it
       returns early on any classification other than `REWRITE`, so a marker read there would never
       be consumed on a `RETARGET` and would go on to suppress the next genuine rewrite.
-- [ ] T083 [P] [US6] Unit-test the suppression in
+      The read-write half is done. The read-only half belongs to T072, which reads the flag that
+      T078 and T080 put on the workflow models.
+- [x] T083 [P] [US6] Unit-test the suppression in
       `backend/tests/unit/git/divergence/test_suppression.py`: a present marker that names the git
       branch the cycle synchronises yields `target_changed` true and is gone afterwards, and an
       absent marker yields false. Both directions are asserted, so the behaviour is stated rather

@@ -11,10 +11,12 @@ from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryConnectionError
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.import_errors import RepositoryImportError
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
 from infrahub.git.sync import RepositorySyncer, import_branch
 from infrahub.lock import InfrahubLockRegistry
+from tests.adapters.cache import MemoryCache
 from tests.adapters.lock import FailingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.flow import call_in_flow
@@ -117,6 +119,7 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         lock_registry=InfrahubLockRegistry(local_only=True),
         importer=FailingImporter(RuntimeError("lock lost")),
         recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
 
     outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))
