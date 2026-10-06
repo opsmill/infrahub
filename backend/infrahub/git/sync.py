@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 from infrahub.log import suppress_traceback_in_logs
 
@@ -276,7 +275,7 @@ class RepositorySyncer:
                     branch_name=pending_import.infrahub_branch_name,
                     step=ImportStep.IMPORT,
                     reason=import_error.message,
-                    on_default_branch=_advances_default_branch(pending_import),
+                    on_default_branch=pending_import.on_default_branch,
                 )
             )
             failed_import_branches.append(pending_import.infrahub_branch_name)
@@ -288,11 +287,3 @@ class RepositorySyncer:
             advanced_skipped_branches=tuple(collected.advanced_skipped_branches),
         )
         return SyncOutcome(report=report, reconciled=tuple(reconciled), failed=tuple(failed_imports))
-
-
-def _advances_default_branch(pending_import: PendingObjectImport) -> bool:
-    # The default branch is the only one a repository maps onto Infrahub's default branch.
-    return (
-        pending_import.reconciled is not None
-        and pending_import.reconciled.infrahub_branch_name == registry.default_branch
-    )

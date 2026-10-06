@@ -178,6 +178,7 @@ def queued(
         infrahub_branch_name=import_branch or branch_name,
         commit=commit,
         git_branch_name=git_branch_name,
+        on_default_branch=branch_name == "main",
         reconciled=ReconciledBranch(
             infrahub_branch_name=branch_name,
             infrahub_branch_id=f"{branch_name}-id",

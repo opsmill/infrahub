@@ -78,6 +78,9 @@ class PendingObjectImport:
     the objects of a staging repository's trunk go to the staging branch.
     """
 
+    on_default_branch: bool = False
+    """Whether the import comes from the repository's configured default branch."""
+
 
 class ImportStep(StrEnum):
     """The phase of a branch synchronization in which a failure occurred."""
@@ -617,6 +620,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     infrahub_branch_name=import_branch,
                     commit=commit,
                     git_branch_name=git_branch_name,
+                    on_default_branch=branch_name == self.default_branch,
                     reconciled=ReconciledBranch(
                         infrahub_branch_name=advanced_branch,
                         infrahub_branch_id=branch_id,

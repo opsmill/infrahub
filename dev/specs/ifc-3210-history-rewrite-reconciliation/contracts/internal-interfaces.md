@@ -509,7 +509,8 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
   `error-import` on the branch the trunk imports into, through
   `InfrahubRepository.record_import_failure`. An import failure has already written it; a failure
   while the trunk is collected has not, and that is the case the record adds.
-  `FailedImport.on_default_branch` marks which failure is the trunk's.
+  `FailedImport.on_default_branch` marks which failure is the trunk's. The collector sets it once, from
+  the git branch name, and `PendingObjectImport.on_default_branch` carries it to an import failure.
   A staging repository's trunk is covered too: the collector isolates it like any other branch, so
   its failure is flagged as the default branch, and the record goes on the staging branch the trunk
   imports into.

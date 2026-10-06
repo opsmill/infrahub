@@ -626,6 +626,9 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             failing_branch: RepositorySyncStatus.ERROR_IMPORT.value,
             unexpected_branch: RepositorySyncStatus.ERROR_IMPORT.value,
         }
+        assert sorted((failed.branch_name, failed.on_default_branch) for failed in error.outcome.failed) == sorted(
+            [(failing_branch, False), (unexpected_branch, False)]
+        )
         assert skipped_branch_warnings(caplog, state) == [
             skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
         ]
@@ -659,6 +662,8 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             failed_import_branches=("main",),
             advanced_skipped_branches=(),
         )
+        # The trunk is git branch develop, which imports into the Infrahub default branch.
+        assert [(failed.branch_name, failed.on_default_branch) for failed in error.outcome.failed] == [("main", True)]
         assert skipped_branch_warnings(caplog, state) == []
         assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
 
