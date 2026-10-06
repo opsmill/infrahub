@@ -994,10 +994,12 @@ def _refused_merge_message(
     tracked: TrackedBranchRepository, branch_name: str, local_commit: str, graph_commit: str, remote_head: str
 ) -> str:
     message = (
-        f"Unable to merge {tracked.branch_name} into main for repository {tracked.name}. "
+        f"Unable to merge {tracked.branch_name} into main in the Git repository {tracked.name}. "
         f"The remote history of {branch_name} does not contain the local commit {local_commit}. "
         f"Infrahub records {graph_commit} for {branch_name}, not the remote head {remote_head}. "
-        "Retry the merge after the next synchronization of the repository."
+        "The branch is merged in Infrahub and not in Git. "
+        f"To finish the merge, merge {tracked.branch_name} into main in the Git repository. "
+        "The next synchronization imports the result."
     )
     return rf"^{re.escape(message)}$"
 

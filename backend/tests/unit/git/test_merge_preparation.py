@@ -116,12 +116,17 @@ DIVERGED_BRANCH_CASES = [
 ]
 
 
-def refusal_message(branch_name: str, local_head: str, graph_commit: str, remote_head: str) -> str:
+def refusal_message(
+    branch_name: str, local_head: str, graph_commit: str, remote_head: str, remote_trunk: str = DESTINATION
+) -> str:
+    remote_branch = remote_trunk if branch_name == DESTINATION else branch_name
     return (
-        f"Unable to merge {SOURCE} into {DESTINATION} for repository {REPOSITORY_NAME}. "
-        f"The remote history of {branch_name} does not contain the local commit {local_head}. "
+        f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. "
+        f"The remote history of {remote_branch} does not contain the local commit {local_head}. "
         f"Infrahub records {graph_commit} for {branch_name}, not the remote head {remote_head}. "
-        "Retry the merge after the next synchronization of the repository."
+        "The branch is merged in Infrahub and not in Git. "
+        f"To finish the merge, merge {SOURCE} into {remote_trunk} in the Git repository. "
+        "The next synchronization imports the result."
     )
 
 
@@ -230,7 +235,11 @@ async def test_a_trunk_the_remote_names_differently_is_compared_with_its_own_rem
         return
 
     message = refusal_message(
-        branch_name=DESTINATION, local_head=imported, graph_commit=imported, remote_head=remote_head
+        branch_name=DESTINATION,
+        local_head=imported,
+        graph_commit=imported,
+        remote_head=remote_head,
+        remote_trunk="master",
     )
     with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
         await clone.prepare()

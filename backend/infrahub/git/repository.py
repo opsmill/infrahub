@@ -954,11 +954,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 raise RepositoryDivergentHistoryError(
                     identifier=self.name,
                     message=(
-                        f"Unable to merge {source_branch} into {dest_branch} for repository {self.name}. "
-                        f"The remote history of {branch_name} does not contain the local commit {local_head}. "
-                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, "
-                        f"not the remote head {remote_head}. "
-                        "Retry the merge after the next synchronization of the repository."
+                        f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. "
+                        f"The remote history of {self._get_mapped_remote_branch(branch_name=branch_name)} does not "
+                        f"contain the local commit {local_head}. Infrahub records {graph_commit or 'no commit'} for "
+                        f"{branch_name}, not the remote head {remote_head}. The branch is merged in Infrahub and not "
+                        f"in Git. To finish the merge, merge {self._get_mapped_remote_branch(branch_name=source_branch)} "
+                        f"into {self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The "
+                        "next synchronization imports the result."
                     ),
                 )
             resets.append((branch_name, local_head, remote_head))
