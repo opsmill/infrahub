@@ -53,6 +53,7 @@ from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.lock import LockTimeline, RecordingImporter
+from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -678,7 +679,11 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
 
 
 async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> SyncOutcome:
-    syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RepositoryFileImporter(),
+        recorder=build_in_memory_recorder(),
+    )
     return await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
 
 
@@ -781,7 +786,9 @@ async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
 
     # The importer reads nothing, so only the collection of branch01 can fail.
     syncer = RepositorySyncer(
-        lock_registry=InfrahubLockRegistry(local_only=True), importer=RecordingImporter(LockTimeline())
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RecordingImporter(LockTimeline()),
+        recorder=build_in_memory_recorder(),
     )
     outcome = await syncer.sync(repo)
 

@@ -46,6 +46,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
+    from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 
 log = get_run_logger()
 
@@ -347,7 +348,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
 
     async def collect_pending_imports(
-        self, staging_branch: str | None = None, graph_commits: Mapping[str, str | None] | None = None
+        self,
+        staging_branch: str | None = None,
+        graph_commits: Mapping[str, str | None] | None = None,
+        recorder: HistoryRewriteRecorder | None = None,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -365,6 +369,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             graph_commits: The commit the graph records for this repository, per Infrahub branch that
                 can still record one. Without it no branch is classified, and a branch whose worktree
                 already matches the remote is left alone even when the graph records another commit.
+            recorder: Records each rewrite the classification finds, right after the branch's new
+                commit is written. Without it no rewrite is recorded.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -427,6 +433,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         branch_name=branch_name,
                         remote_head=remote_heads.get(branch_name),
                         graph_commits=graph_commits,
+                        recorder=recorder,
                     )
 
             for branch_name in updated_branches:
@@ -437,6 +444,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         remote_heads=remote_heads,
                         graph_commits=graph_commits,
                         graph_branches=graph_branches,
+                        recorder=recorder,
                     )
 
         elif staging_branch:
@@ -446,6 +454,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
+                recorder=recorder,
                 import_branch=staging_branch,
                 git_branch_name=self.default_branch,
             )
@@ -477,6 +486,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         branch_name: str,
         remote_head: str | None,
         graph_commits: Mapping[str, str | None] | None,
+        recorder: HistoryRewriteRecorder | None,
     ) -> None:
         """Create a branch this worker does not hold yet and queue its import.
 
@@ -531,8 +541,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self._log_reconciliation(
                 branch_name=branch_name, discarded_commit=divergence.discarded_commit, commit=commit
             )
-        collected.imports.append(
-            PendingObjectImport(
+        await self._queue_import(
+            collected=collected,
+            pending_import=PendingObjectImport(
                 infrahub_branch_name=infrahub_branch,
                 commit=commit,
                 on_default_branch=branch_name == self.default_branch,
@@ -542,7 +553,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     commit=commit,
                     divergence=divergence,
                 ),
-            )
+            ),
+            recorder=recorder,
         )
 
     async def _collect_updated_branch(
@@ -552,6 +564,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         remote_heads: dict[str, str],
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
+        recorder: HistoryRewriteRecorder | None,
         import_branch: str | None = None,
         git_branch_name: str | None = None,
     ) -> None:
@@ -573,6 +586,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
+                recorder=recorder,
                 git_branch_name=git_branch_name,
             )
         # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
@@ -601,6 +615,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         remote_heads: dict[str, str],
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
+        recorder: HistoryRewriteRecorder | None,
         git_branch_name: str | None = None,
     ) -> None:
         """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
@@ -621,8 +636,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         if commit is not None:
-            collected.imports.append(
-                PendingObjectImport(
+            await self._queue_import(
+                collected=collected,
+                pending_import=PendingObjectImport(
                     infrahub_branch_name=import_branch,
                     commit=commit,
                     git_branch_name=git_branch_name,
@@ -633,6 +649,34 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         commit=commit,
                         divergence=divergence,
                     ),
+                ),
+                recorder=recorder,
+            )
+
+    async def _queue_import(
+        self,
+        collected: CollectedImports,
+        pending_import: PendingObjectImport,
+        recorder: HistoryRewriteRecorder | None,
+    ) -> None:
+        """Queue the import of a branch whose new commit the graph records, and record the rewrite it reconciled.
+
+        A record that fails fails the branch, but its import stays queued: the graph already records the
+        new commit, so no later cycle selects the branch again to import it.
+        """
+        collected.imports.append(pending_import)
+        divergence = pending_import.reconciled.divergence if pending_import.reconciled is not None else None
+        if recorder is None or divergence is None:
+            return
+        try:
+            await recorder.record(repository_id=str(self.id), divergence=divergence)
+        except RepositoryError as exc:
+            collected.failed_imports.append(
+                FailedImport(
+                    branch_name=divergence.branch_name,
+                    step=ImportStep.COLLECTION,
+                    reason=str(exc),
+                    on_default_branch=pending_import.on_default_branch,
                 )
             )
 

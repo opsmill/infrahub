@@ -415,11 +415,11 @@ emits no signal.
       T059 need no database and no mocks (`.agents/rules/backend-component-design.md`). The second
       port, `RewriteEventEmitter`, comes with T067. The recorder itself imports neither the SDK nor
       the event service, and it never reads the cache.
-- [ ] T056 [US1] Isolate the record write per branch, the way the other per-branch git failures
+- [x] T056 [US1] Isolate the record write per branch, the way the other per-branch git failures
       already are. `collect_pending_imports` lets graph errors propagate, so an SDK error from the
       store would otherwise abort collection for every branch and skip the broadcast. A failed
       record joins `failed_imports` and the cycle continues.
-- [ ] T057 [US1] Call the recorder from
+- [x] T057 [US1] Call the recorder from
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`, immediately
       after the reconciled commit is written for that branch, inside the collection lock hold. The
       count increment is safe there because it is inside a lock hold; what is unsafe is a call

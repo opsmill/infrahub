@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from infrahub.lock import InfrahubLockRegistry
 
     from .divergence.models import ReconciledBranch
+    from .divergence.recorder import HistoryRewriteRecorder
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
 
@@ -233,9 +234,12 @@ class RepositorySyncer:
     serialized.
     """
 
-    def __init__(self, lock_registry: InfrahubLockRegistry, importer: RepositoryImporter) -> None:
+    def __init__(
+        self, lock_registry: InfrahubLockRegistry, importer: RepositoryImporter, recorder: HistoryRewriteRecorder
+    ) -> None:
         self._lock_registry = lock_registry
         self._importer = importer
+        self._recorder = recorder
 
     async def sync(
         self,
@@ -255,7 +259,9 @@ class RepositorySyncer:
 
         """
         async with self._lock_registry.get(name=repo.name, namespace="repository"):
-            collected = await repo.collect_pending_imports(staging_branch=staging_branch, graph_commits=graph_commits)
+            collected = await repo.collect_pending_imports(
+                staging_branch=staging_branch, graph_commits=graph_commits, recorder=self._recorder
+            )
 
         failed_imports = list(collected.failed_imports)
         reconciled: list[ReconciledBranch] = []

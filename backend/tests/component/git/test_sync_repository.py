@@ -42,6 +42,7 @@ from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
+from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -472,7 +473,9 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             infrahub_branch_name=registry.default_branch,
         )
 
-        outcome = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
+        outcome = await RepositorySyncer(
+            lock_registry=lock.registry, importer=RepositoryFileImporter(), recorder=build_in_memory_recorder()
+        ).sync(repo)
 
         assert outcome == SyncOutcome(
             report=SyncReport(

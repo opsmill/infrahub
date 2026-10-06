@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -15,8 +16,14 @@ from infrahub_sdk.uuidt import UUIDT
 from infrahub import config
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.registry import registry
-from infrahub.git.divergence.models import ReconciledBranch, RefClassification, RefDivergence
+from infrahub.git.divergence.models import ReconciledBranch, RefClassification, RefDivergence, RewriteRecord
+from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
+from tests.adapters.repository_record_store import (
+    FailingRepositoryRecordStore,
+    InMemoryRepositoryRecordStore,
+    WrittenRecord,
+)
 from tests.helpers.git import LocalRemote, clone_repository
 from tests.helpers.test_client import dummy_async_request
 
@@ -29,6 +36,7 @@ OTHER = "other"
 STAGING = "staging-x"
 UNKNOWN_COMMIT = "0" * 40
 """A commit no clone holds, as when the graph recorded a history this worker never fetched."""
+REWRITTEN_AT = datetime(2026, 10, 6, 9, 30, tzinfo=UTC)
 
 
 @pytest.fixture(autouse=True)
@@ -188,6 +196,20 @@ def queued(
             infrahub_branch_id=f"{branch_name}-id",
             commit=commit,
             divergence=divergence,
+        ),
+    )
+
+
+def recorder(store: InMemoryRepositoryRecordStore | FailingRepositoryRecordStore) -> HistoryRewriteRecorder:
+    return HistoryRewriteRecorder(store=store, clock=lambda: REWRITTEN_AT)
+
+
+def written_record(tracked: TrackedRepository, branch_name: str, previous_commit: str, commit: str) -> WrittenRecord:
+    return WrittenRecord(
+        repository_id=str(tracked.repository.id),
+        infrahub_branch_name=branch_name,
+        record=RewriteRecord(
+            previous_commit=previous_commit, commit=commit, rewritten_at=REWRITTEN_AT, rewrite_count=1
         ),
     )
 
@@ -639,3 +661,110 @@ async def test_a_default_branch_renamed_to_the_infrahub_default_is_queued_as_the
             ),
         )
     ]
+
+
+async def test_a_rewrite_is_recorded_on_the_branch_whose_commit_was_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    imported = tracked.imported_commits[TRACKED]
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+    tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    store = InMemoryRepositoryRecordStore()
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(store)
+    )
+
+    assert collected.failed_imports == []
+    assert store.written == [written_record(tracked, branch_name=TRACKED, previous_commit=imported, commit=rewritten)]
+
+
+async def test_a_rewrite_found_on_a_branch_new_to_this_worker_is_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+    imported = tracked.imported_commits[TRACKED]
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+    store = InMemoryRepositoryRecordStore()
+
+    await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), recorder=recorder(store))
+
+    assert store.written == [written_record(tracked, branch_name=TRACKED, previous_commit=imported, commit=rewritten)]
+
+
+async def test_a_rewritten_trunk_of_a_staging_repository_is_recorded_on_the_trunk_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The objects go to the staging branch, but the commit the classification compared is the trunk's."""
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    store = InMemoryRepositoryRecordStore()
+
+    await tracked.repository.collect_pending_imports(
+        staging_branch=STAGING, graph_commits=tracked.graph_commits(), recorder=recorder(store)
+    )
+
+    assert store.written == [
+        written_record(tracked, branch_name="main", previous_commit=tracked.trunk_commit, commit=rewritten)
+    ]
+
+
+async def test_a_worktree_that_resets_onto_a_commit_the_graph_already_records_records_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The worker that reconciled the branch recorded it, so this clone only catches up."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+    store = InMemoryRepositoryRecordStore()
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(**{TRACKED: rewritten}), recorder=recorder(store)
+    )
+
+    assert [pending_import.commit for pending_import in collected.imports] == [rewritten]
+    assert tracked.worktree_head(branch_name=TRACKED) == rewritten
+    assert store.written == []
+
+
+async def test_a_record_that_fails_fails_its_branch_alone_and_keeps_its_import(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The graph already records the new commit, so no later cycle would select the branch to import it.
+
+    The rewritten branch is new to this worker and the trunk is not, so a failure is kept to its branch on both
+    paths.
+    """
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER), local_branches=(OTHER,)
+    )
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(FailingRepositoryRecordStore())
+    )
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name=TRACKED,
+            step=ImportStep.COLLECTION,
+            reason=f"The API is unreachable from {TRACKED}",
+            on_default_branch=False,
+        ),
+        FailedImport(
+            branch_name="main",
+            step=ImportStep.COLLECTION,
+            reason="The API is unreachable from main",
+            on_default_branch=True,
+        ),
+    ]
+    assert [(pending_import.infrahub_branch_name, pending_import.commit) for pending_import in collected.imports] == [
+        (TRACKED, rewritten),
+        ("main", rewritten_trunk),
+        (OTHER, advanced),
+    ]
+    assert tracked.client.recorded_commits == [(TRACKED, rewritten), ("main", rewritten_trunk), (OTHER, advanced)]
