@@ -174,7 +174,7 @@ Parts A and B of the plan.
 - [X] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
       `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**).
-- [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
+- [X] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
 - [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
@@ -201,7 +201,7 @@ Parts A and B of the plan.
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
 - [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
-- [ ] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
+- [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
 
