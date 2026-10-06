@@ -280,18 +280,32 @@ here. See "Out of Scope".
   branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
   This covers the synchronisation collector and the convergence handler.
 - **FR-005a**: The merge path MUST fetch and compare both the source branch and the destination
-  branch against the remote before it merges. When either has diverged, it MUST refuse the merge
-  with a typed error naming a divergent remote history. It MUST NOT reconcile the branch itself.
-  The merge path reads its source commit from the local branch ref and advances the destination
-  worktree from local state, without contacting the remote, so FR-005 does not reach it.
+  branch against the remote before it merges. The merge path reads its source commit from the local
+  branch ref and advances the destination worktree from local state, without contacting the remote,
+  so FR-005 does not reach it. A branch whose clone does not lead to the remote head is decided by
+  its graph commit. When the graph commit equals the remote head, only this clone is behind, and the
+  merge path MUST reset the branch and merge. When the graph commit differs, the rewrite is not
+  reconciled yet, and the merge path MUST refuse the merge with a typed error naming a divergent
+  remote history. It MUST NOT reconcile that branch itself.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.
-- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it. Doing so writes
-  the merge commit to the graph, so the next synchronisation cycle sees the graph and the remote
-  agree and classifies the branch unchanged. The rewrite is then never recorded, the trunk signal
-  never fires, and the rewritten content is never re-imported. Resetting the source also merges
-  content that was never imported at all.
+- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it while the graph
+  commit of that branch differs from the remote head. Doing so writes the merge commit to the graph,
+  so the next synchronisation cycle sees the graph and the remote agree and classifies the branch
+  unchanged. The rewrite is then never recorded, the trunk signal never fires, and the rewritten
+  content is never re-imported. Resetting the source also merges content that was never imported at
+  all.
+- **FR-005d**: The Git merge runs after the graph merge, when the source branch is merged and is
+  never synchronised again, so a refusal there cannot clear by a retry. The branch merge MUST
+  therefore compare, before the graph merge, the remote heads of the source branch and of the trunk
+  of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
+  the merge while one differs. That refusal leaves the branch open, and the merge can run again after
+  the synchronisation imports the head. A remote that cannot be read MUST NOT block the merge. A
+  refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
+  branch is merged in Infrahub and not in Git, and how to finish the merge in Git. Its recovery
+  belongs to the delivery queue of IFC-3220: FR-020 there covers a source commit no longer on the
+  remote, and FR-022 a rewritten destination history.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the

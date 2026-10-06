@@ -340,14 +340,15 @@ emits no signal.
       FR-007 holds by construction rather than by a runtime check. Record the finding in the task's
       commit message.
 - [x] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
-      `backend/infrahub/git/tasks.py::merge_git_repository`, fetch and compare the **source** branch
-      and the **destination** branch against the remote before calling `repo.merge`. When either has
-      diverged, compare the graph commit for that branch too. Refuse only when the **graph commit**
-      is also stale, which is the case where merging would hide an unrecorded rewrite. When the
-      graph already matches the remote and only this clone is behind, reset the worktree and merge:
-      nothing is lost, and refusing there would refuse again on every retry, because the cron heals
-      whichever worker runs it rather than the one the merge lands on. A refusal raises a typed
-      error naming a divergent remote history.
+      `backend/infrahub/git/repository.py::InfrahubRepository.prepare_branches_for_merge`, which
+      `backend/infrahub/git/tasks.py::merge_git_repository` calls before `repo.merge`, fetch and
+      compare the **source** branch and the **destination** branch against the remote. When either
+      has diverged, compare the graph commit for that branch too. Refuse only when the **graph
+      commit** is also stale, which is the case where merging would hide an unrecorded rewrite. When
+      the graph commit already equals the remote head and only this clone is behind, reset the
+      worktree and merge: nothing is lost, and refusing there would leave the merge undelivered,
+      because the cron heals whichever worker runs it rather than the one the merge lands on. A
+      refusal raises a typed error naming a divergent remote history.
       **In that refusing case, do not reset and merge instead.** `merge` pushes the merge commit
       before it records it on the destination, so a reset-then-merge puts the merge commit on the
       remote and in the graph. The next cycle then finds the graph and the remote in agreement,
@@ -357,6 +358,13 @@ emits no signal.
       local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
       worker holding a stale source branch would merge the pre-rewrite history into the trunk and
       **push it**. A rewrite that removed a leaked credential would restore it.
+- [x] T044a [US2] Check the remote heads before the graph merge (FR-005d), in
+      `backend/infrahub/git/merge_readiness.py::RemoteHeadsMergeCheck`, run by
+      `backend/infrahub/core/branch/tasks.py::merge_branch` before the global merge lock. The Git
+      merge runs after the graph merge, when the source branch never syncs again, so its own refusal
+      cannot clear. Refuse with `RepositoryNotSynchronizedError` while a remote head differs from the
+      graph commit, and let the merge go on when the remote cannot be read. Add a live-remote test
+      that merges a branch through the mutation, not through a direct call of the Git merge flow.
 - [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
       names the real cause and never says "conflict" (FR-003, FR-017).
@@ -369,8 +377,8 @@ emits no signal.
 - [x] T048 [US2] Add a live-remote test that the refused merge leaves the rewrite recordable: after
       the refusal, the next synchronisation cycle reconciles the branch, writes the record and fires
       the trunk signal. This is what a reset-then-merge would have destroyed (FR-005c).
-      The trunk signal does not exist before T067, so the test asserts the record and a merge
-      retried after the cycle. T067 adds the signal to this test.
+      The trunk signal does not exist before T067, so the test asserts the record and that a Git
+      merge run after the cycle succeeds. T067 adds the signal to this test.
 - [x] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
       nothing, while the graph already holds the remote commit (FR-001c). This is the case that
       decides whether the classification reads the graph or the worktree.

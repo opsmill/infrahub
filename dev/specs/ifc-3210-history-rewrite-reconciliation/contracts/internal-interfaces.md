@@ -725,7 +725,11 @@ This is a change to the mutation, not a reuse of something already computed.
 
 ## 9. The merge guard
 
-Changed. `backend/infrahub/git/tasks.py::merge_git_repository`.
+Changed. The guard of the Git merge is
+`backend/infrahub/git/repository.py::InfrahubRepository.prepare_branches_for_merge`, which
+`backend/infrahub/git/tasks.py::merge_git_repository` calls before `merge`. The check before the
+graph merge is `backend/infrahub/git/merge_readiness.py::RemoteHeadsMergeCheck`, which
+`backend/infrahub/core/branch/tasks.py::merge_branch` runs (FR-005d).
 
 FR-005 covers paths that advance a worktree **from the remote**. The merge path advances the
 destination from local state and reads its source commit from the local branch ref, so FR-005 never
@@ -733,21 +737,32 @@ reaches it. This guard closes that.
 
 ### Contract
 
-1. Fetch, then compare the **source** branch worktree and the **destination** branch worktree
-   against their remote heads, using the same ancestry gateway as section 1.
-2. When either has diverged, compare the **graph commit** for that branch against the remote head
-   as well. The two answers mean different things:
+1. Fetch, then compare the **source** branch ref, which the merge reads, and the **destination**
+   branch worktree against their remote heads, using the same ancestry gateway as section 1. A
+   branch with no remote head, and a destination with no worktree, are not compared.
+2. When either does not lead to its remote head, compare the **graph commit** for that branch
+   against the remote head as well. The two answers mean different things:
 
-| Worktree | Graph commit | Action |
+| Clone | Graph commit | Action |
 |---|---|---|
-| Diverged | also diverged | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Diverged | matches the remote | **Reset the worktree and merge.** The rewrite is already recorded; only this clone is behind. |
+| Does not lead to the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
+| Does not lead to the remote head | equals the remote head | **Reset the branch and merge.** The rewrite is already recorded; only this clone is behind. |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
-   "conflict" (FR-003, FR-017).
-4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
-   case where the merge commit would hide the rewrite.
-5. A worktree ahead of its remote has been rewound. It is reset before the merge, like any other.
+   "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and
+   how to finish the merge in Git.
+4. Never reset a branch whose **graph commit** differs from the remote head and then merge it
+   (FR-005c). That is the case where the merge commit would hide the rewrite.
+5. A worktree ahead of its remote has been rewound. It does not lead to the remote head, so the table
+   decides: reset when the graph commit equals the remote head, refuse otherwise.
+6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
+   ref.
+
+**Equal, not an ancestor.** The classification of section 1 treats a graph commit that is an
+ancestor of the remote head as a fast-forward. This guard does not: such a remote holds commits the
+graph never imported, and a reset and merge records the merge commit, so the next cycle sees no
+change and never imports them. That is the FR-005c hazard again, so the guard resets only on
+equality.
 
 ### Why it refuses instead of reconciling
 
@@ -758,17 +773,40 @@ recorded, the trunk signal never fires, and the rewritten content is never re-im
 the source is worse: it merges objects the graph never imported.
 
 Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
-under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry
-succeeds.
+under the repository lock.
 
 **That is why a stale clone alone is not a refusal.** The cron heals whichever worker runs it, not
-the worker the merge lands on, so refusing on a stale worktree with a current graph commit would
-refuse again on every retry. Resetting is safe there: nothing is lost, because the rewrite is
+the worker the merge lands on, so a refusal on a stale clone with a current graph commit would leave
+the merge undelivered although nothing is lost. Resetting is safe there, because the rewrite is
 already recorded.
+
+### Before the graph merge
+
+The Git merge runs after the graph merge. By then the source branch is merged, the sync never
+records a commit on it again, and nothing runs the Git merge a second time. A refusal of this guard
+therefore cannot clear by a retry. The branch merge runs a check before the graph merge instead
+(FR-005d):
+
+1. For each repository whose merge runs in Git, read the remote heads of the source branch and of the
+   trunk with `git ls-remote`, with no clone and no lock, bounded by
+   `REMOTE_HEADS_TIMEOUT_SECONDS`.
+2. Compare each head with the commit the graph records for that branch. The rule is equality, as
+   above.
+3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
+   and the merge can run again after the next cycle imports the head.
+4. A remote that cannot be read does not block the merge. The check logs a warning, and the guard
+   of the Git merge still compares the heads.
+
+The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
+refusal leaves the branch merged in Infrahub and not in Git, and the delivery queue of IFC-3220 owns
+the recovery: FR-020 there covers a source commit no longer on the remote, and FR-022 a rewritten
+destination history.
 
 ### Accepted residual risk
 
 The remote can be rewritten between this guard's fetch and the push that follows the merge. The
 guard narrows that window and does not close it, so FR-005b is best-effort rather than guaranteed.
+A source branch that was deleted on the remote has no remote head, so neither check compares it,
+and the merge reads the local ref.
 Closing it would need the remote to reject the push, which is branch protection on the remote and
 outside this work.
