@@ -48,7 +48,8 @@ class FailingImporter(RepositoryImporter):
     async def build_branch_import(
         self, repo: InfrahubRepository, pending_import: PendingObjectImport
     ) -> ObjectImportPlan:
-        raise self.error
+        # Each raise starts a fresh traceback, or later branches would show the frames of earlier ones.
+        raise self.error.with_traceback(None)
 
     async def apply_branch_import(self, repo: InfrahubRepository, plan: ObjectImportPlan) -> None:
-        raise self.error
+        raise self.error.with_traceback(None)

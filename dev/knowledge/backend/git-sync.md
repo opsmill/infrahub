@@ -138,9 +138,10 @@ read-only flows through `import_objects_from_files`.
   that failed before the import (step `collection`), so each failure appears once in the task log. To make a new error type
   expected, add a `case` to that function and nothing else. The SDK `Error` base class is
   deliberately not mapped, because it also covers connection errors.
-- **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so every
-  loop over `.infrahub.yml` entries, in the build and in the apply step, wraps its body in
-  `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
+- **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
+  loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
+  `import_entry(label)`. Schema files are the exception: their validation errors already name the
+  file, so a label would repeat it. That context manager adds the entry's name and file as an exception note,
   and the message is prefixed with the notes, for example
   `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
   The loops that import Python modules (checks, Python transforms, generators) also pass the worktree

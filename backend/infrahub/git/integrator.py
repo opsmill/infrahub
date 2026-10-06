@@ -1441,12 +1441,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             definition = local_generator_definitions[generator_name]
             existing_generator = generator_definition_in_graph[generator_name]
             fingerprint = generator_fingerprints[generator_name]
-            requires_update = await self._generator_requires_update(
-                generator=definition.config,
-                existing_generator=existing_generator,
-                branch_name=branch_name,
-                closure=definition.closure,
-            )
+            with import_entry(_generator_definition_label(generator_name, definition.config.file_path)):
+                requires_update = await self._generator_requires_update(
+                    generator=definition.config,
+                    existing_generator=existing_generator,
+                    branch_name=branch_name,
+                    closure=definition.closure,
+                )
             if requires_update or existing_generator.fingerprint.value != fingerprint:
                 log.info(f"New version of GeneratorDefinition {generator_name!r} found, updating")
 
