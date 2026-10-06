@@ -27,8 +27,10 @@ from infrahub.exceptions import InitializationError
 from infrahub.git import initialize_repositories_directory
 from infrahub.git.global_config import apply_git_tls_config, set_git_global_setting
 from infrahub.lock import initialize_lock
+from infrahub.message_bus.types import KVTTL
 from infrahub.services import InfrahubServices
 from infrahub.trace import configure_trace
+from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     get_cache,
     get_component,
@@ -40,7 +42,8 @@ from infrahub.workers.dependencies import (
     get_workflow,
     set_component_type,
 )
-from infrahub.workers.submission import FlowRunReservations, SubmissionWindow, UnreservedFlowRuns
+from infrahub.workers.reservations import CacheFlowRunReservations
+from infrahub.workers.submission import SubmissionWindow
 from infrahub.workers.utils import inject_service_parameter, load_flow_function
 from infrahub.workflows.models import TASK_RESULT_STORAGE_NAME
 
@@ -162,7 +165,8 @@ class InfrahubWorkerAsync(BaseWorker):
         await self.set_git_global_config()
         await self._init_services(client=client)
         self._submission_window = SubmissionWindow(
-            capacity=SUBMISSION_WINDOW_CAPACITY, reservations=self._build_flow_run_reservations()
+            capacity=SUBMISSION_WINDOW_CAPACITY,
+            reservations=CacheFlowRunReservations(cache=self.service.cache, owner=WORKER_IDENTITY, ttl=KVTTL.FIFTEEN),
         )
 
         if not registry.schema_has_been_initialized():
@@ -206,9 +210,6 @@ class InfrahubWorkerAsync(BaseWorker):
             await run_flow_async(flow=flow_func, flow_run=flow_run, parameters=params, return_type="state")
 
         return InfrahubWorkerAsyncResult(status_code=0, identifier=str(flow_run.id))
-
-    def _build_flow_run_reservations(self) -> FlowRunReservations:
-        return UnreservedFlowRuns()
 
     async def _submit_scheduled_flow_runs(self, flow_run_response: list["WorkerFlowRunResponse"]) -> list[FlowRun]:
         # Runs left out of the window stay scheduled on the server, where the next poll orders them by priority again.
