@@ -414,15 +414,22 @@ and neither records.
 
 Changed. `backend/infrahub/git/sync.py`.
 
-It returns the branches the cycle advanced instead of returning nothing, and it raises for failed
-branches only after its caller has had the chance to broadcast.
+Today it returns a `SyncReport` of the skipped, imported and advanced branches, and it raises
+`RepositoryBranchesFailedError`, carrying the same report, when a branch failed. Phase 4 (T031) makes
+it return the branches the cycle advanced, and leaves the raise for failed branches to its caller,
+after the broadcast.
 
 ```text
-sync(repo, staging_branch) -> SyncOutcome
+sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # today
+sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # after T031
 ```
 
+`graph_commits` holds the commit the graph records for each Infrahub branch that can still record
+one, read once per cycle (section 1). The add flow passes none, so its first sync classifies nothing.
+
 `SyncOutcome` carries `reconciled: tuple[ReconciledBranch, ...]` and
-`failed: tuple[FailedImport, ...]`.
+`failed: tuple[FailedImport, ...]`. It must also keep what `SyncReport` reports today, because
+`git/tasks.py::report_sync_run` logs the skipped branches and links the run from it.
 
 ### Contract
 
