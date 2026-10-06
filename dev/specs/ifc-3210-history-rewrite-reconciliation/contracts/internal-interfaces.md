@@ -289,10 +289,12 @@ The sole write path for the four attributes. It owns last-write-wins, the increm
 signal.
 
 ```text
-record(repository_id, repository_name, infrahub_branch_name, divergence, is_default_branch) -> bool
+record(repository_id, divergence) -> None
 ```
 
-Returns whether a record was written.
+It writes on the Infrahub branch that `divergence.infrahub_branch_name` names. Nothing reads a
+return value, so it returns none. The trunk signal of rule 6 adds the repository name, whether the
+branch is the repository's default branch, and the `RewriteEventEmitter` port (T067).
 
 ### Contract
 
@@ -353,16 +355,17 @@ protocols passed to the constructor, so the recorder's unit tests need no databa
 | Port | What it does |
 |---|---|
 | `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
-| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. |
+| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. It comes with the trunk signal (T067), because before that there is no event to emit. |
 
-The production `RepositoryRecordStore` is backed by the SDK node API. A test substitutes an
-in-memory one. The recorder itself imports neither the SDK nor the event service.
+The production `RepositoryRecordStore` runs one query and one `CoreGenericRepositoryUpdate`
+mutation through the SDK client. The generic mutation serves both repository kinds. A test
+substitutes an in-memory one. The recorder itself imports neither the SDK nor the event service.
 
 ### Rules
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The production store writes through the SDK node API. It does not change the `python_sdk`
+- The production store writes through the SDK client. It does not change the `python_sdk`
   submodule.
 
 ---
