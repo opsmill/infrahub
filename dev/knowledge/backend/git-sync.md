@@ -98,9 +98,10 @@ as a worker-local ref updated after each comparison.
 apart, because they drive different outcomes:
 
 - **The commit the graph records against the remote head** says what happened to the branch:
-  unchanged, fast-forward, rewrite, re-target or gone from the remote (`git/divergence/`). The commits
-  are read once per cycle by `get_repositories_commit_per_branch` and passed down through the sync
-  flows.
+  unchanged, fast-forward, rewrite or gone from the remote (`git/divergence/`). The classifier also
+  knows a re-target, but the sync is never told that a tracking target changed, so it never produces
+  one ([Known limitations](git-integration.md#known-limitations)). The commits are read once per
+  cycle by `get_repositories_commit_per_branch` and passed down through the sync flows.
 - **This worker's worktree head against the remote head** says whether the clone moves. The sync
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
@@ -123,13 +124,14 @@ commit take part in the second comparison. A branch that needs a rebase, is bein
 merge, is merged or is being deleted rejects the commit, and so does a branch Infrahub no longer
 lists, so it would be selected again on every cycle. `git/branch_status.py::accepts_commit_write`
 holds that rule for both comparisons. A commit write the graph still refuses, because the status
-changed after the listing, fails that branch alone. It classifies a branch new to this
-worker too, because the graph can hold a commit that another worker imported and the remote has
-since discarded. A graph commit that is empty or not a full commit id counts as none, so the branch
-classifies as a fast-forward and records a real commit. When git cannot read its object store, a new
-branch is still created, but a branch this worker holds fails before its worktree moves. Each reset or lineage break logs one line with the branch,
-the discarded commit and the commit that replaced it. The add flow passes no graph commits, so it
-classifies nothing.
+changed after the listing, fails that branch alone. The sync classifies a branch new to this worker too,
+because the graph can hold a commit that another worker imported and the remote has since discarded.
+A graph commit that is empty or not a full commit id counts as none, so the branch classifies as a
+fast-forward and records a real commit. When git cannot read its object store, a new branch is still
+created, but a branch this worker holds fails before its worktree moves. Each reset that discards a
+commit, from the worktree or from the graph, logs one line with the branch, the discarded commit and
+the commit that replaced it. A plain fast-forward logs nothing. The add flow passes no graph
+commits, so it classifies nothing.
 
 ## Cloning and the repository lock
 
