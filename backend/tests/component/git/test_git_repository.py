@@ -4,7 +4,6 @@ import shutil
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -60,7 +59,7 @@ from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
-from tests.helpers.git import build_repository_client, clone_repository, open_repository
+from tests.helpers.git import GraphRecordingClient, build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -530,19 +529,6 @@ async def test_pull_resets_a_diverged_branch_onto_the_remote_head(git_repo_06: I
     assert repo.has_worktree(identifier=remote_commit)
 
 
-class CommitRecordingClient(InfrahubClient):
-    """An SDK client that keeps every commit written to the graph, in the order it was written."""
-
-    def __init__(self) -> None:
-        super().__init__(config=Config(requester=dummy_async_request))
-        self.recorded_commits: list[tuple[str, str]] = []
-
-    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        if kwargs.get("tracker") == "mutation-repository-update-commit":
-            self.recorded_commits.append((kwargs["branch_name"], kwargs["variables"]["commit"]))
-        return {}
-
-
 @dataclass
 class RewoundPullCase:
     name: str
@@ -572,7 +558,7 @@ async def test_pull_resets_a_branch_the_remote_rewound(
     dropped_commit = str(worktree.index.commit("A commit the remote no longer holds"))
     assert repo.get_git_repo_main().is_ancestor(remote_commit, dropped_commit)
 
-    client = CommitRecordingClient()
+    client = GraphRecordingClient(branch_names=())
     repo.client = client
 
     response = await repo.pull(branch_name=branch01.name, update_commit_value=case.update_commit_value)

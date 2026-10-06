@@ -4,18 +4,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryDivergentHistoryError, RepositoryError
 from tests.adapters.repository_record_store import FailingGraphCommitReader, InMemoryGraphCommitReader
-from tests.helpers.git import LocalRemote, clone_repository
-from tests.helpers.test_client import dummy_async_request
+from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -28,24 +26,11 @@ DESTINATION = "main"
 REPOSITORY_NAME = "merge-repo"
 
 
-class CommitRecordingClient(InfrahubClient):
-    """An SDK client that keeps every commit written to the graph, in the order it was written."""
-
-    def __init__(self) -> None:
-        super().__init__(config=Config(requester=dummy_async_request))
-        self.recorded_commits: list[tuple[str, str]] = []
-
-    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        if kwargs.get("tracker") == "mutation-repository-update-commit":
-            self.recorded_commits.append((kwargs["branch_name"], kwargs["variables"]["commit"]))
-        return {}
-
-
 @dataclass(frozen=True)
 class MergeClone:
     remote: LocalRemote
     repository: InfrahubRepository
-    client: CommitRecordingClient
+    client: GraphRecordingClient
     commits: InMemoryGraphCommitReader
     """The commit the graph records for each branch."""
 
@@ -87,7 +72,7 @@ async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeC
         DESTINATION: remote.commit(branch_name=DESTINATION, files={"trunk.txt": "trunk\n"}),
         SOURCE: remote.commit(branch_name=SOURCE, files={"feature.txt": "feature\n"}),
     }
-    client = CommitRecordingClient()
+    client = GraphRecordingClient(branch_names=())
     repository = await clone_repository(
         id=UUIDT.new(),
         name=REPOSITORY_NAME,
