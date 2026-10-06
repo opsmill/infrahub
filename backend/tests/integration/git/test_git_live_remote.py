@@ -24,12 +24,18 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
+from infrahub.exceptions import (
+    RepositoryCredentialsError,
+    RepositoryDivergentHistoryError,
+    RepositoryError,
+    RepositoryPermissionError,
+)
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.convergence import WorktreeConverger
+from infrahub.git.models import GitRepositoryMerge
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.git.tasks import sync_remote_repositories
+from infrahub.git.tasks import merge_git_repository, sync_remote_repositories
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from tests.helpers.test_app import TestInfrahubApp
@@ -40,7 +46,9 @@ from tests.integration.git.conftest import (
     commit_to_remote_branch,
     create_gogs_repo,
     create_remote_ref,
+    gogs_branches_containing,
     gogs_clone_url,
+    gogs_commit_parents,
     gogs_repo_branch_commit,
     gogs_repo_tag,
     grant_read_access,
@@ -950,6 +958,73 @@ async def _tracked_query_names(db: InfrahubDatabase, tracked: TrackedBranchRepos
     return {query.name.value for query in queries}
 
 
+async def _advance_and_import_the_trunk(container: DockerContainer, tracked: TrackedBranchRepository) -> str:
+    """Commit on the trunk and run a cycle, so that the graph and this worker both hold the new commit."""
+    advanced = commit_to_remote_branch(container, tracked.name, branch="main", files={"trunk.txt": "trunk v1\n"})
+    await sync_remote_repositories()
+    return advanced
+
+
+def _rewrite_the_trunk(container: DockerContainer, tracked: TrackedBranchRepository) -> str:
+    """Replace the last commit of the trunk, which the tracked branch does not hold, so the two still merge."""
+    return commit_to_remote_branch(
+        container, tracked.name, branch="main", files={"trunk.txt": "trunk v2\n"}, amend=True
+    )
+
+
+def _merge_into_the_trunk(tracked: TrackedBranchRepository, trunk_id: str) -> GitRepositoryMerge:
+    return GitRepositoryMerge(
+        repository_id=tracked.node_id,
+        repository_name=tracked.name,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        source_branch=tracked.branch_name,
+        destination_branch=registry.default_branch,
+        destination_branch_id=trunk_id,
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
+
+
+def _refused_merge_message(
+    tracked: TrackedBranchRepository, branch_name: str, local_commit: str, graph_commit: str, remote_head: str
+) -> str:
+    message = (
+        f"Unable to merge {tracked.branch_name} into main for repository {tracked.name}. "
+        f"The remote history of {branch_name} does not contain the local commit {local_commit}. "
+        f"Infrahub records {graph_commit} for {branch_name}, not the remote head {remote_head}. "
+        "Retry the merge after the next synchronization of the repository."
+    )
+    return rf"^{re.escape(message)}$"
+
+
+async def _rewrite_record(
+    db: InfrahubDatabase, tracked: TrackedBranchRepository, branch_name: str
+) -> tuple[str | None, str | None, str | None, int | None]:
+    """Return the previous commit, the new commit, the time and the count of the last rewrite of a branch."""
+    repository: CoreRepository = await NodeManager.get_one(
+        db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
+    )
+    return (
+        repository.last_rewrite_previous_commit.value,
+        repository.last_rewrite_commit.value,
+        repository.last_rewrite_at.value,
+        repository.rewrite_count.value,
+    )
+
+
+async def _open_clone(client: InfrahubClient, tracked: TrackedBranchRepository) -> InfrahubRepository:
+    return await InfrahubRepository.init(
+        id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
+    )
+
+
+async def _clone_on_another_worker(client: InfrahubClient, tracked: TrackedBranchRepository, directory: Path) -> None:
+    """Clone the repository and its tracked branch, as they stand now, into the directory of another worker."""
+    branch = await client.branch.get(branch_name=tracked.branch_name)
+    with repositories_directory(directory):
+        clone = await _open_clone(client=client, tracked=tracked)
+        await clone.create_branch_in_git(branch_name=tracked.branch_name, branch_id=branch.id, push_origin=False)
+
+
 def _tracked_reconciliation_messages(caplog: pytest.LogCaptureFixture, tracked: TrackedBranchRepository) -> list[str]:
     prefix = f"Reconciled branch {tracked.branch_name} of repository {tracked.name} "
     return [
@@ -1205,3 +1280,124 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
                 id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
             )
             assert converged.get_commit_value(branch_name=tracked.branch_name, remote=False) == advanced
+
+    async def test_a_merge_onto_a_trunk_rewritten_since_the_last_cycle_is_refused(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """Merging onto the discarded trunk would push it again, so nothing moves anywhere."""
+        tracked = await tracked_branch_repository("refused-trunk-merge-repo", "refused-trunk-merge-branch")
+        imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
+        rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+
+        with pytest.raises(
+            RepositoryDivergentHistoryError,
+            match=_refused_merge_message(
+                tracked=tracked, branch_name="main", local_commit=imported, graph_commit=imported, remote_head=rewritten
+            ),
+        ):
+            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
+        clone = await _open_clone(client=client, tracked=tracked)
+        assert str(clone.get_git_repo_worktree(identifier="main").head.commit) == imported
+        on_trunk: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert on_trunk.commit.value == imported
+
+    async def test_a_merge_from_a_branch_rewritten_since_the_last_cycle_is_refused(
+        self,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """Merging the discarded branch would put the commits the rewrite removed back on the remote trunk."""
+        tracked = await tracked_branch_repository("refused-source-merge-repo", "refused-source-merge-branch")
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+
+        with pytest.raises(
+            RepositoryDivergentHistoryError,
+            match=_refused_merge_message(
+                tracked=tracked,
+                branch_name=tracked.branch_name,
+                local_commit=tracked.imported_commit,
+                graph_commit=tracked.imported_commit,
+                remote_head=rewritten,
+            ),
+        ):
+            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == tracked.trunk_commit
+        assert gogs_branches_containing(gogs_server.container, tracked.name, tracked.imported_commit) == []
+        clone = await _open_clone(client=client, tracked=tracked)
+        assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == tracked.imported_commit
+
+    async def test_a_refused_merge_leaves_the_trunk_rewrite_to_the_next_cycle(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The cycle still finds the rewrite to record, and the merge goes through once it has run."""
+        tracked = await tracked_branch_repository("deferred-trunk-merge-repo", "deferred-trunk-merge-branch")
+        imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
+        rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+        model = _merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id)
+        with pytest.raises(
+            RepositoryDivergentHistoryError,
+            match=_refused_merge_message(
+                tracked=tracked, branch_name="main", local_commit=imported, graph_commit=imported, remote_head=rewritten
+            ),
+        ):
+            await merge_git_repository(model=model)
+
+        await sync_remote_repositories()
+
+        previous_commit, commit, _, rewrite_count = await _rewrite_record(
+            db=db, tracked=tracked, branch_name=registry.default_branch
+        )
+        assert (previous_commit, commit, rewrite_count) == (imported, rewritten, 1)
+
+        await merge_git_repository(model=model)
+
+        merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
+        assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
+        assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
+
+    async def test_a_merge_on_a_worker_behind_a_reconciled_trunk_resets_the_trunk_and_merges(
+        self,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The graph already records the rewrite, so only the clone of the worker that merges is behind."""
+        tracked = await tracked_branch_repository("stale-trunk-merge-repo", "stale-trunk-merge-branch")
+        imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
+        await sync_remote_repositories()
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+
+        with repositories_directory(second_worker):
+            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+
+        merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
+        assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
+        assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
