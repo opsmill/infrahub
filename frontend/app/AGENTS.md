@@ -58,6 +58,7 @@ cd frontend/app && pnpm test              # vitest (browser mode)
 - `dev/knowledge/frontend/date-rendering.md` - Preference-aware dates (`DateDisplay`, `useFormatDate`) — load before rendering a user-facing date or time
 - `dev/knowledge/frontend/object-file-entity.md` - The `object-file` entity as a worked example of the api/domain/ui layers — load before fetching or displaying a stored file, or when copying an entity's layer boundaries
 - `dev/knowledge/frontend/repository-commits.md` - The repository Commits tab: its api/domain/ui chain, the capped retry while no worker holds a clone, why a failed refresh keeps the loaded rows, and where `fetched_at`/`checked_at` render; load before changing the tab or its query
+- `dev/knowledge/frontend/request-priority.md` - The `X-Priority` header the frontend sends so the backend serves interactive requests first — load before adding a request, polling or background fetch
 
 ### Guides (How to do X)
 
