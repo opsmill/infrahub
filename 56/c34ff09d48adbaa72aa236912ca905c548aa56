@@ -4,6 +4,7 @@ backend/tests/unit/pools/test_attribute_pool_applier.py
   s_2499241a5a10fa::t_923031a681d290 115
   s_2499241a5a10fa::t_240a3742617669 4,12,18,27,31-32,36,44-46,49-50,58,62,65-67,73-75,78-79,86-97,113,119,124,128,132-133,135,138-139,141,148,150,152,160,162-164,171-173,175-185,187,189-191,193-197,201-204,206-209,212,215-216,219,222-224,226,240-241,251,256,258,267,270-271,274,277-278,284,288,295,300,306
   s_2499241a5a10fa::t_9f338bdd955130 213,221
+  s_cb3ba66c8b1fbc::t_a942896b077474 28-30,72,98-104,126,134,174,186,192,198,217-218,225,232-233,257,290,302
 backend/tests/functional/pools/test_numberpool_branch.py
   s_2499241a5a10fa::t_ac273658ac4b14 44-69,78,92,183-229
 backend/tests/unit/pools/test_intent.py
@@ -24,6 +25,7 @@ backend/infrahub/pools/attribute_pool_applier.py
   h_7ec9b28dd2a5ab 141
   s_2499241a5a10fa::t_f8d76a5d738e48 3
   s_2499241a5a10fa::t_0f5c2256117cb8 5,7,11,17,30-33,46-48,51-57,60,69-74,85,87-88,91-96,99,101-107,129-132,136-140,142,147-159,161,164-170,172-179,181,183,185-208,211-215,217-223,228-229,231-242,245,247-248,251,254-260,262-270
+  s_cb3ba66c8b1fbc::t_ff862910da5753 45,135,210,216,230,246,261
 backend/tests/component/graphql/resource_manager/test_number_pool_attach.py
   s_2499241a5a10fa::t_393efea836e248 24-25,27,33-34,36,45-50,52-55,73-74,76,84,87-89,92-97,118-119,121-124,127-134,137-143,146-147,149-151,153-171,173,176,180,182-183,185,188,190-192,195,201,206-208,211,213-214,228,236,238-240,243,245-246,248-250,252-253,257-261,263,265-266,268-270,272-274,278-285,287,289-290,292-296,298,300,304,306-312,315-319,321,325,327-329,334-341,347,352,357-361,363-364,368,370,373-374,376,378-379,381-382,384,390,394,398-403,408-410,413,415-418,421-422,430-431
   s_2499241a5a10fa::t_8c2de3b4d816e5 215-219,221-223,229-233,396-397
@@ -38,6 +40,7 @@ backend/infrahub/core/query/resource_manager.py
   s_2499241a5a10fa::t_ac273658ac4b14 351-397
 backend/infrahub/pools/number_pool_attribute_allocator.py
   s_2499241a5a10fa::t_e8e4aa3fa5446f 5,32,54,56-73
+  s_cb3ba66c8b1fbc::t_d2546feb261d03 55
 backend/infrahub/pools/number_pool_lookup.py
   s_2499241a5a10fa::t_4de133036431a0 9,50-55
 backend/infrahub/pools/attribute_pool_applier_factory.py
@@ -58,6 +61,14 @@ backend/infrahub/pools/attribute_pool_applier_factory.py
       "agent_id": {
         "tool": "claude",
         "id": "92729d40-159c-4d72-beb5-e9ff006e755a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_cb3ba66c8b1fbc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0240fa46-ba15-4124-875d-4311a5e3af28",
         "model": "claude-opus-5-5"
       },
       "human_author": "Aaron McCarty <aaron@opsmill.com>"
