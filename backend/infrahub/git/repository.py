@@ -32,7 +32,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
-from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN, GitAncestryGateway
+from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error
@@ -727,9 +727,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             if graph_commits[infrahub_branch] != remote_branch.commit:
                 behind.append(branch_name)
         return behind
-
-    def _get_ancestry_gateway(self) -> GitAncestryGateway:
-        return GitAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
 
     def _classify_against_graph(
         self, branch_name: str, remote_head: str | None, graph_commits: Mapping[str, str | None] | None

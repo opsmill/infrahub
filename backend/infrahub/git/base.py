@@ -32,6 +32,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
+from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
@@ -947,6 +948,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         await self._create_local_branch(branch_name=branch_name, branch_id=branch_id)
         return self.get_git_repo_worktree(identifier=branch_name)
 
+    def _get_ancestry_gateway(self) -> GitAncestryGateway:
+        return GitAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
+
+    def _leads_to_remote_head(self, local_head: str, remote_head: str) -> bool:
+        return local_head == remote_head or self._get_ancestry_gateway().is_ancestor(
+            ancestor_commit=local_head, descendant_commit=remote_head
+        )
+
     async def pull(
         self,
         branch_name: str,
@@ -954,10 +963,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         create_if_missing: bool = False,
         update_commit_value: bool = True,
     ) -> bool | str:
-        """Pull the latest update from the remote repository on a given branch.
+        """Bring the worktree of a branch onto the remote head of that branch.
+
+        A worktree that leads to the remote head is pulled. Any other worktree is hard-reset onto the
+        remote head and loses the commits only it holds. The reset honours ``update_commit_value`` the
+        same way the pull does, and it writes nothing else.
 
         Raises:
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+            RepositoryError: When git cannot fetch the branch, compare the two heads or move the worktree.
 
         """
         if not self.has_origin:
@@ -965,9 +979,29 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self._get_branch_worktree(branch_name)
         if repo is not None:
+            remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
             try:
                 commit_before = str(repo.head.commit)
-                repo.remotes.origin.pull(self._get_mapped_remote_branch(branch_name=branch_name))
+                # The leading plus lets the remote-tracking ref follow a remote that was rewritten.
+                repo.remotes.origin.fetch(f"+refs/heads/{remote_branch}:refs/remotes/origin/{remote_branch}")
+                remote_head = str(repo.commit(f"refs/remotes/origin/{remote_branch}"))
+            except GitCommandError as exc:
+                await self._raise_enriched_error(error=exc, branch_name=branch_name)
+
+            if not self._leads_to_remote_head(local_head=commit_before, remote_head=remote_head):
+                await self.reset_to_commit(
+                    branch_name=branch_name, commit=remote_head, update_commit_value=update_commit_value
+                )
+                log.info(
+                    f"Reset branch {branch_name} onto the remote head {remote_head}, "
+                    f"its worktree at {commit_before} does not lead to it",
+                    repository=self.name,
+                    branch=branch_name,
+                )
+                return remote_head
+
+            try:
+                repo.remotes.origin.pull(remote_branch)
             except GitCommandError as exc:
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 

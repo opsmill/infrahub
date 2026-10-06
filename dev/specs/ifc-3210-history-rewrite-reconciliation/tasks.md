@@ -327,16 +327,16 @@ emits no signal.
 > `_resolve_worktree_identifier`, and the trunk fallback this phase would otherwise have inherited
 > is gone. Read `pull` as it stands before changing it.
 
-- [ ] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
+- [x] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
       before the `origin.pull` call, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 3. The reset
       honours `update_commit_value` the same way the pull does.
-- [ ] T042 [US2] Update the component test T023 rewrote, in
+- [x] T042 [US2] Update the component test T023 rewrote, in
       `backend/tests/component/git/test_git_repository.py`. T023 leaves it asserting the corrected
       message on a diverged pull, which is right while `pull` still raises. This task makes `pull`
       reset instead, so the test now asserts the reset and that nothing is raised. Without it the
       test fails the moment this task lands.
-- [ ] T043 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
+- [x] T043 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
       FR-007 holds by construction rather than by a runtime check. Record the finding in the task's
       commit message.
 - [ ] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
@@ -372,7 +372,7 @@ emits no signal.
 - [ ] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
       nothing, while the graph already holds the remote commit (FR-001c). This is the case that
       decides whether the classification reads the graph or the worktree.
-- [ ] T050 [P] [US2] Component-test the reset in
+- [x] T050 [P] [US2] Component-test the reset in
       `backend/tests/component/git/test_git_repository.py`: a diverged branch worktree is reset to
       the remote head by `pull`, and nothing is raised.
 - [ ] T051 [US2] Add a live-remote test in
