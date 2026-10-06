@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -20,8 +21,6 @@ from tests.helpers.git import LocalRemote, clone_repository
 from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from infrahub.git.repository import InfrahubRepository
 
 SYNC_LOGGER = "infrahub.tasks"
@@ -145,6 +144,15 @@ async def clone_with_tracked_branches(
         trunk_commit=str(remote.repo.commit("main")),
         imported_commits=imported_commits,
     )
+
+
+def lose_an_object_store(tracked: TrackedRepository, tmp_path: Path) -> Path:
+    """Point the clone at a borrowed object store that is gone, which git skips without failing."""
+    missing_store = (tmp_path / "missing-store").resolve()
+    git_dir = Path(tracked.repository.get_git_repo_main().git_dir)
+    (git_dir / "objects" / "info").mkdir(parents=True, exist_ok=True)
+    (git_dir / "objects" / "info" / "alternates").write_text(f"{missing_store}\n", encoding="utf-8")
+    return missing_store
 
 
 def divergence(
@@ -340,23 +348,45 @@ async def test_a_branch_on_the_remote_head_in_both_git_and_the_graph_is_left_alo
     assert tracked.client.recorded_commits == []
 
 
-async def test_a_branch_that_cannot_be_classified_fails_alone_and_keeps_its_worktree(
+async def test_a_malformed_graph_commit_counts_as_none_and_the_branch_is_reset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Git cannot classify a commit id the graph mangled, which would otherwise fail the branch on every cycle."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    imported = tracked.imported_commits[TRACKED]
+    rewritten = tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"})
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(commit=rewritten, divergence=divergence(None, rewritten, RefClassification.FAST_FORWARD))
+    ]
+    assert tracked.worktree_head(branch_name=TRACKED) == rewritten
+    assert reconciliation_messages(caplog) == [reconciliation_message(discarded_commit=imported, commit=rewritten)]
+
+
+async def test_a_branch_whose_object_store_cannot_be_read_fails_alone_and_keeps_its_worktree(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """An absence git reports from a store it cannot read is not a rewrite, so the branch must not move."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
     imported = tracked.imported_commits[TRACKED]
     tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
     advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    missing_store = lose_an_object_store(tracked=tracked, tmp_path=tmp_path)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"})
+        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
     )
 
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
             step=ImportStep.COLLECTION,
-            reason="'not-a-commit' is not a valid commit identifier",
+            reason=f"Unable to read {UNKNOWN_COMMIT} from the object database: {missing_store} is unreadable",
         )
     ]
     assert collected.imports == [
@@ -477,9 +507,10 @@ async def test_a_branch_new_to_this_worker_is_created_even_when_it_cannot_be_cla
     """The classification only names a discarded history, so it must not keep the branch from being imported."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
     imported = tracked.imported_commits[TRACKED]
+    missing_store = lose_an_object_store(tracked=tracked, tmp_path=tmp_path)
 
     collected = await tracked.repository.collect_pending_imports(
-        graph_commits=tracked.graph_commits(**{TRACKED: "not-a-commit"})
+        graph_commits=tracked.graph_commits(**{TRACKED: UNKNOWN_COMMIT})
     )
 
     assert collected.failed_imports == []
@@ -489,7 +520,7 @@ async def test_a_branch_new_to_this_worker_is_created_even_when_it_cannot_be_cla
         record.getMessage() for record in caplog.records if record.getMessage().startswith("Unable to classify")
     ] == [
         f"Unable to classify the new branch {TRACKED} of repository tracked-repo against the graph: "
-        "'not-a-commit' is not a valid commit identifier"
+        f"Unable to read {UNKNOWN_COMMIT} from the object database: {missing_store} is unreadable"
     ]
 
 

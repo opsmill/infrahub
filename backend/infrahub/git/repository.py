@@ -26,7 +26,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
-from infrahub.git.divergence.gateway import GitAncestryGateway
+from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN, GitAncestryGateway
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
@@ -376,8 +376,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         )
         new_branches, updated_branches = await self.compare_local_remote()
         if graph_commits is not None:
-            # An empty commit is one the graph never recorded.
-            graph_commits = {name: commit or None for name, commit in graph_commits.items()}
+            graph_commits = self._read_graph_commits(graph_commits=graph_commits)
             behind_in_graph = await self._find_branches_behind_in_graph(graph_commits=graph_commits)
             updated_branches = sorted({*updated_branches, *behind_in_graph})
 
@@ -437,6 +436,25 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
 
         return collected
+
+    def _read_graph_commits(self, graph_commits: Mapping[str, str | None]) -> dict[str, str | None]:
+        """Read a graph commit that is empty or not a full commit id as no commit recorded.
+
+        The API stores any text as the commit, and git cannot classify a malformed one, so it would
+        fail its branch on every cycle without ever being replaced.
+        """
+        commits: dict[str, str | None] = {}
+        for branch_name, commit in graph_commits.items():
+            readable = commit if commit and COMMIT_SHA_PATTERN.fullmatch(commit) else None
+            if commit and readable is None:
+                log.debug(
+                    "Reading the commit %r of branch %s of repository %s as none: it is not a commit id",
+                    commit,
+                    branch_name,
+                    self.name,
+                )
+            commits[branch_name] = readable
+        return commits
 
     async def _collect_new_branch(
         self,

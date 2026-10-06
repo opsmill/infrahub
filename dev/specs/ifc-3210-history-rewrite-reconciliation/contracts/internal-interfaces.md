@@ -57,7 +57,7 @@ Rows are evaluated in order. The first match wins.
 | `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
 | `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
-| Either identifier is malformed | propagates as `RepositoryError`; the branch joins `failed_imports` |
+| Either identifier is malformed | propagates as `RepositoryError`. The collector reads a malformed graph commit as no recorded commit before it classifies, so the sync does not reach this row |
 | **The imported commit is absent and the remote head is absent too** | propagates as `RepositoryError` |
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
@@ -161,6 +161,12 @@ rather than a read-then-write.
 
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
+
+**The collector reads an empty graph commit, and one that is not a full commit id, as no recorded
+commit.** The API stores any text as the commit, and git cannot classify a malformed one. Failing
+the branch would repeat on every cycle, because the worktree and the graph commit would never move.
+Read as none, the branch classifies `FAST_FORWARD`, resets onto the remote head and records a real
+commit. Only a failure to read the object store still fails the branch.
 
 **A read must tell a written commit from an inherited one.** `git_branch_create` creates and
 pushes the branch but never calls `update_commit_value`, and `commit` is `LOCAL`, so the branch

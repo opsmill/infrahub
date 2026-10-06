@@ -125,8 +125,9 @@ lists, so it would be selected again on every cycle. `git/branch_status.py::acce
 holds that rule for both comparisons. A commit write the graph still refuses, because the status
 changed after the listing, fails that branch alone. It classifies a branch new to this
 worker too, because the graph can hold a commit that another worker imported and the remote has
-since discarded. A new branch that git cannot classify is still created, but a branch this worker
-holds fails before its worktree moves. Each reset or lineage break logs one line with the branch,
+since discarded. A graph commit that is empty or not a full commit id counts as none, so the branch
+classifies as a fast-forward and records a real commit. When git cannot read its object store, a new
+branch is still created, but a branch this worker holds fails before its worktree moves. Each reset or lineage break logs one line with the branch,
 the discarded commit and the commit that replaced it. The add flow passes no graph commits, so it
 classifies nothing.
 
