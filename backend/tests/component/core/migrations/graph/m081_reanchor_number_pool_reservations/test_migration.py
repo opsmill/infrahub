@@ -20,6 +20,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_space import attribute_domain
+from infrahub.pools.number_ranges import EffectiveSpace
 from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservations.conftest import (
     POOL_END,
     POOL_START,
@@ -176,8 +178,17 @@ async def legacy_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Bra
     )
 
 
+async def pool_space(db: InfrahubDatabase, pool: CoreNumberPool) -> EffectiveSpace:
+    """The numbers the pool hands out: its ranges within the tracked attribute's domain."""
+    ranges = await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id())
+    return EffectiveSpace(
+        ranges=ranges, domain=attribute_domain(attribute=TICKET.get_attribute(TRACKED_ATTRIBUTE_NAME))
+    )
+
+
 async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> PoolFigures:
     """What the pool reports now, through the readers that target the attribute."""
+    space = await pool_space(db=db, pool=pool)
     getter = NumberUtilizationGetter(db=db, pool=pool, branch=branch)
     await getter.load_data()
 
@@ -186,7 +197,7 @@ async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Br
         utilization_default_branch=getter.utilization_default_branch,
         utilization_branches=getter.utilization_branches,
         allocated=tuple(sorted((entry.branch, entry.number) for entry in getter.used)),
-        in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch))),
+        in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch, space=space))),
     )
 
 

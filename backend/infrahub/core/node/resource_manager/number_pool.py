@@ -6,7 +6,7 @@ from infrahub import lock
 from infrahub.core import registry
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
-from infrahub.exceptions import PoolExhaustedError
+from infrahub.pools.number_pool_allocator import NumberPoolAllocator
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 from .. import Node
@@ -20,6 +20,12 @@ if TYPE_CHECKING:
 
 
 class CoreNumberPool(Node):
+    """A pool hands out numbers through the resource pool contract every pool kind shares.
+
+    That contract delivers the database per call, so each call builds the repository and the allocator
+    before any work starts and runs the whole allocation on them.
+    """
+
     def get_attribute_nb_excluded_values(self) -> int:
         """Returns the number of excluded values for the attribute of the number pool."""
         pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
@@ -44,6 +50,7 @@ class CoreNumberPool(Node):
         at: Timestamp | None = None,
     ) -> int:
         repository = NumberPoolRepository(db=db)
+        allocator = NumberPoolAllocator(numbers=repository)
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # If the attribute already exists, try to get its pool reservation
             if attribute_id is not None:
@@ -54,7 +61,7 @@ class CoreNumberPool(Node):
                     return reservation
 
             # If we have not returned a value we need to find one if avaiable
-            number = await self.get_next(db=db, branch=branch, attribute=attribute)
+            number = await allocator.next_number(pool=self, branch=branch, attribute=attribute)
             if attribute_id is not None:
                 # Cannot reserve without an Attribute to link
                 await repository.reserve(
@@ -65,110 +72,3 @@ class CoreNumberPool(Node):
                     at=at,
                 )
             return number
-
-    async def get_next(self, db: InfrahubDatabase, branch: Branch, attribute: AttributeSchema) -> int:
-        """Get the next available number from the pool.
-
-        Args:
-            db: Database connection.
-            branch: Branch to query.
-            attribute: Attribute schema that may contain NumberAttributeParameters constraints.
-
-        Returns:
-            The next available number that satisfies all constraints.
-
-        Raises:
-            PoolExhaustedError: If no valid numbers are available in the pool.
-
-        """
-        parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
-
-        # Extract exclusion constraints from the attribute parameters
-        excluded_values: set[int] = set()
-        excluded_ranges: list[tuple[int, int]] = []
-
-        if parameters:
-            excluded_values = set(parameters.get_excluded_single_values())
-            excluded_ranges = parameters.get_excluded_ranges()
-
-        # Compute effective range by combining pool range with min/max constraints
-        pool_start = self.start_range.value  # type: ignore[attr-defined]
-        pool_end = self.end_range.value  # type: ignore[attr-defined]
-        # A pool holding no range or several ranges carries no shorthand bounds to allocate between.
-        if pool_start is None or pool_end is None:
-            raise PoolExhaustedError(
-                "There are no values available in this pool: allocation draws from a pool holding exactly one range."
-            )
-
-        effective_start = pool_start
-        effective_end = pool_end
-
-        if parameters:
-            if parameters.min_value is not None:
-                effective_start = max(effective_start, parameters.min_value)
-            if parameters.max_value is not None:
-                effective_end = min(effective_end, parameters.max_value)
-
-        # Check if the effective range is valid
-        if effective_start > effective_end:
-            raise PoolExhaustedError("There are no more values available in this pool.")
-
-        # Only a globally unique attribute rejects a duplicate, so skip existing values only then.
-        if attribute.unique:
-            excluded_values |= await NumberPoolRepository(db=db).get_taken(
-                pool=self, branch=branch, min_value=effective_start, max_value=effective_end
-            )
-
-        def skip_excluded(value: int) -> int | None:
-            """Skip past any excluded values/ranges starting from value.
-
-            Returns the next non-excluded value, or None if we exceed effective_end.
-            """
-            current = value
-            while current <= effective_end:
-                # Check if in an excluded range and skip past it
-                in_range = False
-                for range_start, range_end in excluded_ranges:
-                    if range_start <= current <= range_end:
-                        current = range_end + 1
-                        in_range = True
-                        break
-                if in_range:
-                    continue
-
-                # Check if it's an excluded single value
-                if current in excluded_values:
-                    current += 1
-                    continue
-
-                # Found a non-excluded value
-                return current
-
-            return None
-
-        # Skip any excluded values at the start
-        first_valid = skip_excluded(effective_start)
-        if first_valid is None:
-            raise PoolExhaustedError("There are no more values available in this pool.")
-        min_value = first_valid
-
-        # Re-run the query until we find a non-excluded value or exhaust the pool
-        while True:
-            candidate = await NumberPoolRepository(db=db).get_free(
-                pool=self, branch=branch, min_value=min_value, max_value=effective_end
-            )
-            if candidate is None:
-                raise PoolExhaustedError("There are no more values available in this pool.")
-
-            # Check if candidate is excluded (single value or range)
-            next_valid = skip_excluded(candidate)
-            if next_valid is None:
-                raise PoolExhaustedError("There are no more values available in this pool.")
-
-            if next_valid != candidate:
-                # Candidate was excluded, re-query starting from next valid point
-                min_value = next_valid
-                continue
-
-            # Candidate passed all checks
-            return candidate

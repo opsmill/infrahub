@@ -18,7 +18,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.node import NodeListGetAttributeQuery
 from infrahub.core.schema import SchemaRoot
-from infrahub.pools.number_pool_repository import NumberPoolRepository
+from tests.helpers.number_pool import add_pool_range, pool_lowest_free_number, pool_used_numbers
 from tests.helpers.schema import TICKET, load_schema
 
 if TYPE_CHECKING:
@@ -47,6 +47,7 @@ async def ticket_pool(
         end_range=POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=POOL_START, end=POOL_END)
     return pool
 
 
@@ -113,8 +114,8 @@ async def test_a_user_source_on_a_pooled_attribute_wins_and_changes_nothing_the_
     await ticket.new(db=db, title="pooled", ticket_id={"from_pool": {"id": ticket_pool.id}})
     await ticket.save(db=db)
 
-    used_before = await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch)
-    free_before = await NumberPoolRepository(db=db).get_free(pool=ticket_pool, branch=default_branch)
+    used_before = await pool_used_numbers(db=db, pool=ticket_pool, branch=default_branch)
+    free_before = await pool_lowest_free_number(db=db, pool=ticket_pool, branch=default_branch)
     assert used_before == [POOL_START]
 
     reloaded = await NodeManager.get_one(
@@ -131,8 +132,8 @@ async def test_a_user_source_on_a_pooled_attribute_wins_and_changes_nothing_the_
     assert source.get_id() == first_account.id, "a source the user set is what the attribute reports"
     assert source.get_kind() != InfrahubKind.NUMBERPOOL
 
-    assert await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch) == used_before, (
+    assert await pool_used_numbers(db=db, pool=ticket_pool, branch=default_branch) == used_before, (
         "setting a source says nothing about which numbers are taken"
     )
-    assert await NumberPoolRepository(db=db).get_free(pool=ticket_pool, branch=default_branch) == free_before
+    assert await pool_lowest_free_number(db=db, pool=ticket_pool, branch=default_branch) == free_before
     assert reread.get_attribute("ticket_id").value == POOL_START

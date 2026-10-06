@@ -10,6 +10,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
 TEMPLATE_TICKET_POOL_NAME = "template-ticket-pool"
@@ -79,6 +80,7 @@ class TestNumberPoolTemplate:
             end_range=100,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=1, end=100)
         default_branch_scope_class.update_schema_hash()
         return pool
 

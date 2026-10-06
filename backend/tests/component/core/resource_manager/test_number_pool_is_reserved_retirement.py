@@ -22,7 +22,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
-from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import (
     SERIAL_ATTRIBUTE_NAME,
@@ -39,6 +38,7 @@ from tests.helpers.agnostic_edges import (
     is_reserved_edge_on,
     single_is_reserved_edge,
 )
+from tests.helpers.number_pool import add_pool_range, pool_lowest_free_number, pool_used_numbers
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, AGNOSTIC_WIDGET, WIDGET_KIND
 
 if TYPE_CHECKING:
@@ -95,6 +95,7 @@ async def _make_pool(db: InfrahubDatabase, kind: str) -> CoreNumberPool:
         end_range=POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=SERIAL_POOL_START, end=POOL_END)
     return pool
 
 
@@ -184,7 +185,7 @@ class TestObjectDelete:
             await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME)
             == IsReservedEdge.CLOSED
         ), "no branch reaches the deleted object, so its IS_RESERVED edge must be closed"
-        assert number not in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
+        assert number not in await pool_used_numbers(db=db, pool=pool, branch=default_branch_scope_class)
 
     @pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
     async def test_the_pool_still_counts_the_number_an_older_branch_holds(
@@ -204,7 +205,7 @@ class TestObjectDelete:
         await holder.delete(db=db, at=Timestamp())
 
         assert await NodeManager.get_one(db=db, id=holder.id, branch=older) is not None
-        assert number in await NumberPoolRepository(db=db).get_used(pool=pool, branch=older), (
+        assert number in await pool_used_numbers(db=db, pool=pool, branch=older), (
             "the pool still accounts for the number the older branch holds"
         )
 
@@ -248,7 +249,7 @@ class TestObjectDelete:
             db=db, branch=default_branch_scope_class, kind=AWARE_WIDGET_KIND, pool=pool, name="updated-on-a-branch"
         )
         number = serial_of(holder)
-        updated = await NumberPoolRepository(db=db).get_free(pool=pool, branch=default_branch_scope_class)
+        updated = await pool_lowest_free_number(db=db, pool=pool, branch=default_branch_scope_class)
         assert isinstance(updated, int), "the update moves to a number no other object holds"
         branch = await create_branch(db=db, branch_name="updates-the-pooled-attribute")
         on_branch = await NodeManager.get_one(db=db, id=holder.id, branch=branch, raise_on_error=True)
@@ -267,7 +268,7 @@ class TestObjectDelete:
             await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=SERIAL_ATTRIBUTE_NAME)
             == IsReservedEdge.OPEN
         ), "the default branch still holds the object"
-        used = await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
+        used = await pool_used_numbers(db=db, pool=pool, branch=default_branch_scope_class)
         assert number in used
         assert updated not in used, "the number only the deleted branch held stops counting as used"
 
@@ -297,7 +298,7 @@ class TestObjectDelete:
         assert await attributes_holding_only_is_reserved_edges(db=db, pool_id=pool.id) == 0, (
             "no pool may be left pointing at an attribute with nothing else linked to it"
         )
-        assert number not in await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch_scope_class)
+        assert number not in await pool_used_numbers(db=db, pool=pool, branch=default_branch_scope_class)
 
     @pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
     async def test_rebasing_past_a_default_branch_delete_closes_the_is_reserved_edge(

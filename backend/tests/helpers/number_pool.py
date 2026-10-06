@@ -11,18 +11,21 @@ from infrahub.core.constants import SYSTEM_USER_ID, ComputedAttributeKind, Infra
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
+from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
+from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from infrahub.schema.tasks import schema_updated
+from tests.helpers.schema import TICKET
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_TASK
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import AttributeSchema
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
 
@@ -72,8 +75,61 @@ def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
     return NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db))
 
 
-async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int) -> Node:
+async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int, weight: int | None = None) -> Node:
     pool_range = await Node.init(db=db, schema=InfrahubKind.NUMBERPOOLRANGE)
-    await pool_range.new(db=db, start=start, end=end, pool=pool.get_id())
+    await pool_range.new(db=db, start=start, end=end, allocation_weight=weight, pool=pool.get_id())
     await pool_range.save(db=db)
     return pool_range
+
+
+async def _whole_space(repository: NumberPoolRepository, pool: CoreNumberPool) -> EffectiveSpace:
+    """Return the pool's ranges as one unclipped space."""
+    return EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain())
+
+
+async def pool_used_numbers(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> list[int]:
+    """Return the numbers the pool accounts for across its ranges."""
+    repository = NumberPoolRepository(db=db)
+    space = await _whole_space(repository=repository, pool=pool)
+    return await repository.get_used(pool=pool, branch=branch, space=space)
+
+
+async def pool_lowest_free_number(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> int | None:
+    """Return the first number, in allocation order, the pool does not account for, or None when none is left."""
+    repository = NumberPoolRepository(db=db)
+    space = await _whole_space(repository=repository, pool=pool)
+    for segment in space.segments:
+        free = await repository.get_free(pool=pool, branch=branch, min_value=segment.start, max_value=segment.end)
+        if free is not None:
+            return free
+    return None
+
+
+async def create_ticket(db: InfrahubDatabase, kind: str, pool: CoreNumberPool, title: str = "ticket") -> int:
+    ticket = await Node.init(db=db, schema=kind)
+    await ticket.new(db=db, title=title, ticket_id={"from_pool": {"id": pool.id}})
+    await ticket.save(db=db)
+    value = ticket.get_attribute("ticket_id").value
+    assert isinstance(value, int)
+    return value
+
+
+async def create_range_only_pool(db: InfrahubDatabase, kind: str = TICKET.kind) -> CoreNumberPool:
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(db=db, name="ranged", node=kind, node_attribute="ticket_id")
+    await pool.save(db=db)
+    return pool
+
+
+def ticket_schema_with_parameters(parameters: NumberAttributeParameters) -> NodeSchema:
+    return NodeSchema(
+        name="Ticket",
+        namespace="Testing",
+        include_in_menu=True,
+        label="Ticket",
+        human_friendly_id=["title__value", "ticket_id__value"],
+        attributes=[
+            AttributeSchema(name="title", kind="Text", optional=False),
+            NumberAttributeSchema(name="ticket_id", kind="Number", optional=True, unique=True, parameters=parameters),
+        ],
+    )

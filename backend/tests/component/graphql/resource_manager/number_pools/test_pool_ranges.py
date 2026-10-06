@@ -13,8 +13,10 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain, PoolRange
+from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.graphql import graphql
-from tests.helpers.number_pool import add_pool_range
+from tests.helpers.number_pool import add_pool_range, pool_used_numbers
 from tests.helpers.schema import TICKET, load_schema
 
 from .helpers import (
@@ -289,7 +291,7 @@ async def test_adding_a_range_to_a_pool_in_use_leaves_allocated_values_untouched
     assert result.data["CoreNumberPoolRangeCreate"]["ok"]
     assert await _range_bounds(db=db, pool=pool) == [(100, 200), (205, 300)]
     assert await _ticket_ids(db=db, branch=default_branch) == {"first": 100, "second": 101}
-    assert sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch)) == [100, 101]
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [100, 101]
 
 
 async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
@@ -312,7 +314,25 @@ async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
     assert await NodeManager.get_one(id=held_range.get_id(), db=db, branch=default_branch) is None
     assert await _range_bounds(db=db, pool=pool) == [(100, 200)]
     assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205}
-    assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch) == [205]
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [], (
+        "a number outside every range of the pool is not counted"
+    )
+    (held_ticket,) = await NodeManager.query(db=db, schema=TICKET.kind, branch=default_branch)
+    records = await pool_reservation_edges(
+        db=db, pool_id=pool.get_id(), attribute_id=held_ticket.get_attribute("ticket_id").id
+    )
+    assert [record.is_open for record in records] == [True], "the pool still records that it handed out 205"
+    repository = NumberPoolRepository(db=db)
+    space_around_held = EffectiveSpace(
+        ranges=[PoolRange(id=held_range.get_id(), start=205, end=205)], domain=NumberDomain()
+    )
+    assert await repository.get_used(pool=pool, branch=default_branch, space=space_around_held) == [205]
+
+    # A heavier range covering 205 again counts it and allocates around it.
+    await _create_range(db=db, branch=default_branch, pool=pool, start=205, end=300, weight=10)
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [205]
+    await _allocate_ticket(db=db, pool=pool, title="next")
+    assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205, "next": 206}
 
 
 async def test_range_overlapping_others_of_its_pool_is_refused_naming_them(

@@ -661,6 +661,53 @@ async def test_migration_numberpool_attribute_from_ranges_declaration(
     assert rack_units == [10, 11, 12]
 
 
+async def test_migration_numberpool_attribute_from_two_ranges_fills_the_heavier_range_first(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+) -> None:
+    """A two-range declaration materialises both ranges, and the existing nodes draw from the heavier one."""
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    new_schema = server_schema_with_numberpool.duplicate()
+    new_schema.get_attribute(name="rack_unit").parameters = NumberPoolParameters(
+        ranges=[NumberPoolRangeParameters(start=10, end=20), NumberPoolRangeParameters(start=30, end=40, weight=5)]
+    )
+
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=new_schema, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not execution_result.errors
+
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={"node__value": "TestServer", "node_attribute__value": "rack_unit"},
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    number_pool = pools[0]
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=number_pool.get_id())
+    assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [
+        (10, 20, None),
+        (30, 40, 5),
+    ]
+    assert (number_pool.get_attribute("start_range").value, number_pool.get_attribute("end_range").value) == (
+        None,
+        None,
+    ), "the shorthand mirrors a single range only"
+
+    servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[s.get_id() for s in servers_in_db])
+    rack_units = sorted(server.get_attribute("rack_unit").value for server in servers_map.values())
+    assert rack_units == [30, 31, 32]
+
+
 # -----------------------------------------------------------------------------
 # Branch support of the edges created for a new attribute
 # -----------------------------------------------------------------------------

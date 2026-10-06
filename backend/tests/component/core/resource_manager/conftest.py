@@ -13,6 +13,7 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
@@ -50,6 +51,7 @@ async def serial_pool(
         end_range=SERIAL_POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=SERIAL_POOL_START, end=SERIAL_POOL_END)
     return pool
 
 

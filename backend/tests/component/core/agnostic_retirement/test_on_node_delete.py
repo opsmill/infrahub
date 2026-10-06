@@ -17,7 +17,6 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.timestamp import Timestamp
-from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -44,6 +43,7 @@ from tests.helpers.agnostic_edges import (
     relationship_global_edges,
     remove_attribute_on_branch,
 )
+from tests.helpers.number_pool import add_pool_range, pool_used_numbers
 from tests.helpers.schema.agnostic_retirement import (
     AGNOSTIC_RETIREMENT_SCHEMA,
     GADGET_KIND,
@@ -88,6 +88,7 @@ class TestAgnosticRetirementOnDelete:
             end_range=SERIAL_POOL_END,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=SERIAL_POOL_START, end=SERIAL_POOL_END)
         return pool
 
     async def test_a_field_created_and_deleted_on_the_same_user_branch_is_closed_by_the_delete(
@@ -414,9 +415,7 @@ class TestAgnosticRetirementOnDelete:
         await holder.save(db=db)
 
         assert holder.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [
-            SERIAL_POOL_START
-        ]
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]
 
         before = await attribute_global_edges(db=db, node_id=holder.id, attribute_name="serial")
         assert open_edge_types(before) == {
@@ -443,13 +442,11 @@ class TestAgnosticRetirementOnDelete:
         assert [(edge.edge_type, edge.branch, edge.status, edge.to_time) for edge in reserved_after] == [
             ("IS_RESERVED", GLOBAL_BRANCH_NAME, "active", deleted_at.to_string())
         ], "the record hangs off the attribute, so retirement closes it with the rest of the field"
-        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == []
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == []
 
         reallocated = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
         await reallocated.new(db=db, name="takes-the-freed-serial", serial={"from_pool": {"id": serial_pool.id}})
         await reallocated.save(db=db)
 
         assert reallocated.get_attribute(name="serial").value == SERIAL_POOL_START
-        assert await NumberPoolRepository(db=db).get_used(pool=serial_pool, branch=default_branch) == [
-            SERIAL_POOL_START
-        ]
+        assert await pool_used_numbers(db=db, pool=serial_pool, branch=default_branch) == [SERIAL_POOL_START]

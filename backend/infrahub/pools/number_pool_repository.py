@@ -14,12 +14,14 @@ from infrahub.core.query.resource_manager import (
     NumberPoolSetReserved,
     PoolRecordProvenance,
 )
+from infrahub.pools.number_pool_space import to_pool_ranges
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
 
 
 class NumberPoolRangeStore(Protocol):
@@ -68,7 +70,7 @@ class NumberPoolRepository(NumberPoolRangeStore):
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def get_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[CoreNumberPoolRange]:
+    async def get_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[CoreNumberPoolRange]:
         """Return the ranges a pool allocates from, lowest start first."""
         pool_ranges = await NodeManager.query(
             db=self.db,
@@ -78,6 +80,10 @@ class NumberPoolRepository(NumberPoolRangeStore):
             branch_agnostic=True,
         )
         return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
+
+    async def get_pool_ranges(self, pool_id: str, at: Timestamp | str | None = None) -> list[PoolRange]:
+        """Return the pool's ranges as plain start, end, weight and id values, lowest start first."""
+        return to_pool_ranges(ranges=await self.get_ranges(pool_id=pool_id, at=at))
 
     async def create_range(
         self,
@@ -136,16 +142,18 @@ class NumberPoolRepository(NumberPoolRangeStore):
         pool.get_attribute("end_range").value = end
         await pool.save(db=self.db, at=at, user_id=user_id, fields=["start_range", "end_range"])
 
-    async def get_used(self, pool: CoreNumberPool, branch: Branch) -> list[int]:
-        """Return the numbers the pool currently accounts for."""
-        query = await NumberPoolGetUsed.init(db=self.db, branch=branch, pool=pool, branch_agnostic=True)
+    async def get_used(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> list[int]:
+        """Return the numbers inside `space` the pool currently accounts for."""
+        if space.is_empty:
+            return []
+        query = await NumberPoolGetUsed.init(
+            db=self.db, branch=branch, pool=pool, ranges=space.as_query_ranges(), branch_agnostic=True
+        )
         await query.execute(db=self.db)
         used = [result.value for result in query.iter_results()]
         return [item for item in used if item is not None]
 
-    async def get_free(
-        self, pool: CoreNumberPool, branch: Branch, min_value: int | None = None, max_value: int | None = None
-    ) -> int | None:
+    async def get_free(self, pool: CoreNumberPool, branch: Branch, min_value: int, max_value: int) -> int | None:
         """Return the lowest number in `[min_value, max_value]` the pool does not account for, or None."""
         query = await NumberPoolGetFree.init(
             db=self.db, branch=branch, pool=pool, branch_agnostic=True, min_value=min_value, max_value=max_value
@@ -153,13 +161,11 @@ class NumberPoolRepository(NumberPoolRangeStore):
         await query.execute(db=self.db)
         return query.get_result_value()
 
-    async def get_taken(
-        self, pool: CoreNumberPool, branch: Branch, min_value: int | None = None, max_value: int | None = None
-    ) -> set[int]:
-        """Return the values already held by the pool's attribute on its target kind, within range."""
-        query = await NumberPoolGetTaken.init(
-            db=self.db, branch=branch, pool=pool, min_value=min_value, max_value=max_value
-        )
+    async def get_taken(self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace) -> set[int]:
+        """Return the values inside `space` already held by the pool's attribute on its target kind."""
+        if space.is_empty:
+            return set()
+        query = await NumberPoolGetTaken.init(db=self.db, branch=branch, pool=pool, ranges=space.as_query_ranges())
         await query.execute(db=self.db)
         return query.get_taken_values()
 

@@ -13,6 +13,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
 if TYPE_CHECKING:
@@ -69,6 +70,7 @@ class TestConcurrentRePool:
                 end_range=start_range + 98,
             )
             await pool.save(db=db)
+            await add_pool_range(db=db, pool=pool, start=start_range, end=start_range + 98)
             pools.append(pool)
         default_branch.update_schema_hash()
         return pools

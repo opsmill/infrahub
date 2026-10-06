@@ -15,6 +15,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import NumberPoolGetReserved
 from infrahub.core.schema import SchemaRoot
 from infrahub.exceptions import NodeNotFoundError
+from tests.helpers.number_pool import add_pool_range
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -58,6 +59,7 @@ class TestMigration066:
                 pool_type=NumberPoolType.SCHEMA.value,
             )
             await pool.save(db=db)
+            await add_pool_range(db=db, pool=pool, start=1, end=1000)
             pool_uuids.append(pool.id)
 
             # Load a TestDevice schema with serial_number referencing this pool

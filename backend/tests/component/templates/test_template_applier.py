@@ -17,6 +17,7 @@ from infrahub.pools.default_allocator import DefaultPoolAllocator
 from infrahub.pools.noop_allocator import NoOpPoolAllocator
 from infrahub.templates.node_applier import TEMPLATE_APPLICATION_RELATIONSHIP_KINDS, NodeTemplateApplier
 from tests.constants import TestKind
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import DEVICE_SCHEMA, TAG, load_schema
 from tests.helpers.schema.device import DEVICE, INTERFACE, INTERFACE_HOLDER
 
@@ -495,6 +496,7 @@ class TestNodeTemplateApplierNumberPoolAttributes:
             db=db, name="rack-unit-pool", node="TestingDevice", node_attribute="rack_unit", start_range=1, end_range=48
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=1, end=48)
         return pool
 
     @pytest.fixture

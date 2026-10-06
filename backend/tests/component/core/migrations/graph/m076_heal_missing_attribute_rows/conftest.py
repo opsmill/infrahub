@@ -17,6 +17,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.number_pool import add_pool_range
 
 CAR_ATTRIBUTE_NAMES = ("asset_tag", "name", "status")
 INHERITED_CAR_ATTRIBUTE_NAMES = ("asset_tag", "status")
@@ -230,6 +231,7 @@ async def create_schema_number_pool(
         pool_type=NumberPoolType.SCHEMA.value,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=start_range, end=end_range)
     return pool
 
 

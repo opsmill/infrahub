@@ -108,9 +108,15 @@ async def create_objects(db: InfrahubDatabase, schema: NodeSchema, branch: str, 
     return nodes
 
 
+def whole_pool_ranges(pool: CoreNumberPoolProtocol) -> list[list[int]]:
+    return [[pool.get_attribute("start_range").value, pool.get_attribute("end_range").value]]
+
+
 async def get_used_numbers_in_pool(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch) -> list[int]:
     """Helper function to get used numbers in a pool."""
-    query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=pool, branch_agnostic=True)
+    query = await NumberPoolGetUsed.init(
+        db=db, branch=branch, pool=pool, ranges=whole_pool_ranges(pool), branch_agnostic=True
+    )
     await query.execute(db=db)
     return sorted([result.value for result in query.iter_results()])
 

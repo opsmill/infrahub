@@ -21,7 +21,6 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
-from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.agnostic_edges import (
     IsReservedEdge,
@@ -30,6 +29,7 @@ from tests.helpers.agnostic_edges import (
     open_is_reserved_edge_on,
     set_open_is_reserved_edge_provenance,
 )
+from tests.helpers.number_pool import add_pool_range, pool_lowest_free_number, pool_used_numbers
 from tests.helpers.schema import load_schema
 
 if TYPE_CHECKING:
@@ -91,6 +91,7 @@ async def convert_pool(
         end_range=POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=POOL_START, end=POOL_END)
     return pool
 
 
@@ -126,7 +127,7 @@ async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replac
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
     assert allocated == POOL_START
-    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
+    assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [allocated]
 
     await set_open_is_reserved_edge_provenance(
         db=db,
@@ -141,10 +142,10 @@ async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replac
     assert converted.get_attribute(TRACKED_ATTRIBUTE_NAME).value == allocated, (
         "the conversion carries the number across"
     )
-    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated], (
+    assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [allocated], (
         "the pool must still account for the number, now on the object the conversion produced"
     )
-    assert await NumberPoolRepository(db=db).get_free(pool=convert_pool, branch=default_branch) != allocated, (
+    assert await pool_lowest_free_number(db=db, pool=convert_pool, branch=default_branch) != allocated, (
         "a number an object still holds must never be offered again"
     )
 
@@ -171,7 +172,7 @@ async def test_a_pool_does_not_follow_its_is_reserved_edge_onto_a_kind_it_does_n
     """A pool tracks a kind. Sharing an attribute name with some other kind is not a claim on it."""
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
-    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
+    assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [allocated]
 
     converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=OUTSIDER_KIND)
 
@@ -186,7 +187,7 @@ async def test_a_pool_does_not_follow_its_is_reserved_edge_onto_a_kind_it_does_n
         open_only=True,
     )
     assert is_reserved_edges == [], "the pool must not account for an attribute of a kind it does not track"
-    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [], (
+    assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [], (
         "and the number it held is released rather than left charged to an object outside the pool"
     )
 
@@ -197,7 +198,7 @@ async def test_converting_an_object_on_a_branch_leaves_its_is_reserved_edge_open
     """The object is only replaced on the branch; on the default branch it still holds its number."""
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
-    assert await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch) == [allocated]
+    assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [allocated]
 
     branch = await create_branch(db=db, branch_name="convert-on-a-branch")
     on_branch = await registry.manager.get_one(db=db, id=holder.get_id(), branch=branch, raise_on_error=True)
@@ -211,10 +212,10 @@ async def test_converting_an_object_on_a_branch_leaves_its_is_reserved_edge_open
     assert moved["identifier"] == converted.get_id()
     assert moved["branch"] == GLOBAL_BRANCH_NAME
 
-    assert set(await NumberPoolRepository(db=db).get_used(pool=convert_pool, branch=default_branch)) == {allocated}, (
+    assert set(await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch)) == {allocated}, (
         "the number stays used, held by the default branch's object and the branch's replacement"
     )
-    assert await NumberPoolRepository(db=db).get_free(pool=convert_pool, branch=default_branch) != allocated, (
+    assert await pool_lowest_free_number(db=db, pool=convert_pool, branch=default_branch) != allocated, (
         "a conversion on a branch must not offer the default branch's number again"
     )
 
@@ -258,6 +259,7 @@ async def pooled_convertible(
         end_range=POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=POOL_START, end=POOL_END)
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=pool)
     assert (
         await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=holder.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
@@ -285,7 +287,7 @@ async def test_converting_closes_the_is_reserved_edge_on_the_replaced_object(
         await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=converted.id, attribute_name=TRACKED_ATTRIBUTE_NAME)
         == IsReservedEdge.OPEN
     ), "the replacement carries the reservation on"
-    assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch) == [POOL_START]
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [POOL_START]
 
 
 @pytest.mark.parametrize("case", SUPPORT_CASES, ids=lambda case: case.name)
