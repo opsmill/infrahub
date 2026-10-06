@@ -703,9 +703,10 @@ read-write repository's configured default branch. Neither writes a record.
       fragment of its own, because a stacked series carries one fragment, on its top PR. IFC-3284
       carries that entry as `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its
       own `changelog/+repository-rewrite-record.added.md`.
-      IFC-3283, stacked on IFC-3284, adds `changelog/+force-pushed-branch-convergence.fixed.md`: a
-      worker that missed the broadcast now converges by itself, and a merge onto a history the graph
-      has not reconciled is refused instead of pushing the discarded commits again.
+      IFC-3283, stacked on IFC-3284, adds `changelog/+merge-after-force-push.fixed.md`: a branch
+      merge onto a history Infrahub has not imported is refused instead of pushing the discarded
+      commits again. A worker that missed the broadcast and now follows the new history on its own is
+      the fix `changelog/6299.fixed.md` describes, so it adds no entry.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires

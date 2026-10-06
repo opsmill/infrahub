@@ -1,0 +1,1 @@
+Fixed the merge of a branch that could push commits removed by a force push back to the Git repository: until Infrahub imports the new history, the merge is refused with a message that says to merge again after the next synchronization.
