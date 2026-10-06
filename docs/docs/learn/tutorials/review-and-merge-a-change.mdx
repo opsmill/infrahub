@@ -25,8 +25,8 @@ DC1 — and neither of them on `main`. That is the change you take through the r
 here. Any branch with changes that have not been merged works the same way; substitute your own
 branch name wherever `add-locations` appears.
 
-You need an Infrahub instance you can sign in to, and a branch carrying at least one change that is
-not on the default branch. A connected Git repository is not required.
+You need an Infrahub instance you can sign in to, and a branch with at least one change on it that
+is not on the default branch. A connected Git repository is not required.
 
 Step 4 covers the approval. Infrahub does not accept a review from the person who opened the Proposed
 Change, so on a single-user instance that step is optional — you can create a second account to carry
@@ -96,8 +96,8 @@ decision: **Approve** when the change is ready to merge, **Reject** when somethi
 first. They can attach a comment to one part of the diff rather than to the change as a whole, which
 keeps a question about a single attribute next to that attribute.
 
-Infrahub does not accept a review from the person who opened the Proposed Change. That rule is what
-the workflow rests on: the change is read by somebody other than the person who made it.
+Infrahub does not accept a review from the person who opened the Proposed Change. That is the reason
+the workflow exists: somebody other than the author reads the change.
 
 On a single-user instance you are that person, so you have two ways to continue.
 
@@ -137,7 +137,7 @@ does during a merge in more detail.
 
 ## What you learned
 
-You have taken a change through the review workflow an organization runs its data changes through:
+You have taken a change through the review workflow most organizations use for data changes:
 
 **Change separately.** You made the change on a branch rather than directly on `main`.
 
