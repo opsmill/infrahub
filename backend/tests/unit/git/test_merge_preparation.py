@@ -170,6 +170,18 @@ async def test_a_branch_behind_a_rewrite_the_graph_records_is_reset_before_the_m
     assert merge_clone.client.recorded_commits == []
 
 
+async def test_a_source_without_a_worktree_has_its_ref_moved_onto_the_remote_head(merge_clone: MergeClone) -> None:
+    """The merge reads the source from its ref, so the ref moves even when no worktree holds the branch."""
+    worktree = merge_clone.repository.get_worktree(identifier=SOURCE)
+    merge_clone.repository.get_git_repo_main().git.worktree("remove", "--force", str(worktree.directory))
+    remote_head = merge_clone.rewind(branch_name=SOURCE)
+    merge_clone.client.graph_commits[SOURCE] = remote_head
+
+    await merge_clone.prepare()
+
+    assert merge_clone.repository.get_commit_value(branch_name=SOURCE, remote=False) == remote_head
+
+
 async def test_a_refused_branch_keeps_the_other_branch_where_it_is(merge_clone: MergeClone) -> None:
     """The refusal comes before any reset, so a refused merge leaves the clone exactly as it found it."""
     merge_clone.client.graph_commits[SOURCE] = merge_clone.rewind(branch_name=SOURCE)

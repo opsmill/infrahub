@@ -976,7 +976,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             resets.append((branch_name, local_head, remote_head))
 
         for branch_name, local_head, remote_head in resets:
-            await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=False)
+            if self._get_branch_worktree(branch_name) is None:
+                await self._move_branch_ref(branch_name=branch_name, commit=remote_head)
+            else:
+                await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=False)
             log.info(
                 "Reset branch %s of repository %s onto the remote head %s before the merge, "
                 "the local commit %s does not lead to it",
@@ -986,6 +989,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 local_head,
                 extra={"repository": self.name, "branch": branch_name, "commit": remote_head},
             )
+
+    async def _move_branch_ref(self, branch_name: str, commit: str) -> None:
+        # The merge reads its source from this ref, which a branch without a worktree still has.
+        try:
+            self.get_git_repo_main().git.branch("--force", branch_name, commit)
+        except GitCommandError as exc:
+            await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
     async def _get_graph_commit(self, infrahub_branch_name: str) -> str | None:
         try:
