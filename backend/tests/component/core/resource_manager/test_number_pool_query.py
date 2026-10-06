@@ -22,7 +22,9 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetAllocated,
     NumberPoolGetReserved,
     NumberPoolGetTaken,
+    NumberPoolGetTrackingPool,
     NumberPoolGetUsed,
+    NumberPoolReleaseReserved,
     NumberPoolSetReserved,
     PoolRecordProvenance,
 )
@@ -126,6 +128,33 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, b
     query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.get_id(), branch=branch)
     await query1.execute(db=db)
     return {item.identifier: item.value for item in query1.get_data()}
+
+
+async def get_allocated_values(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch) -> list[int]:
+    query = await NumberPoolGetAllocated.init(db=db, pool=pool, branch=branch, branch_agnostic=True)
+    await query.execute(db=db)
+    return sorted(result.value for result in query.get_data())
+
+
+async def get_number_attribute_id(db: InfrahubDatabase, node_id: str, branch: Branch) -> str:
+    node = await NodeManager.get_one(db=db, id=node_id, branch=branch)
+    assert node is not None
+    attribute_id = node.get_attribute("number").id
+    assert attribute_id is not None
+    return attribute_id
+
+
+async def get_tracking_pool_id(db: InfrahubDatabase, attribute_id: str) -> str | None:
+    query = await NumberPoolGetTrackingPool.init(db=db, attribute_id=attribute_id)
+    await query.execute(db=db)
+    return query.get_pool_id()
+
+
+async def detach(db: InfrahubDatabase, node_id: str, branch: Branch) -> None:
+    """End the live IS_RESERVED edge on the node's `number` attribute, as a write sending `from_pool: null` does."""
+    attribute_id = await get_number_attribute_id(db=db, node_id=node_id, branch=branch)
+    query = await NumberPoolReleaseReserved.init(db=db, attribute_id=attribute_id)
+    await query.execute(db=db)
 
 
 class TestNumberPoolGetUsed:
@@ -517,6 +546,49 @@ async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: 
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
     return int(results[0]["live"])
+
+
+class TestNumberPoolReleaseReserved:
+    async def test_a_release_ends_the_live_edge_of_whichever_pool_tracks_the_attribute(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """A release ends the live IS_RESERVED edge even when a pool other than the allocating one now tracks the attribute."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+        other_pool = next(pool for pool in pools if pool.get_attribute("node").value == REQUEST.kind)
+        moved = incidents[1]
+        attribute_id = await get_number_attribute_id(db=db, node_id=moved.get_id(), branch=default_branch)
+
+        move = await NumberPoolSetReserved.init(
+            db=db,
+            pool_id=other_pool.get_id(),
+            identifier=moved.get_id(),
+            attribute_id=attribute_id,
+            provenance=PoolRecordProvenance.PROVIDED,
+        )
+        await move.execute(db=db)
+        assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) == other_pool.get_id()
+        assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 1
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+
+        await detach(db=db, node_id=moved.get_id(), branch=default_branch)
+
+        assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 0
+        assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) is None
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        reloaded = await NodeManager.get_one(db=db, id=moved.get_id(), branch=default_branch)
+        assert reloaded is not None
+        assert reloaded.get_attribute("number").value == 2, "a release keeps the number on the object"
+        for untouched in (incidents[0], incidents[2]):
+            assert await live_record_count(db=db, node_id=untouched.get_id(), attribute_name="number") == 1
 
 
 class TestNumberPoolChangeReserved:

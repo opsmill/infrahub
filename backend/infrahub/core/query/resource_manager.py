@@ -989,6 +989,49 @@ class NumberPoolSetReserved(Query):
         self.return_labels = ["attr.uuid AS attribute_id", "rel"]
 
 
+class NumberPoolReleaseReserved(Query):
+    """End every live IS_RESERVED edge on an Attribute vertex, whichever number pool it comes from, leaving the value.
+
+    The edge is closed in time because an IS_RESERVED edge lives on the global branch, where a removal on the
+    same branch sets `to`.
+    """
+
+    name = "numberpool_release_reserved"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        attribute_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.attribute_id = attribute_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_id"] = self.attribute_id
+        self.params["at"] = self.at.to_string()
+
+        query = """
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH attr
+        LIMIT 1
+        // ----------
+        // Lock the Attribute vertex until the transaction ends, so writes to its IS_RESERVED edges run one at a time
+        // ----------
+        SET attr._number_pool_lock = TRUE
+        REMOVE attr._number_pool_lock
+        WITH attr
+        MATCH (:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
+        WHERE live.status = "active"
+          AND live.to IS NULL
+        SET live.to = $at
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+
+        self.add_to_query(query)
+
+
 class PrefixPoolGetIdentifiers(Query):
     name = "prefixpool_get_identifiers"
     type = QueryType.READ
