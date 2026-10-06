@@ -965,9 +965,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     ) -> bool | str:
         """Bring the worktree of a branch onto the remote head of that branch.
 
-        A worktree that leads to the remote head is pulled. Any other worktree is hard-reset onto the
-        remote head and loses the commits only it holds. The reset honours ``update_commit_value`` the
-        same way the pull does, and it writes nothing else.
+        A worktree that leads to the remote head is fast-forwarded. Any other worktree is hard-reset onto
+        the remote head and loses the commits only it holds. The reset honours ``update_commit_value`` the
+        same way the fast-forward does, and it writes nothing else.
 
         Raises:
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
@@ -1001,7 +1001,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 return remote_head
 
             try:
-                repo.remotes.origin.pull(remote_branch)
+                # The head was fetched above, so a second fetch could only land on a later one.
+                repo.git.merge("--ff-only", remote_head)
             except GitCommandError as exc:
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 

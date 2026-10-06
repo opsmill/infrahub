@@ -453,6 +453,19 @@ async def test_pull_branch(git_repo_04: InfrahubRepository) -> None:
     assert response is True
 
 
+async def test_pull_fast_forwards_whatever_the_pull_settings_of_the_clone(git_repo_04: InfrahubRepository) -> None:
+    """A pull setting that asks for a merge commit leaves a fast-forward of the worktree a fast-forward."""
+    repo = git_repo_04
+    with repo.get_git_repo_main().config_writer() as git_config:
+        git_config.set_value("pull", "ff", "false")
+    remote_commit = repo.get_commit_value(branch_name="branch01", remote=True)
+
+    response = await repo.pull(branch_name="branch01")
+
+    assert response == remote_commit
+    assert repo.get_commit_value(branch_name="branch01", remote=False) == remote_commit
+
+
 async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
     await repo.fetch()
