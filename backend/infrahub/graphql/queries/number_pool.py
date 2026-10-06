@@ -272,7 +272,7 @@ class NumberPoolAllocations(ObjectType):
         range_id: str | None = None,
         in_space: bool | None = None,
         branch: str | None = None,
-        provenance: PoolRecordProvenance | str | None = None,
+        provenance: PoolRecordProvenance | None = None,
         offset: int | None = None,
         limit: int | None = None,
     ) -> MockAllocations:
@@ -286,7 +286,7 @@ class NumberPoolAllocations(ObjectType):
             range_id=range_id,
             in_space=in_space,
             branch=branch,
-            provenance=PoolRecordProvenance(provenance) if provenance is not None else None,
+            provenance=provenance,
             offset=offset,
             limit=limit,
         )

@@ -1,4 +1,4 @@
-"""Fixed in-memory number-pool data served by the dedicated number-pool queries until the real reads exist."""
+"""Fixed in-memory number-pool data served by the dedicated number-pool queries; reads nothing from the database."""
 
 from __future__ import annotations
 
@@ -93,9 +93,9 @@ class MockRangeUtilization:
 class MockUtilization:
     id: str
     display_label: str
-    allocation_scope: list[str]
+    allocation_scope: tuple[str, ...]
     figures: MockFigures
-    ranges: list[MockRangeUtilization]
+    ranges: tuple[MockRangeUtilization, ...]
     out_of_space_count: int
 
 
@@ -109,14 +109,14 @@ class MockDivision:
 @dataclass(frozen=True, slots=True)
 class MockDivisions:
     count: int
-    allocation_scope: list[str]
-    divisions: list[MockDivision]
+    allocation_scope: tuple[str, ...]
+    divisions: tuple[MockDivision, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class MockAllocations:
     count: int
-    allocations: list[MockAllocation]
+    allocations: tuple[MockAllocation, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +143,10 @@ class MockPool:
     excluded_values: frozenset[int]
     divisions: tuple[tuple[MockDivisionEntry, ...], ...]
     rows: tuple[_Row, ...] = field(repr=False)
+
+    def __post_init__(self) -> None:
+        if not self.divisions:
+            raise ValueError(f"The mock pool {self.display_label} needs at least one division, even an empty one")
 
     @property
     def size(self) -> int:
@@ -300,7 +304,7 @@ def _counted_rows(pool: MockPool, space: MockRange | None) -> list[_Row]:
     return [row for row in pool.rows if pool.in_space(row.value) and (space is None or space.holds(row.value))]
 
 
-def _division_list(pool: MockPool, space: MockRange | None) -> list[MockDivision]:
+def _division_list(pool: MockPool, space: MockRange | None) -> tuple[MockDivision, ...]:
     size = space.size if space else pool.size
     rows = _counted_rows(pool=pool, space=space)
     divisions = [
@@ -311,8 +315,7 @@ def _division_list(pool: MockPool, space: MockRange | None) -> list[MockDivision
         )
         for entries in pool.divisions
     ]
-    divisions.sort(key=lambda division: (-division.figures.utilization, division.display_label))
-    return divisions
+    return tuple(sorted(divisions, key=lambda division: (-division.figures.utilization, division.display_label)))
 
 
 def _get_range(pool: MockPool, pool_id: str, range_id: str | None) -> MockRange | None:
@@ -328,7 +331,7 @@ def _get_range(pool: MockPool, pool_id: str, range_id: str | None) -> MockRange 
 
 def get_utilization(pool_id: str) -> MockUtilization:
     pool = get_mock_pool(pool_id)
-    ranges = [
+    ranges = tuple(
         MockRangeUtilization(
             id=item.id,
             display_label=item.display_label,
@@ -338,11 +341,11 @@ def get_utilization(pool_id: str) -> MockUtilization:
             figures=_division_list(pool=pool, space=item)[0].figures,
         )
         for item in sorted(pool.ranges, key=lambda item: item.start)
-    ]
+    )
     return MockUtilization(
         id=pool_id,
         display_label=pool.display_label,
-        allocation_scope=list(pool.allocation_scope),
+        allocation_scope=pool.allocation_scope,
         figures=_division_list(pool=pool, space=None)[0].figures,
         ranges=ranges,
         out_of_space_count=sum(1 for row in pool.rows if not pool.in_space(row.value)),
@@ -353,7 +356,7 @@ def get_divisions(pool_id: str, range_id: str | None = None) -> MockDivisions:
     pool = get_mock_pool(pool_id)
     space = _get_range(pool=pool, pool_id=pool_id, range_id=range_id)
     divisions = _division_list(pool=pool, space=space)
-    return MockDivisions(count=len(divisions), allocation_scope=list(pool.allocation_scope), divisions=divisions)
+    return MockDivisions(count=len(divisions), allocation_scope=pool.allocation_scope, divisions=divisions)
 
 
 def _validate_division_filter(
@@ -378,6 +381,12 @@ def _validate_division_filter(
         if entry.path in seen:
             raise ValidationError(input_value=f"The division entry '{entry.path}' is given twice")
         seen.add(entry.path)
+
+
+def _validate_page(offset: int | None, limit: int | None) -> None:
+    for name, value in (("offset", offset), ("limit", limit)):
+        if value is not None and value < 0:
+            raise ValidationError(input_value=f"{name} must be 0 or greater")
 
 
 def _holder_divisions(pool: MockPool) -> dict[str, set[tuple[MockDivisionEntry, ...]]]:
@@ -422,6 +431,7 @@ def get_allocations(
     offset: int | None = None,
     limit: int | None = None,
 ) -> MockAllocations:
+    _validate_page(offset=offset, limit=limit)
     pool = get_mock_pool(pool_id)
     space = _get_range(pool=pool, pool_id=pool_id, range_id=range_id)
     if division:
@@ -442,4 +452,4 @@ def get_allocations(
     start = DEFAULT_OFFSET if offset is None else offset
     page_size = DEFAULT_LIMIT if limit is None else limit
     page = rows[start : start + page_size]
-    return MockAllocations(count=len(rows), allocations=[_to_allocation(pool=pool, row=row) for row in page])
+    return MockAllocations(count=len(rows), allocations=tuple(_to_allocation(pool=pool, row=row) for row in page))
