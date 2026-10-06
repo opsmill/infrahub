@@ -5,7 +5,7 @@ from typing import Any
 from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.branch import BranchData
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -586,7 +586,7 @@ async def git_branch_create(
         if created and pinned_commit is not None:
             try:
                 await repo.update_commit_value(branch_name=branch, commit=pinned_commit)
-            except GraphQLError as exc:
+            except SdkError as exc:
                 # The next sync records a commit the graph lacks, but nothing resends the broadcast below.
                 log.warning(
                     f"Unable to record commit {pinned_commit} of the new branch '{branch}' for repository "

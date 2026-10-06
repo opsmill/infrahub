@@ -15,6 +15,7 @@ from infrahub.git.repository import InfrahubRepository
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from infrahub_sdk.exceptions import Error as SdkError
     from infrahub_sdk.types import HTTPMethod
     from testcontainers.core.container import DockerContainer
 
@@ -99,7 +100,7 @@ def build_repository_client(
     default_branch: str,
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
-    reject_commit_updates: bool = False,
+    commit_update_error: SdkError | None = None,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -109,7 +110,7 @@ def build_repository_client(
     cannot drift; the caller must have the core schema registered.
 
     Args:
-        reject_commit_updates: Answer every commit update with a GraphQL error instead.
+        commit_update_error: Raise this error for every commit update instead of answering it.
 
     """
     node = {
@@ -130,9 +131,8 @@ def build_repository_client(
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
         query = (payload or {}).get("query", "")
-        if reject_commit_updates and "commit" in ((payload or {}).get("variables") or {}):
-            errors = [{"message": "The commit update was rejected"}]
-            return httpx.Response(status_code=200, json={"errors": errors}, request=request)
+        if commit_update_error is not None and "commit" in ((payload or {}).get("variables") or {}):
+            raise commit_update_error
         # Only the construction read, which selects default_branch, returns a node; every other
         # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:

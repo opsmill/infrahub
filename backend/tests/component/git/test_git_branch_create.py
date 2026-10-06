@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import pytest
+from infrahub_sdk.exceptions import Error as SdkError
+from infrahub_sdk.exceptions import GraphQLError, ServerNotReachableError
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow
 
@@ -19,7 +23,27 @@ REPOSITORY_NAME = "branch-create-repo"
 CREATED_BRANCH = "created-branch"
 
 
+@dataclass
+class CommitWriteFailureCase:
+    name: str
+    error: SdkError
+
+
+COMMIT_WRITE_FAILURE_CASES: list[CommitWriteFailureCase] = [
+    CommitWriteFailureCase(
+        name="the_graph_refuses_the_commit",
+        error=GraphQLError(errors=[{"message": "The commit update was rejected"}]),
+    ),
+    CommitWriteFailureCase(
+        name="the_server_cannot_be_reached",
+        error=ServerNotReachableError(address="http://mock"),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in COMMIT_WRITE_FAILURE_CASES])
 async def test_a_new_branch_is_announced_even_when_its_commit_cannot_be_recorded(
+    case: CommitWriteFailureCase,
     db: InfrahubDatabase,
     register_core_models_schema: None,
     tmp_path: Path,
@@ -34,7 +58,7 @@ async def test_a_new_branch_is_announced_even_when_its_commit_cannot_be_recorded
         name=REPOSITORY_NAME,
         location=str(remote.directory),
         default_branch="main",
-        reject_commit_updates=True,
+        commit_update_error=case.error,
     )
     await clone_repository(
         id=repository_id,
