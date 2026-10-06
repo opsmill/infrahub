@@ -106,11 +106,12 @@ This is the **only** refusal rule the resolver applies. Earlier drafts carried t
 A duplicate value reuses the **existing** uniqueness error and is raised by the constraint, not the
 pool (FR-028).
 
-### Row 4 and 12 — re-pool is not a refusal
+### Rows 4, 8 and 12 — re-pool is not a refusal
 
 Re-homing objects between pools is the brownfield journey this slice exists for, so naming pool B on
-an attribute pool A tracks moves the claim in a single update rather than erroring. "Tracked by a
-*different* pool" is therefore a dimension of the table, not an error case (FR-024a).
+an attribute pool A tracks moves the claim in a single update rather than erroring, once the write
+says which number to keep (row 4), asks for a new one (row 8), or the attribute holds no value or only
+its schema default (row 12). "Tracked by a *different* pool" is therefore a dimension of the table, not an error case (FR-024a).
 
 It is also unavoidable: the resolver must detect the case anyway to satisfy the one-record-per-
 attribute invariant (FR-024b).

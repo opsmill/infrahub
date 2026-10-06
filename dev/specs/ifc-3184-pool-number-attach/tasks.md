@@ -492,8 +492,9 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
 - [X] T039 [P] [US2] Create `backend/tests/unit/pools/` (with its `__init__.py`, per
       `dev/knowledge/backend/package-init-files.md`) and write `test_intent.py` — **every cell** of the
       table in [`contracts/from-pool-intent.md`](./contracts/from-pool-intent.md), both re-pool cells,
-      the idempotent no-op, and an assertion that **exactly one** input combination produces `REFUSE`
-      (assert the count, so a future edit cannot quietly add a second refusal). No database.
+      the idempotent no-op, and an assertion that only the combinations of rows 10 and 12 produce
+      `REFUSE` (assert the exact list, so a future edit cannot quietly add another refusal). No
+      database. *(Revised 2026-10-05: row 12 refuses over a non-default number another pool tracks.)*
 
 ### 2b. Payload presence
 
@@ -514,11 +515,12 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
       `attribute.is_default` on the preview pass, which is meant to be side-effect-free.
 - [X] T043 [US2] Implement the attach path (FR-021, FR-024): a provided `value` alongside
       `from_pool` is **kept**, not discarded, and recorded with `provenance=provided`.
-- [X] T044 [US2] Implement the single refusal — `from_pool` alone on a non-default untracked value —
-      naming **both** ways forward: restate the value to attach, or send `value: null` to discard and
-      allocate. Follow `dev/guidelines/backend/exceptions.md`.
+- [X] T044 [US2] Implement the refusal — `from_pool` alone on a non-default value the named pool does
+      not track — naming **both** ways forward: restate the value to attach, or send `value: null` to
+      discard and allocate. Follow `dev/guidelines/backend/exceptions.md`.
 - [X] T045 [US2] Implement re-pool (FR-024a): a write naming pool B on an attribute pool A reserves
-      ends A's record and begins B's in one operation, allocating or attaching.
+      ends A's record and begins B's in one operation, allocating or attaching. `from_pool: B` alone
+      over a non-default number is refused (T044).
 - [X] T046 [US2] On attach onto an existing record from the same pool, update `provenance` to
       `provided` — it describes how the number the attribute *currently* holds got there.
       *(Critique P5.)*

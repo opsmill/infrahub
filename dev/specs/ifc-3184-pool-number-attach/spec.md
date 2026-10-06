@@ -137,9 +137,12 @@ it, and assert what the pool reports in use, in the out-of-space bucket, and as 
 6. **Given** 50 allocated to object A and 50 attached on object B with no uniqueness constraint,
    **When** the pool is queried, **Then** the in-use list returns two rows for 50 — one `allocated`,
    one `provided`, each naming its holder — while utilization counts 50 once.
-7. **Given** an attribute pool A tracks, **When** a write names pool B — with or without a value —
-   **Then** A's record ends and B's begins in one operation, A reports nothing for that object, and
-   A's out-of-space bucket does not acquire B's number.
+7. **Given** an attribute pool A tracks, **When** a write names pool B with a value or with
+   `value: null`, **Then** A's record ends and B's begins in one operation, A reports nothing for
+   that object, and A's out-of-space bucket does not acquire B's number.
+7a. **Given** an attribute pool A tracks that holds a non-default number, **When** a write names pool
+   B alone, **Then** the save is refused with the same error as scenario 8: restate the value to move
+   it to B, or send `value: null` to allocate from B. *(Revised 2026-10-05.)*
 8. **Given** an object holding a non-default number no pool tracks, **When** `from_pool` is sent
    alone, **Then** the save is refused with an error naming both ways forward: restate the value to
    attach it, or send `value: null` to discard it and allocate.
@@ -195,6 +198,7 @@ pool's in-use count dropped by one, and the number is offered again.
 - Attach onto an attribute that already carries a user-set source → accepted, nothing cleared.
   Common on the brownfield path, where imported objects routinely arrive with a source.
 - Name pool B on an attribute pool A tracks → re-pool: A's record ends, B's begins, one update.
+  Naming B alone over a non-default number is refused, as in FR-024.
 - One record straddles the effective-space boundary — in space on one branch, out of space on
   another → it appears in the utilization fraction and in the bucket at once, told apart by the
   branch on the row.
