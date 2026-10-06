@@ -83,9 +83,7 @@ from tests.helpers.constants import (
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
-from tests.helpers.number_pool import SCOPED_POOL_SCHEMA
 from tests.helpers.prefect_services import prefect_api_target
-from tests.helpers.schema import load_schema
 from tests.helpers.schema_cache import install_processed_core_schema_branch, install_processed_internal_schema_branch
 from tests.helpers.test_client import dummy_async_request
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
@@ -791,14 +789,6 @@ async def car_person_schema(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
-
-
-@pytest.fixture
-async def scoped_pool_schema(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> SchemaBranch:
-    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, branch_name=default_branch.name)
-    return registry.schema.get_schema_branch(name=default_branch.name)
 
 
 @pytest.fixture(scope="class")

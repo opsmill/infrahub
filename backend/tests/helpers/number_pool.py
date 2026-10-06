@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.auth.session import AccountSession
@@ -223,40 +222,3 @@ SCOPED_DEVICE = NodeSchema(
 )
 
 SCOPED_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_TAG, SCOPED_DEVICE])
-
-
-@dataclass(frozen=True)
-class ScopedSite:
-    site: Node
-    devices: list[Node]
-
-
-async def create_sites_with_devices(
-    db: InfrahubDatabase, branch: Branch, sites: int, devices_per_site: int, role: str = "leaf"
-) -> list[ScopedSite]:
-    """Create `site-1..N`, each holding `devices_per_site` devices named `site-<i>-device-<j>` with no number."""
-    created: list[ScopedSite] = []
-    for site_index in range(1, sites + 1):
-        site = await Node.init(db=db, schema=SCOPED_SITE_KIND, branch=branch)
-        await site.new(db=db, name=f"site-{site_index}")
-        await site.save(db=db)
-        devices: list[Node] = []
-        for device_index in range(1, devices_per_site + 1):
-            device = await Node.init(db=db, schema=SCOPED_DEVICE_KIND, branch=branch)
-            await device.new(db=db, name=f"site-{site_index}-device-{device_index}", role=role, site=site)
-            await device.save(db=db)
-            devices.append(device)
-        created.append(ScopedSite(site=site, devices=devices))
-    return created
-
-
-async def create_two_range_pool(db: InfrahubDatabase, name: str = "scoped-pool") -> tuple[CoreNumberPool, list[Node]]:
-    """Create a pool on the device number holding `1 - 50` weighted 10 and `51 - 100` without weight."""
-    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(db=db, name=name, node=SCOPED_DEVICE_KIND, node_attribute=SCOPED_DEVICE_ATTRIBUTE)
-    await pool.save(db=db)
-    ranges = [
-        await add_pool_range(db=db, pool=pool, start=1, end=50, weight=10),
-        await add_pool_range(db=db, pool=pool, start=51, end=100),
-    ]
-    return pool, ranges
