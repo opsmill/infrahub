@@ -294,7 +294,7 @@ class TestNumberPoolUpdate:
                 await asyncio.sleep(0.01)
             await repository.save_range_bounds(pool_range=pool_range, start=12, end=22)
             pool = await load_pool(db=db, pool_id=pool_id)
-            await NumberPoolShorthandMirror(db=db, repository=repository).sync(pool=pool)
+            await NumberPoolShorthandMirror(repository=repository).sync(pool=pool)
         result = await update
 
         assert not result.errors

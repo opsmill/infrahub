@@ -172,7 +172,7 @@ class SchemaNumberPoolSynchronizer:
                 )
                 existing_ranges = await repository.get_ranges(pool_id=pool_id)
 
-            await NumberPoolShorthandMirror(db=dbt, repository=repository).sync(
+            await NumberPoolShorthandMirror(repository=repository).sync(
                 pool=pool_node, ranges=existing_ranges, at=at, user_id=user_id
             )
 

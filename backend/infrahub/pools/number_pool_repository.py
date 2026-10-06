@@ -23,9 +23,13 @@ if TYPE_CHECKING:
 
 
 class NumberPoolRangeStore(Protocol):
-    """Reads and writes the ranges a number pool allocates from."""
+    """Reads and writes the ranges a number pool allocates from, and the shorthand that mirrors them."""
 
     async def get_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[CoreNumberPoolRange]: ...
+
+    async def save_shorthand(
+        self, pool: Node, start: int | None, end: int | None, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None: ...
 
     async def create_range(
         self,
@@ -123,6 +127,14 @@ class NumberPoolRepository(NumberPoolRangeStore):
     ) -> None:
         """Remove a range from its pool."""
         await pool_range.delete(db=self.db, at=at, user_id=user_id)
+
+    async def save_shorthand(
+        self, pool: Node, start: int | None, end: int | None, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
+        """Write the pool's start and end bounds, leaving any other pending change on the node unsaved."""
+        pool.get_attribute("start_range").value = start
+        pool.get_attribute("end_range").value = end
+        await pool.save(db=self.db, at=at, user_id=user_id, fields=["start_range", "end_range"])
 
     async def get_used(self, pool: CoreNumberPool, branch: Branch) -> list[int]:
         """Return the numbers the pool currently accounts for."""

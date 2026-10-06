@@ -47,6 +47,6 @@ async def sync_shorthand(
 ) -> None:
     # Loaded here so the mirror's no-op check compares against the stored shorthand.
     pool = await NodeManager.get_one(db=db, id=pool_id, kind=InfrahubKind.NUMBERPOOL, raise_on_error=True)
-    await NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db)).sync(
+    await NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db)).sync(
         pool=pool, ranges=ranges, user_id=user_id
     )

@@ -198,7 +198,7 @@ class SchemaNumberPoolUpserter:
                 pool_node = await NodeManager.get_one(
                     db=dbt, id=number_pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
                 )
-                await NumberPoolShorthandMirror(db=dbt, repository=repository).sync(
+                await NumberPoolShorthandMirror(repository=repository).sync(
                     pool=pool_node, ranges=ranges, at=at, user_id=user_id
                 )
 

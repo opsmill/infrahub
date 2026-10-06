@@ -69,7 +69,7 @@ async def run_schema_updated_workflow(service: InfrahubServices, branch: Branch)
 
 
 def shorthand_mirror(db: InfrahubDatabase) -> NumberPoolShorthandMirror:
-    return NumberPoolShorthandMirror(db=db, repository=NumberPoolRepository(db=db))
+    return NumberPoolShorthandMirror(repository=NumberPoolRepository(db=db))
 
 
 async def add_pool_range(db: InfrahubDatabase, pool: Node, start: int, end: int) -> Node:
