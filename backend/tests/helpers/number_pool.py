@@ -1,20 +1,27 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
-from infrahub.core.constants import SYSTEM_USER_ID, ComputedAttributeKind, InfrahubKind
+from infrahub.core.constants import (
+    SYSTEM_USER_ID,
+    ComputedAttributeKind,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipDirection,
+)
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
-from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
+from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
-from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.number_pool_space import SchemaAttributeDomains
@@ -138,3 +145,118 @@ def ticket_schema_with_parameters(parameters: NumberAttributeParameters) -> Node
 
 def schema_domains(db: InfrahubDatabase, branch: Branch) -> SchemaAttributeDomains:
     return SchemaAttributeDomains(schema=db.schema, branch=branch)
+
+
+SCOPED_SITE_KIND = "ScopeSite"
+SCOPED_TAG_KIND = "ScopeTag"
+SCOPED_DEVICE_KIND = "ScopeDevice"
+SCOPED_DEVICE_ATTRIBUTE = "number"
+
+SCOPED_SITE = NodeSchema(
+    name="Site",
+    namespace="Scope",
+    label="Site",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+)
+
+SCOPED_TAG = NodeSchema(
+    name="Tag",
+    namespace="Scope",
+    label="Tag",
+    human_friendly_id=["name__value"],
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+)
+
+# The pooled number is not unique: a uniqueness constraint would make every value taken kind-wide and
+# hide whether a pool keeps the same number apart across scopes.
+SCOPED_DEVICE = NodeSchema(
+    name="Device",
+    namespace="Scope",
+    label="Device",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name=SCOPED_DEVICE_ATTRIBUTE, kind="Number", optional=True),
+        AttributeSchema(
+            name="role",
+            kind="Dropdown",
+            optional=False,
+            choices=[DropdownChoice(name="leaf"), DropdownChoice(name="spine")],
+        ),
+        AttributeSchema(name="description", kind="Text", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="site",
+            peer=SCOPED_SITE_KIND,
+            identifier="scope_device__site",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+        RelationshipSchema(
+            name="tags",
+            peer=SCOPED_TAG_KIND,
+            identifier="scope_device__tag",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+        ),
+        RelationshipSchema(
+            name="parent",
+            peer=SCOPED_DEVICE_KIND,
+            identifier="scope_device__parent",
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+            optional=True,
+        ),
+        RelationshipSchema(
+            name="children",
+            peer=SCOPED_DEVICE_KIND,
+            identifier="scope_device__parent",
+            cardinality=RelationshipCardinality.MANY,
+            direction=RelationshipDirection.INBOUND,
+            optional=True,
+        ),
+    ],
+)
+
+SCOPED_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_TAG, SCOPED_DEVICE])
+
+
+@dataclass(frozen=True)
+class ScopedSite:
+    site: Node
+    devices: list[Node]
+
+
+async def create_sites_with_devices(
+    db: InfrahubDatabase, branch: Branch, sites: int, devices_per_site: int, role: str = "leaf"
+) -> list[ScopedSite]:
+    """Create `site-1..N`, each holding `devices_per_site` devices named `site-<i>-device-<j>` with no number."""
+    created: list[ScopedSite] = []
+    for site_index in range(1, sites + 1):
+        site = await Node.init(db=db, schema=SCOPED_SITE_KIND, branch=branch)
+        await site.new(db=db, name=f"site-{site_index}")
+        await site.save(db=db)
+        devices: list[Node] = []
+        for device_index in range(1, devices_per_site + 1):
+            device = await Node.init(db=db, schema=SCOPED_DEVICE_KIND, branch=branch)
+            await device.new(db=db, name=f"site-{site_index}-device-{device_index}", role=role, site=site)
+            await device.save(db=db)
+            devices.append(device)
+        created.append(ScopedSite(site=site, devices=devices))
+    return created
+
+
+async def create_two_range_pool(db: InfrahubDatabase, name: str = "scoped-pool") -> tuple[CoreNumberPool, list[Node]]:
+    """Create a pool on the device number holding `1 - 50` weighted 10 and `51 - 100` without weight."""
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(db=db, name=name, node=SCOPED_DEVICE_KIND, node_attribute=SCOPED_DEVICE_ATTRIBUTE)
+    await pool.save(db=db)
+    ranges = [
+        await add_pool_range(db=db, pool=pool, start=1, end=50, weight=10),
+        await add_pool_range(db=db, pool=pool, start=51, end=100),
+    ]
+    return pool, ranges
