@@ -38,6 +38,15 @@ class BusRecorder(InfrahubMessageBus):
         raise ValueError("BusRecorder.rpc should not be called")
 
 
+class FailingBus(BusRecorder):
+    """A message bus whose every publish fails, as when the broker cannot be reached."""
+
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
+    ) -> None:
+        raise ConnectionError("The message bus cannot be reached")
+
+
 class BusSimulator(InfrahubMessageBus):
     def __init__(self) -> None:
         self.messages: list[InfrahubMessage] = []

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from fast_depends import Provider
 from git import Repo
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreRepository
@@ -38,10 +39,11 @@ from infrahub.git.sync import (
 from infrahub.git.tasks import sync_remote_repositories, sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from infrahub.workers.dependencies import clear_singletons
+from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
-from tests.adapters.message_bus import BusRecorder, BusSimulator
+from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
@@ -743,6 +745,18 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert await is_linked_to_node(prefect_client, state, repository_id) is case.expected_linked
 
 
+@dataclass
+class FailedTrunkCase:
+    name: str
+    broadcast_fails: bool
+
+
+FAILED_TRUNK_CASES = [
+    FailedTrunkCase(name="broadcast_sent", broadcast_fails=False),
+    FailedTrunkCase(name="broadcast_fails", broadcast_fails=True),
+]
+
+
 class TestSynchronisationCycleFailures(TestInfrahubApp):
     """A synchronization cycle in which some branches fail, against a remote whose trunk is `main`."""
 
@@ -820,18 +834,24 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             )
         ]
 
-    async def test_a_failed_default_branch_is_logged_as_an_error_and_recorded_without_being_raised(
+    @pytest.mark.parametrize("case", FAILED_TRUNK_CASES, ids=[case.name for case in FAILED_TRUNK_CASES])
+    async def test_a_failed_default_branch_is_logged_as_an_error_and_recorded(
         self,
+        case: FailedTrunkCase,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initialize_registry: None,
         caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """The trunk fails while it is collected, where no import has recorded anything yet."""
+        """The trunk fails while it is collected, where no import has recorded anything yet.
+
+        The failure is never raised, so only a broadcast that fails can make the synchronization raise.
+        """
         caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
-        name = "failing-trunk-collection-repo"
+        name = f"failing-trunk-collection-repo-{case.name}"
         remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
         repo = await InfrahubRepository.init(
             id=node.id,
@@ -857,7 +877,15 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
                 client=client,
             )
 
-        await _run_sync()
+        if case.broadcast_fails:
+            failing_bus = FailingBus()
+            with (
+                override_dependency(build_message_bus, lambda: failing_bus, dependency_provider=dependency_provider),
+                pytest.raises(ConnectionError, match=r"^The message bus cannot be reached$"),
+            ):
+                await _run_sync()
+        else:
+            await _run_sync()
 
         # The reason is the stderr of git, which names a temporary path.
         prefix = f"Unable to synchronize the default branch main of repository {name} at step collection: "

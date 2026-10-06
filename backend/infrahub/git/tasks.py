@@ -552,21 +552,33 @@ async def sync_repository_from_origin(
         trunk_commit=trunk_commit,
         reconciled=outcome.reconciled,
     )
-    message_bus = await get_message_bus()
-    await message_bus.send(message=message)
+    try:
+        message_bus = await get_message_bus()
+        await message_bus.send(message=message)
+    finally:
+        # A broadcast that fails must not also hide a failed default branch.
+        if failure is not None:
+            await report_failed_branches(repo=repo, failure=failure, infrahub_branch=infrahub_branch)
 
-    if failure is None:
-        return
-    # A failed trunk is loud but never raised, since a raise here would stop every repository after this one.
-    default_branch_failures = outcome.default_branch_failures
+
+async def report_failed_branches(
+    repo: InfrahubRepository, failure: RepositoryBranchesFailedError, infrahub_branch: str
+) -> None:
+    """Log the branches a synchronization failed, and record a failed default branch on the repository.
+
+    A failed default branch is loud but never raised, since a raise would stop every repository after
+    this one.
+    """
+    log = get_run_logger()
+    default_branch_failures = failure.outcome.default_branch_failures
     for failed in default_branch_failures:
         log.error(
             f"Unable to synchronize the default branch {repo.default_branch} of repository "
-            f"{repository.name.value} at step {failed.step.value}: {failed.reason}"
+            f"{repo.name} at step {failed.step.value}: {failed.reason}"
         )
     if default_branch_failures:
         await repo.record_import_failure(infrahub_branch_name=infrahub_branch)
-    if len(default_branch_failures) < len(outcome.failed):
+    if len(default_branch_failures) < len(failure.outcome.failed):
         log.info(failure.message)
 
 

@@ -461,8 +461,9 @@ the tagging flow `sync_git_repo_with_origin_and_tag_on_failure` makes for any fa
 flow links its run to the repository and fails it, as it did before, and this function catches the
 error. A failed configured default branch is then logged at error level and recorded on the
 repository's synchronisation status. The failure of any other branch is logged at info level, as
-it was before. The per-repository `try` added to `sync_remote_repositories` catches whatever else a
-repository raises.
+it was before. The failure is handled even when the send of the message raises, and the send's
+error then propagates. The per-repository `try` added to `sync_remote_repositories` catches whatever
+else a repository raises.
 
 The original wording had this function re-raise the failures of the other branches so that they
 are tagged. The tagging already happens one level down, inside the tagging flow, so a re-raise here
