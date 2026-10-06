@@ -14,16 +14,15 @@ branch. When it is ready for review, you open a Proposed Change, where a reviewe
 the default branch, reads the validation results, discusses it with you, and approves or rejects it.
 Once it is approved, you merge it into the default branch.
 
-This tutorial walks through that workflow end to end. It continues from the Quickstart, where you
-created the `add-locations` branch and added two sites. Here you take that change through review,
-validation, approval and merge.
+In the Quickstart you created the `add-locations` branch and added two sites to it. Here you take
+that change through review, validation, approval and merge.
 
 ## Before you start
 
-The Quickstart leaves you with the `add-locations` branch, two sites on it — Denver DC1 and Paris
-DC1 — and neither of them on `main`. That is the change you take through the rest of the workflow
-here. Any branch with changes that have not been merged works the same way; substitute your own
-branch name wherever `add-locations` appears.
+At the end of the Quickstart you have Denver DC1 and Paris DC1 on `add-locations`, and neither of
+them on `main`. That is the change you take through the rest of the workflow here. Any branch with
+changes that have not been merged works the same way; substitute your own branch name wherever
+`add-locations` appears.
 
 You need an Infrahub instance you can sign in to, and a branch with at least one change on it that
 is not on the default branch. A connected Git repository is not required.
@@ -32,10 +31,10 @@ Step 4 covers the approval. Infrahub does not accept a review from the person wh
 Change, so on a single-user instance that step is optional — you can create a second account to carry
 it out, or read what a reviewer would do and continue to the merge.
 
-## Step 1: Review your change before requesting review
+## Step 1: Review your change
 
-Read the change yourself before asking anyone else to. The diff shows what your branch adds,
-removes and modifies against the default branch, and it is the same view your reviewer opens.
+Read the change yourself first. The diff shows what your branch adds, removes and modifies against
+the default branch, and it is the same view a reviewer opens.
 
 1. Select **Branches** in the left menu.
 2. Select `add-locations`.
