@@ -1,0 +1,254 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+import pytest
+
+from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
+from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL, UNSCOPED_POOL_ID
+from tests.helpers.graphql import graphql
+
+if TYPE_CHECKING:
+    from infrahub.core.branch import Branch
+    from infrahub.core.schema.schema_branch import SchemaBranch
+    from infrahub.database import InfrahubDatabase
+
+SCOPED_POOL_ID = "2a91c0de-0000-4000-8000-000000000001"
+SITE_A, SITE_B, SITE_C = (entries[0].value for entries in SCOPED_POOL.divisions)
+FIRST_RANGE = SCOPED_POOL.ranges[0].id
+
+FIGURES = "size used used_default_branch used_branches utilization utilization_default_branch utilization_branches"
+
+UTILIZATION_QUERY = f"""
+query NumberPoolUtilization($pool_id: String!) {{
+  InfrahubNumberPoolUtilization(pool_id: $pool_id) {{
+    id
+    display_label
+    allocation_scope
+    figures {{ {FIGURES} }}
+    ranges {{ id display_label start end weight figures {{ {FIGURES} }} }}
+    out_of_space_count
+  }}
+}}
+"""
+
+DIVISIONS_QUERY = f"""
+query NumberPoolDivisions($pool_id: String!, $range_id: String) {{
+  InfrahubNumberPoolDivisions(pool_id: $pool_id, range_id: $range_id) {{
+    count
+    allocation_scope
+    divisions {{
+      display_label
+      entries {{ path value display_label peer_kind }}
+      figures {{ {FIGURES} }}
+    }}
+  }}
+}}
+"""
+
+ALLOCATIONS_QUERY = """
+query NumberPoolAllocations(
+  $pool_id: String!
+  $division: [NumberPoolDivisionEntryInput!]
+  $range_id: String
+  $in_space: Boolean
+  $branch: String
+  $provenance: NumberPoolProvenance
+  $offset: Int
+  $limit: Int
+) {
+  InfrahubNumberPoolAllocations(
+    pool_id: $pool_id
+    division: $division
+    range_id: $range_id
+    in_space: $in_space
+    branch: $branch
+    provenance: $provenance
+    offset: $offset
+    limit: $limit
+  ) {
+    count
+    allocations {
+      value
+      branch
+      identifier
+      provenance
+      in_space
+      holder { id hfid kind display_label }
+      range { id display_label }
+      division { path value display_label peer_kind }
+    }
+  }
+}
+"""
+
+
+class TestNumberPoolSurface:
+    @pytest.fixture(scope="class")
+    async def gql_params(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> GraphqlParams:
+        return await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+    @staticmethod
+    async def _execute(gql_params: GraphqlParams, query: str, variables: dict[str, Any]) -> Any:
+        return await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=variables,
+        )
+
+    async def _data(self, gql_params: GraphqlParams, query: str, **variables: Any) -> dict[str, Any]:
+        result = await self._execute(gql_params=gql_params, query=query, variables=variables)
+        assert result.errors is None
+        assert result.data is not None
+        return result.data
+
+    async def _error(self, gql_params: GraphqlParams, query: str, **variables: Any) -> str:
+        result = await self._execute(gql_params=gql_params, query=query, variables=variables)
+        assert result.errors is not None
+        return result.errors[0].message
+
+    async def test_scoped_utilization(self, gql_params: GraphqlParams) -> None:
+        data = await self._data(gql_params, UTILIZATION_QUERY, pool_id=SCOPED_POOL_ID)
+
+        utilization = data["InfrahubNumberPoolUtilization"]
+        assert utilization["id"] == SCOPED_POOL_ID
+        assert utilization["display_label"] == "Device index"
+        assert utilization["allocation_scope"] == ["site"]
+        assert utilization["figures"] == {
+            "size": 100,
+            "used": 40,
+            "used_default_branch": 40,
+            "used_branches": 0,
+            "utilization": 40.0,
+            "utilization_default_branch": 40.0,
+            "utilization_branches": 0.0,
+        }
+        assert [
+            (item["display_label"], item["start"], item["end"], item["weight"], item["figures"]["used"])
+            for item in utilization["ranges"]
+        ] == [("1 - 50", 1, 50, 10, 40), ("51 - 100", 51, 100, 0, 30)]
+        assert utilization["out_of_space_count"] == 1
+
+    async def test_scoped_divisions_restricted_to_one_range(self, gql_params: GraphqlParams) -> None:
+        data = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID, range_id=FIRST_RANGE)
+
+        divisions = data["InfrahubNumberPoolDivisions"]
+        assert divisions["count"] == 3
+        assert divisions["allocation_scope"] == ["site"]
+        assert [
+            (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in divisions["divisions"]
+        ] == [("Site A", 50, 40), ("Site C", 50, 1), ("Site B", 50, 0)]
+        assert divisions["divisions"][0]["entries"] == [
+            {"path": "site", "value": SITE_A, "display_label": "Site A", "peer_kind": "LocationSite"}
+        ]
+
+    async def test_filtered_allocations_count_matches_the_division_figures(self, gql_params: GraphqlParams) -> None:
+        divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
+        site_b = next(
+            item for item in divisions["InfrahubNumberPoolDivisions"]["divisions"] if item["display_label"] == "Site B"
+        )
+
+        data = await self._data(
+            gql_params,
+            ALLOCATIONS_QUERY,
+            pool_id=SCOPED_POOL_ID,
+            division=[{"path": "site", "value": SITE_B}],
+            in_space=True,
+        )
+
+        assert data["InfrahubNumberPoolAllocations"]["count"] == site_b["figures"]["used"] == 30
+
+    async def test_allocations_keep_the_rows_of_a_holder_moved_on_a_branch(self, gql_params: GraphqlParams) -> None:
+        data = await self._data(
+            gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, division=[{"path": "site", "value": SITE_A}], limit=2
+        )
+
+        allocations = data["InfrahubNumberPoolAllocations"]
+        assert allocations["count"] == 41
+        first, second = allocations["allocations"]
+        assert (first["value"], first["branch"], first["holder"]["display_label"]) == (1, "main", "D0")
+        assert first["holder"]["kind"] == "InfraDevice"
+        assert first["range"]["display_label"] == "1 - 50"
+        assert (second["value"], second["branch"], second["holder"]["display_label"]) == (5, "branch1", "D1")
+        assert second["division"][0]["value"] == SITE_C
+
+    async def test_allocations_filter_on_provenance(self, gql_params: GraphqlParams) -> None:
+        data = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, provenance="PROVIDED")
+
+        allocations = data["InfrahubNumberPoolAllocations"]["allocations"]
+        assert [(row["value"], row["provenance"], row["in_space"]) for row in allocations] == [
+            (51, "PROVIDED", True),
+            (500, "PROVIDED", False),
+        ]
+        assert allocations[1]["range"] is None
+
+    async def test_unscoped_dataset(self, gql_params: GraphqlParams) -> None:
+        utilization = await self._data(gql_params, UTILIZATION_QUERY, pool_id=UNSCOPED_POOL_ID)
+        divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=UNSCOPED_POOL_ID)
+        allocations = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=UNSCOPED_POOL_ID, in_space=False)
+
+        pool = utilization["InfrahubNumberPoolUtilization"]
+        assert pool["allocation_scope"] == []
+        assert (pool["figures"]["size"], pool["figures"]["used"], pool["out_of_space_count"]) == (99, 3, 2)
+        assert divisions["InfrahubNumberPoolDivisions"] == {
+            "count": 1,
+            "allocation_scope": [],
+            "divisions": [{"display_label": "", "entries": [], "figures": pool["figures"]}],
+        }
+        rows = allocations["InfrahubNumberPoolAllocations"]["allocations"]
+        assert [(row["value"], row["range"] and row["range"]["display_label"], row["division"]) for row in rows] == [
+            (40, "1 - 50", []),
+            (500, None, []),
+        ]
+
+    @pytest.mark.parametrize(
+        ("query", "variables", "message"),
+        [
+            pytest.param(
+                DIVISIONS_QUERY,
+                {"pool_id": SCOPED_POOL_ID, "range_id": UNSCOPED_POOL.ranges[0].id},
+                f"The selected pool_id={SCOPED_POOL_ID} doesn't contain the requested "
+                f"range_id={UNSCOPED_POOL.ranges[0].id}",
+                id="divisions-unknown-range",
+            ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {"pool_id": UNSCOPED_POOL_ID, "range_id": FIRST_RANGE},
+                f"The selected pool_id={UNSCOPED_POOL_ID} doesn't contain the requested range_id={FIRST_RANGE}",
+                id="allocations-unknown-range",
+            ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
+                "The pool mock-unscoped has no allocation scope in force on branch main; "
+                "the division filter cannot be applied",
+                id="division-on-unscoped-pool",
+            ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {"pool_id": SCOPED_POOL_ID, "division": [{"path": "role", "value": "leaf"}]},
+                "The division entry 'role' is not in the allocation scope in force on branch main",
+                id="path-not-in-scope",
+            ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {
+                    "pool_id": SCOPED_POOL_ID,
+                    "division": [{"path": "site", "value": SITE_A}, {"path": "site", "value": SITE_B}],
+                },
+                "The division entry 'site' is given twice",
+                id="duplicate-path",
+            ),
+        ],
+    )
+    async def test_refusals(
+        self, gql_params: GraphqlParams, query: str, variables: dict[str, Any], message: str
+    ) -> None:
+        assert await self._error(gql_params, query, **variables) == message
