@@ -10,8 +10,9 @@ class BranchCommitPair(BaseModel):
 
     infrahub_branch_name: str = Field(..., description="Infrahub branch whose worktree is reset")
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch, used to create a missing worktree")
+    # A default, because the message body leaves out every field that is None.
     commit: str | None = Field(
-        ..., description="Commit SHA the worktree is reset to, or none to pull the branch instead"
+        default=None, description="Commit SHA the worktree is reset to, or none to pull the branch instead"
     )
 
 

@@ -2,8 +2,10 @@ import re
 from dataclasses import dataclass
 
 import pytest
+import ujson
 from pydantic import ValidationError
 
+from infrahub.message_bus.messages import MESSAGE_MAP
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair, RefreshGitFetch
 
 TRUNK = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit="a" * 40)
@@ -97,3 +99,12 @@ def test_a_branch_list_not_starting_with_the_single_branch_fields_is_rejected(ca
     """A worker that reads only the single-branch fields would converge a branch the list does not start with."""
     with pytest.raises(ValidationError, match=rf"Value error, {re.escape(case.error)} \["):
         build_message(branches=case.branches, commit=case.commit)
+
+
+def test_a_branch_list_survives_the_message_body() -> None:
+    """The body leaves out every field that is None, and a worker rebuilds the message from that body."""
+    message = build_message(branches=(TRUNK_TO_PULL, FEATURE), commit=None)
+
+    received = MESSAGE_MAP["refresh.git.fetch"](**ujson.loads(message.body))
+
+    assert received == message

@@ -190,8 +190,10 @@ In `backend/infrahub/message_bus/messages/refresh_git_fetch.py`. One new optiona
 | `branches` | `tuple[BranchCommitPair, ...] \| None` | new, optional | Every branch this message converges, with the commit each is pinned to. |
 
 `BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`. `commit` is
-required but can be empty, which tells the worker to pull that branch instead of resetting it. The
-periodic cycle sends the trunk that way when it cannot read the trunk's commit.
+optional, and an empty one tells the worker to pull that branch instead of resetting it. The periodic
+cycle sends the trunk that way when it cannot read the trunk's commit. It must have a default: the
+message body leaves out every field that is empty, so a required `commit` fails to parse on the
+worker that receives it.
 
 The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay, and a coalesced
 message still populates them from its first pair. The first two are required, so a message that
