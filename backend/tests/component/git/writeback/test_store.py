@@ -144,6 +144,34 @@ async def test_enqueue_of_a_queued_id_writes_nothing_and_holds_no_regeneration(s
     assert await subject.read() == before
 
 
+async def test_enqueue_after_a_final_failure_sets_pending_and_keeps_the_cause_and_the_error(
+    subject: StoreUnderTest,
+) -> None:
+    first, second = pending_merge("e1"), pending_merge("e2", source_git_branch="feature-2")
+    await _enqueue(subject, first)
+    await subject.store.record_failure(
+        repository_id=subject.repository_id, failure=REFUSED, final=True, retry_due_at=None
+    )
+    assert (await subject.read()).status == RepositoryDeliveryStatus.ACTION_REQUIRED
+    subject.clock.advance(seconds=60)
+
+    async with subject.expect_transition(saved={STATUS, QUEUE, PROGRESS}):
+        returned = await subject.store.enqueue(repository_id=subject.repository_id, entry=second, widen=False)
+
+    expected = WritebackIntent(
+        repository_id=subject.repository_id,
+        status=RepositoryDeliveryStatus.PENDING,
+        cause=RepositoryDeliveryFailureCause.PERMISSION,
+        error="remote: branch main is protected",
+        queue=DeliveryQueue(version=2, entries=(first, second)),
+        held=HeldRegeneration(),
+        progress=DeliveryProgress(last_progress_at=NOW + timedelta(seconds=60)),
+        last_delivered_commit=None,
+    )
+    assert returned == expected
+    assert await subject.read() == expected
+
+
 async def test_start_attempt_clears_the_waiting_retry_and_keeps_the_cause(subject: StoreUnderTest) -> None:
     await _enqueue(subject, pending_merge("e1"))
     await subject.store.record_failure(

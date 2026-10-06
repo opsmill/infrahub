@@ -25,6 +25,7 @@ from infrahub.git.writeback.models import (
 NOW = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
 LEASE_DURATION = timedelta(minutes=15)
 COMMIT = "0123456789abcdef0123456789abcdef01234567"
+DELIVERED_COMMIT = "89abcdef0123456789abcdef0123456789abcdef"
 
 
 def _entry(entry_id: str, source_git_branch: str = "feature") -> PendingMerge:
@@ -50,6 +51,15 @@ def _hold_artifacts(held: HeldRegeneration, *ids: str) -> HeldRegeneration:
     updated, _ = held.with_hold(
         held=HeldRegeneration(artifact_definitions=tuple(HeldItem(id=item_id, hold_seq=0) for item_id in ids))
     )
+    return updated
+
+
+def _widen(hold_seq: int) -> HeldWiden:
+    return HeldWiden(scope="all", reason=FullRegenerationReason.UNHELD_FOLLOW_UP, hold_seq=hold_seq)
+
+
+def _hold_widen(held: HeldRegeneration) -> HeldRegeneration:
+    updated, _ = held.with_hold(held=HeldRegeneration(widen=_widen(hold_seq=0)))
     return updated
 
 
@@ -318,12 +328,64 @@ def test_late_clear_of_an_expired_lease_removes_only_what_it_still_names() -> No
     assert held.without_window(lease_id="E", now=NOW) == held
 
 
+def test_clear_removes_the_widen_marker_and_every_kind_of_item_that_the_lease_names() -> None:
+    held, _ = HeldRegeneration().with_hold(
+        held=HeldRegeneration(
+            generator_definitions=(HeldItem(id="g1", hold_seq=0),),
+            python_attributes=(HeldPythonAttribute(kind="InfraDevice", attribute="description", hold_seq=0),),
+            widen=_widen(hold_seq=0),
+        )
+    )
+    held, lease = _take_lease(held, "L", NOW)
+
+    cleared = held.without_window(lease_id="L", now=NOW)
+
+    assert lease.window == HeldRegeneration(
+        generator_definitions=(HeldItem(id="g1", hold_seq=1),),
+        python_attributes=(HeldPythonAttribute(kind="InfraDevice", attribute="description", hold_seq=1),),
+        widen=_widen(hold_seq=1),
+    )
+    assert cleared == HeldRegeneration(next_hold_seq=2)
+
+
+def test_widen_held_again_after_the_lease_survives_its_clear_and_goes_to_the_next_lease() -> None:
+    held = _hold_widen(HeldRegeneration())
+    held, lease = _take_lease(held, "L", NOW)
+    held = _hold_widen(held)
+
+    held = held.without_window(lease_id="L", now=NOW)
+    _, next_lease = _take_lease(held, "M", NOW)
+
+    assert lease.widen == _widen(hold_seq=1)
+    assert held.widen == _widen(hold_seq=2)
+    assert held.release_leases == ()
+    assert next_lease.window == HeldRegeneration(widen=_widen(hold_seq=2))
+
+
+def test_widen_of_an_expired_lease_moves_to_the_new_lease_and_the_emptied_lease_is_removed() -> None:
+    held = _hold_widen(HeldRegeneration())
+    held = _hold_artifacts(held, "a1")
+    held, _ = _take_lease(held, "E", NOW)
+    held = held.with_lease_expiry(lease_id="E", expires_at=NOW)
+
+    held, lease_n = _take_lease(held, "N", NOW, max_hold_seq=1)
+
+    assert lease_n.window == HeldRegeneration(widen=_widen(hold_seq=1))
+    assert _lease("E", held).window == HeldRegeneration(artifact_definitions=_artifacts(("a1", 2)))
+
+    held, lease_m = _take_lease(held, "M", NOW)
+
+    assert lease_m.window == HeldRegeneration(artifact_definitions=_artifacts(("a1", 2)))
+    assert [lease.lease_id for lease in held.release_leases] == ["N", "M"]
+
+
 def _intent(
     *,
     status: RepositoryDeliveryStatus = RepositoryDeliveryStatus.PENDING,
     queue: DeliveryQueue | None = None,
     held: HeldRegeneration | None = None,
     progress: DeliveryProgress | None = None,
+    last_delivered_commit: str | None = None,
 ) -> WritebackIntent:
     return WritebackIntent(
         repository_id="repository-1",
@@ -333,7 +395,20 @@ def _intent(
         queue=queue if queue is not None else _queued(_entry("e1")),
         held=held if held is not None else HeldRegeneration(),
         progress=progress if progress is not None else DeliveryProgress(),
-        last_delivered_commit=None,
+        last_delivered_commit=last_delivered_commit,
+    )
+
+
+def test_settle_without_a_delivered_commit_keeps_the_last_delivered_commit() -> None:
+    intent = _intent(last_delivered_commit=DELIVERED_COMMIT)
+
+    settled, lease = intent.with_delivery_settled(snapshot=intent, delivered_commit=None, lease_id="L", now=NOW)
+
+    assert lease is None
+    assert settled == _intent(
+        status=RepositoryDeliveryStatus.NONE,
+        queue=DeliveryQueue(version=2, removed_entry_ids=("e1",)),
+        last_delivered_commit=DELIVERED_COMMIT,
     )
 
 
@@ -481,23 +556,27 @@ def test_has_work(test_case: HasWorkTestCase) -> None:
     assert intent.has_work(now=NOW) is test_case.expected
 
 
-@pytest.mark.parametrize(
-    "source_commit",
-    [
-        pytest.param("0123456", id="abbreviated"),
-        pytest.param(COMMIT + "8", id="too_long"),
-        pytest.param(COMMIT.upper(), id="upper_case"),
-        pytest.param("g" * 40, id="not_hexadecimal"),
-    ],
-)
-def test_source_commit_must_be_a_full_sha(source_commit: str) -> None:
-    with pytest.raises(
-        ValidationError, match=r"\nsource_commit\n  String should match pattern '\^\[0-9a-f\]\{40\}\$' "
-    ):
+@dataclass
+class InvalidSourceCommitTestCase:
+    name: str
+    source_commit: str
+
+
+INVALID_SOURCE_COMMIT_TEST_CASES: list[InvalidSourceCommitTestCase] = [
+    InvalidSourceCommitTestCase(name="abbreviated", source_commit="0123456"),
+    InvalidSourceCommitTestCase(name="too_long", source_commit=COMMIT + "8"),
+    InvalidSourceCommitTestCase(name="upper_case", source_commit=COMMIT.upper()),
+    InvalidSourceCommitTestCase(name="not_hexadecimal", source_commit="g" * 40),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in INVALID_SOURCE_COMMIT_TEST_CASES])
+def test_source_commit_must_be_a_full_lower_case_sha(test_case: InvalidSourceCommitTestCase) -> None:
+    with pytest.raises(ValidationError, match=r"\nsource_commit\n.*'\^\[0-9a-f\]\{40\}\$'"):
         PendingMerge(
             entry_id="e1",
             source_branch="feature",
             source_git_branch="feature",
-            source_commit=source_commit,
+            source_commit=test_case.source_commit,
             merged_at=NOW,
         )
