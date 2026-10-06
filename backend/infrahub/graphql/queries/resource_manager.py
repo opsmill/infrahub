@@ -36,6 +36,16 @@ if TYPE_CHECKING:
     from infrahub.pools.number_ranges import NumberDomain
 
 
+NUMBER_POOL_UTILIZATION_NOTE = (
+    "For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; "
+    "number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead."
+)
+NUMBER_POOL_ALLOCATED_NOTE = (
+    "For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and "
+    "display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead."
+)
+
+
 class IPPoolUtilizationResource(ObjectType):
     id = Field(String, required=True, description="The ID of the current resource")
     display_label = Field(String, required=True, description="The common name of the resource")
@@ -55,6 +65,9 @@ class IPPrefixUtilizationEdge(ObjectType):
 
 
 class PoolAllocatedNode(ObjectType):
+    class Meta:
+        description = NUMBER_POOL_ALLOCATED_NOTE
+
     id = Field(String, required=True, description="The ID of the allocated node")
     display_label = Field(String, required=True, description="The common name of the resource")
     kind = Field(String, required=True, description="The node kind")
@@ -82,6 +95,9 @@ def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
 
 
 class PoolAllocated(ObjectType):
+    class Meta:
+        description = NUMBER_POOL_ALLOCATED_NOTE
+
     count = Field(BigInt, required=True, description="The number of allocations within the selected pool.")
     edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
@@ -187,6 +203,9 @@ class PoolAllocated(ObjectType):
 
 
 class PoolUtilization(ObjectType):
+    class Meta:
+        description = NUMBER_POOL_UTILIZATION_NOTE
+
     count = Field(BigInt, required=True, description="The number of resources within the selected pool.")
     utilization = Field(Float, required=True, description="The overall utilization of the pool.")
     utilization_branches = Field(Float, required=True, description="The utilization in all non default branches.")
@@ -409,9 +428,14 @@ InfrahubResourcePoolAllocated = Field(
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
+    description=NUMBER_POOL_ALLOCATED_NOTE,
 )
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve, required=True
+    PoolUtilization,
+    pool_id=String(required=True),
+    resolver=PoolUtilization.resolve,
+    required=True,
+    description=NUMBER_POOL_UTILIZATION_NOTE,
 )

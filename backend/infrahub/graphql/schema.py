@@ -46,6 +46,9 @@ from .queries import (
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubNumberPoolAllocations,
+    InfrahubNumberPoolDivisions,
+    InfrahubNumberPoolUtilization,
     InfrahubPathTraversal,
     InfrahubReachableNodes,
     InfrahubResourcePoolAllocated,
@@ -106,6 +109,9 @@ class InfrahubBaseQuery(ObjectType):
     InfrahubIPPrefixGetNextAvailable = InfrahubIPPrefixGetNextAvailable
     InfrahubResourcePoolAllocated = InfrahubResourcePoolAllocated
     InfrahubResourcePoolUtilization = InfrahubResourcePoolUtilization
+    InfrahubNumberPoolUtilization = InfrahubNumberPoolUtilization
+    InfrahubNumberPoolDivisions = InfrahubNumberPoolDivisions
+    InfrahubNumberPoolAllocations = InfrahubNumberPoolAllocations
 
     FieldsMappingTypeConversion = FieldsMappingTypeConversion
 
