@@ -58,7 +58,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 ### D3. Effective-space calculator, pure Python
 
-**Decision**: new module `backend/infrahub/pools/number_ranges.py` with frozen dataclasses `PoolRange(start, end, weight, id)` and `EffectiveSegment(start, end, range_id)` and a class `EffectiveSpace` built from ranges plus the attribute's `NumberAttributeParameters`. It exposes `segments` in allocation order (weight desc, start asc; a range clipped to nothing yields no segment), `size`, `contains(value)`, `range_for(value)`, and `segments_of(range_id)`. Excluded singles and excluded ranges split the clipped ranges into segments, so a segment never contains a statically excluded value. Weight `None` counts as 0.
+**Decision**: new module `backend/infrahub/pools/number_ranges.py` with frozen dataclasses `NumberSpan(start, end)`, which refuses an end lower than its start, `PoolRange(start, end, weight, id)` and `EffectiveSegment(start, end, range_id)`, both spans, a frozen `NumberDomain(lower, upper, exclusions)`, and a class `EffectiveSpace` holding the ranges and that domain, whose constructor does no computation. `backend/infrahub/pools/number_pool_space.py` builds the `NumberDomain` from the attribute's `NumberAttributeParameters` and turns the stored range nodes into `PoolRange` lists; the callers build the space from the two. The space exposes `segments` in allocation order (weight desc, start asc, end asc; a range clipped to nothing yields no segment), `size`, `contains(value)`, `range_for(value)`, `segments_of(range_id)` and `size_of(range_id)`. Excluded singles and excluded ranges split the clipped ranges into segments, so a segment never contains a statically excluded value. A stored weight of `None` counts as 0 when that module builds the `PoolRange`. The repository only reads and writes the database.
 
 **Rationale**: PRD principle "one arithmetic". Size, utilization, allocation order and fullness read the same object. The `ZeroDivisionError` disappears because size is a sum of segment sizes and callers guard `size == 0`.
 
@@ -66,7 +66,7 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 ### D4. Allocation walks segments with the existing single-span gap query
 
-**Decision**: `CoreNumberPool.get_next` builds the `EffectiveSpace`, loads hand-set values once over the whole segment list when the attribute is unique (`NumberPoolGetTaken` with a `$ranges` parameter), then for each segment in order runs `NumberPoolGetFree(min_value=cursor, max_value=segment.end)`; a candidate that is hand-set advances the cursor and re-queries; a segment with no free value falls through to the next; no segment left raises `PoolExhaustedError`. `NumberPoolGetFree` keeps its contiguous-span arithmetic, with both bounds required.
+**Decision**: an allocator component, `NumberPoolAllocator` in `backend/infrahub/pools/number_pool_allocator.py`, builds the `EffectiveSpace` from the ranges the repository reads and the attribute, raises `PoolExhaustedError` on an empty space before any lookup, loads hand-set values once over the whole segment list when the attribute is unique (`NumberPoolGetTaken` with a `$ranges` parameter), then for each segment in order runs `NumberPoolGetFree(min_value=cursor, max_value=segment.end)`; a candidate that is hand-set advances the cursor and re-queries; a segment with no free value falls through to the next; no segment left raises `PoolExhaustedError`. The error names the pool and tells an empty space apart from a drained one. `CoreNumberPool.get_resource` builds the repository and the allocator per call and delegates the walk to it; the pool node has no other allocation method. `NumberPoolGetFree` keeps its contiguous-span arithmetic, with both bounds required.
 
 **Rationale**: gap detection stays in Cypher; a fully allocated heavy range costs one query returning no free value before fall-through; the number of segments is small. No new discontinuous gap arithmetic in Cypher. A hand-set value hit inside a segment costs one re-query, as today; the benchmark records it.
 
@@ -74,13 +74,13 @@ Code references are `module::Symbol` against branch `feature-number-pools-1.12` 
 
 ### D5. Read queries take a range list
 
-**Decision**: `NumberPoolGetUsed`, `NumberPoolGetAllocated`, `NumberPoolGetTaken` replace `$start_range` / `$end_range` with `$ranges: list[list[int]]` and filter `any(r IN $ranges WHERE v >= r[0] AND v <= r[1])`. Callers pass the effective segments. Callers short-circuit on an empty list and never run the query.
+**Decision**: `NumberPoolGetUsed`, `NumberPoolGetAllocated`, `NumberPoolGetTaken` replace `$start_range` / `$end_range` with `$ranges: list[list[int]]`. `NumberPoolGetUsed` and `NumberPoolGetAllocated` filter `any(r IN $ranges WHERE v >= r[0] AND v <= r[1])`. `NumberPoolGetTaken` unwinds `$ranges` and matches one plain range predicate per range, so the planner seeks the value index instead of scanning every attribute of that name; the `any()` form is kept only on the values the per-branch resolution returns. Callers pass the effective segments. Callers short-circuit on an empty list and never run the query.
 
 **Rationale**: records outside every segment become invisible without any write (FR-003); re-adding a covering range makes them visible again.
 
 ### D6. Utilization per range, zero-size guard
 
-**Decision**: `NumberUtilizationGetter` takes the `EffectiveSpace`; `total_pool_size = space.size`; every ratio returns `0.0` when size is 0; used values are grouped by `range_for(value)`. `resolve_number_pool_utilization` returns one edge per range (`kind: CoreNumberPoolRange`, `display_label: "<start>-<end>"`, `weight: allocation_weight or 0`, per-range ratios) and pool totals; `count` is the number of ranges. `get_attribute_nb_excluded_values` is deleted.
+**Decision**: `NumberUtilizationGetter` takes the `EffectiveSpace` and reports `UtilizationFigures` for the pool (size `space.size`) and for each range (size `space.size_of(range_id)`); every ratio returns `0.0` when size is 0; used values are grouped by `range_for(value)`. `resolve_number_pool_utilization` returns one edge per range (`kind: CoreNumberPoolRange`, `display_label: "<start>-<end>"`, `weight: allocation_weight or 0`, per-range ratios) and pool totals; `count` is the number of ranges. `get_attribute_nb_excluded_values` is deleted.
 
 **Rationale**: matches the IP pool shape that the frontend already renders, and gives the deferred frontend what it needs without a second contract change.
 
@@ -136,13 +136,13 @@ The schema-load flow does not read `CONSTRAINT_VALIDATOR_MAP`: `schema_path_vali
 
 ### D15. Tie-breaking and weight semantics
 
-**Decision**: order by `(-weight, start)`. Weight `None` is 0. Within a segment, lowest free first. Fall-through is automatic from the ordered segment list.
+**Decision**: order by `(-weight, start, end)`. Weight `None` is 0. Within a segment, lowest free first. Fall-through is automatic from the ordered segment list.
 
 **Rationale**: FR-004. IP pools keep their dict-order ties; a shared helper is not extracted because the IP pool order is a different data shape and the constitution asks for two callers before extraction.
 
 ### D16. Benchmark
 
-**Decision**: `backend/tests/query_benchmark/test_number_pool_allocation.py` builds a 4094-number pool split into four ranges, allocates it fully, then benchmarks one `get_next` call (exhausted heaviest range, fall-through) and prints `EXPLAIN` of `NumberPoolGetFree` on the last segment. Recorded, not gated.
+**Decision**: `backend/tests/query_benchmark/test_number_pool_allocation.py` builds a 4094-number pool split into four ranges, allocates it fully, then benchmarks one allocator call (exhausted heaviest range, fall-through) and prints `EXPLAIN` of `NumberPoolGetFree` on the last segment. Recorded, not gated.
 
 ## Resolved unknowns
 

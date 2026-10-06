@@ -73,15 +73,17 @@ backend/infrahub/
 │   ├── schema/attribute_parameters.py            # NumberPoolParameters.ranges, effective_ranges()
 │   ├── schema/__init__.py                        # gather_warnings: shorthand deprecation warning
 │   ├── schema/schema_branch.py                   # process_deprecations log scope
-│   ├── node/resource_manager/number_pool.py      # get_next over segments
+│   ├── node/resource_manager/number_pool.py      # get_resource delegates to the allocator
 │   ├── query/resource_manager.py                 # $ranges on used/allocated/taken
 │   ├── validators/enum.py, validators/__init__.py# ranges constraint identifier + registration
 │   ├── validators/attribute/number_pool.py       # checker over a range set
 │   ├── migrations/graph/m080_number_pool_ranges/ # bootstrap kind + one range per pool
 │   └── graph/__init__.py                         # GRAPH_VERSION = 80
 ├── pools/
+│   ├── number_pool_allocator.py                  # walks the space's segments for the next number (new)
 │   ├── number_pool_repository.py                 # ranges, used/free/taken, reservations (new)
 │   ├── number_pool_shorthand.py                  # shorthand mirror (new)
+│   ├── number_pool_space.py                      # range nodes to PoolRange lists, attribute schema to NumberDomain (new)
 │   ├── number_ranges.py                          # EffectiveSpace calculator (new)
 │   ├── number.py                                 # NumberUtilizationGetter over the space
 │   ├── schema_number_pool_upserter.py            # materialise ranges
@@ -137,7 +139,7 @@ One `gh stack` of six pull requests, merged bottom to top. Each is green and coh
 | 2 | Migration m080 (one range per pool, kind bootstrap), `GRAPH_VERSION`, shorthand mirror helper | 1 | none |
 | 3 | Pool mutation shorthand rules by range count, range mutation class, pool lock, overlap refusals | 2 | Refusal messages final |
 | 4 | `parameters.ranges`, `effective_ranges()`, constraint identifier and checker, upserter, synchronizer, guards on both surfaces, deprecation warnings, SDK contract (separate SDK PR first), openapi / REST types / docs snippet | 3 | REST types and schema parameters |
-| 5 | Calculator, range-list queries, `get_next` over segments, utilization getter, exact per-range figures, multi-range allocation through GraphQL, the schema and a functional test | 4 | Figures become exact |
+| 5 | Calculator, range-list queries, allocator over segments, utilization getter, exact per-range figures, multi-range allocation through GraphQL, the schema and a functional test | 4 | Figures become exact |
 | 6 | Frontend guard, `process_deprecations` log scope, docs, benchmark, changelog fragments, pre-CI on the stack | 5 | Attribute display renders ranges |
 
 Allocation over ranges (PR 5) reads range nodes only, so it lands after every surface that creates a pool writes its ranges: the migration (PR 2), the pool mutations (PR 3) and the schema pool upserter and synchronizer (PR 4). Until PR 5, allocation reads the shorthand, so a pool holding zero or several ranges, whose mirrored shorthand is empty, hands out no number. PR 1 exposes the generated range mutations without the schema-pool guard until PR 4.
