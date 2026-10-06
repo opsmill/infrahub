@@ -9,7 +9,6 @@ from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
 from git.exc import BadName, GitCommandError
-from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreReadOnlyRepository
 from prefect import task
@@ -34,7 +33,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
-from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN
+from infrahub.git.divergence.gateway import readable_commit
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error
@@ -49,23 +48,10 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
+    from infrahub.git.divergence.protocols import GraphCommitReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 
 log = get_run_logger()
-
-REPOSITORY_COMMIT_QUERY = """
-query RepositoryCommit($repository_id: ID!) {
-    CoreGenericRepository(ids: [$repository_id]) {
-        edges {
-            node {
-                commit {
-                    value
-                }
-            }
-        }
-    }
-}
-"""
 
 
 def _describe_push_rejection(summary: str) -> str:
@@ -489,7 +475,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """
         commits: dict[str, str | None] = {}
         for branch_name, commit in graph_commits.items():
-            readable = commit if commit and COMMIT_SHA_PATTERN.fullmatch(commit) else None
+            readable = readable_commit(commit)
             if commit and readable is None:
                 log.debug(
                     "Reading the commit %r of branch %s of repository %s as none: it is not a commit id",
@@ -926,7 +912,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return True
 
-    async def prepare_branches_for_merge(self, source_branch: str, dest_branch: str) -> None:
+    async def prepare_branches_for_merge(
+        self, source_branch: str, dest_branch: str, graph_commits: GraphCommitReader
+    ) -> None:
         """Reset a merge branch that diverged from its remote head when the graph records that head, or refuse the merge.
 
         A branch that is the remote head, or an ancestor of it, is left as it is. The merge reads the
@@ -961,7 +949,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 or self._leads_to_remote_head(local_head=local_head, remote_head=remote_head)
             ):
                 continue
-            graph_commit = await self._get_graph_commit(infrahub_branch_name=branch_name)
+            graph_commit = await graph_commits.get_commit(repository_id=str(self.id), infrahub_branch_name=branch_name)
             if graph_commit != remote_head:
                 raise RepositoryDivergentHistoryError(
                     identifier=self.name,
@@ -996,27 +984,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self.get_git_repo_main().git.branch("--force", branch_name, commit)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc, branch_name=branch_name)
-
-    async def _get_graph_commit(self, infrahub_branch_name: str) -> str | None:
-        try:
-            response = await self.sdk.execute_graphql(
-                query=REPOSITORY_COMMIT_QUERY,
-                variables={"repository_id": str(self.id)},
-                branch_name=infrahub_branch_name,
-                tracker="query-repository-commit",
-            )
-        except SdkError as exc:
-            raise RepositoryError(
-                identifier=self.name,
-                message=f"Unable to read the commit of repository {self.name} on branch {infrahub_branch_name}: {exc}",
-            ) from exc
-        edges = response["CoreGenericRepository"]["edges"]
-        if not edges:
-            raise RepositoryError(
-                identifier=self.name,
-                message=f"Infrahub holds no repository {self.name} on branch {infrahub_branch_name}",
-            )
-        return edges[0]["node"]["commit"]["value"] or None
 
     async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> str | Literal[False]:
         """Merge the source branch into the destination branch.

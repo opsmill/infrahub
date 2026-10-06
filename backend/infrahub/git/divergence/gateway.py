@@ -36,6 +36,11 @@ NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
 
 
+def readable_commit(commit: str | None) -> str | None:
+    """Return a commit the graph records, or None when the value is empty or not a full commit id."""
+    return commit if commit and COMMIT_SHA_PATTERN.fullmatch(commit) else None
+
+
 class GitAncestryGateway:
     def __init__(self, repository_name: str, repo: Repo) -> None:
         self.repository_name = repository_name
