@@ -48,14 +48,14 @@ class InMemoryNumberPoolFinder:
 @dataclass
 class PoolCall:
     action: str
-    pool_id: str
+    pool_id: str | None
     node_id: str
     attribute_name: str
 
 
 @dataclass
 class RecordingNumberAllocator:
-    """Records each allocation and attachment in order, and hands out a fixed number unless set to be exhausted."""
+    """Records each allocation, attachment and release in order, and hands out a fixed number unless set to be exhausted."""
 
     number: int = 42
     exhausted: bool = False
@@ -72,6 +72,11 @@ class RecordingNumberAllocator:
     async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
         self.calls.append(
             PoolCall(action="attach", pool_id=pool.get_id(), node_id=node.get_id(), attribute_name=attribute.name)
+        )
+
+    async def release(self, attribute: BaseAttribute) -> None:
+        self.calls.append(
+            PoolCall(action="release", pool_id=None, node_id=attribute.node.get_id(), attribute_name=attribute.name)
         )
 
 
@@ -224,6 +229,34 @@ async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
     assert allocator.calls == [
         PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
     ]
+
+
+async def test_a_null_pool_on_a_tracked_number_releases_it_and_keeps_the_number(
+    applier: AttributePoolApplier, finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocator
+) -> None:
+    finder.tracking_pool_ids[ATTRIBUTE_ID] = POOL_ID
+    ticket_id = _ticket_id(payload={"from_pool": None}, saved=True)
+    ticket_id.value = 3
+    ticket_id.is_default = False
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+
+    assert ticket_id.value == 3
+    assert ticket_id.from_pool is None
+    assert allocator.calls == [PoolCall(action="release", pool_id=None, node_id=NODE_ID, attribute_name="ticket_id")]
+
+
+async def test_a_null_pool_on_a_number_no_pool_tracks_writes_nothing(
+    applier: AttributePoolApplier, allocator: RecordingNumberAllocator
+) -> None:
+    ticket_id = _ticket_id(payload={"from_pool": None}, saved=True)
+    ticket_id.value = 3
+    ticket_id.is_default = False
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+
+    assert ticket_id.value == 3
+    assert allocator.calls == []
 
 
 async def test_naming_another_pool_alone_over_a_held_number_is_refused(
