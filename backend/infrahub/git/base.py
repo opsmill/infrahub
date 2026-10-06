@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import re
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -65,6 +66,10 @@ GIT_TLS_VERIFICATION_ERRORS = (
     "server verification failed",
     "certificate subject name",
 )
+
+# Git's own line for an HTTP 404, "fatal: repository '<url>' not found"; the quoted URL in the pattern keeps
+# any other "not found" text from matching.
+GIT_HTTP_REPOSITORY_NOT_FOUND = re.compile(r"repository '[^']+' not found")
 
 
 def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
@@ -1143,7 +1148,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "RPC failed; HTTP 5xx" (git remote-curl.c); "does not appear to be a git";
             and "process killed because it timed out", which GitPython reports when its
             ``kill_after_timeout`` stops a fetch or a push.
-          - not found: "Repository not found".
+          - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
+            line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
+            For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
+            ``fatal:``, so there only Git's own line can match.
           - TLS: the fragments in ``GIT_TLS_VERIFICATION_ERRORS``, one per family of wordings
             libcurl emits for a certificate it will not accept ("SSL certificate" for OpenSSL and for
             GnuTLS from curl 8.15, "certificate verification failed" for GnuTLS up to curl 8.9,
@@ -1169,7 +1177,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             RepositoryError: For any other git failure, including the generic fallthrough.
 
         """
-        if "Repository not found" in error.stderr:
+        if "Repository not found" in error.stderr or GIT_HTTP_REPOSITORY_NOT_FOUND.search(error.stderr):
             raise RepositoryNotFoundError(identifier=name) from error
 
         if any(

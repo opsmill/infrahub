@@ -97,6 +97,13 @@ ENRICHMENT_CASES = [
         message=CONNECTION_HINT,
     ),
     EnrichmentCase(
+        # Git's own line for an HTTP 404, the only one a fetch or a push keeps, since the host's line starts with "remote:".
+        name="repository_not_found_http_404",
+        stderr="fatal: repository 'http://127.0.0.1:18765/missing.git/' not found",
+        expected=RepositoryNotFoundError,
+        message=CONNECTION_HINT,
+    ),
+    EnrichmentCase(
         name="local_path_that_is_not_a_repository",
         stderr="fatal: '/srv/git/net-repo' does not appear to be a git repository\n"
         "fatal: Could not read from remote repository.",
