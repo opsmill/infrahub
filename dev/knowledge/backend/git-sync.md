@@ -132,21 +132,22 @@ read-only flows through `import_objects_from_files`.
 - **Expected and unrecognised failures.** `describe_import_error` is the single function that maps an
   exception to a readable message. A failure it recognises is logged at error level without a
   traceback. A failure it does not recognise is logged once with its traceback, which is the signal
-  that the function needs a new entry. Both become `RepositoryImportError`. The entry carries
-  `repository`, `branch`, `step` (`import`) and `reason` as log record fields for log shippers and
-  alert rules; `raise_if_branches_failed` logs its warning with the same fields only for branches
-  that failed before the import (step `collection`), so each failure appears once in the task log. To make a new error type
-  expected, add a `case` to that function and nothing else. The SDK `Error` base class is
+  that the function needs a new entry. Both become `RepositoryImportError`. To make a new error
+  type expected, add a `case` to that function and nothing else. The SDK `Error` base class is
   deliberately not mapped, because it also covers connection errors.
+- **One log entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
+  and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
+  logs its warning with the same fields only for branches that failed before the import (step
+  `collection`), so each failure appears once in the task log.
 - **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
   loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
-  `import_entry(label)`. Schema files are the exception: their validation errors already name the
-  file, so a label would repeat it. That context manager adds the entry's name and file as an exception note,
+  `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
   and the message is prefixed with the notes, for example
   `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
-  The loops that import Python modules (checks, Python transforms, generators) also pass the worktree
-  directory, so a syntax error names its file relative to the repository root. The file can be a
-  helper module, not the entry's own file.
+  Schema files have no label, because their validation errors already name the file. The build
+  loops that import Python modules (checks, Python transforms, generators) also pass the worktree
+  directory to `import_entry`, so a syntax error names its file relative to the repository root.
+  The file can be a helper module, not the entry's own file.
   Do not log inside an import step and then re-raise: the boundary logs, and a second entry
   duplicates the failure.
 - **No Prefect traceback.** The import steps are plain methods, not `@task`s. An exception leaving a
@@ -161,10 +162,12 @@ read-only flows through `import_objects_from_files`.
   repository lock and returns any failure instead of raising it, including one raised outside the
   boundary such as a lock error, which it logs once with its traceback. Only
   `RepositoryConnectionError` and `RepositoryCredentialsError` are re-raised, so only the branch
-  being imported is set to `ERROR_IMPORT`: recording them on every remaining branch would leave those
-  statuses in place until a new commit or a manual re-import. `RepositorySyncer.sync` records a failed branch and continues with the next one.
-  `RepositoryAdder.add` returns a failed default-branch import, so `add_git_repository` still syncs
-  the other branches and sends `RefreshGitFetch` before it fails with that error.
+  being imported is set to `ERROR_IMPORT`: recording them on every remaining branch would leave
+  those statuses in place until a new commit or a manual re-import. `RepositorySyncer.sync` records
+  a failed branch and continues with the next one. `RepositoryAdder.add` returns a failed
+  default-branch import. For an active repository, `add_git_repository` still syncs the other
+  branches and sends `RefreshGitFetch` before it fails with that error; for a repository that is
+  not active, it syncs no other branch and fails with that error at once.
   `bootstrap_local_repository` returns the repository when the default-branch import fails, so the
   scheduled sync continues with its other branches; it returns `None` when the clone fails or when
   that import raises a connection or credential error.
