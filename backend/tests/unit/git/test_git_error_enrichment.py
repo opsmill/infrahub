@@ -335,8 +335,10 @@ def test_operational_status_for_a_repository_error(case: StatusCase) -> None:
     assert operational_status_for_error(error=case.error) == case.expected
 
 
-def failing_remote_location(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stderr: str) -> str:
-    """Return a remote location whose Git transport prints ``stderr`` and fails.
+def failing_remote_location(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stderr: str, delay_seconds: int = 0
+) -> str:
+    """Return a remote location whose Git transport waits ``delay_seconds``, prints ``stderr`` and fails.
 
     Git runs ``git-remote-<transport>`` for a ``<transport>::<address>`` location and passes its stderr
     through, as it does for the HTTPS helper whose messages a real remote failure produces.
@@ -344,7 +346,7 @@ def failing_remote_location(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, std
     helper_directory = tmp_path / "remote-helper"
     helper_directory.mkdir()
     helper = helper_directory / "git-remote-failing"
-    helper.write_text(f"#!/bin/sh\ncat >&2 <<'EOF'\n{stderr}\nEOF\nexit 128\n", encoding="utf-8")
+    helper.write_text(f"#!/bin/sh\nsleep {delay_seconds}\ncat >&2 <<'EOF'\n{stderr}\nEOF\nexit 128\n", encoding="utf-8")
     helper.chmod(0o755)
     monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
     # Allow the helper's transport whatever protocol policy the host's Git configuration sets.
@@ -364,11 +366,42 @@ class StatusRecordingClient(InfrahubClient):
         return {}
 
 
-async def test_fetch_refused_for_its_certificate_records_the_connection_status(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@dataclass
+class FetchConnectionFailureCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryConnectionError]
+    message: str
+    delay_seconds: int = 0
+    """How long the remote waits before it fails."""
+    timeout_seconds: float | None = None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        FetchConnectionFailureCase(
+            name="certificate_not_accepted", stderr=TLS_STDERR, expected=RepositoryTLSError, message=TLS_HINT
+        ),
+        FetchConnectionFailureCase(
+            # GitPython reports the fetch as killed only once Git ends, so the remote fails soon after the timeout.
+            name="past_its_timeout",
+            stderr="",
+            expected=RepositoryConnectionError,
+            message=CONNECTION_HINT,
+            delay_seconds=3,
+            timeout_seconds=1,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_fetch_failure_to_connect_records_the_connection_status(
+    case: FetchConnectionFailureCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(tmp_path / "repositories"))
-    location = failing_remote_location(tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=TLS_STDERR)
+    location = failing_remote_location(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
+    )
     repository = InfrahubRepository(
         id=UUID(str(UUIDT.new())),
         name="net-repo",
@@ -382,9 +415,10 @@ async def test_fetch_refused_for_its_certificate_records_the_connection_status(
     recorder = StatusRecordingClient()
     repository.client = recorder
 
-    with pytest.raises(RepositoryTLSError, match=rf"^{TLS_HINT}$"):
-        await repository.fetch()
+    with pytest.raises(case.expected, match=rf"^{case.message}$") as raised:
+        await repository.fetch(timeout_seconds=case.timeout_seconds)
 
+    assert type(raised.value) is case.expected
     assert recorder.recorded_statuses == [RepositoryOperationalStatus.ERROR_CONNECTION.value]
 
 

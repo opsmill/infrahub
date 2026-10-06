@@ -494,9 +494,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return True
 
-    def has_worktree(self, identifier: str) -> bool:
+    def has_worktree(self, identifier: str, timeout_seconds: float | None = None) -> bool:
         """Return True if a worktree with a given identifier already exist."""
-        worktrees = self.get_worktrees()
+        worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
 
         for worktree in worktrees:
             if worktree.identifier == identifier:
@@ -530,10 +530,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         # We'll try to create one
         return self.create_commit_worktree(commit=commit)
 
-    def get_worktrees(self) -> list[Worktree]:
+    def get_worktrees(self, timeout_seconds: float | None = None) -> list[Worktree]:
         """Return the list of worktrees configured for this repository."""
         repo = self.get_git_repo_main()
-        responses = repo.git.worktree("list", "--porcelain").split("\n\n")
+        responses = repo.git.worktree("list", "--porcelain", kill_after_timeout=timeout_seconds).split("\n\n")
 
         return [Worktree.init(response) for response in responses]
 
@@ -615,12 +615,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return True if branch_name exists as a remote branch on origin."""
         return branch_name in self.get_branches_from_remote()
 
-    async def delete_remote_branch(self, branch_name: str) -> None:
-        """Delete branch_name from origin."""
+    async def delete_remote_branch(self, branch_name: str, timeout_seconds: float | None = None) -> None:
+        """Delete branch_name from origin.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
+
+        """
         if not self.has_origin:
             return
         repo = self.get_git_repo_main()
-        repo.git.push("origin", "--delete", branch_name)
+        repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
 
     async def delete_local_branch(self, branch_name: str) -> None:
         """Remove any worktrees and the local tracking ref for branch_name."""
@@ -778,8 +783,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         )
         return True
 
-    def create_commit_worktree(self, commit: str) -> bool | Worktree:
+    def create_commit_worktree(self, commit: str, timeout_seconds: float | None = None) -> bool | Worktree:
         """Create a new worktree for a given commit.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout`` for each Git command;
+                ``None`` sets no bound.
 
         Raises:
             CommitNotFoundError: When the commit does not exist in the local clone.
@@ -787,7 +796,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         """
         # Check of the worktree already exist
-        if self.has_worktree(identifier=commit):
+        if self.has_worktree(identifier=commit, timeout_seconds=timeout_seconds):
             return False
 
         directory = self.directory_commits / commit
@@ -795,7 +804,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.git.worktree("add", directory, commit)
+            repo.git.worktree("add", directory, commit, kill_after_timeout=timeout_seconds)
             log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
@@ -861,8 +870,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         git_repo = self.get_git_repo_main()
         return [str(entry.path) for entry in git_repo.commit(commit).tree.traverse() if isinstance(entry, Blob)]
 
-    async def fetch(self) -> bool:
-        """Fetch the latest update from the remote repository and bring a copy locally."""
+    async def fetch(self, timeout_seconds: float | None = None) -> bool:
+        """Fetch the latest update from the remote repository and bring a copy locally.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
+
+        """
         if not self.has_origin:
             return False
 
@@ -872,7 +886,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 

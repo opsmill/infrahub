@@ -997,14 +997,17 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return str(commit_after)
 
-    def _reset_to_pre_merge_commit(self, repo: Repo, dest_branch: str, commit_before: str) -> None:
+    def _reset_to_pre_merge_commit(
+        self, repo: Repo, dest_branch: str, commit_before: str, timeout_seconds: float | None = None
+    ) -> None:
         """Best-effort reset of a merge destination worktree while recovering from a failed merge.
 
         This never raises: the failure being recovered from is the one that explains why the merge
-        was not delivered, and it must propagate unmasked.
+        was not delivered, and it must propagate unmasked. A reset that GitPython kills at
+        ``timeout_seconds`` is logged like any other failed reset.
         """
         try:
-            repo.git.reset("--hard", commit_before)
+            repo.git.reset("--hard", commit_before, kill_after_timeout=timeout_seconds)
         except Exception:
             # Raising here would replace the failure being recovered from with a less useful one.
             log.exception(
