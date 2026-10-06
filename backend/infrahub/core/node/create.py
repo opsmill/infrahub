@@ -21,6 +21,7 @@ from infrahub.core.relationship.model import PeerWithRelationshipMetadata
 from infrahub.core.schema import GenericSchema
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.lock import InfrahubMultiLock
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.profiles.node_applier import NodeProfilesApplier
 from infrahub.templates.node_applier import get_relationship_names_to_read
 
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes, NonGenericSchemaTypes
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+    from infrahub.pools.attribute_pool_applier import AttributePoolApplierInterface
 
 
 @dataclass
@@ -423,6 +425,7 @@ def _has_profiles_set(node: Node) -> bool:
 async def _do_create_node(
     node_class: type[Node],
     node_constraint_runner: NodeConstraintRunner,
+    pool_applier: AttributePoolApplierInterface,
     creation_context: NodeCreationContext,
     db: InfrahubDatabase,
     schema: NonGenericSchemaTypes,
@@ -436,7 +439,7 @@ async def _do_create_node(
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
-        await obj.new(db=db, **data)
+        await obj.new(db=db, pool_applier=pool_applier, **data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
 
@@ -509,8 +512,11 @@ async def create_node(
 
     fields_to_validate = list(data)
 
+    # A node created in a transaction this function opens draws its numbers through that transaction, so it
+    # gets an applier of its own.
+    pool_applier = build_attribute_pool_applier(db=db)
     preview_obj = await node_class.init(db=db, schema=schema, branch=branch)
-    await preview_obj.new(db=db, process_pools=False, **data)
+    await preview_obj.new(db=db, process_pools=False, pool_applier=pool_applier, **data)
     schema_branch = db.schema.get_schema_branch(name=branch.name)
     lock_names = get_lock_names_on_object_mutation(node=preview_obj, schema_branch=schema_branch)
     # The preview read the object template to work out the lock names; the node created under the
@@ -526,6 +532,7 @@ async def create_node(
             obj = await _do_create_node(
                 node_class=node_class,
                 node_constraint_runner=node_constraint_runner,
+                pool_applier=pool_applier,
                 creation_context=creation_context,
                 db=db,
                 schema=schema,
@@ -545,6 +552,7 @@ async def create_node(
                 obj = await _do_create_node(
                     node_class=node_class,
                     node_constraint_runner=node_constraint_runner,
+                    pool_applier=build_attribute_pool_applier(db=dbt),
                     creation_context=creation_context,
                     db=dbt,
                     schema=schema,

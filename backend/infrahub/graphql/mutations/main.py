@@ -28,6 +28,7 @@ from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
 from infrahub.log import get_log_data, get_logger
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from infrahub.profiles.node_applier import NodeProfilesApplier
 
 from ...core.node.lock_utils import apply_payload_for_lock_names, get_lock_names_on_object_mutation
@@ -352,7 +353,7 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        await obj.from_graphql(db=db, data=data)
+        await obj.from_graphql(db=db, data=data, pool_applier=build_attribute_pool_applier(db=db))
         fields_to_validate = list(data)
         await node_constraint_runner.check(
             node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check

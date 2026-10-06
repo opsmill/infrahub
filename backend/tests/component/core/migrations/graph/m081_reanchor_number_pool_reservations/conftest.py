@@ -30,6 +30,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
+from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
 from tests.helpers.schema import TICKET, load_schema
 
 if TYPE_CHECKING:
@@ -139,7 +140,11 @@ async def allocate_from_pool(
 ) -> None:
     """Allocate a new number from `pool` onto an existing ticket, replacing whatever number it held."""
     ticket = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
-    await ticket.from_graphql(db=db, data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}})
+    await ticket.from_graphql(
+        db=db,
+        data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}},
+        pool_applier=build_attribute_pool_applier(db=db),
+    )
     await ticket.save(db=db)
 
 
@@ -160,7 +165,11 @@ async def create_ticket_allocated_on_update(db: InfrahubDatabase, title: str, po
     ticket = await Node.init(db=db, schema=TICKET.kind)
     await ticket.new(db=db, title=title)
     await ticket.save(db=db)
-    await ticket.from_graphql(db=db, data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}})
+    await ticket.from_graphql(
+        db=db,
+        data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}},
+        pool_applier=build_attribute_pool_applier(db=db),
+    )
     await ticket.save(db=db)
     return ticket
 
