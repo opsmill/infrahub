@@ -128,18 +128,17 @@ async def test_a_failing_fetch_reports_git_s_english_error_and_status(tmp_path: 
     """Git errors are classified by their English wording, so the locale must not translate them."""
     repo = build_clone(tmp_path, origin_url=str(tmp_path / "missing"))
 
-    with pytest.raises(GitCommandError) as raised:
+    with pytest.raises(GitCommandError, match=r"does not appear to be a git repository") as raised:
         await fetch(repo)
 
     assert raised.value.status == 128
-    assert "does not appear to be a git repository" in raised.value.stderr
 
 
 async def test_a_repository_can_be_fetched_into_after_a_stopped_fetch(tmp_path: Path) -> None:
     origin = build_origin(tmp_path)
     with silent_remote() as port:
         repo = build_clone(tmp_path, origin_url=f"git://127.0.0.1:{port}/stalled.git")
-        with pytest.raises(GitCommandError, match=r"was stopped"):
+        with pytest.raises(GitCommandError, match=r"git did not finish within 1s and was stopped\."):
             await fetch(repo)
 
     repo.remotes.origin.set_url(str(tmp_path / "origin"))

@@ -12,11 +12,11 @@ from git import Git
 from git.exc import GitCommandError
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Mapping
 
 
 def run_git_with_deadline(
-    args: Sequence[str],
+    args: list[str],
     *,
     working_directory: str | os.PathLike[str],
     environment: Mapping[str, str],
