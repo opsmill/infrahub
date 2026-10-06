@@ -14,8 +14,8 @@ branch. When it is ready for review, you open a Proposed Change, where a reviewe
 the default branch, reads the validation results, discusses it with you, and approves or rejects it.
 Once it is approved, you merge it into the default branch.
 
-In the Quickstart you created the `add-locations` branch and added two sites to it. Here you take
-that change through review, validation, approval and merge.
+In the Quickstart you created the `add-locations` branch and added two sites to it. Here you review
+that change, have it approved, and merge it.
 
 ## Before you start
 
@@ -62,8 +62,8 @@ way, and a draft tells your reviewers you are not asking for a decision yet.
 
 ## Step 3: Review the validation results
 
-Before approving a change — or before asking a reviewer to — read its validation results. They
-identify conditions that have to be resolved before the change can be merged.
+Read the validation results before anyone approves the change. They identify conditions that have to
+be resolved before the change can be merged.
 
 Open the **Checks** tab.
 
@@ -120,10 +120,9 @@ approval was given. See
 configuring those policies.
 :::
 
-## Step 5: Merge the approved change
+## Step 5: Merge the change
 
-Once the change has been through review, merge it so the approved values become part of the default
-state.
+Once the review is finished, merge the change so its values become part of the default state.
 
 1. Select **Merge** on the Proposed Change.
 2. Switch the branch selector back to `main`.
@@ -135,20 +134,22 @@ does during a merge in more detail.
 
 ## What you learned
 
-That is the review most organizations require before data reaches the default branch:
+You put a change through the review most organizations require before data reaches the default
+branch.
 
-**Change separately.** You made the change on a branch rather than directly on `main`.
+**You changed data on a branch**, not on `main`, so nothing reading `main` saw it until you were
+ready.
 
-**Understand what will change.** You read the difference between the branch and the default branch
-before asking a reviewer to read it.
+**You read the diff yourself**, before asking a reviewer to.
 
-**Validate it.** You read the automated checks before deciding whether the change was ready.
+**You read the validation results.** Infrahub produced them without you configuring anything, and a
+failure among them would have stopped the merge.
 
-**Review and approve it.** A reviewer examines the change and records a decision. Infrahub does not
-accept a review from the author, so this step always belongs to a reviewer.
+**A reviewer approved it** — or would have, in a team. Infrahub does not accept a review from the
+author, so this step is never the author's.
 
-**Publish the approved state.** You merged the reviewed change into `main`, where it becomes input to
-the rest of your automation.
+**You merged it**, and the values became part of the default state the rest of your automation reads
+from.
 
 ## Not covered here
 
