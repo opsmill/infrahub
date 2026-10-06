@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import sys
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -11,8 +12,8 @@ import httpx
 import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
-from infrahub_sdk.exceptions import Error as InfrahubSdkError
-from infrahub_sdk.exceptions import ValidationError
+from infrahub_sdk.exceptions import Error as SdkError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -32,6 +33,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubJinja2TransformConfig,
     InfrahubPythonTransformConfig,
     InfrahubRepositoryConfig,
+    InfrahubRepositoryGraphQLConfig,
     InfrahubWatchConfig,
 )
 from infrahub_sdk.schema.validate import validate_schema as validate_write_schema
@@ -61,6 +63,8 @@ from infrahub.exceptions import (
     CheckError,
     CommitNotFoundError,
     RepositoryConfigurationError,
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
     RepositoryError,
     RepositoryInvalidFileSystemError,
     TransformError,
@@ -77,6 +81,7 @@ from infrahub.git.fingerprint.composer import (
     QueryFingerprintInput,
     build_fingerprint_composer,
 )
+from infrahub.git.import_errors import import_entry, log_import_failure
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
@@ -84,7 +89,7 @@ from infrahub.workflows.utils import add_tags
 if TYPE_CHECKING:
     import builtins
     import types
-    from collections.abc import Mapping
+    from collections.abc import AsyncIterator, Mapping
 
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.ctl.utils import YamlFileVar
@@ -92,6 +97,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.schema import MainSchemaTypesAPI
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
+    from infrahub_sdk.yaml import LocalFile
 
     from infrahub.artifacts.models import CheckArtifactCreate
     from infrahub.git.closure_builder.result import ClosureResult
@@ -239,6 +245,42 @@ def serialize_artifact_content(
     return str(content)
 
 
+def _graphql_query_label(query_config: InfrahubRepositoryGraphQLConfig) -> str:
+    return f"GraphQL query '{query_config.name}' ({query_config.file_path})"
+
+
+def _jinja2_transform_label(name: str, template_path: Path | str) -> str:
+    return f"Jinja2 transform '{name}' ({template_path})"
+
+
+def _python_transform_label(name: str, file_path: Path | str) -> str:
+    return f"Python transform '{name}' ({file_path})"
+
+
+def _check_definition_label(name: str, file_path: Path | str) -> str:
+    return f"Check definition '{name}' ({file_path})"
+
+
+def _generator_definition_label(name: str, file_path: Path | str) -> str:
+    return f"Generator definition '{name}' ({file_path})"
+
+
+def _artifact_definition_label(name: str) -> str:
+    return f"Artifact definition '{name}'"
+
+
+def _repository_file_label(file: LocalFile, worktree_directory: Path) -> str:
+    label = _repository_path_label(path=file.location, worktree_directory=worktree_directory)
+    if file.document_position is not None:
+        return f"{label} (document {file.document_position})"
+    return label
+
+
+def _repository_path_label(path: Path, worktree_directory: Path) -> str:
+    location = path.relative_to(worktree_directory) if path.is_relative_to(worktree_directory) else path
+    return f"File '{location}'"
+
+
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
 
@@ -344,17 +386,21 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         Performs no graph mutation other than recording that a sync is in progress, so the expensive
         worktree reads and module imports do not need to be serialized against concurrent imports.
+
+        Raises:
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+            RepositoryImportError: When building the import fails for any other reason.
+
         """
-        if not commit:
-            commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
+        async with self._import_failure_boundary(branch_name=infrahub_branch_name):
+            await add_tags(branches=[infrahub_branch_name], nodes=[str(self.id)])
+            if not commit:
+                commit = self.get_commit_value(branch_name=git_branch_name or infrahub_branch_name)
+            self.create_commit_worktree(commit)
+            await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
 
-        await add_tags(branches=[infrahub_branch_name], nodes=[str(self.id)])
-
-        self.create_commit_worktree(commit)
-        await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.SYNCING)
-
-        try:
-            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
+            config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)
             query_strings = await self._build_graphql_query_definitions(commit=commit, config_file=config_file)
             transform_definitions = await self._build_python_transform_definitions(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
@@ -371,9 +417,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             artifact_definitions = await self._build_artifact_definitions(
                 branch_name=infrahub_branch_name, config_file=config_file
             )
-        except Exception:
-            await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
-            raise
 
         return ObjectImportPlan(
             infrahub_branch_name=infrahub_branch_name,
@@ -392,26 +435,32 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         Performs every graph mutation of the import, so it must run serialized against any concurrent
         import of the same repository.
+
+        Raises:
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+            RepositoryImportError: When applying the import fails for any other reason.
+            Exception: When setting the branch to `IN_SYNC` or sending the commit event fails after the
+                import completed; the branch is not set to `ERROR_IMPORT` then.
+
         """
-        sync_status = RepositorySyncStatus.IN_SYNC
-        error: Exception | None = None
+        async with self._import_failure_boundary(branch_name=plan.infrahub_branch_name):
+            # A single composer instance is threaded through every phase so a dependent
+            # definition composes the fingerprint freshly computed for its inputs in the
+            # same import, in dependency order: queries, then transformations and generator
+            # definitions, then artifact definitions.
+            fingerprint_composer = self._build_fingerprint_composer(commit=plan.commit)
 
-        # A single composer instance is threaded through every phase so a dependent
-        # definition composes the fingerprint freshly computed for its inputs in the
-        # same import, in dependency order: queries, then transformations and generator
-        # definitions, then artifact definitions.
-        fingerprint_composer = self._build_fingerprint_composer(commit=plan.commit)
-
-        try:
             await self.import_schema_files(
                 branch_name=plan.infrahub_branch_name, commit=plan.commit, config_file=plan.config_file
-            )  # type: ignore[call-overload]
+            )
             if plan.config_file.schemas:
                 await self.sdk.schema.all(branch=plan.infrahub_branch_name, refresh=True)
             stale_queries = await self._apply_graphql_query_definitions(
                 branch_name=plan.infrahub_branch_name,
                 local_queries=plan.query_strings,
                 fingerprint_composer=fingerprint_composer,
+                config_file=plan.config_file,
             )
             # Transforms must be registered before objects so that an object referencing a transform
             # defined in the same repository resolves during import.
@@ -429,7 +478,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=plan.infrahub_branch_name,
                 commit=plan.commit,
                 config_file=plan.config_file,
-            )  # type: ignore[call-overload]
+            )
             # Checks, generators and artifact definitions are imported after objects because their
             # targets reference groups that are defined as objects in the repository.
             stale_checks = await self._apply_python_check_definitions(
@@ -452,7 +501,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 branch_name=plan.infrahub_branch_name,
                 commit=plan.commit,
                 config_file=plan.config_file,
-            )  # type: ignore[call-overload]
+            )
             # A mandatory relationship blocks deleting its peer, so a removed node is deleted only
             # after everything still declared has been re-pointed, and before the nodes it references.
             stale_nodes_in_delete_order: list[Mapping[str, CoreNode]] = [
@@ -465,15 +514,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             for stale_nodes in stale_nodes_in_delete_order:
                 await self._delete_stale_nodes(branch_name=plan.infrahub_branch_name, nodes=stale_nodes)
 
-        # Any import failure must stamp the repository sync status as errored before being re-raised
-        except Exception as exc:  # noqa: BLE001
-            sync_status = RepositorySyncStatus.ERROR_IMPORT
-            error = exc
-
-        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=sync_status)
-
-        if error:
-            raise error
+        # Outside the boundary: once every object is imported, a later failure must not mark the branch as failed.
+        await self._update_sync_status(branch_name=plan.infrahub_branch_name, status=RepositorySyncStatus.IN_SYNC)
 
         if self.reinitialized:
             return
@@ -490,16 +532,61 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
         )
 
+    @asynccontextmanager
+    async def _import_failure_boundary(self, branch_name: str) -> AsyncIterator[None]:
+        """Set the branch to `ERROR_IMPORT` when the import inside fails, logging the failure once.
+
+        Connection and credential errors are re-raised unchanged, because they stop the whole sync.
+
+        Raises:
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+            RepositoryImportError: When anything else fails inside, recognised or not.
+
+        """
+        try:
+            yield
+        except (RepositoryConnectionError, RepositoryCredentialsError):
+            await self._mark_import_failed(branch_name=branch_name)
+            raise
+        except Exception as exc:
+            import_error = log_import_failure(identifier=self.name, branch_name=branch_name, exc=exc)
+            await self._mark_import_failed(branch_name=branch_name)
+            raise import_error from exc
+
+    async def _mark_import_failed(self, branch_name: str) -> None:
+        """Set the branch to `ERROR_IMPORT`, logging the failure of the write instead of raising it."""
+        try:
+            await self._update_sync_status(branch_name=branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
+        except SdkError:
+            # The import failure being raised is the one to report, so a failed status write must not replace it.
+            get_run_logger().exception(f"Failed to set the sync status of branch '{branch_name}' to ERROR_IMPORT")
+
     def _build_fingerprint_composer(self, commit: str) -> FingerprintComposer:
         """Wire a fingerprint composer against the pinned commit worktree for one import."""
         return build_fingerprint_composer(repo=self.get_git_repo_worktree(identifier=commit), commit=commit)
+
+    async def _get_graphql_query(self, branch_name: str, query: str) -> InfrahubNode:
+        """Return the GraphQL query node that a definition references by its name or ID.
+
+        Raises:
+            RepositoryConfigurationError: When no GraphQL query has that name or ID.
+
+        """
+        try:
+            return await self.sdk.get(kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=query, populate_store=True)
+        except NodeNotFoundError as exc:
+            raise RepositoryConfigurationError(
+                identifier=self.name, message=f"GraphQL query '{query}' was not found"
+            ) from exc
 
     async def _delete_stale_nodes(self, branch_name: str, nodes: Mapping[str, CoreNode]) -> None:
         """Delete graph nodes the repository no longer declares, keyed by name, in the order given."""
         log = get_run_logger()
         for name, node in nodes.items():
             log.info(f"{node.get_kind()} {name!r} not found locally in branch {branch_name}, deleting")
-            await node.delete()
+            with import_entry(f"Deleting {node.get_kind()} '{name}', removed from the repository"):
+                await node.delete()
 
     @task(name="import-jinja2-transforms", task_run_name="Import Jinja2 transform", cache_policy=NONE)
     async def import_jinja2_transforms(
@@ -551,17 +638,18 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.error(exc.message)
                 continue
 
-            closure = closure_builder.build(
-                transform_config=config_transform,
-                worktree_root=Path(worktree.directory),
-            )
+            with import_entry(_jinja2_transform_label(config_transform.name, config_transform.template_path)):
+                closure = closure_builder.build(
+                    transform_config=config_transform,
+                    worktree_root=Path(worktree.directory),
+                )
 
-            transform = InfrahubRepositoryJinja2(
-                repository=str(self.id),
-                dependencies=list(closure.dependencies),
-                dependencies_complete=closure.complete,
-                **config_transform.model_dump(),
-            )
+                transform = InfrahubRepositoryJinja2(
+                    repository=str(self.id),
+                    dependencies=list(closure.dependencies),
+                    dependencies_complete=closure.complete,
+                    **config_transform.model_dump(),
+                )
             local_transforms[transform.name] = transform
 
         return local_transforms
@@ -600,9 +688,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Resolve each query reference to its node id now that the queries have been applied.
         for transform in local_transforms.values():
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
-            )
+            with import_entry(_jinja2_transform_label(transform.name, transform.template_path)):
+                graphql_query = await self._get_graphql_query(branch_name=branch_name, query=str(transform.query))
             transform.query = graphql_query.id
 
         transforms_in_graph = {
@@ -618,25 +705,29 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for transform_name in only_local:
             log.info(f"New Jinja2 Transform {transform_name!r} found, creating")
-            await self.create_jinja2_transform(
-                branch_name=branch_name,
-                data=local_transforms[transform_name],
-                fingerprint=transform_fingerprints[transform_name],
-            )
+            local_transform = local_transforms[transform_name]
+            with import_entry(_jinja2_transform_label(transform_name, local_transform.template_path)):
+                await self.create_jinja2_transform(
+                    branch_name=branch_name,
+                    data=local_transform,
+                    fingerprint=transform_fingerprints[transform_name],
+                )
 
         for transform_name in present_in_both:
             existing_transform = transforms_in_graph[transform_name]
+            local_transform = local_transforms[transform_name]
             fingerprint = transform_fingerprints[transform_name]
             unchanged = await self.compare_jinja2_transform(
-                existing_transform=existing_transform, local_transform=local_transforms[transform_name]
+                existing_transform=existing_transform, local_transform=local_transform
             )
             if not unchanged or existing_transform.fingerprint.value != fingerprint:
                 log.info(f"New version of the Jinja2 Transform '{transform_name}' found, updating")
-                await self.update_jinja2_transform(
-                    existing_transform=existing_transform,
-                    local_transform=local_transforms[transform_name],
-                    fingerprint=fingerprint,
-                )
+                with import_entry(_jinja2_transform_label(transform_name, local_transform.template_path)):
+                    await self.update_jinja2_transform(
+                        existing_transform=existing_transform,
+                        local_transform=local_transform,
+                        fingerprint=fingerprint,
+                    )
 
         return {transform_name: transforms_in_graph[transform_name] for transform_name in only_graph}
 
@@ -780,11 +871,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for artdef_name in only_local:
             log.info(f"New Artifact Definition {artdef_name!r} found, creating")
-            await self.create_artifact_definition(
-                branch_name=branch_name,
-                data=local_artifact_defs[artdef_name],
-                fingerprint=artifact_fingerprints[artdef_name],
-            )
+            with import_entry(_artifact_definition_label(artdef_name)):
+                await self.create_artifact_definition(
+                    branch_name=branch_name,
+                    data=local_artifact_defs[artdef_name],
+                    fingerprint=artifact_fingerprints[artdef_name],
+                )
 
         for artdef_name in present_in_both:
             existing_artifact_definition = artifact_defs_in_graph[artdef_name]
@@ -795,11 +887,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             )
             if not unchanged or existing_artifact_definition.fingerprint.value != fingerprint:
                 log.info(f"New version of the Artifact Definition '{artdef_name}' found, updating")
-                await self.update_artifact_definition(
-                    existing_artifact_definition=existing_artifact_definition,
-                    local_artifact_definition=local_artifact_defs[artdef_name],
-                    fingerprint=fingerprint,
-                )
+                with import_entry(_artifact_definition_label(artdef_name)):
+                    await self.update_artifact_definition(
+                        existing_artifact_definition=existing_artifact_definition,
+                        local_artifact_definition=local_artifact_defs[artdef_name],
+                        fingerprint=fingerprint,
+                    )
 
     async def create_artifact_definition(
         self,
@@ -855,7 +948,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         await existing_artifact_definition.save()
 
-    @task(name="repository-get-config", task_run_name="get repository config", cache_policy=NONE)
     async def get_repository_config(self, branch_name: str, commit: str) -> InfrahubRepositoryConfig:
         """Load and parse the repository configuration file.
 
@@ -885,10 +977,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             config_file = config_file_yaml
             config_file_name = ".infrahub.yaml"
         else:
-            log.error(
-                f"Repository '{self.name}' is missing a configuration file. "
-                "Expected '.infrahub.yml' or '.infrahub.yaml' in the repository root."
-            )
             raise RepositoryConfigurationError(
                 identifier=self.name,
                 message=f"Repository '{self.name}' is missing a configuration file. "
@@ -900,7 +988,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             data = yaml.safe_load(config_file_content)
         except yaml.YAMLError as exc:
-            log.error(f"Unable to load the configuration file in YAML format {config_file_name}: {exc}")
             raise RepositoryConfigurationError(
                 identifier=self.name,
                 message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
@@ -915,15 +1002,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             log.info(f"Successfully parsed {config_file_name}")
             return configuration
         except PydanticValidationError as exc:
-            log.error(f"Unable to load the configuration file {config_file_name}, the format is not valid: {exc}")
             raise RepositoryConfigurationError(
                 identifier=self.name,
                 message=f"Repository '{self.name}' has an invalid configuration file '{config_file_name}'. "
                 f"The file format is not valid: {exc}",
             ) from exc
 
-    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig) -> None:
+        """Load the schema files listed in the repository config into the branch.
+
+        Raises:
+            ValidationError: When a schema file cannot be read, is not valid, or the server rejects the schemas.
+
+        """
         log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
 
@@ -954,9 +1045,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             return
 
         for schema_file in schemas_data:
-            if schema_file.valid:
-                continue
-            log.error(f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}")
+            if not schema_file.valid:
+                raise ValidationError(
+                    identifier=schema_file.identifier or str(self.id),
+                    message=f"Unable to load the file {schema_file.identifier}, {schema_file.error_message}",
+                )
 
         # Valid data format of content
         for schema_file in schemas_data:
@@ -968,7 +1061,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     f"Schema not valid, found '{len(result.errors)}' error(s) in "
                     f"{schema_file.identifier} : {'; '.join(result.messages)}"
                 )
-                log.error(message)
                 raise ValidationError(identifier=str(self.id), message=message)
 
         response = await self.sdk.schema.load(
@@ -986,8 +1078,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 error_messages.append(f"{response.errors.get('error')}")
             else:
                 error_messages.append(f"{response.errors}")
-
-            log.error(f"Unable to load the schema : {', '.join(error_messages)}")
 
             raise ValidationError(
                 identifier=str(self.id), message=f"Unable to load the schema : {', '.join(error_messages)}"
@@ -1011,6 +1101,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             branch_name=branch_name,
             local_queries=local_queries,
             fingerprint_composer=self._build_fingerprint_composer(commit=commit),
+            config_file=config_file,
         )
         await self._delete_stale_nodes(branch_name=branch_name, nodes=stale_queries)
 
@@ -1025,26 +1116,25 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
 
         """
-        log = get_run_logger()
-
         commit_wt = self.get_worktree(identifier=commit)
 
         local_queries: dict[str, str] = {}
         for query_config in config_file.queries:
-            try:
+            with import_entry(_graphql_query_label(query_config)):
                 local_queries[query_config.name] = render_query(
                     name=query_config.name,
                     config=config_file,
                     relative_path=str(commit_wt.directory),
                 )
-            except InfrahubSdkError as exc:
-                log.error(f"Query '{query_config.name}': {exc}")
-                raise
 
         return local_queries
 
     async def _apply_graphql_query_definitions(
-        self, branch_name: str, local_queries: dict[str, str], fingerprint_composer: FingerprintComposer
+        self,
+        branch_name: str,
+        local_queries: dict[str, str],
+        fingerprint_composer: FingerprintComposer,
+        config_file: InfrahubRepositoryConfig,
     ) -> dict[str, CoreGraphQLQuery]:
         """Reconcile the desired GraphQL queries against the graph by creating and updating.
 
@@ -1080,9 +1170,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for query_name in only_local:
             query = local_queries[query_name]
             log.info(f"New Graphql Query {query_name!r} found, creating")
-            await self.create_graphql_query(
-                branch_name=branch_name, name=query_name, query_string=query, fingerprint=query_fingerprints[query_name]
-            )
+            with import_entry(_graphql_query_label(config_file.get_query(name=query_name))):
+                await self.create_graphql_query(
+                    branch_name=branch_name,
+                    name=query_name,
+                    query_string=query,
+                    fingerprint=query_fingerprints[query_name],
+                )
 
         for query_name in present_in_both:
             local_query = local_queries[query_name]
@@ -1097,7 +1191,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 graph_query.fingerprint.value = fingerprint
                 changed = True
             if changed:
-                await graph_query.save()
+                with import_entry(_graphql_query_label(config_file.get_query(name=query_name))):
+                    await graph_query.save()
 
         return {query_name: queries_in_graph[query_name] for query_name in only_graph}
 
@@ -1152,24 +1247,23 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for check in config_file.check_definitions:
             log.debug(f"{self.name}, file={check.file_path}")
 
-            file_info = extract_repo_file_information(
-                full_filename=branch_wt.directory / check.file_path,
-                repo_directory=self.directory_root,
-                worktree_directory=commit_wt.directory,
-            )
-            try:
+            with import_entry(
+                _check_definition_label(check.name, check.file_path), worktree_directory=commit_wt.directory
+            ):
+                file_info = extract_repo_file_information(
+                    full_filename=branch_wt.directory / check.file_path,
+                    repo_directory=self.directory_root,
+                    worktree_directory=commit_wt.directory,
+                )
                 module = importlib.import_module(file_info.module_name)
-            except ModuleNotFoundError as exc:
-                log.warning(f"{self.name},  file={check.file_path.as_posix()} error={str(exc)}")
-                raise
 
-            checks.extend(
-                await self.get_check_definition(
-                    module=module,
-                    file_path=file_info.relative_path_file,
-                    check_definition=check,
-                )  # type: ignore[call-overload]
-            )
+                checks.extend(
+                    await self.get_check_definition(
+                        module=module,
+                        file_path=file_info.relative_path_file,
+                        check_definition=check,
+                    )
+                )
 
         return checks
 
@@ -1189,9 +1283,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Resolve each query reference to its node id now that the queries have been applied.
         for check in local_check_definitions.values():
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(check.query), populate_store=True
-            )
+            with import_entry(_check_definition_label(check.name, check.file_path)):
+                graphql_query = await self._get_graphql_query(branch_name=branch_name, query=str(check.query))
             check.query = str(graphql_query.id)
 
         check_definition_in_graph = {
@@ -1207,20 +1300,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for check_name in only_local:
             log.info(f"New CheckDefinition {check_name!r} found, creating")
-            await self.create_python_check_definition(
-                branch_name=branch_name, check=local_check_definitions[check_name]
-            )
+            local_check = local_check_definitions[check_name]
+            with import_entry(_check_definition_label(check_name, local_check.file_path)):
+                await self.create_python_check_definition(branch_name=branch_name, check=local_check)
 
         for check_name in present_in_both:
+            local_check = local_check_definitions[check_name]
             if not await self.compare_python_check_definition(
-                check=local_check_definitions[check_name],
+                check=local_check,
                 existing_check=check_definition_in_graph[check_name],
             ):
                 log.info(f"New version of CheckDefinition {check_name!r} found, updating")
-                await self.update_python_check_definition(
-                    check=local_check_definitions[check_name],
-                    existing_check=check_definition_in_graph[check_name],
-                )
+                with import_entry(_check_definition_label(check_name, local_check.file_path)):
+                    await self.update_python_check_definition(
+                        check=local_check,
+                        existing_check=check_definition_in_graph[check_name],
+                    )
 
         return {check_name: check_definition_in_graph[check_name] for check_name in only_graph}
 
@@ -1261,18 +1356,22 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for generator in config_file.generator_definitions:
             log.info(f"Processing generator {generator.name} ({generator.file_path})")
-            file_info = extract_repo_file_information(
-                full_filename=branch_wt.directory / generator.file_path,
-                repo_directory=self.directory_root,
+            with import_entry(
+                _generator_definition_label(generator.name, generator.file_path),
                 worktree_directory=commit_wt.directory,
-            )
+            ):
+                file_info = extract_repo_file_information(
+                    full_filename=branch_wt.directory / generator.file_path,
+                    repo_directory=self.directory_root,
+                    worktree_directory=commit_wt.directory,
+                )
 
-            generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
+                generator.load_class(import_root=self.directory_root, relative_path=file_info.relative_repo_path_dir)
 
-            closure = closure_builder.build(
-                transform_config=generator,
-                worktree_root=Path(branch_wt.directory),
-            )
+                closure = closure_builder.build(
+                    transform_config=generator,
+                    worktree_root=Path(branch_wt.directory),
+                )
             generators.append(GeneratorDefinitionWithClosure(config=generator, closure=closure))
 
         return generators
@@ -1330,12 +1429,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for generator_name in only_local:
             log.info(f"New GeneratorDefinition {generator_name!r} found, creating")
             definition = local_generator_definitions[generator_name]
-            await self._create_generator_definition(
-                branch_name=branch_name,
-                generator=definition.config,
-                closure=definition.closure,
-                fingerprint=generator_fingerprints[generator_name],
-            )
+            with import_entry(_generator_definition_label(generator_name, definition.config.file_path)):
+                await self._create_generator_definition(
+                    branch_name=branch_name,
+                    generator=definition.config,
+                    closure=definition.closure,
+                    fingerprint=generator_fingerprints[generator_name],
+                )
 
         for generator_name in present_in_both:
             definition = local_generator_definitions[generator_name]
@@ -1350,12 +1450,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             if requires_update or existing_generator.fingerprint.value != fingerprint:
                 log.info(f"New version of GeneratorDefinition {generator_name!r} found, updating")
 
-                await self._update_generator_definition(
-                    generator=definition.config,
-                    existing_generator=existing_generator,
-                    closure=definition.closure,
-                    fingerprint=fingerprint,
-                )
+                with import_entry(_generator_definition_label(generator_name, definition.config.file_path)):
+                    await self._update_generator_definition(
+                        generator=definition.config,
+                        existing_generator=existing_generator,
+                        closure=definition.closure,
+                        fingerprint=fingerprint,
+                    )
 
         return {generator_name: generator_definition_in_graph[generator_name] for generator_name in only_graph}
 
@@ -1448,30 +1549,29 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for transform in config_file.python_transforms:
             log.debug(f"{self.name}, file={transform.file_path}")
 
-            file_info = extract_repo_file_information(
-                full_filename=branch_wt.directory / transform.file_path,
-                repo_directory=self.directory_root,
-                worktree_directory=commit_wt.directory,
-            )
-            try:
+            with import_entry(
+                _python_transform_label(transform.name, transform.file_path), worktree_directory=commit_wt.directory
+            ):
+                file_info = extract_repo_file_information(
+                    full_filename=branch_wt.directory / transform.file_path,
+                    repo_directory=self.directory_root,
+                    worktree_directory=commit_wt.directory,
+                )
                 module = importlib.import_module(file_info.module_name)
-            except ModuleNotFoundError as exc:
-                log.warning(f"{self.name}, file={transform.file_path.as_posix()} error={str(exc)}")
-                raise
 
-            closure = closure_builder.build(
-                transform_config=transform,
-                worktree_root=Path(branch_wt.directory),
-            )
+                closure = closure_builder.build(
+                    transform_config=transform,
+                    worktree_root=Path(branch_wt.directory),
+                )
 
-            transforms.extend(
-                await self.get_python_transforms(
-                    module=module,
-                    transform=transform,
-                    dependencies=list(closure.dependencies),
-                    dependencies_complete=closure.complete,
-                )  # type: ignore[call-overload]
-            )
+                transforms.extend(
+                    await self.get_python_transforms(
+                        module=module,
+                        transform=transform,
+                        dependencies=list(closure.dependencies),
+                        dependencies_complete=closure.complete,
+                    )
+                )
 
         return transforms
 
@@ -1512,9 +1612,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Resolve each query reference to its node id now that the queries have been applied.
         for transform in local_transform_definitions.values():
-            graphql_query = await self.sdk.get(
-                kind=InfrahubKind.GRAPHQLQUERY, branch=branch_name, id=str(transform.query), populate_store=True
-            )
+            with import_entry(_python_transform_label(transform.name, transform.file_path)):
+                graphql_query = await self._get_graphql_query(branch_name=branch_name, query=str(transform.query))
             transform.query = str(graphql_query.id)
 
         transform_definition_in_graph = {
@@ -1530,37 +1629,56 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for transform_name in only_local:
             log.info(f"New TransformPython {transform_name!r} found, creating")
-            await self.create_python_transform(
-                branch_name=branch_name,
-                transform=local_transform_definitions[transform_name],
-                fingerprint=transform_fingerprints[transform_name],
-            )
+            local_transform = local_transform_definitions[transform_name]
+            with import_entry(_python_transform_label(transform_name, local_transform.file_path)):
+                await self.create_python_transform(
+                    branch_name=branch_name,
+                    transform=local_transform,
+                    fingerprint=transform_fingerprints[transform_name],
+                )
 
         for transform_name in present_in_both:
             existing_transform = transform_definition_in_graph[transform_name]
+            local_transform = local_transform_definitions[transform_name]
             fingerprint = transform_fingerprints[transform_name]
             unchanged = await self.compare_python_transform(
-                local_transform=local_transform_definitions[transform_name],
+                local_transform=local_transform,
                 existing_transform=existing_transform,
             )
             if not unchanged or existing_transform.fingerprint.value != fingerprint:
                 log.info(f"New version of TransformPython {transform_name!r} found, updating")
-                await self.update_python_transform(
-                    local_transform=local_transform_definitions[transform_name],
-                    existing_transform=existing_transform,
-                    fingerprint=fingerprint,
-                )
+                with import_entry(_python_transform_label(transform_name, local_transform.file_path)):
+                    await self.update_python_transform(
+                        local_transform=local_transform,
+                        existing_transform=existing_transform,
+                        fingerprint=fingerprint,
+                    )
 
         return {transform_name: transform_definition_in_graph[transform_name] for transform_name in only_graph}
 
     async def _load_yamlfile_from_disk(
-        self, paths: list[Path], file_type: builtins.type[YamlFileVar]
+        self, paths: list[Path], file_type: builtins.type[YamlFileVar], worktree_directory: Path
     ) -> list[YamlFileVar]:
+        """Load the files at the given paths.
+
+        Raises:
+            ValidationError: When a file does not exist, cannot be parsed or is empty.
+
+        """
+        # The SDK reports a missing path by its absolute location inside the worktree.
+        for path in paths:
+            if not path.exists():
+                with import_entry(_repository_path_label(path=path, worktree_directory=worktree_directory)):
+                    raise ValidationError(identifier=str(path), message="The file does not exist")
+
         data_files = file_type.load_from_disk(paths=paths)
 
         for data_file in data_files:
             if not data_file.valid or not data_file.content:
-                raise ValueError(f"{data_file.error_message} ({data_file.location})")
+                with import_entry(_repository_file_label(file=data_file, worktree_directory=worktree_directory)):
+                    raise ValidationError(
+                        identifier=str(data_file.location), message=data_file.error_message or "Empty file"
+                    )
 
         return data_files
 
@@ -1585,6 +1703,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         paths: list[Path],
         branch: str,
         file_type: builtins.type[InfrahubFile],
+        worktree_directory: Path,
         defer: bool | None = None,
     ) -> None:
         """Load one or multiple objects files into Infrahub.
@@ -1595,33 +1714,40 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         loads every document.
 
         Raises:
-            ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
+            ValidationError: When a file is not valid, or when a referenced schema lacks both
+                ``human_friendly_id`` and ``default_filter``.
 
         """
         log = get_run_logger()
-        files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
+        files = await self._load_yamlfile_from_disk(
+            paths=paths, file_type=file_type, worktree_directory=worktree_directory
+        )
 
         selected = []
         for file in files:
             if defer is not None:
-                file.validate_content()
-                schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
+                with import_entry(_repository_file_label(file=file, worktree_directory=worktree_directory)):
+                    file.validate_content()
+                    schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
                 if self._object_depends_on_definitions(schema=schema) is not defer:
                     continue
             selected.append(file)
 
         for file in selected:
-            await file.validate_format(client=self.sdk, branch=branch)
-            schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
-            if not schema.human_friendly_id and not schema.default_filter:
-                raise ValueError(
-                    f"Schemas of objects or menus defined within {file.location} "
-                    "should have a `human_friendly_id` defined to avoid creating duplicated objects."
-                )
+            with import_entry(_repository_file_label(file=file, worktree_directory=worktree_directory)):
+                await file.validate_format(client=self.sdk, branch=branch)
+                schema = await self.sdk.schema.get(kind=file.spec.kind, branch=branch)
+                if not schema.human_friendly_id and not schema.default_filter:
+                    raise ValidationError(
+                        identifier=str(file.location),
+                        message=f"The schema of kind '{file.spec.kind}' should have a `human_friendly_id` "
+                        "defined to avoid creating duplicated objects.",
+                    )
 
         for file in selected:
             log.info(f"Loading objects defined in {file.location}")
-            await file.process(client=self.sdk, branch=branch)
+            with import_entry(_repository_file_label(file=file, worktree_directory=worktree_directory)):
+                await file.process(client=self.sdk, branch=branch)
 
     async def _import_file_paths(
         self,
@@ -1650,10 +1776,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 paths=file_pathes,
                 branch=branch_name,
                 file_type=file_type,
+                worktree_directory=branch_wt.directory,
                 defer=defer,
             )
 
-    @task(name="import-objects", task_run_name="Import Objects", cache_policy=NONE)
     async def import_objects(
         self,
         branch_name: str,
@@ -1674,7 +1800,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             object_type=RepositoryObjects.MENU,
         )
 
-    @task(name="import-deferred-objects", task_run_name="Import Deferred Objects", cache_policy=NONE)
     async def import_deferred_objects(
         self,
         branch_name: str,
@@ -1697,43 +1822,32 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             tracking_suffix="-deferred",
         )
 
-    @task(name="check-definition-get", task_run_name="Get Check Definition", cache_policy=NONE)
     async def get_check_definition(
         self,
         module: types.ModuleType,
         file_path: str,
         check_definition: InfrahubCheckDefinitionConfig,
     ) -> list[CheckDefinitionInformation]:
-        log = get_run_logger()
         if check_definition.class_name not in dir(module):
-            return []
+            raise ModuleImportError(
+                message=f"The specified class {check_definition.class_name} was not found within the module"
+            )
 
-        checks = []
         check_class = getattr(module, check_definition.class_name)
-
-        try:
-            checks.append(
-                CheckDefinitionInformation(
-                    name=check_definition.name,
-                    repository=str(self.id),
-                    class_name=check_definition.class_name,
-                    check_class=check_class,
-                    file_path=file_path,
-                    query=str(check_class.query),
-                    timeout=check_class.timeout,
-                    parameters=check_definition.parameters,
-                    targets=check_definition.targets,
-                )
+        return [
+            CheckDefinitionInformation(
+                name=check_definition.name,
+                repository=str(self.id),
+                class_name=check_definition.class_name,
+                check_class=check_class,
+                file_path=file_path,
+                query=str(check_class.query),
+                timeout=check_class.timeout,
+                parameters=check_definition.parameters,
+                targets=check_definition.targets,
             )
+        ]
 
-        except Exception as exc:
-            log.error(
-                f"An error occurred while processing the CheckDefinition {check_class.__name__} from {file_path} : {exc} "
-            )
-            raise
-        return checks
-
-    @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
         self,
         module: types.ModuleType,
@@ -1741,42 +1855,33 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         dependencies: list[str],
         dependencies_complete: bool,
     ) -> list[TransformPythonInformation]:
-        log = get_run_logger()
         if transform.class_name not in dir(module):
-            return []
+            raise ModuleImportError(
+                message=f"The specified class {transform.class_name} was not found within the module"
+            )
 
         # The manifest-declared path is the only source for `file_path`: the dependency closure
         # and the fingerprint are both keyed on it, and a path derived from the filesystem
         # instead can resolve outside the worktree and turn absolute.
         file_path = str(transform.file_path)
 
-        transforms = []
         transform_class = getattr(module, transform.class_name)
-        try:
-            transforms.append(
-                TransformPythonInformation(
-                    name=transform.name,
-                    repository=str(self.id),
-                    class_name=transform.class_name,
-                    transform_class=transform_class,
-                    file_path=file_path,
-                    query=str(transform_class.query),
-                    timeout=transform_class.timeout,
-                    convert_query_response=transform.convert_query_response,
-                    description=transform.description,
-                    watch=transform.watch,
-                    dependencies=dependencies,
-                    dependencies_complete=dependencies_complete,
-                )
+        return [
+            TransformPythonInformation(
+                name=transform.name,
+                repository=str(self.id),
+                class_name=transform.class_name,
+                transform_class=transform_class,
+                file_path=file_path,
+                query=str(transform_class.query),
+                timeout=transform_class.timeout,
+                convert_query_response=transform.convert_query_response,
+                description=transform.description,
+                watch=transform.watch,
+                dependencies=dependencies,
+                dependencies_complete=dependencies_complete,
             )
-
-        except Exception as exc:
-            log.error(
-                f"An error occurred while processing the PythonTransform {transform.name} from {file_path} : {exc} "
-            )
-            raise
-
-        return transforms
+        ]
 
     async def _create_generator_definition(
         self,

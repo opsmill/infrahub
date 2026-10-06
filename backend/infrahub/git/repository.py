@@ -274,7 +274,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return response
 
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
-        """Log every branch that failed to synchronize and surface them as a single error.
+        """Log every branch that failed before its import and surface every failed branch as a single error.
+
+        A branch whose import failed is not logged again here, because the import already logged it once.
 
         Raises:
             RepositoryError: When at least one branch failed to synchronize.
@@ -284,6 +286,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return
 
         for failed in failed_imports:
+            if failed.step is ImportStep.IMPORT:
+                continue
             # extra= preserves step and reason as discrete LogRecord fields so log shippers
             # and alert rules can filter on them, even though the message already contains them.
             log.warning(

@@ -1,0 +1,1 @@
+Git repository import failures caused by the repository's content are now logged once as a readable message that names the failing entry and file in `.infrahub.yml`, without a Python traceback, and a failed import of one branch no longer stops the import of other branches.
