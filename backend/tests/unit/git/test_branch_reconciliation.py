@@ -751,13 +751,13 @@ async def test_a_record_that_fails_fails_its_branch_alone_and_keeps_its_import(
     assert collected.failed_imports == [
         FailedImport(
             branch_name=TRACKED,
-            step=ImportStep.COLLECTION,
+            step=ImportStep.RECORD,
             reason=f"The API is unreachable from {TRACKED}",
             on_default_branch=False,
         ),
         FailedImport(
             branch_name="main",
-            step=ImportStep.COLLECTION,
+            step=ImportStep.RECORD,
             reason="The API is unreachable from main",
             on_default_branch=True,
         ),

@@ -88,6 +88,8 @@ class ImportStep(StrEnum):
 
     COLLECTION = "collection"
     IMPORT = "import"
+    RECORD = "record"
+    """The rewrite record of the branch failed, while its import still runs."""
 
 
 @dataclass
@@ -674,7 +676,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             collected.failed_imports.append(
                 FailedImport(
                     branch_name=divergence.branch_name,
-                    step=ImportStep.COLLECTION,
+                    step=ImportStep.RECORD,
                     reason=str(exc),
                     on_default_branch=pending_import.on_default_branch,
                 )

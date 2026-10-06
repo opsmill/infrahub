@@ -577,10 +577,11 @@ async def sync_repository_from_origin(
 async def report_failed_branches(
     repo: InfrahubRepository, failure: RepositoryBranchesFailedError, infrahub_branch: str
 ) -> None:
-    """Log the branches a synchronization failed, and record a failed default branch on the repository.
+    """Log the branches a synchronization failed, and record a failed import of the default branch on the repository.
 
     A failed default branch is loud but never raised, since a raise would stop every repository after
-    this one.
+    this one. A failed rewrite record is logged like any other failure of the default branch, but it
+    leaves the synchronization status alone, because the objects of the branch were still imported.
     """
     log = get_run_logger()
     default_branch_failures = failure.outcome.default_branch_failures
@@ -589,7 +590,7 @@ async def report_failed_branches(
             f"Unable to synchronize the default branch {repo.default_branch} of repository "
             f"{repo.name} at step {failed.step.value}: {failed.reason}"
         )
-    if default_branch_failures:
+    if failure.outcome.default_branch_import_failures:
         await repo.record_import_failure(infrahub_branch_name=infrahub_branch)
     if len(default_branch_failures) < len(failure.outcome.failed):
         log.info(failure.message)

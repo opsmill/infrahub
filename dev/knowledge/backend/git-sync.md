@@ -151,9 +151,10 @@ worktree records nothing.
 
 - **Record right after the commit write, in the same hold of the repository lock.** After the import
   the next cycle already reads the new commit as unchanged, so a later record never happens.
-- **A failed record fails its branch alone and keeps its import queued.** The graph already holds
-  the new commit, so no later cycle selects the branch again to import it. That rewrite stays
-  unrecorded.
+- **A failed record fails its branch alone, at step `record`, and keeps its import queued.** The
+  graph already holds the new commit, so no later cycle selects the branch again to import it, and
+  that rewrite stays unrecorded. The import still runs, so the failure leaves `sync_status` alone. On
+  the default branch it is logged at error level, and the run fails although the import converged.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 

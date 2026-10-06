@@ -68,6 +68,14 @@ class SyncOutcome:
         """The failures of the repository's configured default branch."""
         return tuple(failed for failed in self.failed if failed.on_default_branch)
 
+    @property
+    def default_branch_import_failures(self) -> tuple[FailedImport, ...]:
+        """The failures that leave the objects of the default branch behind its commit.
+
+        A failed rewrite record is not one of them, because the import of the branch still runs.
+        """
+        return tuple(failed for failed in self.default_branch_failures if failed.step is not ImportStep.RECORD)
+
 
 @suppress_traceback_in_logs
 class RepositoryBranchesFailedError(RepositoryError):

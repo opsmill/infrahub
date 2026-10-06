@@ -421,7 +421,9 @@ emits no signal.
 - [x] T056 [US1] Isolate the record write per branch, the way the other per-branch git failures
       already are. `collect_pending_imports` lets graph errors propagate, so an SDK error from the
       store would otherwise abort collection for every branch and skip the broadcast. A failed
-      record joins `failed_imports` and the cycle continues.
+      record joins `failed_imports` at step `record` and the cycle continues. Its import still
+      runs, so the failure leaves `sync_status` alone (FR-013). On the default branch it is logged
+      at error level, and the run fails.
 - [x] T057 [US1] Call the recorder from
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`, immediately
       after the reconciled commit is written for that branch, inside the collection lock hold. The

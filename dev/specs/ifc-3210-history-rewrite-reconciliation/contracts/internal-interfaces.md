@@ -336,7 +336,9 @@ one: `collect_pending_imports` moves every branch with `reset_to_commit`, which 
   reverse ordering would be worse, because it would let a record name a commit that was never
   written. `collect_pending_imports` also lets graph errors propagate, so a failed record write
   aborts collection for every branch and skips the broadcast; the record write must therefore be
-  isolated per branch like the other per-branch failures.
+  isolated per branch like the other per-branch failures. The failure joins `failed_imports` at
+  step `record`, and the import of the branch stays queued, so the failure fails the run but never
+  writes `error-import` (FR-013).
 
 **Not after the import.** The commit is written during collection, so a recorder placed after the
 import would find the next cycle reading the *new* head as the imported commit and classifying
@@ -463,7 +465,7 @@ reconciliation, and it propagates no failed branch. The raise that tags the repo
 the tagging flow `sync_git_repo_with_origin_and_tag_on_failure` makes for any failed branch: that
 flow links its run to the repository and fails it, as it did before, and this function catches the
 error. A failed configured default branch is then logged at error level and recorded on the
-repository's synchronisation status. The failure of any other branch is logged at info level, as
+repository's synchronisation status, unless only its rewrite record failed. The failure of any other branch is logged at info level, as
 it was before. The failure is handled even when the send of the message raises, and the send's
 error then propagates. The per-repository `try` added to `sync_remote_repositories` catches whatever
 else a repository raises.
@@ -516,7 +518,9 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
   the git branch name, and `PendingObjectImport.on_default_branch` carries it to an import failure.
   A staging repository's trunk is covered too: the collector isolates it like any other branch, so
   its failure is flagged as the default branch, and the record goes on the staging branch the trunk
-  imports into.
+  imports into. A failed rewrite record of the trunk is logged at error level too, but it writes no
+  `error-import`: its import still runs and writes `in-sync`, and FR-013 keeps the rewrite record
+  out of the synchronisation status.
 
   Propagating would be a worse bug than the one it reports. `sync_remote_repositories` loops over
   every repository with no per-repository `try`, so a raise from one repository aborts the cycle
