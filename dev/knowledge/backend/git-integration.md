@@ -70,7 +70,9 @@ read-write and read-only, periodic sync, branch create, read-only pull, and merg
 worker takes the same repository lock, fetches, and then either hard-resets onto the pinned SHA or,
 when no SHA was supplied, pulls (`git/convergence.py::WorktreeConverger`, which the `fetch` handler
 in `message_bus/operations/git/repository.py` builds). A worker ignores its own broadcast by
-comparing `meta.initiator_id` against `WORKER_IDENTITY`.
+comparing `meta.initiator_id` against `WORKER_IDENTITY`. A worker that lacks the branch creates its
+worktree in its own clone only and never pushes it, so a branch deleted on the remote after the sync
+does not come back.
 
 The periodic sync sends one message per repository per cycle. Its `branches` list starts with the
 trunk, on every cycle, and then names every other branch the cycle advanced, each with its pinned

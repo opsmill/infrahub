@@ -383,7 +383,7 @@ hard-resets onto the remote head whenever the worktree does not lead to it.
 | Worktree head is an ancestor of remote head | Pulls, unchanged. |
 | **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
-| No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
+| No worktree, `create_if_missing` and a branch id | Creates the worktree in this clone only. It does not push the new branch. |
 
 **The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
 is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
@@ -530,7 +530,8 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
 
 ## 6. `RefreshGitFetch` handler
 
-Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
+Changed. `backend/infrahub/git/convergence.py::WorktreeConverger`, which the `fetch` handler in
+`backend/infrahub/message_bus/operations/git/repository.py` builds.
 
 ### Contract
 
@@ -546,6 +547,9 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
+8. **It never writes to the remote.** A worktree it creates for a branch it lacks stays in this
+   clone. Creating it used to push the new branch, so a branch deleted on the remote between the
+   sync and this worker's fetch came back, created from this clone's head.
 
 ---
 
