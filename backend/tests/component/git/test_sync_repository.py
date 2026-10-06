@@ -101,6 +101,12 @@ SCENARIOS = [
 
 
 @pytest.fixture
+def no_import_sync_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every remote branch is a candidate for import, whatever the environment configures."""
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+
+
+@pytest.fixture
 def message_bus_recorder(helper: TestHelper) -> Generator[BusRecorder, None, None]:
     """Install a recording bus and drop cached singletons so the flow resolves it, restoring on exit."""
     original = config.OVERRIDE.message_bus
@@ -243,6 +249,7 @@ def run_tags(branches: list[str], node_id: str) -> set[str]:
     }
 
 
+@pytest.mark.usefixtures("no_import_sync_filter")
 class TestSkippedBranchTaskLog(TestInfrahubApp):
     """A remote branch named like Infrahub's default branch is reported in the repository's task log.
 
@@ -254,11 +261,6 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
     async def prefect_client(self, prefect: str) -> AsyncGenerator[PrefectClient, None]:
         async with get_client(sync_client=False) as client:
             yield client
-
-    @pytest.fixture(autouse=True)
-    def no_import_sync_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Every remote branch is a candidate for import, whatever the environment configures."""
-        monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
 
     @pytest.fixture(autouse=True)
     def capture_run_logs(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -762,13 +764,9 @@ FAILED_TRUNK_CASES = [
 ]
 
 
+@pytest.mark.usefixtures("no_import_sync_filter")
 class TestSynchronisationCycleFailures(TestInfrahubApp):
     """A synchronization cycle in which some branches fail, against a remote whose trunk is `main`."""
-
-    @pytest.fixture(autouse=True)
-    def no_import_sync_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Every remote branch is a candidate for import, whatever the environment configures."""
-        monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
 
     async def _connect(self, db: InfrahubDatabase, tmp_path: Path, name: str) -> tuple[LocalRemote, Node]:
         remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
