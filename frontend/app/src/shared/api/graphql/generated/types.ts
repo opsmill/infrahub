@@ -7258,6 +7258,12 @@ export type CoreGenericRepository = {
   id: Maybe<Scalars['String']['output']>;
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at: Maybe<TextAttribute>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit: Maybe<TextAttribute>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
@@ -7266,6 +7272,8 @@ export type CoreGenericRepository = {
   /** Connectivity status of the repository */
   operational_status: Maybe<Dropdown>;
   queries: NestedPaginatedCoreGraphQlQuery;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
   sync_status: Maybe<Dropdown>;
@@ -7637,6 +7645,12 @@ export type CoreGenericRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -7645,6 +7659,8 @@ export type CoreGenericRepositoryUpdateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeUpdate>;
@@ -12278,6 +12294,12 @@ export type CoreReadOnlyRepository = CoreGenericRepository & CoreNode & CoreTask
   id: Scalars['String']['output'];
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at: Maybe<TextAttribute>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit: Maybe<TextAttribute>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
@@ -12288,6 +12310,8 @@ export type CoreReadOnlyRepository = CoreGenericRepository & CoreNode & CoreTask
   queries: NestedPaginatedCoreGraphQlQuery;
   /** Git reference (branch or tag) to track */
   ref: Maybe<TextAttribute>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
   sync_status: Maybe<Dropdown>;
@@ -12658,6 +12682,12 @@ export type CoreReadOnlyRepositoryCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeCreate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeCreate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeCreate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeCreate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -12668,6 +12698,8 @@ export type CoreReadOnlyRepositoryCreateInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeCreate>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeCreate>;
@@ -12701,6 +12733,12 @@ export type CoreReadOnlyRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -12711,6 +12749,8 @@ export type CoreReadOnlyRepositoryUpdateInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeUpdate>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeUpdate>;
@@ -12738,6 +12778,12 @@ export type CoreReadOnlyRepositoryUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -12748,6 +12794,8 @@ export type CoreReadOnlyRepositoryUpsertInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeUpdate>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeUpdate>;
@@ -12775,6 +12823,12 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   id: Scalars['String']['output'];
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at: Maybe<TextAttribute>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit: Maybe<TextAttribute>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
@@ -12783,6 +12837,8 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   /** Connectivity status of the repository */
   operational_status: Maybe<Dropdown>;
   queries: NestedPaginatedCoreGraphQlQuery;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
   sync_status: Maybe<Dropdown>;
@@ -13155,6 +13211,12 @@ export type CoreRepositoryCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeCreate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeCreate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeCreate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeCreate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeCreate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13163,6 +13225,8 @@ export type CoreRepositoryCreateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeCreate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeCreate>;
@@ -13420,6 +13484,12 @@ export type CoreRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13428,6 +13498,8 @@ export type CoreRepositoryUpdateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeUpdate>;
@@ -13457,6 +13529,12 @@ export type CoreRepositoryUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
+  /** When the last reconciliation of this branch completed */
+  last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub reconciled onto during the last reconciliation */
+  last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
+  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
   member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
@@ -13465,6 +13543,8 @@ export type CoreRepositoryUpsertInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
   sync_status?: InputMaybe<TextAttributeUpdate>;
@@ -28263,6 +28343,21 @@ export type QueryCoreCheckDefinitionArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -28278,6 +28373,11 @@ export type QueryCoreCheckDefinitionArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29445,6 +29545,21 @@ export type QueryCoreFileThreadArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29460,6 +29575,11 @@ export type QueryCoreFileThreadArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30070,6 +30190,21 @@ export type QueryCoreGeneratorDefinitionArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30085,6 +30220,11 @@ export type QueryCoreGeneratorDefinitionArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -30886,6 +31026,24 @@ export type QueryCoreGenericRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30981,6 +31139,12 @@ export type QueryCoreGenericRepositoryArgs = {
   queries__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   queries__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   queries__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -31282,6 +31446,21 @@ export type QueryCoreGraphQlQueryArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -31297,6 +31476,11 @@ export type QueryCoreGraphQlQueryArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34239,6 +34423,24 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34340,6 +34542,12 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   ref__source__id?: InputMaybe<Scalars['ID']['input']>;
   ref__value?: InputMaybe<Scalars['String']['input']>;
   ref__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34597,6 +34805,24 @@ export type QueryCoreRepositoryArgs = {
   internal_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   internal_status__value?: InputMaybe<Scalars['String']['input']>;
   internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   location__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34692,6 +34918,12 @@ export type QueryCoreRepositoryArgs = {
   queries__variables__source__id?: InputMaybe<Scalars['ID']['input']>;
   queries__variables__value?: InputMaybe<Scalars['GenericScalar']['input']>;
   queries__variables__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -34896,6 +35128,21 @@ export type QueryCoreRepositoryGroupArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34911,6 +35158,11 @@ export type QueryCoreRepositoryGroupArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35081,6 +35333,21 @@ export type QueryCoreRepositoryValidatorArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35096,6 +35363,11 @@ export type QueryCoreRepositoryValidatorArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36366,6 +36638,21 @@ export type QueryCoreTransformJinja2Args = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36381,6 +36668,11 @@ export type QueryCoreTransformJinja2Args = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36626,6 +36918,21 @@ export type QueryCoreTransformPythonArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36641,6 +36948,11 @@ export type QueryCoreTransformPythonArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36862,6 +37174,21 @@ export type QueryCoreTransformationArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -36877,6 +37204,11 @@ export type QueryCoreTransformationArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -37207,6 +37539,21 @@ export type QueryCoreUserValidatorArgs = {
   repository__internal_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__internal_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_at__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_at__value?: InputMaybe<Scalars['DateTime']['input']>;
+  repository__last_rewrite_at__values?: InputMaybe<Array<InputMaybe<Scalars['DateTime']['input']>>>;
+  repository__last_rewrite_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__last_rewrite_previous_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__last_rewrite_previous_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__last_rewrite_previous_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__last_rewrite_previous_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__location__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__location__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__location__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -37222,6 +37569,11 @@ export type QueryCoreUserValidatorArgs = {
   repository__operational_status__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__operational_status__value?: InputMaybe<Scalars['String']['input']>;
   repository__operational_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__rewrite_count__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__rewrite_count__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__rewrite_count__value?: InputMaybe<Scalars['BigInt']['input']>;
+  repository__rewrite_count__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
   repository__sync_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__sync_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__sync_status__source__id?: InputMaybe<Scalars['ID']['input']>;

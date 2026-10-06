@@ -251,6 +251,40 @@ core_generic_repository = GenericSchema(
             default_value=RepositorySyncStatus.UNKNOWN.value,
             order_weight=6000,
         ),
+        Attr(
+            name="last_rewrite_previous_commit",
+            kind="Text",
+            description="The commit Infrahub had imported on this branch before the last reconciliation",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7600,
+        ),
+        Attr(
+            name="last_rewrite_commit",
+            kind="Text",
+            description="The commit Infrahub reconciled onto during the last reconciliation",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7700,
+        ),
+        Attr(
+            name="last_rewrite_at",
+            kind="DateTime",
+            description="When the last reconciliation of this branch completed",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7800,
+        ),
+        Attr(
+            name="rewrite_count",
+            kind="Number",
+            description=(
+                "How many reconciliations are visible on this branch, including those of the branch it was created from"
+            ),
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7900,
+        ),
     ],
     relationships=[
         Rel(

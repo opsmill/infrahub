@@ -396,13 +396,13 @@ emits no signal.
 > design is complete in [data-model.md](data-model.md) and
 > [contracts/repository_rewrite.graphql](contracts/repository_rewrite.graphql).
 
-- [ ] T053 [US1] Declare the four attributes on `CoreGenericRepository` in
+- [x] T053 [US1] Declare the four attributes on `CoreGenericRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`:
       `last_rewrite_previous_commit` (`Text`), `last_rewrite_commit` (`Text`), `last_rewrite_at`
       (`DateTime`) and `rewrite_count` (`Number`). All optional, no default, all
       `BranchSupportType.LOCAL`. Do not override them on `CoreRepository` or
       `CoreReadOnlyRepository`.
-- [ ] T054 [US1] Regenerate the generated files for the four attributes and commit them:
+- [x] T054 [US1] Regenerate the generated files for the four attributes and commit them:
       `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`, and
       `cd frontend/app && pnpm codegen`. CI fails when any of them is stale.

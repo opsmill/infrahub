@@ -128,6 +128,10 @@ class CoreGenericRepository(CoreNode):
     operational_status: Dropdown
     commit: StringOptional
     sync_status: Dropdown
+    last_rewrite_previous_commit: StringOptional
+    last_rewrite_commit: StringOptional
+    last_rewrite_at: DateTimeOptional
+    rewrite_count: IntegerOptional
     credential: RelationshipManager[CoreCredential]
     tags: RelationshipManager[BuiltinTag]
     transformations: RelationshipManager[CoreTransformation]
