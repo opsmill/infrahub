@@ -8,7 +8,7 @@ from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
-from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest
+from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
@@ -154,10 +154,8 @@ class AttributePoolApplier:
         number = self._get_number(attribute=attribute)
         intent = self.intent_resolver.resolve(
             request=FromPoolRequest(
-                value_present=attribute.value_presence is not PayloadPresence.ABSENT,
-                value=number if attribute.value_presence is PayloadPresence.SET else None,
-                from_pool_present=attribute.from_pool_presence is not PayloadPresence.ABSENT,
-                from_pool_id=pool.get_id() if pool is not None else None,
+                value=None if attribute.value_presence is PayloadPresence.ABSENT else Sent(value=number),
+                from_pool=Sent(value=pool.get_id() if pool is not None else None),
                 held_value_is_default=attribute.is_default is True,
                 tracking_pool_id=tracking_pool_id,
                 held_value=number,

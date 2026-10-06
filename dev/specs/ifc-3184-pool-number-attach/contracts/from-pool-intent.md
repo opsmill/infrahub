@@ -21,10 +21,8 @@ than left inline in `Node.handle_pool`, where it is reachable only through a dat
 
 | Input | Type | Source |
 |---|---|---|
-| `value_present` | `bool` | payload key membership — `"value" in data` |
-| `value` | `int \| None` | payload |
-| `from_pool_present` | `bool` | payload key membership — `"from_pool" in data` |
-| `from_pool_id` | `str \| None` | `from_pool["id"]` when present and non-null |
+| `value` | `Sent[int] \| None` | `None` when `"value" not in data`; otherwise `Sent` holding the payload value, `None` for an explicit `null` |
+| `from_pool` | `Sent[str] \| None` | `None` when `"from_pool" not in data`; otherwise `Sent` holding the resolved pool id, `None` for an explicit `null` |
 | `held_value_is_default` | `bool` | the attribute holds a schema default; read only when the write sends no `value` |
 | `tracking_pool_id` | `str \| None` | the pool whose live record is on this attribute, if any |
 | `held_value` | `int \| None` | the number the attribute holds; read only when the write sends no `value` |

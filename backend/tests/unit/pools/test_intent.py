@@ -6,7 +6,7 @@ from enum import Enum
 
 import pytest
 
-from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest
+from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
 
 POOL_P = "pool-p"
 POOL_A = "pool-a"
@@ -34,10 +34,8 @@ def _request(
     held_value_is_default: bool = False,
 ) -> FromPoolRequest:
     return FromPoolRequest(
-        value_present=value is not ABSENT,
-        value=None if isinstance(value, _Absent) else value,
-        from_pool_present=from_pool is not ABSENT,
-        from_pool_id=None if isinstance(from_pool, _Absent) else from_pool,
+        value=None if isinstance(value, _Absent) else Sent(value=value),
+        from_pool=None if isinstance(from_pool, _Absent) else Sent(value=from_pool),
         held_value_is_default=held_value_is_default,
         tracking_pool_id=tracked_by,
         held_value=held_value,
@@ -236,41 +234,3 @@ def test_only_a_pool_named_alone_over_a_held_number_refuses() -> None:
     ]
 
     assert refused == [(ABSENT, POOL_P, None, (7, False)), (ABSENT, POOL_P, POOL_A, (7, False))]
-
-
-@dataclass(frozen=True)
-class InvalidRequestTestCase:
-    name: str
-    value: int | None
-    from_pool_id: str | None
-    message: str
-
-
-INVALID_REQUEST_TEST_CASES: list[InvalidRequestTestCase] = [
-    InvalidRequestTestCase(
-        name="value_without_presence",
-        value=50,
-        from_pool_id=None,
-        message=r"^A value cannot be carried without being present in the payload\.$",
-    ),
-    InvalidRequestTestCase(
-        name="pool_without_presence",
-        value=None,
-        from_pool_id=POOL_P,
-        message=r"^A pool cannot be carried without from_pool being present in the payload\.$",
-    ),
-]
-
-
-@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in INVALID_REQUEST_TEST_CASES])
-def test_request_rejects_a_field_carried_without_presence(test_case: InvalidRequestTestCase) -> None:
-    with pytest.raises(ValueError, match=test_case.message):
-        FromPoolRequest(
-            value_present=False,
-            value=test_case.value,
-            from_pool_present=False,
-            from_pool_id=test_case.from_pool_id,
-            held_value_is_default=False,
-            tracking_pool_id=None,
-            held_value=None,
-        )
