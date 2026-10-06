@@ -7,5 +7,7 @@ Applies to docstrings, comments, and any inline documentation in source files â€
 - Do not reference Jira tickets, GitHub issues, spec-kit IDs, or spec vocabulary in docstrings, comments, or test names.
 - Comment the *why* (a constraint, an invariant, a workaround), never the *what*, and keep a why-comment to one sentence.
 - A spec, plan, or task asking for an explanatory comment does not override the one-sentence why rule; put the fuller rationale in the PR description.
+- Do not write `Args`/`Returns`/`Raises` entries that restate the signature: a public function gets one contract line, a clearly named private helper gets none. Do not document dataclass fields in the class docstring, or give a field a docstring that repeats its name.
+- A contract negative such as "never raises" is not history. Explanatory comments on Cypher, or on upstream library behaviour the call site cannot show, are allowed.
 
 Full reference: `dev/guidelines/code-doc-style.md`
