@@ -79,7 +79,10 @@ class DeliveryStatePort(Protocol):
         """Record that an import of the repository objects at the commit is owed."""
 
     async def settle_import(self, *, repository_id: str, commit: str, snapshot: WritebackIntent) -> bool:
-        """Clear the owed import of the commit unless the queue grew past the snapshot, and return whether it did."""
+        """Clear the owed import of the commit, and return whether it did.
+
+        Keeps the owed import when another commit is owed, or when the queue grew past the snapshot.
+        """
 
     async def request_branch_deletion(self, *, repository_id: str, git_branch: str) -> bool:
         """Flag each pending merge from the remote branch to delete that branch once delivered.
@@ -88,7 +91,7 @@ class DeliveryStatePort(Protocol):
         """
 
     async def progress(self, *, repository_id: str) -> None:
-        """Move the time of the last progress, and leave the queue untouched."""
+        """Move the time of the last progress at a step boundary of an attempt, and leave the queue untouched."""
 
     async def hold(self, *, repository_id: str, held: HeldRegeneration) -> HoldReceipt | None:
         """Hold the items under the next sequence, or return None and write nothing when the queue is empty."""
@@ -104,7 +107,9 @@ class DeliveryStatePort(Protocol):
     async def abandon(
         self, *, repository_id: str, queue_version: int, record: AbandonmentRecord, actor: Actor
     ) -> tuple[WritebackIntent, ReleaseLease | None]:
-        """Drop every pending merge with its record, and lease every uncovered held item, in one save.
+        """Move every pending merge and the owed import into the record, and lease every uncovered held item.
+
+        Both happen in one save, made as the actor.
 
         Raises:
             DeliveryQueueChangedError: The queue is no longer at `queue_version`.
@@ -113,7 +118,10 @@ class DeliveryStatePort(Protocol):
         """
 
     async def lease_owed_release(self, *, repository_id: str) -> ReleaseLease | None:
-        """Lease every uncovered held item, or return None and write nothing when a live lease covers them all."""
+        """Lease every held item that no live lease covers.
+
+        Returns None and writes nothing while merges are queued, or when no such item is held.
+        """
 
     async def renew_lease(self, *, repository_id: str, lease_id: str) -> None:
         """Move the expiry of the lease."""
@@ -125,7 +133,7 @@ class DeliveryStatePort(Protocol):
         """Remove each item of the lease that keeps its named sequence, then the lease; does nothing when it is gone."""
 
     async def touch(self, *, repository_id: str) -> None:
-        """Move the time of the last progress."""
+        """Move the time of the last progress after a recovery submission, as at a step boundary of an attempt."""
 
     async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None:
         """Replace the record of the delivered commit that a rewrite of the remote discarded."""

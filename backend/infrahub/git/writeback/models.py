@@ -40,7 +40,7 @@ class DeliveryOutcome(StrEnum):
     OBSERVED = "observed"
     """The remote already held every entry, so nothing was pushed."""
     RELEASED = "released"
-    """Only held regeneration was released, behind an empty queue."""
+    """The queue was empty, so the attempt only released the held regeneration."""
     FAILED = "failed"
     UNREPLAYABLE = "unreplayable"
     DEFERRED = "deferred"
@@ -177,7 +177,7 @@ class HeldPythonAttribute(BaseModel):
 
 
 class HeldWiden(BaseModel):
-    """A regeneration of every definition of the repository, owed by its next release."""
+    """A regeneration of the repository owed by its next release, of scope `all` or `terminals`."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -376,7 +376,7 @@ class HoldReceipt:
 class WritebackIntent:
     """The whole delivery state of one repository, read in one snapshot.
 
-    Each transition is pure and returns the state that it leads to, or None when it changes nothing.
+    Each transition is pure, and a save writes only the attributes that it changes.
     """
 
     repository_id: str

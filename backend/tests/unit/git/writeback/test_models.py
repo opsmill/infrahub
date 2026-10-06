@@ -247,7 +247,7 @@ def _expired_lease_live_lease_and_new_holds() -> tuple[HeldRegeneration, Release
     return held, lease_b, after_a_expired
 
 
-def test_new_lease_over_gaps_names_items_of_the_expired_lease_and_the_new_holds() -> None:
+def test_new_lease_skips_the_live_lease_and_names_the_expired_lease_and_the_new_holds() -> None:
     held, _, now = _expired_lease_live_lease_and_new_holds()
 
     held, lease_c = _take_lease(held, "C", now)

@@ -49,8 +49,8 @@ def classify_delivery_failure(*, error: BaseException, stage: DeliveryStage) -> 
     """Return why a step of a delivery failed, whether a retry can succeed, and a message that is safe to store.
 
     A failed enqueue or release gives no cause, so the cause that the repository shows stays as it is. The
-    message is the remote's own words for a refused push, the typed message of any other error, and never
-    the output of a Git command.
+    message is the remote's own words for a refused push, or the message of another Infrahub error when it does
+    not repeat Git output. Any other error gives a sentence that names the step and the error type.
     """
     message = scrub_credentials(text=_describe(error=error, stage=stage))
     match stage:

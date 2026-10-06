@@ -11,12 +11,8 @@ STALE_AFTER_SECONDS: int = 15 * 60
 
 REMOVED_ENTRY_IDS_KEPT: int = 256
 
-# Covers a whole automatic retry chain, plus ten minutes for the import and the settle.
-NARROWED_HOLD_TTL_SECONDS: int = (
-    int(sum(DELIVERY_RETRY_DELAYS_SECONDS))
-    + (DELIVERY_RETRIES + 1) * (FETCH_TIMEOUT_SECONDS + PUSH_TIMEOUT_SECONDS)
-    + 10 * 60
-)
+# Covers a whole automatic retry chain, plus ten minutes for the import and the queue update.
+NARROWED_HOLD_TTL_SECONDS: int = 2730
 NARROWED_HOLD_MAX_BYTES: int = 512 * 1024
 
 RELEASE_LEASE_SECONDS: int = 15 * 60
