@@ -68,13 +68,13 @@ the commit recorded before the merge until its next recompute.
 
 **Purpose**: prepare the worktree so the tests can run at all.
 
-- [ ] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
+- [X] T001 Initialise the submodules and reinstall the server package, so `backend/tests/` can
       import `infrahub_sdk`: `git submodule update --init python_sdk frontend/packages/schema-visualizer`,
       then `uv sync --all-groups --reinstall-package infrahub-server`.
-- [ ] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
+- [X] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
       the dev shell, and keep testcontainers enabled. See [quickstart.md](quickstart.md).
-- [ ] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
-- [ ] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
+- [X] T003 [P] Create the package `backend/infrahub/git/writeback/` with an empty `__init__.py`.
+- [X] T004 [P] Create the test packages `backend/tests/unit/git/writeback/` and
       `backend/tests/component/git/writeback/`, each with an empty `__init__.py`.
 
 ---
