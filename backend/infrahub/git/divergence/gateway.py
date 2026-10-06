@@ -166,6 +166,17 @@ class GitAncestryGateway:
         except OSError:
             return False
 
+    def require_present_commit(self, commit: str) -> None:
+        """Reject a commit the local object database does not hold.
+
+        Raises:
+            RepositoryError: When the identifier is not a full object name, when git could not be
+                asked, or when the object database holds no such commit.
+
+        """
+        if not self.has_commit(commit=commit):
+            raise self._read_failed(commit=commit, detail="the object is absent")
+
     def require_commit(self, commit: str) -> None:
         """Reject an identifier git would read as a name rather than a commit.
 

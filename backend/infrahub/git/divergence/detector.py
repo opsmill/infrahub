@@ -35,8 +35,11 @@ class RemoteDivergenceDetector:
 
         Raises:
             RepositoryError: When a comparison is needed and cannot be completed, either because
-                one of the two identifiers is malformed or because the presence or ancestry check
-                failed. A ref that needs no comparison raises nothing, whatever it holds.
+                one of the two identifiers is malformed, because a presence or ancestry check
+                failed, or because the remote head is absent from the object database. An absent
+                imported commit is classified instead, because a force push and a prune lose it
+                in the ordinary way. A ref that needs no comparison raises nothing, whatever it
+                holds.
 
         """
         return RefDivergence(
@@ -68,6 +71,8 @@ class RemoteDivergenceDetector:
         # Asked before the ancestry question because it cannot be answered once the object is
         # gone: the ancestry call raises instead.
         if not self.gateway.has_commit(commit=imported_commit):
+            # A fetch brings the remote head in, so an absent one is a fault and not a rewrite.
+            self.gateway.require_present_commit(commit=remote_head)
             return self._diverged(target_changed=target_changed)
 
         if self.gateway.is_ancestor(ancestor_commit=imported_commit, descendant_commit=remote_head):

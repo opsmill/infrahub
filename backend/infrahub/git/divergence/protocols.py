@@ -10,7 +10,11 @@ class AncestryGateway(Protocol):
     one exception type and imports no git library.
     """
 
-    def require_commit(self, commit: str) -> None: ...
+    def require_commit(self, commit: str) -> None:
+        """Raise unless the identifier is well formed. A commit that is absent passes."""
+
+    def require_present_commit(self, commit: str) -> None:
+        """Raise unless the object database holds that commit."""
 
     def is_ancestor(self, ancestor_commit: str, descendant_commit: str) -> bool: ...
 

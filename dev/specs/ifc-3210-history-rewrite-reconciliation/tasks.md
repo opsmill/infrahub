@@ -67,7 +67,8 @@ its own.
 - [x] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
 - [x] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`, and declare
-      `is_ancestor` and `has_commit` as a `Protocol` in `divergence/protocols.py` so the module
+      `is_ancestor`, `has_commit`, `require_commit` and `require_present_commit` as a `Protocol`
+      in `divergence/protocols.py` so the module
       naming them imports no git library. The gateway runs `git merge-base --is-ancestor` as a
       plain git command through GitPython, and reads exit status 1 as "not an ancestor". Every git
       failure leaves as a `RepositoryError`, so the detector imports no git library. Bind the

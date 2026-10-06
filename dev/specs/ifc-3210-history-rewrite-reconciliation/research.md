@@ -107,6 +107,11 @@ target changed. It never reaches the ancestry call for a commit that is gone. A 
 ancestry call itself is a different outcome: it leaves the gateway as a `RepositoryError` and the
 branch joins `failed_imports`.
 
+On that path the detector also requires the remote head to be present, and raises when it is not.
+The fetch that ran before the classification brought the remote head in, so its absence means a
+broken clone rather than a rewrite. The imported commit carries no such requirement, because a
+force push followed by a prune loses it in the ordinary way.
+
 `REWRITE` is the safe reading here. The other reading is that the local clone lost an object, and
 a reset to the remote repairs both. The record names the imported commit as the previous commit,
 which is still the true answer to "what did Infrahub hold".

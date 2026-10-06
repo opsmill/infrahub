@@ -37,6 +37,13 @@ class FakeAncestryGateway:
         if commit not in self.well_formed:
             raise RepositoryError(identifier="repo", message=f"{commit!r} is not a valid commit identifier")
 
+    def require_present_commit(self, commit: str) -> None:
+        self.require_commit(commit=commit)
+        if commit not in self.present:
+            raise RepositoryError(
+                identifier="repo", message=f"Unable to read {commit} from the object database: the object is absent"
+            )
+
     def has_commit(self, commit: str) -> bool:
         return commit in self.present
 
@@ -212,6 +219,16 @@ def test_a_remote_head_missing_from_the_object_database_reaches_the_caller(
 
     with pytest.raises(RepositoryError, match=r"^Unable to compare [0-9a-f]{40} against 0{40}: "):
         classify(gateway, imported=imported, remote=ABSENT)
+
+
+def test_an_absent_remote_head_raises_when_the_imported_commit_is_absent_too(
+    repo: Repo, gateway: GitAncestryGateway
+) -> None:
+    """A fetch brings the remote head in, so its absence is a fault and not a rewrite."""
+    commit_file(repo=repo, content="one")
+
+    with pytest.raises(RepositoryError, match=r"^Unable to read 0{40} from the object database: the object is absent$"):
+        classify(gateway, imported=IMPORTED, remote=ABSENT)
 
 
 def test_a_broken_object_database_reaches_the_caller(repo: Repo, gateway: GitAncestryGateway) -> None:

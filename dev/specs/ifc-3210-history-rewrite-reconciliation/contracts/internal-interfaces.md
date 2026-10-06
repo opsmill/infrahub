@@ -57,6 +57,8 @@ Rows are evaluated in order. The first match wins.
 | `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
 | `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
+| Either identifier is malformed | propagates as `RepositoryError`; the branch joins `failed_imports` |
+| **The imported commit is absent and the remote head is absent too** | propagates as `RepositoryError` |
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
 | `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
@@ -68,6 +70,14 @@ The absent-object rows come **before** the ancestry rows because those rows cann
 evaluated at all when the object is gone: the ancestry call raises instead of answering. They also
 honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
 still a re-target rather than a recorded rewrite.
+
+**The two commits are not required in the same way.** An absent imported commit is a
+classification, because a force push followed by a prune loses it in the ordinary way. An absent
+remote head is a fault, because the fetch that ran before the classification brought that object
+in. The absent-object rows therefore require the remote head to be present before they classify.
+Without that check a remote head naming an object the repository does not hold reads as `REWRITE`,
+so the recorder writes a record and the trunk signal fires over a broken clone. The ancestry rows
+need no such check: the ancestry call raises on its own when either object is missing.
 
 **A remote head behind the graph commit means the remote was rewound.** Every write of the graph
 commit records a commit the remote already carries. `create_locally` records straight after a
@@ -212,7 +222,7 @@ reported": reconciled is the reset, not reported is the missing record.
 
 ### Ancestry gateway
 
-The gateway is bound to one repository when it is built, so neither call takes a repository:
+The gateway is bound to one repository when it is built, so no call takes a repository:
 
 ```text
 is_ancestor(ancestor_commit, descendant_commit) -> bool
@@ -220,6 +230,14 @@ is_ancestor(ancestor_commit, descendant_commit) -> bool
 
 ```text
 has_commit(commit) -> bool
+```
+
+```text
+require_commit(commit) -> None
+```
+
+```text
+require_present_commit(commit) -> None
 ```
 
 `is_ancestor` runs `git merge-base --is-ancestor` as a plain git command through GitPython, and
@@ -231,6 +249,15 @@ reachable. Without it "the object is gone" and "git could not be asked" arrive a
 `RepositoryError`, so a commit that was garbage-collected raises on every cycle and the branch
 never classifies at all. It is a separate call precisely so a missing object is a fact the detector
 can act on rather than a failure it has to swallow.
+
+`require_commit` checks the shape of an identifier alone: it raises unless the string is a full
+object name, and a well formed identifier whose object is absent passes. The detector calls it on
+both commits before any comparison, so a malformed identifier cannot read as a rewrite.
+
+`require_present_commit` raises unless the object database holds that commit. It is the strict
+form the absent-object rows need for the remote head. It raises rather than returning a boolean
+because the error carries the repository name, which the gateway holds and the detector does not.
+Returning a boolean would make the detector compose a git error message of its own.
 
 ---
 

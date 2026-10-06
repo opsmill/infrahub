@@ -52,6 +52,7 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 | Classifier, rewrite | Neither is an ancestor and the target did not change, so the result is `REWRITE`. |
 | Classifier, re-target | Neither is an ancestor and the target changed, so the result is `RETARGET`. |
 | Classifier, missing object | The imported commit is gone from the object database and the target did not change, so the result is `REWRITE`. With the target changed it is `RETARGET`. |
+| Classifier, missing remote head | The remote head is gone from the object database, so the classification raises a `RepositoryError` instead of reporting a rewrite. |
 | Classifier, never imported | No imported commit, so the result is never `REWRITE` or `RETARGET`. |
 | Suppression, present | A present marker makes `target_changed` true and is gone afterwards. |
 | Suppression, absent | An absent marker makes `target_changed` false. |
