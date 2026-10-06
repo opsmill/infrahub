@@ -142,9 +142,10 @@ miss without checking.
 
 ---
 
-## Scenario 7 — The single refusal
+## Scenario 7 — The refusal
 
-1. On an object holding a non-default number that no pool tracks, send `from_pool` **alone**.
+1. On an object holding a non-default number that no pool tracks, or that another pool tracks, send
+   `from_pool` **alone**.
 2. **Expected**: refused, with an error naming **both** ways forward — restate the value to attach
    it, or send `value: null` to discard it and allocate.
 

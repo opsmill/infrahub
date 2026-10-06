@@ -43,6 +43,11 @@ Provenance describes how the number the attribute *currently* holds got there; a
 allocated and the user then overwrote by hand is `provided`, not `allocated`. Without this, the field
 reports how the record started rather than what it now describes.
 
+**Restating the number the record already tracks keeps it.** When the write attaches the value the
+attribute already holds on the branch, an `allocated` record from the same pool counts as current and
+nothing is written; the query compares the held value before the write saves its own. Resending a
+number the pool allocated therefore does not turn it into `provided`. *(Revised 2026-10-05.)*
+
 **Required interface change**: `CoreNumberPool.get_resource(db, branch, attribute: AttributeSchema,
 identifier: str)` receives the attribute *schema* and a node uuid — it never sees the `Attribute`
 **vertex**. Both the close-before-create and the re-anchored idempotency lookup need that vertex, so
@@ -55,10 +60,12 @@ same node reuse its number. Re-anchored, the question becomes **"is there a live
 pool on *this attribute*?"** — consistent with release, which does no identifier matching. The
 identifier survives as a diagnostic, not as a join key.
 
-**Locking**: the caller must hold the lock of **both** the pool being written and the pool currently
-tracking the attribute. `get_lock_names_on_object_mutation` derives lock names from the *payload*, so
-it produces only the named pool's lock today. Without pool A's lock, two concurrent re-pools of one
-attribute into different pools each close the other's record and both create. See `research.md` D6.
+**Locking**: the write takes an exclusive lock on the `Attribute` vertex before it reads any record
+(a `SET` and `REMOVE` of a throwaway property, held until the transaction ends). A concurrent write
+to the same attribute waits, then reads the records the first one committed. Without it, two
+concurrent re-pools of one attribute into different pools each close the other's record and both
+create, because neither can read the other's uncommitted edge. The caller still holds the lock of
+the pool it allocates from. See `research.md` D6.
 
 ### `release(pool, attribute)`
 

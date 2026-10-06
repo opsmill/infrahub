@@ -25,12 +25,15 @@ than left inline in `Node.handle_pool`, where it is reachable only through a dat
 | `value` | `int \| None` | payload |
 | `from_pool_present` | `bool` | payload key membership — `"from_pool" in data` |
 | `from_pool_id` | `str \| None` | `from_pool["id"]` when present and non-null |
-| `current_value_is_default` | `bool` | the attribute holds a schema default |
+| `held_value_is_default` | `bool` | the attribute holds a schema default; read only when the write sends no `value` |
 | `tracking_pool_id` | `str \| None` | the pool whose live record is on this attribute, if any |
-| `current_value` | `int \| None` | the attribute's current value on the write's branch |
+| `held_value` | `int \| None` | the number the attribute holds; read only when the write sends no `value` |
 
-**Presence, not truthiness.** graphene preserves the distinction: graphql-core omits an unset field
-from the coerced dict entirely, while an explicit `null` lands as `key -> None`. The update path
+**Presence, not truthiness.** graphql-core omits an unset field from the coerced dict entirely,
+while an explicit `null` lands as `key -> None` — but only for a field with no default. `from_pool`
+on the Number attribute inputs is therefore declared as a plain input field
+(`GenericPoolInput(required=False)`): mounted as `Field(GenericPoolInput, ...)`, graphene gives it a
+`null` default, so an omitted `from_pool` arrived as `None` and read as an explicit detach. The update path
 already relies on this (`BaseAttribute.from_graphql` tests `if "from_pool" in data`). The **create**
 path currently discards it — `BaseAttribute.__init__` does `data.get(...)` — so presence flags must
 be carried into it. See `research.md` D3.
@@ -46,13 +49,15 @@ One intent:
 | `ALLOCATE` | Pool picks the next free number; record created with `provenance=allocated` |
 | `ATTACH` | Keep the provided number; record created with `provenance=provided` |
 | `DETACH` | End the record; the number on the object is unchanged |
-| `RE_POOL_ALLOCATE` | End pool A's record, allocate from pool B — one operation |
-| `RE_POOL_ATTACH` | End pool A's record, attach the provided number under pool B — one operation |
-| `DISCARD_AND_ALLOCATE` | Throw away the provided `null` value and allocate |
 | `NO_OP` | Nothing to do |
-| `REFUSE` | The single refusal |
+| `REFUSE` | The refusal: `from_pool` alone over a number it would overwrite (rows 10 and 12) |
 
 An enum, not strings.
+
+**Revised 2026-10-05: no separate re-pool or discard intents.** Writing a pool's record ends every other
+record on the attribute in the same query, so moving from pool A to pool B is the same write as an
+attach or an allocation, and `value: null` with a pool asks for the next number from that pool, which
+is an allocation. `RE_POOL_ATTACH`, `RE_POOL_ALLOCATE` and `DISCARD_AND_ALLOCATE` were removed.
 
 ---
 
@@ -63,24 +68,27 @@ An enum, not strings.
 | # | `value` | `from_pool` | Currently tracked by | Current value | Intent |
 |---|---|---|---|---|---|
 | 1 | present, non-null | `P` | nothing | any | `ATTACH` |
-| 2 | present, non-null | `P` | `P` | equal to provided | `NO_OP` |
+| 2 | present, non-null | `P` | `P` | equal to provided | `ATTACH` — the write to the database leaves the record unchanged, including an `allocated` provenance, because the attribute already holds that value on the branch (revised 2026-10-05) |
 | 3 | present, non-null | `P` | `P` | different | `ATTACH` — the record is already anchored on the attribute, so no new record is written; the value write plus a `provenance` update to `provided` is all that is needed |
-| 4 | present, non-null | `B` | `A` | any | `RE_POOL_ATTACH` |
+| 4 | present, non-null | `B` | `A` | any | `ATTACH` — writing B's record ends A's |
 | 5 | present, non-null | absent | anything | any | Ordinary value write. Ledger untouched, whether or not a pool tracks the attribute (FR-022, FR-031) |
-| 6 | present, **null** | `P` | nothing | any | `DISCARD_AND_ALLOCATE` |
-| 7 | present, **null** | `P` | `P` | any | `DISCARD_AND_ALLOCATE` |
-| 8 | present, **null** | `B` | `A` | any | `RE_POOL_ALLOCATE` |
+| 6 | present, **null** | `P` | nothing | any | `ALLOCATE` |
+| 7 | present, **null** | `P` | `P` | any | `ALLOCATE` — take the next number from `P`, which may be the number the attribute already holds; no new IS_RESERVED edge unless the pool or provenance changes |
+| 8 | present, **null** | `B` | `A` | any | `ALLOCATE` — writing B's record ends A's |
 | 9 | absent | `P` | nothing | schema default | `ALLOCATE` — allocation overwrites the default |
-| 10 | absent | `P` | nothing | **non-default** | **`REFUSE`** ← the only refusal |
+| 10 | absent | `P` | nothing | **non-default** | **`REFUSE`** |
 | 11 | absent | `P` | `P` | any | `NO_OP` |
-| 12 | absent | `B` | `A` | any | `RE_POOL_ALLOCATE` |
+| 12 | absent | `B` | `A` | **non-default** | **`REFUSE`**; with a schema default or no value, `ALLOCATE`, and writing B's record ends A's (revised 2026-10-05) |
 | 13 | any | **null** | `P` | any | `DETACH` |
 | 14 | any | **null** | nothing | any | `NO_OP` |
 | 15 | absent | absent | anything | any | `NO_OP` |
 
-### Row 10 — the single refusal
+### Rows 10 and 12 — the refusal
 
-> `from_pool` alone on an attribute holding a non-default, untracked number.
+> `from_pool` alone on an attribute holding a non-default number, unless the named pool already tracks it.
+
+*Revised 2026-10-05: row 12 (another pool tracks the number) refuses for the same reason as row 10. Moving
+to a new pool with no value could mean keep the number or take the new pool's next one.*
 
 The message must name **both** ways forward:
 
@@ -91,7 +99,7 @@ Rationale: silently overwriting a hand-set number is the behaviour this slice ex
 user's intent is genuinely ambiguous — both readings are reasonable. This is the one place the
 contract asks rather than guesses.
 
-This is the **only** refusal the resolver emits. Earlier drafts carried three more, all deleted:
+This is the **only** refusal rule the resolver applies. Earlier drafts carried three more, all deleted:
 - the out-of-range refusal (FR-029 deleted — the pool refuses no provided value);
 - two `source` refusals (FR-030a deleted — a user may set their own source on a pooled attribute).
 
@@ -145,9 +153,9 @@ accepts no provided value. Templates remain refused.
 Unit, no database:
 
 1. **Every cell** of the table above.
-2. Both re-pool cells (4, 12) resolve to a re-pool intent, not a refusal.
-3. Exactly one input combination produces `REFUSE` — assert the count, not just the case, so a future
-   edit cannot quietly add a second refusal.
+2. Row 4 attaches and row 12 refuses over a held number; row 12 over a default allocates.
+3. Only the combinations of rows 10 and 12 produce `REFUSE` — assert the exact list, not just the cases,
+   so a future edit cannot quietly add another refusal.
 4. Row 2 is a true no-op.
 5. Presence is distinguished from truthiness: `value: null` (row 6) and `value` absent (row 9)
    produce different intents from the same `from_pool`.

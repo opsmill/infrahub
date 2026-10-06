@@ -19,7 +19,7 @@ spec drift.
 |---|---|---|---|
 | 1 | "Every number-pool read query joins `res.identifier = n.uuid`" (quoted from the P1 brief) | Only `NumberPoolGetUsed` and `NumberPoolGetFree` do. `NumberPoolGetAllocated` reaches the node through `HAS_SOURCE`; `NumberPoolGetReserved` never reaches the node; `NumberPoolGetTaken` never reads the edge. | The uuid-join removal is smaller than advertised, but `NumberPoolGetAllocated` is **bigger**: dropping the pool from `HAS_SOURCE` (FR-030b) removes its only path to the node, so it is a rewrite, not an edit. This is exactly why FR-030c exists — the PRD reaches the right conclusion from a wrong premise. |
 | 2 | The multi-pool collapse survivor is "the most recent `from`, matching the rule `m066` uses for schema pools" | `m066_consolidate_duplicate_number_pools::Migration066._find_duplicate_groups` keeps the **earliest** (`ORDER BY created_at ASC`, `chronological_pool_ids[0]`; docstring: *"Keeps the earliest pool (by creation timestamp)"*). | The rule stands (most recent `from` is right for a *record*: the latest claim is the current one), but the justification is false. `m066` picks the oldest *pool vertex* because schema parameters already point at it — a different problem. Plan records the rule on its own merits. **Decision D7.** |
-| 3 | "absent versus explicit-null are distinguishable at the GraphQL input layer (verified on the pinned graphene)" | True of the raw payload dict, and the **update** path already uses it (`BaseAttribute.from_graphql` tests `if "from_pool" in data`). The **create** path throws it away: `BaseAttribute.__init__` does `self.value = data.get("value")` / `self.from_pool = data.get("from_pool")`. | Carrying presence into the create path is real work the PRD does not scope. **Decision D3.** |
+| 3 | "absent versus explicit-null are distinguishable at the GraphQL input layer (verified on the pinned graphene)" | True of the raw payload dict once `from_pool` has no `null` default (see D3), and the **update** path already uses it (`BaseAttribute.from_graphql` tests `if "from_pool" in data`). The **create** path throws it away: `BaseAttribute.__init__` does `self.value = data.get("value")` / `self.from_pool = data.get("from_pool")`. | Carrying presence into the create path is real work the PRD does not scope. **Decision D3.** |
 | 4 | Detach "ends the single `-global-` record"; re-pool "ends A's record and begins B's" | Nothing in the codebase has ever closed an `IS_RESERVED` edge except `PoolChangeReserved`, and `NumberPoolSetReserved` is a bare `CREATE`. There is also no lock on pool A during a write that names pool B: `lock_utils::get_lock_names_on_object_mutation` derives lock names from the *payload*, so it locks B only. | FR-024a/FR-024b need pool A's lock too, or the collapse races. The PRD does not mention this. **Decision D6.** |
 | 5 | "`NumberPoolGetAllocated` gates every row on `hs_active = TRUE`, so a user-set source today removes an allocated number from the list while it stays reserved" | Confirmed, and worse than stated: the `hs_active` subquery is a **plain** (non-`OPTIONAL`) `CALL`, so a row with no qualifying `HAS_SOURCE` is dropped outright; and the subquery is branch- and time-unaware. | The PRD's diagnosis is right. Five existing component tests pin the current behaviour and must be rewritten with the query. **Decision D5.** |
 
@@ -145,8 +145,11 @@ not just their values, and the intent resolver consumes the presence flags.
 
 **Rationale**: the contract distinguishes three inputs — absent, explicit `null`, and a value — and
 that distinction is what separates *no-op*, *detach* and *attach*. graphene preserves it in the
-payload dict (graphql-core omits an unset field entirely; an explicit null lands as `key -> None`),
-and `BaseAttribute.from_graphql` already relies on it with `if "from_pool" in data`. The create path
+payload dict (graphql-core omits an unset field entirely; an explicit null lands as `key -> None`)
+only for a field with no default. A mounted `Field(GenericPoolInput, required=False)` gets a `null`
+default in graphene 3.4, so `from_pool` on the Number attribute inputs is declared as
+`GenericPoolInput(required=False)` instead; before that, an omitted `from_pool` arrived as `None`.
+`BaseAttribute.from_graphql` already relies on the distinction with `if "from_pool" in data`. The create path
 drops it in `BaseAttribute.__init__` (`data.get(...)`). Two fields are added alongside the existing
 ones rather than changing their types, so nothing downstream that reads `attribute.value` or
 `attribute.from_pool` changes.
@@ -158,16 +161,19 @@ dict-membership is the available mechanism and the one already in use.
 
 **Caveat to carry into review**: `graphql/mutations/profile.py::InfrahubProfileMutation._validate_no_resource_pools_in_data`
 carries a comment asserting the opposite — *"graphene InputObjectType may include keys with None
-values for unset fields"*. Per graphene's `InputObjectTypeContainer` and graphql-core's
-`coerce_input_value`, that is not true for these inputs: `setattr` populates attributes, not dict
-keys. The comment is defensive but inaccurate, and a reviewer will read the new resolver against it.
-Fix the comment in the same change.
+values for unset fields"*. That comment was in fact accurate for the input it guards:
+`RelatedNodeInput.from_pool` is a mounted `Field` with a `null` default, so an unset `from_pool`
+does land as a `None` key there. Its `is not None` check is what makes it correct; the rewritten
+comment that claims the key is absent is wrong for relationship inputs.
 
 ### D4 — Extract `FromPoolIntentResolver` as pure decision logic
 
 **Decision**: a pure module mapping `(value present?, value, from_pool present?, from_pool,
-current tracking state)` → one intent: `allocate`, `attach`, `detach`, `re_pool_allocate`,
-`re_pool_attach`, `discard_and_allocate`, `no_op`, or `refuse`. No database access, no node access.
+current tracking state)` → one intent: `allocate`, `attach`, `detach`, `no_op`, or `refuse`. No database
+access, no node access. *(Revised 2026-10-05: `re_pool_allocate`, `re_pool_attach` and
+`discard_and_allocate` were removed — writing a pool's record ends any other pool's, so a re-pool is
+an attach or an allocation, and `value: null` with a pool is an allocation. See
+`contracts/from-pool-intent.md`.)*
 
 **Rationale**: `Node.handle_pool` currently fuses seven concerns — template rejection, the
 schema-`NumberPool` case, the user `from_pool` case, pool lookup by uuid *or* name (DB I/O), the
@@ -229,6 +235,12 @@ a different reason than the branch-aware ones will.
 target `Attribute` before creating its own. Additionally, `get_lock_names_on_object_mutation` must
 contribute the lock of the pool **currently tracking** the attribute, not only the pool named in the
 payload.
+
+**Revised 2026-10-05 (implementation)**: the lock half is replaced by a write lock on the `Attribute`
+vertex taken inside `NumberPoolSetReserved` before it reads any record, held until the transaction
+ends. That removes the tracking-pool read before locking and the extra lock name. The pool write runs
+inside the mutation's transaction, which `retry_db_transaction` retries on deadlock. The rationale and
+cost below describe the superseded lock-name approach.
 
 **Rationale for the lock half (new, not in the PRD)**: the invariant is enforced by a
 close-then-create on the record, but the close touches pool A while the mutation holds only pool B's
@@ -548,5 +560,5 @@ bucket have not yet moved them.
 | R3 | FR-036a's per-branch resolution inside the pool lock | D12 benchmark; release decision on the curve |
 | R4 | The migration deletes reservation data for the first time | Four behaviours, three reporting counts; Docker integration coverage; `validate_migration` post-condition |
 | R5 | Published-contract gate (ADR 0010) | Two new output fields + a `source` provenance change the generated schema will not show; must be named explicitly in the contract review alongside P1/P3 |
-| R6 | Concurrent re-pool of one attribute into two pools | D6 lock on the currently-tracking pool |
+| R6 | Concurrent re-pool of one attribute into two pools | D6 write lock on the `Attribute` vertex (revised 2026-10-05) |
 | R7 | `IS_RESERVED` is undocumented in `dev/knowledge/backend/database-schema.md` | Document the edge, its shapes and its liveness rule as part of this work |

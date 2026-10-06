@@ -230,21 +230,23 @@ Shape:
 | `value` | `from_pool` | currently tracked by | intent |
 |---|---|---|---|
 | present, non-null | present, pool P | nothing | **attach** (`provenance=provided`) |
-| present, non-null | present, pool P | P, same value | **no_op** |
+| present, non-null | present, pool P | P, same value | **attach** (the record is kept unchanged; revised 2026-10-05) |
 | present, non-null | present, pool P | P, different value | **attach** (record already on the attribute; nothing to write) |
-| present, non-null | present, pool B | A | **re_pool_attach** |
+| present, non-null | present, pool B | A | **attach** (ends A's record; revised 2026-10-05) |
 | present, non-null | absent | anything | write the value; ledger untouched |
-| present, **null** | present, pool P | anything | **discard_and_allocate** |
+| present, **null** | present, pool P | anything | **allocate** (revised 2026-10-05) |
 | absent | present, pool P | nothing, value is a schema default | **allocate** |
-| absent | present, pool P | nothing, value is non-default | **refuse** ← the only refusal |
+| absent | present, pool P | nothing, value is non-default | **refuse** |
 | absent | present, pool P | P | **no_op** |
-| absent | present, pool B | A | **re_pool_allocate** |
+| absent | present, pool B | A | **refuse** over a non-default value, else **allocate** (ends A's record; revised 2026-10-05) |
 | absent/any | present, **null** | P | **detach** |
 | absent/any | present, **null** | nothing | **no_op** |
 
 Two properties this table must have, and the unit suite must assert:
-- **Exactly one refusal.** The out-of-range refusal earlier drafts carried is deleted (FR-029), and
-  the two `source` refusals go with FR-030a.
+- **One refusal rule.** `from_pool` alone over a non-default number the named pool does not track is
+  refused, whichever pool, if any, tracks it (revised 2026-10-05 to cover a re-pool too). The
+  out-of-range refusal earlier drafts carried is deleted (FR-029), and the two `source` refusals go
+  with FR-030a.
 - **Idempotence.** Re-sending the same `value` + `from_pool` for a number the object already owns is
   a silent no-op, because clients resend every field.
 
@@ -355,7 +357,7 @@ pre-existing nodes are already covered (research.md D15). Extend those modules.
 | R3 | FR-036a's per-branch resolution runs inside `get_resource`'s pool-wide lock, so allocation gains a live-branch-count dependency it does not have today. | Medium | Mandatory benchmark (D12). No numeric gate — SC-017 withdrawn for want of evidence. A superlinear curve or a large constant is a release decision. |
 | R4 | The migration deletes reservation data for the first time, and two of its four behaviours are destructive beyond the orphan drop. | Medium | Three reported counts; `validate_migration` post-condition following `m077`; component coverage per behaviour; one Docker upgrade test. Avoid `m066`'s documented partial-commit hazard. |
 | R5 | **Published contract (ADR 0010).** Two new output fields are a contract change; FR-030b is one the generated schema will **not** show, because the field and type are unchanged and only its provenance moves. | Medium | Name this slice explicitly in the contract review alongside P1 and P3's attribute-parameter changes, and name FR-030b within it. Regenerate, never hand-edit. |
-| R6 | Concurrent re-pool of one attribute into two different pools races: the close touches pool A while the mutation holds only pool B's lock. | Medium | D6: contribute the currently-tracking pool's lock name. Uses a field on a read the update path already performs. |
+| R6 | Concurrent re-pool of one attribute into two different pools races: the close touches pool A while the mutation holds only pool B's lock. | Medium | D6, as revised 2026-10-05: `NumberPoolSetReserved` takes a write lock on the `Attribute` vertex before reading, so a second writer waits and then sees the first one's edges. |
 | R7 | `_add_source_to_query` returning an id rather than the pool vertex silently breaks `__kind__` resolution. | Medium | Called out in design §5; assert the resolved GraphQL kind in a component test, not just the uuid. |
 | R8 | `NumberPoolGetAllocated` today applies **no** status or branch predicate to the reservation edge. Harmless while nothing closes one; wrong the moment detach and re-pool do. | Medium | The rewrite adds the predicate. Listed explicitly so it is not lost in "rewrite the query". |
 | R9 | The PRD's testing guidance points at the wrong configuration (research.md §0 item 6) and names a merge suite that merges nothing (item 7). Following it literally would produce tests for a gap that is already covered and miss the real one. | Low | Superseded by the audit in D15. |

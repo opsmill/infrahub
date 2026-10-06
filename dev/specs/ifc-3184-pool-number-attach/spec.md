@@ -248,13 +248,15 @@ listed here stand as written there.
   pool is refused. Already enforced, including for a pool attached to a generic the kind inherits
   from.
 - **FR-024**: `value` + `from_pool` on update MUST attach. `from_pool` alone on a non-default
-  untracked value MUST be refused, naming the two ways forward: restate the value to attach, or send
-  `value: null` to discard and allocate.
+  value MUST be refused unless the named pool already tracks it, naming the two ways forward: restate
+  the value to attach, or send `value: null` to discard and allocate. *(Revised 2026-10-05: the refusal
+  also covers a value another pool tracks; see FR-024a.)*
 - **FR-024a**: A write naming pool B on an attribute pool A already reserves MUST **re-pool** — A's
-  record ends and B's begins in one operation — whether the write allocates (`from_pool: B` alone)
-  or attaches (`value` + `from_pool: B`). Not a refusal: re-homing objects between pools is the
-  brownfield journey this slice exists for. "Tracked by a *different* pool" is therefore a dimension
-  of the intent decision table, not an error case.
+  record ends and B's begins in one operation — whether the write allocates (`value: null` +
+  `from_pool: B`) or attaches (`value` + `from_pool: B`). "Tracked by a *different* pool" is a
+  dimension of the intent decision table. *(Revised 2026-10-05: `from_pool: B` alone over a non-default
+  value is refused under FR-024, because it could mean keep the number under B or take B's next one;
+  it allocates only when the attribute holds no value or its schema default.)*
 - **FR-024b** *(invariant)*: At most one live reservation record MUST exist per attribute. The
   create path MUST close any existing record on the target attribute before creating its own.
   This invariant holds today only as an emergent property of the value anchoring; the re-anchoring
@@ -509,9 +511,9 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
 - Modules to build or modify:
   - **`FromPoolIntentResolver`** (core, mutation path, new): maps a request — `value` sent,
     `from_pool` sent / explicit-null / absent — plus the attribute's current state to one intent:
-    allocate, provide, attach, detach, discard-and-allocate, no-op, or refuse. Its inputs include
+    allocate, attach, detach, no-op, or refuse. Its inputs include
     whether the attribute is currently tracked by a *different* pool, which yields the re-pool
-    intent (FR-024a). Encodes the whole contract, including its one refusal, as pure decision logic.
+    intent (FR-024a). Encodes the whole contract, including its refusal rule, as pure decision logic.
   - **`PoolRecordLedger`** (core, query layer, extends): creates and ends branch-agnostic records
     between a pool and an attribute, with `provenance`. Carries the new release query. No identifier
     scoping and no record-move — both disappear with the re-anchoring.
@@ -527,7 +529,8 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   here.
 - **API surface**: no new input fields. `from_pool` changes meaning — explicit `null` is detach,
   `value: null` + `from_pool` discards and allocates — and absent versus explicit-null are
-  distinguishable at the GraphQL input layer (verified on the pinned graphene). Two new output
+  distinguishable at the GraphQL input layer (verified on the pinned graphene, provided `from_pool`
+is declared without a `null` default). Two new output
   fields on the pool query: `provenance` per in-use row, and the out-of-space bucket as a list of
   rows carrying value, holder and branch (FR-027a). `source` keeps its existing field and type; only
   what populates it changes (FR-030b).
@@ -551,7 +554,7 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   exception: they exist so the contract and the arithmetic can be pinned without a database, so they
   are tested directly.
 - **Unit tests**: `FromPoolIntentResolver` — every cell of both decision tables, including the
-  re-pool cells, the single refusal and the idempotent no-op. `PoolUtilizationReporter` —
+  re-pool cells, the refusal rule and the idempotent no-op. `PoolUtilizationReporter` —
   distinct-element counting with duplicates, the in-space/out-of-space partition, the branch split,
   and an empty effective space.
 - **Regression tests for FR-036a (confirmed defect)**: delete a pooled object on a branch while the
@@ -619,7 +622,7 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   FR-036a is the sharpest test of this principle: a ledger that is branch-agnostic in storage must
   still be branch-*honest* in what it reports, and the read path fails that today.
 - **III. Type Safety & Explicit Contracts**: `from_pool` changes meaning without changing shape, and
-  `source` changes provenance without changing shape, so the single refusal and the intent table
+  `source` changes provenance without changing shape, so the refusal rule and the intent table
   *are* the contract — which is why the resolver is extracted and unit-tested rather than left
   inline. Query results come back as typed structures, not raw records.
 - **IV. Test Discipline**: two pure modules with their own suites; one component test per lifecycle
