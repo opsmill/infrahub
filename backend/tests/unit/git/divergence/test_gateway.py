@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from git import Repo
 
 from infrahub.exceptions import RepositoryError
 from tests.unit.git.divergence.conftest import (
@@ -13,12 +15,12 @@ from tests.unit.git.divergence.conftest import (
     break_object_database,
     commit_file,
     deny_access_to_packs,
+    pack_directory_of,
+    pack_loose_objects,
     pack_objects,
 )
 
 if TYPE_CHECKING:
-    from git import Repo
-
     from infrahub.git.divergence.gateway import GitAncestryGateway
 
 
@@ -108,6 +110,75 @@ def test_an_unreadable_pack_is_an_error_not_an_absence(repo: Repo, gateway: GitA
     finally:
         for pack in packs:
             pack.chmod(0o644)
+
+
+PARTIALLY_DENIED_PACK_TEST_CASES = [
+    pytest.param((".idx", ".pack"), id="the_index_and_the_pack"),
+    pytest.param((".pack",), id="only_the_pack"),
+]
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="chmod does not restrict root")
+@pytest.mark.parametrize("denied_suffixes", PARTIALLY_DENIED_PACK_TEST_CASES)
+def test_one_unreadable_pack_among_several_is_an_error_not_an_absence(
+    repo: Repo, gateway: GitAncestryGateway, denied_suffixes: tuple[str, ...]
+) -> None:
+    """Git skips the pack it cannot read and answers the absent status from the packs it can."""
+    commit = commit_file(repo=repo, content="one")
+    first_pack = pack_loose_objects(repo=repo)
+    commit_file(repo=repo, content="two")
+    pack_loose_objects(repo=repo)
+    denied = [path for path in first_pack if path.suffix in denied_suffixes]
+
+    for path in denied:
+        path.chmod(0o000)
+    try:
+        assert gateway.has_commit(commit=str(repo.head.commit.hexsha)) is True
+        with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
+            gateway.has_commit(commit=commit)
+    finally:
+        for path in denied:
+            path.chmod(0o644)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="chmod does not restrict root")
+def test_an_unlistable_pack_directory_is_an_error_not_an_absence(repo: Repo, gateway: GitAncestryGateway) -> None:
+    """Git drops every pack when it cannot list them, and still answers from the loose objects."""
+    commit = commit_file(repo=repo, content="one")
+    pack_loose_objects(repo=repo)
+    commit_file(repo=repo, content="two")
+    pack_directory = pack_directory_of(repo=repo)
+
+    pack_directory.chmod(0o000)
+    try:
+        assert gateway.has_commit(commit=str(repo.head.commit.hexsha)) is True
+        with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
+            gateway.has_commit(commit=commit)
+    finally:
+        pack_directory.chmod(0o755)
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="chmod does not restrict root")
+def test_an_unreadable_borrowed_object_database_is_an_error_not_an_absence(
+    tmp_path: Path, repo: Repo, gateway: GitAncestryGateway
+) -> None:
+    """A repository reads the objects of the one it borrows from, and must read its failures too."""
+    lender = Repo.init(tmp_path / "lender")
+    borrowed = commit_file(repo=lender, content="one")
+    denied = pack_loose_objects(repo=lender)
+    commit_file(repo=repo, content="two")
+    alternates = Path(str(repo.git_dir), "objects", "info", "alternates")
+    alternates.write_text(f"{pack_directory_of(repo=lender).parent}\n", encoding="utf-8")
+    assert gateway.has_commit(commit=borrowed) is True
+
+    for path in denied:
+        path.chmod(0o000)
+    try:
+        with pytest.raises(RepositoryError, match=r"^Unable to read [0-9a-f]{40} from the object database: "):
+            gateway.has_commit(commit=borrowed)
+    finally:
+        for path in denied:
+            path.chmod(0o644)
 
 
 def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitAncestryGateway) -> None:

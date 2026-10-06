@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError, GitError
@@ -18,10 +19,16 @@ GITPYTHON_STDERR_PREFIX = "stderr: '"
 OBJECT_ABSENT_STATUS = 1
 """What `git rev-parse --verify` returns for a name that answers to no commit.
 
-Git returns the same status when it holds the object but cannot read it, so an unreadable pack
-file looks exactly like a pruned commit. A second lookup separates the two, but only when the
-whole object database is unreadable. One unreadable pack beside a readable one still reads as
-absent.
+Git returns the same status when it holds the object in a store it cannot read, so a pack it is
+denied looks exactly like a pruned commit. Every store the commit could sit in is read before an
+absence is reported, because git skips an unreadable store without saying so.
+"""
+
+PACK_FILE_SUFFIXES = (".idx", ".pack")
+"""The pack files git must open to answer for a packed object.
+
+Git drops the whole pack when it cannot read the index, and reports the object absent when it
+cannot read the pack itself. Its other files are caches, and git answers without them.
 """
 
 NOT_AN_ANCESTOR_STATUS = 1
@@ -66,8 +73,8 @@ class GitAncestryGateway:
         annotated tag holds no commit, so it reports absent.
 
         Raises:
-            RepositoryError: When the identifier is not a full object name, or when git could not
-                be asked.
+            RepositoryError: When the identifier is not a full object name, when git could not be
+                asked, or when a store the commit could sit in is unreadable.
 
         """
         self._require_full_sha(commit=commit)
@@ -77,9 +84,8 @@ class GitAncestryGateway:
             resolved = self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
         except GitCommandError as exc:
             if exc.status == OBJECT_ABSENT_STATUS:
-                # A false absence is reported as a rewrite, so prove the database is readable.
-                if not self._reads_its_own_head():
-                    raise self._read_failed(commit=commit, detail="the object database is unreadable") from exc
+                # A false absence is recorded as a rewrite, so prove git read every store.
+                self._require_a_readable_object_database(commit=commit)
                 return False
             raise self._read_failed(commit=commit, detail=self._git_detail(exc)) from exc
         except (OSError, GitError) as exc:
@@ -89,12 +95,76 @@ class GitAncestryGateway:
         # another object is not a commit itself.
         return str(resolved).strip() == commit
 
-    def _reads_its_own_head(self) -> bool:
+    def _require_a_readable_object_database(self, commit: str) -> None:
+        """Reject an absence git reports because it cannot read where the commit would sit.
+
+        Raises:
+            RepositoryError: When any store git searches for the commit is unreadable.
+
+        """
         try:
-            self.repo.git.rev_parse("--verify", "--quiet", "HEAD^{commit}")
-        except (GitCommandError, OSError, GitError):
+            directories = self._object_directories()
+        except (OSError, GitError) as exc:
+            raise self._read_failed(commit=commit, detail=f"the object database is unreadable: {exc}") from exc
+
+        for directory in directories:
+            unreadable = self._unreadable_store(directory=directory, commit=commit)
+            if unreadable is not None:
+                raise self._read_failed(commit=commit, detail=f"{unreadable} is unreadable")
+
+    def _object_directories(self) -> list[Path]:
+        """Every object directory git searches, the ones borrowed through alternates included."""
+        # A worktree keeps its objects in the common directory, so ask git where they are.
+        objects = str(self.repo.git.rev_parse("--git-path", "objects")).strip()
+        pending = [Path(self.repo.working_dir or self.repo.common_dir) / objects]
+        directories: list[Path] = []
+        seen: set[Path] = set()
+
+        while pending:
+            directory = pending.pop().resolve()
+            if directory in seen:
+                continue
+            seen.add(directory)
+            directories.append(directory)
+            pending.extend(self._alternates_of(directory=directory))
+
+        return directories
+
+    def _alternates_of(self, directory: Path) -> list[Path]:
+        try:
+            lines = (directory / "info" / "alternates").read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            return []
+        # A relative alternate path starts from the object directory that lists it.
+        return [directory / line for line in lines if line and not line.startswith("#")]
+
+    def _unreadable_store(self, directory: Path, commit: str) -> Path | None:
+        """Return the first part of an object directory git cannot read, or None when it reads all."""
+        if not directory.is_dir():
+            return directory
+
+        pack_directory = directory / "pack"
+        try:
+            packs = sorted(path for path in pack_directory.iterdir() if path.suffix in PACK_FILE_SUFFIXES)
+        except FileNotFoundError:
+            packs = []
+        except OSError:
+            return pack_directory
+
+        for path in (*packs, directory / commit[:2] / commit[2:]):
+            if not self._opens(path=path):
+                return path
+        return None
+
+    def _opens(self, path: Path) -> bool:
+        try:
+            with path.open("rb"):
+                return True
+        except FileNotFoundError:
+            # A file that is not there holds no object, so it hides none either.
+            return True
+        except OSError:
             return False
-        return True
 
     def require_commit(self, commit: str) -> None:
         """Reject an identifier git would read as a name rather than a commit.

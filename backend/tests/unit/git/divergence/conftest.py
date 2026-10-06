@@ -40,9 +40,20 @@ def pack_objects(repo: Repo) -> None:
     repo.git.gc("--prune=now")
 
 
+def pack_directory_of(repo: Repo) -> Path:
+    return Path(str(repo.git_dir), "objects", "pack")
+
+
+def pack_loose_objects(repo: Repo) -> list[Path]:
+    """Move the loose objects into a pack of their own, and return the files of that pack."""
+    before = set(pack_directory_of(repo=repo).glob("pack-*"))
+    repo.git.repack("-d")
+    return sorted(set(pack_directory_of(repo=repo).glob("pack-*")) - before)
+
+
 def deny_access_to_packs(repo: Repo) -> list[Path]:
     """Leave the packed objects present but unreadable, and return what to restore."""
-    pack_directory = Path(str(repo.git_dir), "objects", "pack")
+    pack_directory = pack_directory_of(repo=repo)
     packs = sorted(pack_directory.glob("*.pack")) + sorted(pack_directory.glob("*.idx"))
     for pack in packs:
         pack.chmod(0o000)
