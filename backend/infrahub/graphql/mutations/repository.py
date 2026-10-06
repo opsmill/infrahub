@@ -128,8 +128,8 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
         obj = cast("CoreReadOnlyRepository", obj)
 
-        send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
-        if not send_update_message:
+        target_changed = bool(new_commit and new_commit != current_commit) or bool(new_ref and new_ref != current_ref)
+        if not target_changed:
             return obj, result
 
         log.info(
@@ -147,6 +147,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             commit=new_commit,
             infrahub_branch_name=branch.name,
             infrahub_branch_id=str(branch.get_uuid()),
+            target_changed=target_changed,
         )
         git_read_only_repo_import_commit_model = GitReadOnlyRepositoryImportCommit(
             repository_id=obj.id,
@@ -154,6 +155,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             repository_kind=obj.get_kind(),
             infrahub_branch_name=branch.name,
             ref=str(obj.ref.value),
+            target_changed=target_changed,
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(

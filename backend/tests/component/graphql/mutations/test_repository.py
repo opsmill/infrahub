@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from unittest.mock import call, patch
 
@@ -13,12 +14,22 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.git.models import GitReadOnlyRepositoryImportCommit, GitRepositoryImportObjects
+from infrahub.git.models import (
+    GitReadOnlyRepositoryImportCommit,
+    GitRepositoryImportObjects,
+    GitRepositoryPullReadOnly,
+)
 from infrahub.graphql.mutations.repository import cleanup_payload
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_IMPORT_OBJECTS
+from infrahub.workflows.catalogue import (
+    GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+    GIT_REPOSITORIES_IMPORT_OBJECTS,
+    GIT_REPOSITORIES_PULL_READ_ONLY,
+)
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation
 
 if TYPE_CHECKING:
@@ -270,3 +281,93 @@ async def test_import_read_only_repository_last_commit(
             ),
         ]
         mock_submit_workflow.assert_has_calls(expected_calls)
+
+
+PINNED_COMMIT = "d85571671cf51f561fb0695d8657747f9ce84057"
+REPINNED_COMMIT = "0123456789abcdef0123456789abcdef01234567"
+
+
+@dataclass
+class ReadOnlyRepointTestCase:
+    name: str
+    update: str
+    """The fields the update changes, in GraphQL input syntax."""
+    expected_ref: str
+    expected_commit: str | None
+
+
+READ_ONLY_REPOINT_TEST_CASES: list[ReadOnlyRepointTestCase] = [
+    ReadOnlyRepointTestCase(
+        name="ref_changed",
+        update='ref: { value: "release" }',
+        expected_ref="release",
+        expected_commit=None,
+    ),
+    ReadOnlyRepointTestCase(
+        name="only_the_commit_changed",
+        update=f'commit: {{ value: "{REPINNED_COMMIT}" }}',
+        expected_ref="main",
+        expected_commit=REPINNED_COMMIT,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in READ_ONLY_REPOINT_TEST_CASES])
+async def test_a_read_only_re_point_flags_both_workflows_and_writes_no_marker(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+    test_case: ReadOnlyRepointTestCase,
+) -> None:
+    cache = MemoryCache()
+    workflow = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, cache=cache, workflow=workflow)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.READONLYREPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="re-pointed-repo", location="/tmp/re-pointed-repo", ref="main", commit=PINNED_COMMIT)
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=f'mutation {{ CoreReadOnlyRepositoryUpdate(data: {{ id: "{repo.id}", {test_case.update} }}) {{ ok }} }}',
+        db=db,
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors is None
+    assert [(call["workflow"], call["parameters"]) for call in workflow.submit_calls] == [
+        (
+            GIT_REPOSITORIES_PULL_READ_ONLY,
+            {
+                "model": GitRepositoryPullReadOnly(
+                    repository_id=repo.id,
+                    repository_name="re-pointed-repo",
+                    location="/tmp/re-pointed-repo",
+                    ref=test_case.expected_ref,
+                    commit=test_case.expected_commit,
+                    infrahub_branch_name=default_branch.name,
+                    infrahub_branch_id=str(default_branch.get_uuid()),
+                    target_changed=True,
+                )
+            },
+        ),
+        (
+            GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
+            {
+                "model": GitReadOnlyRepositoryImportCommit(
+                    repository_id=repo.id,
+                    repository_name="re-pointed-repo",
+                    repository_kind=InfrahubKind.READONLYREPOSITORY,
+                    infrahub_branch_name=default_branch.name,
+                    ref=test_case.expected_ref,
+                    target_changed=True,
+                )
+            },
+        ),
+    ]
+    assert cache.storage == {}

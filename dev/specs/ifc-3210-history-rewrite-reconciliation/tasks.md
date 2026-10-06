@@ -605,7 +605,7 @@ read-write repository's configured default branch. Neither writes a record.
       `backend/infrahub/git/divergence/suppression.py`, per [data-model.md](data-model.md),
       "Cache key". Reading and deleting are separate steps: the delete happens only after the
       commit write for that branch succeeds.
-- [ ] T078 [US6] Set the in-band `target_changed` flag from
+- [x] T078 [US6] Set the in-band `target_changed` flag from
       `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
       when `CoreReadOnlyRepository.ref` changes **or when only `commit` changes**. It already
       computes both comparisons. SC-007 covers re-pointing to "a different branch, tag or commit",
@@ -615,7 +615,7 @@ read-write repository's configured default branch. Neither writes a record.
       write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
       method returns to `super().mutate_update` immediately for any kind other than read-only, so
       the comparison goes before that early return.
-- [ ] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
+- [x] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
       explicit `target_changed` flag to `GitRepositoryPullReadOnly` and
       `GitReadOnlyRepositoryImportCommit`, set from the comparison the mutation already computes.
       That removes the marker from the read-only path entirely, with no expiry and no timing
