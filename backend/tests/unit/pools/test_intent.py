@@ -44,17 +44,17 @@ def _request(
 
 TABLE_TEST_CASES: list[IntentTestCase] = [
     IntentTestCase(
-        name="value_with_pool_untracked_attaches",
+        name="value_with_from_pool_on_untracked_attribute_attaches",
         request=_request(value=50, from_pool=POOL_P, held_value=7),
         expected=FromPoolIntent.ATTACH,
     ),
     IntentTestCase(
-        name="value_with_pool_untracked_default_attaches",
+        name="value_with_from_pool_over_untracked_default_attaches",
         request=_request(value=50, from_pool=POOL_P, held_value=7, held_value_is_default=True),
         expected=FromPoolIntent.ATTACH,
     ),
     IntentTestCase(
-        name="value_with_pool_untracked_unset_attaches",
+        name="value_with_from_pool_over_unset_value_attaches",
         request=_request(value=50, from_pool=POOL_P),
         expected=FromPoolIntent.ATTACH,
     ),
@@ -79,12 +79,12 @@ TABLE_TEST_CASES: list[IntentTestCase] = [
         expected=FromPoolIntent.ATTACH,
     ),
     IntentTestCase(
-        name="value_without_pool_untracked_is_plain_write",
+        name="value_without_from_pool_on_untracked_attribute_is_plain_write",
         request=_request(value=50, held_value=7),
         expected=FromPoolIntent.NO_OP,
     ),
     IntentTestCase(
-        name="value_without_pool_tracked_is_plain_write",
+        name="value_without_from_pool_on_tracked_attribute_is_plain_write",
         request=_request(value=50, tracked_by=POOL_P, held_value=7),
         expected=FromPoolIntent.NO_OP,
     ),
