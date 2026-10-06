@@ -126,8 +126,13 @@ TABLE_TEST_CASES: list[IntentTestCase] = [
         expected=FromPoolIntent.NO_OP,
     ),
     IntentTestCase(
-        name="other_pool_alone_re_pools_and_allocates",
+        name="other_pool_alone_over_a_held_number_is_refused",
         request=_request(from_pool=POOL_P, tracked_by=POOL_A, held_value=7),
+        expected=FromPoolIntent.REFUSE,
+    ),
+    IntentTestCase(
+        name="other_pool_alone_over_a_default_re_pools_and_allocates",
+        request=_request(from_pool=POOL_P, tracked_by=POOL_A, held_value=7, held_value_is_default=True),
         expected=FromPoolIntent.ALLOCATE,
     ),
     IntentTestCase(
@@ -205,8 +210,8 @@ def test_null_value_allocates_where_an_absent_value_does_not(test_case: NullVers
     assert absent_value == test_case.absent_value_intent
 
 
-def test_only_one_input_combination_refuses() -> None:
-    """Across every class of input, a single combination is refused rather than resolved."""
+def test_only_a_pool_named_alone_over_a_held_number_refuses() -> None:
+    """Across every class of input, only a pool named alone over a non-default number another pool or none tracks is refused."""
     value_choices: list[int | _Absent | None] = [ABSENT, None, 50, 7]
     from_pool_choices: list[str | _Absent | None] = [ABSENT, None, POOL_P]
     tracked_by_choices: list[str | None] = [None, POOL_P, POOL_A]
@@ -230,7 +235,7 @@ def test_only_one_input_combination_refuses() -> None:
         == FromPoolIntent.REFUSE
     ]
 
-    assert refused == [(ABSENT, POOL_P, None, (7, False))]
+    assert refused == [(ABSENT, POOL_P, None, (7, False)), (ABSENT, POOL_P, POOL_A, (7, False))]
 
 
 @dataclass(frozen=True)

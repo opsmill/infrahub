@@ -26,6 +26,7 @@ mutation UpdateTicketWithPool($ticket_id: String!, $pool_id: String!) {
     TestingTicketUpdate(data: {
         id: $ticket_id
         ticket_id: {
+            value: null
             from_pool: {
                 id: $pool_id
             }

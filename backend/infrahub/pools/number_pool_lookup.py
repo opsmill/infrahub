@@ -6,6 +6,7 @@ from infrahub_sdk.utils import is_valid_uuid
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.protocols import CoreNumberPool
+from infrahub.core.query.resource_manager import NumberPoolGetTrackingPool
 from infrahub.exceptions import NodeNotFoundError
 
 if TYPE_CHECKING:
@@ -46,3 +47,9 @@ class NumberPoolLookup:
         if not results:
             raise NodeNotFoundError(node_type=InfrahubKind.NUMBERPOOL, identifier=pool_ref)
         return results[0]
+
+    async def get_tracking_pool_id(self, attribute_id: str) -> str | None:
+        """Return the id of the number pool currently tracking the attribute, or None when none does."""
+        query = await NumberPoolGetTrackingPool.init(db=self.db, attribute_id=attribute_id)
+        await query.execute(db=self.db)
+        return query.get_pool_id()
