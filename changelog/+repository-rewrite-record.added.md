@@ -1,0 +1,1 @@
+Added the `last_rewrite_previous_commit`, `last_rewrite_commit`, `last_rewrite_at` and `rewrite_count` attributes to Git repositories, which record per branch the commit Infrahub had imported before the remote history was rewritten, the commit it moved to, when that happened and how many rewrites the branch has seen.

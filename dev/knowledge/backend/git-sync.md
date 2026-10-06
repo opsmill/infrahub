@@ -141,6 +141,22 @@ commit, from the worktree or from the graph, logs one line with the branch, the 
 the commit that replaced it. A plain fast-forward logs nothing. The add flow passes no graph
 commits, so it classifies nothing.
 
+### The rewrite record
+
+A rewrite is also recorded on the repository, in four `LOCAL` attributes of the repository generic:
+`last_rewrite_previous_commit`, `last_rewrite_commit`, `last_rewrite_at` and `rewrite_count`.
+`HistoryRewriteRecorder` (`git/divergence/recorder.py`) is the only writer. It writes only when the
+graph comparison classifies the branch as a rewrite, so a worker that only resets its own stale
+worktree records nothing.
+
+- **Record right after the commit write, in the same hold of the repository lock.** After the import
+  the next cycle already reads the new commit as unchanged, so a later record never happens.
+- **A failed record fails its branch alone and keeps its import queued.** The graph already holds
+  the new commit, so no later cycle selects the branch again to import it. That rewrite stays
+  unrecorded.
+- **The count is what the branch reads, not what it did.** A branch-local read falls back to the
+  origin branch, so a branch created after a trunk record reads that record and counts on from it.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning
