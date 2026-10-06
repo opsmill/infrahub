@@ -131,13 +131,13 @@ original failure propagates unmasked.
 
 - When the reset succeeds, a re-run of the merge re-derives it instead of finding nothing to merge.
   After a failed record, the reset leaves the worktree behind the remote, and the periodic sync then
-  pulls and records the pushed commit.
+  resets the worktree onto the pushed commit and records it.
 - When the reset fails, `merge` logs the failure and says that manual reconciliation may be
   required. The worktree can stay on a merge commit that the graph does not record, and a re-run can
-  then find nothing to merge.
+  then find nothing to merge, until the next sync resets the worktree onto the remote head.
 
 What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
-`merge()`, the periodic sync only pulls, and `merge_git_repository` has no retry. A rejected push
+`merge()`, the periodic sync only reads from the remote, and `merge_git_repository` has no retry. A rejected push
 stays undelivered until a later merge into the same destination, and nothing on the repository
 records that it failed: the only trace is the failed flow run.
 

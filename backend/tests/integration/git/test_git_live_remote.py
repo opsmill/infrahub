@@ -680,8 +680,8 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         """A failure recording the merge after a successful push resets the worktree behind the remote.
 
         The pushed merge commit exists only on the remote afterwards, which is the state the
-        periodic synchronization repairs: it detects the destination branch as updated, pulls the
-        merge commit and records it in the graph.
+        periodic synchronization repairs: it detects the destination branch as updated, moves the
+        worktree onto the merge commit and records it in the graph.
         """
         repo_name = protected_branch_dataset["repo_name"]
 

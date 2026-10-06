@@ -815,7 +815,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         received the merge is not always knowable, since a push can be accepted just before the
         connection drops, so the reset leaves the destination either at the pre-merge state, where a
         later merge attempt re-derives the merge, or trailing the remote, which the periodic
-        synchronization repairs by pulling the pushed merge commit and recording it.
+        synchronization repairs by resetting onto the pushed merge commit and recording it.
 
         Raises:
             RepositoryError: When no worktree exists for the destination branch, when the
@@ -859,9 +859,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             recorded = True
         finally:
             if not recorded:
-                # Trailing the remote is a state the periodic synchronization repairs by pulling
-                # and recording the missing commit; a worktree left on a merge commit that is
-                # recorded nowhere is never revisited.
+                # Trailing the remote is a state the periodic synchronization repairs by resetting
+                # onto the missing commit and recording it.
                 self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
