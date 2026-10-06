@@ -409,7 +409,8 @@ class WritebackIntent:
 class DeliveryFailure:
     """Why a delivery attempt failed."""
 
-    cause: RepositoryDeliveryFailureCause
+    cause: RepositoryDeliveryFailureCause | None
+    """None when the failed step leaves the cause that the repository shows as it is."""
     retryable: bool
     message: str
     """With credentials removed."""

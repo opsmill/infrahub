@@ -151,9 +151,9 @@ Parts A and B of the plan.
       `hold_seq` through `without_window` and goes to the next lease; and the clean-up, where an
       item that a new lease takes from an expired lease moves to it, and an expired lease that
       names no item any more is gone after the same call.
-- [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
+- [X] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
       table of [research.md](research.md) R5, and `scrub_credentials`.
-- [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
+- [X] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
       `enqueue`, `fetch` and `release` stages included, a killed fetch and a killed push, a message
       that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and several
       URLs in one text.
