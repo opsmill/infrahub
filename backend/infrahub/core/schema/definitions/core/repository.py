@@ -254,7 +254,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="last_rewrite_previous_commit",
             kind="Text",
-            description="The commit Infrahub had imported on this branch before the last reconciliation",
+            description="The commit Infrahub had imported on this branch before the last rewrite",
             optional=True,
             branch=BranchSupportType.LOCAL,
             order_weight=7600,
@@ -262,7 +262,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="last_rewrite_commit",
             kind="Text",
-            description="The commit Infrahub reconciled onto during the last reconciliation",
+            description="The commit Infrahub moved this branch onto after the last rewrite",
             optional=True,
             branch=BranchSupportType.LOCAL,
             order_weight=7700,
@@ -270,7 +270,7 @@ core_generic_repository = GenericSchema(
         Attr(
             name="last_rewrite_at",
             kind="DateTime",
-            description="When the last reconciliation of this branch completed",
+            description="When Infrahub detected the last rewrite of this branch",
             optional=True,
             branch=BranchSupportType.LOCAL,
             order_weight=7800,
@@ -279,7 +279,8 @@ core_generic_repository = GenericSchema(
             name="rewrite_count",
             kind="Number",
             description=(
-                "How many reconciliations are visible on this branch, including those of the branch it was created from"
+                "How many rewrites this branch has seen, including those on the default branch before this branch "
+                "was created"
             ),
             optional=True,
             branch=BranchSupportType.LOCAL,

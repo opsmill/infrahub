@@ -20,7 +20,7 @@ Declared in `backend/infrahub/core/schema/definitions/core/repository.py`, on th
 |---|---|---|---|---|---|
 | `last_rewrite_previous_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub had imported on this branch before the reconciliation. |
 | `last_rewrite_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub reconciled onto. |
-| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When the reconciliation completed. |
+| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When Infrahub detected the rewrite: the sync writes it while it collects the branch, before the import. |
 | `rewrite_count` | `Number` | yes | none | `LOCAL` | How many reconciliations are visible on this branch, cumulative. See "What LOCAL does not do" below: a branch inherits the count of the branch it forked from. |
 
 Order weights place them after `sync_status` and before the relationships, so the repository form

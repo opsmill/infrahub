@@ -18,16 +18,16 @@
 type CoreGenericRepository {
   # ... existing fields ...
 
-  "The commit Infrahub had imported on this branch before the last reconciliation."
+  "The commit Infrahub had imported on this branch before the last rewrite."
   last_rewrite_previous_commit: TextAttribute
 
-  "The commit Infrahub reconciled onto during the last reconciliation."
+  "The commit Infrahub moved this branch onto after the last rewrite."
   last_rewrite_commit: TextAttribute
 
-  "When the last reconciliation of this branch completed."
+  "When Infrahub detected the last rewrite of this branch."
   last_rewrite_at: TextAttribute
 
-  "How many reconciliations are visible on this branch, cumulative. Includes any inherited from the branch it forked from; see data-model.md."
+  "How many rewrites this branch has seen, including those on the default branch before this branch was created; see data-model.md."
   rewrite_count: NumberAttribute
 }
 

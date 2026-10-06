@@ -7258,11 +7258,11 @@ export type CoreGenericRepository = {
   id: Maybe<Scalars['String']['output']>;
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at: Maybe<TextAttribute>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit: Maybe<TextAttribute>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
@@ -7272,7 +7272,7 @@ export type CoreGenericRepository = {
   /** Connectivity status of the repository */
   operational_status: Maybe<Dropdown>;
   queries: NestedPaginatedCoreGraphQlQuery;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
@@ -7645,11 +7645,11 @@ export type CoreGenericRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
@@ -7659,7 +7659,7 @@ export type CoreGenericRepositoryUpdateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -12294,11 +12294,11 @@ export type CoreReadOnlyRepository = CoreGenericRepository & CoreNode & CoreTask
   id: Scalars['String']['output'];
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at: Maybe<TextAttribute>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit: Maybe<TextAttribute>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
@@ -12310,7 +12310,7 @@ export type CoreReadOnlyRepository = CoreGenericRepository & CoreNode & CoreTask
   queries: NestedPaginatedCoreGraphQlQuery;
   /** Git reference (branch or tag) to track */
   ref: Maybe<TextAttribute>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
@@ -12682,11 +12682,11 @@ export type CoreReadOnlyRepositoryCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeCreate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeCreate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeCreate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeCreate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeCreate>;
@@ -12698,7 +12698,7 @@ export type CoreReadOnlyRepositoryCreateInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeCreate>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -12733,11 +12733,11 @@ export type CoreReadOnlyRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
@@ -12749,7 +12749,7 @@ export type CoreReadOnlyRepositoryUpdateInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeUpdate>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -12778,11 +12778,11 @@ export type CoreReadOnlyRepositoryUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
@@ -12794,7 +12794,7 @@ export type CoreReadOnlyRepositoryUpsertInput = {
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Git reference (branch or tag) to track */
   ref?: InputMaybe<TextAttributeUpdate>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -12823,11 +12823,11 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   id: Scalars['String']['output'];
   /** Internal status of the repository on this branch */
   internal_status: Maybe<Dropdown>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at: Maybe<TextAttribute>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit: Maybe<TextAttribute>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit: Maybe<TextAttribute>;
   /** URL or path to the Git repository */
   location: Maybe<TextAttribute>;
@@ -12837,7 +12837,7 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   /** Connectivity status of the repository */
   operational_status: Maybe<Dropdown>;
   queries: NestedPaginatedCoreGraphQlQuery;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count: Maybe<NumberAttribute>;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Current synchronization status of the repository */
@@ -13211,11 +13211,11 @@ export type CoreRepositoryCreateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeCreate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeCreate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeCreate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeCreate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeCreate>;
@@ -13225,7 +13225,7 @@ export type CoreRepositoryCreateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeCreate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeCreate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -13484,11 +13484,11 @@ export type CoreRepositoryUpdateInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
@@ -13498,7 +13498,7 @@ export type CoreRepositoryUpdateInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */
@@ -13529,11 +13529,11 @@ export type CoreRepositoryUpsertInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   /** Internal status of the repository on this branch */
   internal_status?: InputMaybe<TextAttributeUpdate>;
-  /** When the last reconciliation of this branch completed */
+  /** When Infrahub detected the last rewrite of this branch */
   last_rewrite_at?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub reconciled onto during the last reconciliation */
+  /** The commit Infrahub moved this branch onto after the last rewrite */
   last_rewrite_commit?: InputMaybe<TextAttributeUpdate>;
-  /** The commit Infrahub had imported on this branch before the last reconciliation */
+  /** The commit Infrahub had imported on this branch before the last rewrite */
   last_rewrite_previous_commit?: InputMaybe<TextAttributeUpdate>;
   /** URL or path to the Git repository */
   location?: InputMaybe<TextAttributeUpdate>;
@@ -13543,7 +13543,7 @@ export type CoreRepositoryUpsertInput = {
   /** Connectivity status of the repository */
   operational_status?: InputMaybe<TextAttributeUpdate>;
   queries?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
-  /** How many reconciliations are visible on this branch, including those of the branch it was created from */
+  /** How many rewrites this branch has seen, including those on the default branch before this branch was created */
   rewrite_count?: InputMaybe<NumberAttributeUpdate>;
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
   /** Current synchronization status of the repository */

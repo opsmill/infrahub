@@ -3560,12 +3560,12 @@ interface CoreGenericRepository {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttribute
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttribute
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
@@ -3577,7 +3577,7 @@ interface CoreGenericRepository {
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -3606,12 +3606,12 @@ input CoreGenericRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeUpdate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeUpdate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
@@ -3623,7 +3623,7 @@ input CoreGenericRepositoryUpdateInput {
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5650,12 +5650,12 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   id: String!
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttribute
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttribute
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
@@ -5669,7 +5669,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Git reference (branch or tag) to track"""
   ref: TextAttribute
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5699,12 +5699,12 @@ input CoreReadOnlyRepositoryCreateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeCreate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeCreate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeCreate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeCreate
   """URL or path to the Git repository"""
@@ -5718,7 +5718,7 @@ input CoreReadOnlyRepositoryCreateInput {
   """Git reference (branch or tag) to track"""
   ref: TextAttributeCreate
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5756,12 +5756,12 @@ input CoreReadOnlyRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeUpdate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeUpdate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
@@ -5775,7 +5775,7 @@ input CoreReadOnlyRepositoryUpdateInput {
   """Git reference (branch or tag) to track"""
   ref: TextAttributeUpdate
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5806,12 +5806,12 @@ input CoreReadOnlyRepositoryUpsertInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeUpdate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeUpdate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
@@ -5825,7 +5825,7 @@ input CoreReadOnlyRepositoryUpsertInput {
   """Git reference (branch or tag) to track"""
   ref: TextAttributeUpdate
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -5856,12 +5856,12 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   id: String!
   """Internal status of the repository on this branch"""
   internal_status: Dropdown
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttribute
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttribute
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttribute
   """URL or path to the Git repository"""
@@ -5873,7 +5873,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   operational_status: Dropdown
   queries(depth__is_protected: Boolean, depth__owner__id: ID, depth__source__id: ID, depth__value: BigInt, depth__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], fingerprint__is_protected: Boolean, fingerprint__owner__id: ID, fingerprint__source__id: ID, fingerprint__value: String, fingerprint__values: [String], height__is_protected: Boolean, height__owner__id: ID, height__source__id: ID, height__value: BigInt, height__values: [BigInt], ids: [ID], isnull: Boolean, limit: Int, models__is_protected: Boolean, models__owner__id: ID, models__source__id: ID, models__value: GenericScalar, models__values: [GenericScalar], name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, operations__is_protected: Boolean, operations__owner__id: ID, operations__source__id: ID, operations__value: GenericScalar, operations__values: [GenericScalar], order: OrderInput, query__is_protected: Boolean, query__owner__id: ID, query__source__id: ID, query__value: String, query__values: [String], variables__is_protected: Boolean, variables__owner__id: ID, variables__source__id: ID, variables__value: GenericScalar, variables__values: [GenericScalar]): NestedPaginatedCoreGraphQLQuery!
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
@@ -5905,12 +5905,12 @@ input CoreRepositoryCreateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeCreate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeCreate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeCreate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeCreate
   """URL or path to the Git repository"""
@@ -5922,7 +5922,7 @@ input CoreRepositoryCreateInput {
   operational_status: TextAttributeCreate
   queries: [RelatedNodeInput]
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeCreate
   subscriber_of_groups: [RelatedNodeInput]
@@ -6056,12 +6056,12 @@ input CoreRepositoryUpdateInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeUpdate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeUpdate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
@@ -6073,7 +6073,7 @@ input CoreRepositoryUpdateInput {
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
@@ -6106,12 +6106,12 @@ input CoreRepositoryUpsertInput {
   id: String
   """Internal status of the repository on this branch"""
   internal_status: TextAttributeUpdate
-  """When the last reconciliation of this branch completed"""
+  """When Infrahub detected the last rewrite of this branch"""
   last_rewrite_at: TextAttributeUpdate
-  """The commit Infrahub reconciled onto during the last reconciliation"""
+  """The commit Infrahub moved this branch onto after the last rewrite"""
   last_rewrite_commit: TextAttributeUpdate
   """
-  The commit Infrahub had imported on this branch before the last reconciliation
+  The commit Infrahub had imported on this branch before the last rewrite
   """
   last_rewrite_previous_commit: TextAttributeUpdate
   """URL or path to the Git repository"""
@@ -6123,7 +6123,7 @@ input CoreRepositoryUpsertInput {
   operational_status: TextAttributeUpdate
   queries: [RelatedNodeInput]
   """
-  How many reconciliations are visible on this branch, including those of the branch it was created from
+  How many rewrites this branch has seen, including those on the default branch before this branch was created
   """
   rewrite_count: NumberAttributeUpdate
   subscriber_of_groups: [RelatedNodeInput]
