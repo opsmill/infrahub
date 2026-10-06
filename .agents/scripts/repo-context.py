@@ -2,7 +2,8 @@
 """Compute which repository instructions apply to a set of files: the matching `.agents/rules/` files and nearest `AGENTS.md`.
 
 Modes: the default prints the review manifest for the current branch; `--check-index` fails when a `dev/` article has
-no `AGENTS.md` entry; `--hook` is a Claude Code hook that adds the instructions Claude Code does not load on its own.
+no `AGENTS.md` entry; `--hook` is a Claude Code hook that adds the instructions Claude Code does not load on its own;
+`--hooks-status` fails unless this checkout's hooks have run in the current session.
 """
 
 from __future__ import annotations
@@ -25,7 +26,10 @@ HOOK_BUDGET = 9_500
 ROOT_MAP_PRIORITY = ("# Infrahub", "## Coding Standards", "## Boundaries", "## Navigation", "## Component Maps")
 RULES_DIR = Path(".agents/rules")
 DOC_DIRS = (Path("dev/knowledge"), Path("dev/guidelines"), Path("dev/guides"))
+SOURCE_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
 AREAS = (
+    ("dev-docs", ("dev/",)),
+    ("changelog", ("changelog/",)),
     ("frontend", ("frontend/",)),
     ("backend-tests", ("backend/tests/", "python_testcontainers/tests/")),
     ("backend", ("backend/", "python_testcontainers/", "tasks/")),
@@ -38,6 +42,14 @@ class Rule:
     chars: int
     globs: list[str]
     matched: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass
+class ChangeSet:
+    files: list[str]
+    uncommitted_only: list[str]
+    excluded: list[str]
+    skipped_submodules: list[str]
 
 
 @dataclass
@@ -86,14 +98,28 @@ def submodule_paths() -> set[str]:
     return {line.split("\t", 1)[1] for line in entries if line.startswith("160000 ")}
 
 
-def changed_files(base: str) -> tuple[list[str], list[str]]:
+def uncommitted_files() -> list[str]:
+    return [line[3:].split(" -> ")[-1] for line in git("status", "--porcelain", "--untracked-files=all").splitlines()]
+
+
+def changed_files(base: str, *, include_uncommitted: bool, excludes: list[str]) -> ChangeSet:
     git("fetch", "--quiet", "origin", base)
-    committed = git("diff", "--name-only", f"origin/{base}...HEAD").splitlines()
-    uncommitted = [line[3:].split(" -> ")[-1] for line in git("status", "--porcelain").splitlines()]
+    committed = set(git("diff", "--name-only", f"origin/{base}...HEAD").splitlines())
+    uncommitted = set(uncommitted_files())
     submodules = submodule_paths()
-    files = sorted({path for path in committed + uncommitted if path and path not in submodules})
-    skipped = sorted(submodules.intersection(committed + uncommitted))
-    return files, skipped
+    candidates = committed | uncommitted if include_uncommitted else committed
+    patterns = [glob_to_regex(pattern) for pattern in excludes]
+    excluded = {path for path in candidates if any(pattern.match(path) for pattern in patterns)}
+    return ChangeSet(
+        files=sorted(path for path in candidates - excluded - submodules if path),
+        uncommitted_only=sorted(uncommitted - committed - submodules),
+        excluded=sorted(excluded),
+        skipped_submodules=sorted(submodules & (committed | uncommitted)),
+    )
+
+
+def is_source(path: str) -> bool:
+    return path.endswith(SOURCE_SUFFIXES)
 
 
 def area_of(path: str) -> str:
@@ -139,7 +165,8 @@ def load_rules(files: list[str]) -> list[Rule]:
         rule = Rule(path=str(rule_path), chars=len(text), globs=frontmatter_globs(text))
         for path in files:
             if not rule.globs:
-                rule.matched.setdefault("(no paths: applies to every file)", path)
+                if is_source(path):
+                    rule.matched.setdefault("(no paths: applies to every source file)", path)
                 continue
             for pattern in rule.globs:
                 if glob_to_regex(pattern).match(path):
@@ -173,12 +200,20 @@ def table_of_contents() -> list[Article]:
 
 
 def print_markdown(context: dict) -> None:
-    print(f"# Review context\n\nBase: origin/{context['base']} ({context['base_source']})\n")
+    print(f"# Review context\n\nBase: origin/{context['base']} ({context['base_source']})")
+    scope = "committed and uncommitted" if context["include_uncommitted"] else "committed only"
+    print(f"Scope: {scope}; excluded: {', '.join(context['exclude']) or 'nothing'}\n")
     print(f"## Changed files ({len(context['files'])})\n")
     for area, paths in context["areas"].items():
         print(f"- {area}: {len(paths)}")
         for path in paths:
             print(f"  - {path}")
+    if context["uncommitted_only"]:
+        print(f"\n## Uncommitted files outside the committed range ({len(context['uncommitted_only'])})\n")
+        for path in context["uncommitted_only"]:
+            print(f"- {path}")
+    if context["excluded"]:
+        print(f"\nExcluded from the review: {', '.join(context['excluded'])}")
     if context["skipped_submodules"]:
         print(f"\nSubmodule pointers not reviewed here: {', '.join(context['skipped_submodules'])}")
     print(f"\n## Rules that apply ({len(context['rules'])})\n")
@@ -281,10 +316,30 @@ def root_map_digest(budget: int) -> str:
     return text
 
 
+def hook_marker(session_id: str) -> Path:
+    return Path(tempfile.gettempdir()) / f"claude-hooks-{session_id}.txt"
+
+
+def hooks_status() -> int:
+    session_id = os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+    toplevel = Path(git("rev-parse", "--show-toplevel").strip()).resolve()
+    marker = hook_marker(session_id)
+    if not session_id or not marker.exists():
+        print("inactive: no context hook has run in this session")
+        return 1
+    project = Path(marker.read_text(encoding="utf-8").strip()).resolve()
+    if project != toplevel:
+        print(f"inactive: the hooks that ran belong to {project}, not {toplevel}")
+        return 1
+    print(f"active: the context hooks of {toplevel} run in this session")
+    return 0
+
+
 def run_hook() -> int:
     data = json.load(sys.stdin)
     root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or data["cwd"]).resolve()
     os.chdir(root)
+    hook_marker(data["session_id"]).write_text(str(root), encoding="utf-8")
     event = data["hook_event_name"]
 
     if event == "SubagentStart":
@@ -332,22 +387,36 @@ def main() -> int:
         "--check-index", action="store_true", help="Fail when an article is not listed in any AGENTS.md"
     )
     parser.add_argument("--hook", action="store_true", help="Run as a Claude Code SubagentStart or PostToolUse hook")
+    parser.add_argument(
+        "--hooks-status", action="store_true", help="Fail unless this checkout's context hooks ran in this session"
+    )
+    parser.add_argument("--committed", action="store_true", help="Leave uncommitted files out of the change")
+    parser.add_argument(
+        "--exclude", action="append", default=[], metavar="GLOB", help="Leave matching paths out (repeatable)"
+    )
     args = parser.parse_args()
     if args.hook:
         return run_hook()
+    if args.hooks_status:
+        return hooks_status()
     if args.check_index:
         return check_index()
 
     base, base_source = resolve_base(args.base)
-    files, skipped = changed_files(base)
+    change = changed_files(base, include_uncommitted=not args.committed, excludes=args.exclude)
+    files = change.files
     areas: dict[str, list[str]] = {}
     for path in files:
         areas.setdefault(area_of(path), []).append(path)
     context = {
         "base": base,
         "base_source": base_source,
+        "include_uncommitted": not args.committed,
+        "exclude": args.exclude,
         "files": files,
-        "skipped_submodules": skipped,
+        "uncommitted_only": change.uncommitted_only,
+        "excluded": change.excluded,
+        "skipped_submodules": change.skipped_submodules,
         "areas": areas,
         "rules": [asdict(rule) for rule in load_rules(files)],
         "area_rules": {area: [rule.path for rule in load_rules(paths)] for area, paths in areas.items()},
