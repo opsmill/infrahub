@@ -1641,3 +1641,66 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
             db=db, id=node.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
         )
         assert (on_trunk.ref.value, on_trunk.commit.value) == ("v2", v2_commit)
+
+    async def test_a_default_branch_edit_records_nothing_however_many_cycles_run(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The new default branch does not hold the trunk commit the graph records.
+
+        The marker covers one cycle only, so every later cycle must find the graph already on the new branch.
+        """
+        tracked = await tracked_branch_repository("retargeted-repo", "retargeted-branch")
+        await _advance_and_import_the_trunk(gogs_server.container, tracked)
+        repository = await client.get(kind=InfrahubKind.REPOSITORY, id=tracked.node_id)
+        repository.default_branch.value = tracked.branch_name
+        await repository.save()
+
+        records = []
+        for _ in range(3):
+            await sync_remote_repositories()
+            records.append(await _rewrite_record(db=db, tracked=tracked, branch_name=registry.default_branch))
+
+        assert records == [(None, None, None, None)] * 3
+        trunk: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert trunk.commit.value == tracked.imported_commit
+
+    async def test_a_read_only_repository_moved_to_another_branch_records_nothing(
+        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer
+    ) -> None:
+        """The new branch does not hold the commit the repository imported from the old one."""
+        repo_name = "retargeted-read-only-repo"
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        release_head = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch="release", files={"release.txt": "release v1\n"}
+        )
+        main_head = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch="main", files={"main.txt": "main v2\n"}
+        )
+        repository = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY, name=repo_name, location=location, ref="main"
+        )
+        await repository.save()
+        imported: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=repository.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert imported.commit.value == main_head
+
+        repository.ref.value = "release"
+        await repository.save()
+
+        moved: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=repository.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert (
+            moved.commit.value,
+            moved.last_rewrite_previous_commit.value,
+            moved.last_rewrite_commit.value,
+            moved.last_rewrite_at.value,
+            moved.rewrite_count.value,
+        ) == (release_head, None, None, None, None)

@@ -649,12 +649,12 @@ read-write repository's configured default branch. Neither writes a record.
       `default_branch` edit writes the cache marker before the workflows are submitted, and a
       read-only `ref` or `commit` change sets `target_changed` on the workflow model and writes no
       marker.
-- [ ] T085 [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
+- [x] T085 [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
       configured default branch, then run several synchronisation cycles. Assert that no record is
       written and no trunk event fires on **any** cycle, not only the first. One cycle passes while
       the bug is present: the marker suppresses cycle 1, and cycles 2 onward are what record a false
       rewrite and fire a false trunk webhook once a minute.
-- [ ] T086 [US6] Add a live-remote test in
+- [x] T086 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, beside the other live-remote tests:
       changing the tracked ref to a different branch records nothing.
 
