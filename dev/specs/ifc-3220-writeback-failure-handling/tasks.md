@@ -88,16 +88,16 @@ Parts A and B of the plan.
 
 ### Typed failures and bounded Git commands (plan part A)
 
-- [ ] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
+- [X] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
       `DeliveryQueueChangedError` and `NothingPendingError` to `backend/infrahub/exceptions.py`, per
       [data-model.md](data-model.md), "New exceptions". The first three keep today's message wording
       byte for byte.
-- [ ] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
-- [ ] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
+- [X] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
+- [X] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
       `backend/infrahub/git/base.py` raise `RepositoryTLSError` for the TLS markers,
       `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for
       GitPython's "process killed because it timed out".
-- [ ] T008 Resolve the operational status with `isinstance`, most specific first, in
+- [X] T008 Resolve the operational status with `isinstance`, most specific first, in
       `InfrahubRepositoryBase._raise_enriched_error` in `backend/infrahub/git/base.py` and in
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
       keep `ERROR_CONNECTION`.
@@ -111,7 +111,7 @@ Parts A and B of the plan.
       `create_commit_worktree` and `delete_remote_branch` in the same module, and to
       `InfrahubRepository._reset_to_pre_merge_commit` in `backend/infrahub/git/repository.py`, passed
       to each Git command they run. Default unchanged for every existing caller.
-- [ ] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
+- [X] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
       the two subtypes and the killed-command text, and add a test that both status maps give
       `ERROR_CONNECTION` for the subtypes.
 - [ ] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push

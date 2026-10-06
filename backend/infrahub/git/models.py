@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+from enum import StrEnum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from infrahub.context import InfrahubContext  # noqa: TC001
 from infrahub.core.node import Node  # noqa: TC001
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
 from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
+
+
+class PushRejectionReason(StrEnum):
+    """Why the remote refused a ref update, as the flags of the push result report it."""
+
+    POLICY = "policy"
+    NON_FAST_FORWARD = "non-fast-forward"
+    UNKNOWN = "unknown"
 
 
 class GitRepoNode(BaseModel):
