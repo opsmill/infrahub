@@ -518,7 +518,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
         except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
             collected.failed_imports.append(
-                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+                FailedImport(
+                    branch_name=branch_name,
+                    step=ImportStep.COLLECTION,
+                    reason=str(exc),
+                    on_default_branch=branch_name == self.default_branch,
+                )
             )
             return
 
@@ -530,6 +535,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             PendingObjectImport(
                 infrahub_branch_name=infrahub_branch,
                 commit=commit,
+                on_default_branch=branch_name == self.default_branch,
                 reconciled=ReconciledBranch(
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branch.id,
