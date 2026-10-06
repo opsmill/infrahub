@@ -787,7 +787,10 @@ def _decline_in_a_pre_receive_hook(remote_directory: Path, source_directory: Pat
     hooks_directory = remote_directory / "test-hooks"
     hooks_directory.mkdir()
     hook = hooks_directory / "pre-receive"
-    hook.write_text("#!/bin/sh\necho 'branch main is protected' >&2\nexit 1\n", encoding="utf-8")
+    hook.write_text(
+        "#!/bin/sh\necho 'branch main is protected' >&2\necho 'error: 2 commits are not signed' >&2\nexit 1\n",
+        encoding="utf-8",
+    )
     hook.chmod(0o755)
     # Set in the remote's own configuration, which wins over any hooks path of the host's Git configuration.
     with Repo(remote_directory).config_writer() as cfg:
@@ -819,7 +822,8 @@ class RealPushRejectionCase:
             name="pre_receive_hook_declines",
             refuse=_decline_in_a_pre_receive_hook,
             reason=PushRejectionReason.POLICY,
-            remote_message="remote: branch main is protected",
+            # The second line has the shape of a progress line, which the base progress handler drops.
+            remote_message="remote: branch main is protected\nremote: error: 2 commits are not signed",
             message=(
                 "Unable to push the branch main to the remote for repository push-repo: the remote refused the "
                 "update (for example missing push permission or branch protection): "

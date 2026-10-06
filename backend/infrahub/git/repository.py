@@ -79,6 +79,20 @@ def _push_rejection_reason(flags: int) -> PushRejectionReason:
     return PushRejectionReason.UNKNOWN
 
 
+class _RemoteLineCollector(RemoteProgress):
+    """Keeps every ``remote:`` line in order, as GitPython silently drops one shaped like a progress line."""
+
+    __slots__ = ("remote_lines",)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.remote_lines: list[str] = []
+
+    def line_dropped(self, line: str) -> None:
+        if line.startswith("remote:"):
+            self.remote_lines.append(line)
+
+
 @dataclass
 class PendingObjectImport:
     """A repository object import waiting to run: which commit to import from and which Infrahub branch to import into."""
@@ -910,8 +924,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         repo = self.get_git_repo_worktree(identifier=branch_name)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
-        # The server explains a refusal only in its "remote:" lines, which this handler keeps in its other lines.
-        progress = RemoteProgress()
+        # The server explains a refusal only in its "remote:" lines.
+        progress = _RemoteLineCollector()
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
@@ -929,7 +943,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 raise RepositoryPushRejectedError(
                     identifier=self.name,
                     reason=_push_rejection_reason(flags=push_info.flags),
-                    remote_message="\n".join(line for line in progress.other_lines if line.startswith("remote:")),
+                    remote_message="\n".join(progress.remote_lines),
                     message=(
                         f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
                         f"{_describe_push_rejection(summary=push_info.summary.strip())}"
