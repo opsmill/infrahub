@@ -10,6 +10,7 @@ from infrahub.pools.number_pool_mock import (
     UNSCOPED_POOL_ID,
     DivisionFilterEntry,
     MockFigures,
+    MockPool,
     get_allocations,
     get_divisions,
     get_utilization,
@@ -33,7 +34,7 @@ def test_scoped_utilization_reports_the_fullest_division() -> None:
     utilization = get_utilization(pool_id=SCOPED_POOL_ID)
 
     assert utilization.id == SCOPED_POOL_ID
-    assert utilization.allocation_scope == ["site"]
+    assert utilization.allocation_scope == ("site",)
     assert _counts(utilization.figures) == (100, 40, 40, 0)
     assert utilization.figures.utilization == 40.0
     assert [(item.display_label, item.weight) for item in utilization.ranges] == [("1 - 50", 10), ("51 - 100", 0)]
@@ -47,7 +48,7 @@ def test_scoped_divisions_over_the_whole_pool() -> None:
     divisions = get_divisions(pool_id=SCOPED_POOL_ID)
 
     assert divisions.count == 3
-    assert divisions.allocation_scope == ["site"]
+    assert divisions.allocation_scope == ("site",)
     assert [(item.display_label, _counts(item.figures)) for item in divisions.divisions] == [
         ("Site A", (100, 40, 40, 0)),
         ("Site B", (100, 30, 27, 3)),
@@ -94,7 +95,7 @@ def test_division_filter_on_site_c_returns_both_rows_of_the_moved_holder() -> No
 def test_division_filter_with_an_unknown_value_returns_nothing() -> None:
     allocations = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter("nope"))
 
-    assert (allocations.count, allocations.allocations) == (0, [])
+    assert (allocations.count, allocations.allocations) == (0, ())
 
 
 def test_filtered_count_matches_the_division_rows() -> None:
@@ -180,7 +181,7 @@ def test_unscoped_pool_figures_and_single_division() -> None:
     divisions = get_divisions(pool_id=UNSCOPED_POOL_ID)
     range_divisions = get_divisions(pool_id=UNSCOPED_POOL_ID, range_id=UNSCOPED_FIRST_RANGE)
 
-    assert utilization.allocation_scope == []
+    assert utilization.allocation_scope == ()
     assert _counts(utilization.figures) == (99, 3, 2, 1)
     assert [_counts(item.figures) for item in utilization.ranges] == [(50, 2, 1, 1), (50, 1, 1, 0)]
     assert utilization.out_of_space_count == 2
@@ -233,3 +234,35 @@ def test_unknown_range_is_refused_by_divisions_and_allocations() -> None:
         get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", range_id=UNSCOPED_SECOND_RANGE)
 
     assert divisions_exc.value.message == allocations_exc.value.message == message
+
+
+@pytest.mark.parametrize(
+    ("offset", "limit", "message"),
+    [
+        pytest.param(-1, None, "offset must be 0 or greater", id="negative-offset"),
+        pytest.param(None, -1, "limit must be 0 or greater", id="negative-limit"),
+    ],
+)
+def test_negative_page_arguments_are_refused(offset: int | None, limit: int | None, message: str) -> None:
+    with pytest.raises(ValidationError) as exc:
+        get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", offset=offset, limit=limit)
+
+    assert exc.value.message == message
+
+
+def test_zero_offset_and_limit_return_an_empty_page_with_the_full_count() -> None:
+    allocations = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", offset=0, limit=0)
+
+    assert (allocations.count, allocations.allocations) == (72, ())
+
+
+def test_a_pool_without_any_division_is_refused() -> None:
+    with pytest.raises(ValueError, match="needs at least one division"):
+        MockPool(
+            display_label="empty",
+            allocation_scope=(),
+            ranges=UNSCOPED_POOL.ranges,
+            excluded_values=frozenset(),
+            divisions=(),
+            rows=(),
+        )

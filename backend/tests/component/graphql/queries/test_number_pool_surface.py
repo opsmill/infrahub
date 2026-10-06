@@ -246,6 +246,18 @@ class TestNumberPoolSurface:
                 "The division entry 'site' is given twice",
                 id="duplicate-path",
             ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {"pool_id": SCOPED_POOL_ID, "offset": -1},
+                "offset must be 0 or greater",
+                id="negative-offset",
+            ),
+            pytest.param(
+                ALLOCATIONS_QUERY,
+                {"pool_id": SCOPED_POOL_ID, "limit": -1},
+                "limit must be 0 or greater",
+                id="negative-limit",
+            ),
         ],
     )
     async def test_refusals(
