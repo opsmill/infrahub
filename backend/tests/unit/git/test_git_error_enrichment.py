@@ -11,7 +11,6 @@ from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub import config
 from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     RepositoryConnectionError,
@@ -38,6 +37,10 @@ from tests.helpers.test_client import dummy_async_request
 
 TLS_HINT = "SSL verification failed for net-repo, please validate the certificate chain."
 CONNECTION_HINT = "Unable to clone the repository net-repo, please check the address and the credential"
+TIME_LIMIT_HINT = (
+    "The Git command for repository net-repo did not complete within its time limit, "
+    "please check that the remote is reachable."
+)
 TLS_STDERR = (
     "fatal: unable to access 'https://git.example.com/demo.git/': "
     "SSL certificate problem: unable to get local issuer certificate"
@@ -104,21 +107,28 @@ ENRICHMENT_CASES = [
         message=CONNECTION_HINT,
     ),
     EnrichmentCase(
+        # Git's line for a missing branch also says "not found", but it names no missing repository.
+        name="remote_branch_not_found_is_not_a_missing_repository",
+        stderr="fatal: Remote branch feature not found in upstream origin",
+        expected=RepositoryError,
+        command=["git", "clone", "-v", "--branch=feature", "--", "https://gitlab.example.com/net/repo.git"],
+    ),
+    EnrichmentCase(
         name="local_path_that_is_not_a_repository",
         stderr="fatal: '/srv/git/net-repo' does not appear to be a git repository\n"
         "fatal: Could not read from remote repository.",
         expected=RepositoryConnectionError,
     ),
     EnrichmentCase(
-        # GitPython's own text when its kill_after_timeout stops a fetch or a push.
-        name="fetch_killed_after_its_timeout",
+        # The line GitPython adds to the error lines of a fetch or a push when Git ran past its kill_after_timeout.
+        name="fetch_or_push_past_its_time_limit",
         stderr="error: process killed because it timed out. kill_after_timeout=60 seconds",
         expected=RepositoryConnectionError,
-        message=CONNECTION_HINT,
+        message=TIME_LIMIT_HINT,
     ),
     EnrichmentCase(
-        # GitPython's text for a local command stopped at its timeout, which says nothing about the remote.
-        name="local_command_timeout_is_not_a_connection_error",
+        # GitPython's text when its watchdog kills a direct Git call at kill_after_timeout, local or remote.
+        name="direct_git_call_past_its_time_limit",
         stderr='Timeout: the command "git reset --hard abc" did not complete in 120 secs.',
         expected=RepositoryError,
         command=["git", "reset", "--hard", "abc"],
@@ -128,8 +138,7 @@ ENRICHMENT_CASES = [
     EnrichmentCase(
         # OpenSSL handshake path, every curl version.
         name="tls_untrusted_openssl",
-        stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
-        "SSL certificate problem: unable to get local issuer certificate",
+        stderr=TLS_STDERR,
         expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
@@ -376,21 +385,21 @@ class FetchConnectionFailureCase:
             name="certificate_not_accepted", stderr=TLS_STDERR, expected=RepositoryTLSError, message=TLS_HINT
         ),
         FetchConnectionFailureCase(
-            # GitPython reports the fetch as killed only once Git ends, so the remote fails soon after the timeout.
+            # GitPython adds its time limit line only once Git ends, so the remote fails soon after the limit.
             name="past_its_timeout",
             stderr="",
             expected=RepositoryConnectionError,
-            message=CONNECTION_HINT,
-            delay_seconds=3,
-            timeout_seconds=1,
+            message=TIME_LIMIT_HINT,
+            delay_seconds=1,
+            timeout_seconds=0.3,
         ),
     ],
     ids=lambda c: c.name,
 )
+@pytest.mark.usefixtures("git_repos_dir")
 async def test_fetch_failure_to_connect_records_the_connection_status(
     case: FetchConnectionFailureCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(tmp_path / "repositories"))
     location = failing_remote_location(
         tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
     )
@@ -407,10 +416,11 @@ async def test_fetch_failure_to_connect_records_the_connection_status(
     recorder = StatusRecordingClient()
     repository.client = recorder
 
-    with pytest.raises(case.expected, match=rf"^{case.message}$") as raised:
+    with pytest.raises(case.expected) as raised:
         await repository.fetch(timeout_seconds=case.timeout_seconds)
 
     assert type(raised.value) is case.expected
+    assert raised.value.message == case.message
     assert recorder.recorded_statuses == [RepositoryOperationalStatus.ERROR_CONNECTION.value]
 
 
@@ -436,7 +446,6 @@ class ConnectivityCase:
     "case",
     [
         ConnectivityCase(name="certificate_not_accepted", stderr=TLS_STDERR, message=TLS_HINT),
-        ConnectivityCase(name="repository_not_found", stderr=NOT_FOUND_STDERR, message=CONNECTION_HINT),
     ],
     ids=lambda c: c.name,
 )

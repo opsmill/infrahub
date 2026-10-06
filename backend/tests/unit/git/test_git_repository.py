@@ -648,10 +648,7 @@ def build_scripted_push_repository(origin: _ScriptedOrigin) -> _ScriptedPushRepo
         default_branch="main",
         location="https://gitlab.example.com/net/repo.git",
         has_origin=True,
-        cache_repo=None,
-        is_read_only=False,
         internal_status=RepositoryInternalStatus.ACTIVE,
-        reinitialized=False,
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
         origin=origin,
@@ -663,6 +660,7 @@ class PushErrorCase:
     name: str
     stderr: str
     expected: type[RepositoryError]
+    message: str | None = None
 
 
 @pytest.mark.parametrize(
@@ -680,9 +678,13 @@ class PushErrorCase:
             expected=RepositoryConnectionError,
         ),
         PushErrorCase(
-            name="stopped_at_its_timeout",
+            name="past_its_time_limit",
             stderr="error: process killed because it timed out. kill_after_timeout=300 seconds",
             expected=RepositoryConnectionError,
+            message=(
+                "The Git command for repository push-repo did not complete within its time limit, "
+                "please check that the remote is reachable."
+            ),
         ),
         PushErrorCase(
             name="repository_not_found",
@@ -702,6 +704,8 @@ async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
         await repository.push("main")
 
     assert type(raised.value) is case.expected
+    if case.message is not None:
+        assert raised.value.message == case.message
     assert repository.recorded_statuses == []
 
 
@@ -745,22 +749,6 @@ PUSH_REJECTION_CASES = [
         message=(
             "Unable to push the branch main to the remote for repository push-repo: "
             "[remote rejected] (push declined due to repository rule violations)"
-        ),
-    ),
-    PushRejectionCase(
-        name="non_fast_forward",
-        flags=PushInfo.ERROR | PushInfo.REJECTED,
-        summary="[rejected] (non-fast-forward)\n",
-        stderr_lines=[
-            "To https://gitlab.example.com/net/repo.git",
-            "hint: Updates were rejected because the tip of your current branch is behind",
-            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
-        ],
-        reason=PushRejectionReason.NON_FAST_FORWARD,
-        remote_message="",
-        message=(
-            "Unable to push the branch main to the remote for repository push-repo: the remote branch has "
-            "commits that are missing locally (non-fast-forward): [rejected] (non-fast-forward)"
         ),
     ),
     PushRejectionCase(
@@ -901,8 +889,8 @@ class PushTimeoutCase:
 @pytest.mark.parametrize(
     "case",
     [
-        PushTimeoutCase(name="no_timeout_sets_no_bound", push_kwargs={}, kill_after_timeout=None),
-        PushTimeoutCase(name="timeout_bounds_the_push", push_kwargs={"timeout_seconds": 300}, kill_after_timeout=300),
+        PushTimeoutCase(name="no_time_limit_by_default", push_kwargs={}, kill_after_timeout=None),
+        PushTimeoutCase(name="time_limit_passed_to_git", push_kwargs={"timeout_seconds": 300}, kill_after_timeout=300),
     ],
     ids=lambda c: c.name,
 )

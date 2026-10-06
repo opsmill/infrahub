@@ -620,7 +620,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Delete branch_name from origin.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         """
         if not self.has_origin:
@@ -788,8 +788,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Create a new worktree for a given commit.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout`` for each Git command;
-                ``None`` sets no bound.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
             CommitNotFoundError: When the commit does not exist in the local clone.
@@ -875,7 +874,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch the latest update from the remote repository and bring a copy locally.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         """
         if not self.has_origin:
@@ -1194,9 +1193,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "Couldn't connect to server", "Operation timed out" (libcurl); and for a
             gateway/proxy in front of the server returning a 5xx,
             "The requested URL returned error: 5xx" (git http.c) plus
-            "RPC failed; HTTP 5xx" (git remote-curl.c); "does not appear to be a git";
-            and "process killed because it timed out", which GitPython reports when its
-            ``kill_after_timeout`` stops a fetch or a push.
+            "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
+          - time limit: "process killed because it timed out", the line GitPython adds to the error
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``.
           - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
             line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
             For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
@@ -1219,7 +1218,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             RepositoryNotFoundError: When the remote reports the repository as not found.
             RepositoryTLSError: When the certificate of the remote is not accepted.
             RepositoryConnectionError: When the remote is unreachable, a gateway/proxy in
-                front of it returns a 5xx, or GitPython stops a fetch or a push at its timeout.
+                front of it returns a 5xx, or a fetch or a push ran past its time limit.
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
@@ -1239,10 +1238,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 "Operation timed out",
                 "The requested URL returned error: 5",
                 "RPC failed; HTTP 5",
-                "process killed because it timed out",
             )
         ):
             raise RepositoryConnectionError(identifier=name) from error
+
+        if "process killed because it timed out" in error.stderr:
+            raise RepositoryConnectionError(
+                identifier=name,
+                message=(
+                    f"The Git command for repository {name} did not complete within its time limit, "
+                    "please check that the remote is reachable."
+                ),
+            ) from error
 
         if "error: pathspec" in error.stderr:
             if branch_name is None:
