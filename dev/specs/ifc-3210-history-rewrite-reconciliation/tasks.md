@@ -662,14 +662,14 @@ read-write repository's configured default branch. Neither writes a record.
       reconciliation records the re-point as a rewrite, leaves the count one too high, and **fires
       the trunk webhook**, so a subscriber sees a security-remediation notice for an ordinary
       configuration change. The reconciliation itself is identical either way.
-- [ ] T092 Add a towncrier changelog fragment under `changelog/`. This is a user-visible change.
+- [x] T092 Add a towncrier changelog fragment under `changelog/`. This is a user-visible change.
       Use the `creating-changelog-entries` skill. Filename: the convention is a bare GitHub issue
       number when the release note should link that issue, and a `+slug` otherwise. The epic lists
       #6299 under "Advances", not "Closes", so a slug is the safer default. Confirm with Patrick
       whether this closes #6299; if it does, the stem is `6299`.
-      IFC-3281 already adds `changelog/+rewritten-branch-sync.fixed.md`, because that PR fixes the
-      reported bug and can ship before the rest of the stack. Extend that fragment instead of adding
-      a second one. Rename it to `6299.fixed.md` if this work closes #6299.
+      IFC-3281 adds `changelog/6299.fixed.md`: that PR fixes the bug #6299 reports, a branch that
+      goes to the error status after a force push, and it can ship before the rest of the stack.
+      Extend that fragment instead of adding a second one.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires

@@ -1,1 +1,0 @@
-Fixed the synchronization of a Git branch whose history was rewritten and force-pushed: the branch now follows the new remote history and its objects are imported again with no user action, instead of failing with a merge conflict that did not exist.
