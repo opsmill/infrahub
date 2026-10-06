@@ -165,13 +165,13 @@ Parts A and B of the plan.
       `FullRegenerationReason` there from `backend/infrahub/core/merge/regeneration_dispatcher.py`,
       which then imports it from its new place, and add `UNHELD_FOLLOW_UP`, per
       [data-model.md](data-model.md), "New fallback reasons". `HeldWiden` in T014 needs it.
-- [ ] T019 Declare the nine attributes on `CoreRepository` in
+- [X] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
       `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
       `AttributeSchema.description`) and the order weights. **Gate: schema
       sign-off.**
-- [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
+- [X] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
       `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**).
 - [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
