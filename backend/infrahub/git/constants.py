@@ -5,9 +5,12 @@ COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
 
-READ_ONLY_FETCH_KILL_AFTER_SECONDS: Final = 900
-"""Ceiling on a read-only repository's fetch, enforced by killing the git process. Generous: a first
-transfer of a large repository is legitimately slow."""
+READ_ONLY_FETCH_TIMEOUT_SECONDS: Final = 900
+"""Ceiling on a read-only repository's fetch, after which git and every process it started are told
+to stop. Generous: a first transfer of a large repository is legitimately slow."""
+
+READ_ONLY_FETCH_STOP_GRACE_SECONDS: Final = 10
+"""How long a fetch told to stop has to exit, removing its lock files, before it is killed outright."""
 
 # git applies no network timeout of its own. These end an HTTP transfer that has stalled below a
 # trickle; every transport, SSH included, is bounded instead by the kill timeout git is given.

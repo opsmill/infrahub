@@ -309,8 +309,8 @@ which decides the broadcast from whichever worker happened to run the check. The
 decided per tracked ref against the remote head the last check listed, held in
 `git:refs_check:listed:<id>:<ref>` and written by the check alone; the local comparison still
 decides whether this worker fetches. The recipients' fetch is also forced for a read-only
-repository, since git refuses to move an existing tag otherwise, and bounded by a kill timeout,
-since every recipient runs it while holding the repository lock.
+repository, since git refuses to move an existing tag otherwise, and stopped with every process it
+started once a deadline passes, since every recipient runs it while holding the repository lock.
 
 Failure of any step is caught per repository, recorded with the repository and the reason, and the
 `git:refs_check:due:<id>` due key is deleted so the next tick retries rather than treating the repository

@@ -29,10 +29,12 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     RepositoryPermissionError,
 )
+from infrahub.git.bounded_command import run_git_with_deadline
 from infrahub.git.constants import (
     BRANCHES_DIRECTORY_NAME,
     COMMITS_DIRECTORY_NAME,
-    READ_ONLY_FETCH_KILL_AFTER_SECONDS,
+    READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+    READ_ONLY_FETCH_TIMEOUT_SECONDS,
     REMOTE_TRANSPORT_ENVIRONMENT,
     TEMPORARY_DIRECTORY_NAME,
 )
@@ -875,16 +877,16 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         # Every worker in the pool fetches a read-only repository while holding its lock, which has
         # no expiry, so a stalled remote must not be able to hold that lock indefinitely.
-        with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
-            # A read-only repository may track a tag, and git refuses to move an existing tag unless
-            # forced; the commit it used to point at stays readable through its own worktree.
-            git_repo.remotes.origin.fetch(
-                prune=True,
-                tags=True,
-                prune_tags=True,
-                force=True,
-                kill_after_timeout=READ_ONLY_FETCH_KILL_AFTER_SECONDS,
-            )
+        # GitPython <=3.2.0 never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
+        # A read-only repository may track a tag, and git refuses to move an existing tag unless forced;
+        # the commit it used to point at stays readable through its own worktree.
+        run_git_with_deadline(
+            ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
+            working_directory=git_repo.working_dir,
+            environment=REMOTE_TRANSPORT_ENVIRONMENT,
+            timeout_seconds=READ_ONLY_FETCH_TIMEOUT_SECONDS,
+            stop_grace_seconds=READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+        )
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
         branches = self.get_branches_from_remote()
