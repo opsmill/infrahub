@@ -35,7 +35,13 @@ push. It does not repeat other tools:
 1. **The session must start at the repository root.** If the working directory is not the
    repository root, stop and tell the user to restart there: Claude Code then loads no rules
    and runs no project hooks, so every reviewer would work without the repository's context.
-2. Run the manifest and show it to the user:
+2. **The context hooks must be set up.** If `.claude/settings.json` has no `SubagentStart` and
+   `PostToolUse` entry running `.agents/scripts/repo-context.py --hook`, tell the user that
+   the `code-review` subagents will then miss the rules after Bash, Grep and Glob calls, and
+   Explore subagents the root `AGENTS.md`. Ask whether to stop (copy the settings, restart the
+   session) or continue; the rule reviewers in Phase 3 get their rules explicitly either way.
+   Note the answer for the report.
+3. Run the manifest and show it to the user:
 
    ```bash
    python3 .agents/scripts/repo-context.py [--base <branch>]
@@ -46,7 +52,7 @@ push. It does not repeat other tools:
    submodule pointers left out, every rule that applies with the glob and file that matched,
    and the `AGENTS.md` files that cover the change. Exit code 1 means nothing changed: say so
    and stop. Every later step uses this base and this list.
-3. Fixing is allowed unless the arguments say `report`, or the branch is `stable`, `develop` or
+4. Fixing is allowed unless the arguments say `report`, or the branch is `stable`, `develop` or
    `release-*`.
 
 ## Phase 1 — Start cubic in the background
@@ -141,11 +147,19 @@ cubic: <ran, n findings | error: <message> | not installed>
 <findings declined because a rule did not say so, and changed areas no rule covers>
 ```
 
-## Improve the rules after each run
+## Improve the rules and the index after each run
 
-Propose, and apply only with approval: a "Not violations" line for a finding declined because a
-rule did not mention the accepted pattern, and a new line in `.agents/rules/` for what cubic or
-a reviewer caught that no rule states. Keep the files of each `cubic.yaml` entry under 9,000
+Propose each of these, and apply only with the user's approval:
+
+- **A "Not violations" line** in a rule, for a finding declined because the rule did not mention
+  the accepted pattern.
+- **A new rule line** in `.agents/rules/`, for what cubic or a reviewer caught that no rule states.
+- **A `paths:` glob or a new rule file**, for each changed area that no rule's globs cover.
+- **A better "load before" line** in an `AGENTS.md`, for each article a reviewer had to open on
+  its own (the "Article opened" rows of the context table): say when that article applies, so
+  the next agent is pointed to it.
+
+Keep the files of each `cubic.yaml` entry under 9,000
 characters (`wc -m`); cubic drops everything past 10,000. A new rule file with new paths also
 goes in `cubic.yaml`, and a new `dev/` article needs a line in its area's `AGENTS.md`
 (`repo-context.py --check-index` fails in CI until it has one).
