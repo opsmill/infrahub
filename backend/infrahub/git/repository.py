@@ -426,13 +426,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     )
 
         elif staging_branch:
-            await self._queue_advanced_branch(
+            await self._collect_updated_branch(
                 collected=collected,
                 branch_name=self.default_branch,
-                import_branch=staging_branch,
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
+                import_branch=staging_branch,
                 git_branch_name=self.default_branch,
             )
 
@@ -513,20 +513,28 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         remote_heads: dict[str, str],
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
+        import_branch: str | None = None,
+        git_branch_name: str | None = None,
     ) -> None:
         """Bring a branch this worker already holds onto the remote head and queue its import.
 
         Git failures, and a commit the graph refuses to record, are recorded against the branch so the
-        other branches are still collected.
+        other branches, and the other repositories of the cycle, are still collected.
+
+        Args:
+            import_branch: The Infrahub branch the objects go to, the branch the remote branch maps
+                onto when not given.
+
         """
         try:
             await self._queue_advanced_branch(
                 collected=collected,
                 branch_name=branch_name,
-                import_branch=self._get_mapped_target_branch(branch_name=branch_name),
+                import_branch=import_branch or self._get_mapped_target_branch(branch_name=branch_name),
                 remote_heads=remote_heads,
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
+                git_branch_name=git_branch_name,
             )
         # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
         except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError, GraphQLError) as exc:

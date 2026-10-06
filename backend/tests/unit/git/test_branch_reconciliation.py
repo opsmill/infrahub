@@ -516,3 +516,30 @@ async def test_a_rewritten_trunk_of_a_staging_repository_is_reset_and_imported_i
         )
     ]
     assert tracked.worktree_head(branch_name="main") == rewritten
+
+
+async def test_a_staging_trunk_whose_commit_the_graph_refuses_fails_without_raising(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A raise from the trunk of one repository would stop the synchronization of every repository after it."""
+    tracked = await clone_with_tracked_branches(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, internal_status=RepositoryInternalStatus.STAGING
+    )
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.client.rejecting_branches = frozenset({"main"})
+
+    collected = await tracked.repository.collect_pending_imports(
+        staging_branch=STAGING, graph_commits=tracked.graph_commits()
+    )
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name="main",
+            step=ImportStep.COLLECTION,
+            reason=(
+                "An error occurred while executing the GraphQL Query None, "
+                "[{'message': 'Branch main must be rebased before any updates can be made'}]"
+            ),
+        )
+    ]
+    assert collected.imports == []
