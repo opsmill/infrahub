@@ -365,8 +365,8 @@ substitutes an in-memory one. The recorder itself imports neither the SDK nor th
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The production store writes through the SDK client. It does not change the `python_sdk`
-  submodule.
+- The production store writes through the SDK client. It changes no SDK code. Only the generated
+  `infrahub_sdk/protocols.py` gains the four attributes.
 
 ---
 

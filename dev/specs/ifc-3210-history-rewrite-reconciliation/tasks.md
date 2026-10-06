@@ -405,7 +405,10 @@ emits no signal.
 - [x] T054 [US1] Regenerate the generated files for the four attributes and commit them:
       `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`, and
-      `cd frontend/app && pnpm codegen`. CI fails when any of them is stale.
+      `cd frontend/app && pnpm codegen`, then `pnpm codegen:graphql` for `graphql-env.d.ts` and
+      `graphql-cache.d.ts`. CI fails when any of them is stale. `backend.generate` also rewrites
+      `python_sdk/infrahub_sdk/protocols.py`: that change lands as an SDK PR against
+      `infrahub-develop`, and the submodule pointer moves here once the commit is upstream.
       Phase 7 adds an `EventType` member, which feeds the webhook `event_type` enum and makes these
       same files stale again. That phase regenerates them a second time.
 - [x] T055 [US1] Write `HistoryRewriteRecorder` in
@@ -430,8 +433,8 @@ emits no signal.
       called".
 - [x] T058 [US1] Write the production `RepositoryRecordStore` in
       `backend/infrahub/git/divergence/store.py`, backed by the SDK client. It reads
-      `rewrite_count` and writes the four attributes in one call, so the `python_sdk` submodule
-      needs no change.
+      `rewrite_count` and writes the four attributes in one call, so no SDK method needs a
+      change.
 - [x] T059 [P] [US1] Unit-test the recorder in
       `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
       the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a

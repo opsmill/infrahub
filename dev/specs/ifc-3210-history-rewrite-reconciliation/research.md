@@ -367,8 +367,9 @@ path for those attributes.
 **Why not extend the existing commit write.** `git/base.py::InfrahubRepositoryBase.update_commit_value`
 calls `InfrahubClient.repository_update_commit`, which runs a canned mutation from the SDK. Adding
 four variables to it is a change in the `python_sdk` submodule, which needs its own PR merged
-upstream before the pointer can move here. A separate write from the backend keeps this epic inside
-one repository.
+upstream before the pointer can move here. A separate write from the backend keeps the SDK client
+unchanged. The generated SDK protocols still gain the four attributes, so the epic needs one SDK PR
+all the same.
 
 **Event consequence, per ADR 0016.** The write is an ordinary GraphQL mutation, so it emits a
 `NodeUpdatedEvent` with origin `live`. Cross-node computed attributes, display labels and
