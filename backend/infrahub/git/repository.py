@@ -8,6 +8,7 @@ from uuid import UUID  # noqa: TC003
 from cachetools import TTLCache
 from cachetools.keys import hashkey
 from cachetools_async import cached
+from git import PushInfo, RemoteProgress
 from git.exc import BadName, GitCommandError
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreReadOnlyRepository
@@ -30,6 +31,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryDivergentHistoryError,
     RepositoryError,
+    RepositoryPushRejectedError,
 )
 from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.commit_id import readable_commit
@@ -38,6 +40,7 @@ from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
+from infrahub.git.models import PushRejectionReason
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
@@ -67,6 +70,16 @@ def _describe_push_rejection(summary: str) -> str:
     if any(marker in lowered for marker in ("non-fast-forward", "fetch first")):
         return f"the remote branch has commits that are missing locally (non-fast-forward): {summary}"
     return summary
+
+
+def _push_rejection_reason(flags: int) -> PushRejectionReason:
+    # The remote itself refuses a ref with "[remote rejected]", while Git refuses a non-fast-forward with
+    # "[rejected]" before it sends anything.
+    if flags & PushInfo.REMOTE_REJECTED:
+        return PushRejectionReason.POLICY
+    if flags & PushInfo.REJECTED:
+        return PushRejectionReason.NON_FAST_FORWARD
+    return PushRejectionReason.UNKNOWN
 
 
 @dataclass
@@ -952,12 +965,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             ],
         )
 
-    async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository.
+    async def push(self, branch_name: str, timeout_seconds: float | None = None) -> bool:
+        """Push a given branch to the remote Origin repository; a failure never writes the operational status.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
 
         Raises:
-            RepositoryError: When the remote rejects the push at the ref level.
-            RepositoryConnectionError: When the push fails to reach the remote.
+            RepositoryPushRejectedError: When the remote rejects the push at the ref level. It carries the
+                reason read from the flags of the ref's push result and the remote's own ``remote:`` lines.
+            RepositoryConnectionError: When the push fails to reach the remote, or GitPython reports it as
+                killed at ``timeout_seconds``. The subclasses RepositoryNotFoundError and RepositoryTLSError
+                name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
 
@@ -973,11 +992,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         repo = self.get_git_repo_worktree(identifier=branch_name)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
+        # The server explains a refusal only in its "remote:" lines, which this handler keeps in its other lines.
+        progress = RemoteProgress()
         # Push the worktree HEAD, not the bare branch name: the local branch checked out in this
         # worktree may not be named after the remote branch (it differs when the repository's
         # default branch is not the Infrahub default), so a bare refspec would have no local source.
         try:
-            push_infos = repo.remotes.origin.push(refspec=f"HEAD:refs/heads/{remote_branch}")
+            push_infos = repo.remotes.origin.push(
+                refspec=f"HEAD:refs/heads/{remote_branch}", progress=progress, kill_after_timeout=timeout_seconds
+            )
         except GitCommandError as exc:
             # A transport-level failure raises here with no porcelain status line to classify from flags.
             self._raise_enriched_error_static(
@@ -985,8 +1008,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
         for push_info in push_infos:
             if push_info.flags & push_info.ERROR:
-                raise RepositoryError(
+                raise RepositoryPushRejectedError(
                     identifier=self.name,
+                    reason=_push_rejection_reason(flags=push_info.flags),
+                    remote_message="\n".join(line for line in progress.other_lines if line.startswith("remote:")),
                     message=(
                         f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "
                         f"{_describe_push_rejection(summary=push_info.summary.strip())}"
