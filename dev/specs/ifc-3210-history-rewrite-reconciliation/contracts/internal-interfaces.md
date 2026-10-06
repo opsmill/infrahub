@@ -127,9 +127,13 @@ The collector therefore takes the union of two sets:
 
 Both are needed. Neither is a subset of the other.
 
-**Only branches that can still record a commit enter the second set.** A merged branch, a branch
-being deleted, or a branch Infrahub no longer lists rejects a commit, so the graph comparison would
-select it again on every cycle and keep the early return from firing. The periodic sync leaves them
+**Only branches that can still record a commit enter the second set.** The API refuses a commit on
+a branch that needs a rebase, is being merged, failed a merge or is merged, a branch being deleted
+loses its nodes, and a branch Infrahub no longer lists has nowhere to record one. The graph
+comparison would select any of them again on every cycle and keep the early return from firing.
+`git/branch_status.py::accepts_commit_write` holds the rule, and the collector's filter of the
+branches it advances uses it too. A refusal the listing did not predict, such as a merge that starts
+during the cycle, fails that branch alone. The periodic sync leaves them
 out of the graph commits it passes down, using the branch listing it already reads once per cycle.
 
 **A branch new to this worker is classified too.** The periodic sync runs on whichever worker picks

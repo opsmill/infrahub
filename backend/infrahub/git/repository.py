@@ -18,13 +18,13 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CommitNotFoundError,
     RepositoryError,
 )
+from infrahub.git.branch_status import accepts_commit_write
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
 from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
@@ -516,8 +516,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     ) -> None:
         """Bring a branch this worker already holds onto the remote head and queue its import.
 
-        Git failures are recorded against the branch so the other branches are still collected, while
-        graph errors propagate.
+        Git failures, and a commit the graph refuses to record, are recorded against the branch so the
+        other branches are still collected.
         """
         try:
             await self._queue_advanced_branch(
@@ -528,7 +528,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
             )
-        except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
+        # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
+        except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError, GraphQLError) as exc:
             collected.failed_imports.append(
                 FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
             )
@@ -716,14 +717,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     ) -> tuple[list[str], list[str]]:
         """Drop the branches whose commit the graph cannot record.
 
-        A branch in a terminal status (merged or being deleted) is read-only, so the graph rejects its
-        commit. An updated branch whose Infrahub branch is gone has nowhere to record it, and its
-        worktree would never move, so it would fail again on every cycle. A new branch is kept, because
-        collecting it creates its Infrahub branch. The default branch is never terminal, so filtering
-        here does not affect the staging-import path.
+        A branch whose status rejects a commit, such as one that needs a rebase or is merged, would
+        fail again on every cycle. An updated branch whose Infrahub branch is gone has nowhere to record
+        it, and its worktree would never move. A new branch is kept, because collecting it creates its
+        Infrahub branch. The staging-import path does not go through this filter.
         """
-        terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
-        read_only = {name for name, branch in graph_branches.items() if branch.status.value in terminal_status_values}
+        read_only = {name for name, branch in graph_branches.items() if not accepts_commit_write(branch)}
         orphaned = [
             name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in graph_branches
         ]

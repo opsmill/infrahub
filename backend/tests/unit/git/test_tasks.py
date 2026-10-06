@@ -199,24 +199,21 @@ def listed_branch(name: str, status: BranchStatus) -> BranchData:
 
 def test_only_a_branch_that_can_still_record_a_commit_keeps_its_commit() -> None:
     """A branch that rejects a commit would otherwise be selected for one on every sync cycle."""
-    branch_commits: dict[str, str | None] = {
-        "main": "commit-main",
-        "open": "commit-open",
-        "rebase-needed": "commit-rebase-needed",
-        "merged": "commit-merged",
-        "deleting": "commit-deleting",
-        "unlisted": "commit-unlisted",
+    statuses = {
+        "main": BranchStatus.OPEN,
+        "open": BranchStatus.OPEN,
+        "upgrade-rebase-needed": BranchStatus.NEED_UPGRADE_REBASE,
+        "rebase-needed": BranchStatus.NEED_REBASE,
+        "merging": BranchStatus.MERGING,
+        "merge-failed": BranchStatus.MERGE_FAILED,
+        "merged": BranchStatus.MERGED,
+        "deleting": BranchStatus.DELETING,
     }
-    branches = {
-        "main": listed_branch(name="main", status=BranchStatus.OPEN),
-        "open": listed_branch(name="open", status=BranchStatus.OPEN),
-        "rebase-needed": listed_branch(name="rebase-needed", status=BranchStatus.NEED_REBASE),
-        "merged": listed_branch(name="merged", status=BranchStatus.MERGED),
-        "deleting": listed_branch(name="deleting", status=BranchStatus.DELETING),
-    }
+    branch_commits: dict[str, str | None] = {name: f"commit-{name}" for name in [*statuses, "unlisted"]}
+    branches = {name: listed_branch(name=name, status=status) for name, status in statuses.items()}
 
     assert select_writable_branch_commits(branch_commits=branch_commits, branches=branches) == {
         "main": "commit-main",
         "open": "commit-open",
-        "rebase-needed": "commit-rebase-needed",
+        "upgrade-rebase-needed": "commit-upgrade-rebase-needed",
     }

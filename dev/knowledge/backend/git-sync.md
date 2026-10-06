@@ -119,8 +119,11 @@ resets and logs the reconciliation, and its classification stays unchanged.
 
 The sync considers the branches whose local head differs from the remote, and also the local
 branches whose graph commit differs from the remote head. Only branches that can still record a
-commit take part in the second comparison: a merged branch, a branch being deleted or a branch
-Infrahub no longer lists would be selected again on every cycle. It classifies a branch new to this
+commit take part in the second comparison. A branch that needs a rebase, is being merged, failed a
+merge, is merged or is being deleted rejects the commit, and so does a branch Infrahub no longer
+lists, so it would be selected again on every cycle. `git/branch_status.py::accepts_commit_write`
+holds that rule for both comparisons. A commit write the graph still refuses, because the status
+changed after the listing, fails that branch alone. It classifies a branch new to this
 worker too, because the graph can hold a commit that another worker imported and the remote has
 since discarded. A new branch that git cannot classify is still created, but a branch this worker
 holds fails before its worktree moves. Each reset or lineage break logs one line with the branch,

@@ -37,7 +37,7 @@ def capture_sync_logs(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
 
 
-def branch_payload(name: str) -> dict[str, Any]:
+def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
     return {
         "id": f"{name}-id",
         "name": name,
@@ -46,32 +46,49 @@ def branch_payload(name: str) -> dict[str, Any]:
         "is_default": name == "main",
         "has_schema_changes": False,
         "graph_version": None,
-        "status": "OPEN",
+        "status": status,
         "origin_branch": "main",
         "branched_from": "2024-01-01T00:00:00Z",
     }
 
 
 class GraphRecordingClient(InfrahubClient):
-    """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them."""
+    """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them.
+
+    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise, and
+    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase.
+    """
 
     def __init__(self, branch_names: tuple[str, ...]) -> None:
         super().__init__(config=Config(requester=dummy_async_request))
         self.branch_names = branch_names
+        self.branch_statuses: dict[str, str] = {}
+        self.rejecting_branches: frozenset[str] = frozenset()
         self.recorded_commits: list[tuple[str, str]] = []
 
     async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         tracker = kwargs.get("tracker")
         variables = kwargs.get("variables") or {}
         if tracker == "query-branch-all":
-            return {"Branch": [branch_payload(name=name) for name in self.branch_names]}
+            return {
+                "Branch": [
+                    branch_payload(name=name, status=self.branch_statuses.get(name, "OPEN"))
+                    for name in self.branch_names
+                ]
+            }
         if tracker == "mutation-branch-create":
             raise GraphQLError(errors=[{"message": "The branch already exists"}])
         if tracker == "query-branch":
             return {"Branch": [branch_payload(name=variables["branch_name"])]}
         if tracker == "mutation-repository-update-commit":
+            if kwargs["branch_name"] in self.rejecting_branches:
+                raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])
             self.recorded_commits.append((kwargs["branch_name"], variables["commit"]))
         return {}
+
+
+def rejected_commit_message(branch_name: str) -> str:
+    return f"Branch {branch_name} must be rebased before any updates can be made"
 
 
 @dataclass(frozen=True)
@@ -378,6 +395,63 @@ async def test_a_branch_whose_infrahub_branch_is_gone_is_left_alone(
     ]
     assert tracked.client.recorded_commits == [(OTHER, advanced)]
     assert tracked.worktree_head(branch_name=TRACKED) == imported
+
+
+async def test_a_branch_that_needs_a_rebase_is_left_alone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The graph refuses a commit on a branch that needs a rebase, so trying would only fail again on every cycle."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    imported = tracked.imported_commits[TRACKED]
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    tracked.client.branch_statuses = {TRACKED: "NEED_REBASE"}
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
+    assert tracked.client.recorded_commits == [(OTHER, advanced)]
+    assert tracked.worktree_head(branch_name=TRACKED) == imported
+
+
+async def test_a_branch_whose_commit_the_graph_refuses_fails_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The listing can predate the status that makes the graph refuse the commit, as when a merge starts."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature v2\n"})
+    advanced = tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other v2\n"})
+    tracked.client.rejecting_branches = frozenset({TRACKED})
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name=TRACKED,
+            step=ImportStep.COLLECTION,
+            reason=(
+                "An error occurred while executing the GraphQL Query None, "
+                "[{'message': 'Branch feature must be rebased before any updates can be made'}]"
+            ),
+        )
+    ]
+    assert collected.imports == [
+        queued(
+            commit=advanced,
+            divergence=divergence(
+                tracked.imported_commits[OTHER], advanced, RefClassification.FAST_FORWARD, branch_name=OTHER
+            ),
+            branch_name=OTHER,
+        )
+    ]
+    assert tracked.client.recorded_commits == [(OTHER, advanced)]
 
 
 async def test_a_branch_new_to_this_worker_is_classified_against_the_commit_another_worker_imported(

@@ -26,7 +26,6 @@ from prefect.logging import get_run_logger
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
-from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -64,6 +63,7 @@ from ..workflows.catalogue import (
     REQUEST_ARTIFACT_GENERATE,
 )
 from ..workflows.utils import add_branch_tag, add_tags
+from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .models import (
     CheckRepositoryImportStatus,
@@ -370,14 +370,13 @@ def select_writable_branch_commits(
 ) -> dict[str, str | None]:
     """Keep the commit of each Infrahub branch that can still record one.
 
-    A merged branch, a branch being deleted and a branch Infrahub no longer lists reject a commit, so
-    the sync must not select them for one: it would select them again on every cycle.
+    A branch whose status rejects a commit, and a branch Infrahub no longer lists, would be selected
+    for one again on every cycle.
     """
-    terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
     return {
         name: commit
         for name, commit in branch_commits.items()
-        if name in branches and branches[name].status.value not in terminal_status_values
+        if name in branches and accepts_commit_write(branches[name])
     }
 
 

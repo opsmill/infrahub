@@ -221,8 +221,10 @@ either case.
 - **Re-deriving content at a discarded commit.** This is not guaranteed and varies by worker. It is
   a pre-existing limitation, tracked separately. This work corrects the claim in the documentation,
   not the behaviour.
-- **A merged branch or a branch being deleted.** Synchronisation already excludes these before
-  reconciliation is reached. The behaviour is unchanged.
+- **A branch whose status refuses a commit.** A branch that needs a rebase, is being merged,
+  failed a merge, is merged or is being deleted is excluded before reconciliation is reached.
+  Synchronisation already excluded the merged and deleted ones; the others made the cycle fail
+  on the commit write.
 - **A deliberate change of tracking target.** Re-pointing a read-only repository to a new tag, or
   editing a repository's configured default branch, breaks lineage without rewriting anything. It
   is reconciled and not reported. User Story 6 covers it.
