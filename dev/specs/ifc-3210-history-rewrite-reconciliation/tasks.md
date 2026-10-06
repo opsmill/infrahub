@@ -371,16 +371,16 @@ emits no signal.
       the trunk signal. This is what a reset-then-merge would have destroyed (FR-005c).
       The trunk signal does not exist before T067, so the test asserts the record and a merge
       retried after the cycle. T067 adds the signal to this test.
-- [ ] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
+- [x] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
       nothing, while the graph already holds the remote commit (FR-001c). This is the case that
       decides whether the classification reads the graph or the worktree.
 - [x] T050 [P] [US2] Component-test the reset in
       `backend/tests/component/git/test_git_repository.py`: a diverged branch worktree is reset to
       the remote head by `pull`, and nothing is raised.
-- [ ] T051 [US2] Add a live-remote test in
+- [x] T051 [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker that received no broadcast
       converges on first contact, writes no rewrite record and emits no signal.
-- [ ] T052 [P] [US2] Add a live-remote test that a worker which has never seen the repository
+- [x] T052 [P] [US2] Add a live-remote test that a worker which has never seen the repository
       clones fresh and needs no reset, in
       `backend/tests/integration/git/test_git_live_remote.py`.
 

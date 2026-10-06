@@ -32,6 +32,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.convergence import WorktreeConverger
+from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
@@ -1401,3 +1402,101 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
         assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
         assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
+
+    async def test_a_worker_that_missed_the_broadcast_resets_in_its_next_cycle_and_records_nothing(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The graph already holds the remote head, so only the clone of the second worker tells it to move."""
+        tracked = await tracked_branch_repository("missed-broadcast-repo", "missed-broadcast-branch")
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        await sync_remote_repositories()
+        record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
+        assert (record[0], record[1], record[3]) == (tracked.imported_commit, rewritten, 1)
+
+        with repositories_directory(second_worker):
+            await sync_remote_repositories()
+            clone = await _open_clone(client=client, tracked=tracked)
+            assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == rewritten
+
+        assert await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name) == record
+
+    async def test_a_worker_that_heard_no_broadcast_converges_on_its_first_pull(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        bus_simulator: BusSimulator,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The second worker does not fetch first, so the pull alone has to find the rewrite."""
+        tracked = await tracked_branch_repository("first-pull-repo", "first-pull-branch")
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        await sync_remote_repositories()
+        record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
+        sent_before = len(bus_simulator.messages)
+
+        with repositories_directory(second_worker):
+            clone = await _open_clone(client=client, tracked=tracked)
+            assert await clone.pull(branch_name=tracked.branch_name) == rewritten
+            assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == rewritten
+
+        assert bus_simulator.messages[sent_before:] == []
+        assert await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name) == record
+        assert await _tracked_graph_state(db=db, tracked=tracked) == (rewritten, RepositorySyncStatus.IN_SYNC.value)
+
+    async def test_a_worker_new_to_the_repository_clones_only_the_rewritten_history(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The discarded commit never reaches the new clone, so the clone has nothing to reset."""
+        tracked = await tracked_branch_repository("new-worker-repo", "new-worker-branch")
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        await sync_remote_repositories()
+        record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
+        branch = await client.branch.get(branch_name=tracked.branch_name)
+        new_worker = tmp_path / "new-worker-repositories"
+        new_worker.mkdir()
+
+        with repositories_directory(new_worker):
+            clone = await _open_clone(client=client, tracked=tracked)
+            head = await clone.pull(
+                branch_name=tracked.branch_name, branch_id=branch.id, create_if_missing=True, update_commit_value=False
+            )
+            gateway = GitAncestryGateway(repository_name=tracked.name, repo=clone.get_git_repo_main())
+            assert (head, gateway.has_commit(commit=tracked.imported_commit)) == (rewritten, False)
+
+        assert await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name) == record
