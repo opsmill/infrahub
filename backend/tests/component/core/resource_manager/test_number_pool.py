@@ -5,8 +5,10 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.attribute_schema import AttributeSchema, NumberAttributeSchema
@@ -17,13 +19,18 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from tests.helpers.agnostic_edges import pool_reservation_edges
 from tests.helpers.number_pool import (
     add_pool_range,
+    create_range_only_pool,
+    create_ticket,
     pool_lowest_free_number,
     pool_used_numbers,
+    schema_domains,
+    ticket_schema_with_parameters,
 )
 from tests.helpers.schema import TICKET, load_schema
 
@@ -235,7 +242,9 @@ async def test_resource_utilization(
         await ticket.new(db=db, title=f"ticket{index}_np2", ticket_id={"from_pool": {"id": np2.id}})
         await ticket.save(db=db)
 
-    utilization_np1 = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization_np1 = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
 
     assert utilization_np1 == {
         "count": 1,
@@ -257,7 +266,9 @@ async def test_resource_utilization(
         ],
     }
 
-    utilization_np2 = await resolve_number_pool_utilization(db=db, pool=np2, at=Timestamp(), branch=default_branch)
+    utilization_np2 = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np2, at=Timestamp(), branch=default_branch
+    )
 
     assert utilization_np2 == {
         "count": 2,
@@ -289,6 +300,101 @@ async def test_resource_utilization(
             },
         ],
     }
+
+
+async def test_each_range_reports_the_numbers_its_branches_hold(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A number held on the default branch counts there only, even when a branch records it as well."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db)
+    single = await add_pool_range(db=db, pool=pool, start=5, end=5, weight=10)
+    upper = await add_pool_range(db=db, pool=pool, start=20, end=29)
+
+    main_ticket = await Node.init(db=db, schema=TICKET.kind)
+    await main_ticket.new(db=db, title="on main", ticket_id={"from_pool": {"id": pool.id}})
+    await main_ticket.save(db=db)
+    branch = await create_branch(db=db, branch_name="feat")
+    branch_ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
+    await branch_ticket.new(db=db, title="on branch", ticket_id={"from_pool": {"id": pool.id}})
+    await branch_ticket.save(db=db)
+    assert (main_ticket.ticket_id.value, branch_ticket.ticket_id.value) == (5, 20)
+
+    # Editing the number on the branch and restoring it leaves the branch its own record of 5.
+    edited = await NodeManager.get_one(db=db, id=main_ticket.get_id(), branch=branch, raise_on_error=True)
+    edited.ticket_id.value = 25
+    await edited.save(db=db)
+    edited.ticket_id.value = 5
+    await edited.save(db=db)
+
+    space = EffectiveSpace(
+        ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
+    )
+    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
+    await getter.load_data()
+    assert {(used.number, used.branch) for used in getter.used} == {(5, "main"), (5, "feat"), (20, "feat")}
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch
+    )
+    assert utilization == {
+        "count": 2,
+        "utilization": 2 / 11 * 100,
+        "utilization_default_branch": 1 / 11 * 100,
+        "utilization_branches": 1 / 11 * 100,
+        "edges": [
+            {
+                "node": {
+                    "id": single.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "5 - 5",
+                    "weight": 10,
+                    "utilization": 100.0,
+                    "utilization_default_branch": 100.0,
+                    "utilization_branches": 0.0,
+                }
+            },
+            {
+                "node": {
+                    "id": upper.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "20 - 29",
+                    "weight": 0,
+                    "utilization": 10.0,
+                    "utilization_default_branch": 0.0,
+                    "utilization_branches": 10.0,
+                }
+            },
+        ],
+    }
+
+
+async def test_utilization_measures_the_space_the_branch_schema_leaves(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A branch whose schema narrows the attribute reports the pool against the smaller space."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    assert await create_ticket(db=db, kind=TICKET.kind, pool=pool) == 1
+
+    branch = await create_branch(db=db, branch_name="narrow")
+    narrowed = ticket_schema_with_parameters(NumberAttributeParameters(max_value=5))
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[narrowed]), branch=branch.name)
+
+    on_main = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    on_branch = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch
+    )
+
+    assert on_main["utilization"] == 10.0
+    assert on_branch["utilization"] == 20.0
+    assert [edge["node"]["utilization"] for edge in on_main["edges"]] == [10.0]
+    assert [edge["node"]["utilization"] for edge in on_branch["edges"]] == [20.0]
 
 
 async def test_allocate_from_number_pool_for_generic(
@@ -347,7 +453,9 @@ async def test_allocate_from_number_pool_for_generic(
     await recreated_ticket2.save(db=db)
     assert recreated_ticket2.ticket_id.value == 2
 
-    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
     assert utilization["utilization"] == 20.0
 
 
@@ -408,7 +516,9 @@ async def test_allocate_from_number_pool_with_excluded_values(
     await ticket.save(db=db)
     assert ticket.get_attribute(name="ticket_id").value == 10
 
-    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
 
     nb_values_used_in_pool = 1
     nb_excluded_values = 4

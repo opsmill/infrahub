@@ -3,9 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub import lock
-from infrahub.core import registry
 from infrahub.core.query.resource_manager import PoolRecordProvenance
-from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.pools.number_pool_allocator import NumberPoolAllocator
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
@@ -25,20 +23,6 @@ class CoreNumberPool(Node):
     That contract delivers the database per call, so each call builds the repository and the allocator
     before any work starts and runs the whole allocation on them.
     """
-
-    def get_attribute_nb_excluded_values(self) -> int:
-        """Returns the number of excluded values for the attribute of the number pool."""
-        pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
-        attribute = next(attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value)  # type: ignore [attr-defined]
-        if not isinstance(attribute.parameters, NumberAttributeParameters):
-            return 0
-
-        sum_excluded_values = 0
-        excluded_ranges = attribute.parameters.get_excluded_ranges()
-        for start_range, end_range in excluded_ranges:
-            sum_excluded_values += end_range - start_range + 1
-
-        return len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
 
     async def get_resource(
         self,

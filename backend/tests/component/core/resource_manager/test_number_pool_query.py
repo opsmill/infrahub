@@ -21,6 +21,7 @@ from infrahub.core.query.resource_manager import (
     NumberPoolChangeReserved,
     NumberPoolGetAllocated,
     NumberPoolGetReserved,
+    NumberPoolGetTaken,
     NumberPoolGetUsed,
     NumberPoolSetReserved,
     PoolRecordProvenance,
@@ -194,7 +195,11 @@ class TestNumberPoolGetAllocated:
         incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+            db=db,
+            pool=incident_pool,
+            ranges=whole_pool_ranges(incident_pool),
+            branch=default_branch,
+            branch_agnostic=True,
         )
 
         # Act
@@ -233,7 +238,11 @@ class TestNumberPoolGetAllocated:
         await incident2.delete(db=db)
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+            db=db,
+            pool=incident_pool,
+            ranges=whole_pool_ranges(incident_pool),
+            branch=default_branch,
+            branch_agnostic=True,
         )
         await query.execute(db=db)
         results = query.get_data()
@@ -264,7 +273,9 @@ class TestNumberPoolGetAllocated:
         await incident2.delete(db=db)
 
         # Query on branch2 — the allocation is still active on main, so it should appear
-        query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=branch2, branch_agnostic=True)
+        query = await NumberPoolGetAllocated.init(
+            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=branch2, branch_agnostic=True
+        )
         await query.execute(db=db)
         results = query.get_data()
 
@@ -294,7 +305,9 @@ class TestNumberPoolGetAllocated:
         await incident2.save(db=db)
 
         for branch in (br1, default_branch):
-            query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=branch, branch_agnostic=True)
+            query = await NumberPoolGetAllocated.init(
+                db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=branch, branch_agnostic=True
+            )
             await query.execute(db=db)
             allocated_values = sorted([r.value for r in query.get_data()])
             assert allocated_values == [1, 2, 3], f"Expected every allocation on {branch.name}, got {allocated_values}"
@@ -319,7 +332,11 @@ class TestNumberPoolGetAllocated:
         await incident2.save(db=db)
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+            db=db,
+            pool=incident_pool,
+            ranges=whole_pool_ranges(incident_pool),
+            branch=default_branch,
+            branch_agnostic=True,
         )
         await query.execute(db=db)
 
@@ -352,7 +369,11 @@ class TestNumberPoolGetAllocated:
         await incident2_on_main.save(db=db)
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+            db=db,
+            pool=incident_pool,
+            ranges=whole_pool_ranges(incident_pool),
+            branch=default_branch,
+            branch_agnostic=True,
         )
         await query.execute(db=db)
 
@@ -387,7 +408,9 @@ class TestNumberPoolGetAllocated:
         incident2_on_main.get_attribute("number").clear_source()
         await incident2_on_main.save(db=db)
 
-        query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=br1, branch_agnostic=True)
+        query = await NumberPoolGetAllocated.init(
+            db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=br1, branch_agnostic=True
+        )
         await query.execute(db=db)
 
         results = query.get_data()
@@ -423,12 +446,81 @@ class TestNumberPoolGetAllocated:
         await diff_merger.merge_graph(at=Timestamp())
 
         query = await NumberPoolGetAllocated.init(
-            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+            db=db,
+            pool=incident_pool,
+            ranges=whole_pool_ranges(incident_pool),
+            branch=default_branch,
+            branch_agnostic=True,
         )
         await query.execute(db=db)
 
         allocated_values = sorted([r.value for r in query.get_data()])
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
+
+
+GAPPED_RANGES = [[7, 8], [2, 3]]
+"""Two ranges listed heavier first, leaving values below, between and above them uncovered."""
+
+
+@pytest.fixture
+async def incident_pool_holding_one_to_ten(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> CoreNumberPoolProtocol:
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=10)
+    pools = await NodeManager.query(db=db, schema=CoreNumberPoolProtocol, branch=default_branch)
+    return next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+
+class TestRangeListFiltering:
+    async def test_used_allocated_and_taken_values_are_reported_only_inside_the_ranges(
+        self, db: InfrahubDatabase, default_branch: Branch, incident_pool_holding_one_to_ten: CoreNumberPoolProtocol
+    ) -> None:
+        used = await NumberPoolGetUsed.init(
+            db=db,
+            branch=default_branch,
+            pool=incident_pool_holding_one_to_ten,
+            ranges=GAPPED_RANGES,
+            branch_agnostic=True,
+        )
+        allocated = await NumberPoolGetAllocated.init(
+            db=db,
+            branch=default_branch,
+            pool=incident_pool_holding_one_to_ten,
+            ranges=GAPPED_RANGES,
+            branch_agnostic=True,
+        )
+        taken = await NumberPoolGetTaken.init(
+            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=GAPPED_RANGES
+        )
+        for query in (used, allocated, taken):
+            await query.execute(db=db)
+
+        assert [result.value for result in used.iter_results()] == [2, 3, 7, 8]
+        assert [result.value for result in allocated.get_data()] == [2, 3, 7, 8]
+        assert taken.get_taken_values() == {2, 3, 7, 8}
+
+    async def test_an_empty_range_list_reports_no_value(
+        self, db: InfrahubDatabase, default_branch: Branch, incident_pool_holding_one_to_ten: CoreNumberPoolProtocol
+    ) -> None:
+        used = await NumberPoolGetUsed.init(
+            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[], branch_agnostic=True
+        )
+        allocated = await NumberPoolGetAllocated.init(
+            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[], branch_agnostic=True
+        )
+        taken = await NumberPoolGetTaken.init(
+            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[]
+        )
+        for query in (used, allocated, taken):
+            await query.execute(db=db)
+
+        assert list(used.iter_results()) == []
+        assert list(allocated.get_data()) == []
+        assert taken.get_taken_values() == set()
 
 
 async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: str) -> int:

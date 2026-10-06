@@ -167,7 +167,7 @@ async def legacy_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Bra
     # pre-change reader returned.
     used_default = {value for row_branch, value in allocated if row_branch == registry.default_branch}
     used_branches = {value for row_branch, value in allocated if row_branch != registry.default_branch} - used_default
-    total = POOL_END - POOL_START + 1 - pool.get_attribute_nb_excluded_values()
+    total = await pool_space_size(db=db, pool=pool)
 
     return PoolFigures(
         utilization=((len(used_branches) + len(used_default)) / total) * 100,
@@ -186,16 +186,21 @@ async def pool_space(db: InfrahubDatabase, pool: CoreNumberPool) -> EffectiveSpa
     )
 
 
+async def pool_space_size(db: InfrahubDatabase, pool: CoreNumberPool) -> int:
+    return (await pool_space(db=db, pool=pool)).size
+
+
 async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> PoolFigures:
     """What the pool reports now, through the readers that target the attribute."""
     space = await pool_space(db=db, pool=pool)
-    getter = NumberUtilizationGetter(db=db, pool=pool, branch=branch)
+    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
     await getter.load_data()
+    figures = getter.figures
 
     return PoolFigures(
-        utilization=getter.utilization,
-        utilization_default_branch=getter.utilization_default_branch,
-        utilization_branches=getter.utilization_branches,
+        utilization=figures.utilization,
+        utilization_default_branch=figures.utilization_default_branch,
+        utilization_branches=figures.utilization_branches,
         allocated=tuple(sorted((entry.branch, entry.number) for entry in getter.used)),
         in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch, space=space))),
     )

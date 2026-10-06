@@ -1,5 +1,6 @@
 from typing import Any
 
+import pytest
 from graphql import ExecutionResult
 
 from infrahub.core.branch import Branch
@@ -11,6 +12,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain, PoolRange
@@ -333,6 +335,106 @@ async def test_removing_a_range_holding_an_allocated_value_keeps_the_value(
     assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [205]
     await _allocate_ticket(db=db, pool=pool, title="next")
     assert await _ticket_ids(db=db, branch=default_branch) == {"held": 205, "next": 206}
+
+
+POOL_UTILIZATION = """
+query PoolUtilization($pool_id: String!) {
+    InfrahubResourcePoolUtilization(pool_id: $pool_id) {
+        count
+        utilization
+        edges {
+            node {
+                display_label
+                utilization
+            }
+        }
+    }
+}
+"""
+
+
+async def _utilization(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool) -> dict[str, Any]:
+    result = await _execute(db=db, branch=branch, source=POOL_UTILIZATION, variables={"pool_id": pool.get_id()})
+    assert not result.errors
+    assert result.data
+    return result.data["InfrahubResourcePoolUtilization"]
+
+
+def _percent(used: int, size: int) -> float:
+    return used / size * 100
+
+
+async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_covers_it_again(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """Removing and re-adding a range changes what the pool counts, never what it recorded.
+
+    The pool holds 10-12 (weight 10) and 14-18, and hands out 10-12 then 16, which a range edit
+    moved into the second range.
+    """
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await pool.new(db=db, name="drained-pool", node="TestingTicket", node_attribute="ticket_id")
+    await pool.save(db=db)
+    await _create_range(db=db, branch=default_branch, pool=pool, start=10, end=12, weight=10)
+    upper_range_id = await _create_range(db=db, branch=default_branch, pool=pool, start=16, end=18)
+    for index in range(4):
+        await _allocate_ticket(db=db, pool=pool, title=f"ticket-{index}")
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [10, 11, 12, 16]
+
+    widened = await _execute(
+        db=db,
+        branch=default_branch,
+        source=UPDATE_RANGE,
+        variables={"range_id": upper_range_id, "start": 14, "end": 18},
+    )
+    assert not widened.errors
+    assert await _range_bounds(db=db, pool=pool) == [(10, 12), (14, 18)]
+    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
+        "count": 2,
+        "utilization": _percent(4, 8),
+        "edges": [
+            {"node": {"display_label": "10 - 12", "utilization": 100.0}},
+            {"node": {"display_label": "14 - 18", "utilization": _percent(1, 5)}},
+        ],
+    }
+
+    removed = await _execute(db=db, branch=default_branch, source=DELETE_RANGE, variables={"range_id": upper_range_id})
+    assert not removed.errors
+    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
+        "count": 1,
+        "utilization": _percent(3, 3),
+        "edges": [{"node": {"display_label": "10 - 12", "utilization": 100.0}}],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        await _allocate_ticket(db=db, pool=pool, title="refused")
+    assert exc_info.value.message == "The pool TestingTicket is exhausted. at ticket_id.from_pool"
+
+    await _create_range(db=db, branch=default_branch, pool=pool, start=14, end=18)
+    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
+        "count": 2,
+        "utilization": _percent(4, 8),
+        "edges": [
+            {"node": {"display_label": "10 - 12", "utilization": 100.0}},
+            {"node": {"display_label": "14 - 18", "utilization": _percent(1, 5)}},
+        ],
+    }
+    await _allocate_ticket(db=db, pool=pool, title="after-re-add")
+    assert (await _ticket_ids(db=db, branch=default_branch))["after-re-add"] == 14, (
+        "16 stays recorded, so the pool hands out the lowest free number of the re-added range"
+    )
+
+    await _create_range(db=db, branch=default_branch, pool=pool, start=20, end=22)
+    assert await _utilization(db=db, branch=default_branch, pool=pool) == {
+        "count": 3,
+        "utilization": _percent(5, 11),
+        "edges": [
+            {"node": {"display_label": "10 - 12", "utilization": 100.0}},
+            {"node": {"display_label": "14 - 18", "utilization": _percent(2, 5)}},
+            {"node": {"display_label": "20 - 22", "utilization": 0.0}},
+        ],
+    }
 
 
 async def test_range_overlapping_others_of_its_pool_is_refused_naming_them(

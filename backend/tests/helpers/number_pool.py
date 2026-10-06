@@ -17,6 +17,7 @@ from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
+from infrahub.pools.number_pool_space import SchemaAttributeDomains
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -133,3 +134,7 @@ def ticket_schema_with_parameters(parameters: NumberAttributeParameters) -> Node
             NumberAttributeSchema(name="ticket_id", kind="Number", optional=True, unique=True, parameters=parameters),
         ],
     )
+
+
+def schema_domains(db: InfrahubDatabase, branch: Branch) -> SchemaAttributeDomains:
+    return SchemaAttributeDomains(schema=db.schema, branch=branch)

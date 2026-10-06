@@ -15,6 +15,8 @@ from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from tests.helpers.agnostic_edges import EdgeState, attribute_edges
 from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range, pool_used_numbers
@@ -111,7 +113,12 @@ async def _open_is_reserved_edges(db: InfrahubDatabase, pool: CoreNumberPool) ->
 
 async def _allocated(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool) -> list[tuple[str, str, int]]:
     """The holder, branch and value of every row the pool's in-use list reports."""
-    query = await NumberPoolGetAllocated.init(db=db, pool=pool, branch=branch, branch_agnostic=True)
+    space = EffectiveSpace(
+        ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
+    )
+    query = await NumberPoolGetAllocated.init(
+        db=db, pool=pool, ranges=space.as_query_ranges(), branch=branch, branch_agnostic=True
+    )
     await query.execute(db=db)
     return sorted((row.id, row.branch, row.value) for row in query.get_data())
 

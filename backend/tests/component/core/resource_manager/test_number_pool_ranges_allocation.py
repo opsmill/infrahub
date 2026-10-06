@@ -8,8 +8,10 @@ from infrahub.core.registry import registry
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PoolExhaustedError
+from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.number_pool_allocator import NumberPoolAllocator
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
@@ -17,6 +19,7 @@ from tests.helpers.number_pool import (
     add_pool_range,
     create_range_only_pool,
     create_ticket,
+    schema_domains,
     shorthand_mirror,
     ticket_schema_with_parameters,
 )
@@ -88,6 +91,20 @@ async def test_the_heavier_range_is_drained_first_in_ascending_order(
 
     assert allocated == [10, 11, 12]
 
+    utilization = await resolve_number_pool_utilization(
+        db=db,
+        domains=schema_domains(db=db, branch=default_branch),
+        pool=weighted_pool,
+        at=Timestamp(),
+        branch=default_branch,
+    )
+    assert utilization["count"] == 2
+    assert utilization["utilization"] == 50.0
+    assert [
+        (edge["node"]["display_label"], edge["node"]["weight"], edge["node"]["utilization"])
+        for edge in utilization["edges"]
+    ] == [("10 - 12", 10, 100.0), ("15 - 17", 0, 0.0)]
+
 
 async def test_allocation_moves_to_the_next_range_across_the_gap(
     db: InfrahubDatabase, weighted_pool: CoreNumberPool
@@ -106,6 +123,15 @@ async def test_the_pool_is_full_only_once_every_range_is_drained(
 
     with pytest.raises(PoolExhaustedError):
         await _next_number(db=db, branch=default_branch, pool=weighted_pool)
+
+    utilization = await resolve_number_pool_utilization(
+        db=db,
+        domains=schema_domains(db=db, branch=default_branch),
+        pool=weighted_pool,
+        at=Timestamp(),
+        branch=default_branch,
+    )
+    assert utilization["utilization"] == 100.0
 
 
 @pytest.mark.parametrize("weight", [None, 5], ids=["no-weight", "equal-weight"])
@@ -133,7 +159,25 @@ async def test_raising_a_range_weight_redirects_the_next_allocation(db: Infrahub
     assert await create_ticket(db=db, kind=TICKET.kind, pool=pool) == 20
 
 
-async def test_excluded_values_inside_a_range_are_skipped(
+async def test_excluded_values_outside_every_range_leave_the_size_unchanged(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    schema = ticket_schema_with_parameters(NumberAttributeParameters(excluded_values="1-50,202,400"))
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db, kind=schema.kind)
+    await add_pool_range(db=db, pool=pool, start=100, end=200)
+    await add_pool_range(db=db, pool=pool, start=205, end=300)
+
+    assert await create_ticket(db=db, kind=schema.kind, pool=pool) == 100
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    assert utilization["utilization"] == 1 / 197 * 100
+
+
+async def test_excluded_values_inside_a_range_are_skipped_and_subtracted(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     schema = ticket_schema_with_parameters(NumberAttributeParameters(excluded_values="102,105-107"))
@@ -145,6 +189,11 @@ async def test_excluded_values_inside_a_range_are_skipped(
     allocated = [await create_ticket(db=db, kind=schema.kind, pool=pool) for _ in range(5)]
 
     assert allocated == [100, 101, 103, 104, 108]
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    assert utilization["utilization"] == 5 / 17 * 100
+    assert utilization["edges"][0]["node"]["utilization"] == 5 / 17 * 100
 
 
 async def test_min_and_max_values_clip_the_ranges(
@@ -163,6 +212,54 @@ async def test_min_and_max_values_clip_the_ranges(
 
     with pytest.raises(PoolExhaustedError):
         await _next_number(db=db, branch=default_branch, pool=pool, kind=schema.kind)
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    assert utilization["utilization"] == 100.0
+    assert [(edge["node"]["display_label"], edge["node"]["utilization"]) for edge in utilization["edges"]] == [
+        ("10 - 20", 100.0),
+        ("60 - 80", 0.0),
+    ]
+
+
+async def test_a_pool_whose_only_range_is_clipped_to_nothing_reports_zero(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    schema = ticket_schema_with_parameters(NumberAttributeParameters(max_value=50))
+    await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db, kind=schema.kind)
+    await add_pool_range(db=db, pool=pool, start=60, end=80)
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+
+    assert (utilization["count"], utilization["utilization"]) == (1, 0.0)
+    assert utilization["edges"][0]["node"]["utilization"] == 0.0
+    with pytest.raises(PoolExhaustedError):
+        await _next_number(db=db, branch=default_branch, pool=pool, kind=schema.kind)
+
+
+async def test_a_pool_holding_no_range_is_empty(
+    db: InfrahubDatabase, default_branch: Branch, ticket_schema: None
+) -> None:
+    pool = await create_range_only_pool(db=db)
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+
+    assert utilization == {
+        "count": 0,
+        "utilization": 0.0,
+        "utilization_default_branch": 0.0,
+        "utilization_branches": 0.0,
+        "edges": [],
+    }
+    with pytest.raises(PoolExhaustedError):
+        await _next_number(db=db, branch=default_branch, pool=pool)
 
 
 async def test_hand_set_values_are_skipped_in_every_range(

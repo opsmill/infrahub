@@ -197,16 +197,17 @@ class NumberPoolGetAllocated(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
+        ranges: list[list[int]],
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
+        self.ranges = ranges
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["node_attribute"] = self.pool.node_attribute.value
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
+        self.params["ranges"] = self.ranges
         self.params["pool_id"] = self.pool.get_id()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -218,7 +219,7 @@ class NumberPoolGetAllocated(Query):
         MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(a:Attribute {name: $node_attribute})
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(a)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
         WHERE
-            av.value >= $start_range and av.value <= $end_range
+            any(r IN $ranges WHERE av.value >= r[0] AND av.value <= r[1])
             AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
