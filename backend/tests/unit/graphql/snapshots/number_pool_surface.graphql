@@ -1,0 +1,215 @@
+"""
+One tracked number as held on one branch: one row per (record, branch-resolved value).
+"""
+type NumberPoolAllocation {
+  """The branch on which the holder's attribute holds this value."""
+  branch: String!
+  """
+  The holder's division on the row's branch, in scope order. Empty when the pool is unscoped.
+  """
+  division: [NumberPoolDivisionEntry!]!
+  """The node whose attribute holds the value, read on the row's branch."""
+  holder: NumberPoolHolder!
+  """The identifier given when the number was allocated, if any."""
+  identifier: String
+  """
+  Whether the value lies inside the pool's space and counts in its figures: inside a range, not
+  excluded by the attribute, within its min and max. False for an excluded or out-of-limits value
+  even when a range holds it.
+  """
+  in_space: Boolean!
+  """
+  ALLOCATED when the pool picked the number, PROVIDED when a user gave it.
+  """
+  provenance: NumberPoolProvenance!
+  """The range whose bounds hold the value. Null when no range holds it."""
+  range: NumberPoolRangeRef
+  """The number held."""
+  value: BigInt!
+}
+
+"""A page of the numbers a pool tracks."""
+type NumberPoolAllocations {
+  """The page, ordered by value, then branch, then holder id."""
+  allocations: [NumberPoolAllocation!]!
+  """Number of rows matching the filters, before offset and limit."""
+  count: BigInt!
+}
+
+"""One division: a tuple of values of the scope in force."""
+type NumberPoolDivision {
+  """
+  The entries' display labels joined with " / ". Empty for the division of an unscoped pool.
+  """
+  display_label: String!
+  """One entry per scope entry in force, in scope order."""
+  entries: [NumberPoolDivisionEntry!]!
+  """
+  Figures over the pool's space, or over the range given as range_id, for this division.
+  """
+  figures: NumberPoolUtilizationFigures!
+}
+
+"""The value one scope entry takes in a division."""
+type NumberPoolDivisionEntry {
+  """
+  Relationship entry: the peer's display label, read on any branch, falling back to the peer's id
+  when the peer cannot be read. Attribute entry: the value as text.
+  """
+  display_label: String!
+  """The scope entry, as stored on the pool ("site", "role")."""
+  path: String!
+  """
+  Relationship entry: the peer's kind when the peer can be read. Otherwise null.
+  """
+  peer_kind: String
+  """
+  Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing
+  for the entry: an empty string.
+  """
+  value: String!
+}
+
+"""One entry of a division filter. Mirrors NumberPoolDivisionEntry."""
+input NumberPoolDivisionEntryInput {
+  """A scope entry in force on the request's branch."""
+  path: String!
+  """Relationship entry: the peer's id. Attribute entry: the value as text."""
+  value: String!
+}
+
+"""The divisions of one number pool, each with its figures."""
+type NumberPoolDivisions {
+  """Scope entries in force on the request's branch, in scope order."""
+  allocation_scope: [String!]!
+  """Number of divisions listed."""
+  count: Int!
+  """
+  Every division occupied by a node of the pool's kind on any live branch, ordered by utilization
+  descending then by display_label. An unscoped pool lists one division with no entry.
+  """
+  divisions: [NumberPoolDivision!]!
+}
+
+"""The node holding a tracked number."""
+type NumberPoolHolder {
+  display_label: String!
+  """The holder's human-friendly id. Null when its kind declares none."""
+  hfid: [String!]
+  id: String!
+  kind: String!
+}
+
+"""How the number a tracked attribute currently holds got there."""
+enum NumberPoolProvenance {
+  ALLOCATED
+  PROVIDED
+}
+
+"""A reference to one range of the pool."""
+type NumberPoolRangeRef {
+  display_label: String!
+  id: String!
+}
+
+"""One range of a number pool with its own figures."""
+type NumberPoolRangeUtilization {
+  """The range node's display label."""
+  display_label: String!
+  """Last value of the range, included."""
+  end: BigInt!
+  """
+  Figures over the range's values. On a scoped pool, the figures of the division holding the most
+  of this range's values.
+  """
+  figures: NumberPoolUtilizationFigures!
+  """The range node's id."""
+  id: String!
+  """First value of the range, included."""
+  start: BigInt!
+  """The range's allocation weight. 0 when the range declares none."""
+  weight: BigInt!
+}
+
+"""
+Utilization of one number pool and of each of its ranges, with the allocation scope in force on
+the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization.
+"""
+type NumberPoolUtilization {
+  """
+  Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,
+  and for a scoped pool none of whose entries the branch's schema defines.
+  """
+  allocation_scope: [String!]!
+  """The pool's display label, read on the request's branch."""
+  display_label: String!
+  """
+  Figures over the pool's whole space. On a scoped pool, the figures of the fullest division.
+  """
+  figures: NumberPoolUtilizationFigures!
+  """The pool's id, as given in pool_id."""
+  id: String!
+  """
+  Number of allocation rows whose value lies outside the pool's space (in_space false).
+  """
+  out_of_space_count: BigInt!
+  """The pool's ranges ordered by start, each with its own figures."""
+  ranges: [NumberPoolRangeUtilization!]!
+}
+
+"""
+Absolute and relative utilization of one space: a pool, a range or a division.
+"""
+type NumberPoolUtilizationFigures {
+  """
+  Number of values the measured space holds. 0 when the pool has no range.
+  """
+  size: BigInt!
+  """Distinct values of the space held on any live branch."""
+  used: BigInt!
+  """
+  Distinct values of the space held on other branches and not on the default branch.
+  """
+  used_branches: BigInt!
+  """Distinct values of the space held on the default branch."""
+  used_default_branch: BigInt!
+  """used as a percentage of size. 0 when size is 0."""
+  utilization: Float!
+  """used_branches as a percentage of size. 0 when size is 0."""
+  utilization_branches: Float!
+  """used_default_branch as a percentage of size. 0 when size is 0."""
+  utilization_default_branch: Float!
+}
+
+type Query {
+  """The numbers one number pool tracks, filtered and paginated."""
+  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], in_space: Boolean, limit: Int, offset: Int, pool_id: String!, provenance: NumberPoolProvenance, range_id: String): NumberPoolAllocations!
+  """
+  The divisions of one number pool with their figures, over the whole pool or over one range.
+  Complete list, no pagination.
+  """
+  InfrahubNumberPoolDivisions(pool_id: String!, range_id: String): NumberPoolDivisions!
+  """Utilization of one number pool and of its ranges."""
+  InfrahubNumberPoolUtilization(pool_id: String!): NumberPoolUtilization!
+}
+
+input CoreNumberPoolCreateInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeCreate
+}
+
+input CoreNumberPoolUpdateInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeUpdate
+}
+
+input CoreNumberPoolUpsertInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeUpdate
+}
