@@ -5,8 +5,10 @@ from typing import Any
 
 import pydantic
 import pytest
+from infrahub_sdk.schema.generated.read import NodeSchemaRead
 
 from infrahub import config
+from infrahub.api.schema import SchemaLoadAPI
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, NumberPoolType
 from infrahub.core.manager import NodeManager
@@ -29,6 +31,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from infrahub.schema.read_schema import build_read_schema
 from tests.helpers.schema import load_schema
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
 from tests.helpers.schema.ticket import TICKET
@@ -717,3 +720,56 @@ class TestNumberPoolAllocationScopeParameters:
             assert not parameters.allocation_scope
         else:
             assert parameters.allocation_scope == case.expected_scope
+
+
+ALLOCATION_SCOPE_CASES = [
+    pytest.param({"allocation_scope": ["site"]}, ["site"], id="scoped"),
+    pytest.param({}, None, id="absent"),
+    pytest.param({"allocation_scope": []}, None, id="empty"),
+]
+
+
+def _scoped_number_pool_payload(scope_parameters: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "version": "1.0",
+        "nodes": [
+            {"name": "Site", "namespace": "Testing", "attributes": [{"name": "name", "kind": "Text", "unique": True}]},
+            {
+                "name": "Device",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "number",
+                        "kind": "NumberPool",
+                        "optional": False,
+                        "read_only": True,
+                        "parameters": {"start_range": 1, "end_range": 100} | scope_parameters,
+                    },
+                ],
+                "relationships": [
+                    {"name": "site", "peer": "TestingSite", "cardinality": "one", "optional": False},
+                ],
+            },
+        ],
+    }
+
+
+@pytest.mark.parametrize(("scope_parameters", "expected_scope"), ALLOCATION_SCOPE_CASES)
+async def test_number_pool_allocation_scope_round_trips_through_schema_api(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    scope_parameters: dict[str, Any],
+    expected_scope: list[str] | None,
+) -> None:
+    submitted = SchemaLoadAPI.model_validate(_scoped_number_pool_payload(scope_parameters))
+    await load_schema(db=db, schema=submitted.internal_schema, update_db=True)
+
+    reloaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    read = build_read_schema(model=NodeSchemaRead, schema=reloaded.get_node(name="TestingDevice", duplicate=False))
+
+    number = next(attribute for attribute in read.attributes if attribute.name == "number")
+    read_scope = number.model_dump()["parameters"]["allocation_scope"]
+    # Clients treat an empty scope and a missing one alike, so both read as unscoped.
+    assert (read_scope or None) == expected_scope
