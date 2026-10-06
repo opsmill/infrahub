@@ -76,6 +76,7 @@ from infrahub.exceptions import (
     MergeConflictsUnresolvedError,
     MergeConstraintsViolatedError,
     MergeFailedError,
+    RepositoryNotSynchronizedError,
     SchemaNotFoundError,
     ValidationError,
 )
@@ -212,8 +213,8 @@ async def _merge_branch_for_proposed_change(
             database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
         )
         return Failed(message="Unable to merge proposed change containing failing checks")
-    except MergeConflictsUnresolvedError as exc:
-        # Cannot merge a branch with unresolved conflicts.
+    except (MergeConflictsUnresolvedError, RepositoryNotSynchronizedError) as exc:
+        # Cannot merge a branch with unresolved conflicts, or onto a Git head the graph has not imported.
         return Failed(message=exc.message)
     except MergeFailedError as exc:
         return Failed(message=exc.message)

@@ -43,6 +43,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeRecomputeCoordinator,
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
+from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.selective_regen.generator_output import (
     GeneratorCascadeOutput,
@@ -69,6 +70,8 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
+from infrahub.git.constants import REMOTE_HEADS_TIMEOUT_SECONDS
+from infrahub.git.merge_readiness import GitRemoteHeadReader, RemoteHeadsMergeCheck
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
@@ -477,6 +480,8 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
     database = await get_database()
     async with database.start_session() as db:
+        await _check_remote_heads_imported(db=db, branch_name=branch, log=log)
+
         # Hold the global merge lock for the whole flow and load the branch under it, so the merge
         # decision and the orchestrator operate on branch state that cannot change mid-merge.
         log.info("Acquiring global merge lock")
@@ -496,6 +501,28 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 proposed_change_id=proposed_change_id,
                 log=log,
             )
+
+
+async def _check_remote_heads_imported(
+    db: InfrahubDatabase, branch_name: str, log: Logger | LoggerAdapter[Logger]
+) -> None:
+    """Refuse the merge while a Git repository holds a remote head that the graph has not imported.
+
+    It runs before the global merge lock, so a remote that is slow to answer delays this merge only.
+
+    Raises:
+        RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
+
+    """
+    source_branch = await Branch.get_by_name(db=db, name=branch_name)
+    if source_branch.status != BranchStatus.OPEN:
+        return
+    destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    dispatcher = RepositoryMergeDispatcher(
+        db=db, source_branch=source_branch, destination_branch=destination_branch, workflow=get_workflow(), logger=log
+    )
+    check = RemoteHeadsMergeCheck(reader=GitRemoteHeadReader(timeout_seconds=REMOTE_HEADS_TIMEOUT_SECONDS), log=log)
+    await check.check(source_branch=source_branch.name, targets=await dispatcher.list_git_merge_targets())
 
 
 async def _do_merge_branch(

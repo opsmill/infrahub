@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import git
 import pytest
+from infrahub_sdk.branch import BranchStatus
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub import config, lock
@@ -1526,3 +1527,38 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             assert (head, gateway.has_commit(commit=tracked.imported_commit)) == (rewritten, False)
 
         assert await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name) == record
+
+    async def test_a_branch_merge_waits_for_the_cycle_to_import_a_rewritten_source(
+        self,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The refusal comes before the graph merge, so the branch stays open and merges once the cycle ran."""
+        tracked = await tracked_branch_repository("waiting-branch-merge-repo", "waiting-branch-merge-branch")
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        refusal = (
+            f"Unable to merge branch {tracked.branch_name}, because Infrahub has not imported the latest commit "
+            f"of branch {tracked.branch_name} of repository {tracked.name} ({rewritten} on the remote, "
+            f"{tracked.imported_commit} in Infrahub). Merge again after the next synchronization of the "
+            "repository imports it."
+        )
+
+        with pytest.raises(GraphQLError, match=re.escape(refusal)):
+            await client.branch.merge(branch_name=tracked.branch_name)
+
+        assert (await client.branch.get(branch_name=tracked.branch_name)).status == BranchStatus.OPEN
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == tracked.trunk_commit
+
+        await sync_remote_repositories()
+        await client.branch.merge(branch_name=tracked.branch_name)
+
+        assert (await client.branch.get(branch_name=tracked.branch_name)).status == BranchStatus.MERGED
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
+        assert gogs_branches_containing(gogs_server.container, tracked.name, tracked.imported_commit) == []
