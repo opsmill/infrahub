@@ -304,7 +304,8 @@ async def delete_git_branch(branch: str) -> None:
         pass
 
 
-@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+# Only the in-process caller reads the outcome, so storing it would write one result per repository per cycle.
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin", persist_result=False)
 async def sync_git_repo_with_origin_and_tag_on_failure(
     client: InfrahubClient,
     repository_id: str,
