@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from infrahub.core.initialization import create_branch
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL, UNSCOPED_POOL_ID
 from tests.helpers.graphql import graphql
@@ -92,6 +93,11 @@ class TestNumberPoolSurface:
         register_core_models_schema_scope_class: SchemaBranch,
     ) -> GraphqlParams:
         return await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+    @pytest.fixture(scope="class")
+    async def branch_gql_params(self, db: InfrahubDatabase, gql_params: GraphqlParams) -> GraphqlParams:
+        branch = await create_branch(db=db, branch_name="feature-scope")
+        return await prepare_graphql_params(db=db, branch=branch)
 
     @staticmethod
     async def _execute(gql_params: GraphqlParams, query: str, variables: dict[str, Any]) -> Any:
@@ -264,3 +270,16 @@ class TestNumberPoolSurface:
         self, gql_params: GraphqlParams, query: str, variables: dict[str, Any], message: str
     ) -> None:
         assert await self._error(gql_params, query, **variables) == message
+
+    async def test_refusal_names_the_branch_of_the_request(self, branch_gql_params: GraphqlParams) -> None:
+        message = await self._error(
+            branch_gql_params,
+            ALLOCATIONS_QUERY,
+            pool_id=UNSCOPED_POOL_ID,
+            division=[{"path": "site", "value": SITE_A}],
+        )
+
+        assert message == (
+            "The pool mock-unscoped has no allocation scope in force on branch feature-scope; "
+            "the division filter cannot be applied"
+        )
