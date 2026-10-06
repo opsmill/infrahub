@@ -101,7 +101,7 @@ Parts A and B of the plan.
       `InfrahubRepositoryBase._raise_enriched_error` in `backend/infrahub/git/base.py` and in
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
       keep `ERROR_CONNECTION`.
-- [ ] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
+- [X] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
       `RemoteProgress` and a `timeout` argument as `kill_after_timeout`; derive the reason of a
       per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`; raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
@@ -114,7 +114,7 @@ Parts A and B of the plan.
 - [X] T011 [P] Extend the case table of `backend/tests/unit/git/test_git_error_enrichment.py` with
       the two subtypes and the killed-command text, and add a test that both status maps give
       `ERROR_CONNECTION` for the subtypes.
-- [ ] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
+- [X] T012 [P] Add unit tests to `backend/tests/unit/git/test_git_repository.py` for the push
       rejection reason from the flags, a GitHub ruleset summary, the joined `remote:` lines, and the
       unchanged message. Keep `test_push_classifies_transport_error` green.
 

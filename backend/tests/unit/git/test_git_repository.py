@@ -2,17 +2,18 @@ import asyncio
 import logging
 import re
 import shutil
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 from uuid import UUID
 
 import pydantic
 import pytest
-from git import Repo
+from git import PushInfo, Remote, RemoteProgress, Repo
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
@@ -27,11 +28,13 @@ from infrahub.exceptions import (
     RepositoryCredentialsError,
     RepositoryError,
     RepositoryInvalidBranchError,
+    RepositoryNotFoundError,
+    RepositoryPushRejectedError,
 )
 from infrahub.git import InfrahubRepository
 from infrahub.git.base import BranchInRemote
 from infrahub.git.divergence.models import ReconciledBranch
-from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
+from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, PushRejectionReason
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
@@ -575,36 +578,67 @@ async def test_update_operational_status_writes_on_the_branch_the_object_was_res
     assert recorder.recorded_branches == ["feature-branch"]
 
 
-class _RaisingOrigin:
-    """Stand-in for GitPython's `origin` remote whose push always raises a transport-level error."""
+class _ScriptedOrigin:
+    """Stand-in for GitPython's `origin` remote whose push replays a scripted outcome.
 
-    def __init__(self, error: GitCommandError) -> None:
-        self._error = error
-
-    def push(self, *args: Any, **kwargs: Any) -> None:
-        raise self._error
-
-
-class _RaisingWorktree:
-    def __init__(self, error: GitCommandError) -> None:
-        self.remotes = type("_Remotes", (), {"origin": _RaisingOrigin(error)})()
-
-
-class _FailingPushRepository(InfrahubRepository):
-    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
-
-    Records every operational status write so the test can assert a transient push failure leaves the
-    recorded status untouched. The double keeps it in memory; it does not persist.
+    The push hands ``stderr_lines`` to the progress handler it receives, as GitPython does with Git's
+    stderr, then raises ``error`` when one is set and returns ``push_infos`` otherwise. It records the
+    ``kill_after_timeout`` of every call.
     """
 
-    push_error: GitCommandError
+    def __init__(
+        self,
+        stderr_lines: list[str] | None = None,
+        push_infos: list[PushInfo] | None = None,
+        error: GitCommandError | None = None,
+    ) -> None:
+        self.stderr_lines = stderr_lines or []
+        self.push_infos = push_infos or []
+        self.error = error
+        self.kill_after_timeouts: list[float | None] = []
+
+    def push(self, refspec: str, progress: RemoteProgress, kill_after_timeout: float | None) -> list[PushInfo]:
+        self.kill_after_timeouts.append(kill_after_timeout)
+        handle_line = progress.new_message_handler()
+        for line in self.stderr_lines:
+            handle_line(line)
+        if self.error is not None:
+            raise self.error
+        return self.push_infos
+
+
+class _ScriptedPushRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree pushes through a scripted origin.
+
+    Records every operational status write so the test can assert a failed push leaves the recorded
+    status untouched. The double keeps it in memory; it does not persist.
+    """
+
+    origin: _ScriptedOrigin
     recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
 
     def get_git_repo_worktree(self, identifier: str) -> Any:
-        return _RaisingWorktree(self.push_error)
+        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
         self.recorded_statuses.append(status)
+
+
+def build_scripted_push_repository(origin: _ScriptedOrigin) -> _ScriptedPushRepository:
+    return _ScriptedPushRepository(
+        id=UUIDT.new(),
+        name="push-repo",
+        default_branch="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        cache_repo=None,
+        is_read_only=False,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        reinitialized=False,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        origin=origin,
+    )
 
 
 @dataclass
@@ -628,30 +662,236 @@ class PushErrorCase:
             "Could not resolve host: gitlab.example.com",
             expected=RepositoryConnectionError,
         ),
+        PushErrorCase(
+            name="stopped_at_its_timeout",
+            stderr="error: process killed because it timed out. kill_after_timeout=300 seconds",
+            expected=RepositoryConnectionError,
+        ),
+        PushErrorCase(
+            name="repository_not_found",
+            stderr="fatal: repository 'https://gitlab.example.com/net/repo.git/' not found",
+            expected=RepositoryNotFoundError,
+        ),
     ],
     ids=lambda c: c.name,
 )
 async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
     """A transport-level push GitCommandError is classified into a typed RepositoryError without writing status."""
-    repository = _FailingPushRepository(
-        id=UUIDT.new(),
-        name="push-repo",
-        default_branch="main",
-        location="https://gitlab.example.com/net/repo.git",
-        has_origin=True,
-        cache_repo=None,
-        is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE,
-        reinitialized=False,
-        infrahub_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-        push_error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr),
+    repository = build_scripted_push_repository(
+        origin=_ScriptedOrigin(error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr))
     )
 
-    with pytest.raises(case.expected):
+    with pytest.raises(case.expected) as raised:
         await repository.push("main")
 
+    assert type(raised.value) is case.expected
     assert repository.recorded_statuses == []
+
+
+@dataclass
+class PushRejectionCase:
+    name: str
+    flags: int
+    summary: str
+    stderr_lines: list[str]
+    reason: PushRejectionReason
+    remote_message: str
+    message: str
+
+
+PUSH_REJECTION_CASES = [
+    PushRejectionCase(
+        # A GitHub ruleset summary matches no wording of the message, so only the flags give the reason.
+        name="github_ruleset",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_REJECTED,
+        summary="[remote rejected] (push declined due to repository rule violations)\n",
+        stderr_lines=[
+            "Enumerating objects: 5, done.",
+            "Counting objects: 100% (5/5), done.",
+            "Writing objects: 100% (3/3), 290 bytes | 290.00 KiB/s, done.",
+            "Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)",
+            "remote: Resolving deltas: 100% (1/1), completed with 1 local object.",
+            "remote: error: GH013: Repository rule violations found for refs/heads/main.        ",
+            "remote: Review all repository rules at https://github.com/opsmill/net-repo/rules?ref=refs%2Fheads%2Fmain",
+            "remote: ",
+            "remote: - Changes must be made through a pull request.",
+            "To https://github.com/opsmill/net-repo.git",
+            "error: failed to push some refs to 'https://github.com/opsmill/net-repo.git'",
+        ],
+        reason=PushRejectionReason.POLICY,
+        remote_message=(
+            "remote: error: GH013: Repository rule violations found for refs/heads/main.\n"
+            "remote: Review all repository rules at https://github.com/opsmill/net-repo/rules?ref=refs%2Fheads%2Fmain\n"
+            "remote:\n"
+            "remote: - Changes must be made through a pull request."
+        ),
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote rejected] (push declined due to repository rule violations)"
+        ),
+    ),
+    PushRejectionCase(
+        name="non_fast_forward",
+        flags=PushInfo.ERROR | PushInfo.REJECTED,
+        summary="[rejected] (non-fast-forward)\n",
+        stderr_lines=[
+            "To https://gitlab.example.com/net/repo.git",
+            "hint: Updates were rejected because the tip of your current branch is behind",
+            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
+        ],
+        reason=PushRejectionReason.NON_FAST_FORWARD,
+        remote_message="",
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: the remote branch has "
+            "commits that are missing locally (non-fast-forward): [rejected] (non-fast-forward)"
+        ),
+    ),
+    PushRejectionCase(
+        name="remote_failure",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_FAILURE,
+        summary="[remote failure] (remote failed to report status)\n",
+        stderr_lines=[
+            "remote: fatal: Out of memory, malloc failed (tried to allocate 1048576 bytes)",
+            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
+        ],
+        reason=PushRejectionReason.UNKNOWN,
+        remote_message="remote: fatal: Out of memory, malloc failed (tried to allocate 1048576 bytes)",
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote failure] (remote failed to report status)"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", PUSH_REJECTION_CASES, ids=lambda c: c.name)
+async def test_push_rejection_carries_the_reason_and_the_remote_lines(case: PushRejectionCase, tmp_path: Path) -> None:
+    """A rejected ref raises a typed error with its reason from the flags and the remote's lines, and writes no status."""
+    remote = Remote(repo=Repo.init(tmp_path / "local"), name="origin")
+    push_info = PushInfo(
+        flags=case.flags, local_ref=None, remote_ref_string="refs/heads/main", remote=remote, summary=case.summary
+    )
+    repository = build_scripted_push_repository(
+        origin=_ScriptedOrigin(stderr_lines=case.stderr_lines, push_infos=[push_info])
+    )
+
+    with pytest.raises(RepositoryPushRejectedError, match=rf"^{re.escape(case.message)}$") as raised:
+        await repository.push("main")
+
+    assert raised.value.reason == case.reason
+    assert raised.value.remote_message == case.remote_message
+    assert repository.recorded_statuses == []
+
+
+def _decline_in_a_pre_receive_hook(remote_directory: Path, source_directory: Path) -> None:
+    hooks_directory = remote_directory / "test-hooks"
+    hooks_directory.mkdir()
+    hook = hooks_directory / "pre-receive"
+    hook.write_text("#!/bin/sh\necho 'branch main is protected' >&2\nexit 1\n", encoding="utf-8")
+    hook.chmod(0o755)
+    # Set in the remote's own configuration, which wins over any hooks path of the host's Git configuration.
+    with Repo(remote_directory).config_writer() as cfg:
+        cfg.set_value("core", "hooksPath", str(hooks_directory))
+
+
+def _advance_the_remote(remote_directory: Path, source_directory: Path) -> None:
+    source = Repo(source_directory)
+    (source_directory / "data.txt").write_text("v2\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 2")
+    Repo(remote_directory).git.fetch(str(source_directory), "main:main")
+
+
+@dataclass
+class RealPushRejectionCase:
+    name: str
+    refuse: Callable[[Path, Path], None]
+    """Makes the remote refuse the next push to main, given the remote and the source it was cloned from."""
+    reason: PushRejectionReason
+    remote_message: str
+    message: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RealPushRejectionCase(
+            name="pre_receive_hook_declines",
+            refuse=_decline_in_a_pre_receive_hook,
+            reason=PushRejectionReason.POLICY,
+            remote_message="remote: branch main is protected",
+            message=(
+                "Unable to push the branch main to the remote for repository push-repo: the remote refused the "
+                "update (for example missing push permission or branch protection): "
+                "[remote rejected] (pre-receive hook declined)"
+            ),
+        ),
+        RealPushRejectionCase(
+            name="remote_has_new_commits",
+            refuse=_advance_the_remote,
+            reason=PushRejectionReason.NON_FAST_FORWARD,
+            remote_message="",
+            message=(
+                "Unable to push the branch main to the remote for repository push-repo: the remote branch has "
+                "commits that are missing locally (non-fast-forward): [rejected] (fetch first)"
+            ),
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_refused_by_a_git_remote_carries_the_reason_and_the_remote_lines(
+    case: RealPushRejectionCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A push that a real Git remote refuses gives the reason and the remote's lines that Git itself reports."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    remote_directory = tmp_path / "remote.git"
+    Repo(source_directory).clone(str(remote_directory), bare=True)
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="push-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    case.refuse(remote_directory, source_directory)
+    local = repository.get_git_repo_main()
+    (Path(str(local.working_dir)) / "local.txt").write_text("local\n", encoding="utf-8")
+    local.index.add(["local.txt"])
+    local.index.commit("local change")
+    recorder = RecordingGraphqlClient()
+    repository.client = recorder
+
+    with pytest.raises(RepositoryPushRejectedError, match=rf"^{re.escape(case.message)}$") as raised:
+        await repository.push("main")
+
+    assert raised.value.reason == case.reason
+    assert raised.value.remote_message == case.remote_message
+    # The status write is a GraphQL call, so no call at all means no status was written.
+    assert recorder.recorded_branches == []
+
+
+@dataclass
+class PushTimeoutCase:
+    name: str
+    push_kwargs: dict[str, float]
+    kill_after_timeout: float | None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        PushTimeoutCase(name="no_timeout_sets_no_bound", push_kwargs={}, kill_after_timeout=None),
+        PushTimeoutCase(name="timeout_bounds_the_push", push_kwargs={"timeout_seconds": 300}, kill_after_timeout=300),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
+    origin = _ScriptedOrigin()
+    repository = build_scripted_push_repository(origin=origin)
+
+    assert await repository.push("main", **case.push_kwargs) is True
+
+    assert origin.kill_after_timeouts == [case.kill_after_timeout]
 
 
 class _BranchSyncRepository(InfrahubRepository):
