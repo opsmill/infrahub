@@ -356,7 +356,7 @@ protocols passed to the constructor, so the recorder's unit tests need no databa
 
 | Port | What it does |
 |---|---|
-| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
+| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, passes it to a function the recorder supplies, and writes the record that function returns. One method, one read and one write, so the increment stays in the recorder. |
 | `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. It comes with the trunk signal (T067), because before that there is no event to emit. |
 
 The production `RepositoryRecordStore` is backed by the SDK node API. It reads the repository

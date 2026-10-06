@@ -434,9 +434,9 @@ emits no signal.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2, "Where it is
       called".
 - [x] T058 [US1] Write the production `RepositoryRecordStore` in
-      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads
-      `rewrite_count` and writes the four attributes in one call, so no SDK method needs a
-      change.
+      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads the
+      repository node once, builds the record from its `rewrite_count` with the function the
+      recorder passes, and saves the four attributes, so no SDK method needs a change.
 - [x] T059 [P] [US1] Unit-test the recorder in
       `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
       the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a

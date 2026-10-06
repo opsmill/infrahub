@@ -45,15 +45,14 @@ class HistoryRewriteRecorder:
         ):
             return
 
-        current_count = await self.store.get_rewrite_count(
-            repository_id=repository_id, infrahub_branch_name=divergence.infrahub_branch_name
-        )
+        previous_commit = divergence.imported_commit
+        commit = divergence.remote_head
         await self.store.write_record(
             repository_id=repository_id,
             infrahub_branch_name=divergence.infrahub_branch_name,
-            record=RewriteRecord(
-                previous_commit=divergence.imported_commit,
-                commit=divergence.remote_head,
+            build_record=lambda current_count: RewriteRecord(
+                previous_commit=previous_commit,
+                commit=commit,
                 rewritten_at=self.clock(),
                 rewrite_count=(current_count or 0) + 1,
             ),

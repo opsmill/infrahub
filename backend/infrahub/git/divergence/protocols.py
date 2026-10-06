@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub.git.divergence.models import RewriteRecord
 
 
@@ -27,12 +29,14 @@ class AncestryGateway(Protocol):
 
 
 class RepositoryRecordStore(Protocol):
-    """Reads and writes the rewrite record a repository holds on one Infrahub branch.
+    """Writes the rewrite record a repository holds on one Infrahub branch.
 
     Implementations raise RepositoryError for every failure, so the logic above them handles one
     exception type and imports no client library.
     """
 
-    async def get_rewrite_count(self, repository_id: str, infrahub_branch_name: str) -> int | None: ...
-
-    async def write_record(self, repository_id: str, infrahub_branch_name: str, record: RewriteRecord) -> None: ...
+    async def write_record(
+        self, repository_id: str, infrahub_branch_name: str, build_record: Callable[[int | None], RewriteRecord]
+    ) -> None:
+        """Read the rewrite count the branch holds, and write the record that ``build_record`` makes from it."""
+        ...

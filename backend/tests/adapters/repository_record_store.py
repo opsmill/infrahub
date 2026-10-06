@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from infrahub.exceptions import RepositoryError
@@ -22,10 +23,10 @@ class InMemoryRepositoryRecordStore:
         self.counts: dict[tuple[str, str], int] = dict(counts or {})
         self.written: list[WrittenRecord] = []
 
-    async def get_rewrite_count(self, repository_id: str, infrahub_branch_name: str) -> int | None:
-        return self.counts.get((repository_id, infrahub_branch_name))
-
-    async def write_record(self, repository_id: str, infrahub_branch_name: str, record: RewriteRecord) -> None:
+    async def write_record(
+        self, repository_id: str, infrahub_branch_name: str, build_record: Callable[[int | None], RewriteRecord]
+    ) -> None:
+        record = build_record(self.counts.get((repository_id, infrahub_branch_name)))
         self.written.append(
             WrittenRecord(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name, record=record)
         )
@@ -35,10 +36,9 @@ class InMemoryRepositoryRecordStore:
 class FailingRepositoryRecordStore:
     """RepositoryRecordStore whose every call fails the way the Infrahub API fails."""
 
-    async def get_rewrite_count(self, repository_id: str, infrahub_branch_name: str) -> int | None:
-        raise RepositoryError(identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}")
-
-    async def write_record(self, repository_id: str, infrahub_branch_name: str, record: RewriteRecord) -> None:
+    async def write_record(
+        self, repository_id: str, infrahub_branch_name: str, build_record: Callable[[int | None], RewriteRecord]
+    ) -> None:
         raise RepositoryError(identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}")
 
 
