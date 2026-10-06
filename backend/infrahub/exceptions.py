@@ -135,6 +135,14 @@ class RepositoryPermissionError(RepositoryError):
         )
 
 
+class RepositoryDivergentHistoryError(RepositoryError):
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or f"The local history of repository {identifier} and its remote history have diverged.",
+        )
+
+
 class RepositoryInvalidBranchError(RepositoryError):
     def __init__(self, identifier: str, branch_name: str, location: str, message: str | None = None) -> None:
         super().__init__(

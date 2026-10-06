@@ -357,7 +357,7 @@ emits no signal.
       local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
       worker holding a stale source branch would merge the pre-rewrite history into the trunk and
       **push it**. A rewrite that removed a leaked credential would restore it.
-- [ ] T045 [US2] Add the typed error for a divergent remote history to
+- [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
       names the real cause and never says "conflict" (FR-003, FR-017).
 - [ ] T046 [P] [US2] Add a live-remote test in

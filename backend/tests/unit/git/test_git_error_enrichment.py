@@ -6,6 +6,7 @@ from git.exc import GitCommandError
 from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
+    RepositoryDivergentHistoryError,
     RepositoryError,
     RepositoryPermissionError,
 )
@@ -185,7 +186,7 @@ ENRICHMENT_CASES = [
         name="pull_of_a_diverged_branch",
         stderr="hint: You have divergent branches and need to specify how to reconcile them.\n"
         "fatal: Need to specify how to reconcile divergent branches.",
-        expected=RepositoryError,
+        expected=RepositoryDivergentHistoryError,
         command=["git", "pull", "-v", "--", "origin", "branch01"],
         message="Unable to pull repository net-repo, its local history and the remote history have diverged.",
     ),
