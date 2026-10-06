@@ -15,41 +15,20 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.attribute_pool_applier import AttributePoolApplier
 
+from .helpers import InMemoryNumberPool
+
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
-    from infrahub.pools.attribute_pool_applier import NumberPoolTarget
+    from infrahub.core.protocols import CoreNumberPool
 
-TICKET_KIND = "TestingTicket"
 NODE_ID = "18a0b9e3-0000-0000-0000-00000000aaaa"
-
-
-@dataclass
-class Text:
-    value: str
-
-
-@dataclass
-class InMemoryNumberPool:
-    id: str
-    name: Text
-    node: Text
-    node_attribute: Text
-
-    def get_id(self) -> str:
-        return self.id
-
-
-def _pool(pool_id: str, name: str, node_attribute: str = "ticket_id") -> InMemoryNumberPool:
-    return InMemoryNumberPool(
-        id=pool_id, name=Text(value=name), node=Text(value=TICKET_KIND), node_attribute=Text(value=node_attribute)
-    )
 
 
 @dataclass
 class InMemoryNumberPoolFinder:
     pools: list[InMemoryNumberPool]
 
-    async def find(self, pool_ref: str) -> NumberPoolTarget:
+    async def find(self, pool_ref: str) -> CoreNumberPool:
         for pool in self.pools:
             if pool_ref in {pool.id, pool.name.value}:
                 return pool
@@ -71,15 +50,15 @@ class RecordingNumberAllocator:
     exhausted: bool = False
     calls: list[AllocationCall] = field(default_factory=list)
 
-    async def allocate(self, pool: NumberPoolTarget, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
         self.calls.append(AllocationCall(pool_id=pool.get_id(), node_id=node.get_id(), attribute_name=attribute.name))
         if self.exhausted:
             raise PoolExhaustedError("There are no more values available in this pool.")
         return self.number
 
 
-POOL = _pool(pool_id="5c1f6e0a-0000-0000-0000-00000000bbbb", name="tickets")
-OTHER_ATTRIBUTE_POOL = _pool(pool_id="5c1f6e0a-0000-0000-0000-00000000cccc", name="titles", node_attribute="title")
+POOL_ID = "5c1f6e0a-0000-0000-0000-00000000bbbb"
+OTHER_ATTRIBUTE_POOL_ID = "5c1f6e0a-0000-0000-0000-00000000cccc"
 
 
 def _ticket_attribute(attribute_schema: AttributeSchema) -> BaseAttribute:
@@ -100,7 +79,13 @@ def allocator() -> RecordingNumberAllocator:
 @pytest.fixture
 def applier(allocator: RecordingNumberAllocator) -> AttributePoolApplier:
     return AttributePoolApplier(
-        pool_finder=InMemoryNumberPoolFinder(pools=[POOL, OTHER_ATTRIBUTE_POOL]), number_allocator=allocator
+        pool_finder=InMemoryNumberPoolFinder(
+            pools=[
+                InMemoryNumberPool(id=POOL_ID, name="tickets"),
+                InMemoryNumberPool(id=OTHER_ATTRIBUTE_POOL_ID, name="titles", node_attribute="title"),
+            ]
+        ),
+        number_allocator=allocator,
     )
 
 
@@ -112,13 +97,13 @@ def ticket_id() -> BaseAttribute:
 async def test_pool_named_by_id_gives_the_attribute_its_number(
     applier: AttributePoolApplier, allocator: RecordingNumberAllocator, ticket_id: BaseAttribute
 ) -> None:
-    ticket_id.from_pool = {"id": POOL.id}
+    ticket_id.from_pool = {"id": POOL_ID}
 
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
 
     assert ticket_id.value == 42
-    assert ticket_id.from_pool == {"id": POOL.id}
-    assert allocator.calls == [AllocationCall(pool_id=POOL.id, node_id=NODE_ID, attribute_name="ticket_id")]
+    assert ticket_id.from_pool == {"id": POOL_ID}
+    assert allocator.calls == [AllocationCall(pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
 
 
 async def test_pool_named_by_name_is_recorded_by_its_id(
@@ -128,7 +113,7 @@ async def test_pool_named_by_name_is_recorded_by_its_id(
 
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
 
-    assert ticket_id.from_pool == {"id": POOL.id}
+    assert ticket_id.from_pool == {"id": POOL_ID}
     assert ticket_id.value == 42
 
 
@@ -139,7 +124,7 @@ async def test_without_allocation_only_the_pool_is_resolved(
 
     await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=False)
 
-    assert ticket_id.from_pool == {"id": POOL.id}
+    assert ticket_id.from_pool == {"id": POOL_ID}
     assert ticket_id.value is None
     assert allocator.calls == []
 
@@ -159,16 +144,16 @@ async def test_a_number_pool_attribute_draws_from_the_pool_its_schema_declares(
 ) -> None:
     attribute = _ticket_attribute(
         AttributeSchema(
-            name="ticket_id", kind="NumberPool", parameters=NumberPoolParameters(number_pool_id=POOL.id), optional=True
+            name="ticket_id", kind="NumberPool", parameters=NumberPoolParameters(number_pool_id=POOL_ID), optional=True
         )
     )
 
     await applier.apply(node=attribute.node, attribute=attribute, allocate=True)
 
-    assert attribute.from_pool == {"id": POOL.id}
+    assert attribute.from_pool == {"id": POOL_ID}
     assert attribute.is_default is False
     assert attribute.value == 42
-    assert allocator.calls == [AllocationCall(pool_id=POOL.id, node_id=NODE_ID, attribute_name="ticket_id")]
+    assert allocator.calls == [AllocationCall(pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")]
 
 
 async def test_a_number_pool_attribute_without_a_provisioned_pool_is_refused(applier: AttributePoolApplier) -> None:
@@ -200,7 +185,7 @@ async def test_an_unknown_pool_is_refused(applier: AttributePoolApplier, ticket_
 async def test_a_pool_for_another_attribute_is_refused(
     applier: AttributePoolApplier, allocator: RecordingNumberAllocator, ticket_id: BaseAttribute
 ) -> None:
-    ticket_id.from_pool = {"id": OTHER_ATTRIBUTE_POOL.id}
+    ticket_id.from_pool = {"id": OTHER_ATTRIBUTE_POOL_ID}
 
     with pytest.raises(
         ValidationError, match=r"^The titles pool can't be used for 'ticket_id'\. at ticket_id\.from_pool$"
@@ -212,7 +197,7 @@ async def test_a_pool_for_another_attribute_is_refused(
 async def test_an_exhausted_pool_is_reported_against_the_attribute(
     applier: AttributePoolApplier, allocator: RecordingNumberAllocator, ticket_id: BaseAttribute
 ) -> None:
-    ticket_id.from_pool = {"id": POOL.id}
+    ticket_id.from_pool = {"id": POOL_ID}
     allocator.exhausted = True
 
     with pytest.raises(ValidationError, match=r"^The pool TestingTicket is exhausted\. at ticket_id\.from_pool$"):

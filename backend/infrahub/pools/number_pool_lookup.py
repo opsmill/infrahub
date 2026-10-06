@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.attribute_pool_applier import NumberPoolTarget
 
 
 class NumberPoolReader(Protocol):
@@ -20,11 +19,11 @@ class NumberPoolReader(Protocol):
 
     async def get_one(
         self, id: str, db: InfrahubDatabase, kind: type[CoreNumberPool], raise_on_error: Literal[True]
-    ) -> NumberPoolTarget: ...
+    ) -> CoreNumberPool: ...
 
     async def query(
         self, db: InfrahubDatabase, schema: type[CoreNumberPool], filters: dict | None
-    ) -> Sequence[NumberPoolTarget]: ...
+    ) -> Sequence[CoreNumberPool]: ...
 
 
 class NumberPoolLookup:
@@ -34,7 +33,7 @@ class NumberPoolLookup:
         self.db = db
         self.node_manager = node_manager
 
-    async def find(self, pool_ref: str) -> NumberPoolTarget:
+    async def find(self, pool_ref: str) -> CoreNumberPool:
         """Return the number pool whose id or name is `pool_ref`.
 
         Raises:

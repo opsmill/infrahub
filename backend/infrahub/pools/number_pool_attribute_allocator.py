@@ -8,10 +8,10 @@ if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.schema import AttributeSchema
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.attribute_pool_applier import NumberPoolTarget
 
 
 @runtime_checkable
@@ -33,7 +33,7 @@ class NumberPoolAttributeAllocator:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def allocate(self, pool: NumberPoolTarget, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
         """Return the number the pool holds for the attribute, or the next free one.
 
         Raises:

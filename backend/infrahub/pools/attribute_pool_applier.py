@@ -10,30 +10,11 @@ from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExha
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.node import Node
-
-
-class TextValue(Protocol):
-    @property
-    def value(self) -> str: ...
-
-
-class NumberPoolTarget(Protocol):
-    """The parts of a number pool that decide which attribute may draw from it."""
-
-    @property
-    def name(self) -> TextValue: ...
-
-    @property
-    def node(self) -> TextValue: ...
-
-    @property
-    def node_attribute(self) -> TextValue: ...
-
-    def get_id(self) -> str: ...
+    from infrahub.core.protocols import CoreNumberPool
 
 
 class NumberPoolFinder(Protocol):
-    async def find(self, pool_ref: str) -> NumberPoolTarget:
+    async def find(self, pool_ref: str) -> CoreNumberPool:
         """Return the number pool whose id or name is `pool_ref`.
 
         Raises:
@@ -44,7 +25,7 @@ class NumberPoolFinder(Protocol):
 
 
 class AttributeNumberAllocator(Protocol):
-    async def allocate(self, pool: NumberPoolTarget, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
         """Return the number the pool gives the attribute.
 
         Raises:

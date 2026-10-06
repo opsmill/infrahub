@@ -12,24 +12,10 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.pools.number_pool_lookup import NumberPoolLookup
 
+from .helpers import InMemoryNumberPool
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-
-
-@dataclass
-class Text:
-    value: str
-
-
-@dataclass
-class InMemoryNumberPool:
-    id: str
-    name: Text
-    node: Text = field(default_factory=lambda: Text(value="TestingTicket"))
-    node_attribute: Text = field(default_factory=lambda: Text(value="ticket_id"))
-
-    def get_id(self) -> str:
-        return self.id
 
 
 @dataclass
@@ -84,7 +70,7 @@ async def db() -> AsyncGenerator[InfrahubDatabase, None]:
 
 @pytest.fixture
 def pool() -> InMemoryNumberPool:
-    return InMemoryNumberPool(id=POOL_ID, name=Text(value="tickets"))
+    return InMemoryNumberPool(id=POOL_ID, name="tickets")
 
 
 @pytest.fixture
