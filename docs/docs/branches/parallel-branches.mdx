@@ -2,7 +2,7 @@
 title: Parallel branches
 ---
 
-Several teams or Generators can work on separate branches at the same time. When you query one of those branches, Infrahub returns the default branch's data as of that branch's `branched_from`, plus the changes made on that branch. Merging one branch into the default branch changes nothing on the others, and no status indicates that the default branch has changed, so Infrahub reports conflicts and duplicate values only when you rebase or merge a branch.
+Several teams or Generators can work on separate branches at the same time. When you query one of those branches, Infrahub returns the default branch's data as of that branch's `branched_from`, plus the changes made on that branch. Merging one branch into the default branch changes nothing on the others, and no status indicates that the default branch has changed, so Infrahub reports conflicts and duplicate values only when it compares a branch with the default branch again: when you refresh the branch's diff, run its Proposed Change checks, rebase it or merge it.
 
 On each branch: allocate unique values from [resource pools](../resource-manager/overview.mdx), [rebase](./rebase.mdx) after another branch merges, resolve the [conflicts](./resolve-conflicts.mdx) a refused rebase lists, then [merge](./merge.mdx).
 
@@ -26,7 +26,7 @@ Proposed Change"]
 
 Nothing changes on your branch. Query it and Infrahub still returns the default branch's data as of your `branched_from`, plus your own changes, until you rebase.
 
-Infrahub blocks some actions on a branch while a merge is running, after a merge has failed, or when the branch needs a rebase. It marks each of these with a branch status. `OPEN` does not mean a branch is up to date with the default branch, and Infrahub does not require a rebase before a merge, except after an upgrade sets `NEED_UPGRADE_REBASE`. [Branch statuses](./overview.mdx#branch-statuses) lists each status with what it stops you doing and what you have to do next.
+Infrahub blocks some actions on a branch while a merge is running, after a merge has failed, after the branch has merged, or when the branch needs a rebase. It marks each of these with a branch status. `OPEN` does not mean a branch is up to date with the default branch, and Infrahub does not require a rebase before a merge, except after an upgrade sets `NEED_UPGRADE_REBASE`. [Branch statuses](./overview.mdx#branch-statuses) lists each status with what it stops you doing and what you have to do next.
 
 To see your branch's `branched_from`, open the branch details page in the web interface, or query it through GraphQL:
 
@@ -53,7 +53,7 @@ A value you type into a unique attribute is not reserved. Two branches can each 
 
 How you request a value depends on where you work:
 
-- **Web interface**: when you create the object, click the pool button next to the field, labelled "select a pool", and choose the pool. On an IP address, the button is next to **Address**.
+- **Web interface**: when you create the object, click the pool button next to the field, labeled "select a pool", and choose the pool. On an IP address, the button is next to **Address**.
 - **GraphQL API**: pass `from_pool` on the attribute or relationship. For an IP address pool or an IP prefix pool, you can also call the pool's mutation directly, `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`.
 
 Through the GraphQL API, you can pass an `identifier` when you allocate from an IP address pool or an IP prefix pool, and Infrahub returns the same value for a later request with the same identifier. The web interface sends no identifier, and Infrahub applies its default. Build one identifier per object, from the object it is allocated to, such as a device and its interface. On another branch that cannot yet read the object the value was allocated to, Infrahub allocates a different value for the same identifier, with no error. See [Idempotent allocation](../resource-manager/overview.mdx#idempotent-allocation).
@@ -80,7 +80,7 @@ You can build a small service that rebases the open branches each time a branch 
 
 :::warning Do not check a branch with BranchValidate before rebasing
 
-`BranchValidate` reads the branch's stored diff without refreshing it, and it reports conflicts already resolved in favor of the branch, which do not block a rebase. Run the rebase itself instead: a refused rebase changes nothing.
+`BranchValidate` reads the branch's stored diff without refreshing it, and it reports conflicts already resolved in favor of the branch, which do not block a rebase. Run the rebase itself instead: a refused rebase changes no data on the branch.
 
 :::
 
@@ -97,7 +97,7 @@ For what the merge checks, how writes are blocked while it runs, and merging a b
 ## Limits
 
 - Infrahub does not indicate when the default branch has changed since you created or last rebased your branch. To see what changed on the default branch, compare it over time as described in [What changes when another branch merges](#what-changes-when-another-branch-merges).
-- A rebase has no dry run. A refused rebase changes nothing, so running the rebase is the check.
+- A rebase has no dry run. A refused rebase changes no data on the branch, so running the rebase is the check.
 - Infrahub does not reserve an object for one branch. You can change the same object on two branches, and Infrahub reports the conflict on the second branch after the first one merges.
 
 ## Related

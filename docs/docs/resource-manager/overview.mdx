@@ -85,7 +85,7 @@ Key features:
 
 ### Direct allocation
 
-Direct allocation creates a standalone IP address or IP prefix from a pool, without linking it to another object. It is available for IP address and IP prefix pools only. In the web interface, you create the IP address or IP prefix and choose the pool with the pool button next to its **Address** or **Prefix** field, labelled "select a pool". In the GraphQL API, you call `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`. A number pool has no direct allocation: it fills an attribute, as described in [Attribute allocation](#attribute-allocation).
+Direct allocation creates a standalone IP address or IP prefix from a pool, without linking it to another object. It is available for IP address and IP prefix pools only. In the web interface, you create the IP address or IP prefix and choose the pool with the pool button next to its **Address** or **Prefix** field, labeled "select a pool". In the GraphQL API, you call `InfrahubIPAddressPoolGetResource` or `InfrahubIPPrefixPoolGetResource`. A number pool has no direct allocation: it fills an attribute, as described in [Attribute allocation](#attribute-allocation).
 
 Use direct allocation when:
 
@@ -139,7 +139,7 @@ mutation {
 
 ### Attribute allocation
 
-A number pool fills a `Number` attribute on the object you create. Pass `from_pool` with the pool's ID on the attribute. The pool's `node` setting must name that kind or a generic it inherits from, and its `node_attribute` setting must name that attribute, or Infrahub rejects the request. In the web interface, click the pool button next to the field, labelled "select a pool", and choose the pool.
+A number pool fills a `Number` attribute on the object you create. Pass `from_pool` with the pool's ID on the attribute. The pool's `node` setting must name that kind or a generic it inherits from, and its `node_attribute` setting must name that attribute, or Infrahub rejects the request. In the web interface, click the pool button next to the field, labeled "select a pool", and choose the pool.
 
 Example: Creating a VLAN with its VLAN ID taken from a number pool:
 
@@ -243,7 +243,7 @@ The query shows the IP address is allocated in the test branch, preventing dupli
 
 ### Concurrent requests
 
-Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values — unless they carry the same identifier, in which case the second gets the value already reserved under it. Requests to different pools do not wait for each other.
+Infrahub handles one allocation request at a time for each pool, across every Infrahub worker in the deployment. IP address, IP prefix and number pools all work this way. Two requests to the same pool at the same time, from different branches, Generators or clients, get different values. The exception is two requests to the same IP address or IP prefix pool, on the same branch, with the same identifier: the second gets the value already reserved under it. Number pools ignore identifiers. Requests to different pools do not wait for each other.
 
 ```mermaid
 sequenceDiagram

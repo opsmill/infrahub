@@ -58,7 +58,7 @@ gitGraph
 
 ## How rebase works
 
-Infrahub checks the branch before it writes anything, so a refused rebase changes nothing on the branch. The steps run in this order:
+Infrahub checks the branch before it writes anything, so a refused rebase changes no data on the branch. The diff refreshed in step 1 stays stored. The steps run in this order:
 
 1. Infrahub refreshes the branch's diff against the default branch.
 2. If a conflict needs a resolution or a change to the data, Infrahub refuses the rebase. The error lists each conflict and what it needs. See [Resolve conflicts](./resolve-conflicts.mdx).

@@ -145,7 +145,7 @@ Allocate an IP prefix directly from the pool:
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-  Create an IP prefix. Next to the **Prefix** field, click the pool button, labelled "select a pool", and choose `Customer Service Pool`, then save. Infrahub allocates the next available subnet from the pool and creates the IP prefix with it.
+  Create an IP prefix. Next to the **Prefix** field, click the pool button, labeled "select a pool", and choose `Customer Service Pool`, then save. Infrahub allocates the next available subnet from the pool and creates the IP prefix with it.
 
   Infrahub allocates a new prefix on each save. To get the same prefix back when a script or a Generator runs again, use the GraphQL method with an `identifier`.
 
@@ -188,7 +188,7 @@ Allocate an IP prefix when creating a customer service:
 
   Navigate to **Customer Service** → **Add Customer Service**.
 
-  Next to the Assigned Prefix field, click the pool button, labelled "select a pool", and choose your resource pool.
+  Next to the Assigned Prefix field, click the pool button, labeled "select a pool", and choose your resource pool.
 
   </TabItem>
   <TabItem value="graphql" label="GraphQL">
@@ -243,7 +243,7 @@ Allocate an IP prefix when creating a customer service:
   }
   ```
 
-  This is essential for [Generators](../generators/overview) and automated workflows. Without an `identifier`, Infrahub builds a default one from the object's kind, its HFID and the relationship name, because `CustomerService` has an HFID. On another branch that cannot read the allocated prefix yet, a request with the same identifier gets a different prefix. See [Idempotent allocation](./overview.mdx#idempotent-allocation) for the rules.
+  This is essential for [Generators](../generators/overview) and automated workflows. Without an `identifier`, Infrahub builds a default one from the object's kind, its human-friendly ID (HFID) and the relationship name, because `CustomerService` has an HFID. On another branch that cannot read the allocated prefix yet, a request with the same identifier gets a different prefix. See [Idempotent allocation](./overview.mdx#idempotent-allocation) for the rules.
 
   :::
 

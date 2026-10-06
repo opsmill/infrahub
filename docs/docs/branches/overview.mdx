@@ -20,7 +20,7 @@ Branching in Infrahub supports various infrastructure management workflows:
 - **Large scale changes**: Create a branch for a large feature or refactor, allowing for extensive changes without impacting the production pipeline. This is particularly valuable when redesigning network architectures or migrating to a new vendor.
 - **Collaborative review**: Create a branch for a feature, allowing team members to review and discuss changes before merging. This enables quality control and knowledge sharing within the team.
 - **Experimentation**: Use branches to test new ideas or approaches without affecting the production environment. This provides a safe sandbox to validate new configurations or architectures before committing to them.
-- **Grouped changes**: Group related changes on one branch so that a single merge applies them to the default branch. A merge either completes or is rolled back.
+- **Grouped changes**: Group related changes on one branch so that a single merge applies them to the default branch. A merge either completes or is rolled back. An interrupted merge leaves the branch in `MERGE_FAILED` until an administrator recovers it.
 
 :::success Change Management Workflow Blog Post
 
@@ -134,18 +134,18 @@ This structured approach ensures that changes are thoroughly validated before re
 
 ### Branch statuses
 
-Infrahub blocks some actions on a branch while a merge is running, after a merge has failed, or when the branch needs a rebase. It marks each of these with a branch status:
+Infrahub blocks some actions on a branch while a merge is running, after a merge has failed, after the branch has merged, or when the branch needs a rebase. It marks each of these with a branch status:
 
 | Status | Set by | Blocks | Cleared by |
 |---|---|---|---|
 | `OPEN` | Creating the branch, a rebase, or a merge that is rolled back or recovered | Nothing | — |
-| `NEED_REBASE` | Converting the kind of a branch-agnostic object whose branch-aware attributes carry over to the new kind, which runs on the default branch and marks every other open branch | Writes to the branch. Rebasing or deleting it, creating a branch, and opening a Proposed Change still work | A rebase |
+| `NEED_REBASE` | Converting the kind of a branch-agnostic object whose branch-aware attributes carry over to the new kind, which runs on the default branch and marks every other branch that is not merged or being deleted | Writes to the branch. Rebasing or deleting it, creating a branch, and opening a Proposed Change still work | A rebase |
 | `NEED_UPGRADE_REBASE` | `infrahub upgrade`, on every open branch on an older graph version; also set while a branch migration runs | Merging the branch. Writes still work | A rebase |
-| `MERGING` | The start of a merge | Writes to the branch and to the default branch, and deleting the branch | The end of the merge: `MERGED` when it completes, `OPEN` when it is rolled back |
+| `MERGING` | The start of a merge | Writes to the branch and to the default branch, and deleting the branch | The end of the merge: `MERGED` when it completes, `OPEN` when it is rolled back, `MERGE_FAILED` when it is interrupted |
 | `MERGE_FAILED` | Infrahub, when the worker running the merge is no longer live | Writes to the branch and to the default branch, and deleting the branch | [`infrahub recover merge`](./merge.mdx#recovering-the-failed-merge) |
 | `MERGED` | A completed merge | Every change to the branch except deleting it | Not cleared: a merged branch stays read-only |
 
-In the web interface, Infrahub shows a badge on the branch: **Rebase needed** for `NEED_REBASE`, **Rebase needed (upgrade)** for `NEED_UPGRADE_REBASE`, and **Merged** for `MERGED`. It shows no badge for `MERGING` or `MERGE_FAILED`, so query the branch's `status` to see those.
+In the web interface, Infrahub shows a badge on the branch: **Open** for `OPEN` on the branch details page, **Rebase needed** for `NEED_REBASE`, **Rebase needed (upgrade)** for `NEED_UPGRADE_REBASE`, **Deleting** for `DELETING`, and **Merged** for `MERGED`. It shows no badge for `MERGING` or `MERGE_FAILED`, so query the branch's `status` to see those.
 
 `OPEN` does not mean a branch is up to date with the default branch. Rebase the branch to include changes merged there since.
 
@@ -159,7 +159,7 @@ Branches don't duplicate the entire database. Instead, they maintain:
 - Only the delta of changes made within the branch
 - References to unchanged data in the parent branch
 
-When you query a branch, Infrahub combines two things: the default branch's data as of the branch's `branched_from` timestamp, and every change made on the branch since. Changes merged into the default branch after that time are not visible on the branch until you rebase it.
+When you query a branch, Infrahub combines two things: the default branch's data as of the branch's `branched_from` timestamp, and every change made on the branch since. Changes merged into the default branch after that time are not visible on the branch until you rebase it. Branch-agnostic data is the exception: every branch sees it as soon as it changes.
 
 This approach means creating a branch has minimal overhead, and storage grows only with actual changes. It also means that creating a new branch is almost instantaneous, as it doesn't involve copying large amounts of data.
 

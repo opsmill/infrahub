@@ -16,7 +16,7 @@ When a merge starts, Infrahub blocks writes to the branch and to the default bra
 - A delete-versus-modify conflict, which no choice of side can clear
 - A constraint violation, such as a duplicate value in a unique attribute
 
-A merge is not one database transaction. It either completes or is rolled back; see [When a merge fails](#when-a-merge-fails).
+A merge is not one database transaction. It either completes or is rolled back. If the merge is interrupted, for example because the worker running it stops, Infrahub marks the branch `MERGE_FAILED` until an administrator runs `infrahub recover merge`; see [When a merge fails](#when-a-merge-fails).
 
 ## During the merge
 
