@@ -33,10 +33,13 @@ from infrahub.exceptions import (
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.convergence import WorktreeConverger
 from infrahub.git.divergence.gateway import GitAncestryGateway
+from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+from infrahub.git.divergence.store import SdkRepositoryRecordStore
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.git.tasks import merge_git_repository, sync_remote_repositories
+from infrahub.git.tasks import merge_git_repository, select_writable_branch_commits, sync_remote_repositories
+from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from tests.helpers.test_app import TestInfrahubApp
@@ -65,6 +68,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.repository import CollectedImports
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.git import GogsServer
 
@@ -1018,6 +1022,26 @@ async def _open_clone(client: InfrahubClient, tracked: TrackedBranchRepository) 
     )
 
 
+async def _collect_one_repository(
+    db: InfrahubDatabase, client: InfrahubClient, tracked: TrackedBranchRepository
+) -> CollectedImports:
+    """Run the collection the periodic cycle runs for one repository, which moves the worktrees and records.
+
+    A whole cycle visits every repository of the stack, which a worker with an empty directory would
+    clone and import first.
+    """
+    branches = await client.branch.all()
+    repositories = await get_repositories_commit_per_branch(db=db, kind=InfrahubKind.REPOSITORY)
+    clone = await _open_clone(client=client, tracked=tracked)
+    async with lock.registry.get(name=tracked.name, namespace="repository"):
+        return await clone.collect_pending_imports(
+            graph_commits=select_writable_branch_commits(
+                branch_commits=repositories[tracked.name].branches, branches=branches
+            ),
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+        )
+
+
 async def _clone_on_another_worker(client: InfrahubClient, tracked: TrackedBranchRepository, directory: Path) -> None:
     """Clone the repository and its tracked branch, as they stand now, into the directory of another worker."""
     branch = await client.branch.get(branch_name=tracked.branch_name)
@@ -1428,9 +1452,11 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         assert (record[0], record[1], record[3]) == (tracked.imported_commit, rewritten, 1)
 
         with repositories_directory(second_worker):
-            await sync_remote_repositories()
+            collected = await _collect_one_repository(db=db, client=client, tracked=tracked)
             clone = await _open_clone(client=client, tracked=tracked)
             assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == rewritten
+
+        assert collected.failed_imports == []
 
         assert await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name) == record
 
