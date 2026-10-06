@@ -17,15 +17,6 @@ class FlowRunReservations(Protocol):
     async def release(self, flow_run_id: UUID) -> None: ...
 
 
-class UnreservedFlowRuns:
-    """Reservations that always succeed, leaving the server to reject a run claimed by another worker."""
-
-    async def reserve(self, flow_run_id: UUID) -> bool:  # noqa: ARG002
-        return True
-
-    async def release(self, flow_run_id: UUID) -> None: ...
-
-
 class SubmissionWindow:
     """Hand out a worker's latest scheduled flow runs for submission, in poll order and a bounded number at a time."""
 

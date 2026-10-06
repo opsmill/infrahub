@@ -42,7 +42,9 @@ The window holds eight runs, half of the client's connections, so a poll or a st
 waits behind submissions. A slot is freed as soon as its flow has started, and the next candidate
 of the latest poll is taken right away instead of waiting for the next poll. A new poll replaces the
 candidates of the previous one, leaving out the runs the worker took since then: a poll read before
-those claims landed still lists them as `SCHEDULED`, and the server would reject a second claim. Under
+those claims landed still lists them as `SCHEDULED`, and claiming one again wastes a claim or, once the
+run has finished, can run it a second time (see
+[Reservations between workers](#reservations-between-workers)). Under
 the same backlog, bounding the claim made branch creation about ten times faster while the backlog
 drained at least as fast as with the unbounded claim.
 
@@ -57,17 +59,23 @@ flow to finish, since nothing preempts a flow that has started.
 ## Reservations between workers
 
 Every worker polls the same backlog, so two workers can take the same run from the head of their
-polls. The server accepts the first `Pending` proposal and rejects the other, which costs the losing
-worker one wasted claim; the window bounds how many such claims can be in flight at once. Without a
-reservation, two workers working through the same poll lose a claim on most runs.
+polls. The server rejects a second `Pending` proposal only while the run is pending, running,
+cancelling or cancelled, or completed with a persisted result. A run that has failed or crashed, or
+completed without a persisted result, accepts it, and the second worker runs the flow again. A poll's
+candidates stay in use until the next poll, long enough for a short run that another worker claimed
+to finish in the meantime.
 
-A worker can take a reservation before claiming instead, through the reservation it builds for its
-window. The community worker builds one that always succeeds. The enterprise worker reserves each run
-in the cache for 15 seconds, owned by its `WORKER_IDENTITY`, so concurrent workers claim different
-runs: a worker may reserve a run it already holds, which restarts the 15 seconds, a taken run it
-does not submit gives its reservation back, and a submitted run keeps its reservation until it
-expires, so another worker still holding an older poll skips it. When the cache fails partway through
-a batch, the reservations the batch already holds are left to expire.
+While the run has not finished, the losing worker wastes one claim; the window bounds how many such
+claims can be in flight at once. Without a reservation, two workers working through the same poll
+lose a claim on most runs.
+
+So a worker reserves each run in the cache before claiming it, for 15 seconds and owned by its
+`WORKER_IDENTITY`, and concurrent workers claim different runs: a worker may reserve a run it already
+holds, which restarts the 15 seconds, a taken run it does not submit gives its reservation back, and
+a submitted run keeps its reservation until it expires, so another worker still holding an older poll
+skips it. When the cache fails partway through a batch, the reservations the batch already holds are
+left to expire. The key, `flow-run-pending-<flow run id>`, is the one earlier enterprise workers
+reserved under, so workers of both versions respect each other's reservations during an upgrade.
 
 The reservation must outlive a claim. With unbounded claiming a claim took longer than the 15-second
 expiry under load, the reservation lapsed while the first worker was still claiming, and the second
