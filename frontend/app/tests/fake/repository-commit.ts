@@ -1,3 +1,5 @@
+import type { GraphQLResult } from "@/shared/api/graphql/types";
+
 import type { RepositoryCommitsResponse } from "@/entities/repository/api/get-repository-commits-from-api";
 import type {
   RepositoryCommit,
@@ -7,6 +9,10 @@ import type {
 export type RepositoryCommitsWire = RepositoryCommitsResponse["InfrahubRepositoryCommits"];
 
 type RepositoryCommitNodeWire = RepositoryCommitsWire["edges"][number]["node"];
+
+export const generateCommitsApiResult = (
+  response: RepositoryCommitsWire
+): GraphQLResult<RepositoryCommitsResponse> => ({ data: { InfrahubRepositoryCommits: response } });
 
 export const fullHash = (shortHash: string) => shortHash.padEnd(40, "0");
 

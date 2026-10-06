@@ -8,25 +8,32 @@ import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repos
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import {
-  BEHIND_HEAD,
-  generateBehindCommitsResponse,
+  generateCommitsApiResult,
   generateFirstCommitsPage,
-  generateSecondCommitsPage,
   PAGE_ONE_HEAD,
-  type RepositoryCommitsWire,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 
 vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
-// Exposes onLoadMore as a button: the scroll sentinel cannot be made to fire while a refresh is pending.
+// Renders the load trigger as a button so the test can read whether older commits may load.
 vi.mock("@/shared/components/utils/infinite-scroll", () => ({
-  InfiniteScroll: ({ children, onLoadMore }: { children: ReactNode; onLoadMore: () => void }) => (
+  InfiniteScroll: ({
+    children,
+    hasNextPage,
+    onLoadMore,
+  }: {
+    children: ReactNode;
+    hasNextPage: boolean;
+    onLoadMore: () => void;
+  }) => (
     <div>
       {children}
-      <button type="button" onClick={onLoadMore}>
-        Load more
-      </button>
+      {hasNextPage && (
+        <button type="button" onClick={onLoadMore}>
+          Load more
+        </button>
+      )}
     </div>
   ),
 }));
@@ -35,8 +42,8 @@ const apiMock = vi.mocked(getRepositoryCommitsFromApi);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
 
-const apiResult = (response: RepositoryCommitsWire) =>
-  ({ data: { InfrahubRepositoryCommits: response } }) as unknown as ApiResult;
+const STALE_NOTICE =
+  "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
 
 let queryClient: QueryClient;
 
@@ -57,18 +64,43 @@ describe("RepositoryCommitsManager loading more", () => {
     vi.resetAllMocks();
   });
 
-  test("does not cancel a refresh still in progress when more commits are requested", async () => {
+  test("offers older commits again only once a running refresh has answered", async () => {
     // GIVEN
     let answerRefresh: (value: ApiResult) => void = () => {};
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
       .mockImplementationOnce(
         () =>
           new Promise<ApiResult>((resolve) => {
             answerRefresh = resolve;
           })
-      )
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+      );
+    const component = await render(
+      <>
+        <CaptureQueryClient />
+        <RepositoryCommitsManager repositoryId="repo-1" repositoryLocation={null} />
+      </>
+    );
+    await expect.element(component.getByRole("button", { name: "Load more" })).toBeVisible();
+
+    // WHEN
+    const refresh = queryClient.refetchQueries();
+    await expect.poll(() => apiMock.mock.calls.length).toBe(2);
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Load more" }))
+      .not.toBeInTheDocument();
+    answerRefresh(generateCommitsApiResult(generateFirstCommitsPage()));
+    await refresh;
+    await expect.element(component.getByRole("button", { name: "Load more" })).toBeVisible();
+  });
+
+  test("offers no older commits after a refresh that failed", async () => {
+    // GIVEN
+    apiMock
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Network down"));
     const component = await render(
       <>
         <CaptureQueryClient />
@@ -76,15 +108,14 @@ describe("RepositoryCommitsManager loading more", () => {
       </>
     );
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-    const refresh = queryClient.refetchQueries();
-    await expect.poll(() => apiMock.mock.calls.length).toBe(2);
 
     // WHEN
-    await component.getByRole("button", { name: "Load more" }).click();
-    answerRefresh(apiResult(generateBehindCommitsResponse()));
+    await queryClient.refetchQueries();
 
     // THEN
-    await refresh;
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await expect.element(component.getByText(STALE_NOTICE)).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Load more" }))
+      .not.toBeInTheDocument();
   });
 });

@@ -27,7 +27,7 @@ describe("getRepositoryCommitsFromApi", () => {
     expect(graphqlClient.query).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { repositoryId: "repo-1", limit: 20, offset: 40, isFirstPage: false },
-        context: { branch: "feature-x" },
+        context: { branch: "feature-x", processErrorMessage: expect.any(Function) },
       })
     );
   });

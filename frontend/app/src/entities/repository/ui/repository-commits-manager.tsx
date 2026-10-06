@@ -12,6 +12,7 @@ import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-reposi
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
   type CommitLogEmptyState,
+  canLoadOlderCommits,
   getCommitLogWithoutPages,
   getEmptyState,
   getLoadedCommits,
@@ -103,14 +104,17 @@ export function RepositoryCommitsManager({
       <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
-          <p>Couldn't refresh the commit log right now. Showing the last loaded commits.</p>
+          <p>
+            Couldn't refresh the commit log right now. Showing the last loaded commits; older
+            commits load after a successful refresh.
+          </p>
         </RepositoryCommitsNotice>
       )}
       <InfiniteScroll
         scrollX
         className="bg-table-frame"
-        hasNextPage={hasNextPage}
-        // Scrolling must not cancel a refresh that is still retrying, which fetchNextPage does by default.
+        hasNextPage={canLoadOlderCommits({ hasNextPage, isRefetching, isRefetchError })}
+        // An older page that is still retrying must not be cancelled and restarted by another scroll.
         onLoadMore={() => fetchNextPage({ cancelRefetch: false })}
       >
         <DataTable

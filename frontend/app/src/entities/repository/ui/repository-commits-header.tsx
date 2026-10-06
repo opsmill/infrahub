@@ -85,7 +85,7 @@ function ConditionNotice({ log }: RepositoryCommitsLogProps) {
   return (
     <Row
       role="note"
-      className="rounded-md bg-amber-50 px-3 py-2 text-amber-800 text-sm dark:bg-amber-200/10 dark:text-amber-200"
+      className="rounded-md border border-warning-border bg-warning-surface px-3 py-2 text-sm text-warning"
     >
       <TriangleAlertIcon className="size-4 shrink-0" aria-hidden="true" />
       <p>{notice.message}</p>

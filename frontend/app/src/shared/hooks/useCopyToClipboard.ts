@@ -18,14 +18,15 @@ export function useCopyToClipboard() {
     };
   }, []);
 
-  const copyToClipboard = async (value: string) => {
+  const copyToClipboard = async (value: string): Promise<boolean> => {
     const hasCopied = await copyTextToClipboard(value);
     // The clipboard write can settle after unmount, past the cleanup that clears the timer.
-    if (!hasCopied || !isMounted.current) return;
+    if (!hasCopied || !isMounted.current) return hasCopied;
     setIsCopied(true);
     setCopyCount((count) => count + 1);
     clearTimeout(feedbackTimeout.current);
     feedbackTimeout.current = setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
+    return true;
   };
 
   return { isCopied, copyCount, copyToClipboard };

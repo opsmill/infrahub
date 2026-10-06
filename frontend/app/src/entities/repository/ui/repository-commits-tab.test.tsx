@@ -7,9 +7,9 @@ import { REPOSITORY_COMMITS_RETRY_DELAY_MS } from "@/entities/repository/ui/quer
 import { render } from "../../../../tests/components/render";
 import {
   generateBehindCommitsResponse,
+  generateCommitsApiResult,
   generateInSyncCommitsResponse,
   generateNotClonedCommitsResponse,
-  type RepositoryCommitsWire,
 } from "../../../../tests/fake/repository-commit";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 import { RepositoryCommitsTab } from "./repository-commits-tab";
@@ -19,9 +19,6 @@ vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 const apiMock = vi.mocked(getRepositoryCommitsFromApi);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
-
-const apiResult = (response: RepositoryCommitsWire) =>
-  ({ data: { InfrahubRepositoryCommits: response } }) as unknown as ApiResult;
 
 let queryClient: QueryClient;
 
@@ -52,7 +49,7 @@ describe("RepositoryCommitsTab", () => {
 
   test("shows the pending-import count when the branch is behind", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -66,7 +63,7 @@ describe("RepositoryCommitsTab", () => {
 
   test("shows 0 when the branch is in sync", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateInSyncCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -79,7 +76,7 @@ describe("RepositoryCommitsTab", () => {
 
   test("shows no count when no worker holds a copy", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -92,7 +89,7 @@ describe("RepositoryCommitsTab", () => {
     // GIVEN
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
     apiMock
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateNotClonedCommitsResponse()))
       .mockReturnValueOnce(new Promise<ApiResult>(() => {}));
     const component = await renderTab();
     await expect.poll(() => apiMock.mock.calls.length).toBe(1);
@@ -124,8 +121,8 @@ describe("RepositoryCommitsTab", () => {
   test("follows the count of the latest commit log", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateInSyncCommitsResponse()))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+      .mockResolvedValueOnce(generateCommitsApiResult(generateInSyncCommitsResponse()))
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
     await expect
       .element(component.getByRole("link", { name: "Commits 0 pending import" }))
@@ -142,7 +139,7 @@ describe("RepositoryCommitsTab", () => {
 
   test("shares one read with the commit log on screen", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await render(

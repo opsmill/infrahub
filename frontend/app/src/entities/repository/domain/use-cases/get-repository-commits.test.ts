@@ -13,14 +13,13 @@ import {
   BEHIND_HEAD,
   fullHash,
   generateBehindCommitsResponse,
+  generateCommitsApiResult,
   generateRepositoryCommitNode,
   generateRepositoryCommitsResponse,
   NOT_CLONED_MESSAGE,
 } from "../../../../../tests/fake/repository-commit";
 
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
-
-type ApiResponse = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
 
 const PARAMS = { repositoryId: "repo-1", branchName: "main", limit: 20, offset: 0 };
 
@@ -33,9 +32,7 @@ describe("getRepositoryCommits", () => {
 
   test("returns the mapped log", async () => {
     // GIVEN
-    apiMock.mockResolvedValueOnce({
-      data: { InfrahubRepositoryCommits: generateBehindCommitsResponse() },
-    } as ApiResponse);
+    apiMock.mockResolvedValueOnce(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const log = await getRepositoryCommits(PARAMS);
@@ -49,9 +46,9 @@ describe("getRepositoryCommits", () => {
     // GIVEN
     const remoteHead = fullHash("c0ffee1");
     const importedCommit = fullHash("dec0de2");
-    apiMock.mockResolvedValueOnce({
-      data: {
-        InfrahubRepositoryCommits: generateRepositoryCommitsResponse({
+    apiMock.mockResolvedValueOnce(
+      generateCommitsApiResult(
+        generateRepositoryCommitsResponse({
           condition: "UNAVAILABLE",
           imported_commit: importedCommit,
           remote_head: remoteHead,
@@ -60,9 +57,9 @@ describe("getRepositoryCommits", () => {
           checked_at: "2025-03-11T08:30:00Z",
           unavailable: { reason: "NOT_CLONED", message: NOT_CLONED_MESSAGE },
           edges: [{ node: generateRepositoryCommitNode({ short_hash: "c0ffee1", state: "HEAD" }) }],
-        }),
-      },
-    } as ApiResponse);
+        })
+      )
+    );
 
     // WHEN
     const read = getRepositoryCommits(PARAMS);
@@ -104,14 +101,14 @@ describe("getRepositoryCommits", () => {
 
   test("throws a typed error without a reason when the unavailable answer carries none", async () => {
     // GIVEN
-    apiMock.mockResolvedValueOnce({
-      data: {
-        InfrahubRepositoryCommits: generateRepositoryCommitsResponse({
+    apiMock.mockResolvedValueOnce(
+      generateCommitsApiResult(
+        generateRepositoryCommitsResponse({
           condition: "UNAVAILABLE",
           unavailable: null,
-        }),
-      },
-    } as ApiResponse);
+        })
+      )
+    );
 
     // WHEN
     const read = getRepositoryCommits(PARAMS);
@@ -129,9 +126,9 @@ describe("getRepositoryCommits", () => {
     RepositoryGitCondition.ORPHANED,
   ])("returns %s as an answer", async (condition) => {
     // GIVEN
-    apiMock.mockResolvedValueOnce({
-      data: { InfrahubRepositoryCommits: generateRepositoryCommitsResponse({ condition }) },
-    } as ApiResponse);
+    apiMock.mockResolvedValueOnce(
+      generateCommitsApiResult(generateRepositoryCommitsResponse({ condition }))
+    );
 
     // WHEN
     const log = await getRepositoryCommits(PARAMS);
@@ -143,9 +140,10 @@ describe("getRepositoryCommits", () => {
   test("throws with every message when the response carries errors", async () => {
     // GIVEN
     apiMock.mockResolvedValueOnce({
+      // @ts-expect-error The client types data as always present, but a resolver error answers with null.
       data: null,
       errors: [{ message: "No worker answered" }, { message: "Retry in 30 seconds" }],
-    } as unknown as ApiResponse);
+    });
 
     // WHEN
     const read = getRepositoryCommits(PARAMS);
@@ -156,7 +154,8 @@ describe("getRepositoryCommits", () => {
 
   test("throws when the response carries neither data nor errors", async () => {
     // GIVEN
-    apiMock.mockResolvedValueOnce({ data: null } as unknown as ApiResponse);
+    // @ts-expect-error The client types data as always present, but an empty response reaches this guard.
+    apiMock.mockResolvedValueOnce({ data: null });
 
     // WHEN
     const read = getRepositoryCommits(PARAMS);

@@ -57,7 +57,6 @@ export function getRepositoryCommitsQueryOptions<TData = RepositoryCommitPages>(
         if (lastPage.commits.length < REPOSITORY_COMMITS_PAGE_SIZE) return;
         return lastPageParam + REPOSITORY_COMMITS_PAGE_SIZE;
       },
-      // Retried, not polled: an interval refetch with no data resets the query to pending and clears its error.
       // Capped because a clone that failed for good keeps answering NOT_CLONED.
       retry: (failureCount, error) =>
         failureCount < REPOSITORY_COMMITS_MAX_RETRIES && isWarmingUp(error),

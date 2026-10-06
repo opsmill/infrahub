@@ -63,6 +63,8 @@ export function getRepositoryCommitsFromApi({
     },
     context: {
       branch: branchName,
+      // Failures render in place, and this request also runs on pages that do not show commits.
+      processErrorMessage: () => {},
     },
   });
 }

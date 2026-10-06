@@ -63,6 +63,20 @@ export function isShowingStaleCommits({
   return (isRefetchError && !isRefetching) || (isRefetching && failureReason !== null);
 }
 
+// Older pages are read at offsets of the current history, so they must not be appended to a first page
+// that a failed or running refresh has left out of date.
+export function canLoadOlderCommits({
+  hasNextPage,
+  isRefetching,
+  isRefetchError,
+}: {
+  hasNextPage: boolean;
+  isRefetching: boolean;
+  isRefetchError: boolean;
+}): boolean {
+  return hasNextPage && !isRefetching && !isRefetchError;
+}
+
 export type NextPageState = "idle" | "loading" | "failed" | "retry-pending";
 
 export function getNextPageState({
@@ -75,8 +89,6 @@ export function getNextPageState({
 }): NextPageState {
   if (!isFetchingNextPage) return isFetchNextPageError ? "failed" : "idle";
   // Pressing Retry while the query still retries on its own would cancel that retry.
-  // isFetchNextPageError alone is not enough: after a failed refresh TanStack keeps the error
-  // status, so a fresh scroll load reports it before any older page has failed.
   return failureReason !== null ? "retry-pending" : "loading";
 }
 

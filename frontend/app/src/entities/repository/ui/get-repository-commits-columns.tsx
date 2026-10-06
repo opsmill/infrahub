@@ -25,39 +25,43 @@ export function getRepositoryCommitsColumns({
   repositoryLocation: string | null;
 }): Array<ColumnDef<RepositoryCommit>> {
   return [
-    columnHelper.accessor("short_hash", {
+    columnHelper.display({
+      id: "short_hash",
       header: () => <ColumnHeader>Hash</ColumnHeader>,
-      cell: ({ cell }) => (
+      cell: ({ row }) => (
         <TableCell>
-          <code className="font-mono text-xs">{cell.getValue()}</code>
+          <code className="font-mono text-xs">{row.original.short_hash}</code>
         </TableCell>
       ),
     }),
-    columnHelper.accessor("summary", {
+    columnHelper.display({
+      id: "summary",
       header: () => <ColumnHeader>Summary</ColumnHeader>,
-      cell: ({ cell }) => (
+      cell: ({ row }) => (
         <TableCell>
-          <span className="truncate" title={cell.getValue()}>
-            {cell.getValue()}
+          <span className="truncate" title={row.original.summary}>
+            {row.original.summary}
           </span>
         </TableCell>
       ),
     }),
-    columnHelper.accessor("author_name", {
+    columnHelper.display({
+      id: "author_name",
       header: () => <ColumnHeader>Author</ColumnHeader>,
-      cell: ({ cell }) => (
+      cell: ({ row }) => (
         <TableCell>
-          <span className="truncate" title={cell.getValue()}>
-            {cell.getValue()}
+          <span className="truncate" title={row.original.author_name}>
+            {row.original.author_name}
           </span>
         </TableCell>
       ),
     }),
-    columnHelper.accessor("authored_at", {
+    columnHelper.display({
+      id: "authored_at",
       header: () => <ColumnHeader>Date</ColumnHeader>,
-      cell: ({ cell }) => (
+      cell: ({ row }) => (
         <TableCell>
-          <DateDisplay date={cell.getValue()} className="text-sm" />
+          <DateDisplay date={row.original.authored_at} className="text-sm" />
         </TableCell>
       ),
     }),
@@ -82,5 +86,5 @@ export function getRepositoryCommitsColumns({
         />
       ),
     }),
-  ] as Array<ColumnDef<RepositoryCommit>>;
+  ];
 }

@@ -8,6 +8,7 @@ import {
 } from "@/entities/repository/domain/model/repository";
 import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import {
+  canLoadOlderCommits,
   getCommitLogWithoutPages,
   getConditionNotice,
   getEmptyState,
@@ -214,9 +215,10 @@ describe("getStateBadges", () => {
 
   test("shows no badge for a state this client does not know", () => {
     // GIVEN
-    const commit = { hash: "a".repeat(40), state: "FUTURE_STATE" as RepositoryCommitState };
+    const commit = { hash: "a".repeat(40), state: "FUTURE_STATE" };
 
     // WHEN
+    // @ts-expect-error A newer server can send a state this client's generated enum does not list.
     const badges = getStateBadges(commit, null);
 
     // THEN
@@ -491,6 +493,24 @@ describe("isShowingStaleCommits", () => {
     // THEN
     expect(isStale).toBe(expected);
   });
+});
+
+describe("canLoadOlderCommits", () => {
+  test.each([
+    { hasNextPage: true, isRefetching: false, isRefetchError: false, expected: true },
+    { hasNextPage: false, isRefetching: false, isRefetchError: false, expected: false },
+    { hasNextPage: true, isRefetching: true, isRefetchError: false, expected: false },
+    { hasNextPage: true, isRefetching: false, isRefetchError: true, expected: false },
+  ])(
+    "returns $expected with a next page $hasNextPage, refreshing $isRefetching, failed refresh $isRefetchError",
+    ({ expected, ...state }) => {
+      // WHEN
+      const canLoad = canLoadOlderCommits(state);
+
+      // THEN
+      expect(canLoad).toBe(expected);
+    }
+  );
 });
 
 describe("getNextPageState", () => {

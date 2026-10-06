@@ -22,6 +22,9 @@ function copyWithSelection(value: string): boolean {
     selection.removeAllRanges();
     selection.addRange(range);
     return document.execCommand("copy");
+  } catch (error) {
+    if (error instanceof DOMException) return false;
+    throw error;
   } finally {
     selection.removeAllRanges();
     for (const savedRange of savedRanges) selection.addRange(savedRange);
