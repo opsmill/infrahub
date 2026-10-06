@@ -921,7 +921,7 @@ class _BranchSyncRepository(InfrahubRepository):
     connection_error_branch: str
     git_pushed_branches: list[str] = Field(default_factory=list)
 
-    async def fetch(self) -> bool:
+    async def fetch(self, timeout_seconds: float | None = None) -> bool:
         return True
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
@@ -966,7 +966,7 @@ class _BranchSyncRepository(InfrahubRepository):
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         return f"commit-{branch_name}"
 
-    def create_commit_worktree(self, commit: str) -> bool:
+    def create_commit_worktree(self, commit: str, timeout_seconds: float | None = None) -> bool:
         return True
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:

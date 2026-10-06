@@ -106,7 +106,7 @@ Parts A and B of the plan.
       per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`; raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
       message of `_describe_push_rejection`. Keep "push never writes `operational_status`".
-- [ ] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
+- [X] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional
       timeout, passed as `kill_after_timeout`. Give the same optional timeout to
       `create_commit_worktree` and `delete_remote_branch` in the same module, and to
       `InfrahubRepository._reset_to_pre_merge_commit` in `backend/infrahub/git/repository.py`, passed
