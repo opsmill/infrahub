@@ -1,0 +1,1 @@
+Fixed Git workers that missed the update after a branch was force-pushed: they now move the branch onto the new remote history by themselves, and a merge that runs before the next synchronization fails with an error that names the diverged history, instead of pushing the discarded commits back to the remote.
