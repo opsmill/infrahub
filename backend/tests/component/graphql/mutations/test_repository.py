@@ -14,6 +14,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -370,4 +371,85 @@ async def test_a_read_only_re_point_flags_both_workflows_and_writes_no_marker(
             },
         ),
     ]
+    assert cache.storage == {}
+
+
+@dataclass
+class DefaultBranchEditTestCase:
+    name: str
+    infrahub_branch_name: str
+    """The Infrahub branch the update runs on."""
+
+
+DEFAULT_BRANCH_EDIT_TEST_CASES: list[DefaultBranchEditTestCase] = [
+    DefaultBranchEditTestCase(name="edit_on_the_default_branch", infrahub_branch_name="main"),
+    DefaultBranchEditTestCase(name="edit_on_another_branch", infrahub_branch_name="branch2"),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DEFAULT_BRANCH_EDIT_TEST_CASES])
+async def test_a_default_branch_edit_marks_the_infrahub_default_branch_for_the_next_sync(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+    test_case: DefaultBranchEditTestCase,
+) -> None:
+    """The repository is agnostic to branches, so the edit moves what feeds the default branch wherever it runs."""
+    branch = await create_branch(branch_name="branch2", db=db)
+    cache = MemoryCache()
+    workflow = WorkflowRecorder()
+    service = await InfrahubServices.new(database=db, cache=cache, workflow=workflow)
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="re-pointed-repo", location="/tmp/re-pointed-repo", default_branch="main")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=f'mutation {{ CoreRepositoryUpdate(data: {{ id: "{repo.id}", default_branch: {{ value: "release" }} }}) {{ ok }} }}',
+        db=db,
+        service=service,
+        branch=default_branch if test_case.infrahub_branch_name == "main" else branch,
+        account_session=account_session,
+    )
+
+    assert result.errors is None
+    markers = RetargetMarkers(cache=cache)
+    assert await markers.is_retargeted(repository_id=repo.id, infrahub_branch_name="main", target="release")
+    assert list(cache.storage.values()) == ["release"]
+    assert workflow.submit_calls == []
+
+
+async def test_an_edit_that_keeps_the_default_branch_writes_no_marker(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+) -> None:
+    cache = MemoryCache()
+    service = await InfrahubServices.new(database=db, cache=cache, workflow=WorkflowRecorder())
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="described-repo", location="/tmp/described-repo", default_branch="main")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=(
+            f'mutation {{ CoreRepositoryUpdate(data: {{ id: "{repo.id}", description: {{ value: "described" }}, '
+            'default_branch: { value: "main" } }) { ok } }'
+        ),
+        db=db,
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors is None
     assert cache.storage == {}

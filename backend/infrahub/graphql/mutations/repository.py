@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -113,7 +114,15 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_metadata=MetadataOptions.LINKED_NODES,
             )
         if repo_node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
+            current_default_branch = repo_node.get_attribute("default_branch").value
+            obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
+            new_default_branch = obj.get_attribute("default_branch").value
+            if new_default_branch != current_default_branch:
+                # Without the marker, the next sync reports the switch to another git branch as a trunk rewrite.
+                await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
+                    repository_id=obj.id, infrahub_branch_name=registry.default_branch, target=str(new_default_branch)
+                )
+            return obj, result
 
         repo_node = cast("CoreReadOnlyRepository", repo_node)
         current_commit = repo_node.commit.value

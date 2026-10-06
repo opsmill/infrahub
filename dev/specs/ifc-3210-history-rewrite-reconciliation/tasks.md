@@ -611,7 +611,7 @@ read-write repository's configured default branch. Neither writes a record.
       computes both comparisons. SC-007 covers re-pointing to "a different branch, tag or commit",
       so leaving the commit-only case out records a false rewrite. Read-only repositories write no
       cache marker.
-- [ ] T079 [US6] Add the `default_branch` comparison to the same method for `CoreRepository`, and
+- [x] T079 [US6] Add the `default_branch` comparison to the same method for `CoreRepository`, and
       write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
       method returns to `super().mutate_update` immediately for any kind other than read-only, so
       the comparison goes before that early return.
@@ -642,7 +642,7 @@ read-write repository's configured default branch. Neither writes a record.
       absent marker yields false. Both directions are asserted, so the behaviour is stated rather
       than assumed. Assert the marker is consumed exactly once, which is what stops it suppressing
       a later genuine rewrite.
-- [ ] T084 [US6] Component-test both re-point paths in
+- [x] T084 [US6] Component-test both re-point paths in
       `backend/tests/component/graphql/mutations/test_repository.py`: a `CoreRepository`
       `default_branch` edit writes the cache marker before the workflows are submitted, and a
       read-only `ref` or `commit` change sets `target_changed` on the workflow model and writes no
