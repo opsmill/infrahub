@@ -967,7 +967,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         A worktree that leads to the remote head is fast-forwarded. Any other worktree is hard-reset onto
         the remote head and loses the commits only it holds. The reset honours ``update_commit_value`` the
-        same way the fast-forward does, and it writes nothing else.
+        same way the fast-forward does, writes no rewrite record and emits no event.
 
         Raises:
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.

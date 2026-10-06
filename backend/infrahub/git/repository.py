@@ -927,13 +927,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return True
 
     async def prepare_branches_for_merge(self, source_branch: str, dest_branch: str) -> None:
-        """Bring both branches of a merge onto their remote heads, or refuse the merge.
+        """Reset a merge branch that diverged from its remote head when the graph records that head, or refuse the merge.
 
-        The merge reads the source from its local ref and builds on the local destination, so a branch
-        that does not lead to its remote head would put commits the remote discarded back on it. Such a
-        branch is reset when the graph already records its remote head. When the graph records another
-        commit, the rewrite is not reconciled yet: the merge is refused and no branch moves, so the next
-        synchronization still finds the rewrite to record and import.
+        A branch that is the remote head, or an ancestor of it, is left as it is. The merge reads the
+        source from its local ref and builds on the local destination, so a diverged branch would put
+        commits the remote discarded back on it. When the graph records the remote head, only this clone
+        is behind, and the branch is reset. When the graph records another commit, the rewrite is not
+        reconciled yet: the merge is refused and no branch moves, so the next synchronization still finds
+        the rewrite to record and import.
 
         Raises:
             RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record.
