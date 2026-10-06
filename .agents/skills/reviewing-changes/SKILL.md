@@ -3,9 +3,9 @@ name: reviewing-changes
 description: >-
   Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would otherwise raise. Shows which `.agents/rules/` files and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing>
-compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
+compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 2.0.0
+  version: 3.0.0
   author: OpsMill
 ---
 
@@ -27,121 +27,150 @@ push. It does not repeat other tools:
 - **Repository context** comes from the project hooks in `.claude/settings.json`: they give
   subagents the root `AGENTS.md`, and add the matching rules and area `AGENTS.md` after Bash,
   Grep and Glob calls. Read and Write load them natively.
-- **This skill adds** the rule check against `.agents/rules/`, the checks the diff cannot show,
-  a local cubic run, one verified list of findings, and the fixes.
+- **This skill adds** the rule check, the checks the diff cannot show, a local cubic run, one
+  verified list of findings, and the fixes.
 
-## Phase 0 — Preconditions and context
+## Phase 0 — Scope and context
 
-1. **The session must start at the repository root.** If the working directory is not the
-   repository root, stop and tell the user to restart there: Claude Code then loads no rules
-   and runs no project hooks, so every reviewer would work without the repository's context.
-2. **The context hooks must be set up.** If `.claude/settings.json` has no `SubagentStart` and
-   `PostToolUse` entry running `.agents/scripts/repo-context.py --hook`, tell the user that
-   the `code-review` subagents will then miss the rules after Bash, Grep and Glob calls, and
-   Explore subagents the root `AGENTS.md`. Ask whether to stop (copy the settings, restart the
-   session) or continue; the rule reviewers in Phase 3 get their rules explicitly either way.
-   Note the answer for the report.
-3. Run the manifest and show it to the user:
+1. **Run the manifest** and show it:
 
    ```bash
-   python3 .agents/scripts/repo-context.py [--base <branch>]
+   python3 .agents/scripts/repo-context.py [--base <branch>] [--committed] [--exclude '<glob>' ...]
    ```
 
-   It prints the base branch and how it was chosen (the argument, the open PR's base, or the
-   closer of `stable` and `develop`), the changed files by area including uncommitted ones, the
-   submodule pointers left out, every rule that applies with the glob and file that matched,
-   and the `AGENTS.md` files that cover the change. Exit code 1 means nothing changed: say so
-   and stop. Every later step uses this base and this list.
+   It prints the base, the changed files by area, each rule that applies and why, the `AGENTS.md`
+   files, and the uncommitted files outside the committed range. Exit code 1: nothing to review.
+2. **Decide on uncommitted files** outside the committed range. Show them and ask, per group:
+   - **Review them** as part of the change.
+   - **Leave them out**: rerun with `--committed`, or `--exclude` for copied tooling such as
+     `.agents/**`, `AGENTS.md`, `CLAUDE.md`, `cubic.yaml`, `.claude/settings.json`.
+   - **Set them aside**, for local changes that must never be committed:
+     `git stash push --include-untracked -m "reviewing-changes <timestamp>" -- <paths>`, then
+     record `git rev-parse stash@{0}`. The report restores them.
+
+   Every later step reviews only the files the final manifest lists.
+3. **Check that the context hooks ran**: `python3 .agents/scripts/repo-context.py --hooks-status`.
+   It fails when the session started in another checkout or a subfolder, or the hooks are not set
+   up. When it fails, say that the hooks are inactive, and put the matching rule and `AGENTS.md`
+   paths from the manifest into every subagent prompt, the `code-review` arguments included.
 4. Fixing is allowed unless the arguments say `report`, or the branch is `stable`, `develop` or
    `release-*`.
 
 ## Phase 1 — Start cubic in the background
 
 If `command -v cubic` or `~/.cubic/bin/cubic` finds the CLI, start
-`<cubic> review --base <base> --json` with `run_in_background`; it takes several minutes and
-reviews commits only. If it is missing, note "cubic not installed" for the report and go on.
+`<cubic> review --base <base> --json` with `run_in_background`; it takes several minutes.
+cubic reviews the working tree as well as the commits, so it also sees uncommitted files left
+out of the review. Its findings on those paths go to "Out of scope" in the report. If the CLI
+is missing, note "cubic not installed" and go on.
 
 ## Phase 2 — Bugs
 
-Invoke the `code-review` skill on the branch against `<base>` at level `high`. Keep its findings
-for Phase 5; do not let it apply fixes.
+Invoke the `code-review` skill at level `high` on the branch against `<base>`, limited to the
+files in the manifest. Keep its findings for the verification; do not let it apply fixes.
 
-## Phase 3 — Rules
+## Phase 3 — Rules and docs
 
-For each area in the manifest that has rules, spawn one reviewer (`subagent_type: Explore`,
-read-only) with its rule paths, its `AGENTS.md` paths and its changed files, and these
-instructions:
+For each area in the manifest, spawn one reviewer (`subagent_type: Explore`, read-only) with the
+area's rule paths, `AGENTS.md` paths and changed files. The `dev-docs` area also gets
+`dev/guidelines/documentation.md` ("For Internal Docs" and "Don't"); the `changelog` area gets
+the `creating-changelog-entries` skill. Instructions:
 
-1. Read every rule and `AGENTS.md` listed, with the Read tool, before any code.
-2. Read each changed file with the Read tool. Report only violations of the listed rules, on
-   changed lines, each citing the rule as `path:line`. Respect each rule's "Not violations"
-   list. Bugs are out of scope: another reviewer covers them.
-3. When the code raises a question the rules do not answer, find the article in the
-   `AGENTS.md` index and read it.
-4. Grade each finding: **P1** breaks an always/never rule, **P2** breaks another written rule,
-   **P3** is a preference no rule settles.
-5. Start the answer with `RULES READ:` and one line per rule with its main point for this change.
+1. Read every listed rule, guideline and `AGENTS.md` with the Read tool before any code.
+2. Read each changed file with the Read tool. Report only violations of what you read, on changed
+   lines, citing the source as `path:line` and respecting each "Not violations" list. No bugs.
+3. For a question the rules do not answer, find the article in the `AGENTS.md` index and read it.
+4. Grade each finding: **P1** breaks an always/never rule, **P2** another written rule, **P3** a
+   preference no rule settles.
+5. Start the answer with `READ:` and one line per file read, with its main point for this change.
 
-If a listed rule is missing from `RULES READ`, send the reviewer back once; if still missing,
-mark that area's rule check as incomplete in the report.
+If a listed file is missing from `READ`, send the reviewer back once; if still missing, mark that
+area's check as incomplete in the report.
 
-Also flag, from `git diff -U0 origin/<base>...HEAD`, added comments that contain a ticket or spec
-ID (`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`) or history (`used to`, `no longer`,
+Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a ticket or spec ID
+(`[A-Z]{2,}-[0-9]+`, `\bT[0-9]{3}\b`, `issues/[0-9]+`) or history (`used to`, `no longer`,
 `previously`, `instead of`), cited to `.agents/rules/code-doc-style.md`.
 
 ## Phase 4 — What the diff cannot show
 
-- **Specs.** If `specs/` or `dev/specs/` changed, run `speckit-analyze`, and check that `plan.md`
-  and `tasks.md` describe the code that shipped (signatures, file names, what was deferred).
-- **Claims.** The drafted PR description, changelog fragment and docs match the diff: no "all"
-  where the code covers some, no deferred work described as done.
-- **Changelog.** A user-visible change has a Towncrier fragment in `changelog/`, named as
-  `creating-changelog-entries` describes.
-- **Generated files.** A GraphQL schema change includes the regenerated SDK protocols and the
-  frontend `gql.tada` cache.
+- **Specs.** If `specs/` or `dev/specs/` changed, collect the task IDs the diff touches in
+  `tasks.md`. One subagent compares `spec.md`, `plan.md` and `tasks.md` with the code for those
+  tasks only: signatures, file names, deferred work, and departures from a requirement. Run
+  `speckit-analyze` only when the change rewrites the spec as a whole.
+- **Claims.** Check the PR description against the diff: the open PR's
+  (`gh pr view <n> --json body`) when one exists, otherwise the draft. Also check the changelog
+  fragment and docs. No "all" where the code covers some, no deferred work described as done,
+  no counts or sources that differ from the code.
+- **Changelog and generated files.** A user-visible change has a `changelog/` fragment; a GraphQL
+  schema change includes the regenerated SDK protocols and the frontend `gql.tada` cache.
 - **Base branch.** Docs-only and tooling-only changes target `stable`.
 
 ## Phase 5 — One verified list
 
-1. Collect cubic's result. If its JSON `error` field is set, `issues` means nothing: report the
-   error and never present that run as clean.
-2. Merge the findings from Phases 2 to 4 and cubic, and remove duplicates.
-3. Verify each one by reading the code at the line and its callers, then classify it: **Fix**
-   (real, part of this change), **Decline** (contradicts a rule's "Not violations" list or does
-   not survive the source; one-sentence reason), or **Defer** (real, outside this change).
+1. **Read cubic's result** from the exit code, stderr and JSON together:
+   - `error` set: the run failed and `issues` means nothing. Report the error.
+   - Exit code 1 with `error` null: cubic found issues; take them.
+   - Any other non-zero exit, or an empty result without a clear success: report the exit code
+     and stderr. Never present such a run as clean.
+2. **Merge** the bug, rule, diff-cannot-show and cubic findings, and remove duplicates. Move
+   findings on paths outside the manifest to "Out of scope".
+3. **Verify each finding** by reading the code at the line and its callers. When the finding
+   depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
+   `.venv/lib/.../site-packages/...`) before deciding. Then classify it:
+   **Fix** (real, part of this change), **Decline** (contradicts a "Not violations" list or does
+   not survive the source; one-sentence reason) or **Defer** (real, outside this change).
+   Corrections to an open PR's description are Defer, with the corrected sentence: they change
+   GitHub, not the code.
 
-## Phase 6 — Fix
+## Phase 6 — Fix and review the fixes
 
 Skip for a report-only run. Show the classified list and wait for approval. Fix the approved
 items with the smallest change each, run the checks in the touched area's `AGENTS.md`, and do
-not commit: the user reviews the fixes. Then rerun Phases 2 and 3 on the files the fixes
-touched. Stop when no P1 or P2 remains other than declined or deferred ones, or after three
-rounds.
+not commit: the user reviews the fixes.
+
+Then review the fixes as a new change. This is not optional: a fix can break something the first
+round never looked at, or fix a finding only partly.
+
+- **Scope**: `git diff HEAD --name-only`, minus the paths left out or set aside in the scope
+  step.
+- **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
+- **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
+  change and asked to check the fixed lines and the code around them.
+
+Stop when no P1 or P2 remains other than declined or deferred ones, or after three rounds.
 
 ## Phase 7 — Report
+
+If files were set aside, restore them first: `git stash apply <sha>`, then drop that entry
+(`git stash list --format='%gd %H'` gives its reference).
 
 ```markdown
 ## Pre-push review — <branch> (base: <base>, from <argument | PR | closest of stable/develop>)
 
+Scope: <committed only | committed and uncommitted>; left out: <globs or "nothing">; set aside: <paths or "nothing">
+Context hooks: <active | inactive: paths passed explicitly>
 P1: <n> | P2: <n> | P3: <n> — fixed: <n>, declined: <n>, deferred: <n>, rounds: <n>
-cubic: <ran, n findings | error: <message> | not installed>
+cubic: <exit code, n findings | error: <message> | not installed>
 
 ### Context
 | File | Kind | Why it applies | Read by |
 |---|---|---|---|
-| <path> | Rule / AGENTS.md / Article opened | <glob match, or the question> | <reviewer, or "not read"> |
+| <path> | Rule / AGENTS.md / Guideline / Article opened | <glob match, or the question> | <reviewer, or "not read"> |
 
 ### Fixed
-- `file:line` — <finding> (<rule path:line, or the failure>)
+- `file:line` — <finding> (<source path:line, or the failure>)
 
 ### Declined — paste into the PR description
 - `file:line` — "<finding>": <reason>
 
 ### Deferred
-- `file:line` — <finding>
+- `file:line` — <finding>, or the corrected PR-description sentence
 
 ### Advisory (P3)
 - `file:line` — <one line>
+
+### Out of scope (excluded paths)
+- `file:line` — <finding> (<source>) — not counted above
 
 ### Gaps in the rules
 <findings declined because a rule did not say so, and changed areas no rule covers>
@@ -152,14 +181,13 @@ cubic: <ran, n findings | error: <message> | not installed>
 Propose each of these, and apply only with the user's approval:
 
 - **A "Not violations" line** in a rule, for a finding declined because the rule did not mention
-  the accepted pattern.
+  the accepted pattern. When the declined pattern is debt rather than an accepted pattern,
+  propose a cleanup task instead: a rule states the target, not exceptions for existing code.
 - **A new rule line** in `.agents/rules/`, for what cubic or a reviewer caught that no rule states.
 - **A `paths:` glob or a new rule file**, for each changed area that no rule's globs cover.
 - **A better "load before" line** in an `AGENTS.md`, for each article a reviewer had to open on
-  its own (the "Article opened" rows of the context table): say when that article applies, so
-  the next agent is pointed to it.
+  its own: say when that article applies, so the next agent is pointed to it.
 
-Keep the files of each `cubic.yaml` entry under 9,000
-characters (`wc -m`); cubic drops everything past 10,000. A new rule file with new paths also
-goes in `cubic.yaml`, and a new `dev/` article needs a line in its area's `AGENTS.md`
-(`repo-context.py --check-index` fails in CI until it has one).
+Keep each `cubic.yaml` entry under 9,000 characters (`wc -m`); cubic drops everything past
+10,000. A new rule file with new paths also goes in `cubic.yaml`; a new `dev/` article needs an
+`AGENTS.md` line, or `repo-context.py --check-index` fails in CI.
