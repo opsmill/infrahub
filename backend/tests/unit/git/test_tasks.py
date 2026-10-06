@@ -3,10 +3,15 @@ from uuid import uuid4
 
 import pytest
 
-from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, Severity, ValidatorConclusion
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
-from infrahub.git.tasks import format_check_log_entry, resolve_initial_import_branch
+from infrahub.git.tasks import (
+    ImportStatusOutcome,
+    evaluate_import_status,
+    format_check_log_entry,
+    resolve_initial_import_branch,
+)
 
 
 @dataclass
@@ -107,3 +112,72 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 
     assert "\n" not in rendered
     assert rendered.count("[ERROR]") == 1
+
+
+@dataclass(frozen=True, kw_only=True)
+class ImportStatusCase:
+    name: str
+    sync_status: str | None
+    internal_status: str
+
+
+PASSING_IMPORT_STATUS_CASES = [
+    ImportStatusCase(
+        name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE.value
+    ),
+    ImportStatusCase(
+        name="in_sync",
+        sync_status=RepositorySyncStatus.IN_SYNC.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="syncing",
+        sync_status=RepositorySyncStatus.SYNCING.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="unknown",
+        sync_status=RepositorySyncStatus.UNKNOWN.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="inactive_after_import_error",
+        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=RepositoryInternalStatus.INACTIVE.value,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", PASSING_IMPORT_STATUS_CASES, ids=[case.name for case in PASSING_IMPORT_STATUS_CASES])
+def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCase) -> None:
+    outcome = evaluate_import_status(
+        sync_status=case.sync_status,
+        internal_status=case.internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+    )
+
+    assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+
+
+@pytest.mark.parametrize(
+    "internal_status", [RepositoryInternalStatus.ACTIVE.value, RepositoryInternalStatus.STAGING.value]
+)
+def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> None:
+    outcome = evaluate_import_status(
+        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+    )
+
+    assert outcome == ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            "The last import of the objects from repository 'dealership-car' on branch 'remove-ca' failed, so the "
+            "objects registered for this repository do not match the content of the branch. Merging would apply "
+            "the rest of the branch without them. Review the latest 'Import objects' task for this repository, "
+            "resolve the cause and run the checks again."
+        ),
+    )

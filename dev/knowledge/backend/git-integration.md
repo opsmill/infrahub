@@ -183,6 +183,21 @@ the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = 
 attribute never appears in a branch diff or a proposed change, and can never produce a merge
 conflict. That is why nobody has ever had to resolve a conflict on `sync_status`.
 
+`sync_status` still never diffs or conflicts, but it is no longer invisible on a proposed change:
+the repository validator fails the pipeline when the source branch recorded `error-import`.
+
+Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
+isolated, so a branch that never imported a repository reads the value its base branch held at
+`branched_from`, frozen there: a branch created while the default
+branch was in `error-import` keeps reading `error-import` after the default branch recovers, until
+it is rebased. The import check therefore only counts a value the source branch wrote
+(`git/sync_status.py::RepositoryBranchSyncStatusReader`), recognised by the attribute's `updated_at`
+being at or after `branched_from`; an inherited value is older and passes.
+
+The comparison must be `>=`, not `>`. A rebase (`RebaseBranchQuery`) sets `from` on every live edge
+of the branch to the rebase time and moves `branched_from` to that same time, so a value the branch
+wrote before the rebase ends up with `updated_at == branched_from`.
+
 AGNOSTIC buys conflict-freedom but **not** invisibility: agnostic nodes do reach the diff, forced
 to `DiffAction.UPDATED` because a globally-stored node has no created/deleted distinction on a branch
 (`core/diff/query_parser.py`). New per-branch operational state belongs on the repository node as a
