@@ -601,7 +601,7 @@ read-write repository's configured default branch. Neither writes a record.
 
 **Maps to**: FR-002, SC-007.
 
-- [ ] T077 [US6] Write the suppression marker's read and write in
+- [x] T077 [US6] Write the suppression marker's read and write in
       `backend/infrahub/git/divergence/suppression.py`, per [data-model.md](data-model.md),
       "Cache key". Reading and deleting are separate steps: the delete happens only after the
       commit write for that branch succeeds.
@@ -637,10 +637,11 @@ read-write repository's configured default branch. Neither writes a record.
       returns early on any classification other than `REWRITE`, so a marker read there would never
       be consumed on a `RETARGET` and would go on to suppress the next genuine rewrite.
 - [ ] T083 [P] [US6] Unit-test the suppression in
-      `backend/tests/unit/git/divergence/test_suppression.py`: a present marker yields
-      `target_changed` true and is gone afterwards, and an absent marker yields false. Both
-      directions are asserted, so the behaviour is stated rather than assumed. Assert the marker is
-      consumed exactly once, which is what stops it suppressing a later genuine rewrite.
+      `backend/tests/unit/git/divergence/test_suppression.py`: a present marker that names the git
+      branch the cycle synchronises yields `target_changed` true and is gone afterwards, and an
+      absent marker yields false. Both directions are asserted, so the behaviour is stated rather
+      than assumed. Assert the marker is consumed exactly once, which is what stops it suppressing
+      a later genuine rewrite.
 - [ ] T084 [US6] Component-test both re-point paths in
       `backend/tests/component/graphql/mutations/test_repository.py`: a `CoreRepository`
       `default_branch` edit writes the cache marker before the workflows are submitted, and a

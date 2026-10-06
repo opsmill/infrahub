@@ -695,7 +695,14 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
    its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
    webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
-   every marker to one cycle.
+   every marker to one cycle. The sweep keeps the marker of a trunk that failed in this cycle, so
+   the retry of rule 4 still finds it.
+9. **A marker applies only to a cycle that synchronises the target it names.** The cycle reads
+   `default_branch` when it builds the repository, before it reads or sweeps the marker. An edit
+   that lands between the two leaves a cycle that synchronises the old target while the marker
+   names the new one. That cycle neither uses the marker nor deletes it, so the next cycle, which
+   synchronises the new target, still finds it. Without this rule the sweep of rule 8 deletes the
+   marker, and the next cycle records a false rewrite and **fires the trunk webhook**.
 
 > The recorder must not be the reader. It writes nothing unless the classification is already
 > `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive

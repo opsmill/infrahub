@@ -252,12 +252,12 @@ chosen, and why the recorder must not be the reader.
 | Property | Value |
 |---|---|
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
-| Value | The new tracking target, for diagnostics only. |
+| Value | The new tracking target: the git branch that now feeds Infrahub's default branch. A marker applies only to a cycle that synchronises that same git branch, so a cycle that started before the edit neither uses it nor deletes it. |
 | Time to live | One hour. |
 | Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands after the update succeeds and before any workflow is submitted. |
 | Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
-| Read when | Before every classification, not only before a `REWRITE`. |
-| Effect | Makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
+| Read when | Before every classification of Infrahub's default branch, not only before a `REWRITE`. No other branch can be re-pointed, so no other branch carries a marker. |
+| Effect | A marker that names the git branch this cycle synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
 | Consumed | Yes, but only after the commit write for that branch succeeds. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
 
 **The recorder must not read this key.** It returns early on any classification other than

@@ -257,9 +257,10 @@ travels in band on the workflow model.
   `super().mutate_update` immediately for any kind other than read-only, so nothing there compares
   the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
   early return. It is a change to the mutation, not a reuse.
-- Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
-  so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the
-  record is skipped. The delete happens after the commit write, not at the read.
+- Reader: **the detector's caller, and nothing else.** A marker that names the git branch the cycle
+  synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still
+  reset onto the remote head; only the record is skipped. The delete happens after the commit
+  write, not at the read.
 - Scope: **read-write repositories only.** A read-only re-target is carried in band on the
   workflow model, because the mutation already computes the comparison. That removes the cache from
   the read-only path entirely: no expiry, no timing question, no lost marker.
