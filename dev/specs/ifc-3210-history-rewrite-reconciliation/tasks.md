@@ -656,7 +656,7 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/merge-failure-recovery.md`. It attributes the merge-start logic to
       `core/branch/tasks.py::_do_merge_branch`. That logic now lives in
       `core/merge/orchestrator.py`. Check the surrounding prose for the same claim.
-- [ ] T089 Rewrite **two** of the three "Volatile section" notes in
+- [x] T089 Rewrite **two** of the three "Volatile section" notes in
       `dev/knowledge/backend/git-integration.md`. The one under "How git errors are classified"
       describes this feature as planned; it now describes what shipped: the ancestry detection, the
       pull-path reset, the widened broadcast and the record. The one on the merge ordering
@@ -676,8 +676,9 @@ read-write repository's configured default branch. Neither writes a record.
       reset reads the worktree against the remote head and moves such a branch onto it, so the
       once-a-minute log line stops.
       The writeback spec of IFC-3220 rewrote the merge-ordering section and replaced its note.
-      IFC-3281 corrected the divergence gap and this known limitation. The note under "How git
-      errors are classified" waits for Phases 4 to 6.
+      IFC-3281 corrected the divergence gap and this known limitation. IFC-3283 rewrote the note
+      under "How git errors are classified" once Phases 4 to 6 landed. It keeps a smaller volatile
+      note for the trunk signal and for the recovery of a refused Git merge, which are not built.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The

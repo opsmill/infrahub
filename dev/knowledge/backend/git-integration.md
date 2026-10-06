@@ -250,20 +250,40 @@ upstream silently reclassifies an error to the generic fallthrough.
 One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
 `push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-A diverged pull gets a message of its own. The workers configure no `pull.rebase` or `pull.ff`
-(`workers/infrahub_async.py::set_git_global_config`), so `git pull` on a branch whose remote history
-was rewritten fails with "Need to specify how to reconcile divergent branches". The classifier reports
-that as a local history and a remote history that have diverged, never as a conflict. Only "you have
+A diverged history gets a message of its own, never a conflict. The classifier maps git's "Need to
+specify how to reconcile divergent branches" to `RepositoryDivergentHistoryError`. Only "you have
 unmerged files", which is a conflict git observed, is reported as one.
 
-The periodic sync does not reach that failure for a rewritten branch. `compare_local_remote` compares
-heads by equality only, but the sync collector then classifies each branch by ancestry and resets a
-branch worktree that does not lead to the remote head. [Git Sync](git-sync.md#rewritten-history)
-describes how.
+No path runs `git pull`. Each path that moves a branch worktree from the remote compares it with the
+remote head by ancestry first, and resets a worktree that does not lead to that head:
 
-> **Volatile section.** `InfrahubRepositoryBase.pull` still raises on a diverged branch, so a worker
-> that advances a branch outside the sync collector does not reset it yet. No record of a rewrite is
-> stored. Update this section when those land.
+- The periodic sync resets in its collector. `compare_local_remote` compares heads by equality only,
+  and the collector then classifies each branch by ancestry.
+  [Git Sync](git-sync.md#rewritten-history) describes how.
+- `InfrahubRepositoryBase.pull` fetches the branch and hard-resets onto the remote head when the
+  worktree does not lead to it. Otherwise it fast-forwards with `git merge --ff-only`, whatever the
+  pull settings of the clone. The reset writes the commit only when the caller asks for it
+  (`update_commit_value`), writes no rewrite record and emits no event. The `RefreshGitFetch`
+  handler reaches it when a message pins no commit, so a worker that missed a broadcast converges on
+  its own.
+
+A merge goes through neither path: it builds on the local destination and merges the local source
+ref. Two checks keep it off a rewritten history:
+
+- Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the trunk
+  with `git ls-remote` and compares them with the commits the graph records
+  (`git/merge_readiness.py::RemoteHeadsMergeCheck`). While one differs, it refuses the merge with
+  `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
+  cycle. A remote that cannot be read does not block the merge.
+- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches and compares both
+  branches again. A branch whose clone does not lead to the remote head is reset when the graph
+  commit equals that head, and the merge is refused with `RepositoryDivergentHistoryError` when it
+  does not. That refusal comes after the graph merge: the branch is merged in Infrahub and not in
+  Git, nothing runs the Git merge again, and the message tells the user to finish the merge in Git.
+
+> **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
+> the guard refused. The delivery queue specified in `dev/specs/ifc-3220-writeback-failure-handling/`
+> owns that recovery. Update this section when either lands.
 
 ## Known limitations
 
