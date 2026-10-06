@@ -976,8 +976,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
             self.create_commit_worktree(commit=commit_after)
         elif create_if_missing and branch_id:
-            # create_branch_in_git already syncs any matching remote branch, and a local-only
-            # branch has no upstream ref to pull from, so skip the fast-forward here.
+            # A new branch already starts at its remote tip, and a local-only one has nothing to pull.
             repo = await self._create_branch_worktree(branch_name, branch_id)
             commit_after = str(repo.head.commit)
         else:
