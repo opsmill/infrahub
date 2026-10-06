@@ -271,6 +271,21 @@ async def test_failure_without_a_cause_keeps_the_stored_cause(subject: StoreUnde
     )
 
 
+async def test_record_failure_removes_the_credentials_from_the_stored_message(subject: StoreUnderTest) -> None:
+    await _enqueue(subject, pending_merge("e1"))
+    conflict = DeliveryFailure(
+        cause=RepositoryDeliveryFailureCause.REPLAY_CONFLICT,
+        retryable=False,
+        message="The merge of feature-1 conflicts with https://user:token@host/repo.git.",
+    )
+
+    await subject.store.record_failure(
+        repository_id=subject.repository_id, failure=conflict, final=True, retry_due_at=None
+    )
+
+    assert (await subject.read()).error == "The merge of feature-1 conflicts with https://host/repo.git."
+
+
 async def test_final_failure_on_an_empty_queue_never_changes_the_status(subject: StoreUnderTest) -> None:
     async with subject.expect_transition(saved={FAILURE_CAUSE, ERROR, PROGRESS}):
         await subject.store.record_failure(
@@ -723,7 +738,7 @@ async def test_timed_out_acquire_raises_and_writes_nothing(subject: StoreUnderTe
             DeliveryStateUnavailableError,
             match=(
                 rf"^The lock of the delivery state of repository {re.escape(subject.repository_id)} "
-                r"was not acquired within 10 seconds\.$"
+                r"was not acquired within 10 seconds; try again\.$"
             ),
         ):
             await subject.store.enqueue(repository_id=subject.repository_id, entry=pending_merge("e1"), widen=False)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -15,6 +15,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.exceptions import DeliveryStateUnavailableError
+from infrahub.git.writeback.classifier import scrub_credentials
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
@@ -118,8 +119,10 @@ class WritebackIntentStore:
     async def record_failure(
         self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
     ) -> None:
+        scrubbed = replace(failure, message=scrub_credentials(text=failure.message))
+
         def transition(state: _LockedState) -> tuple[WritebackIntent, None]:
-            failed = state.intent.with_failure(failure=failure, final=final, retry_due_at=retry_due_at, now=state.now)
+            failed = state.intent.with_failure(failure=scrubbed, final=final, retry_due_at=retry_due_at, now=state.now)
             return failed, None
 
         await self._transition(repository_id=repository_id, transition=transition)

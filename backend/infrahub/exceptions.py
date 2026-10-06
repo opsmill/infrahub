@@ -492,7 +492,7 @@ class DeliveryStateUnavailableError(ServiceUnavailableError):
         super().__init__(
             message=(
                 f"The lock of the delivery state of repository {repository_id} "
-                f"was not acquired within {acquire_seconds} seconds."
+                f"was not acquired within {acquire_seconds} seconds; try again."
             )
         )
 

@@ -536,6 +536,16 @@ SCRUB_CASES: list[ScrubCase] = [
         ),
     ),
     ScrubCase(
+        name="url_right_after_an_underscore",
+        text="loc=_https://u:tok@h",
+        expected="loc=_https://h",
+    ),
+    ScrubCase(
+        name="url_right_after_a_digit",
+        text="1https://u:tok@h",
+        expected="1https://h",
+    ),
+    ScrubCase(
         name="text_with_no_credentials_stays_as_it_is",
         text="Ask admin@example.com about https://gitlab.example.com:8443/team@infra/repo.git?ref=a@b",
         expected="Ask admin@example.com about https://gitlab.example.com:8443/team@infra/repo.git?ref=a@b",

@@ -18,8 +18,9 @@ from infrahub.exceptions import (
 from infrahub.git.models import PushRejectionReason
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryStage
 
+# The match starts where a run of scheme characters starts, so a URL right after a digit or an "_" is found.
 # A password can hold an "@", so the user part runs to the last "@" before the host.
-URL_USER_PART = re.compile(r"(?P<scheme>\b[A-Za-z][A-Za-z0-9+.-]*://)[^\s/?#'\"<>]+@")
+URL_USER_PART = re.compile(r"(?P<scheme>(?<![A-Za-z0-9+.-])[0-9+.-]*[A-Za-z][A-Za-z0-9+.-]*://)[^\s/?#'\"<>]+@")
 
 RETRIED_CAUSES = frozenset(
     {
