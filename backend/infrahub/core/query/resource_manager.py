@@ -348,6 +348,53 @@ class NumberPoolGetReserved(Query):
         ]
 
 
+class NumberPoolGetTrackingPool(Query):
+    """Find the number pool whose live IS_RESERVED edge points at an Attribute vertex."""
+
+    name = "numberpool_get_tracking_pool"
+    type = QueryType.READ
+
+    def __init__(
+        self,
+        attribute_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.attribute_id = attribute_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["attribute_id"] = self.attribute_id
+        self.params["at"] = self.at.to_string()
+
+        query = """
+        MATCH (attr:Attribute { uuid: $attribute_id })
+        WITH attr
+        LIMIT 1
+        CALL (attr) {
+            // --------
+            // assumes IS_RESERVED is on the global branch
+            // --------
+            MATCH (pool:Node:%(number_pool)s)-[r:IS_RESERVED]->(attr)
+            WHERE r.from <= $at AND (r.to IS NULL OR r.to > $at)
+            ORDER BY r.from DESC, r.status ASC
+            RETURN pool.uuid AS pool_id, r.status = "active" AS is_active
+            LIMIT 1
+        }
+        WITH pool_id
+        WHERE is_active = TRUE
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        self.add_to_query(query)
+        self.return_labels = ["pool_id"]
+
+    def get_pool_id(self) -> str | None:
+        """Return the id of the tracking pool, or None if no live IS_RESERVED edge points at the attribute."""
+        result = self.get_result()
+        if result:
+            return result.get_as_type("pool_id", return_type=str)
+        return None
+
+
 class IPPoolChangeReserved(Query):
     """Point an IP pool's IS_RESERVED edges at a new identifier.
 

@@ -105,7 +105,7 @@ class TestNumberPoolLookupByName:
     ) -> None:
         schema = registry.schema.get_node_schema(name="TestingTicket", branch=default_branch_scope_class)
         ticket = await Node.init(db=db, schema=schema, branch=default_branch_scope_class)
-        await ticket.new(db=db, title="ticket-for-update-by-name", ticket_id=42)
+        await ticket.new(db=db, title="ticket-for-update-by-name")
         await ticket.save(db=db)
 
         gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)

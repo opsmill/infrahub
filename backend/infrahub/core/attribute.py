@@ -79,6 +79,20 @@ def validate_string_length(value: str | None) -> None:
         raise ValidationError(f"Text attribute length should be less than {MAX_STRING_LENGTH} characters.")
 
 
+class PayloadPresence(Enum):
+    """Whether a payload field was left out, sent as an explicit null, or sent with a value."""
+
+    ABSENT = "absent"
+    NULL = "null"
+    SET = "set"
+
+    @classmethod
+    def of(cls, data: dict, key: str) -> PayloadPresence:
+        if key not in data:
+            return cls.ABSENT
+        return cls.NULL if data[key] is None else cls.SET
+
+
 class PoolPropertyData(NodePropertyData):
     provenance: PoolRecordProvenance
 
@@ -130,6 +144,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.is_default = is_default
         self.is_from_profile = is_from_profile
         self.from_pool: dict | None = None
+        self.value_presence = PayloadPresence.ABSENT
+        self.from_pool_presence = PayloadPresence.ABSENT
         self.pool_provenance = PoolRecordProvenance.ALLOCATED
 
         self._init_node_property_mixin(kwargs)
@@ -150,6 +166,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         elif isinstance(data, dict):
             self.value = data.get("value")
             self.from_pool = data.get("from_pool")
+            self.value_presence = PayloadPresence.of(data=data, key="value")
+            self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
 
             if "is_default" in data:
                 self.is_default = data.get("is_default")
@@ -164,6 +182,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             self.is_default = True
         else:
             self.value = data
+            self.value_presence = PayloadPresence.SET
 
         # Assign default values
         if self.value is None and self.schema.default_value is not None:
@@ -653,6 +672,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     ) -> bool:
         """Update attr from GraphQL payload."""
         changed = False
+        self.value_presence = PayloadPresence.of(data=data, key="value")
+        self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
         if "value" in data:
             if self.is_enum:
                 value_to_set = self.schema.convert_value_to_enum(data["value"])

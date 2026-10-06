@@ -54,7 +54,7 @@ class FromPoolIntentResolver:
     def _resolve_pool_alone(self, request: FromPoolRequest) -> FromPoolIntent:
         if request.tracking_pool_id == request.from_pool_id:
             return FromPoolIntent.NO_OP
-        # Overwriting a number nobody asked the pool to replace is ambiguous between attach and reallocate.
-        if request.tracking_pool_id is None and request.held_value is not None and not request.held_value_is_default:
+        # A pool named over a number the attribute holds could mean attach it or replace it.
+        if request.held_value is not None and not request.held_value_is_default:
             return FromPoolIntent.REFUSE
         return FromPoolIntent.ALLOCATE
