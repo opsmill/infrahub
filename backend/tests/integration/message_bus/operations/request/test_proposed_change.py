@@ -104,6 +104,7 @@ async def sync_repository(repo: InfrahubRepository) -> None:
     syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
     outcome = await syncer.sync(repo)
     assert outcome.failed == ()
+    assert outcome.report.imported_branches == ("change1",)
 
 
 class TestProposedChange(TestInfrahubApp):
