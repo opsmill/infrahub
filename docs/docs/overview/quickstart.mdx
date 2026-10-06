@@ -13,7 +13,7 @@ This quick start serves a dual purpose: it teaches you the fundamentals of Infra
 
 **Time**: ~30 minutes
 
-**What you will build**: A running Infrahub instance with a network location data model, location data, and a branch with proposed changes.
+**What you will build**: A running Infrahub instance with a network location data model, location data, and a branch holding changes that are not yet on `main`.
 
 :::note
 Running Infrahub locally with Docker is the most convenient setup for development and experimentation, but it requires a machine with adequate resources. See [hardware requirements](../deploy-manage/install-configure/hardware-requirements) for details. If you prefer a lighter option, try the [Infrahub Sandbox](https://sandbox.infrahub.app/) or the [Getting Started Lab](https://opsmill.instruqt.com/pages/labs) instead.
@@ -218,6 +218,8 @@ You now have a working Infrahub development environment. You know how to:
 - Load a schema to define your data model
 - Create infrastructure objects from YAML files
 - Use branches to isolate changes from the main dataset
+
+Your `add-locations` branch is still waiting to be merged. [Review and merge a change](../learn/tutorials/review-and-merge-a-change) takes it the rest of the way, through review, validation and approval.
 
 The [Next Steps](./next-steps.mdx) guide walks you through turning this local setup into a proof of concept for your organization — from designing your own schema to generating artifacts and deploying to a shared environment.
 
