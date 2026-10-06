@@ -875,11 +875,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
             return
 
-        # Every worker in the pool fetches a read-only repository while holding its lock, which has
-        # no expiry, so a stalled remote must not be able to hold that lock indefinitely.
-        # GitPython <=3.2.0 never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
-        # A read-only repository may track a tag, and git refuses to move an existing tag unless forced;
-        # the commit it used to point at stays readable through its own worktree.
+        # A stalled remote must not hold the repository lock, which has no expiry, and GitPython <=3.2.0
+        # never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
+        # git refuses to move an existing tag unless forced; the tag's old commit stays readable through its own worktree.
         run_git_with_deadline(
             ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
             working_directory=git_repo.working_dir,
