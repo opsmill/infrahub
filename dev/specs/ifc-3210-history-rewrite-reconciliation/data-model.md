@@ -275,4 +275,4 @@ marker would then survive its full hour and suppress the next genuine rewrite of
 | `internal_status` | Unrelated to reconciliation. |
 | `commit` on any kind | The reconciled commit is recorded the way every other commit is. |
 | `NodeMutationOrigin` | No new member. Not because the trigger builders would need changing, they match `live` explicitly and ignore a new value for free, but because the SDK mutation that writes the record always stamps `live`. See `research.md` R6. |
-| The SDK client (`python_sdk`) | The recorder writes with its own GraphQL mutation, run through the SDK client, so no SDK method changes. The generated `infrahub_sdk/protocols.py` still gains the four attributes, so one SDK PR lands first and the submodule pointer follows it. |
+| The SDK client (`python_sdk`) | The recorder writes through the SDK node API, so no SDK method changes. The generated `infrahub_sdk/protocols.py` still gains the four attributes, so one SDK PR lands first and the submodule pointer follows it. |

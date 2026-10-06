@@ -360,8 +360,7 @@ The handler prefers the list when it is present.
 ## R6. How the record is written
 
 **Decision**: a new `HistoryRewriteRecorder` in `backend/infrahub/git/` writes the four attributes
-with one GraphQL mutation run through the SDK client, on the Infrahub branch the reconciliation
-targeted. It is the sole write
+through the SDK node API, on the Infrahub branch the reconciliation targeted. It is the sole write
 path for those attributes.
 
 **Why not extend the existing commit write.** `git/base.py::InfrahubRepositoryBase.update_commit_value`

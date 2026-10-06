@@ -51,8 +51,9 @@ query RepositoryRewriteRecord($repository_id: ID!) {
 
 # --- Write surface ------------------------------------------------------------------------------
 #
-# The recorder is the sole writer. It uses the generated update mutation of the repository generic
-# on the target Infrahub branch, so one mutation serves both repository kinds. No new mutation is introduced, and no new permission is introduced:
+# The recorder is the sole writer. It uses the generated update mutation for the repository kind on
+# the target Infrahub branch, which the SDK node API builds from the node's own kind and sends with
+# the changed fields only. No new mutation is introduced, and no new permission is introduced:
 # the values are readable by anyone who can read the repository.
 #
 # Type conventions in this codebase:
@@ -65,15 +66,15 @@ mutation RecordRepositoryRewrite(
   $previous_commit: String!
   $commit: String!
   $rewritten_at: String!
-  $rewrite_count: BigInt!
+  $count: BigInt!
 ) {
-  CoreGenericRepositoryUpdate(
+  CoreRepositoryUpdate(
     data: {
       id: $repository_id
       last_rewrite_previous_commit: { value: $previous_commit }
       last_rewrite_commit: { value: $commit }
       last_rewrite_at: { value: $rewritten_at }
-      rewrite_count: { value: $rewrite_count }
+      rewrite_count: { value: $count }
     }
   ) {
     ok

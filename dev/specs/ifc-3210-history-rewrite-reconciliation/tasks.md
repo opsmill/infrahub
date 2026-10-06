@@ -432,7 +432,7 @@ emits no signal.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2, "Where it is
       called".
 - [x] T058 [US1] Write the production `RepositoryRecordStore` in
-      `backend/infrahub/git/divergence/store.py`, backed by the SDK client. It reads
+      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads
       `rewrite_count` and writes the four attributes in one call, so no SDK method needs a
       change.
 - [x] T059 [P] [US1] Unit-test the recorder in

@@ -357,16 +357,16 @@ protocols passed to the constructor, so the recorder's unit tests need no databa
 | `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
 | `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. It comes with the trunk signal (T067), because before that there is no event to emit. |
 
-The production `RepositoryRecordStore` runs one query and one `CoreGenericRepositoryUpdate`
-mutation through the SDK client. The generic mutation serves both repository kinds. A test
-substitutes an in-memory one. The recorder itself imports neither the SDK nor the event service.
+The production `RepositoryRecordStore` is backed by the SDK node API. It reads the repository
+through the generic, and the node's own kind picks the update mutation, so one store serves both
+repository kinds. A test substitutes an in-memory one. The recorder itself imports neither the SDK nor the event service.
 
 ### Rules
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The production store writes through the SDK client. It changes no SDK code. Only the generated
-  `infrahub_sdk/protocols.py` gains the four attributes.
+- The production store writes through the SDK node API. It changes no SDK code. Only the
+  generated `infrahub_sdk/protocols.py` gains the four attributes.
 
 ---
 
