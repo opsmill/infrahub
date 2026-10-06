@@ -682,8 +682,10 @@ read-write repository's configured default branch. Neither writes a record.
       Extend that fragment instead of adding a second one.
       IFC-3282 fixes a different outage a user can see: one failed branch no longer keeps the
       others off the other workers, and one failed repository no longer stops the cycle. It adds no
-      fragment of its own, because a stacked series carries one fragment, on its top PR, so that
-      entry goes on the top PR of the stack.
+      fragment of its own, because a stacked series carries one fragment, on its top PR. IFC-3284,
+      the top PR of the stack, carries that entry as
+      `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its own
+      `changelog/+repository-rewrite-record.added.md`.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
