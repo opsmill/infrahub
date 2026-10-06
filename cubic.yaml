@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+---
+
+version: 1
+
+reviews:
+  # The rules live in .agents/rules/, the files agents load while writing code; this file only
+  # points cubic at them. cubic reads at most 10,000 characters per custom rule and drops the
+  # rest silently, so keep the files of each entry under 9,000 characters in total.
+  custom_rules:
+    - name: Infrahub frontend components, styling and forms
+      file_paths:
+        - .agents/rules/frontend-components.md
+        - .agents/rules/code-doc-style.md
+      include:
+        - frontend/app/src/**
+    - name: Infrahub frontend data, routing, types and naming
+      file_paths:
+        - .agents/rules/frontend-architecture.md
+      include:
+        - frontend/app/src/**
+    - name: Infrahub backend design and typing
+      file_paths:
+        - .agents/rules/backend-component-design.md
+        - .agents/rules/python-module-layout.md
+        - .agents/rules/python-typing.md
+        - .agents/rules/code-doc-style.md
+      include:
+        - backend/infrahub/**
+        - python_testcontainers/**
+        - tasks/**
+      exclude:
+        - python_testcontainers/tests/**
+    - name: Infrahub backend exceptions and correctness
+      file_paths:
+        - .agents/rules/python-exceptions.md
+      include:
+        - backend/infrahub/**
+        - python_testcontainers/**
+        - tasks/**
+      exclude:
+        - python_testcontainers/tests/**
+    - name: Infrahub backend tests
+      file_paths:
+        - .agents/rules/testing-python.md
+      include:
+        - backend/tests/**
+        - python_testcontainers/tests/**
+    - name: Infrahub backend test isolation and typing
+      file_paths:
+        - .agents/rules/testing-python-isolation.md
+        - .agents/rules/python-typing.md
+      include:
+        - backend/tests/**
+        - python_testcontainers/tests/**
