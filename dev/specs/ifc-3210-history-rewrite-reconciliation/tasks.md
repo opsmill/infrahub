@@ -677,10 +677,10 @@ read-write repository's configured default branch. Neither writes a record.
       IFC-3281 adds `changelog/6299.fixed.md`: that PR fixes the bug #6299 reports, a branch that
       goes to the error status after a force push, and it can ship before the rest of the stack.
       Extend that fragment instead of adding a second one.
-      IFC-3282 adds a second one, `changelog/+failed-branch-blocks-other-branches.fixed.md`, because
-      it fixes a different outage a user can see: one failed branch no longer keeps the others off
-      the other workers, and one failed repository no longer stops the cycle. Merge the two here
-      only if the release note should read as one change.
+      IFC-3282 fixes a different outage a user can see: one failed branch no longer keeps the
+      others off the other workers, and one failed repository no longer stops the cycle. It adds no
+      fragment of its own, because a stacked series carries one fragment, on its top PR, so that
+      entry goes on the top PR of the stack.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
