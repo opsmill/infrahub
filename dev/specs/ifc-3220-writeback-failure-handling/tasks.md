@@ -160,7 +160,7 @@ Parts A and B of the plan.
 
 ### Schema and store (plan part B)
 
-- [ ] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
+- [X] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
       `backend/infrahub/core/constants/__init__.py`, beside `RepositorySyncStatus`. Move
       `FullRegenerationReason` there from `backend/infrahub/core/merge/regeneration_dispatcher.py`,
       which then imports it from its new place, and add `UNHELD_FOLLOW_UP`, per

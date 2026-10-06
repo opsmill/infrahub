@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from infrahub import config
+from infrahub.core.constants import FullRegenerationReason
 from infrahub.core.merge.selective_regen.models import CascadeRole
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ResourceNotFoundError
@@ -24,15 +24,6 @@ if TYPE_CHECKING:
 
     from .selective_regen.models import PlannedRegeneration, SelectiveRegenerationPlan
     from .selective_regen.orchestrator import RegenerationPlanner
-
-
-class FullRegenerationReason(StrEnum):
-    """Why the merge follow-up fell back to regenerating every definition."""
-
-    FEATURE_DISABLED = "Selective post-merge execution disabled"
-    NO_SUMMARY_CAPTURED = "No merge diff summary captured"
-    SUMMARY_UNAVAILABLE = "Merge diff summary unavailable"
-    SELECTION_FAILED = "Selective post-merge regeneration failed"
 
 
 async def submit_full_regeneration(*, workflow: InfrahubWorkflow, context: InfrahubContext, target_branch: str) -> None:
