@@ -357,6 +357,8 @@ jobs:
         uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
         with:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
+      - name: "Check every dev/ article is listed in an AGENTS.md"
+        run: python3 .agents/scripts/repo-context.py --check-index
 
   action-lint:
     if: needs.files-changed.outputs.github_workflows == 'true'
