@@ -141,25 +141,26 @@ class AttributePoolApplier:
             # Get the pool's ID in case it was referenced by name.
             attribute.from_pool = {"id": pool.get_id()}
 
-        if not allocate:
+        if not allocate or attribute.from_pool_presence is PayloadPresence.ABSENT:
             return
 
         if pool is not None:
             self._check_pool_targets_attribute(schema=schema, pool=pool, attribute=attribute)
 
         tracking_pool_id: str | None = None
-        if attribute.id is not None and attribute.from_pool_presence is not PayloadPresence.ABSENT:
+        if attribute.id is not None:
             tracking_pool_id = await self.pool_finder.get_tracking_pool_id(attribute_id=attribute.id)
 
+        number = self._get_number(attribute=attribute)
         intent = self.intent_resolver.resolve(
             request=FromPoolRequest(
                 value_present=attribute.value_presence is not PayloadPresence.ABSENT,
-                value=attribute.value if attribute.value_presence is PayloadPresence.SET else None,
+                value=number if attribute.value_presence is PayloadPresence.SET else None,
                 from_pool_present=attribute.from_pool_presence is not PayloadPresence.ABSENT,
                 from_pool_id=pool.get_id() if pool is not None else None,
-                held_value_is_default=attribute.is_default,
+                held_value_is_default=attribute.is_default is True,
                 tracking_pool_id=tracking_pool_id,
-                held_value=attribute.value,
+                held_value=number,
             )
         )
 
@@ -256,6 +257,18 @@ class AttributePoolApplier:
         raise ValidationError(
             {f"{attribute.name}.from_pool": f"The {pool.name.value} pool can't be used for '{attribute.name}'."}
         )
+
+    @staticmethod
+    def _get_number(attribute: BaseAttribute) -> int | None:
+        """Return the number the attribute holds, or None when it holds none.
+
+        Raises:
+            InitializationError: When the attribute holds something other than a number.
+
+        """
+        if attribute.value is None or isinstance(attribute.value, int):
+            return attribute.value
+        raise InitializationError(f"'{attribute.name}' holds {attribute.value!r}, which a number pool cannot track")
 
     @staticmethod
     def _require_pool(pool: CoreNumberPool | None, intent: FromPoolIntent) -> CoreNumberPool:

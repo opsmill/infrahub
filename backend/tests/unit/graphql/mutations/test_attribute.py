@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import graphene
 import pytest
@@ -26,8 +27,8 @@ def _echo_schema(input_type: type[graphene.InputObjectType]) -> graphene.Schema:
         echo = graphene.String(data=input_type(required=True))
 
         @staticmethod
-        def resolve_echo(root: object, info: object, data: graphene.InputObjectType) -> str:  # noqa: ARG004
-            return repr(sorted(dict(data).items()))
+        def resolve_echo(root: object, info: object, data: dict[str, Any]) -> str:  # noqa: ARG004
+            return repr(sorted(data.items()))
 
     return graphene.Schema(query=Query, auto_camelcase=False)
 
