@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -132,9 +133,11 @@ class GitAncestryGateway:
 
     def _alternates_of(self, directory: Path) -> list[Path]:
         try:
-            lines = (directory / "info" / "alternates").read_text(encoding="utf-8").splitlines()
+            content = (directory / "info" / "alternates").read_bytes()
         except FileNotFoundError:
             return []
+        # The file holds filesystem paths, so decode it the way the system decodes a path.
+        lines = os.fsdecode(content).splitlines()
         # A relative alternate path starts from the object directory that lists it.
         return [directory / line for line in lines if line and not line.startswith("#")]
 

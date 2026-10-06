@@ -181,6 +181,16 @@ def test_an_unreadable_borrowed_object_database_is_an_error_not_an_absence(
             path.chmod(0o644)
 
 
+def test_an_undecodable_alternates_file_leaves_as_a_repository_error(repo: Repo, gateway: GitAncestryGateway) -> None:
+    """An alternates file holds filesystem paths, and a path is not always valid text."""
+    commit_file(repo=repo, content="one")
+    alternates = Path(str(repo.git_dir), "objects", "info", "alternates")
+    alternates.write_bytes(b"/not-there/\xff\xfe\n")
+
+    with pytest.raises(RepositoryError, match=r"^Unable to read 0{40} from the object database: "):
+        gateway.has_commit(commit=ABSENT)
+
+
 def test_a_broken_object_database_is_an_error_not_an_absence(repo: Repo, gateway: GitAncestryGateway) -> None:
     """A reader that cannot answer must not be read as a pruned commit."""
     commit = commit_file(repo=repo, content="one")
