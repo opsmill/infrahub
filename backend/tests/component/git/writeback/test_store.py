@@ -2,24 +2,18 @@ from __future__ import annotations
 
 import asyncio
 import re
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
 from infrahub.core.constants import (
-    SYSTEM_USER_ID,
     AccountType,
     FullRegenerationReason,
     InfrahubKind,
-    MetadataOptions,
     RepositoryDeliveryFailureCause,
     RepositoryDeliveryStatus,
 )
-from infrahub.core.manager import NodeManager
-from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.exceptions import DeliveryQueueChangedError, DeliveryStateUnavailableError, NothingPendingError
 from infrahub.git.writeback.constants import RELEASE_LEASE_SECONDS, STATE_LOCK_TTL_SECONDS
@@ -33,48 +27,37 @@ from infrahub.git.writeback.models import (
     HeldRegeneration,
     HeldWiden,
     HoldReceipt,
-    PendingMerge,
     ReleaseLease,
     RevertedDelivery,
     WritebackIntent,
 )
-from infrahub.git.writeback.store import STATE_LOCK_NAMESPACE, WritebackIntentStore
-from tests.adapters.lock import LockAction, LockTimeline, RecordingLockRegistry
+from infrahub.git.writeback.store import STATE_LOCK_NAMESPACE
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from infrahub.core.branch import Branch
-    from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.timestamp import Timestamp
-    from infrahub.database import InfrahubDatabase
-
-NOW = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
-LEASE_DURATION = timedelta(seconds=RELEASE_LEASE_SECONDS)
-SOURCE_COMMIT = "0123456789abcdef0123456789abcdef01234567"
-DELIVERED_COMMIT = "89abcdef0123456789abcdef0123456789abcdef"
-RECORDED_COMMIT = "fedcba9876543210fedcba9876543210fedcba98"
-
-STATUS = "delivery_status"
-FAILURE_CAUSE = "delivery_failure_cause"
-ERROR = "delivery_error"
-QUEUE = "delivery_queue"
-HELD_REGENERATION = "delivery_held_regeneration"
-LAST_ABANDONMENT = "delivery_last_abandonment"
-LAST_DELIVERED_COMMIT = "delivery_last_delivered_commit"
-REVERTED = "delivery_reverted"
-PROGRESS = "delivery_progress"
-DELIVERY_ATTRIBUTES = (
-    STATUS,
-    FAILURE_CAUSE,
+from .conftest import (
+    DELIVERED_COMMIT,
     ERROR,
-    QUEUE,
+    FAILURE_CAUSE,
     HELD_REGENERATION,
     LAST_ABANDONMENT,
     LAST_DELIVERED_COMMIT,
-    REVERTED,
+    NOW,
     PROGRESS,
+    QUEUE,
+    REVERTED,
+    SOURCE_COMMIT,
+    STATUS,
+    create_repository,
+    pending_merge,
 )
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+    from infrahub.git.writeback.models import PendingMerge
+
+    from .conftest import StoreUnderTest
+
+LEASE_DURATION = timedelta(seconds=RELEASE_LEASE_SECONDS)
+RECORDED_COMMIT = "fedcba9876543210fedcba9876543210fedcba98"
 
 UNREACHABLE = DeliveryFailure(
     cause=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE, retryable=True, message="The remote did not answer."
@@ -85,116 +68,6 @@ REFUSED = DeliveryFailure(
 RELEASE_FAILED = DeliveryFailure(
     cause=None, retryable=True, message="The release step of the delivery failed with DatabaseError."
 )
-
-
-class SteppingClock:
-    """A clock that stays at its time until the test moves it."""
-
-    def __init__(self) -> None:
-        self.now = NOW
-
-    def __call__(self) -> datetime:
-        return self.now
-
-    def advance(self, *, seconds: float) -> None:
-        self.now += timedelta(seconds=seconds)
-
-
-@dataclass(frozen=True)
-class AttributeWrite:
-    updated_at: Timestamp | None
-    updated_by: str | None
-
-
-@dataclass
-class StoreUnderTest:
-    db: InfrahubDatabase
-    branch: Branch
-    store: WritebackIntentStore
-    clock: SteppingClock
-    lock_registry: RecordingLockRegistry
-    timeline: LockTimeline
-    repository_id: str
-
-    @property
-    def lock_name(self) -> str:
-        return f"{STATE_LOCK_NAMESPACE}.{self.repository_id}"
-
-    async def read(self) -> WritebackIntent:
-        return await self.store.read(repository_id=self.repository_id)
-
-    async def attribute_writes(self) -> dict[str, AttributeWrite]:
-        node = await NodeManager.get_one(
-            db=self.db,
-            id=self.repository_id,
-            kind=InfrahubKind.REPOSITORY,
-            branch=self.branch,
-            include_metadata=MetadataQueryOptions(
-                attribute_level=MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY
-            ),
-            raise_on_error=True,
-        )
-        return {
-            name: AttributeWrite(
-                updated_at=node.get_attribute(name=name)._get_updated_at(),
-                updated_by=node.get_attribute(name=name)._get_updated_by(),
-            )
-            for name in DELIVERY_ATTRIBUTES
-        }
-
-    @asynccontextmanager
-    async def expect_transition(self, *, saved: set[str], user_id: str = SYSTEM_USER_ID) -> AsyncIterator[None]:
-        """Assert that the block takes the state lock once and writes exactly the `saved` attributes, in one save."""
-        before = await self.attribute_writes()
-        first_event = len(self.timeline.events)
-
-        yield
-
-        after = await self.attribute_writes()
-        assert {name for name in DELIVERY_ATTRIBUTES if after[name] != before[name]} == saved
-        if saved:
-            assert len({after[name].updated_at for name in saved}) == 1
-            assert {after[name].updated_by for name in saved} == {user_id}
-        assert [(event.name, event.action) for event in self.timeline.events[first_event:]] == [
-            (self.lock_name, LockAction.ACQUIRE),
-            (self.lock_name, LockAction.RELEASE),
-        ]
-
-
-async def _create_repository(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
-    repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY, branch=branch)
-    await repository.new(db=db, name=name, location=f"https://git.example.com/{name}.git")
-    await repository.save(db=db)
-    return repository
-
-
-@pytest.fixture
-async def subject(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> StoreUnderTest:
-    repository = await _create_repository(db=db, branch=default_branch, name="delivery-repository")
-    timeline = LockTimeline()
-    lock_registry = RecordingLockRegistry(timeline=timeline)
-    clock = SteppingClock()
-    return StoreUnderTest(
-        db=db,
-        branch=default_branch,
-        store=WritebackIntentStore(db=db, lock_registry=lock_registry, default_branch=default_branch, clock=clock),
-        clock=clock,
-        lock_registry=lock_registry,
-        timeline=timeline,
-        repository_id=repository.id,
-    )
-
-
-def _entry(entry_id: str, source_git_branch: str = "feature-1") -> PendingMerge:
-    return PendingMerge(
-        entry_id=entry_id,
-        source_branch=source_git_branch,
-        source_git_branch=source_git_branch,
-        source_commit=SOURCE_COMMIT,
-        merged_at=NOW,
-    )
 
 
 def _artifacts(*definition_ids: str) -> HeldRegeneration:
@@ -229,7 +102,7 @@ async def test_read_gives_the_empty_state_of_a_repository_that_never_delivered(s
 
 
 async def test_enqueue_appends_the_merge_and_sets_pending(subject: StoreUnderTest) -> None:
-    entry = _entry("e1")
+    entry = pending_merge("e1")
 
     async with subject.expect_transition(saved={STATUS, QUEUE, PROGRESS}):
         returned = await subject.store.enqueue(repository_id=subject.repository_id, entry=entry, widen=False)
@@ -250,7 +123,7 @@ async def test_enqueue_appends_the_merge_and_sets_pending(subject: StoreUnderTes
 
 async def test_enqueue_with_widen_holds_a_full_regeneration_in_the_same_save(subject: StoreUnderTest) -> None:
     async with subject.expect_transition(saved={STATUS, QUEUE, HELD_REGENERATION, PROGRESS}):
-        await subject.store.enqueue(repository_id=subject.repository_id, entry=_entry("e1"), widen=True)
+        await subject.store.enqueue(repository_id=subject.repository_id, entry=pending_merge("e1"), widen=True)
 
     assert (await subject.read()).held == HeldRegeneration(
         next_hold_seq=2,
@@ -259,7 +132,7 @@ async def test_enqueue_with_widen_holds_a_full_regeneration_in_the_same_save(sub
 
 
 async def test_enqueue_of_a_queued_id_writes_nothing_and_holds_no_regeneration(subject: StoreUnderTest) -> None:
-    entry = _entry("e1")
+    entry = pending_merge("e1")
     await _enqueue(subject, entry)
     before = await subject.read()
     subject.clock.advance(seconds=60)
@@ -272,7 +145,7 @@ async def test_enqueue_of_a_queued_id_writes_nothing_and_holds_no_regeneration(s
 
 
 async def test_start_attempt_clears_the_waiting_retry_and_keeps_the_cause(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=UNREACHABLE, final=False, retry_due_at=NOW + timedelta(seconds=30)
     )
@@ -289,7 +162,7 @@ async def test_start_attempt_clears_the_waiting_retry_and_keeps_the_cause(subjec
 
 
 async def test_start_attempt_after_a_final_failure_sets_pending(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=REFUSED, final=True, retry_due_at=None
     )
@@ -312,7 +185,7 @@ async def test_start_attempt_on_an_empty_queue_keeps_the_status(subject: StoreUn
 
 
 async def test_retryable_failure_keeps_pending_and_sets_the_retry(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     subject.clock.advance(seconds=5)
     retry_due_at = NOW + timedelta(seconds=35)
 
@@ -331,7 +204,7 @@ async def test_retryable_failure_keeps_pending_and_sets_the_retry(subject: Store
 
 
 async def test_final_failure_sets_action_required_and_clears_the_retry(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=UNREACHABLE, final=False, retry_due_at=NOW + timedelta(seconds=30)
     )
@@ -352,7 +225,7 @@ async def test_final_failure_sets_action_required_and_clears_the_retry(subject: 
 
 
 async def test_failure_without_a_cause_keeps_the_stored_cause(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=REFUSED, final=True, retry_due_at=None
     )
@@ -380,7 +253,7 @@ async def test_final_failure_on_an_empty_queue_never_changes_the_status(subject:
 
 
 async def test_progress_and_touch_move_the_progress_and_leave_the_queue_untouched(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     queued = (await subject.read()).queue
 
     subject.clock.advance(seconds=10)
@@ -398,7 +271,7 @@ async def test_progress_and_touch_move_the_progress_and_leave_the_queue_untouche
 
 
 async def test_owed_import_is_saved_then_settled(subject: StoreUnderTest) -> None:
-    entry = _entry("e1")
+    entry = pending_merge("e1")
     await _enqueue(subject, entry)
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
 
@@ -418,10 +291,10 @@ async def test_owed_import_is_saved_then_settled(subject: StoreUnderTest) -> Non
 
 
 async def test_owed_import_stays_when_the_queue_grew_or_another_commit_is_owed(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
     await subject.store.owe_import(repository_id=subject.repository_id, commit=DELIVERED_COMMIT)
-    await _enqueue(subject, _entry("e2"))
+    await _enqueue(subject, pending_merge("e2"))
 
     async with subject.expect_transition(saved=set()):
         grown = await subject.store.settle_import(
@@ -439,7 +312,10 @@ async def test_owed_import_stays_when_the_queue_grew_or_another_commit_is_owed(s
 async def test_branch_deletion_flags_the_entries_of_the_branch_without_moving_the_version(
     subject: StoreUnderTest,
 ) -> None:
-    first, second = _entry("e1", source_git_branch="feature-1"), _entry("e2", source_git_branch="feature-2")
+    first, second = (
+        pending_merge("e1", source_git_branch="feature-1"),
+        pending_merge("e2", source_git_branch="feature-2"),
+    )
     await _enqueue(subject, first, second)
 
     async with subject.expect_transition(saved={QUEUE}):
@@ -466,7 +342,7 @@ async def test_hold_on_an_empty_queue_writes_nothing(subject: StoreUnderTest) ->
 
 
 async def test_hold_takes_the_next_sequence_and_reports_the_previous_one(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
 
     async with subject.expect_transition(saved={HELD_REGENERATION}):
         first = await _hold(subject, "artifact-1")
@@ -482,7 +358,7 @@ async def test_hold_takes_the_next_sequence_and_reports_the_previous_one(subject
 
 
 async def test_settle_delivery_empties_the_queue_and_leases_the_held_items(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await _hold(subject, "artifact-1")
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=UNREACHABLE, final=False, retry_due_at=None
@@ -519,8 +395,8 @@ async def test_settle_delivery_empties_the_queue_and_leases_the_held_items(subje
 async def test_settle_delivery_keeps_the_merges_and_the_holds_that_came_after_the_snapshot(
     subject: StoreUnderTest,
 ) -> None:
-    later = _entry("e2")
-    await _enqueue(subject, _entry("e1"))
+    later = pending_merge("e2")
+    await _enqueue(subject, pending_merge("e1"))
     await _hold(subject, "artifact-1")
     await subject.store.record_failure(
         repository_id=subject.repository_id, failure=UNREACHABLE, final=False, retry_due_at=None
@@ -545,7 +421,7 @@ async def test_settle_delivery_keeps_the_merges_and_the_holds_that_came_after_th
 
 
 async def test_settle_delivery_without_held_items_takes_no_lease(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
 
     async with subject.expect_transition(saved={STATUS, QUEUE}):
@@ -563,7 +439,7 @@ async def test_abandon_drops_the_queue_with_its_record_and_names_the_account(
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT, branch=subject.branch)
     await account.new(db=db, name="release-manager", account_type=AccountType.USER.value, password="Abandon-123")
     await account.save(db=db)
-    first, second = _entry("e1"), _entry("e2", source_git_branch="feature-2")
+    first, second = pending_merge("e1"), pending_merge("e2", source_git_branch="feature-2")
     await _enqueue(subject, first, second)
     await _hold(subject, "artifact-1")
     await subject.store.owe_import(repository_id=subject.repository_id, commit=DELIVERED_COMMIT)
@@ -599,7 +475,7 @@ async def test_abandon_drops_the_queue_with_its_record_and_names_the_account(
 
 
 async def test_abandon_refuses_a_queue_that_changed_and_writes_nothing(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     before = await subject.read()
     record = AbandonmentRecord(
         abandoned_at=NOW,
@@ -649,7 +525,7 @@ async def test_abandon_refuses_an_empty_queue(subject: StoreUnderTest) -> None:
 
 async def _settle_with_a_hold_after_the_snapshot(subject: StoreUnderTest, *definition_ids: str) -> None:
     """Leave the held items behind an empty queue, uncovered by any lease."""
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
     await _hold(subject, *definition_ids)
     assert (
@@ -678,7 +554,7 @@ async def test_owed_release_leases_every_uncovered_item_once(subject: StoreUnder
 
 
 async def test_owed_release_takes_no_lease_while_merges_are_queued(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await _hold(subject, "artifact-1")
 
     async with subject.expect_transition(saved=set()):
@@ -724,14 +600,14 @@ async def test_expired_lease_gives_its_items_to_the_next_lease_and_is_removed(su
 
 
 async def test_clear_released_keeps_an_item_held_again_after_the_lease(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
     await _hold(subject, "artifact-1", "artifact-2")
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)
     lease = await subject.store.settle_delivery(
         repository_id=subject.repository_id, snapshot=snapshot, delivered_commit=DELIVERED_COMMIT
     )
     assert lease is not None
-    await _enqueue(subject, _entry("e2"))
+    await _enqueue(subject, pending_merge("e2"))
     await _hold(subject, "artifact-1")
 
     async with subject.expect_transition(saved={HELD_REGENERATION}):
@@ -762,13 +638,13 @@ async def test_pending_repository_ids_names_every_repository_with_a_status_other
     db: InfrahubDatabase, subject: StoreUnderTest
 ) -> None:
     store = subject.store
-    unused = await _create_repository(db=db, branch=subject.branch, name="unused-repository")
-    blocked = await _create_repository(db=db, branch=subject.branch, name="blocked-repository")
-    delivered = await _create_repository(db=db, branch=subject.branch, name="delivered-repository")
-    await _enqueue(subject, _entry("e1"))
-    await store.enqueue(repository_id=blocked.id, entry=_entry("e2"), widen=False)
+    unused = await create_repository(db=db, branch=subject.branch, name="unused-repository")
+    blocked = await create_repository(db=db, branch=subject.branch, name="blocked-repository")
+    delivered = await create_repository(db=db, branch=subject.branch, name="delivered-repository")
+    await _enqueue(subject, pending_merge("e1"))
+    await store.enqueue(repository_id=blocked.id, entry=pending_merge("e2"), widen=False)
     await store.record_failure(repository_id=blocked.id, failure=REFUSED, final=True, retry_due_at=None)
-    await store.enqueue(repository_id=delivered.id, entry=_entry("e3"), widen=False)
+    await store.enqueue(repository_id=delivered.id, entry=pending_merge("e3"), widen=False)
     snapshot = await store.start_attempt(repository_id=delivered.id)
     await store.settle_delivery(repository_id=delivered.id, snapshot=snapshot, delivered_commit=None)
     first_event = len(subject.timeline.events)
@@ -781,7 +657,7 @@ async def test_pending_repository_ids_names_every_repository_with_a_status_other
 
 
 async def test_references_source_branch_reads_the_queue_without_the_lock(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1", source_git_branch="feature-1"))
+    await _enqueue(subject, pending_merge("e1", source_git_branch="feature-1"))
     first_event = len(subject.timeline.events)
 
     named = await subject.store.references_source_branch(repository_id=subject.repository_id, git_branch="feature-1")
@@ -792,7 +668,7 @@ async def test_references_source_branch_reads_the_queue_without_the_lock(subject
 
 
 async def test_state_lock_has_its_time_to_live(subject: StoreUnderTest) -> None:
-    await _enqueue(subject, _entry("e1"))
+    await _enqueue(subject, pending_merge("e1"))
 
     lock = subject.lock_registry.get_existing(name=subject.repository_id, namespace=STATE_LOCK_NAMESPACE)
 
@@ -822,7 +698,7 @@ async def test_timed_out_acquire_raises_and_writes_nothing(subject: StoreUnderTe
                 r"was not acquired within 10 seconds\.$"
             ),
         ):
-            await subject.store.enqueue(repository_id=subject.repository_id, entry=_entry("e1"), widen=False)
+            await subject.store.enqueue(repository_id=subject.repository_id, entry=pending_merge("e1"), widen=False)
     finally:
         release.set()
         await holder
@@ -831,7 +707,7 @@ async def test_timed_out_acquire_raises_and_writes_nothing(subject: StoreUnderTe
 
 
 async def test_queue_of_two_hundred_entries_keeps_its_order_and_settles_in_one_save(subject: StoreUnderTest) -> None:
-    entries = tuple(_entry(f"entry-{number:03d}") for number in range(200))
+    entries = tuple(pending_merge(f"entry-{number:03d}") for number in range(200))
     await _enqueue(subject, *entries)
 
     snapshot = await subject.store.start_attempt(repository_id=subject.repository_id)

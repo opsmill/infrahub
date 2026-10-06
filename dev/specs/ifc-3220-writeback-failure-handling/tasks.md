@@ -194,10 +194,10 @@ Parts A and B of the plan.
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
       `expire_lease` call whose items move to the lease of the next `lease_owed_release`, and the
       expired lease that then names no item removed in that same save.
-- [ ] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
+- [X] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
       attribute in a branch diff or a proposed change, never merged, and a branch created while the
       default branch holds a queue reads a copy that the store never returns.
-- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
+- [X] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
 - [X] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
