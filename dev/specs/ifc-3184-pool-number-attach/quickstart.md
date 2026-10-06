@@ -98,7 +98,9 @@ Then attach 50 to a third object: three rows, still one element.
 
 1. With a pool over 1–100, save an object with `value: 500` and that pool named.
 2. **Expected**: the save **succeeds**. 500 is tracked, and reported in the **out-of-space bucket**
-   rather than in the utilization fraction. The row carries value, holder and branch.
+   rather than in the utilization fraction. The row carries value, holder and branch; it is read
+   with `InfrahubNumberPoolAllocations(pool_id, in_space: false)` and counted by
+   `InfrahubNumberPoolUtilization.out_of_space_count` (P3's dedicated surface).
 3. Widen a range to cover 500.
 4. **Expected**: 500 moves into the in-use fraction **with no re-attach**.
 

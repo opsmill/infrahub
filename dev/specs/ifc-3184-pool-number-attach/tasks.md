@@ -628,9 +628,14 @@ count dropped by one, and the number is offered again.
 - [ ] T062 [US2] Reduce `pools/number.py::NumberUtilizationGetter` to a fetch-and-delegate seam,
       owning no arithmetic. Preserve today's distinct-union semantics exactly (the three set
       comprehensions in `load_data` partition a distinct union).
-- [ ] T063 [US2] Extend the pool query surface in `graphql/queries/resource_manager.py`: `provenance`
-      per in-use row, and the out-of-space bucket as a list of rows carrying value, holder **and
-      branch** (FR-027a). One row per **(record, branch-resolved value)**.
+- [ ] T063 [US2] Publish `provenance` per in-use row and the out-of-space rows carrying value,
+      holder **and branch** (FR-027a), one row per **(record, branch-resolved value)**, on P3's
+      dedicated number-pool surface (`graphql/queries/number_pool.py`:
+      `NumberPoolAllocation.provenance`, `in_space`, `range`, the `in_space` filter,
+      `NumberPoolUtilization.out_of_space_count`; see
+      `dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md`). Do not
+      touch the generic queries in `graphql/queries/resource_manager.py`, which are frozen for
+      number pools. If P3's contract change set has already landed, this task is done by it.
 - [ ] T064 [P] [US2] Component test: an attach outside the ranges succeeds, is bucketed not counted,
       and moves into the utilization fraction when a range is widened — with **no re-attach**
       (SC-015). Cover both paths into the state: attached out of range, and a range removed under a

@@ -14,7 +14,7 @@ on the pool, its ranges or its records changes.
 | `allocation_scope` | `List` of `str` | yes | agnostic (inherited from the pool) | Scope entries in schema-path notation, normalised to bare field names. Absent or empty means unscoped |
 
 Applied by the core schema update on upgrade (`cli/db.py::update_core_schema`). No graph migration,
-`GRAPH_VERSION` unchanged.
+`GRAPH_VERSION` stays at 81 (the range and re-anchoring migrations of P1 and P2 are 80 and 81).
 
 ### Scope entry
 
@@ -46,7 +46,7 @@ Reconciled onto the schema-created pool from the default-branch schema by
 
 ## 3. Derived, never persisted
 
-### Division key
+### Division
 
 ```python
 @dataclass(frozen=True)
@@ -58,13 +58,15 @@ class ScopeEntry:
 @dataclass(frozen=True)
 class DivisionKey:
     entries: tuple[ScopeEntry, ...]       # the entries in force on the reading branch, scope order
-    values: tuple[str | int | bool | None, ...]   # one per entry; None means the object holds nothing
+    values: tuple[str | int | bool | None, ...]   # one per entry; None means the holder holds nothing
 ```
 
 Produced by `pools/scope.py::DivisionResolver`:
 
 - `entries_in_force(scope, schema_branch, kind)` drops every entry the branch's schema does not
-  define on the kind (FR-008). With no entry left the pool is unscoped on that branch.
+  define on the kind (FR-008). With no entry left the pool is unscoped on that branch. The same
+  function gives the three dedicated queries their `allocation_scope` and the paths a division
+  filter accepts.
 - `division_of(db, node, entries)` reads the in-memory node: peer id through the relationship
   manager (which may read the database for a peer given by id or human-friendly id), attribute
   `.value` with enums unwrapped. It runs after every field of the write has been applied, on all
@@ -72,7 +74,7 @@ Produced by `pools/scope.py::DivisionResolver`:
 
 ### Division occupancy of a record
 
-A record occupies, for each entry in force, every value its owning object holds for that entry on
+A record occupies, for each entry in force, every value its holder holds for that entry on
 any live branch, under the same visibility rule as the value read:
 
 | Leg | Condition |
@@ -82,34 +84,72 @@ any live branch, under the same visibility rule as the value read:
 
 The record counts in a division when, for every entry, the writer's value is among the values
 collected. The per-entry union is a superset of the per-branch tuple union, so it can only add
-numbers to the taken set.
+numbers to the taken set. The same rule decides which rows a `division` filter on
+`InfrahubNumberPoolAllocations` returns, so one value can be returned under two divisions.
 
 ### Division enumeration
 
-`NumberPoolDivisions` (new query): distinct tuples of entry values over every object of the kind
-reachable on any live branch, with the count of objects per tuple. Used for the per-division listing
-(divisions with objects but no records report 0) and for the attribute-add size check.
+`NumberPoolDivisions` (new query): distinct tuples of entry values over every node of the kind
+reachable on any live branch, with the count of nodes per tuple. Used for the divisions list
+(divisions with nodes but no records report 0) and for the attribute-add size check.
+
+### Allocation rows
+
+`NumberPoolGetAllocated` (existing query, extended): one row per (record, branch-resolved value)
+carrying the holder's id, the branch, the value, the record's identifier and its provenance
+(`coalesce(provenance, "allocated")`), and, when the pool is scoped, the holder's division on the
+row's branch. Today the query filters on the deprecated `start_range` / `end_range` pair; the
+filter becomes an optional list of range bounds so the dedicated allocation query can list every
+tracked value, or the values of one range, on a pool holding any number of ranges. The generic
+`InfrahubResourcePoolAllocated` keeps today's behaviour.
 
 ### Division report
 
-`pools/division_report.py::DivisionReporter` (pure): takes the allocated rows (owner, value,
+`pools/division_report.py::DivisionReporter` (pure): takes the allocation rows (holder, value,
 branch, per-entry value sets) and the enumerated divisions; returns per division the distinct values
 used on the default branch and on other branches, names the fullest division, and answers the
 fullest division within a range (FR-011, FR-017).
 
 | Quantity | Rule |
 |---|---|
-| Division utilization | distinct values held in that division ÷ effective size |
-| Headline utilization | the fullest division's utilization |
-| Headline branch split | the fullest division's default-branch and other-branch figures |
-| Per-range row | max over divisions of (that division's values inside the range) ÷ range size, with its branch split |
-| Division label | relationship entry: the peer's display label read branch-agnostically, falling back to its identifier; attribute entry: the value as text; an object holding nothing for an entry: the empty string |
-| Unscoped pool | exactly one division with an empty key; figures as today |
-| IP pools | no divisions (an empty list) |
+| `size` of the pool | the number of in-space values over the range set: values inside a range, not in the attribute's `excluded_values` (single values and excluded ranges), within its `min_value` / `max_value`. Never read from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges. P1's shared effective-space calculation replaces the resolver-side computation when it lands |
+| `size` of a range | `end - start + 1` |
+| `used` | distinct values of the measured space held on any live branch; `used_default_branch` on the default branch; `used_branches` on other branches and not on the default branch |
+| Division figures | `used` restricted to the values held by holders in that division, over the pool's `size`, or over a range's `size` when the divisions query is read with `range_id` |
+| Headline figures of a scoped pool | the fullest division's figures |
+| Range row of a scoped pool | the division holding the most of that range's values, against the range's `size`, with its branch split |
+| Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
+| Unscoped pool | exactly one division with no entry and an empty label; figures as today |
+| `in_space` of a row | the value is inside a range, not excluded by the attribute and within its `min_value` / `max_value`; false for an excluded or out-of-limits value even when a range holds it |
+| `range` of a row | the range whose bounds hold the value, in space or not; null when none does |
+| `out_of_space_count` | the number of rows with `in_space` false |
+
+### Mock partition (contract change set only)
+
+`pools/division_mock.py` (deleted by the last change set): for a scoped pool whose scope in force
+is not empty, assigns each row to one of three divisions `mock-1`, `mock-2`, `mock-3` by
+`int(holder_uuid) % 3 + 1`, builds the division entries from the real scope paths in force with the
+division's name as value and label, and answers the divisions list, the division of each row and the
+division filter from the same assignment. Never called for an unscoped pool.
 
 ---
 
-## 4. Validation and refusal
+## 4. Read shapes of the dedicated surface
+
+Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md).
+
+| GraphQL type | Built from |
+|---|---|
+| `NumberPoolUtilization` | the pool node (id, display label), `entries_in_force`, the division report's headline and range figures, the `in_space` partition of the rows |
+| `NumberPoolUtilizationFigures` | one block per measured space, from the division report |
+| `NumberPoolRangeUtilization` | each `CoreNumberPoolRange` of the pool ordered by `start`, plus its figures |
+| `NumberPoolDivisions`, `NumberPoolDivision`, `NumberPoolDivisionEntry` | the division enumeration, the division report and one branch-agnostic `NodeManager.get_many` over the distinct peer ids for labels and kinds |
+| `NumberPoolDivisionEntryInput` | the division filter; validated against `entries_in_force` |
+| `NumberPoolAllocations`, `NumberPoolAllocation`, `NumberPoolHolder`, `NumberPoolRangeRef`, `NumberPoolProvenance` | the allocation rows, with the holder's display label and hfid read on each row's branch and the range resolved from the pool's ranges |
+
+---
+
+## 5. Validation and refusal
 
 | Surface | Component | Rule | Error names |
 |---|---|---|---|
@@ -117,7 +157,8 @@ fullest division within a range (FR-011, FR-017).
 | Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters` | same | the entry |
 | Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
 | Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field | refused when a pool names the field | the pool |
-| Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's object count | existing message with the division count |
+| Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
+| The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path | the pool, the range, the entry (messages in the contract) |
 
 ### Pools-referencing-field lookup
 
@@ -127,22 +168,24 @@ a generic the kind inherits from, filters in Python on `allocation_scope` and `n
 
 ---
 
-## 5. State and transitions
+## 6. State and transitions
 
 The pool has no new state machine. Scope changes are plain attribute writes:
 
 | Transition | Data moved | Next read |
 |---|---|---|
-| unscoped → scoped | none | each record counts in the divisions its object occupies |
+| unscoped → scoped | none | each record counts in the divisions its holder occupies |
 | scoped → wider scope | none | numbers taken under the finer division become free |
 | scoped → narrower scope | none | more numbers appear taken |
 | scoped → unscoped | none | every record counts pool-wide, as today |
 
 ---
 
-## 6. Entities not changed
+## 7. Entities not changed
 
 - The `IS_RESERVED` record: same vertex, same properties, same branch (`-global-`).
 - `CoreNumberPoolRange` and the effective-space arithmetic (P1).
 - The IP pool kinds and their queries.
+- The generic resource-pool query types (`PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`,
+  `IPPrefixUtilizationEdge`, `IPPoolUtilizationResource`): description text only.
 - The allocation lock key.
