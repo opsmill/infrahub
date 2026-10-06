@@ -2,7 +2,7 @@
 name: reviewing-changes
 description: >-
   Reviews the current branch before it is pushed, so the PR opens without the comments cubic and human reviewers would otherwise raise. Shows which `.agents/rules/` files and `AGENTS.md` files apply to the change, runs the built-in `code-review` for bugs, checks the change against the matching rules (the same files cubic reviews PRs with), checks the specs, changelog and PR claims the diff cannot show, runs the cubic CLI when it is installed, verifies every finding against the code, and fixes the approved ones. TRIGGER when: the user wants their branch reviewed before pushing or opening a PR, asks "will cubic complain about this", wants fewer review comments on their PR, or says "review my changes", "pre-push review", or "cubic review". DO NOT TRIGGER when: answering review threads already on a PR → `opsmill-dev-addressing-review`; turning review threads into durable docs → `harvesting-review`; a bug hunt only → the `code-review` skill; only watching CI → `monitoring-pull-requests`.
-argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing>
+argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
   version: 3.0.0
@@ -29,6 +29,8 @@ push. It does not repeat other tools:
   Grep and Glob calls. Read and Write load them natively.
 - **This skill adds** the rule check, the checks the diff cannot show, a local cubic run, one
   verified list of findings, and the fixes.
+
+With `compare <PR number>` in the arguments, skip to "Compare with the PR review".
 
 ## Phase 0 — Scope and context
 
@@ -175,6 +177,32 @@ cubic: <exit code, n findings | error: <message> | not installed>
 ### Gaps in the rules
 <findings declined because a rule did not say so, and changed areas no rule covers>
 ```
+
+Save the report to `$(git rev-parse --git-common-dir)/reviewing-changes/<branch>.md`, replacing
+any earlier one. Inside `.git` it is never committed and every worktree of the repository can
+read it.
+
+## Compare with the PR review
+
+Run after cubic and reviewers have commented on the PR, to find what the local review missed.
+
+1. Read the saved report for the PR's head branch (`gh pr view <n> --json headRefName`). If there
+   is none, say so and stop.
+2. Collect the PR's comments: inline ones with
+   `gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate`, and review bodies and
+   conversation comments with `gh pr view <n> --json reviews,comments`. Skip replies, bot status
+   messages and comments on commits pushed after the report was saved.
+3. Classify each comment against the report, by file, line and issue:
+   - **Caught**: the report has it under Fixed, Deferred or Advisory.
+   - **Declined locally**: the report has it under Declined. Check whether the reason still holds.
+   - **Missed**: the report does not have it. Read the code, and decide whether the comment is
+     right before counting it.
+4. For each real miss, say which part of the review should have caught it (a rule, an article,
+   the claims check, the bug review, cubic) and why it did not: the rule is missing, the article
+   was not loaded, the file was out of scope, or a reviewer had the rule and missed it.
+5. Report the counts (caught, declined, missed, wrong comments), then propose fixes as in the
+   next section. A miss that no rule or document change would prevent becomes a proposed change
+   to this skill, for the user to decide.
 
 ## Improve the rules and the index after each run
 
