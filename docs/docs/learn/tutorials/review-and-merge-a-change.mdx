@@ -20,9 +20,8 @@ that change through review, validation, approval and merge.
 ## Before you start
 
 At the end of the Quickstart you have Denver DC1 and Paris DC1 on `add-locations`, and neither of
-them on `main`. That is the change you take through the rest of the workflow here. Any branch with
-changes that have not been merged works the same way; substitute your own branch name wherever
-`add-locations` appears.
+them on `main`. Those two sites are what you review, approve and merge below. If you are working
+from a different branch, substitute its name wherever `add-locations` appears.
 
 You need an Infrahub instance you can sign in to, and a branch with at least one change on it that
 is not on the default branch. A connected Git repository is not required.
@@ -45,9 +44,9 @@ change sets, and confirm they are what you meant to propose.
 
 ## Step 2: Request review of the change
 
-The branch contains the work. The review of that work happens in a Proposed Change, which brings the
-proposed differences, the validation results, the discussion and the review decision into one place.
-It is also where the merge happens, once a reviewer approves.
+Your change is on the branch. Open a Proposed Change so that a reviewer can read it. It holds the
+proposed differences, the validation results, the discussion and the review decision, and you merge
+from it once a reviewer approves.
 
 1. Select **Propose change** on the branch page. The form opens with `add-locations` already set as
    the source branch.
@@ -58,12 +57,12 @@ It is also where the merge happens, once a reviewer approves.
 5. Add your reviewers.
 6. Open the Proposed Change.
 
-Open it as a draft instead when the work is still in progress. Infrahub runs the same checks either
+Open it as a draft instead when your change is not finished. Infrahub runs the same checks either
 way, and a draft tells your reviewers you are not asking for a decision yet.
 
 ## Step 3: Review the validation results
 
-Before approving a change — or before asking anybody else to — read its validation results. They
+Before approving a change — or before asking a reviewer to — read its validation results. They
 identify conditions that have to be resolved before the change can be merged.
 
 Open the **Checks** tab.
@@ -89,14 +88,14 @@ alongside the built-in ones.
 
 ## Step 4: Review and approve the change
 
-In a team, this step belongs to somebody else. A reviewer opens the Proposed Change, reads the
-proposed differences, reads the validation results, asks whatever they need to ask, and records a
-decision: **Approve** when the change is ready to merge, **Reject** when something has to change
-first. They can attach a comment to one part of the diff rather than to the change as a whole, which
-keeps a question about a single attribute next to that attribute.
+In a team, this step belongs to a reviewer. They open the Proposed Change, read the
+proposed differences, read the validation results, ask whatever they need to ask, and record a
+decision: **Approve** when the change is ready to merge, **Reject** when it needs correcting first.
+They can attach a comment to one part of the diff rather than to the change as a whole, which keeps a
+question about a single attribute next to that attribute.
 
 Infrahub does not accept a review from the person who opened the Proposed Change. That is the reason
-the workflow exists: somebody other than the author reads the change.
+the workflow exists: the change is read by a reviewer who did not write it.
 
 On a single-user instance you are that person, so you have two ways to continue.
 
@@ -115,8 +114,8 @@ different people.
 
 :::note Enterprise
 Enterprise turns the review step into a rule rather than a convention: require a number of approvals
-before anybody can merge, and withdraw an approval automatically when somebody changes the branch
-after giving it. See
+before anyone can merge, and withdraw an approval automatically when the branch changes after that
+approval was given. See
 [Implement a change approval workflow](../../change-approval/change-approval-workflow) for
 configuring those policies.
 :::
@@ -136,24 +135,24 @@ does during a merge in more detail.
 
 ## What you learned
 
-You have taken a change through the review workflow most organizations use for data changes:
+That is the review most organizations require before data reaches the default branch:
 
 **Change separately.** You made the change on a branch rather than directly on `main`.
 
 **Understand what will change.** You read the difference between the branch and the default branch
-before asking anybody to review it.
+before asking a reviewer to read it.
 
 **Validate it.** You read the automated checks before deciding whether the change was ready.
 
 **Review and approve it.** A reviewer examines the change and records a decision. Infrahub does not
-accept a review from the author, so this step always belongs to somebody else.
+accept a review from the author, so this step always belongs to a reviewer.
 
 **Publish the approved state.** You merged the reviewed change into `main`, where it becomes input to
 the rest of your automation.
 
 ## Not covered here
 
-**Rebasing.** When somebody changes `main` while your Proposed Change is open, your branch started
+**Rebasing.** When `main` changes while your Proposed Change is open, your branch started
 from an older version of it and you rebase before you merge. See
 [Rebase a branch](../../branches/rebase).
 
