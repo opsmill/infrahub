@@ -148,6 +148,21 @@ async def test_reconciliation_keeps_the_numbers_already_handed_out(
         assert reserved == counter.get_attribute("counter").value
 
 
+@pytest.mark.xfail(strict=True, reason="A declaration using neither spelling keeps the stored ranges on schema load")
+async def test_declaration_without_range_empties_the_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A declaration using neither spelling is legal and leaves the pool with no range and a null shorthand."""
+    pool_id = await provision_pool(
+        db=db, branch=default_branch, parameters=NumberPoolParameters(start_range=1, end_range=100)
+    )
+
+    await redeclare(db=db, branch=default_branch, parameters=NumberPoolParameters())
+
+    assert await ranges_of(db=db, pool_id=pool_id) == []
+    assert await shorthand_of(db=db, pool_id=pool_id) == (None, None)
+
+
 async def test_failed_reconciliation_leaves_the_ranges_untouched(
     db: InfrahubDatabase,
     default_branch: Branch,
