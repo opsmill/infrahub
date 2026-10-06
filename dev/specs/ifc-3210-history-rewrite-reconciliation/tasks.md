@@ -292,9 +292,9 @@ healthy branch is still sent, and a second worker converges on it.
       *As landed:* in `backend/tests/component/git/test_sync_repository.py`. The failure it uses is
       real and reaches the loop today: on a worker with no clone yet, the first import of a schema
       the server rejects raises the SDK's `ValidationError`, which the clone step does not catch.
-- [x] T038 [P] [US3] Unit-test the handler fan-out in
-      `backend/tests/unit/message_bus/test_refresh_git_fetch_fanout.py`: N pairs are reset inside
-      one lock acquisition and one fetch. Use a fake lock registry, not a mock.
+- [x] T038 [P] [US3] Unit-test the handler fan-out in `backend/tests/unit/git/test_convergence.py`,
+      which mirrors `backend/infrahub/git/convergence.py`, where the handler's logic lives: N pairs
+      are reset inside one lock acquisition and one fetch. Use a fake lock registry, not a mock.
 - [x] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
       raising, in `backend/tests/component/git/test_git_repository.py`, where the test that asserted
       the raise already lived.
