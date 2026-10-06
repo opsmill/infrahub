@@ -123,6 +123,7 @@ openapi_schema_all:
 
 graphql_schema_all:
   - *graphql_schema_files
+  - *frontend_files
 
 error_catalogue_all:
   - *error_catalogue_files
