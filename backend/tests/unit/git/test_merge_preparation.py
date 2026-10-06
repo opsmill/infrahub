@@ -29,6 +29,9 @@ REPOSITORY_NAME = "merge-repo"
 @dataclass(frozen=True)
 class MergeClone:
     remote: LocalRemote
+    remote_trunk: str
+    """The name the remote gives the branch Infrahub calls main."""
+
     repository: InfrahubRepository
     client: GraphRecordingClient
     commits: InMemoryGraphCommitReader
@@ -53,23 +56,22 @@ class MergeClone:
         """Replace the last commit of the remote branch and return the new remote head."""
         return self.remote.commit(branch_name=branch_name, files={"rewritten.txt": "rewritten\n"}, amend=True)
 
-    async def prepare(self, graph_commits: GraphCommitReader | None = None) -> None:
+    async def prepare(self, graph_commits: GraphCommitReader | None = None, dest_branch: str = DESTINATION) -> None:
         await self.repository.prepare_branches_for_merge(
-            source_branch=SOURCE, dest_branch=DESTINATION, graph_commits=graph_commits or self.commits
+            source_branch=SOURCE, dest_branch=dest_branch, graph_commits=graph_commits or self.commits
         )
 
 
-@pytest.fixture
-async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeClone:
-    """A clone holding both branches at the commits the graph records, before anything moves on the remote."""
+async def build_merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, remote_trunk: str) -> MergeClone:
+    """Clone both branches at the commits the graph records, before anything moves on the remote."""
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
     monkeypatch.setattr(registry, "_default_branch", DESTINATION)
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
 
-    remote = LocalRemote.create(directory=tmp_path / "remote", trunk=DESTINATION, branches=[])
+    remote = LocalRemote.create(directory=tmp_path / "remote", trunk=remote_trunk, branches=[])
     local_heads = {
-        DESTINATION: remote.commit(branch_name=DESTINATION, files={"trunk.txt": "trunk\n"}),
+        DESTINATION: remote.commit(branch_name=remote_trunk, files={"trunk.txt": "trunk\n"}),
         SOURCE: remote.commit(branch_name=SOURCE, files={"feature.txt": "feature\n"}),
     }
     client = GraphRecordingClient(branch_names=())
@@ -78,16 +80,23 @@ async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeC
         name=REPOSITORY_NAME,
         location=str(remote.directory),
         client=client,
+        default_branch=remote_trunk,
         update_commit_value=False,
     )
     await repository.create_branch_in_git(branch_name=SOURCE, branch_id=f"{SOURCE}-id", push_origin=False)
     return MergeClone(
         remote=remote,
+        remote_trunk=remote_trunk,
         repository=repository,
         client=client,
         commits=InMemoryGraphCommitReader(commits=dict(local_heads)),
         local_heads=local_heads,
     )
+
+
+@pytest.fixture
+async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeClone:
+    return await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
 
 
 @dataclass(frozen=True)
@@ -188,5 +197,75 @@ async def test_a_diverged_branch_whose_graph_commit_cannot_be_read_refuses_the_m
 
     with pytest.raises(RepositoryError, match=rf"^The API is unreachable from {SOURCE}$"):
         await merge_clone.prepare(graph_commits=FailingGraphCommitReader())
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
+@dataclass(frozen=True)
+class MappedTrunkCase:
+    name: str
+    graph_records_the_remote_head: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        MappedTrunkCase(name="graph-current", graph_records_the_remote_head=True),
+        MappedTrunkCase(name="graph-stale", graph_records_the_remote_head=False),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_trunk_the_remote_names_differently_is_compared_with_its_own_remote_head(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: MappedTrunkCase
+) -> None:
+    """Infrahub calls the trunk main, and the remote calls it master."""
+    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk="master")
+    remote_head = clone.rewrite("master")
+    imported = clone.local_heads[DESTINATION]
+
+    if case.graph_records_the_remote_head:
+        clone.commits.commits[DESTINATION] = remote_head
+        await clone.prepare()
+        assert clone.heads() == {**clone.local_heads, DESTINATION: remote_head}
+        return
+
+    message = refusal_message(
+        branch_name=DESTINATION, local_head=imported, graph_commit=imported, remote_head=remote_head
+    )
+    with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
+        await clone.prepare()
+    assert clone.heads() == clone.local_heads
+
+
+async def test_a_branch_the_remote_deleted_is_merged_as_it_is(merge_clone: MergeClone) -> None:
+    """With no remote head there is nothing to compare, so the guard neither resets nor refuses."""
+    merge_clone.remote.delete_branch(branch_name=SOURCE)
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+    assert merge_clone.commits.reads == []
+
+
+async def test_a_destination_without_a_worktree_is_left_to_the_merge(merge_clone: MergeClone) -> None:
+    """The merge builds in the destination worktree and fails without one, so the guard does not read the branch."""
+    merge_clone.remote.create_branch(branch_name="release")
+    merge_clone.repository.get_git_repo_main().git.branch("release", merge_clone.local_heads[SOURCE])
+
+    await merge_clone.prepare(dest_branch="release")
+
+    assert merge_clone.commits.reads == []
+
+
+async def test_a_diverged_branch_with_no_commit_in_the_graph_refuses_the_merge(merge_clone: MergeClone) -> None:
+    remote_head = merge_clone.rewind(branch_name=SOURCE)
+    merge_clone.commits.commits[SOURCE] = None
+    imported = merge_clone.local_heads[SOURCE]
+    message = refusal_message(
+        branch_name=SOURCE, local_head=imported, graph_commit="no commit", remote_head=remote_head
+    )
+
+    with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
+        await merge_clone.prepare()
 
     assert merge_clone.heads() == merge_clone.local_heads
