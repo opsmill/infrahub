@@ -484,6 +484,19 @@ class NothingPendingError(ValidationError):
         super().__init__(f"Repository {repository_name} has nothing pending to push.")
 
 
+class DeliveryStateUnavailableError(ServiceUnavailableError):
+    """Raised when the lock of the delivery state of a repository is not acquired in time."""
+
+    def __init__(self, repository_id: str, acquire_seconds: float) -> None:
+        self.repository_id = repository_id
+        super().__init__(
+            message=(
+                f"The lock of the delivery state of repository {repository_id} "
+                f"was not acquired within {acquire_seconds} seconds."
+            )
+        )
+
+
 class DiffRangeValidationError(DiffError): ...
 
 

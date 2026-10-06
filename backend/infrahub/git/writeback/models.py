@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING, Literal
@@ -12,7 +12,8 @@ from infrahub.core.constants import (
     RepositoryDeliveryFailureCause,
     RepositoryDeliveryStatus,
 )
-from infrahub.git.writeback.constants import REMOVED_ENTRY_IDS_KEPT, STALE_AFTER_SECONDS
+from infrahub.exceptions import DeliveryQueueChangedError, NothingPendingError
+from infrahub.git.writeback.constants import RELEASE_LEASE_SECONDS, REMOVED_ENTRY_IDS_KEPT, STALE_AFTER_SECONDS
 
 if TYPE_CHECKING:
     from collections.abc import Collection, Mapping
@@ -373,7 +374,10 @@ class HoldReceipt:
 
 @dataclass(frozen=True)
 class WritebackIntent:
-    """The whole delivery state of one repository, read in one snapshot."""
+    """The whole delivery state of one repository, read in one snapshot.
+
+    Each transition is pure and returns the state that it leads to, or None when it changes nothing.
+    """
 
     repository_id: str
     status: RepositoryDeliveryStatus
@@ -383,6 +387,169 @@ class WritebackIntent:
     held: HeldRegeneration
     progress: DeliveryProgress
     last_delivered_commit: str | None
+    last_abandonment: AbandonmentRecord | None = None
+    reverted: RevertedDelivery | None = None
+
+    def with_entry(self, *, entry: PendingMerge, widen: bool, now: datetime) -> WritebackIntent | None:
+        """Append the merge and set the status to pending, or return None when the queue refuses its id.
+
+        Args:
+            widen: Hold a regeneration of every definition of the repository under the next sequence too.
+
+        """
+        queue = self.queue.with_entry(entry=entry, last_abandonment=self.last_abandonment)
+        if queue is None:
+            return None
+        held = self.held
+        if widen:
+            held, _ = held.with_hold(
+                held=HeldRegeneration(
+                    widen=HeldWiden(scope="all", reason=FullRegenerationReason.UNHELD_FOLLOW_UP, hold_seq=0)
+                )
+            )
+        return replace(
+            self,
+            status=RepositoryDeliveryStatus.PENDING,
+            queue=queue,
+            held=held,
+            progress=self.progress.model_copy(update={"last_progress_at": now}),
+        )
+
+    def with_attempt_started(self, *, now: datetime) -> WritebackIntent:
+        """Stamp the start of an attempt, which sets the status to pending only while merges are queued."""
+        return replace(
+            self,
+            status=RepositoryDeliveryStatus.PENDING if self.queue.entries else self.status,
+            progress=self.progress.model_copy(
+                update={"attempt_started_at": now, "last_progress_at": now, "retry_due_at": None}
+            ),
+        )
+
+    def with_failure(
+        self, *, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None, now: datetime
+    ) -> WritebackIntent:
+        """Record the failure; a final one sets `action-required` and drops the retry, only while merges are queued.
+
+        A failure with no cause keeps the cause that is stored.
+        """
+        action_required = final and bool(self.queue.entries)
+        return replace(
+            self,
+            status=RepositoryDeliveryStatus.ACTION_REQUIRED if action_required else self.status,
+            cause=self.cause if failure.cause is None else failure.cause,
+            error=failure.message,
+            progress=self.progress.model_copy(
+                update={"last_progress_at": now, "retry_due_at": None if action_required else retry_due_at}
+            ),
+        )
+
+    def with_import_owed(self, *, commit: str) -> WritebackIntent:
+        return replace(self, queue=self.queue.model_copy(update={"import_owed_commit": commit}))
+
+    def without_owed_import(self, *, commit: str, snapshot: WritebackIntent) -> WritebackIntent | None:
+        """Clear the owed import, or return None when another commit is owed or a merge joined after the snapshot."""
+        snapshot_entry_ids = {entry.entry_id for entry in snapshot.queue.entries}
+        if self.queue.import_owed_commit != commit or any(
+            entry.entry_id not in snapshot_entry_ids for entry in self.queue.entries
+        ):
+            return None
+        return replace(self, queue=self.queue.model_copy(update={"import_owed_commit": None}))
+
+    def with_branch_deletion_requested(self, *, git_branch: str) -> WritebackIntent | None:
+        """Flag every pending merge from the remote branch, or return None when no pending merge comes from it."""
+        queue = self.queue.with_branch_deletion_requested(git_branch=git_branch)
+        if queue is None:
+            return None
+        return replace(self, queue=queue)
+
+    def with_progress(self, *, now: datetime) -> WritebackIntent:
+        return replace(self, progress=self.progress.model_copy(update={"last_progress_at": now}))
+
+    def with_hold(self, *, held: HeldRegeneration) -> tuple[WritebackIntent, HoldReceipt] | None:
+        """Hold the items under the next sequence, or return None when no merge is queued."""
+        if not self.queue.entries:
+            return None
+        updated, receipt = self.held.with_hold(held=held)
+        return replace(self, held=updated), receipt
+
+    def with_delivery_settled(
+        self, *, snapshot: WritebackIntent, delivered_commit: str | None, lease_id: str, now: datetime
+    ) -> tuple[WritebackIntent, ReleaseLease | None]:
+        """Remove the merges of the snapshot, and lease the uncovered held items up to the snapshot's sequence.
+
+        The lease is None when no held item is left to lease.
+        """
+        held, lease = _leased(held=self.held, lease_id=lease_id, now=now, max_hold_seq=snapshot.held.next_hold_seq - 1)
+        settled = replace(
+            self,
+            queue=self.queue.without_entries(entry_ids=[entry.entry_id for entry in snapshot.queue.entries]),
+            held=held,
+            last_delivered_commit=self.last_delivered_commit if delivered_commit is None else delivered_commit,
+        )
+        return settled._with_status_of_queue(), lease
+
+    def abandoned(
+        self, *, repository_name: str, queue_version: int, record: AbandonmentRecord, lease_id: str, now: datetime
+    ) -> tuple[WritebackIntent, ReleaseLease | None]:
+        """Drop every pending merge and the owed import with their record, and lease every uncovered held item.
+
+        The record names the merges and the owed import that this transition drops. The lease is None when no
+        held item is left to lease.
+
+        Raises:
+            DeliveryQueueChangedError: The queue is no longer at `queue_version`.
+            NothingPendingError: The queue is empty.
+
+        """
+        if queue_version != self.queue.version:
+            raise DeliveryQueueChangedError(repository_name=repository_name, queue_version=queue_version)
+        if not self.queue.entries:
+            raise NothingPendingError(repository_name=repository_name)
+        held, lease = _leased(held=self.held, lease_id=lease_id, now=now, max_hold_seq=None)
+        abandoned = replace(
+            self,
+            queue=self.queue.without_entries(entry_ids=[entry.entry_id for entry in self.queue.entries]).model_copy(
+                update={"import_owed_commit": None}
+            ),
+            held=held,
+            last_abandonment=record.model_copy(
+                update={"entries": self.queue.entries, "import_owed_commit": self.queue.import_owed_commit}
+            ),
+        )
+        return abandoned._with_status_of_queue(), lease
+
+    def with_owed_release_leased(self, *, lease_id: str, now: datetime) -> tuple[WritebackIntent, ReleaseLease] | None:
+        """Lease every held item that no live lease covers, or return None while merges are queued or none is left."""
+        if self.queue.entries:
+            return None
+        held, lease = _leased(held=self.held, lease_id=lease_id, now=now, max_hold_seq=None)
+        if lease is None:
+            return None
+        return replace(self, held=held), lease
+
+    def with_lease_renewed(self, *, lease_id: str, now: datetime) -> WritebackIntent:
+        return replace(
+            self,
+            held=self.held.with_lease_expiry(
+                lease_id=lease_id, expires_at=now + timedelta(seconds=RELEASE_LEASE_SECONDS)
+            ),
+        )
+
+    def with_lease_expired(self, *, lease_id: str, now: datetime) -> WritebackIntent:
+        """End the lease now and keep its items held, so the next lease takes them."""
+        return replace(self, held=self.held.with_lease_expiry(lease_id=lease_id, expires_at=now))
+
+    def without_window(self, *, lease_id: str, now: datetime) -> WritebackIntent:
+        return replace(self, held=self.held.without_window(lease_id=lease_id, now=now))
+
+    def with_reverted(self, *, reverted: RevertedDelivery) -> WritebackIntent:
+        return replace(self, reverted=reverted)
+
+    def _with_status_of_queue(self) -> WritebackIntent:
+        if self.queue.entries:
+            return replace(self, status=RepositoryDeliveryStatus.PENDING)
+        # Nothing is pending any more, so the last failure no longer asks the user for an action.
+        return replace(self, status=RepositoryDeliveryStatus.NONE, cause=None, error=None)
 
     def has_work(self, *, now: datetime) -> bool:
         """Whether entries wait in the queue, or held items that no live lease covers."""
@@ -454,6 +621,18 @@ def _merged_widen(*, current: HeldWiden | None, requested: HeldWiden | None, hol
     if current is not None and current.scope == "all" and requested.scope == "terminals":
         return current.model_copy(update={"hold_seq": hold_seq})
     return requested.model_copy(update={"hold_seq": hold_seq})
+
+
+def _leased(
+    *, held: HeldRegeneration, lease_id: str, now: datetime, max_hold_seq: int | None
+) -> tuple[HeldRegeneration, ReleaseLease | None]:
+    window = held.lease_window(now=now, max_hold_seq=max_hold_seq)
+    if window.is_empty:
+        return held, None
+    lease = ReleaseLease.over(
+        lease_id=lease_id, window=window, expires_at=now + timedelta(seconds=RELEASE_LEASE_SECONDS)
+    )
+    return held.with_lease(lease=lease, now=now), lease
 
 
 def _uncovered[ItemT: (HeldItem, HeldPythonAttribute)](
