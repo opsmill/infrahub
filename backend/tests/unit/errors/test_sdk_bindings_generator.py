@@ -169,16 +169,41 @@ class FragmentCase:
         FragmentCase(name="unknown-type", schema={"type": "decimal"}),
         FragmentCase(name="list-form-type", schema={"type": ["string", "null"]}),
         FragmentCase(name="enum", schema={"enum": ["a", "b"]}),
-        FragmentCase(name="empty-anyof", schema={"anyOf": []}),
     ],
     ids=lambda case: case.name,
 )
 def test_unsupported_schema_fragment_aborts_naming_the_fragment(case: FragmentCase) -> None:
+    """Valid JSON Schema the generator has no mapping for, so extending the mapping is the fix."""
     with pytest.raises(
         ErrorCatalogueGenerationError,
         match=r'^Catalogue code "SOME_CODE" uses a JSON Schema construct the generator does not support: .+',
     ):
         python_type(case.schema, "SOME_CODE")
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        FragmentCase(name="empty-anyof", schema={"anyOf": []}),
+        FragmentCase(name="anyof-not-a-list", schema={"anyOf": {"type": "string"}}),
+    ],
+    ids=lambda case: case.name,
+)
+def test_malformed_schema_fragment_points_at_the_catalogue(case: FragmentCase) -> None:
+    """Not valid JSON Schema at all, so the fix is the catalogue entry rather than the generator."""
+    with pytest.raises(
+        ErrorCatalogueGenerationError,
+        match=r'^Catalogue code "SOME_CODE" declares a payload fragment that is not valid JSON Schema: .+',
+    ):
+        python_type(case.schema, "SOME_CODE")
+
+
+def test_a_fragment_that_is_not_an_object_points_at_the_catalogue() -> None:
+    with pytest.raises(
+        ErrorCatalogueGenerationError,
+        match=r'^Catalogue code "SOME_CODE" declares a payload fragment that is not valid JSON Schema: .+',
+    ):
+        python_type("a bare string where a schema belongs", "SOME_CODE")
 
 
 def test_required_field_carries_no_default_and_optional_field_carries_its_own() -> None:

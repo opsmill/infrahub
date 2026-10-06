@@ -15,6 +15,8 @@ import textwrap
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -101,16 +103,17 @@ def python_type(schema: object, code: str) -> str:
     """Map one JSON Schema fragment onto the Python type that represents the same value.
 
     Raises:
-        _unsupported_fragment_error: when the fragment is outside the supported vocabulary.
+        _malformed_fragment_error: when the fragment is not valid JSON Schema.
+        _unsupported_fragment_error: when it is valid but outside the supported vocabulary.
 
     """
     if not isinstance(schema, dict):
-        raise _unsupported_fragment_error(code, schema)
+        raise _malformed_fragment_error(code, schema)
 
     if "anyOf" in schema:
         branches = schema["anyOf"]
         if not isinstance(branches, list) or not branches:
-            raise _unsupported_fragment_error(code, schema)
+            raise _malformed_fragment_error(code, schema)
         # Two branches can collapse to the same Python type; keep the first and drop the repeat.
         return " | ".join(dict.fromkeys(python_type(branch, code) for branch in branches))
 
@@ -133,6 +136,15 @@ def _unsupported_fragment_error(code: str, schema: object) -> ErrorCatalogueGene
         f'Catalogue code "{code}" uses a JSON Schema construct the generator does not support: '
         f"{json.dumps(schema, sort_keys=True, default=repr)}. Extend the mapping in "
         f"infrahub/errors/sdk_bindings.py rather than letting the bindings guess."
+    )
+
+
+def _malformed_fragment_error(code: str, schema: object) -> ErrorCatalogueGenerationError:
+    """For a fragment that is not valid JSON Schema, where extending the generator would not help."""
+    return ErrorCatalogueGenerationError(
+        f'Catalogue code "{code}" declares a payload fragment that is not valid JSON Schema: '
+        f"{json.dumps(schema, sort_keys=True, default=repr)}. Correct the catalogue entry; the "
+        f"generator has no shape to map this onto."
     )
 
 
@@ -482,8 +494,6 @@ def render_bindings(catalogue: dict[str, Any], adopted: dict[str, str], defined:
         ErrorCatalogueGenerationError: when the render does not parse.
 
     """
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # noqa: PLC0415
-
     # autoescape stays off: the output is Python source, not markup, and HTML-escaping it would
     # corrupt every quote and operator in the rendered module.
     environment = Environment(  # noqa: S701

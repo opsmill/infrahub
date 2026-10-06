@@ -1,9 +1,8 @@
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from invoke import Context, task
+from invoke import Context, Exit, task
 from invoke.runners import Result
 
 if TYPE_CHECKING:
@@ -465,6 +464,7 @@ def _check_sdk_error_bindings_committed(
 
     Raises:
         ErrorCatalogueGenerationError: when the submodule is not checked out.
+        Exit: when the bindings are uncommitted or stale, naming the fix for each.
 
     """
     from infrahub.errors.sdk_bindings import BindingsState, ErrorCatalogueGenerationError, classify_bindings_state
@@ -497,20 +497,18 @@ def _check_sdk_error_bindings_committed(
     if state is BindingsState.UP_TO_DATE:
         return
 
-    print()
     if state is BindingsState.NOT_COMMITTED:
-        print(f"ERROR: {submodule}/{bindings} is generated but is not committed in the SDK.")
-        print()
-        print("Fix: commit it in the Python SDK repository, then bump the submodule pointer here.")
+        message = (
+            f"{submodule}/{bindings} is generated but is not committed in the SDK.\n\n"
+            "Fix: commit it in the Python SDK repository, then bump the submodule pointer here."
+        )
     else:
-        print(f"ERROR: {submodule}/{bindings} is out of date with {ERROR_CATALOGUE_SOURCE}.")
-        print()
-        print("Fix:")
-        print("  uv run invoke backend.generate")
-        print()
-        print("Then commit the regenerated file in the Python SDK repository and push again.")
-    print()
-    sys.exit(1)
+        message = (
+            f"{submodule}/{bindings} is out of date with {ERROR_CATALOGUE_SOURCE}.\n\n"
+            "Fix:\n  uv run invoke backend.generate\n\n"
+            "Then commit the regenerated file in the Python SDK repository and push again."
+        )
+    raise Exit(f"\nERROR: {message}\n", code=1)
 
 
 @task(name="export-error-catalogue")
