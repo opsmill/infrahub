@@ -901,14 +901,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Push a given branch to the remote Origin repository; a failure never writes the operational status.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no bound.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
             RepositoryPushRejectedError: When the remote rejects the push at the ref level. It carries the
                 reason read from the flags of the ref's push result and the remote's own ``remote:`` lines.
-            RepositoryConnectionError: When the push fails to reach the remote, or GitPython reports it as
-                killed at ``timeout_seconds``. The subclasses RepositoryNotFoundError and RepositoryTLSError
-                name a missing repository and a refused certificate.
+            RepositoryConnectionError: When the push fails to reach the remote, or Git ran past
+                ``timeout_seconds`` and then failed. The subclasses RepositoryNotFoundError and
+                RepositoryTLSError name a missing repository and a refused certificate.
             RepositoryCredentialsError: When authentication fails at push time.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
 
