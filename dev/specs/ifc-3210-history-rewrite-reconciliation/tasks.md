@@ -437,13 +437,13 @@ emits no signal.
       the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a
       `REMOTE_ABSENT` each writing nothing, and a rejected divergence whose two commits are equal.
       No database, no mocks.
-- [ ] T060 [US1] Component-test the read inheritance in
+- [x] T060 [US1] Component-test the read inheritance in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: a branch created
       after the default branch was reconciled reads the default branch's four values, and its own
       first reconciliation increments the count it inherited. This is what LOCAL does, and the
       test exists so nobody meets it in production. See [data-model.md](data-model.md), "What LOCAL
       does not do".
-- [ ] T061 [US1] Add the branch-safety test, in the same file as T060, in
+- [x] T061 [US1] Add the branch-safety test, in the same file as T060, in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: the four attributes
       appear in no branch diff on `CoreRepository` or `CoreReadOnlyRepository`, and merging a
       branch that carries a record does not carry it to the destination. The constitution's
