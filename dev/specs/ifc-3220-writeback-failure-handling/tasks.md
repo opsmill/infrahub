@@ -177,7 +177,7 @@ Parts A and B of the plan.
 - [X] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
-- [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
+- [X] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
       of contracts section 2, on the default branch, through `NodeManager` and
       `node.save(fields=...)`, under the `repository-delivery` lock with its time to live and
       bounded acquire. `settle_delivery` bounds its lease by the snapshot. Every lease names its
@@ -186,9 +186,9 @@ Parts A and B of the plan.
       `expire_lease` sets the lease's expiry to now and keeps its items. `abandon` passes the
       actor's account id as `user_id`. `pending_repository_ids` filters on the scalar
       `delivery_status` only.
-- [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
+- [X] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
-- [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
+- [X] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
@@ -200,7 +200,7 @@ Parts A and B of the plan.
 - [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
-- [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
+- [X] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
 - [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
