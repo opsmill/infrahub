@@ -142,7 +142,7 @@ async def allocate_from_pool(
     ticket = await NodeManager.get_one(db=db, id=node_id, branch=branch, raise_on_error=True)
     await ticket.from_graphql(
         db=db,
-        data={TRACKED_ATTRIBUTE_NAME: {"from_pool": {"id": pool.id}}},
+        data={TRACKED_ATTRIBUTE_NAME: {"value": None, "from_pool": {"id": pool.id}}},
         pool_applier=build_attribute_pool_applier(db=db),
     )
     await ticket.save(db=db)
