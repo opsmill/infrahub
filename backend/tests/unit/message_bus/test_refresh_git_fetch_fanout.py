@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 import pytest
-from structlog.testing import capture_logs
 
 from infrahub.exceptions import RepositoryError
 from infrahub.git.convergence import WorktreeConverger
@@ -11,6 +11,8 @@ from infrahub.message_bus import Meta
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair, RefreshGitFetch
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 
+TASK_LOGGER = "infrahub.tasks"
+"""The logger the worker sends to the flow run."""
 REPOSITORY_NAME = "fanout-repo"
 REPOSITORY_LOCK = f"repository.{REPOSITORY_NAME}"
 THIS_WORKER = "this-worker"
@@ -191,7 +193,7 @@ async def test_branches_converge_under_one_lock_hold_and_one_fetch(case: FanOutC
     assert timeline.currently_held() == set()
 
 
-async def test_a_branch_that_cannot_be_reset_does_not_stop_the_others() -> None:
+async def test_a_branch_that_cannot_be_reset_does_not_stop_the_others(caplog: pytest.LogCaptureFixture) -> None:
     timeline = LockTimeline()
     repository = RecordingRepository(timeline=timeline, failing_branches=frozenset({FEATURE.infrahub_branch_name}))
     converger = WorktreeConverger(
@@ -200,13 +202,18 @@ async def test_a_branch_that_cannot_be_reset_does_not_stop_the_others() -> None:
         worker_identity=THIS_WORKER,
     )
 
-    with capture_logs() as records:
-        await converger.converge(build_message(branches=(TRUNK, FEATURE, REWRITTEN), commit=TRUNK.commit))
+    caplog.set_level(logging.ERROR, logger=TASK_LOGGER)
+
+    await converger.converge(build_message(branches=(TRUNK, FEATURE, REWRITTEN), commit=TRUNK.commit))
 
     assert repository.calls == [FETCH, converged_reset(TRUNK), converged_reset(FEATURE), converged_reset(REWRITTEN)]
-    assert [(record["log_level"], record["event"], record["branch"]) for record in records] == [
+    assert [
+        (record.levelno, record.getMessage(), vars(record)["branch"])
+        for record in caplog.records
+        if record.name == TASK_LOGGER
+    ] == [
         (
-            "error",
+            logging.ERROR,
             f"Unable to converge branch feature of repository {REPOSITORY_NAME} on commit {FEATURE.commit}",
             "feature",
         )

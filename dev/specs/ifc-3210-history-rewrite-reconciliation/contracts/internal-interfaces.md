@@ -549,7 +549,8 @@ Changed. `backend/infrahub/git/convergence.py::WorktreeConverger`, which the `fe
    That is deliberate, because the broadcast carries a SHA the sending worker already resolved
    and the receiving worker is meant to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
-   and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
+   on the task logger, so it shows in the flow run even though the run completes. That branch
+   converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
 8. **It never writes to the remote.** A worktree it creates for a branch it lacks stays in this
    clone. Creating it used to push the new branch, so a branch deleted on the remote between the

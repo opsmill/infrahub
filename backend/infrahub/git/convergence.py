@@ -6,7 +6,7 @@ from git.exc import GitCommandError
 
 from infrahub.exceptions import CommitNotFoundError, RepositoryError
 from infrahub.git.repository import get_initialized_repo
-from infrahub.log import get_logger
+from infrahub.log import get_logger, get_run_logger
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -125,10 +125,13 @@ class WorktreeConverger:
                     )
             # A branch that cannot converge must not keep the branches after it on their previous commit.
             except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError):
-                log.exception(
+                # The task logger reaches the flow run, so the operator sees which worker stayed behind.
+                get_run_logger().exception(
                     f"Unable to converge branch {branch.infrahub_branch_name} of repository {repository_name} "
                     f"on commit {branch.commit or 'the remote head'}",
-                    repository=repository_name,
-                    branch=branch.infrahub_branch_name,
-                    commit=branch.commit,
+                    extra={
+                        "repository": repository_name,
+                        "branch": branch.infrahub_branch_name,
+                        "commit": branch.commit,
+                    },
                 )
