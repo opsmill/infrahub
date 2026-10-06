@@ -474,6 +474,10 @@ class HTTPServerSSLError(HTTPServerError):
     HTTP_CODE = 503
 
 
+class RepositoryNotSynchronizedError(ValidationError):
+    """Raised when a branch merge would build on a Git branch whose remote head Infrahub has not imported."""
+
+
 class MergeFailedError(Error):
     HTTP_CODE: int = 500
 

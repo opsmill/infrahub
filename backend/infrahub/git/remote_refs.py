@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import git
 from git.exc import GitCommandError
@@ -9,6 +10,9 @@ from git.exc import GitCommandError
 from infrahub.exceptions import RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 HEAD_SYMREF_PREFIX = "ref: refs/heads/"
 BRANCH_REF_PREFIX = "refs/heads/"
@@ -49,6 +53,35 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
             branches.add(right.removeprefix(BRANCH_REF_PREFIX))
 
     return RemoteRefs(default_branch=default_branch, branches=frozenset(branches))
+
+
+def list_remote_heads(name: str, url: str, branch_names: Sequence[str], timeout_seconds: int) -> dict[str, str]:
+    """Return the head commit of each named branch the remote holds, without cloning it.
+
+    A branch the remote does not hold is absent from the result.
+
+    Raises:
+        RepositoryError: For any git failure, a command that runs longer than ``timeout_seconds``
+            included, raised as its connection or credentials subtype where the failure can be classified.
+
+    """
+    cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
+    refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
+    try:
+        listing = cmd.ls_remote(url, *refs, kill_after_timeout=timeout_seconds)
+    except GitCommandError as exc:
+        InfrahubRepositoryBase._raise_enriched_error_static(name=name, location=url, error=exc)
+
+    if not isinstance(listing, str):
+        raise RepositoryError(identifier=name, message=f"Unable to read the branches of the repository {name}.")
+
+    heads: dict[str, str] = {}
+    for line in listing.splitlines():
+        commit, _, ref = line.partition("\t")
+        # Git matches a pattern against the end of a ref, so a longer ref can answer for a requested one.
+        if ref in refs:
+            heads[ref.removeprefix(BRANCH_REF_PREFIX)] = commit
+    return heads
 
 
 def ensure_branch_exists(refs: RemoteRefs, *, branch_name: str, repository_name: str, location: str) -> None:

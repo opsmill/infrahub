@@ -10,3 +10,7 @@ WRITE_ACCESS_PROBE_REF = "infrahub-write-access-probe-do-not-create"
 IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
 IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
 MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"
+
+# A branch merge reads the remote heads before it takes the global merge lock, so a remote that does
+# not answer must stop delaying the merge after this time.
+REMOTE_HEADS_TIMEOUT_SECONDS = 30

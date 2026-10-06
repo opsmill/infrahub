@@ -6,7 +6,7 @@ import pytest
 from git import Repo
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryInvalidBranchError
-from infrahub.git.remote_refs import RemoteRefs, ensure_branch_exists, list_remote_refs
+from infrahub.git.remote_refs import RemoteRefs, ensure_branch_exists, list_remote_heads, list_remote_refs
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -113,3 +113,18 @@ def test_ensure_branch_exists_does_not_name_a_default_branch_the_remote_hides() 
         match=r"^Branch 'main' does not exist on the remote repository demo; the remote is empty or has no default branch\.$",
     ):
         ensure_branch_exists(refs, branch_name="main", repository_name="demo", location="https://example.com/demo.git")
+
+
+def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path: Path) -> None:
+    """Git also lists a ref whose name ends with the requested one, such as team/refs/heads/feature."""
+    source_dir = tmp_path / "source-repo"
+    source = _init_source(source_dir, initial_branch="production")
+    source.git.branch("feature")
+    source.git.branch("team/refs/heads/feature")
+    head = source.head.commit.hexsha
+
+    heads = list_remote_heads(
+        name="demo", url=f"file://{source_dir}", branch_names=["feature", "missing"], timeout_seconds=30
+    )
+
+    assert heads == {"feature": head}
