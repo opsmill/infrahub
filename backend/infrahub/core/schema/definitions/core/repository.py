@@ -95,7 +95,10 @@ core_repository = NodeSchema(
             name="delivery_failure_cause",
             kind="Dropdown",
             label="Push failure cause",
-            description="Why the last push to the remote failed. Live on the default branch only.",
+            description=(
+                "Why the last push to the remote, or the import that follows it, failed. "
+                "Live on the default branch only."
+            ),
             choices=[
                 DropdownChoice(
                     name=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE.value, label="Remote unreachable"
@@ -148,7 +151,7 @@ core_repository = NodeSchema(
             kind="TextArea",
             label="Push error",
             description=(
-                "Message of the last failed push, as the remote returned it, with credentials removed. "
+                "Message of the last failure to push or import, with credentials removed. "
                 "Live on the default branch only."
             ),
             optional=True,
@@ -177,7 +180,7 @@ core_repository = NodeSchema(
             kind="JSON",
             label="Held regeneration",
             description=(
-                "Artifacts, generators and computed attributes held until the pending pushes clear. "
+                "Definitions and Python computed attributes held until the pending pushes reach the remote. "
                 "Live on the default branch only."
             ),
             optional=True,
@@ -234,7 +237,7 @@ core_repository = NodeSchema(
             kind="JSON",
             label="Push progress",
             description=(
-                "Progress of the current push attempt, and the time of the next automatic retry. "
+                "Times when the push attempt started and last moved, and when the next automatic retry is due. "
                 "Live on the default branch only."
             ),
             optional=True,
