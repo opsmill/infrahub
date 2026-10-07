@@ -528,9 +528,17 @@ which `test_git_live_remote.py` asserts.
 
 **Why two new subtypes.** A certificate failure and "Repository not found" are
 `RepositoryConnectionError` today, told apart only by their message. Retrying either is pointless.
-`RepositoryTLSError` and `RepositoryNotFoundError` subclass `RepositoryConnectionError`. Both
-operational-status maps (R0) move from an exact-type lookup to an `isinstance` lookup, most specific
-first, so both subtypes keep `ERROR_CONNECTION`.
+`RepositoryTLSError` and `RepositoryNotFoundError` subclass `RepositoryConnectionError`. The two
+exact-type maps of R0 become one function, `git/base.py::operational_status_for_error`, which both
+call sites use. It matches with `isinstance`, most specific first, so both subtypes keep
+`ERROR_CONNECTION`.
+
+**Git's own not-found line.** For a fetch or a push, GitPython hands `_raise_enriched_error_static`
+only the lines that start with `error:` or `fatal:`, so the host's `remote: Repository not found.`
+line never reaches it. Git's own line for an HTTP 404, `fatal: repository '<url>' not found`, also
+raises `RepositoryNotFoundError` (`GIT_HTTP_REPOSITORY_NOT_FOUND`). Git removes the credentials from
+that URL. Effect: a fetch of a missing repository now records `error-connection` and the connection
+message, where it recorded `error` and the raw Git line before.
 
 **A fetch or a push past its time limit.** When Git ends after `kill_after_timeout` passed and Git
 failed, GitPython adds "process killed because it timed out" to the error lines

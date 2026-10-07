@@ -344,8 +344,9 @@ In `backend/infrahub/exceptions.py`:
 | `DeliveryQueueChangedError` | `ValidationError` | none | "The pending pushes of repository <name> changed since version <n>; reload and try again." |
 | `NothingPendingError` | `ValidationError` | none | "Repository <name> has nothing pending to push." |
 
-Both operational-status maps (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
-`message_bus/operations/git/repository.py::connectivity`) resolve the status with `isinstance`, most
+One function, `git/base.py::operational_status_for_error`, resolves the operational status for both
+call sites (`git/base.py::InfrahubRepositoryBase._raise_enriched_error` and
+`message_bus/operations/git/repository.py::connectivity`). It matches with `isinstance`, most
 specific first, so the two connection subtypes keep `ERROR_CONNECTION`.
 
 ---

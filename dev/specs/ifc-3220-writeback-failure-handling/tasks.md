@@ -95,8 +95,11 @@ Parts A and B of the plan.
 - [X] T006 [P] Add `PushRejectionReason` to `backend/infrahub/git/models.py`.
 - [X] T007 Make `InfrahubRepositoryBase._raise_enriched_error_static` in
       `backend/infrahub/git/base.py` raise `RepositoryTLSError` for the TLS markers,
-      `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for
-      GitPython's "process killed because it timed out".
+      `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line,
+      `fatal: repository '<url>' not found` (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and
+      `RepositoryConnectionError` for GitPython's "process killed because it timed out". Effect of
+      the 404 rule: a fetch of a missing repository records `error-connection` and the connection
+      message, not `error` and the raw Git line.
 - [X] T008 Resolve the operational status with `isinstance`, most specific first, in
       `InfrahubRepositoryBase._raise_enriched_error` in `backend/infrahub/git/base.py` and in
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
