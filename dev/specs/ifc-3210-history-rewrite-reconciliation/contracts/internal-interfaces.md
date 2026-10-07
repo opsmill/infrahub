@@ -748,7 +748,8 @@ reaches it. This guard closes that.
 | Is the remote head | not read | **Merge.** |
 | Behind the remote head, or diverged from it | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
 | Diverged from the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Behind the remote head | differs from the remote head | **Merge as it is.** The merge builds on content the graph imported. The check before the graph merge refuses this case first. |
+| Behind the graph commit, which the remote history holds | differs from the remote head | **Move the branch onto the graph commit and merge.** The Git merge then holds the commit the graph merged, not an older one. |
+| Behind the remote head, and not behind a graph commit the remote history holds | differs from the remote head | **Merge as it is.** The check before the graph merge refuses this case first. |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
    "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and

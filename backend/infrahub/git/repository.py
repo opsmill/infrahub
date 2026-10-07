@@ -914,14 +914,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def prepare_branches_for_merge(
         self, source_branch: str, dest_branch: str, source_commit: str | None, destination_commit: str | None
     ) -> None:
-        """Move a merge branch onto its remote head when the graph records that head, or refuse the merge.
+        """Move a merge branch onto the commit the graph records for it, or refuse the merge.
 
         The merge reads the source from its local ref and builds on the local destination. A branch that
         is behind its remote head, or diverged from it, is moved onto that head when the graph records it:
         the graph imported that head, and only this clone is stale. A diverged branch whose graph commit
         differs is refused, because the rewrite is not reconciled yet: no branch moves, so the next
         synchronization still finds the rewrite to record and import. A branch behind a head the graph
-        has not imported is left as it is.
+        has not imported is moved onto the graph commit when that commit lies between the two, so the
+        merge holds what the graph merged, and is left as it is otherwise.
 
         The graph commits come from the caller, read when the merge was dispatched, because the source
         branch can be deleted in Infrahub before this runs.
@@ -950,7 +951,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 continue
             graph_commit = graph_commits[branch_name]
             if graph_commit == remote_head:
-                moves.append((branch_name, local_head, remote_head))
+                moves.append((branch_name, local_head, graph_commit))
             elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
                 raise RepositoryDivergentHistoryError(
                     identifier=self.name,
@@ -964,21 +965,41 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         "next synchronization imports the result."
                     ),
                 )
+            elif graph_commit is not None and self._lies_between(
+                older_commit=local_head, commit=graph_commit, newer_commit=remote_head
+            ):
+                moves.append((branch_name, local_head, graph_commit))
 
-        for branch_name, local_head, remote_head in moves:
+        for branch_name, local_head, graph_commit in moves:
             if self._get_branch_worktree(branch_name) is None:
-                await self._move_branch_ref(branch_name=branch_name, commit=remote_head)
+                await self._move_branch_ref(branch_name=branch_name, commit=graph_commit)
             else:
-                await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=False)
+                await self.reset_to_commit(branch_name=branch_name, commit=graph_commit, update_commit_value=False)
             log.info(
-                "Moved branch %s of repository %s from %s onto the remote head %s before the merge, "
-                "which the graph records",
+                "Moved branch %s of repository %s from %s onto %s before the merge, which the graph records",
                 branch_name,
                 self.name,
                 local_head,
-                remote_head,
-                extra={"repository": self.name, "branch": branch_name, "commit": remote_head},
+                graph_commit,
+                extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
             )
+
+    def _lies_between(self, older_commit: str, commit: str, newer_commit: str) -> bool:
+        """Whether the commit descends from the older commit, differs from it, and is in the history of the newer one.
+
+        Raises:
+            RepositoryError: When git cannot read or compare the commits.
+
+        """
+        if commit == older_commit:
+            return False
+        gateway = self._get_ancestry_gateway()
+        # A commit absent after the fetch is not in the remote history, and a comparison with it would raise.
+        return (
+            gateway.has_commit(commit)
+            and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=newer_commit)
+            and gateway.is_ancestor(ancestor_commit=older_commit, descendant_commit=commit)
+        )
 
     async def _move_branch_ref(self, branch_name: str, commit: str) -> None:
         # The merge reads its source from this ref, which a branch without a worktree still has.

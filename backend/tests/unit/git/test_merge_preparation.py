@@ -167,6 +167,35 @@ async def test_a_branch_behind_a_head_the_graph_records_is_moved_onto_it_before_
     assert merge_clone.client.recorded_commits == []
 
 
+@pytest.mark.parametrize("branch_name", [SOURCE, DESTINATION])
+async def test_a_branch_behind_the_graph_commit_is_moved_onto_it_before_the_merge(
+    merge_clone: MergeClone, branch_name: str
+) -> None:
+    """The remote moved past the commit the graph merged, so the Git merge must hold that commit, not an older one."""
+    graph_commit = merge_clone.remote.commit(branch_name=branch_name, files={"imported.txt": "imported\n"})
+    merge_clone.advance(branch_name)
+    merge_clone.commits[branch_name] = graph_commit
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == {**merge_clone.local_heads, branch_name: graph_commit}
+    assert merge_clone.client.recorded_commits == []
+
+
+@pytest.mark.parametrize("branch_name", [SOURCE, DESTINATION])
+async def test_a_branch_behind_a_graph_commit_the_remote_dropped_is_merged_as_it_is(
+    merge_clone: MergeClone, branch_name: str
+) -> None:
+    """The graph commit is not in the remote history any more, so this clone never fetched it."""
+    graph_commit = merge_clone.remote.commit(branch_name=branch_name, files={"imported.txt": "imported\n"})
+    merge_clone.rewrite(branch_name)
+    merge_clone.commits[branch_name] = graph_commit
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
 @pytest.mark.parametrize("case", DIVERGED_BRANCH_CASES, ids=lambda case: case.name)
 async def test_a_branch_whose_rewrite_the_graph_lacks_refuses_the_merge(
     merge_clone: MergeClone, case: DivergedBranchCase

@@ -279,7 +279,8 @@ ref. Two checks keep it off a rewritten history:
   branches again. The graph commits come in the merge model (`GitRepositoryMerge`), read when the
   merge was dispatched, because the source branch can be deleted before the Git merge runs. A branch
   whose clone is behind or diverged is moved onto the remote head when the graph commit equals that
-  head. A diverged branch whose graph commit differs refuses the merge with
+  head. A clone behind the graph commit, when the remote history holds that commit, is moved onto
+  the graph commit. A diverged branch whose graph commit differs refuses the merge with
   `RepositoryDivergentHistoryError`. That refusal comes after the graph merge: the branch is merged
   in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user to
   finish the merge in Git.
