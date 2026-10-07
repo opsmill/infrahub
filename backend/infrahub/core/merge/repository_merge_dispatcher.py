@@ -92,16 +92,21 @@ class RepositoryMergeDispatcher:
             return True
         if not self.source_branch.sync_with_git:
             return False
-        source_commit = readable_commit(repo.commit.value)
-        if nothing_to_merge_in_git(
-            source_commit=source_commit, destination_commit=readable_commit(repo_on_destination.commit.value)
+        if not nothing_to_merge_in_git(
+            source_commit=repo.commit.value, destination_commit=repo_on_destination.commit.value
         ):
+            return True
+        if repo.commit.value:
             self.log.info(
                 f"Skipped the Git merge of repository {repo.name.value}: branch {self.source_branch.name} records "
-                f"commit {source_commit}, which the default branch records too, so there is nothing to push"
+                f"commit {repo.commit.value}, which the default branch records too, so there is nothing to push"
             )
-            return False
-        return True
+        else:
+            self.log.info(
+                f"Skipped the Git merge of repository {repo.name.value}: neither branch {self.source_branch.name} "
+                "nor the default branch records a commit, so there is nothing to push"
+            )
+        return False
 
 
 async def list_shared_core_repositories(
@@ -132,6 +137,9 @@ async def list_git_merge_targets(db: InfrahubDatabase, source_branch: Branch) ->
             remote_trunk=repo_on_destination.default_branch.value,
             source_commit=readable_commit(repo.commit.value),
             destination_commit=readable_commit(repo_on_destination.commit.value),
+            nothing_to_merge=nothing_to_merge_in_git(
+                source_commit=repo.commit.value, destination_commit=repo_on_destination.commit.value
+            ),
         )
         for repo, repo_on_destination in await list_shared_core_repositories(db=db, source_branch=source_branch)
         if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value

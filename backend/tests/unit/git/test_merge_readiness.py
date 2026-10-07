@@ -15,7 +15,7 @@ from infrahub.exceptions import (
     RepositoryNotSynchronizedError,
 )
 from infrahub.git.constants import REMOTE_HEADS_DEADLINE_SECONDS, REMOTE_HEADS_TIMEOUT_SECONDS
-from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
+from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck, nothing_to_merge_in_git
 from tests.adapters.remote_heads import (
     CountingRemoteHeadReader,
     FailingRemoteHeadReader,
@@ -37,14 +37,17 @@ def target(
     remote_trunk: str = "main",
     source_commit: str | None = SOURCE_HEAD,
     remote_source_branch: str = SOURCE,
+    destination_commit: str | None = TRUNK_HEAD,
 ) -> GitMergeTarget:
+    """Build a target from the commits the graph records, as the listing of the targets does."""
     return GitMergeTarget(
         name=name,
         location=f"https://git.example.com/{name}.git",
         remote_source_branch=remote_source_branch,
         remote_trunk=remote_trunk,
         source_commit=source_commit,
-        destination_commit=TRUNK_HEAD,
+        destination_commit=destination_commit,
+        nothing_to_merge=nothing_to_merge_in_git(source_commit=source_commit, destination_commit=destination_commit),
     )
 
 
@@ -320,3 +323,68 @@ async def test_a_merge_with_no_repository_to_read_goes_on() -> None:
 def test_one_remote_read_stops_before_the_deadline_of_the_check() -> None:
     """A read that hangs must free its place before the deadline, so that a read that waits can still run."""
     assert REMOTE_HEADS_TIMEOUT_SECONDS < REMOTE_HEADS_DEADLINE_SECONDS
+
+
+@dataclass
+class NothingToMergeCase:
+    name: str
+    source_commit: str | None
+    destination_commit: str | None
+    nothing_to_merge: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        NothingToMergeCase(
+            name="same-commit", source_commit=TRUNK_HEAD, destination_commit=TRUNK_HEAD, nothing_to_merge=True
+        ),
+        NothingToMergeCase(
+            name="no-commit-on-either", source_commit=None, destination_commit=None, nothing_to_merge=True
+        ),
+        NothingToMergeCase(
+            name="empty-text-on-either", source_commit="", destination_commit=None, nothing_to_merge=True
+        ),
+        NothingToMergeCase(
+            name="other-commit", source_commit=SOURCE_HEAD, destination_commit=TRUNK_HEAD, nothing_to_merge=False
+        ),
+        NothingToMergeCase(
+            name="no-commit-on-the-branch-only",
+            source_commit=None,
+            destination_commit=TRUNK_HEAD,
+            nothing_to_merge=False,
+        ),
+        NothingToMergeCase(
+            name="same-value-that-is-not-a-commit-id",
+            source_commit="b1a2c3d",
+            destination_commit="b1a2c3d",
+            nothing_to_merge=False,
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+def test_a_git_merge_has_nothing_to_push_only_when_both_branches_record_the_same_known_commit(
+    case: NothingToMergeCase,
+) -> None:
+    """A repository whose first clone failed records no commit at all, while a malformed value is unknown."""
+    assert (
+        nothing_to_merge_in_git(source_commit=case.source_commit, destination_commit=case.destination_commit)
+        is case.nothing_to_merge
+    )
+
+
+async def test_a_repository_with_no_commit_on_either_branch_compares_only_its_source_branch() -> None:
+    """A repository whose first clone failed records no commit on the trunk, nor on a branch created after."""
+    reader = InMemoryRemoteHeadReader(heads={"network-repo": {"main": TRUNK_HEAD}})
+
+    await check(reader=reader).check(
+        source_branch=SOURCE, targets=[target(source_commit=None, destination_commit=None)]
+    )
+
+    assert reader.reads == [
+        HeadRead(
+            repository_name="network-repo",
+            location="https://git.example.com/network-repo.git",
+            branch_names=(SOURCE,),
+        )
+    ]

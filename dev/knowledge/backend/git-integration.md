@@ -207,8 +207,10 @@ merge after a plain push and keeps the branch open:
   a Git merge: that Git merge would fail the same way after the graph merge. Any other failure to
   read a remote, and a remote not read before the total deadline of the check
   (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does not block the merge. For a repository
-  whose source branch records the commit its trunk records, the check reads the source branch only,
-  and the dispatcher runs no Git merge for it: there is nothing to push.
+  whose source branch records the commit its trunk records, or where neither branch records a
+  commit, as after a failed first clone, the check reads the source branch only, and the dispatcher
+  runs no Git merge for it: there is nothing to push. A value that is set but is not a full commit
+  id is unknown, so the full check runs.
 - In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches the heads of the remote
   branches, with no tags because a tag moved on the remote would fail the fetch, then compares the
   local source ref and the local trunk worktree with their remote heads. A fetch that fails says how

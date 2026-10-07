@@ -72,6 +72,7 @@ async def test_only_the_active_repositories_of_the_branch_are_git_merge_targets(
             remote_trunk="develop",
             source_commit=BRANCH_COMMIT,
             destination_commit=TRUNK_COMMIT,
+            nothing_to_merge=False,
         )
     ]
 
@@ -120,9 +121,10 @@ async def test_a_repository_whose_branch_records_the_trunk_commit_gets_no_git_me
     register_core_models_schema: SchemaBranch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The branch records the commit the default branch records, so the Git merge has nothing to push."""
+    """Both branches record the same commit, or neither records one, so the Git merge has nothing to push."""
     changed = await create_repository(db=db, name="changed-repo", commit=TRUNK_COMMIT)
     unchanged = await create_repository(db=db, name="unchanged-repo", commit=TRUNK_COMMIT)
+    await create_repository(db=db, name="never-cloned-repo")
     staging = await create_repository(db=db, name="staging-repo", commit=TRUNK_COMMIT)
     feature = await create_feature_branch(db=db, sync_with_git=True)
     await update_on_branch(db=db, repository=changed, branch=feature, commit=BRANCH_COMMIT)
@@ -141,17 +143,18 @@ async def test_a_repository_whose_branch_records_the_trunk_commit_gets_no_git_me
         logger=logging.getLogger(LOGGER_NAME),
     ).merge_core_repositories()
 
-    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+    assert sorted(record.getMessage() for record in caplog.records if record.name == LOGGER_NAME) == [
+        "Skipped the Git merge of repository never-cloned-repo: neither branch feature nor the default branch "
+        "records a commit, so there is nothing to push",
         f"Skipped the Git merge of repository unchanged-repo: branch feature records commit {TRUNK_COMMIT}, which "
-        "the default branch records too, so there is nothing to push"
+        "the default branch records too, so there is nothing to push",
     ]
     assert sorted(
         call["parameters"]["model"].repository_name for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)
     ) == ["changed-repo", "staging-repo"]
-    assert sorted(target.name for target in await list_git_merge_targets(db=db, source_branch=feature)) == [
-        "changed-repo",
-        "unchanged-repo",
-    ]
+    assert {
+        target.name: target.nothing_to_merge for target in await list_git_merge_targets(db=db, source_branch=feature)
+    } == {"changed-repo": False, "never-cloned-repo": True, "unchanged-repo": True}
 
 
 @pytest.mark.parametrize("commit", [BRANCH_COMMIT, "b1a2c3d"], ids=["full-commit-id", "short-commit-id"])

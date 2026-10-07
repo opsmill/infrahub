@@ -10,6 +10,7 @@ from infrahub.exceptions import (
     RepositoryError,
     RepositoryNotSynchronizedError,
 )
+from infrahub.git.commit_id import readable_commit
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -17,8 +18,15 @@ if TYPE_CHECKING:
 
 
 def nothing_to_merge_in_git(source_commit: str | None, destination_commit: str | None) -> bool:
-    """Whether the branch records the commit the default branch records, so the Git merge would push nothing."""
-    return source_commit is not None and source_commit == destination_commit
+    """Whether the Git merge would push nothing, from the commits the graph stores on both branches.
+
+    That holds when both record the same full commit id, or when neither records a commit, as after a
+    failed first clone. A value that is set but is not a full commit id is unknown, so it never counts.
+    """
+    if not source_commit and not destination_commit:
+        return True
+    readable = readable_commit(source_commit)
+    return readable is not None and readable == readable_commit(destination_commit)
 
 
 @dataclass(frozen=True)
@@ -38,6 +46,9 @@ class GitMergeTarget:
 
     destination_commit: str | None
     """The commit the graph records on the destination branch."""
+
+    nothing_to_merge: bool
+    """Whether the Git merge would push nothing, decided from the values the graph stores."""
 
 
 @dataclass(frozen=True)
@@ -142,7 +153,7 @@ class RemoteHeadsMergeCheck:
                 "so the merge compares only the trunk with its remote head"
             )
             return {target.remote_trunk: target.destination_commit}
-        if nothing_to_merge_in_git(source_commit=target.source_commit, destination_commit=target.destination_commit):
+        if target.nothing_to_merge:
             return {target.remote_source_branch: target.source_commit}
         return {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
 
@@ -187,9 +198,7 @@ class RemoteHeadsMergeCheck:
                     repository_name=target.name, location=target.location, branch_names=branch_names
                 )
         except RepositoryError as exc:
-            if isinstance(exc, RepositoryCredentialsError) and not nothing_to_merge_in_git(
-                source_commit=target.source_commit, destination_commit=target.destination_commit
-            ):
+            if isinstance(exc, RepositoryCredentialsError) and not target.nothing_to_merge:
                 return exc
             self.log.warning(
                 f"Unable to read the remote heads of repository {target.name}, the merge of branch "

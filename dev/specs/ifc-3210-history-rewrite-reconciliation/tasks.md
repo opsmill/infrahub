@@ -373,10 +373,10 @@ emits no signal.
       cannot clear. Refuse with `RepositoryNotSynchronizedError` while a remote head differs from the
       graph commit. A remote that refuses the credentials of a repository that needs a Git merge
       refuses the merge; any other failure to read a remote, and a remote not read before the total
-      deadline, logs a warning and lets the merge go on. A repository whose
-      source branch records the trunk commit has nothing to merge in Git: compare its source branch
-      only, and submit no Git merge for it. Add a live-remote test
-      that merges a branch through the mutation, not through a direct call of the Git merge flow.
+      deadline, logs a warning and lets the merge go on. A repository whose source branch records
+      the trunk commit, or where neither branch records a commit, has nothing to merge in Git:
+      compare its source branch only, and submit no Git merge for it. Add a live-remote test that
+      merges a branch through the mutation, not through a direct call of the Git merge flow.
 - [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
       names the real cause and never says "conflict" (FR-003, FR-017). The merge guard raises it

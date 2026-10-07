@@ -814,10 +814,11 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    `REMOTE_HEADS_TIMEOUT_SECONDS`, at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes are read at once,
    and all the reads together stop at `REMOTE_HEADS_DEADLINE_SECONDS`: a repository not read by then
    is treated as a remote that cannot be read. The timeout of one read is lower than the deadline,
-   so a remote that hangs frees its place for a read that waits. A repository whose source branch records the commit
-   its trunk records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch
-   only, and `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs
-   again, so its source branch is still compared.
+   so a remote that hangs frees its place for a read that waits. A repository has nothing to merge
+   in Git (`nothing_to_merge_in_git`) when its source branch records the commit its trunk records,
+   or when neither branch records a commit: read its source branch only, and
+   `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs again, so
+   its source branch is still compared.
 2. Compare each head with the commit the graph records for that branch. The rule is equality, as
    above.
 3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
@@ -831,6 +832,14 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    repository needs a Git merge: that Git merge would read the remote with the same credentials and
    fail after the graph merge. For a repository whose branch records the commit of its trunk, no Git
    merge runs, so the check only logs the warning.
+
+**No commit on both branches counts as nothing to merge.** An earlier version of this check did not
+count it. The case is a real state: a repository is active before its first clone, and records a
+commit only after the clone. A failed first clone therefore leaves it active with no commit, on the
+trunk and on every branch created before a later sync clones it. Without the rule, the remote head
+of the trunk differed from the empty graph commit, and every merge of a branch that syncs with Git
+was refused until that sync. A value that is set but is not a full commit id still never counts: it
+is unknown, not empty.
 
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
 refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as

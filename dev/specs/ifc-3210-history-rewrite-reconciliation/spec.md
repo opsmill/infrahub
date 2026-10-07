@@ -329,9 +329,10 @@ here. See "Out of Scope".
   therefore compare, before the graph merge, the remote heads of the source branch and of the trunk
   of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
   the merge while one differs. A repository whose source branch records the commit that its trunk
-  records has nothing to merge in Git: the system MUST NOT run its Git merge, and MUST compare only
-  the remote head of its source branch. That refusal leaves the branch open, and the merge can run
-  again after the synchronisation imports the head. A remote that refuses the credentials of a
+  records has nothing to merge in Git, and so has a repository where neither branch records a
+  commit, as after a failed first clone: the system MUST NOT run its Git merge, and MUST compare
+  only the remote head of its source branch. That refusal leaves the branch open, and the merge can
+  run again after the synchronisation imports the head. A remote that refuses the credentials of a
   repository that needs a Git merge MUST block the merge, because that Git merge would fail the same
   way after the graph merge. Any other failure to read a remote, and a remote not read before the
   total deadline of the check, MUST be logged as a warning and MUST NOT block the merge. A refusal
