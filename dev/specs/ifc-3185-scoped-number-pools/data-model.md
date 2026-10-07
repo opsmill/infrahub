@@ -127,8 +127,8 @@ pool and within a range (FR-015, FR-017).
 
 ### Fixed dataset (contract change set only)
 
-`pools/number_pool_mock.py` (deleted by the last change set) holds the fixed in-memory dataset the
-three dedicated queries return until the real reads exist: a pool scoped by `site` for any
+`pools/number_pool_mock.py` (deleted by the ticket that reads the database, IFC-3329) holds the
+fixed in-memory dataset the three dedicated queries return until the real reads exist: a pool scoped by `site` for any
 `pool_id`, and an unscoped pool for the reserved id `mock-unscoped`. Nothing is read from the
 database. Every figure is computed from the dataset's rows with the definitions above, and the
 filters, ordering, pagination and refusals apply to the dataset, so lists, filters and counts agree.

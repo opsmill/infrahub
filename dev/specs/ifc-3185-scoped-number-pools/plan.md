@@ -127,7 +127,7 @@ backend/infrahub/
 │   ├── node/
 │   │   ├── __init__.py                          # handle_pool passes the division; from_graphql defers pools
 │   │   ├── create.py                            # template allocation passes the division
-│   │   └── resource_manager/number_pool.py      # get_resource(division=…), get_next, get_free, get_used
+│   │   └── resource_manager/number_pool.py      # get_resource(division=…) hands the division to the picker
 │   ├── migrations/schema/node_attribute_add.py  # backfill loads the scoped fields and passes each node's division
 │   └── validators/
 │       ├── __init__.py                          # map the new checker
@@ -135,7 +135,10 @@ backend/infrahub/
 │       └── node/attribute.py                    # size check against the largest division
 ├── templates/node_applier.py                    # pool allocation deferred until relationships are applied
 ├── pools/
-│   ├── effective_space.py                       # test keeping only the values of the pool's space, and its size (new; replaced by P1's shared calculation)
+│   ├── number_ranges.py                         # EffectiveSpace: the pool's space, size, contains, range_for (existing, consumed)
+│   ├── number_pool_attribute_allocator.py       # allocate(division=…) (existing)
+│   ├── number_pool_number_picker.py             # next_number(division=…) drains the ranges heaviest first (existing)
+│   ├── number_pool_repository.py                # get_free / get_used take the division; get_taken keeps the global scan (existing)
 │   ├── default_allocator.py                     # no longer allocates from the raw field dict
 │   ├── scope.py                                 # ScopeEntry, DivisionKey, DivisionResolver, ScopeValidator (new)
 │   ├── division_report.py                       # DivisionReporter (new, pure)
@@ -190,16 +193,21 @@ module, so the generic file changes in description strings only. The checker goe
 |---|---|---|---|
 | **A. Schema** | `allocation_scope` on the pool kind; `NumberPoolParameters.allocation_scope`; the hand-maintained SDK generator entry in `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields`; regenerate protocols, GraphQL schema, OpenAPI, SDK models, docs snippet | — | everything |
 | **B. Surface** | `graphql/queries/number_pool.py` with the three root fields and every type of the contract, answering from the fixed in-memory dataset of `pools/number_pool_mock.py` (no database read); description notes on the generic queries and types; regenerate `schema/schema.graphql` and the frontend types; SDL snapshot test | A | frontend, SDK |
-| **C. Seams** | `DivisionKey`; `get_resource(division=…)` threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `handle_pool` deferred in `from_graphql`) and from the attribute-add backfill; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division | A | D1, D2 |
-| **D1. Scoped allocation** | `DivisionResolver`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the scoped `get_free` / `get_used`; the unscoped snapshot test | C | F |
+| **C. Seams** | `DivisionKey`; the division threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `handle_pool` deferred in `from_graphql`) and from the attribute-add backfill, along `NumberPoolAttributeAllocator.allocate` → `CoreNumberPool.get_resource` → `NumberPoolNumberPicker.next_number` → `NumberPoolRepository.get_free` / `get_used`; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division | A | D1, D2 |
+| **D1. Scoped allocation** | `DivisionResolver`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the division applied inside the fragment `NumberPoolGetFree` and `NumberPoolGetUsed` share; the unscoped snapshot test | C | F |
 | **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the pool, its ranges, its rows and the reporter instead of the fixed dataset (with `NumberPoolGetAllocated` projecting provenance and filtering on the pool's space, the bounds, branch and provenance); peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
 | **D3. Scope write path** | `ScopeValidator`; the mutation validation against the mutation branch, invoked only when the scope changes; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back; `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
 | **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the three update constraints and the two removal migrations; integration-docker test | A | — |
 | **E. Mock removal** | delete `pools/number_pool_mock.py` and its call sites; the test that the three queries return the requested pool's own data and refuse an unknown `pool_id`; the SDL snapshot unchanged | D2 | F |
-| **F. Close** | SC-006 benchmark, SC-005 timed scenario, `measurements.md`; user docs; knowledge entry; changelog fragments; the form A versus form B review | D1, E | ship |
+| **F. Close** | SC-006 benchmark, SC-005 timed scenario, `measurements.md`; the consolidation journey through attach; user docs; knowledge entry; changelog fragments; the record of the surface decision (form A) | D1, E | ship |
 
-B, C, D3 and D4 run concurrently once A lands. D1 and D2 run concurrently once C lands, D2 taking
-`entries_in_force` from D1's module as soon as it exists.
+The change sets ship as the Jira tickets of [tasks.md](./tasks.md): A is IFC-3334; B is IFC-3346
+(the contract) and IFC-3347 (the queries over the fixed dataset); the validator of D3 is IFC-3348;
+D4 is IFC-3352; C and D1 together are IFC-3349; the size check of D3 is IFC-3353; the schema side
+of D3 is IFC-3351; D2 and E together are IFC-3329; F is IFC-3357 (consolidation), IFC-3355
+(measurement), IFC-3354 (two-branch verification) and IFC-3356 (docs, changelog, SDK pointer). The
+validator lands before scoped allocation so that the division resolver only meets scopes the
+validator accepted; IFC-3352 runs in parallel with both.
 
 ### 2. The division read inside the records fragment (D1)
 
@@ -262,9 +270,12 @@ the database to resolve a peer given by id or human-friendly id, so it takes `db
 component-tested.
 
 `handle_pool` resolves the entries against `registry.schema.get_schema_branch(self._branch.name)`
-and the division from `self`, then calls `get_resource(..., division=key)`. `get_resource` passes it
-to `get_next`, which passes it to `get_free`; `get_used` takes it for the same reason. An empty
-`entries` tuple means unscoped on this branch and the fragment renders unchanged.
+and the division from `self`, then calls `NumberPoolAttributeAllocator.allocate(..., division=key)`,
+which passes it to `CoreNumberPool.get_resource`, then to `NumberPoolNumberPicker.next_number`,
+which passes it to `NumberPoolRepository.get_free` on every segment of its range walk; `get_used`
+takes it for the same reason. `get_taken` keeps its global scan over the attribute: on a `unique`
+attribute every value present anywhere is skipped, scope or not. An empty `entries` tuple means
+unscoped on this branch and the fragment renders unchanged.
 
 Three write paths reach allocation, and each reads the division after the scoped fields are set:
 
@@ -287,8 +298,8 @@ one per root field, registered in `graphql/schema.py::InfrahubBaseQuery` as
 Each resolver loads the pool with `NodeManager.get_one` on the request's branch, refuses anything
 that is not a `CoreNumberPool` with `NodeNotFoundError(node_type="CoreNumberPool")`, loads the
 ranges branch-agnostically ordered by `start`, and resolves the scope in force with
-`DivisionResolver.entries_in_force` (set B ships a minimal `entries_in_force` in `pools/scope.py`
-if D1 has not landed; the function is pure).
+`DivisionResolver.entries_in_force` (the function is pure and lands with the scope validator,
+IFC-3348, before the real reads).
 
 | Root field | Reads | Builds |
 |---|---|---|
@@ -297,23 +308,25 @@ if D1 has not landed; the function is pure).
 | `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the pool's space (or the part of it in the range of `range_id`), `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges (set B: every column comes from the fixed dataset) |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
-mirror leaves it null on a pool holding several ranges, where today's getter and allocated query
-stop working. A small pure helper (`pools/effective_space.py`, kept until P1's shared calculation
-replaces it) keeps only the values of the pool's space and computes its size from the range set,
-the attribute's `excluded_values` and its `min_value` / `max_value`. The three resolvers restrict
-every row to the pool's space: a value outside it is not listed and counts in no figure.
+mirror leaves it null on a pool holding several ranges. The pool's space comes from
+`pools/number_ranges.py::EffectiveSpace`, built from the pool's ranges and the attribute's domain
+(`min_value` / `max_value` minus `excluded_values`) by `pools/number_pool_space.py`: `size` and
+`size_of(range_id)` give the figures' denominators, `contains` decides `in_space`, `range_for`
+gives a row's `range`, `as_query_ranges` gives the bounds the rows query filters on. Allocation
+draws from the same `EffectiveSpace`, so the surface and the picker use one definition of the
+pool's space.
 
 In set B every filter is applied in Python to the fixed dataset, and `count`, `offset` and `limit`
 apply to the filtered list. In D2 the filters move into the queries: the `division` filter into the
 scoped records fragment with the writer's division replaced by the requested entries, so `count` is
 a Cypher count.
 
-`NumberPoolGetAllocated` gains `ranges: Sequence[tuple[int, int]] | None` (None: no bounds filter,
-every tracked value; a list: the values of the pool's space inside any of the given bounds, the
-pool's range set or the one range of `range_id`, not excluded by the attribute and within its
-limits), `branch: str | None` and `provenance: PoolRecordProvenance | None` filters, and projects
+`NumberPoolGetAllocated` keeps its `ranges` argument and makes it optional (None: no bounds filter,
+every tracked value; a list: the segments of the pool's space, `EffectiveSpace.as_query_ranges()`,
+or those of the one range of `range_id`), gains `branch_name: str | None` and
+`provenance: PoolRecordProvenance | None` filters, and projects
 `coalesce(ir.provenance, "allocated") AS provenance`. The generic `InfrahubResourcePoolAllocated`
-and `NumberUtilizationGetter` keep today's shorthand filter and render the same text as today.
+and `NumberUtilizationGetter` pass the space's segments as today and render the same text as today.
 
 The reporter, after D2, returns:
 
@@ -438,13 +451,12 @@ diffing `schema/schema.graphql` for those types.
 |---|---|
 | The hop's fork-window leg makes the scoped free query slow at high occupancy | SC-006 measures; the stored key is the documented next lever |
 | Deferring `handle_pool` on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
-| P1's remaining work and this slice touch `NumberPoolParameters`, `get_next`, the size calculation and the SDK generator | Fragment change is parameter-only; whichever lands second rebases one hunk; each slice opens its own SDK regeneration PR; the landing order is the P1 owner's call (open question in the critique); the dedicated surface's `size`, `used` and the values of the pool's space are computed by a small helper with the definition P1's shared calculation will carry, so the switch is an implementation swap, not a contract change |
+| This slice and part 1 share `NumberPoolParameters`, the picker's range walk, `EffectiveSpace` and the SDK generator | The fragment change is parameter-only and sits inside the range walk; `size`, `used` and `in_space` on the dedicated surface come from `EffectiveSpace`, so allocation and the surface use one definition of the pool's space; the SDK models of both parts merge into `infrahub-develop` before the release merge (IFC-3356) |
 | The generic queries and today's getter read the deprecated shorthand, null on a pool holding several ranges | The dedicated surface never reads the shorthand; the generic queries stay as they are (frozen), and their behaviour on a multi-range pool is P1's to fix |
 | The record-side anchor runs the entry subqueries once per record at full occupancy | Both anchor orders rendered and profiled before one is kept |
 | `NumberPoolGetAllocated` on the shared fragment changes the allocation lists on a deleting branch | Intended; changelog entry; component test |
 | The fixed dataset is mistaken for final data | The contract states it; any `pool_id` returns the same pool; set E's test fails the slice until the real reads land |
 | The generic queries drift while the dedicated surface is built | SC-009 schema diff in the contract change set; regression tests on their responses |
-| Form A is replaced by form B at the final review | Only the three root field names would change; every type is kept; the frontend is told at contract time |
 
 ---
 
@@ -472,3 +484,6 @@ diffing `schema/schema.graphql` for those types.
       resolved or escalated (see the critique's Resolution footer). The critique predates the
       dedicated surface; its findings on the utilization shape are superseded by D7.
 - [x] Phase 2 — `tasks.md` (phases follow change sets A, B, C, D1–D4, E, F)
+- [x] Tickets — `tasks.md` regrouped by Jira ticket (IFC-3334, IFC-3346 to IFC-3358, IFC-3329), one
+      pull request per ticket; the surface keeps form A and User Story 7 is in scope (decisions of
+      2026-10-07)
