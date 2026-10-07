@@ -65,6 +65,7 @@ The median, the 95th percentile and the maximum are read from the histogram: the
 (no pointer) --first refresh--> version 1 --refresh--> version 2 --refresh--> ...
 ```
 
+- Before writing version n+1, the refresh deletes any kind entries already stored under version n+1, which a failed earlier run can leave (critique E4).
 - After writing version n+1 and moving the pointer, the refresh deletes the kind entries of version n.
 - A reader that read pointer n and finds a kind entry missing reads the pointer again once. If the entry is still missing, the fields of that kind have the reason "no statistics".
 
@@ -100,6 +101,11 @@ Built from `GraphQLQueryNode` (the analyzer tree) and the coerced argument value
 
 `RelationshipRef`: `identifier`, `direction`, `name` (the field name on the schema), `hierarchical` (true for `ancestors` and `descendants`, which have no statistics).
 
+Tree rules (critique E2):
+
+- Fields with the same path are merged into one `CostTreeField`, the way graphql-core merges selections with the same response key, for example a field selected directly and through a fragment.
+- Root fields that do not map to a schema kind, such as `InfrahubSearchAnywhere` or `InfrahubGraphQLQueryReport`, have no tree field and no entry in the cost details.
+
 ## Estimate and actual counts
 
 `CostFigures` (frozen): `nodes: int`, `resolver_calls: int`, `database_rows: int`.
@@ -116,19 +122,20 @@ Built from `GraphQLQueryNode` (the analyzer tree) and the coerced argument value
 
 `FieldActual`: `nodes`, `resolver_calls`, `database_rows` (integers, start at 0).
 
-`QueryCostRecorder` (mutable, one for each request with the header): a map of field path to `FieldActual`, plus the queries and rows of the counted first step, recorded separately.
+`QueryCostRecorder` (mutable, one for each request with the header): a map of field path to `FieldActual`. It records separately the queries and rows of the counted first step (`estimate_queries`), and the queries and rows that run while no field is set (`unattributed`).
 
 `QueryCostDetails` (the response content; see [contracts/cost-details.schema.json](contracts/cost-details.schema.json)):
 
 - `estimate_mode`: `counted_first_step` or `statistics_only`
 - `statistics`: branch, computed time, version, or `null` when no statistics exist
 - `fields`: one entry for each field of the estimation tree, in tree order, with its estimate and its actual counts
-- `estimate_queries`: database queries and rows that the counted first step ran
+- `estimate_queries`: database queries and rows that the counted first step ran, or the label-count read in statistics-only mode
+- `unattributed`: database queries and rows that ran while no field was set
 
 ## Rules taken from the requirements
 
 - FR-001, FR-002: the recorder exists only for requests with the header whose operation is a query.
-- FR-005: `source = counted` requires that every variable the query declares has a value or a default.
+- FR-005, FR-006: `source = counted` requires variable values. Requests to `/graphql` and `/api/query` always have them. The report has them only when its `variables` argument is given; an empty object counts as given.
 - FR-011: every estimate carries the branch and computed time of the statistics it used.
 - FR-012: a field whose side has no statistics has `reason = "no statistics"`, and its actual counts are still filled.
 - FR-014: `selects_count` adds one resolver call's worth of rows for each parent node. Display labels, profiles and permission filtering are not in the estimate, and their reads are in the actual counts.

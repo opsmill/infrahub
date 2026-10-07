@@ -5,7 +5,7 @@
   "description": "Content of extensions.query_cost when a request carries the header X-Infrahub-Query-Cost: details (INFP-739).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["estimate_mode", "statistics", "fields", "estimate_queries"],
+  "required": ["estimate_mode", "statistics", "fields", "estimate_queries", "unattributed"],
   "properties": {
     "estimate_mode": {
       "enum": ["counted_first_step", "statistics_only"]
@@ -31,6 +31,16 @@
       "items": { "$ref": "#/$defs/field" }
     },
     "estimate_queries": {
+      "description": "Queries and rows of the counted first step, or of the label-count read in statistics-only mode.",
+      "$ref": "#/$defs/query_totals"
+    },
+    "unattributed": {
+      "description": "Queries and rows that ran while no field was being resolved.",
+      "$ref": "#/$defs/query_totals"
+    }
+  },
+  "$defs": {
+    "query_totals": {
       "type": "object",
       "additionalProperties": false,
       "required": ["queries", "database_rows"],
@@ -38,9 +48,7 @@
         "queries": { "type": "integer", "minimum": 0 },
         "database_rows": { "type": "integer", "minimum": 0 }
       }
-    }
-  },
-  "$defs": {
+    },
     "figures": {
       "type": "object",
       "additionalProperties": false,

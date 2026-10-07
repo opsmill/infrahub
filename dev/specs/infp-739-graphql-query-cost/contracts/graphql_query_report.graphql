@@ -15,9 +15,9 @@ type GraphQLQueryReport {
 }
 
 enum GraphQLQueryCostEstimateMode {
-  "Every variable declared by the query has a value: the top-level nodes and the fields directly under them were counted."
+  "The variables argument was given: the top-level nodes and the fields directly under them were counted."
   COUNTED_FIRST_STEP
-  "At least one declared variable has no value: every figure comes from the statistics."
+  "The variables argument was not given: every figure comes from the statistics, and no counting query ran."
   STATISTICS_ONLY
 }
 
@@ -70,7 +70,7 @@ extend type Query {
   InfrahubGraphQLQueryReport(
     "The raw GraphQL query string to analyze."
     query: String!
-    "Values of the variables the query declares. When every declared variable has a value, the first step is counted."
+    "Values of the variables the query declares. When given (an empty object counts), the first step is counted; when omitted, the estimate is statistics only."
     variables: GenericScalar
   ): GraphQLQueryReport!
 }

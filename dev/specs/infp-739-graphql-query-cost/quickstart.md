@@ -41,7 +41,7 @@ Repeat the request from step 1.
 Expected (see [contracts/cost-details.schema.json](contracts/cost-details.schema.json)):
 
 - `statistics.branch = "main"` and `statistics.computed_at` is the time of the refresh.
-- `estimate_mode = "counted_first_step"`, because the query declares no variables.
+- `estimate_mode = "counted_first_step"`, because a request that runs always has its variable values.
 - The top-level field and `InfraDevice/interfaces` have `estimate.source = "counted"`.
 - For each field, `estimate.expected` and `estimate.worst_case` are filled, with `worst_case ≥ expected`.
 - `estimate_queries.queries` is at most 2: one for `InfraDevice` and one for `InfraDevice/interfaces` (SC-003).
@@ -77,7 +77,7 @@ query {
 }
 ```
 
-Expected: `mode = COUNTED_FIRST_STEP`. Without `variables`, `mode = STATISTICS_ONLY` and every `source` is `STATISTICS` (FR-006).
+Expected: `mode = COUNTED_FIRST_STEP`. Without the `variables` argument, `mode = STATISTICS_ONLY`, every `source` is `STATISTICS` and no counting query runs (FR-006). Passing `variables: {}` counts the first step of a query that declares no variables.
 
 ## 7. Permission check
 

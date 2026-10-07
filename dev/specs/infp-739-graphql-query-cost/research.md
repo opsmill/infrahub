@@ -37,6 +37,7 @@ Each decision below states what was chosen, why, and what else was considered. T
 - **Decision**: a `QueryCostRecorder` held in a `ContextVar`, set by the request handler only when the header is present and the operation is a query.
     - Nodes and resolver calls: recorded in the resolver wrappers (`single_relationship_resolver`, `many_relationship_resolver`, `hierarchy_resolver`, `default_paginated_list_resolver`, `ipam_paginated_list_resolver`) when a recorder is set. Each wrapper also sets a second `ContextVar` with the field's path, and resets it in `finally`.
     - Database rows: `InfrahubDatabase.execute_query_with_metadata` adds `len(results)` to the field in the second `ContextVar` when a recorder is set.
+    - The counted first step runs with a reserved value in the field `ContextVar`, so its queries and rows go to `estimate_queries`. Queries that run while no field is set go to `unattributed` (critique E3).
 - **Rationale**: no middleware is added, so the execution path of requests without the header does not change (FR-002). The only cost for those requests is one `ContextVar.get()` returning `None` for each resolver call and each database query, and no counting query runs. Reads caused by display labels, profiles and permission filtering happen inside the resolver of the field, so they are counted for that field (FR-014).
 - **Known limit**: a `NodeDataLoader` batch that serves several cardinality-one fields with the same selection is counted for the field whose resolver started the batch. The contract states this. Splitting the loaders by field would change how many queries run when the header is present, which would break SC-003.
 - **Alternatives considered**:
@@ -74,14 +75,20 @@ Each decision below states what was chosen, why, and what else was considered. T
 
 ## D7. How the refresh computes the statistics without one large transaction
 
-- **Decision**: a Prefect flow reads main in pages:
+- **Decision**: a Prefect flow reads main in chunks of node IDs, following the pattern of `infrahub.core.diff.calculator::DiffCalculator._run_node_scoped_calculation_queries`:
     1. one query for the label count of each concrete kind, and `infrahub.telemetry.queries::CountNodesByKindsQuery` for the nodes active on main
-    2. for each concrete kind and each relationship side to compute, a degree query paged by node `uuid` (keyset: `uuid > $after ORDER BY uuid LIMIT $page_size`), with `page_size = query_size_limit`; each page returns, for each node, its peer count for each concrete peer kind, with the same active-edge rules as `RelationshipGetPeerQuery`
-    3. Python adds each page to the histogram, the totals and the list of nodes with the most peers, then drops the page
-- Each page is a separate auto-commit read, so no transaction holds more than one page. The flow keeps one in-progress aggregate for each relationship side.
+    2. for each concrete kind, one read of the IDs of its nodes active on main (paged by `Query.query_with_size_limit`)
+    3. for each relationship side of that kind and each chunk of `query_size_limit` IDs, one degree query with `n.uuid IN $ids`; it returns, for each node, its peer count for each concrete peer kind, with the same active-edge rules as `RelationshipGetPeerQuery`
+    4. Python adds each chunk to the histogram, the totals and the list of nodes with the most peers, then drops the chunk
+- Each chunk is a separate auto-commit read, so no transaction holds more than one chunk. The flow keeps one in-progress aggregate for each relationship side.
+- The `uuid IN $ids` lookup uses the `node_uuid` index whatever the kind's size. The plan of the degree query is checked with `EXPLAIN` during implementation (Principle V).
 - **Sides computed**: for each concrete kind K and each relationship on K, the side (identifier, direction, K), and for each concrete peer kind P, the opposite side (identifier, opposite direction, P). The opposite side gives the largest number of parents that can reach one peer, which the worst case needs, even when P declares no relationship back.
-- **Rationale**: keyset paging by `uuid` uses the `node_uuid` index and is stable while data changes. `dev/knowledge/backend/query-pattern.md` names paging inside the query body as the pattern for large reads. `CALL … IN TRANSACTIONS` is used in this codebase for writes only.
-- **Alternatives considered**: one aggregation query for each relationship (one transaction holds every node of the kind, which is the memory risk the brief names); sampling (rejected by the brief, because a sample can miss the maximum); one query for all relationships of a kind (fewer queries, but the active-edge resolution for several identifiers and directions in one query is harder to keep correct; to revisit if the refresh is too slow).
+- **Rationale**: chunks of IDs keep each query to a fixed number of nodes and use the `node_uuid` index. The ID list of the largest kind in the brief (215,764 interfaces) is about 8 MB of strings in the flow's memory. `CALL … IN TRANSACTIONS` is used in this codebase for writes only.
+- **Alternatives considered**:
+    - keyset paging (`uuid > $after ORDER BY uuid LIMIT $page`): the `node_uuid` index is on the `Node` label, so the planner either scans that index across every kind or scans and sorts the kind's label on each page; which one it picks is not known (critique E7)
+    - one aggregation query for each relationship: one transaction holds every node of the kind, which is the memory risk the brief names
+    - sampling: rejected by the brief, because a sample can miss the maximum
+    - one query for all relationships of a kind: fewer queries, but resolving the active edges for several identifiers and directions in one query is harder to keep correct; to revisit if the refresh is too slow
 
 ## D8. Refresh schedule
 
@@ -91,14 +98,17 @@ Each decision below states what was chosen, why, and what else was considered. T
 
 ## D9. The counted first step
 
-- **Decision**: the first step is counted when every variable the query declares has a value or a default. A query that declares no variables is counted. On `/graphql` and `/api/query` the values are those of the request. On the report they come from the new `variables` argument. When a declared variable has no value, the whole estimate is "statistics only" (FR-006).
+- **Decision**: the first step is counted whenever variable values are given (FR-005):
+    - On `/graphql` and `/api/query`, a request always runs with its variable values, so the first step is always counted.
+    - On the report, the first step is counted only when the `variables` argument is given. An empty object counts as given, which is how a caller asks for counting on a query that declares no variables. Without the argument, the whole estimate is "statistics only" (FR-006), and no counting query runs.
+    - Given values that do not match the declared types return the graphql-core coercion error.
 - **Queries**:
     - one query for each top-level field: it applies the field's filters, `limit` and `offset` on the request's branch and `at` time (FR-013), and returns for each concrete kind the number of matching nodes and up to `query_size_limit` of their IDs, in one row for each kind. It also returns the current label count of each kind in the query (FR-017).
     - one query for each relationship field directly under a top-level field: it counts the peers of those IDs for each concrete peer kind, the number of distinct peers, and the largest number of top-level nodes that reach one peer. It is built on `RelationshipGetPeerQuery`, so it applies the same filters and active-edge rules as the resolver.
 - **Limit**: when a top-level field matches more than `query_size_limit` nodes, its node count is still counted, and the relationship fields under it use statistics, with the source "statistics".
 - **Statistics only**: one query reads the current label counts. No other database query runs.
-- **Rationale**: this meets SC-003 (at most one extra query for the top-level node and one for each relationship field directly under it). Variables are coerced with graphql-core `get_variable_values` and `get_argument_values` (`graphql.execution.values`), so the counted filters match what execution uses.
-- **Clarification**: [CLAUDE RECOMMENDED – based on FR-005 and FR-006] the brief says "when variable values are given". A query that declares no variables has all its values, so it is counted.
+- **Rationale**: this meets SC-003 (at most one extra query for the top-level node and one for each relationship field directly under it). Variables are coerced with graphql-core `get_variable_values` and `get_argument_values` (`graphql.execution.values`), so the counted filters match what execution uses. Tying the report's mode to the `variables` argument matches FR-006 literally, and lets a caller get a statistics-only estimate, with no counting query, for any query.
+- **Alternative considered**: counting whenever every declared variable has a value, so that a query with no variables is always counted. Rejected by the critique (E1), because FR-006 expects a report call without variables to be "statistics only".
 
 ## D10. Estimate algorithm
 
@@ -127,5 +137,6 @@ Each decision below states what was chosen, why, and what else was considered. T
 ## D12. Tests
 
 - **Unit** (`backend/tests/unit/graphql/cost/`): histogram, percentiles, the worst-case bound (including a query from many nodes to one node and back out), splitting by concrete peer kind, scaling by label counts, the listed-node rule, the rows model, path building.
-- **Component** (`backend/tests/component/graphql/cost/`): the refresh on a fixture with a known peer distribution (FR-009, FR-016); `/graphql` and `/api/query` with and without the header, with `CountingInfrahubDatabase` for SC-002 and SC-003; mutations (FR-015); the report with and without variables, and with a denied account (FR-003, FR-006, FR-010); a branch that adds peers (FR-013); label scaling (FR-017); a listed node (FR-018); a relationship without statistics (FR-012); `count` and `display_label` (FR-014); the worst case on an unchanged fixture (FR-008); finding the field that multiplies the rows (SC-004).
+- **SC-002 and SC-003 method**: a test cannot run the code from before the feature. It runs the same request with and without the header, with `CountingInfrahubDatabase`. Without the header, no first-step query runs and no recorder is created. With the header, the extra queries equal `estimate_queries.queries`, which is at most 1 + the number of relationship fields directly under the top-level field.
+- **Component** (`backend/tests/component/graphql/cost/`): the refresh on a fixture with a known peer distribution (FR-009, FR-016); `/graphql` and `/api/query` with and without the header (SC-002, SC-003); mutations (FR-015); the report with and without variables, and with a denied account (FR-003, FR-006, FR-010); a branch that adds peers (FR-013); label scaling (FR-017); a listed node (FR-018); a relationship without statistics (FR-012); `count` and `display_label` (FR-014); the worst case on an unchanged fixture (FR-008); finding the field that multiplies the rows (SC-004).
 - **SC-001**: the customer-shaped data set and its check live in `infrahub-private-tests`, as the brief says. This repository provides the header, the report and the refresh flow it calls.

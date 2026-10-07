@@ -10,7 +10,7 @@ An engineer who diagnoses a slow artifact query, or writes a new one, gets for e
 
 Technical approach (details in [research.md](research.md)):
 
-- A scheduled Prefect flow reads main once a day in pages by node `uuid`. It stores in the cache, for each concrete kind, the label count and the spread of peers for each relationship side, with a version pointer (D5, D7, D8).
+- A scheduled Prefect flow reads main once a day, in chunks of node IDs. It stores in the cache, for each concrete kind, the label count and the spread of peers for each relationship side, with a version pointer (D5, D7, D8).
 - A pure estimator walks a tree built from the GraphQL analyzer's query tree. When every declared variable has a value, it first counts the top-level nodes and the fields directly under them on the request's branch and time. Below that, it uses the statistics for the expected figure and a bound from per-node peer counts for the worst case (D9, D10).
 - A recorder in a `ContextVar`, set only for requests with the header, counts resolver calls and nodes in the relationship resolver wrappers and database rows in `InfrahubDatabase.execute_query_with_metadata`. No middleware is added (D3).
 
@@ -36,7 +36,7 @@ Technical approach (details in [research.md](research.md)):
 **Constraints**:
 
 - No per-field middleware (`dev/knowledge/backend/graphql-execution.md`).
-- No refresh query holds more than one page of nodes (`query_size_limit`, 5,000 by default).
+- No refresh query reads more than one chunk of nodes (`query_size_limit`, 5,000 by default).
 - Each cache value stays below the 1 MB default limit of the NATS cache driver.
 
 **Scale/Scope**: the customer case in the brief: 4,866 devices, 215,764 interfaces, 58 logical networks, a query that made 183,000 single-relationship resolver calls.
@@ -51,7 +51,7 @@ Technical approach (details in [research.md](research.md)):
 | II. Branch-Safe by Default | Pass, with a documented exception | The counted first step reads the request's branch and `at` time. The statistics describe main only, and label counts include deleted nodes and nodes of other branches. The spec accepts this under Assumptions, and every estimate states its branch, time and whether the worst case is a bound. |
 | III. Type Safety & Explicit Contracts | Pass | The header, the `extensions` content and the report fields are defined in [contracts/](contracts/) before implementation. Internal values are frozen dataclasses; the response content is a Pydantic model. Database results go through `get_data()`. |
 | IV. Test Discipline | Pass, with a documented exception | Unit and component tests for every FR (research D12). No pytest-playwright test, because the feature adds no UI (see Complexity Tracking). |
-| V. Query Performance & Efficiency | Pass | Counting queries use parameters and the `node_uuid` and `rel_identifier` indexes, and run only when the header or the `cost_estimate` field asks for them. The refresh pages by `uuid` and returns only IDs and counts. |
+| V. Query Performance & Efficiency | Pass | Counting queries use parameters and the `node_uuid` and `rel_identifier` indexes, and run only when the header or the `cost_estimate` field asks for them. The refresh reads chunks of node IDs through the `node_uuid` index and returns only IDs and counts; its plan is checked with `EXPLAIN`. |
 | VI. Security & Input Boundaries | Pass | The `cost_estimate` field runs the same permission checker pipeline as `/graphql` on the submitted query. Variables are coerced by graphql-core before use. Kind labels in the label-count query come from the schema, not from user input. |
 | VII. Simplicity & Maintainability | Pass | Reuses `RelationshipGetPeerQuery`, `NodeGetListQuery`, `CountNodesByKindsQuery`, the cache adapter and the workflow catalogue. The histogram is stored in full although P1 reads only bucket maximums and the mean; the brief chose this and FR-009 tests every statistic. |
 
@@ -89,10 +89,10 @@ dev/specs/infp-739-graphql-query-cost/
 backend/infrahub/graphql/cost/            # new package, empty __init__.py
 ├── constants.py          # header name and value, cache keys, number of listed nodes (20)
 ├── models.py             # frozen dataclasses: statistics, histogram, tree, estimate, actual counts
-├── histogram.py          # builds a RelationshipSideStatistics from per-node peer counts, page by page
+├── histogram.py          # builds a RelationshipSideStatistics from per-node peer counts, chunk by chunk
 ├── statistics_store.py   # cache layout (pointer + one key per kind), in-process snapshot
-├── queries.py            # label counts, refresh degree page, first-step nodes, first-step peers
-├── collector.py          # StatisticsCollector: reads main in pages, builds KindStatistics
+├── queries.py            # label counts, kind node IDs, refresh degree chunk, first-step nodes, first-step peers
+├── collector.py          # StatisticsCollector: reads main in chunks of node IDs, builds KindStatistics
 ├── tree.py               # CostTreeField from the analyzer tree and coerced argument values; paths
 ├── first_step.py         # counts the top-level nodes and the fields directly under them
 ├── estimator.py          # pure expected and worst-case estimate over the tree
@@ -135,21 +135,65 @@ Requests without the header skip steps 1, 2 and 4; step 3 reads one `ContextVar`
 
 ### Report
 
-`resolve_graphql_query_report` keeps returning `targets_unique_nodes`. The new `cost_estimate` field has its own resolver: it rejects mutations, runs the permission checker pipeline on the submitted query's analyzer, coerces `variables`, and calls the same `QueryCostEstimator` without a recorder.
+`resolve_graphql_query_report` keeps returning `targets_unique_nodes`. The new `cost_estimate` field has its own resolver:
+
+- it rejects mutations
+- it runs the permission checker pipeline on the submitted query's analyzer
+- when the `variables` argument is given (an empty object counts), it coerces the values and counts the first step; without the argument it computes a statistics-only estimate and runs only the label-count read (research D9)
+- it calls the same `QueryCostEstimator` as the endpoints, without a recorder
 
 ### Refresh flow
 
-`refresh_query_cost_statistics` builds a `StatisticsCollector` with a database session and the main schema branch, reads label counts and active counts, reads each relationship side in pages, then writes the new version through `StatisticsStore.publish(...)`. The flow returns nothing (`dev/guidelines/backend/prefect-payloads.md`).
+`refresh_query_cost_statistics` builds a `StatisticsCollector` with a database session and the main schema branch. The collector:
+
+1. reads label counts and active counts
+2. reads the IDs of each kind's active nodes once
+3. runs the degree query for each relationship side on chunks of `query_size_limit` IDs (research D7)
+
+The flow then writes the new version through `StatisticsStore.publish(...)`, which first deletes any keys left under that version by a failed run. At the end it logs:
+
+- the duration
+- the number of kinds, relationship sides and queries
+- the version written
+
+The flow returns nothing (`dev/guidelines/backend/prefect-payloads.md`).
+
+Operators stop the refresh by pausing the schedule of the `graphql-cost-statistics-refresh` deployment in the task manager. They start an extra run from the same place.
+
+### Memory
+
+The in-process snapshot is about 2 KB for each relationship side, so about 10 MB for a schema with 5,000 sides. A process loads it on the first request that needs an estimate, never at startup.
 
 ### Branch and time
 
 - The counted first step uses the request's branch and `at`.
 - The statistics always describe main. `worst_case_is_bound` is true only when the request reads main with no `at` time.
 
+### Delivery order
+
+Critique finding X1: the actual counts do not depend on the statistics, so they are built and tested first.
+
+1. Recorder and actual counts on `/graphql` and `/api/query` (FR-001, FR-002, FR-015), checked against `CountingInfrahubDatabase`.
+2. Statistics refresh and store (FR-009, FR-011, FR-016).
+3. Estimation tree, counted first step and estimator (FR-004 to FR-008, FR-012 to FR-014, FR-017, FR-018).
+4. Report: `variables`, `cost_estimate` and the permission check (FR-003, FR-006, FR-010).
+5. Generated schema, documentation, changelog.
+
+### User documentation
+
+`docs/docs/development-resources/graphql/query-cost.mdx` covers:
+
+- how to send the header to `/graphql` and `/api/query`
+- how to rerun the stored query of an artifact definition for one target, with the target's parameters as URL parameters, to diagnose a slow render
+- how to sort the entries by `actual.resolver_calls` to find the field that multiplies the rows
+- how to read `expected`, `worst_case`, `source`, `worst_case_is_bound` and `reason`
+- how to get the estimate from `InfrahubGraphQLQueryReport`, with and without `variables`
+- that statistics exist only after the first refresh, and how to start, pause or run the refresh from the task manager
+
 ## Risks
 
 - **Rows of shared batches**: a `NodeDataLoader` batch that serves several cardinality-one fields is counted for the first field. The contract states this.
-- **Refresh duration on large data**: one query for each page of each relationship side. On the customer data this is several hundred queries for interfaces alone. If it is too slow, read all relationships of a kind in one paged query (research D7, alternatives).
+- **Refresh duration on large data**: one query for each chunk of IDs of each relationship side. On the customer data this is several hundred queries for interfaces alone. If it is too slow, read all relationships of a kind in one query for each chunk (research D7, alternatives).
 - **Correlation between steps**: the statistics assume that peers at one step do not depend on the step before. The customer data shows strong correlation (89 % of link endpoints have a link in the traced network, against 51 % overall). Counting the first step reduces the error; SC-001 in `infrahub-private-tests` measures what is left.
 - **Statistics age**: the default daily refresh is a recommendation. The acceptable age is open question 1 of the spec.
 
