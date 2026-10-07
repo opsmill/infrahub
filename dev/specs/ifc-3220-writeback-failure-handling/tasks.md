@@ -259,7 +259,7 @@ SC-002, SC-007.
 
 ### Delivery service
 
-- [ ] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
+- [X] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
@@ -270,7 +270,7 @@ SC-002, SC-007.
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
       `index.lock` of the worktree, then raises `RepositoryError` with a message that names the
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
-- [ ] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
+- [X] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
       `replay` with a clean merge and a conflict; `reset`; `fetch` on a clone with no `origin`.
 - [ ] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
