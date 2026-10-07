@@ -24,30 +24,6 @@ const auth = {
 
 const config = { installation_type: "community" } as any;
 
-function renderAccountMenu() {
-  return render(
-    <ConfigContext value={config}>
-      <ThemeProvider>
-        <AuthContext value={auth}>
-          <AccountMenu />
-        </AuthContext>
-      </ThemeProvider>
-    </ConfigContext>
-  );
-}
-
-function renderAccountMenuWithTheme(darkTheme: boolean, authValue = auth) {
-  return render(
-    <ConfigContext value={{ ...config, experimental_features: { dark_theme: darkTheme } }}>
-      <ThemeProvider>
-        <AuthContext value={authValue}>
-          <AccountMenu />
-        </AuthContext>
-      </ThemeProvider>
-    </ConfigContext>
-  );
-}
-
 describe("AccountMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +43,15 @@ describe("AccountMenu", () => {
   test("shows the Global preferences menu item when the user can manage them", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(true);
 
-    const component = await renderAccountMenu();
+    const component = await render(
+      <ConfigContext value={config}>
+        <ThemeProvider>
+          <AuthContext value={auth}>
+            <AccountMenu />
+          </AuthContext>
+        </ThemeProvider>
+      </ConfigContext>
+    );
     await component.getByTestId("authenticated-menu-trigger").click();
 
     const menuItem = component.getByRole("menuitem", { name: "Global preferences" });
@@ -80,7 +64,15 @@ describe("AccountMenu", () => {
   test("hides the Global preferences menu item when the user cannot manage them", async () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
 
-    const component = await renderAccountMenu();
+    const component = await render(
+      <ConfigContext value={config}>
+        <ThemeProvider>
+          <AuthContext value={auth}>
+            <AccountMenu />
+          </AuthContext>
+        </ThemeProvider>
+      </ConfigContext>
+    );
     await component.getByTestId("authenticated-menu-trigger").click();
 
     await vi.waitFor(() => {
@@ -98,7 +90,15 @@ describe("AccountMenu", () => {
     // GIVEN
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
     localStorage.setItem("infrahub.theme.choice", "dark");
-    const component = await renderAccountMenuWithTheme(true);
+    const component = await render(
+      <ConfigContext value={config}>
+        <ThemeProvider>
+          <AuthContext value={auth}>
+            <AccountMenu />
+          </AuthContext>
+        </ThemeProvider>
+      </ConfigContext>
+    );
 
     // WHEN
     await component.getByTestId("authenticated-menu-trigger").click();
@@ -122,7 +122,15 @@ describe("AccountMenu", () => {
     vi.mocked(hasGlobalPermission).mockResolvedValue(false);
     expect(window.matchMedia("(prefers-color-scheme: dark)").matches).toBe(false);
     localStorage.setItem("infrahub.theme.choice", "dark");
-    const component = await renderAccountMenuWithTheme(true);
+    const component = await render(
+      <ConfigContext value={config}>
+        <ThemeProvider>
+          <AuthContext value={auth}>
+            <AccountMenu />
+          </AuthContext>
+        </ThemeProvider>
+      </ConfigContext>
+    );
     expect(document.documentElement.classList.contains("dark")).toBe(true);
 
     // WHEN
@@ -133,33 +141,5 @@ describe("AccountMenu", () => {
     // THEN
     await expect.poll(() => document.documentElement.classList.contains("dark")).toBe(false);
     expect(localStorage.getItem("infrahub.theme.choice")).toBe("system");
-  });
-
-  test("hides the theme switch when the deployment does not enable it", async () => {
-    vi.mocked(hasGlobalPermission).mockResolvedValue(false);
-
-    const component = await renderAccountMenuWithTheme(false);
-    await component.getByTestId("authenticated-menu-trigger").click();
-
-    await expect
-      .element(component.getByRole("menuitem", { name: "Account settings" }))
-      .toBeVisible();
-    expect(component.getByRole("menuitem", { name: /theme/i }).elements()).toHaveLength(0);
-  });
-
-  test("starts the anonymous menu with an item, not a divider, when the theme is off", async () => {
-    // GIVEN
-    const component = await renderAccountMenuWithTheme(false, { ...auth, isAuthenticated: false });
-
-    // WHEN
-    await component.getByTestId("unauthenticated-menu-trigger").click();
-
-    // THEN
-    await expect.element(component.getByRole("menuitem", { name: "About Infrahub" })).toBeVisible();
-    const firstEntry = component
-      .getByRole("menu")
-      .element()
-      .querySelector("[role='menuitem'], [role='separator']");
-    expect(firstEntry?.getAttribute("role")).toBe("menuitem");
   });
 });

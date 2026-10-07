@@ -101,8 +101,8 @@ guarantees which of the two flows the scheduler reaches first.
 
 > **Volatile section.** The intended fix for this ordering gap is a persisted writeback state,
 > recorded before the merge workflow is submitted, that holds regeneration for repository-owned
-> definitions until that repository's commit on the destination branch is final. Update this section
-> when that lands.
+> definitions until that repository's commit on the destination branch is final. It is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 ## Pushing back to the remote
 
@@ -121,29 +121,34 @@ while the merge still reported success; sending HEAD is what closed that gap.
 
 ### The writeback direction has no reconciliation
 
-The pull direction has the once-a-minute loop. The push direction has nothing equivalent, and three
-properties compound:
+The pull direction has the once-a-minute loop. The push direction has nothing equivalent.
 
-- `InfrahubRepository.merge` writes the new commit to the graph **before** pushing (the
-  `update_commit_value` call precedes the `push` call), so a rejected push leaves the graph naming a
-  commit the remote never received.
-- Nothing ever re-pushes. `push()` is reachable only from branch creation and `merge()`; the periodic
-  sync only pulls.
-- Re-running the merge no-ops. `merge()` returns `False` when `commit_after == commit_before`,
-  computed from local git state, and `merge_git_repository` ignores the return value, so once the
-  local merge has happened a re-triggered merge never reaches `push()`.
+`InfrahubRepository.merge` merges into the destination worktree, pushes, and only then creates the
+commit worktree and writes the new commit to the graph. A rejected push therefore records nothing.
+After a rejected push, and after a failure to record a pushed commit, `merge` tries to reset the
+destination worktree to its pre-merge commit. The reset is best-effort: it never raises, so the
+original failure propagates unmasked.
 
-A merge commit created this way also exists on exactly one worker's disk: the `RefreshGitFetch`
-broadcast is sent after `merge()` returns, so a failed push aborts the flow before any other worker
-hears about it. With `git.use_explicit_merge_commit` at its default of `False` the merge
-fast-forwards where it can and the resulting SHA is the source commit, which the remote already has.
-When the destination has diverged, or when that setting is enabled, git creates a real merge commit
-whose SHA embeds a timestamp and is therefore not reproducible.
+- When the reset succeeds, a re-run of the merge re-derives it instead of finding nothing to merge.
+  After a failed record, the reset leaves the worktree behind the remote, and the periodic sync then
+  pulls and records the pushed commit.
+- When the reset fails, `merge` logs the failure and says that manual reconciliation may be
+  required. The worktree can stay on a merge commit that the graph does not record, and a re-run can
+  then find nothing to merge.
 
-> **Volatile section.** The intended fix reorders this so the push precedes the graph write and the
-> destination worktree is reset on failure, which makes the discarded merge commit harmless and lets
-> any worker re-derive the merge from `(source_branch, source_commit, dest_branch)`. Update this
-> section when that lands.
+What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
+`merge()`, the periodic sync only pulls, and `merge_git_repository` has no retry. A rejected push
+stays undelivered until a later merge into the same destination, and nothing on the repository
+records that it failed: the only trace is the failed flow run.
+
+With `git.use_explicit_merge_commit` at its default of `False` the merge fast-forwards where it can
+and the resulting SHA is the source commit, which the remote already has. When the destination has
+diverged, or when that setting is enabled, git creates a real merge commit whose SHA embeds a
+timestamp and is therefore not reproducible. A reset that succeeds discards it, so a later attempt
+re-derives the merge from `(source_branch, source_commit, dest_branch)` on any worker.
+
+> **Volatile section.** A delivery queue with retry and abandon actions is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 `push_info.summary`, not by raising `GitCommandError`, so `push()` inspects `push_info.flags` and
@@ -177,6 +182,21 @@ LOCAL is what makes per-branch repository state invisible to users. The diff que
 the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = "aware"`. So a LOCAL
 attribute never appears in a branch diff or a proposed change, and can never produce a merge
 conflict. That is why nobody has ever had to resolve a conflict on `sync_status`.
+
+`sync_status` still never diffs or conflicts, but it is no longer invisible on a proposed change:
+the repository validator fails the pipeline when the source branch recorded `error-import`.
+
+Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
+isolated, so a branch that never imported a repository reads the value its base branch held at
+`branched_from`, frozen there: a branch created while the default
+branch was in `error-import` keeps reading `error-import` after the default branch recovers, until
+it is rebased. The import check therefore only counts a value the source branch wrote
+(`git/sync_status.py::RepositoryBranchSyncStatusReader`), recognised by the attribute's `updated_at`
+being at or after `branched_from`; an inherited value is older and passes.
+
+The comparison must be `>=`, not `>`. A rebase (`RebaseBranchQuery`) sets `from` on every live edge
+of the branch to the rebase time and moves `branched_from` to that same time, so a value the branch
+wrote before the rebase ends up with `updated_at == branched_from`.
 
 AGNOSTIC buys conflict-freedom but **not** invisibility: agnostic nodes do reach the diff, forced
 to `DiffAction.UPDATED` because a globally-stored node has no created/deleted distinction on a branch

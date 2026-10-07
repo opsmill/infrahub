@@ -14,6 +14,31 @@ async def dummy_async_request(
     return httpx.Response(status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock"))
 
 
+async def no_branches_async_request(
+    url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
+) -> httpx.Response:
+    """Answer the branch listing with no branches, and every other request like the dummy requester."""
+    if payload and "GetAllBranch" in payload.get("query", ""):
+        data: dict[str, Any] = {"Branch": []}
+    else:
+        data = {}
+    return httpx.Response(status_code=200, json={"data": data}, request=httpx.Request(method="POST", url="http://mock"))
+
+
+REJECTED_REQUEST_MESSAGE = "The request was rejected"
+
+
+async def rejected_async_request(
+    url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
+) -> httpx.Response:
+    """Return a GraphQL error for every request, as the server does when it rejects a mutation."""
+    return httpx.Response(
+        status_code=200,
+        json={"errors": [{"message": REJECTED_REQUEST_MESSAGE}]},
+        request=httpx.Request(method="POST", url="http://mock"),
+    )
+
+
 class InfrahubTestClient(httpx.AsyncClient):
     def __init__(self, app: FastAPI, base_url: str = "") -> None:
         self.loop = asyncio.get_event_loop()
