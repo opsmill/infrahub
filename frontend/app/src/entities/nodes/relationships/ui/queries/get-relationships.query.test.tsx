@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
 import { BranchContext } from "@/entities/branches/ui/branches-provider";
@@ -22,24 +22,34 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 );
 
 describe("useRelationships", () => {
+  const useObjectsCountMock = vi.mocked(useObjectsCount);
+  const getRelationshipsMock = vi.mocked(getRelationships);
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
   test("searches for the text without its surrounding whitespace", async () => {
-    vi.mocked(useObjectsCount).mockReturnValue({
+    // GIVEN
+    useObjectsCountMock.mockReturnValue({
       data: 1,
       isSuccess: true,
       isError: false,
     } as ReturnType<typeof useObjectsCount>);
-    vi.mocked(getRelationships).mockResolvedValue([]);
+    getRelationshipsMock.mockResolvedValue([]);
 
+    // WHEN
     await renderHook(() => useRelationships({ peer: "InfraDevice", search: "  spine1 " }), {
       wrapper,
     });
 
-    expect(vi.mocked(useObjectsCount).mock.calls.at(-1)?.[0]).toEqual({
+    // THEN
+    expect(useObjectsCountMock.mock.calls.at(-1)?.[0]).toEqual({
       objectKind: "InfraDevice",
       filters: [{ name: "any__value", value: "spine1" }],
     });
     await expect
-      .poll(() => vi.mocked(getRelationships).mock.calls.at(-1)?.[0])
+      .poll(() => getRelationshipsMock.mock.calls.at(-1)?.[0])
       .toMatchObject({ peer: "InfraDevice", search: "spine1" });
   });
 });

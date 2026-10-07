@@ -17,7 +17,7 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
   const [search, setSearch] = useSearch();
   const [prevSearch, setPrevSearch] = useState(search);
   const [inputValue, setInputValue] = useState(search ?? "");
-  const debouncedSearch = useDebounce(inputValue.trim(), 300);
+  const debouncedInputValue = useDebounce(inputValue, 300);
 
   const removeSearchFilter = () => {
     setFilters(filters.filter((f) => f.name !== SEARCH_ANY_FILTER));
@@ -25,19 +25,20 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   // Update URL when debounced value changes
   useEffect(() => {
-    if (debouncedSearch === search) return;
+    const nextSearch = debouncedInputValue.trim();
+    if (nextSearch === search) return;
 
-    if (debouncedSearch) {
-      setSearch(debouncedSearch);
+    if (nextSearch) {
+      setSearch(nextSearch);
     } else {
       removeSearchFilter();
     }
-  }, [debouncedSearch]);
+  }, [debouncedInputValue]);
 
   // Sync input when URL changes (ex: browser back/forward)
-  if (search !== prevSearch && inputValue.trim() === debouncedSearch) {
+  if (search !== prevSearch && inputValue === debouncedInputValue) {
     setPrevSearch(search);
-    // Rewriting an input that trims to the search would drop a space typed between two words.
+    // Keeps a space the user just typed. Otherwise, search would remove it because it's trimmed.
     if (inputValue.trim() !== search) setInputValue(search);
   }
   return (
