@@ -124,7 +124,7 @@ pool and within a range (FR-015, FR-017).
 | Headline figures of a scoped pool | the figures of the division given as `division`, which a scoped pool requires |
 | Range row of a scoped pool | the values of that range held in the division given as `division`, against the range's `size`, with its branch split |
 | Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
-| Unscoped pool | exactly one division with no entry and an empty label; figures as today |
+| Unscoped pool | figures as today; the divisions query lists no division |
 | Rows listed and counted | only values of the pool's space: inside a range, not excluded by the attribute and within its `min_value` / `max_value`; a value outside it is not listed and counts in no figure |
 | `range` of a row | the range whose bounds hold the value |
 

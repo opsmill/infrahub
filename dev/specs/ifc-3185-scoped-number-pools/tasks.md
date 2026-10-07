@@ -537,8 +537,8 @@ division rows, the range rows and the filtered allocation list against the recor
       `excluded_values`: `InfrahubNumberPoolUtilization` returns `allocation_scope: []`, `figures`
       `{size: 99, used: 3, used_default_branch: 2, used_branches: 1}` with the three percentages,
       two ranges ordered by start with id, display label, start, end, weight (10 and 0) and figures
-      `{50, 2, 1, 1}` and `{50, 1, 1, 0}`; `InfrahubNumberPoolDivisions` returns one division with
-      `entries: []`, `display_label: ""` and the pool's figures; `InfrahubNumberPoolAllocations`
+      `{50, 2, 1, 1}` and `{50, 1, 1, 0}`; `InfrahubNumberPoolDivisions` returns `count` 0, an
+      empty `allocation_scope` and an empty `divisions` list; `InfrahubNumberPoolAllocations`
       returns three rows (1, 7 and 51; 40 and 500 are not listed) ordered by value then branch then
       holder id, each with `holder {id hfid kind display_label}` read on the row's branch,
       `identifier`, `provenance` (`ALLOCATED`) and `range`; the filters `branch: "b1"`,
@@ -638,8 +638,8 @@ division rows, the range rows and the filtered allocation list against the recor
       from the pool. Validate `division` as T021 does and also refuse one that omits a path in
       force, naming the missing paths; with it, compute every figure and the count over the rows of
       that division; refuse a scoped pool read without `division` (FR-011).
-- [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return one
-      division `{display_label: "", entries: [], figures: <pool figures>}`; otherwise list the
+- [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return `count`
+      0 and an empty `divisions` list; otherwise list the
       divisions holding at least one row from `report.divisions`, compute each division's figures
       over the pool's space, build `entries` with `value` and `display_label` from the key and
       `peer_kind` None, join labels with `" / "`, order by `utilization` descending then
