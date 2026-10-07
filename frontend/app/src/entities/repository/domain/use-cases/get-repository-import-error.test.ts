@@ -23,7 +23,7 @@ describe("getRepositoryImportTask", () => {
     vi.restoreAllMocks();
   });
 
-  it("asks for the newest failed or crashed import of the repository on the branch", async () => {
+  it("asks for a running import, then for the newest failed or crashed import of the repository on the branch", async () => {
     // GIVEN no import is running
     vi.mocked(getRepositoryImportTaskFromApi)
       .mockResolvedValueOnce(null)
@@ -38,7 +38,7 @@ describe("getRepositoryImportTask", () => {
       branch: "feature",
       repositoryId: "repo-1",
       workflows: [...IMPORT_WORKFLOWS],
-      states: ["SCHEDULED", "PENDING", "RUNNING"],
+      states: ["RUNNING"],
     });
     expect(getRepositoryImportTaskFromApi).toHaveBeenNthCalledWith(2, {
       branch: "feature",
