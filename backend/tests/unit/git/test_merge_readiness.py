@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
@@ -10,7 +11,12 @@ import pytest
 
 from infrahub.exceptions import RepositoryNotSynchronizedError
 from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
-from tests.adapters.remote_heads import FailingRemoteHeadReader, HeadRead, InMemoryRemoteHeadReader
+from tests.adapters.remote_heads import (
+    FailingRemoteHeadReader,
+    HeadRead,
+    InMemoryRemoteHeadReader,
+    TogetherRemoteHeadReader,
+)
 
 SOURCE = "feature"
 SOURCE_HEAD = "b" * 40
@@ -143,3 +149,15 @@ async def test_a_remote_that_cannot_be_read_lets_the_merge_go_on_with_a_warning(
         "without this check: Unable to clone the repository network-repo, please check the address and the "
         "credential"
     ]
+
+
+async def test_the_remote_heads_of_every_repository_are_read_at_the_same_time() -> None:
+    """A merge waits for the slowest remote, not for the sum of them."""
+    targets = [target(name=f"repo-{index}") for index in range(3)]
+    reader = TogetherRemoteHeadReader(
+        heads={target.name: {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD} for target in targets}, reads_in_flight=3
+    )
+
+    await asyncio.wait_for(check(reader=reader).check(source_branch=SOURCE, targets=targets), timeout=10)
+
+    assert [read.repository_name for read in reader.reads] == ["repo-0", "repo-1", "repo-2"]

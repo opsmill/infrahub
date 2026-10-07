@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -65,34 +66,46 @@ class RemoteHeadsMergeCheck:
             RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
         """
-        unimported: list[UnimportedRemoteHead] = []
-        for target in targets:
-            expected = {source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
-            try:
-                heads = await self.reader.read_heads(
-                    repository_name=target.name, location=target.location, branch_names=list(expected)
-                )
-            except RepositoryError as exc:
-                self.log.warning(
-                    f"Unable to read the remote heads of repository {target.name}, the merge of branch "
-                    f"{source_branch} goes on without this check: {exc.message}"
-                )
-                continue
-            unimported.extend(
-                UnimportedRemoteHead(
-                    repository_name=target.name,
-                    remote_branch=remote_branch,
-                    remote_head=heads[remote_branch],
-                    graph_commit=graph_commit,
-                )
-                for remote_branch, graph_commit in expected.items()
-                if remote_branch in heads and heads[remote_branch] != graph_commit
+        expected_heads = [
+            {source_branch: target.source_commit, target.remote_trunk: target.destination_commit} for target in targets
+        ]
+        read_heads = await asyncio.gather(
+            *(
+                self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected))
+                for target, expected in zip(targets, expected_heads, strict=True)
             )
+        )
+        unimported = [
+            UnimportedRemoteHead(
+                repository_name=target.name,
+                remote_branch=remote_branch,
+                remote_head=heads[remote_branch],
+                graph_commit=graph_commit,
+            )
+            for target, expected, heads in zip(targets, expected_heads, read_heads, strict=True)
+            if heads is not None
+            for remote_branch, graph_commit in expected.items()
+            if remote_branch in heads and heads[remote_branch] != graph_commit
+        ]
 
         if unimported:
             raise RepositoryNotSynchronizedError(
                 self._refusal_message(source_branch=source_branch, unimported=unimported)
             )
+
+    async def _read_heads(
+        self, source_branch: str, target: GitMergeTarget, branch_names: list[str]
+    ) -> dict[str, str] | None:
+        try:
+            return await self.reader.read_heads(
+                repository_name=target.name, location=target.location, branch_names=branch_names
+            )
+        except RepositoryError as exc:
+            self.log.warning(
+                f"Unable to read the remote heads of repository {target.name}, the merge of branch "
+                f"{source_branch} goes on without this check: {exc.message}"
+            )
+            return None
 
     def _refusal_message(self, source_branch: str, unimported: Sequence[UnimportedRemoteHead]) -> str:
         heads = "; ".join(
