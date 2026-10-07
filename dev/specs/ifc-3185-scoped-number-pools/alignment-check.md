@@ -68,3 +68,10 @@ recorded in the spec's Assumptions, and the form A versus form B choice recorded
   longer applies; the spec's heading and the out-of-scope row are updated.
 - Grilling decision 2 (form A versus form B): form A is kept, decided on 2026-10-07; the Open
   points section records the decision and no root field is renamed.
+- FR-009 (validation branch): the scope is validated against the default branch's schema at pool
+  save, whatever branch the mutation runs on (Notion PRD open question 2, its suggested default);
+  the "unchanged scope accepted without re-validation" rule above is withdrawn, since every save
+  validates against the same schema. A scope on a `unique: true` attribute and an entry not declared
+  on the generic the pool serves are refused (Notion PRD FR-017 carve-out, FR-015). The allocation
+  lock is keyed by pool and division (Notion PRD Mechanism "Lock", FR-031). Decided on 2026-10-07.
+  The spec's Open points list the remaining departures from the Notion PRD for product confirmation.

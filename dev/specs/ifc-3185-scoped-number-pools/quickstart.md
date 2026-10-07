@@ -124,15 +124,17 @@ removal case through the schema-load API.
 ## Scenario 6 — the branch seam (User Story 6, FR-008, FR-009, FR-027)
 
 `backend/tests/functional/pools/test_numberpool_scoped_branch.py`: `pod` exists only on `b1`;
-`["site", "pod"]` saves on `b1` and is refused on the default branch; the default branch allocates
-per site, `b1` per site and pod; `InfrahubNumberPoolDivisions` on the default branch reports
-`allocation_scope: ["site"]` with one-entry divisions and on `b1` `["site", "pod"]` with two-entry
-divisions; after merge every branch allocates per the full scope.
+`["site", "pod"]` is refused on `b1` and on the default branch naming `pod` (the default branch's
+schema validates the scope); `b0` forked, `b1` merged; `["site", "pod"]` saves from any branch; the
+default branch allocates per site and pod, `b0` per site; `InfrahubNumberPoolDivisions` on the
+default branch reports `allocation_scope: ["site", "pod"]` with two-entry divisions and on `b0`
+`["site"]` with one-entry divisions; after `b0` is rebased it allocates per the full scope.
 
 ## Scenario 7 — consolidation (User Story 7)
 
-Blocked on P2 attach. When attach lands: P_A scoped by site, ten site-B nodes attached → A 10/100,
-B 10/100, next in B is 11.
+P_A scoped by site; each of the ten site-B nodes attached with one `<Kind>Update` sending `value`
+and `from_pool: {id: <P_A>}` → A 10/100, B 10/100, next in B is 11, P_B tracks nothing and is
+deleted.
 
 ## Scenario 8 — measurement (User Story 8, SC-005, SC-006)
 

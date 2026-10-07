@@ -44,9 +44,9 @@ Two further facts the PRD does not mention:
   attribute when the pool is smaller than the number of existing nodes. That comparison is
   whole-pool and becomes wrong for a scoped declaration (D9).
 - `NumberPoolNumberPicker.next_number` still unions `NumberPoolRepository.get_taken()` on a
-  `unique` attribute, so every value present anywhere on the attribute is skipped. A scope over a unique attribute therefore degrades
-  to pool-wide allocation today and refuses nothing; the PRD's `unique: true` edge case describes
-  the state after P2 retires that scan. No test of this slice asserts the refusal.
+  `unique` attribute, so every value present anywhere on the attribute is skipped. A scope on a
+  pool whose attribute is `unique` is refused at save (FR-009, the PRD's FR-017 carve-out), so the
+  global scan and a scope never meet on one pool.
 
 A third fact shapes the create path: `Node._process_fields` calls the template applier before it
 applies relationships, and `templates/node_applier.py::NodeTemplateApplier._handle_pool_relationship`
@@ -110,12 +110,22 @@ attribute's kind must be a single comparable scalar (list and JSON kinds refused
 not be the pool's own attribute, and entries must be distinct. Attribute entries are normalised to
 the bare name (`role__value` → `role`); only the `value` property is accepted.
 
-Both callers use it: `InfrahubNumberPoolMutation` on create, update and upsert against the mutation
-branch's schema (FR-009), and `SchemaBranch._validate_number_pool_parameters` against the schema
-being loaded (FR-012). The mutation invokes it only when the normalised submitted scope differs from
-the stored one: the scope is written once on `-global-`, so a pool saved from a branch that knows an
-entry would otherwise be refused whenever the whole object is re-sent from a branch that does not,
-and an entry would become un-resavable from anywhere once that branch is deleted.
+Three further rules sit in the same component: a scope on a pool whose target attribute is
+`unique: true` is refused naming the attribute (a scoped allocation on such an attribute would be
+refused by the uniqueness validator whenever the number is held in another division); when the
+pool's attribute is inherited from a generic, every entry must be a required cardinality-one field
+declared on the generic itself, and an entry only some implementing kinds declare is refused
+naming the generic; an entry the reference schema does not define on the kind is refused naming
+the entry.
+
+Both callers use it: `InfrahubNumberPoolMutation` on create, update and upsert against the default
+branch's schema, whatever branch the mutation runs on, on every save that carries
+`allocation_scope` (FR-009); and `SchemaBranch._validate_number_pool_parameters` against the schema
+being loaded (FR-012), since the declaration travels with the fields it names. The default branch
+is the reference at pool save because the pool and its scope are branch-agnostic while the kind's
+schema is branch-aware: a field that exists only on a branch enters a scope once it is merged, and
+a pool re-sent whole from any branch validates against the same schema, so no exemption for an
+unchanged scope is needed.
 
 **Rationale**: the uniqueness-constraint flags are almost the FR-009 rules; the delta is small and
 local. One component for both surfaces is what FR-009 and FR-012 ask for ("the same rules").
@@ -188,8 +198,8 @@ Three write paths reach allocation:
   relationships are applied, as it does for a user `from_pool`.
 - **Update**: `Node.from_graphql` applies every attribute with `process_pools=False`, then runs
   `handle_pool` for each attribute whose payload carried `from_pool`. `from_pool` itself is still
-  assigned inline by `BaseAttribute.from_graphql`, because the mutation lock names are read from it
-  before the node is saved; only the allocation is deferred.
+  assigned inline by `BaseAttribute.from_graphql`; only the allocation is deferred, and with it
+  the lock per pool and division, which `get_resource` takes once the division is resolved (D5).
 
 The attribute-add backfill (`core/migrations/schema/node_attribute_add.py`) loads each node with its
 scoped fields in the same query it already runs and passes the node's division; the template
@@ -203,12 +213,27 @@ before the write, and the relationship manager already answers `get_peer_id` fro
 move); reorder the payload dict (fragile, and P2's intent resolver will also sit on this path);
 keep the applier allocating from the raw field dict (no node, so no division).
 
-### D5 — The lock stays on the pool
+### D5 — The lock is keyed by pool and division
 
-**Decision**: `get_resource` keeps `resource_pool.<pool id>`. No per-division key.
+**Decision**: on a scoped pool `CoreNumberPool.get_resource` locks on
+`resource_pool.<pool id>.<division key>`, the division key being the normalised tuple of the
+writer's entry values in scope order; on an unscoped pool it keeps `resource_pool.<pool id>`. The
+lock is taken inside `get_resource`, after the division is resolved, so on the update path after
+every field of the payload is applied (D4). Every write that takes the pool lock for a tracked
+attribute uses the same key. Whether the mutation-level pool lock that
+`core/node/lock_utils.py::get_lock_names_on_object_mutation` derives from `from_pool` before the
+node is saved is removed in favour of the lock inside `get_resource`, or kept as a pool-level
+guard, is settled by IFC-3349 with a functional test: two writers in different divisions must
+allocate in parallel and two writers in one division must serialise.
 
-**Rationale**: the PRD defers this to SC-005. A per-division key changes no contract and can be
-added later behind the same `get_resource` signature.
+**Rationale**: the Notion PRD's Mechanism table ("Lock": `pool_id` → `pool_id + scope_key`) and
+FR-031 ask for it: without it one scoped pool serialises every division that a pool per site ran in
+parallel, which is the consolidation journey's regression. SC-005 measures what the key buys; it
+does not decide whether it exists.
+
+**Alternatives**: the pool-level lock alone (serialises divisions; rejected by the PRD); a lock per
+division taken at the mutation level from the payload (the division is not known before the fields
+are applied on update and template create, D4).
 
 ### D6 — Utilization: one query returns rows with their division values; a pure reporter computes every figures block
 
