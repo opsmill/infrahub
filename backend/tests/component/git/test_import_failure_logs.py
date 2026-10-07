@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
+from infrahub_sdk.protocols import (
+    CoreCheckDefinition,
+    CoreGenericRepository,
+    CoreReadOnlyRepository,
+    CoreRepository,
+    CoreTransformJinja2,
+    CoreTransformPython,
+)
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
@@ -81,6 +89,95 @@ TRANSFORM_WITH_OTHER_CLASS = (
     "    async def transform(self, data):\n"
     "        return data\n"
 )
+
+
+INVENTORY_QUERY_CONFIG = "queries:\n  - name: device_inventory\n    file_path: inventory.gql\n"
+INVENTORY_QUERY = (
+    "query device_inventory {\n  CoreRepository {\n    edges {\n      node {\n        id\n      }\n    }\n  }\n}\n"
+)
+REPORT_TRANSFORM_CONFIG = (
+    "jinja2_transforms:\n  - name: report\n    query: device_inventory\n    template_path: {template_path}\n"
+)
+INVENTORY_CHECK_CONFIG = "check_definitions:\n  - name: inventory\n    file_path: check.py\n    class_name: Inventory\n"
+INVENTORY_TRANSFORM_CONFIG = (
+    "python_transforms:\n  - name: inventory\n    file_path: transform.py\n    class_name: Inventory\n"
+)
+INVENTORY_CHECK = (
+    "from infrahub_sdk.checks import InfrahubCheck\n\n\n"
+    "class {class_name}(InfrahubCheck):\n"
+    '    query = "device_inventory"\n\n'
+    "    def validate(self, data):\n"
+    "        pass\n"
+)
+INVENTORY_TRANSFORM = (
+    "from infrahub_sdk.transforms import InfrahubTransform\n\n\n"
+    "class {class_name}(InfrahubTransform):\n"
+    '    query = "device_inventory"\n\n'
+    "    async def transform(self, data):\n"
+    "        return data\n"
+)
+
+
+def report_transform_config(template_path: str) -> str:
+    return REPORT_TRANSFORM_CONFIG.format(template_path=template_path)
+
+
+@dataclass
+class EntryFailureCase:
+    name: str
+    files: dict[str, str]
+    expected_reason: str
+
+
+ENTRY_FAILURE_CASES: list[EntryFailureCase] = [
+    EntryFailureCase(
+        name="schema_path_missing",
+        files={".infrahub.yml": "schemas:\n  - schemas/devices.yml\n"},
+        expected_reason="Schema 'schemas/devices.yml': The path does not exist",
+    ),
+    EntryFailureCase(
+        name="schema_directory_without_schema_file",
+        files={".infrahub.yml": "schemas:\n  - schemas\n", "schemas/README.md": "Schemas live here.\n"},
+        expected_reason="Schema 'schemas': The directory contains no .yml, .yaml or .json file",
+    ),
+    EntryFailureCase(
+        name="schema_file_invalid_yaml",
+        files={".infrahub.yml": INVALID_SCHEMA_CONFIG, "schema.yml": "nodes: [\n"},
+        expected_reason="Unable to load the file schema.yml, Invalid YAML/JSON file",
+    ),
+    EntryFailureCase(
+        name="schema_file_empty",
+        files={".infrahub.yml": INVALID_SCHEMA_CONFIG, "schema.yml": ""},
+        expected_reason="Unable to load the file schema.yml, Empty YAML/JSON file",
+    ),
+    EntryFailureCase(
+        name="jinja2_template_missing",
+        files={".infrahub.yml": report_transform_config("report.j2")},
+        expected_reason="Jinja2 transform 'report' (report.j2): The template file does not exist",
+    ),
+    EntryFailureCase(
+        name="jinja2_template_empty",
+        files={".infrahub.yml": report_transform_config("report.j2"), "report.j2": "\n"},
+        expected_reason="Jinja2 transform 'report' (report.j2): The template file is empty",
+    ),
+    EntryFailureCase(
+        name="jinja2_template_syntax_error",
+        files={".infrahub.yml": report_transform_config("report.j2"), "report.j2": "{{ name }\n"},
+        expected_reason="Jinja2 transform 'report' (report.j2): Syntax error in report.j2, line 1: unexpected '}'",
+    ),
+    EntryFailureCase(
+        name="jinja2_template_outside_the_repository",
+        files={".infrahub.yml": report_transform_config("../report.j2")},
+        expected_reason="Jinja2 transform 'report' (../report.j2): The template path is outside the repository",
+    ),
+    EntryFailureCase(
+        name="check_class_missing",
+        files={".infrahub.yml": INVENTORY_CHECK_CONFIG, "check.py": INVENTORY_CHECK.format(class_name="Devices")},
+        expected_reason=(
+            "Check definition 'inventory' (check.py): The specified class Inventory was not found within the module"
+        ),
+    ),
+]
 
 
 def invalid_schema_message(branch_name: str) -> str:
@@ -306,6 +403,133 @@ class TestImportFailureLogs(TestInfrahubApp):
         import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
         assert import_entry == f"Failed to import branch '{branch_name}': File 'devices.yml': The file does not exist"
         assert records_with_traceback(caplog) == []
+
+    @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in ENTRY_FAILURE_CASES])
+    async def test_invalid_entry_fails_the_import_and_names_the_entry(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+        test_case: EntryFailureCase,
+    ) -> None:
+        name = f"{test_case.name.replace('_', '-')}-repo"
+        branch_name = test_case.name.replace("_", "-")
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        await create_branch(branch_name=branch_name, db=db)
+        remote.commit(branch_name=branch_name, files=test_case.files)
+        caplog.clear()
+
+        state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert state.is_failed()
+        assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
+        import_entry, _ = [record.getMessage() for record in run_log_errors(caplog, state)]
+        assert import_entry == f"Failed to import branch '{branch_name}': {test_case.expected_reason}"
+        assert records_with_traceback(caplog) == []
+
+    async def _import_then_break(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        tmp_path: Path,
+        name: str,
+        valid_files: dict[str, str],
+        broken_files: dict[str, str],
+    ) -> str:
+        """Import a valid commit on a new branch, then sync a commit that breaks it; return the branch name."""
+        branch_name = f"{name}-branch"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        await create_branch(branch_name=branch_name, db=db)
+        remote.commit(branch_name=branch_name, files=valid_files)
+        imported = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+        assert imported.is_completed()
+        assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.IN_SYNC.value
+
+        remote.commit(branch_name=branch_name, files=broken_files)
+        failed = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
+
+        assert failed.is_failed()
+        assert await sync_status(client, node.id, branch_name) == RepositorySyncStatus.ERROR_IMPORT.value
+        return branch_name
+
+    async def test_failed_import_keeps_the_jinja2_transform(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        branch_name = await self._import_then_break(
+            db=db,
+            client=client,
+            tmp_path=tmp_path,
+            name="kept-jinja2-transform-repo",
+            valid_files={
+                ".infrahub.yml": INVENTORY_QUERY_CONFIG + report_transform_config("report.j2"),
+                "inventory.gql": INVENTORY_QUERY,
+                "report.j2": "{{ data }}\n",
+            },
+            broken_files={".infrahub.yml": INVENTORY_QUERY_CONFIG + report_transform_config("missing.j2")},
+        )
+
+        transform = await client.get(kind=CoreTransformJinja2, name__value="report", branch=branch_name)
+        assert (
+            transform.template_path.value,
+            transform.dependencies.value,
+            transform.dependencies_complete.value,
+        ) == ("report.j2", ["report.j2"], True)
+
+    async def test_failed_import_keeps_the_check_definition(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        branch_name = await self._import_then_break(
+            db=db,
+            client=client,
+            tmp_path=tmp_path,
+            name="kept-check-definition-repo",
+            valid_files={
+                ".infrahub.yml": INVENTORY_QUERY_CONFIG + INVENTORY_CHECK_CONFIG,
+                "inventory.gql": INVENTORY_QUERY,
+                "check.py": INVENTORY_CHECK.format(class_name="Inventory"),
+            },
+            broken_files={"check.py": INVENTORY_CHECK.format(class_name="Devices")},
+        )
+
+        check = await client.get(kind=CoreCheckDefinition, name__value="inventory", branch=branch_name)
+        assert (check.file_path.value, check.class_name.value) == ("check.py", "Inventory")
+
+    async def test_failed_import_keeps_the_python_transform(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        branch_name = await self._import_then_break(
+            db=db,
+            client=client,
+            tmp_path=tmp_path,
+            name="kept-python-transform-repo",
+            valid_files={
+                ".infrahub.yml": INVENTORY_QUERY_CONFIG + INVENTORY_TRANSFORM_CONFIG,
+                "inventory.gql": INVENTORY_QUERY,
+                "transform.py": INVENTORY_TRANSFORM.format(class_name="Inventory"),
+            },
+            broken_files={"transform.py": INVENTORY_TRANSFORM.format(class_name="Devices")},
+        )
+
+        transform = await client.get(kind=CoreTransformPython, name__value="inventory", branch=branch_name)
+        assert (transform.file_path.value, transform.class_name.value) == ("transform.py", "Inventory")
 
     async def test_failure_after_the_import_steps_stays_on_its_branch(
         self,

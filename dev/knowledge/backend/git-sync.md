@@ -193,7 +193,9 @@ read-only flows through `import_objects_from_files`.
   `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
   and the message is prefixed with the notes, for example
   `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
-  Schema files have no label, because their validation errors already name the file. The build
+  A schema entry is labelled `Schema '<path>'` only when the path does not exist or names a
+  directory without a schema file; errors in a schema file's content have no label, because they
+  already name the file. The build
   loops that import Python modules (checks, Python transforms, generators) also pass the worktree
   directory to `import_entry`, so a syntax error names its file relative to the repository root.
   The file can be a helper module, not the entry's own file.

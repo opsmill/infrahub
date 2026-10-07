@@ -25,10 +25,10 @@ TASK_RUN_LOGGER = "prefect.task_runs"
 
 
 class TestClosureFailureIsolation(TestInfrahubApp):
-    """A malformed Jinja2 template in one transform must not poison its siblings.
+    """A malformed template included by one Jinja2 transform must not poison its siblings.
 
     The repository carries two Jinja2 transforms: one well-formed with a transitive
-    include and one whose template has a syntax error. After import, the malformed
+    include and one whose included template has a syntax error. After import, the malformed
     transform is still persisted but flagged ``dependencies_complete = False``, while
     the well-formed transform imports with a complete, populated closure. The
     closure-builder failure is reported in the import log naming the offending
@@ -104,9 +104,13 @@ class TestClosureFailureIsolation(TestInfrahubApp):
 
         broken = transforms["broken_report"]
         assert broken.dependencies_complete.value is False
+        assert set(broken.dependencies.value) == {"templates/broken.j2", "templates/broken_partial.j2"}
 
         # The closure-builder failure is reported against the offending transform only,
         # naming the unresolved reference and the resulting incomplete closure.
-        assert "Closure builder for transform 'broken_report' encountered unresolved reference" in caplog.text
+        assert (
+            "Closure builder for transform 'broken_report' encountered unresolved reference "
+            "in templates/broken_partial.j2: template syntax error" in caplog.text
+        )
         assert "dependencies_complete=False" in caplog.text
         assert "Closure builder for transform 'well_formed_report'" not in caplog.text
