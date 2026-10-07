@@ -5,11 +5,7 @@ import { hasOnlyThrownCatalogueCode, isThrownShed } from "@/shared/api/graphql/e
 
 const BACKGROUND_QUERY_MAX_RETRIES = 2;
 
-/**
- * Retry policy for a query that refreshes a card in the background. A denial can't succeed on a
- * retry, and the transport has already retried a shed request as far as the load allows, so
- * neither is retried here. Anything else gets a couple of retries with the default backoff.
- */
+// A denial can't succeed on a retry, and the transport has already retried a shed request.
 export function retryBackgroundQuery(failureCount: number, error: Error): boolean {
   return (
     failureCount < BACKGROUND_QUERY_MAX_RETRIES &&
@@ -18,8 +14,7 @@ export function retryBackgroundQuery(failureCount: number, error: Error): boolea
   );
 }
 
-// After a failure the poll slows down instead of stopping, so a card that kept its last rows
-// catches up on its own once the backend recovers; a denial can't recover, so it stops.
+// A failed poll slows down instead of stopping, so a card catches up once the backend recovers.
 const FAILED_POLL_SLOWDOWN = 6;
 
 export function pollWhileHealthy(

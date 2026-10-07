@@ -1,5 +1,6 @@
 import { AlertTriangleIcon } from "lucide-react";
 
+import { Row } from "@/shared/components/container";
 import { Link } from "@/shared/components/ui/link";
 
 import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
@@ -15,8 +16,8 @@ export function UnreachableBand({ repository, branchName }: UnreachableBandProps
   const { id, kind, name, operationalStatus } = repository;
 
   return (
-    <div
-      className="flex items-start gap-2.5 border-warning-border border-t bg-warning-surface px-4 py-3"
+    <Row
+      className="items-start gap-2.5 border-warning-border border-t bg-warning-surface px-4 py-3"
       data-testid="repository-error-band"
       role="status"
     >
@@ -37,6 +38,6 @@ export function UnreachableBand({ repository, branchName }: UnreachableBandProps
       >
         Open repository
       </Link>
-    </div>
+    </Row>
   );
 }

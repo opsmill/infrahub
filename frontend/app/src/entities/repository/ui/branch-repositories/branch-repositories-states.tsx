@@ -1,6 +1,7 @@
 import { Button } from "@infrahub/ui";
 import { AlertCircleIcon, LockIcon } from "lucide-react";
 
+import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
 export function BranchRepositoriesLoading() {
@@ -8,11 +9,11 @@ export function BranchRepositoriesLoading() {
     <div role="status" aria-busy="true">
       <span className="sr-only">Loading repositories</span>
       {[0, 1, 2].map((index) => (
-        <div key={index} className="flex h-10 items-center gap-4 border-b px-3 last:border-b-0">
+        <Row key={index} className="h-10 gap-4 border-b px-3 last:border-b-0">
           <Skeleton className="h-3 w-1/3" />
           <Skeleton className="h-4 w-16" />
           <Skeleton className="h-3 w-14" />
-        </div>
+        </Row>
       ))}
     </div>
   );
@@ -20,7 +21,7 @@ export function BranchRepositoriesLoading() {
 
 export function BranchRepositoriesDenied() {
   return (
-    <div className="flex items-start gap-2 px-4 py-4 text-sm">
+    <Row className="items-start px-4 py-4 text-sm">
       <LockIcon className="mt-0.5 size-4 shrink-0 text-foreground-muted" aria-hidden />
       <div>
         <p className="font-medium">You don't have access to this branch's repositories</p>
@@ -28,7 +29,7 @@ export function BranchRepositoriesDenied() {
           Ask an administrator for permission to view repositories.
         </p>
       </div>
-    </div>
+    </Row>
   );
 }
 
@@ -66,10 +67,10 @@ export function BranchRepositoriesNone() {
 
 export function BranchRepositoryHealthFailed() {
   return (
-    <div role="alert" className="flex items-center gap-2 border-t px-4 py-2 text-danger text-xs">
+    <Row role="alert" className="border-t px-4 py-2 text-danger text-xs">
       <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
       Repository health couldn't be checked.
-    </div>
+    </Row>
   );
 }
 
@@ -79,7 +80,7 @@ interface FailedStateProps {
 
 export function BranchRepositoriesFailed({ onGoToFirstPage }: FailedStateProps) {
   return (
-    <div role="alert" className="flex items-center gap-2 px-4 py-4 text-danger text-sm">
+    <Row role="alert" className="px-4 py-4 text-danger text-sm">
       <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
       Repositories couldn't be loaded.
       {onGoToFirstPage && (
@@ -87,6 +88,6 @@ export function BranchRepositoriesFailed({ onGoToFirstPage }: FailedStateProps) 
           Go to first page
         </Button>
       )}
-    </div>
+    </Row>
   );
 }
