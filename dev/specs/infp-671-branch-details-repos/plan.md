@@ -151,7 +151,7 @@ Each card owns its page through IFC-3130's `useTablePagination({ urlKey })`: `re
 `count === 0` → "Not synchronised with Git" (Sync off) or "No Git repositories" ·
 otherwise → `BranchRepositoriesTable` (one server page in name order; min-height when `count > PAGE_SIZE`) + `TablePagination` → `RepositoryErrorBands` from the health query (first 3 or all; summary line + Show all/Collapse).
 
-Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the failed-task lookup (polled while syncing) and the log fetch (keyed on the task id, fetched once). _(2026-10-05: while no failed task is found, the lookup is also repeated on the sync interval, at most `MAX_IMPORT_TASK_LOOKUPS` times, because the repository can show `error-import` before its import run has ended as failed. A failed lookup reads as "details not found".)_
+Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the import-task lookup (a running import first, then the newest failed one; see Freshness for when it polls) and the log fetch (keyed on the task id, fetched once). _(2026-10-05: while no failed task is found, the lookup is also repeated on the sync interval, at most `MAX_IMPORT_TASK_LOOKUPS` times, because the repository can show `error-import` before its import run has ended as failed. A failed lookup reads as "details not found".)_
 
 ### Tasks card render tree
 
@@ -171,13 +171,19 @@ The page shows `/branches/:branchName`'s data while the branch selector may be o
 
 ### Freshness (critique P4, E6)
 
-Tasks page 1 and the failed count poll every 10s; later pages don't. The repositories page, the health query and the failed-task lookups poll every 10s only while the server counts a syncing repository (`isAnyRepositorySyncing`, computed once in the card from the health query); a task's log is never polled. Otherwise Refresh and window refocus. See research R4.
+Tasks page 1 and the failed count poll every 10s; later pages don't. The repositories page, the health query and the import-task lookups poll every 10s while the server counts a syncing repository (`isAnyRepositorySyncing`, computed once in the card from the health query). Each query also has its own reasons to poll:
+
+- the repositories page polls while any of its own rows still shows a sync.
+- the health query polls while its last fetch failed.
+- the import-task lookup polls while an import is running, while its last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while it finds no import task.
+
+A task's log is never polled. Otherwise Refresh and window refocus. See research R4.
 
 _(2026-10-05, failures.)_ The interval constants are in `entities/repository/ui/queries/repository-polling.ts`. Every background query of the two cards (repositories page, health, import task, import log, repository names, tasks page, failed count) follows `shared/api/background-query.ts`:
 
 - its fetcher passes `processErrorMessage`, as the base's sync-count fetcher does, so a failed poll doesn't show the global error toast; the card shows its own error state.
 - it retries twice with the default backoff, but never a permission denial (`hasOnlyThrownCatalogueCode` in `shared/api/graphql/error-handling.ts`) or a request the transport already retried after a shed.
-- once a fetch has failed through its retries, polling stops until Refresh, a remount or window refocus. A failed health check no longer drives the other queries' polling.
+- once a fetch has failed through its retries, a query that is still polling slows down to one fetch every 60s (`pollWhileHealthy`), so a card that kept its last data catches up when the backend recovers. A permission denial stops polling until Refresh, a remount or window refocus. A failed health check doesn't drive the other queries' polling.
 
 A failed page past the first shows "Go to first page" in the card's failed state, because the count, and so the pager, comes with the page. The header's Refresh button shows as busy only for the refresh the user started, not for background polls under its keys.
 
