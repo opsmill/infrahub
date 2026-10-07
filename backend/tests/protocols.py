@@ -520,6 +520,7 @@ class CoreNumberPool(CoreResourcePool, LineageSource):
     start_range: IntegerOptional
     end_range: IntegerOptional
     pool_type: Enum
+    allocation_scope: ListAttributeOptional
     ranges: RelationshipManager[CoreNumberPoolRange]
 
 

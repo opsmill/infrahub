@@ -5044,6 +5044,10 @@ input CoreNodeUpdateInput {
 
 """A pool of number resources"""
 type CoreNumberPool implements CoreNode & CoreResourcePool & LineageSource {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttribute
   description: TextAttribute
   display_label: String
   """
@@ -5079,6 +5083,10 @@ type CoreNumberPoolCreate {
 }
 
 input CoreNumberPoolCreateInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeCreate
   description: TextAttributeCreate
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -5201,6 +5209,10 @@ type CoreNumberPoolUpdate {
 }
 
 input CoreNumberPoolUpdateInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeUpdate
   description: TextAttributeUpdate
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -5229,6 +5241,10 @@ type CoreNumberPoolUpsert {
 }
 
 input CoreNumberPoolUpsertInput {
+  """
+  Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division
+  """
+  allocation_scope: ListAttributeUpdate
   description: TextAttributeUpdate
   """
   The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -21165,6 +21181,12 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreNodeTriggerRule!
   CoreNumberPool(
+    allocation_scope__is_protected: Boolean
+    allocation_scope__isnull: Boolean
+    allocation_scope__owner__id: ID
+    allocation_scope__source__id: ID
+    allocation_scope__value: GenericScalar
+    allocation_scope__values: [GenericScalar]
     any__is_protected: Boolean
     any__owner__id: ID
     any__source__id: ID
@@ -21347,6 +21369,11 @@ type Query {
     offset: Int
     order: OrderInput
     partial_match: Boolean
+    pool__allocation_scope__is_protected: Boolean
+    pool__allocation_scope__owner__id: ID
+    pool__allocation_scope__source__id: ID
+    pool__allocation_scope__value: GenericScalar
+    pool__allocation_scope__values: [GenericScalar]
     pool__description__is_protected: Boolean
     pool__description__owner__id: ID
     pool__description__source__id: ID

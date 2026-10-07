@@ -223,6 +223,15 @@ core_number_pool = NodeSchema(
             enum=NumberPoolType.available_types(),
             read_only=True,
         ),
+        Attr(
+            name="allocation_scope",
+            kind="List",
+            optional=True,
+            description=(
+                "Fields of the kind that divide the pool's space; "
+                "allocation returns the lowest free number within the writer's division"
+            ),
+        ),
     ],
     relationships=[
         Rel(
