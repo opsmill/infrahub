@@ -99,7 +99,7 @@ An operator opens the branches list and, without opening any branch, sees for ev
 
 1. **Given** a branch with one repository that last imported successfully, **When** the operator views the branches list, **Then** that branch's row shows the repository's name as a link to the repository's page on that branch, and a Git state pill with the schema's label and colour for the successful state, with no count.
 2. **Given** a branch with one repository that failed to import, **When** the operator views the list, **Then** the Git state pill reads the failed state in the schema's colour for it, and hovering the pill shows the state's description.
-3. **Given** a branch with a repository, **When** the operator hovers the repository's name, **Then** a tooltip shows the repository's Git state label and the first 7 characters of the branch's commit for that repository (the default branch's commit when the branch has none of its own), and says "read-only" for a read-only repository.
+3. **Given** a branch with a repository, **When** the operator hovers the repository's name, **Then** a tooltip shows the repository's Git state label and the first 7 characters of the branch's commit for that repository (inherited or missing when the branch has none of its own, per the resolution rules in the user docs), and says "read-only" for a read-only repository.
 4. **Given** the list is loading a branch's repository data, **When** the branch row is already visible, **Then** the branch's own cells (name, status, proposed changes, actions) render immediately, the Repositories cell shows one loading indicator until the data arrives, and the Git state cell stays blank until then.
 
 ---
