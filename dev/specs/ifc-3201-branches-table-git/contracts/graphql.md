@@ -26,7 +26,7 @@ query REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int, $offset: Int, $name__v
 
 | Aspect | Value |
 |---|---|
-| Entry point | `entities/repository/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusQueryOptions(params)` (factory, no hook), run by `useBranchRepositorySummaries` through `useQueries` |
+| Entry point | `entities/repository/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusQueryOptions(params)` (factory, no hook), run by `useGetBranchRepositorySummaries` through `useQueries` |
 | Variables | `{ id: <repository id>, limit: 500 }` |
 | Branch | the default branch, as the request's branch context; the rows name their own branch |
 | Query key | `repositoryQueryKeys.branchStatus(params)`, i.e. `["repository", "branch-status", { id, branchName, limit }]` |

@@ -43,7 +43,7 @@ function toRepositoryListFetch(
     if (count <= repositories.length) return null;
     return {
       status: "error",
-      message: `Only the first ${repositories.length} of ${count} repositories were read. Open a branch for its full list.`,
+      message: `Only the first ${repositories.length} of ${count} repositories were read. Open the branch for the full list.`,
     };
   }
   if (!list.error) return { status: "pending" };
@@ -62,7 +62,7 @@ function toStatusFetch(
   return toFailedFetch(result.error);
 }
 
-export function useBranchRepositorySummaries(
+export function useGetBranchRepositorySummaries(
   branches: BranchListItem[]
 ): Record<string, BranchRepositorySummary> {
   const { data: allBranches, error: branchesError } = useGetBranches();
@@ -79,9 +79,9 @@ export function useBranchRepositorySummaries(
     }),
     enabled: Boolean(defaultBranch),
   });
-  const listFetch =
+  const listFetch: RepositoryStatusFetch | null =
     branchesError && !allBranches
-      ? { status: "error" as const, message: branchesError.message }
+      ? { status: "error", message: branchesError.message }
       : toRepositoryListFetch(repositoryList);
   const repositories: BranchRepositoryRef[] =
     listFetch === null && repositoryList.data
@@ -106,7 +106,10 @@ export function useBranchRepositorySummaries(
         branches,
         listFetch
           ? [listFetch]
-          : results.map((result, index) => toStatusFetch(repositories[index]!, result)),
+          : repositories.map((repository, index): RepositoryStatusFetch => {
+              const result = results[index];
+              return result ? toStatusFetch(repository, result) : { status: "pending" };
+            }),
         compareSyncStatusSeverity
       ),
   });

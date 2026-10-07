@@ -1,6 +1,7 @@
 import { Button } from "@infrahub/ui";
 import { AlertCircleIcon, LockIcon } from "lucide-react";
 
+import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
 export function BranchRepositoriesLoading() {
@@ -83,7 +84,7 @@ export function BranchRepositoriesFailed({
   onGoToFirstPage,
 }: BranchRepositoriesFailedProps) {
   return (
-    <div role="alert" className="flex items-start gap-2 px-4 py-4 text-sm">
+    <Row role="alert" className="items-start px-4 py-4 text-sm">
       <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
       <div>
         <p className="text-danger">Repositories couldn't be loaded.</p>
@@ -94,6 +95,6 @@ export function BranchRepositoriesFailed({
           Go to first page
         </Button>
       )}
-    </div>
+    </Row>
   );
 }

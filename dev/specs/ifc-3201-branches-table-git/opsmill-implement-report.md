@@ -117,3 +117,7 @@ The architecture review of §7's implementation found three defects: the two cel
 | Cubic | Nine local findings folded in (listed in `pr-notes.md`). |
 
 Still pending: T032, T034 and T042 (live stack), now against the rework A quickstart.
+
+---
+
+**Erratum (2026-10-06):** the hook named `useBranchRepositorySummaries` in `ui/hooks/` above is now `useGetBranchRepositorySummaries` in `frontend/app/src/entities/branches/ui/queries/get-branch-repository-summaries.query.ts`. The body above is left as written.

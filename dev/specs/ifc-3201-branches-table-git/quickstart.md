@@ -16,7 +16,7 @@ cd frontend/app && pnpm vitest run src/entities/branches src/entities/repository
 This covers:
 
 - `summarize-branch-repositories.test.ts`, `sync-status-severity.test.ts`, `format-repository-summary.test.ts`: the pivot, the severity order and the tooltip string.
-- `use-branch-repository-summaries.test.ts`: one repository-list request on the default branch, one status request per repository, data-first, denied, poll and stale time.
+- `get-branch-repository-summaries.query.test.ts`: one repository-list request on the default branch, one status request per repository, data-first, denied, poll and stale time.
 - `get-branch-table-columns.test.tsx`: headers, the pure Repositories cell (worst repository, link, tooltip, "+N more"), the pure Git state cell (pill colour, `n/N`, count tooltip and `sr-only` text), and the pending, empty, denied and error texts.
 - `branches-table.test.tsx`: branch cells first, 1 + R requests, no new status request for a second page, denied and error on every row without a toast.
 - The lifted #10658 tests (`repository-branch-status.test.ts`, `get-repository-branch-status.test.ts`), and #10779's `branch-repositories-card.test.tsx` and `get-branch-repositories-from-api.test.ts`.

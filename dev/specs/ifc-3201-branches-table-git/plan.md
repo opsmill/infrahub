@@ -12,7 +12,7 @@ Frontend-only. The branches list (`/branches`) gains two columns after "Proposed
 
 Approach (rework A, research R15; R2, R7, R11, R12 stand; R1, R3–R6, R8, R13 and the per-branch parts of R5, R9, R10, R14 are superseded):
 
-- **Data**: the page owns the fetch. `useBranchRepositorySummaries(branches)` reads the repository list once with #10779's `useQuery(getBranchRepositoriesQueryOptions({ branchName, syncWithGit: true, limit: REPOSITORY_FETCH_LIMIT, offset: 0 }))`, then runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default branch>, limit: 500 })` (the epic's `InfrahubRepositoryBranchStatus`), `staleTime: 60_000` and a 10 s `refetchInterval` while a row is syncing. `combine` calls the pure rule `summarizeBranchRepositories`, which pivots the rows to one `BranchRepositorySummary` per branch name. 1 + R requests, independent of pagination.
+- **Data**: the page owns the fetch. `useGetBranchRepositorySummaries(branches)` reads the repository list once with #10779's `useQuery(getBranchRepositoriesQueryOptions({ branchName, syncWithGit: true, limit: REPOSITORY_FETCH_LIMIT, offset: 0 }))`, then runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default branch>, limit: 500 })` (the epic's `InfrahubRepositoryBranchStatus`), `staleTime: 60_000` and a 10 s `refetchInterval` while a row is syncing. `combine` calls the pure rule `summarizeBranchRepositories`, which pivots the rows to one `BranchRepositorySummary` per branch name. 1 + R requests, independent of pagination.
 - **Ordering**: `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`), then repository name; `repositories[0]` is the pill and the worst state. Operational status no longer takes part.
 - **Rows**: `toBranchTableRows(branches, summaries)` builds `BranchTableRow` (`BranchListItem` + `repositorySummary`), the view-model the table renders. `getRowId: row.id`, selection, toolbar and delete modal unchanged.
 - **Cells**: pure, no hooks. `BranchRepositoriesCell({ branch })` reuses `LinkPill`, `Tooltip` and the Proposed changes cell's "+N more" link; `BranchGitStateCell({ summary })` reuses `GitStatePill` (#10779). The tooltip string comes from the pure `formatRepositoryState` / `formatSyncStatusCounts` rule.
@@ -28,7 +28,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **Storage**: N/A (reads only).
 
-**Testing**: Vitest in browser mode (`vitest.config.ts`, Playwright provider). Pure rule tests in `.test.ts` (`summarize-branch-repositories`, `sync-status-severity`, `format-repository-summary`), a `renderHook` test for `useBranchRepositorySummaries` mocking the `getBranchRepositories` and `getRepositoryBranchStatus` use cases, component tests for pure cells with summaries given as data, and a table test mocking the two use cases. Fakes: #10779's `tests/fake/branch-repositories.ts` and `tests/fake/branch.ts`.
+**Testing**: Vitest in browser mode (`vitest.config.ts`, Playwright provider). Pure rule tests in `.test.ts` (`summarize-branch-repositories`, `sync-status-severity`, `format-repository-summary`), a `renderHook` test for `useGetBranchRepositorySummaries` mocking the `getBranchRepositories` and `getRepositoryBranchStatus` use cases, component tests for pure cells with summaries given as data, and a table test mocking the two use cases. Fakes: #10779's `tests/fake/branch-repositories.ts` and `tests/fake/branch.ts`.
 
 **Target Platform**: Desktop browsers; light and dark themes (tokens only, no literal colours except the schema's own dropdown colour).
 
@@ -61,7 +61,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 **IV. Test Discipline, in detail:**
 
 - **Rule tests**: `summarize-branch-repositories.test.ts` (denied wins; pending wins over error; first error message; grouping by branch name; worst-first with ties by name; counts; no rows → empty ok; read-only repository on an unsynced branch, read/write one not); `sync-status-severity.test.ts` (order, unknown values); `format-repository-summary.test.ts` (label · commit · read-only, each optional).
-- **Hook test**: `use-branch-repository-summaries.test.ts`: one repository-list request on the default branch; one status request per repository with `limit: 500`; summaries keyed by branch; data-first on a failed background refetch; `PERMISSION_DENIED` → all denied; `refetchInterval` 10 000 only while syncing and `staleTime` 60 000, asserted on the options factory.
+- **Hook test**: `get-branch-repository-summaries.query.test.ts`: one repository-list request on the default branch; one status request per repository with `limit: 500`; summaries keyed by branch; data-first on a failed background refetch; `PERMISSION_DENIED` → all denied; `refetchInterval` 10 000 only while syncing and `staleTime` 60 000, asserted on the options factory.
 - **Component tests**: `get-branch-table-columns.test.tsx` with pure cells and summaries as data: headers; worst-repository pill with link and branch parameter (the default branch included); tooltip text; "+N more"; Git state pill colour, `n/N`, count tooltip and `sr-only` text; single repository without count; colourless status → grey badge; pending → one `role="status"`; denied, error (`sr-only` message), both empty texts in `text-foreground-muted`, no `-` or `—`; an unreachable in-sync repository never outranks an import error, and `unknown` outranks `in-sync`.
 - **Table tests**: `branches-table.test.tsx` mocking the two use cases: branch cells render while summaries are pending; 1 + R requests; a second page issues no new status request; denied → "No permission" on every row, no toast; one status error → "Could not load repositories" on every row, no toast.
 - **Branch details card and fetcher**: `branch-repositories-card.test.tsx` and `get-branch-repositories-from-api.test.ts` keep the no-toast and message cases.
@@ -125,7 +125,7 @@ src/entities/branches/
 │       ├── summarize-branch-repositories.ts (+ test) # NEW RepositoryStatusFetch, summarizeBranchRepositories
 │       └── format-repository-summary.ts (+ test)     # NEW tooltip/summary string builder
 └── ui/
-    ├── hooks/use-branch-repository-summaries.ts (+ test) # NEW the page-side fetch
+    ├── queries/get-branch-repository-summaries.query.ts (+ test) # NEW the page-side fetch
     └── branches-table/
         ├── branch-table-row.ts                   # NEW BranchTableRow, toBranchTableRows
         ├── branch-field-schemas.ts               # CHANGED + repositories, git_state

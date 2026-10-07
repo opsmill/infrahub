@@ -5,7 +5,7 @@ import { BranchesEmpty } from "@/entities/branches/ui/branches-empty";
 import { toBranchTableRows } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
 import { getBranchTableColumns } from "@/entities/branches/ui/branches-table/get-branch-table-columns";
-import { useBranchRepositorySummaries } from "@/entities/branches/ui/hooks/use-branch-repository-summaries";
+import { useGetBranchRepositorySummaries } from "@/entities/branches/ui/queries/get-branch-repository-summaries.query";
 import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 
@@ -21,7 +21,7 @@ export function BranchesTable() {
   const sortedBranches = sortByName(allBranches.filter((b) => !b.is_default));
   const flatData = [...allBranches.filter((b) => b.is_default), ...sortedBranches];
 
-  const summaries = useBranchRepositorySummaries(flatData);
+  const summaries = useGetBranchRepositorySummaries(flatData);
 
   const isLoading = isPending || isFetchingNextPage;
 

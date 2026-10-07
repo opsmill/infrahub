@@ -15,14 +15,14 @@ Re-walked 2026-10-01 after the rework to one row per branch (Repositories and Gi
 9. (you) / Hover the count — ok
 10. The repositories listed / follow the same rule — ok
 11. A read-write repository / appears — ok (UI listing)
-12. A branch with no repository to show / reads — ok (UI property; the cell shows the text)
+12. Its Repositories cell / shows — ok
 13. [Not synced with Git] The branch / does not sync — ok
 14. [No repositories] The branch / syncs …, or the branch / is merged — ok (rework A)
-15. [No permission] Your account / cannot view both repository kinds …, or any repository's status on every branch, so every branch / reads; a repository whose status you cannot read / is left out — ok (list and status permission, 2026-10-05)
-16. [Could not load repositories] The branch list, the repository list or a repository's status / could not be read, or the list / was cut short, so every branch / reads; or one status list / was cut short before this branch — ok (truncation cases, 2026-10-01)
+15. [No permission] Your account / cannot view one of the two repository kinds …, or the status of any repository on every branch; the cell / shows this text on every branch, or leaves a repository whose status you cannot view out — ok (list and status permission, 2026-10-05)
+16. [Could not load repositories] The branch list, the repository list, or a repository's status / could not be read, or the list / was cut short; the cell / shows this text on every branch, or on one branch that the loaded rows of a cut status list do not include — ok (truncation cases, 2026-10-01)
 17. (you) / Hover the text — ok
 18. The branch columns / load normally — ok (rework A; replaces "These states apply to one branch at a time")
-19. Infrahub / refreshes — ok (the UI polls, `get-repository-branch-status.query.ts`)
+19. The open branches page / reads again — ok (the UI polls, `get-repository-branch-status.query.ts`)
 20. The branches list / is organized by branch — property, ok (next section, unchanged)
 
 Rewrites: 2 (rows 15 and 16, rewritten when per-kind denial and truncation landed). The 2026-09-30 rewrites ("occupies", "shows the reason") went with the per-repository rows.

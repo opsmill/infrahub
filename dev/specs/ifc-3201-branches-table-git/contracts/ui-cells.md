@@ -17,10 +17,10 @@ This file covers the props and rendering contracts for what the feature adds or 
 - **Column position**: after `proposed_changes`; display column ids `repositories` and `git_state`.
 - **Link rule**: the repository pill carries the **row's** branch via `getBranchQsp(branch.name)`. The default branch's row also carries `branch=<default>`.
 
-## `useBranchRepositorySummaries` — `entities/branches/ui/hooks/use-branch-repository-summaries.ts` (new)
+## `useGetBranchRepositorySummaries` — `entities/branches/ui/queries/get-branch-repository-summaries.query.ts` (new)
 
 ```ts
-function useBranchRepositorySummaries(branches: BranchListItem[]): Record<string, BranchRepositorySummary>
+function useGetBranchRepositorySummaries(branches: BranchListItem[]): Record<string, BranchRepositorySummary>
 ```
 
 Reads the default branch (`is_default`) from the branches provider; reads the repository list with `useQuery(getBranchRepositoriesQueryOptions({ branchName: <default>, syncWithGit: true, isSyncing: false, limit: 500, offset: 0 }))`; runs `useQueries` over the repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: <default>, limit: 500 })`, `staleTime: 60_000` and `refetchInterval: 10_000` while any row of that query is `syncing`; `combine` maps results to `RepositoryStatusFetch` (data-first, `PERMISSION_DENIED` → denied) and returns `summarizeBranchRepositories(branches, fetches, compareSyncStatusSeverity)`. No `useMemo`.
@@ -62,7 +62,7 @@ interface BranchGitStateCellProps { summary: BranchRepositorySummary }
 
 | Aspect | Contract |
 |---|---|
-| Data | `BranchesTable` calls `useBranchRepositorySummaries(flatData)` and passes `data={toBranchTableRows(flatData, summaries)}` |
+| Data | `BranchesTable` calls `useGetBranchRepositorySummaries(flatData)` and passes `data={toBranchTableRows(flatData, summaries)}` |
 | Row type | `BranchTableRow` (superset of `BranchListItem`), `getRowId: (row) => row.id` |
 | Selection | The base branch's per-row selection, unchanged (FR-008, FR-009); toolbar and delete modal receive branches unchanged |
 | Row checkbox | `aria-label={`Select ${branch.name}`}` |

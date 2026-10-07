@@ -91,8 +91,8 @@ unknown values rank with `unknown`. Unit-tested.
 
 ## UI
 
-- `entities/branches/ui/hooks/use-branch-repository-summaries.ts`:
-  `useBranchRepositorySummaries(branches: BranchListItem[]): Record<string, BranchRepositorySummary>`.
+- `entities/branches/ui/queries/get-branch-repository-summaries.query.ts`:
+  `useGetBranchRepositorySummaries(branches: BranchListItem[]): Record<string, BranchRepositorySummary>`.
   Reads the default branch from the branches provider, calls `useGetBranchRepositories` for the
   repository list, `useQueries` over repositories with `getRepositoryBranchStatusQueryOptions({ id, branchName: default, limit: 500 })`
   plus `staleTime`/`refetchInterval` from § Requests, and `combine` → `summarizeBranchRepositories`.
@@ -139,7 +139,7 @@ unknown values rank with `unknown`. Unit-tested.
   while a read/write one does not (given rows as the backend would return them).
 - `repository/domain/rules/sync-status-severity.test.ts`: order and unknown-value handling.
 - `domain/rules/format-repository-summary.test.ts`: label · commit · read-only, each part optional.
-- `ui/hooks/use-branch-repository-summaries.test.ts` (renderHook, mock `getBranchRepositories`
+- `ui/queries/get-branch-repository-summaries.query.test.ts` (renderHook, mock `getBranchRepositories`
   and `getRepositoryBranchStatus` use cases): one repository-list request on the default branch;
   one status request per repository with `limit: 500`; summaries keyed by branch; a failed
   background refetch keeps the loaded summary (data-first); `PERMISSION_DENIED` → all denied;

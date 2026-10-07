@@ -1,21 +1,13 @@
 import type {
-  NonRequiredBooleanValueField,
-  RequiredStringValueField,
-  TextAttribute,
-} from "@/shared/api/graphql/generated/types";
+  RepositoryBranchStatusWireNode,
+  RepositoryBranchStatusWirePage,
+} from "@/entities/repository/domain/model/repository-branch-status";
 
-import { type DropdownSelection, generateDropdown } from "./dropdown";
+import { generateDropdown } from "./dropdown";
 
-export type RepositoryBranchStatusWire = {
-  name: Pick<RequiredStringValueField, "value">;
-  is_default: Pick<NonRequiredBooleanValueField, "value"> | null;
-  commit: Pick<TextAttribute, "value"> | null;
-  sync_status: DropdownSelection | null;
-  ref: Pick<TextAttribute, "value"> | null;
-};
+export type RepositoryBranchStatusWire = Required<RepositoryBranchStatusWireNode>;
 
-export type RepositoryBranchStatusPageWire = {
-  count: number;
+export type RepositoryBranchStatusPageWire = Omit<RepositoryBranchStatusWirePage, "edges"> & {
   edges: Array<{ node: RepositoryBranchStatusWire }>;
 };
 

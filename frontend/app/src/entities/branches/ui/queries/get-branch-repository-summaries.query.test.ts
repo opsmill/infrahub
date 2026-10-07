@@ -5,7 +5,7 @@ import { renderHook } from "vitest-browser-react";
 
 import { retryBackgroundQuery } from "@/shared/api/background-query";
 
-import { useBranchRepositorySummaries } from "@/entities/branches/ui/hooks/use-branch-repository-summaries";
+import { useGetBranchRepositorySummaries } from "@/entities/branches/ui/queries/get-branch-repository-summaries.query";
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import {
   mapRepositoryBranchStatusRow,
@@ -55,13 +55,13 @@ const renderSummaries = async () => {
   });
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
-  const rendered = await renderHook(() => useBranchRepositorySummaries([primary, feature]), {
+  const rendered = await renderHook(() => useGetBranchRepositorySummaries([primary, feature]), {
     wrapper,
   });
   return { queryClient, result: rendered.result };
 };
 
-describe("useBranchRepositorySummaries", () => {
+describe("useGetBranchRepositorySummaries", () => {
   beforeEach(() => {
     vi.mocked(useGetBranches).mockReturnValue({
       data: [feature, primary],
@@ -173,6 +173,25 @@ describe("useBranchRepositorySummaries", () => {
       .poll(() => result.current.feature)
       .toEqual({ status: "error", message: "Repository index unavailable" });
   });
+
+  test("reports an error on every branch when the repository list itself was cut short", async () => {
+    // GIVEN
+    vi.mocked(getBranchRepositories).mockResolvedValue({
+      repositories: [generateBranchRepository({ id: "repo-1", name: "one" })],
+      count: 501,
+    });
+
+    // WHEN
+    const { result } = await renderSummaries();
+
+    // THEN
+    await expect.poll(() => result.current.primary?.status).toBe("error");
+    expect(result.current.feature).toMatchObject({
+      status: "error",
+      message: expect.stringContaining("first 1 of 501 repositories"),
+    });
+    expect(getRepositoryBranchStatus).not.toHaveBeenCalled();
+  });
 });
 
 describe("getRepositoryBranchStatusQueryOptions", () => {
@@ -219,23 +238,5 @@ describe("getRepositoryBranchStatusQueryOptions", () => {
       refetchIntervalFor(syncingPage(), { status: "error", error: new Error("Network error") })
     ).toBe(60_000);
     expect(options.retry).toBe(retryBackgroundQuery);
-  });
-
-  test("reports an error on every branch when the repository list itself was cut short", async () => {
-    // GIVEN
-    vi.mocked(getBranchRepositories).mockResolvedValue({
-      repositories: [generateBranchRepository({ id: "repo-1", name: "one" })],
-      count: 501,
-    });
-
-    // WHEN
-    const { result } = await renderSummaries();
-
-    // THEN
-    await vi.waitFor(() => expect(result.current.primary?.status).toBe("error"));
-    expect(result.current.feature).toMatchObject({
-      status: "error",
-      message: expect.stringContaining("first 1 of 501 repositories"),
-    });
   });
 });

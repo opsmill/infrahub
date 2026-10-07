@@ -96,21 +96,21 @@ export function summarizeBranchRepositories(
     branches.map((branch) => {
       const states = statesByBranch.get(branch.name) ?? [];
       // Which branches a repository lists is the backend's rule, so a branch missing from a cut page is
-      // reported as unknown rather than guessed absent.
-      const cutBefore = truncated.filter(
+      // reported as an error rather than guessed absent.
+      const missingFrom = truncated.filter(
         ({ rows }) => !rows.some((row) => row.name === branch.name)
       );
-      if (cutBefore.length > 0) return [branch.name, truncatedSummary(cutBefore)];
+      if (missingFrom.length > 0) return [branch.name, truncatedSummary(missingFrom)];
       const repositories = [...states].sort((a, b) => compareStates(compareSeverity, a, b));
       return [branch.name, { status: "ok", repositories, counts: countBySyncStatus(repositories) }];
     })
   );
 }
 
-function truncatedSummary(cutBefore: readonly LoadedFetch[]): BranchRepositorySummary {
-  const names = cutBefore.map(({ repository }) => repository.name).join(", ");
+function truncatedSummary(missingFrom: readonly LoadedFetch[]): BranchRepositorySummary {
+  const names = missingFrom.map(({ repository }) => repository.name).join(", ");
   return {
     status: "error",
-    message: `The status list for ${names} was cut short before this branch. Open the branch for the full list.`,
+    message: `Too many branches to load for ${names}, so this branch could not be checked. Open the branch for the full list.`,
   };
 }

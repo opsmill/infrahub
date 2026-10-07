@@ -200,11 +200,13 @@ describe("summarizeBranchRepositories", () => {
     expect(summaries.main).toMatchObject({ status: "ok" });
     expect(summaries.feature).toMatchObject({
       status: "error",
-      message: expect.stringContaining("cut short before this branch"),
+      message: expect.stringContaining(
+        "Too many branches to load for a, so this branch could not be checked"
+      ),
     });
   });
 
-  it("reports a branch missing from a cut page as unknown, whatever its sync flag", () => {
+  it("reports an error for a branch missing from a cut page, whatever its sync flag", () => {
     // GIVEN a read/write repository page cut short and an unsynced branch absent from it
     const fetches = [fetched("read-write", [row("main")], false, 501)];
 

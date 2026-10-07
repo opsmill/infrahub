@@ -161,7 +161,7 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 
 ## R15 — Repository-anchored data, page-owned
 
-**Decision** (owner, 2026-10-01, after the architecture review of the R14 implementation): the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository, on the default branch, and pivots the rows to one `BranchRepositorySummary` per branch name in the branches domain (`summarizeBranchRepositories`). The page owns the fetch (`useBranchRepositorySummaries`, `useQueries` + `combine`), the summary rides on the row view-model (`BranchTableRow`), and the cells are pure. Repositories are ranked by Git state severity (`compareSyncStatusSeverity`: `error-import` > `unknown` > `syncing` > `in-sync`, then name). Requests: 1 + R, independent of pages loaded; a 60 s `staleTime` caps the refocus burst.
+**Decision** (owner, 2026-10-01, after the architecture review of the R14 implementation): the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository, on the default branch, and pivots the rows to one `BranchRepositorySummary` per branch name in the branches domain (`summarizeBranchRepositories`). The page owns the fetch (`useGetBranchRepositorySummaries`, `useQueries` + `combine`), the summary rides on the row view-model (`BranchTableRow`), and the cells are pure. Repositories are ranked by Git state severity (`compareSyncStatusSeverity`: `error-import` > `unknown` > `syncing` > `in-sync`, then name). Requests: 1 + R, independent of pages loaded; a 60 s `staleTime` caps the refocus burst.
 
 **Why**: the R14 implementation had three defects.
 

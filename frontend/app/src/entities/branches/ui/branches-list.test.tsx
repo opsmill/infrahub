@@ -19,7 +19,7 @@ vi.mock("@/entities/nodes/filters/ui/hooks/use-filters", () => ({
   useFilters: () => [[], vi.fn()],
 }));
 
-// Retry renders a bare clickable div with no role or accessible name.
+// The reload control is a clickable div with no role or accessible name.
 const findReloadControl = (container: HTMLElement) =>
   container.querySelector<HTMLElement>(':has(> iconify-icon[icon="mdi:reload"])');
 
