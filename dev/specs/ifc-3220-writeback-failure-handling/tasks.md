@@ -424,7 +424,7 @@ deployment rule.** T070 to T073 are not.
 - [ ] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
       `generate_artifact_definition` in `backend/infrahub/git/tasks.py` and to
       `run_generator_definition` in `backend/infrahub/generators/tasks.py`.
-- [ ] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
+- [X] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
       `FullRegenerationReason.TERMINAL_SELECTION_FAILED` to
       `backend/infrahub/core/constants/__init__.py`, where T018 moved the enum.
 - [ ] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and

@@ -256,13 +256,15 @@ class RepositoryDeliveryFailureCause(InfrahubStringEnum):
 
 
 class FullRegenerationReason(StrEnum):
-    """Why the merge follow-up fell back to regenerating every definition."""
+    """Why a regeneration fell back to every definition instead of a narrowed set."""
 
     FEATURE_DISABLED = "Selective post-merge execution disabled"
     NO_SUMMARY_CAPTURED = "No merge diff summary captured"
     SUMMARY_UNAVAILABLE = "Merge diff summary unavailable"
     SELECTION_FAILED = "Selective post-merge regeneration failed"
     UNHELD_FOLLOW_UP = "Merge follow-ups ran without a hold"
+    TERMINAL_SELECTION_FAILED = "Terminals could not be targeted from the cascade output"
+    HELD_SET_UNRESOLVED = "Held regeneration could not be resolved"
 
 
 class RepositoryOperationalStatus(InfrahubStringEnum):
