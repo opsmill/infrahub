@@ -350,9 +350,12 @@ emits no signal.
       worktree and merge: nothing is lost, and refusing there would leave the merge undelivered,
       because the cron heals whichever worker runs it rather than the one the merge lands on. A
       clone that is only behind a head the graph records is moved onto it the same way, or the
-      merge builds on an old source or pushes onto an old trunk. A clone behind a graph commit that
-      the remote history holds, with a remote head past it, is moved onto the graph commit. A
-      refusal raises a typed error naming a divergent remote history.
+      merge builds on an old source or pushes onto an old trunk. A source behind a graph commit
+      that the remote history holds, with a remote head past it, is moved onto the graph commit. A
+      destination behind a head the graph does not record is refused, because the remote would
+      reject the push; the Git merge reads that graph commit when it runs, under the repository
+      lock, since an earlier merge can move the trunk after the dispatch. A refusal raises a typed
+      error naming a divergent remote history.
       **In that refusing case, do not reset and merge instead.** `merge` pushes the merge commit
       before it records it on the destination, so a reset-then-merge puts the merge commit on the
       remote and in the graph. The next cycle then finds the graph and the remote in agreement,

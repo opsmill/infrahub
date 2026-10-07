@@ -64,16 +64,13 @@ class RepositoryMergeDispatcher:
                 internal_status=repo.internal_status.value,
                 repository_kind=InfrahubKind.READONLYREPOSITORY,
                 source_commit=readable_commit(repo.commit.value),
-                destination_commit=readable_commit(repos_in_main[repo.id].commit.value),
             )
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
     async def merge_core_repositories(self) -> None:
-        for repo, repo_on_destination in await list_shared_core_repositories(
-            db=self.db, source_branch=self.source_branch
-        ):
+        for repo, _ in await list_shared_core_repositories(db=self.db, source_branch=self.source_branch):
             if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-                # The Git merge can run after the source branch is deleted, so it gets the commits from here.
+                # The Git merge can run after the source branch is deleted, so it gets the source commit from here.
                 model = GitRepositoryMerge(
                     repository_id=repo.id,
                     repository_name=repo.name.value,
@@ -83,7 +80,6 @@ class RepositoryMergeDispatcher:
                     destination_branch_id=str(self.destination_branch.get_uuid()),
                     repository_kind=InfrahubKind.REPOSITORY,
                     source_commit=readable_commit(repo.commit.value),
-                    destination_commit=readable_commit(repo_on_destination.commit.value),
                 )
                 await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 

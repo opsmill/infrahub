@@ -6,6 +6,7 @@ import logging
 import re
 import shutil
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -992,12 +993,9 @@ def _rewrite_the_trunk(container: DockerContainer, tracked: TrackedBranchReposit
 async def _merge_into_the_trunk(
     db: InfrahubDatabase, tracked: TrackedBranchRepository, trunk_id: str
 ) -> GitRepositoryMerge:
-    """Build the Git merge of the tracked branch with the commits the graph records now, as a branch merge does."""
+    """Build the Git merge of the tracked branch with the commit the graph records now, as a branch merge does."""
     on_branch: CoreRepository = await NodeManager.get_one(
         db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=tracked.branch_name, raise_on_error=True
-    )
-    on_trunk: CoreRepository = await NodeManager.get_one(
-        db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
     )
     return GitRepositoryMerge(
         repository_id=tracked.node_id,
@@ -1008,7 +1006,6 @@ async def _merge_into_the_trunk(
         destination_branch_id=trunk_id,
         repository_kind=InfrahubKind.REPOSITORY,
         source_commit=on_branch.commit.value,
-        destination_commit=on_trunk.commit.value,
     )
 
 
@@ -1457,6 +1454,45 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             await merge_git_repository(model=model)
 
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == advanced
+
+    async def test_a_merge_on_a_worker_behind_the_merge_before_it_merges_onto_that_merge(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """Two branch merges run back to back, and both Git merges are dispatched before the first one runs."""
+        first = await tracked_branch_repository("back-to-back-merge-repo", "back-to-back-first-branch")
+        second_head = commit_to_remote_branch(
+            gogs_server.container, first.name, "back-to-back-second-branch", files={"second.txt": "second\n"}
+        )
+        await sync_remote_repositories()
+        second = replace(first, branch_name="back-to-back-second-branch", imported_commit=second_head)
+        second_worker = await _clone_on_another_worker(client=client, tracked=first, tmp_path=tmp_path)
+        second_branch = await client.branch.get(branch_name=second.branch_name)
+        with repositories_directory(second_worker):
+            clone = await _open_clone(client=client, tracked=second)
+            await clone.create_branch_in_git(
+                branch_name=second.branch_name, branch_id=second_branch.id, push_origin=False
+            )
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+        first_merge = await _merge_into_the_trunk(db=db, tracked=first, trunk_id=trunk.id)
+        second_merge = await _merge_into_the_trunk(db=db, tracked=second, trunk_id=trunk.id)
+
+        await merge_git_repository(model=first_merge)
+        with repositories_directory(second_worker):
+            await merge_git_repository(model=second_merge)
+
+        assert gogs_branches_containing(gogs_server.container, first.name, first.imported_commit) == [
+            "back-to-back-first-branch",
+            "main",
+        ]
+        assert gogs_branches_containing(gogs_server.container, first.name, second_head) == [
+            "back-to-back-second-branch",
+            "main",
+        ]
 
     async def test_a_worker_that_missed_the_broadcast_resets_in_its_next_cycle_and_records_nothing(
         self,

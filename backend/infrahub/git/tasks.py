@@ -43,6 +43,7 @@ from infrahub.exceptions import (
     RepositoryCredentialsError,
     RepositoryError,
 )
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
@@ -989,6 +990,28 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
+async def _read_destination_commit(client: InfrahubClient, model: GitRepositoryMerge) -> str | None:
+    """Return the commit the graph records for the destination now, which an earlier merge can move after the dispatch.
+
+    Raises:
+        RepositoryError: When the API cannot answer.
+
+    """
+    try:
+        repository = await client.get(kind=CoreRepository, id=model.repository_id, branch=model.destination_branch)
+    except SdkError as exc:
+        raise RepositoryError(
+            identifier=model.repository_name,
+            message=(
+                f"Unable to read the commit Infrahub records for branch {model.destination_branch} of repository "
+                f"{model.repository_name}: {exc.message}. The branch is merged in Infrahub and not in Git. To finish "
+                f"the merge, merge {model.source_branch} into the default branch of the Git repository. The next "
+                "synchronization imports the result."
+            ),
+        ) from exc
+    return readable_commit(repository.commit.value)
+
+
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
@@ -1049,7 +1072,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                 source_branch=model.source_branch,
                 dest_branch=model.destination_branch,
                 source_commit=model.source_commit,
-                destination_commit=model.destination_commit,
+                destination_commit=await _read_destination_commit(client=client, model=model),
             )
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:

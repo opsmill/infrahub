@@ -98,6 +98,11 @@ class MergeClone:
             destination_commit=self.commits.get(dest_branch),
         )
 
+    async def prepare_and_merge(self) -> None:
+        """Run the guard and then the merge with its push, as the merge flow does."""
+        await self.prepare()
+        await self.repository.merge(source_branch=SOURCE, dest_branch=DESTINATION)
+
     def refusal_message(self, branch_name: str, graph_commit: str, remote_head: str) -> str:
         return (
             f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. "
@@ -106,6 +111,20 @@ class MergeClone:
             f"{remote_head}. The branch is merged in Infrahub and not in Git. To finish the merge, merge {SOURCE} into "
             f"{self.remote_trunk} in the Git repository. The next synchronization imports the result."
         )
+
+    def trunk_behind_message(self, graph_commit: str, remote_head: str) -> str:
+        return (
+            f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. "
+            f"The remote head {remote_head} of {self.remote_trunk} is ahead of the local commit "
+            f"{self.local_heads[DESTINATION]}, and Infrahub records {graph_commit} for {DESTINATION}, not that head. "
+            f"The branch is merged in Infrahub and not in Git. To finish the merge, merge {SOURCE} into "
+            f"{self.remote_trunk} in the Git repository. The next synchronization imports the result."
+        )
+
+    def accept_pushes(self) -> None:
+        """Let the remote take a push to the branch its working copy has checked out, as a bare remote does."""
+        with self.remote.repo.config_writer() as remote_config:
+            remote_config.set_value("receive", "denyCurrentBranch", "ignore")
 
 
 async def build_merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, remote_trunk: str) -> MergeClone:
@@ -171,11 +190,6 @@ class RemoteChangeCase:
         RemoteChangeCase(
             name="source-behind-its-graph-commit", branch_name=SOURCE, graph_commit=MergeClone.import_then_advance
         ),
-        RemoteChangeCase(
-            name="destination-behind-its-graph-commit",
-            branch_name=DESTINATION,
-            graph_commit=MergeClone.import_then_advance,
-        ),
     ],
     ids=lambda case: case.name,
 )
@@ -203,18 +217,8 @@ async def test_a_branch_is_moved_onto_the_commit_the_graph_records_before_the_me
             graph_commit=MergeClone.advance_without_import,
         ),
         RemoteChangeCase(
-            name="destination-behind-a-head-not-imported",
-            branch_name=DESTINATION,
-            graph_commit=MergeClone.advance_without_import,
-        ),
-        RemoteChangeCase(
             name="source-behind-a-graph-commit-the-remote-dropped",
             branch_name=SOURCE,
-            graph_commit=MergeClone.import_then_rewrite,
-        ),
-        RemoteChangeCase(
-            name="destination-behind-a-graph-commit-the-remote-dropped",
-            branch_name=DESTINATION,
             graph_commit=MergeClone.import_then_rewrite,
         ),
         RemoteChangeCase(name="source-deleted-on-the-remote", branch_name=SOURCE, graph_commit=MergeClone.delete),
@@ -282,6 +286,41 @@ async def test_a_branch_whose_rewrite_the_graph_lacks_refuses_the_merge(
 
     assert clone.heads() == clone.local_heads
     assert clone.client.recorded_commits == []
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RemoteChangeCase(
+            name="behind-a-head-not-imported", branch_name=DESTINATION, graph_commit=MergeClone.advance_without_import
+        ),
+        RemoteChangeCase(
+            name="behind-its-graph-commit", branch_name=DESTINATION, graph_commit=MergeClone.import_then_advance
+        ),
+        RemoteChangeCase(
+            name="behind-a-graph-commit-the-remote-dropped",
+            branch_name=DESTINATION,
+            graph_commit=MergeClone.import_then_rewrite,
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_trunk_behind_a_head_the_graph_does_not_record_refuses_the_merge_before_the_push(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: RemoteChangeCase
+) -> None:
+    """The remote rejects a push onto an older trunk, and by then the graph merge is done."""
+    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
+    clone.accept_pushes()
+    graph_commit = case.graph_commit(clone, DESTINATION)
+    clone.commits[DESTINATION] = graph_commit
+    remote_head = str(clone.remote.repo.commit(DESTINATION))
+    message = clone.trunk_behind_message(graph_commit=graph_commit, remote_head=remote_head)
+
+    with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
+        await clone.prepare_and_merge()
+
+    assert str(clone.remote.repo.commit(DESTINATION)) == remote_head
+    assert clone.heads() == clone.local_heads
 
 
 async def test_a_refused_branch_keeps_the_other_branch_where_it_is(merge_clone: MergeClone) -> None:

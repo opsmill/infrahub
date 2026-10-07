@@ -748,8 +748,9 @@ reaches it. This guard closes that.
 | Is the remote head | not read | **Merge.** |
 | Behind the remote head, or diverged from it | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
 | Diverged from the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Behind the graph commit, which the remote history holds | differs from the remote head | **Move the branch onto the graph commit and merge.** The Git merge then holds the commit the graph merged, not an older one. |
-| Behind the remote head, and not behind a graph commit the remote history holds | differs from the remote head | **Merge as it is.** The check before the graph merge refuses this case first. |
+| Destination behind the remote head | differs from the remote head | **Refuse.** The merge would build on an older trunk, and the remote would reject the push after the graph merge. |
+| Source behind the graph commit, which the remote history holds | differs from the remote head | **Move the source onto the graph commit and merge.** The Git merge then holds the commit the graph merged, not an older one. |
+| Source behind the remote head, and not behind a graph commit the remote history holds | differs from the remote head | **Merge as it is.** The merge builds on the commit the graph merged, and the push goes to the trunk only. |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
    "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and
@@ -760,10 +761,13 @@ reaches it. This guard closes that.
    decides: move it when the graph commit equals the remote head, refuse otherwise.
 6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
    ref.
-7. The graph commits come in `GitRepositoryMerge` (`source_commit`, `destination_commit`), which
-   `RepositoryMergeDispatcher` fills when it submits the Git merge. The guard reads no node: the
-   branch merge submits the delete of the source branch without a wait for the Git merge, so a read
-   of that branch can fail.
+7. The source graph commit comes in `GitRepositoryMerge` (`source_commit`), which
+   `RepositoryMergeDispatcher` fills when it submits the Git merge. The branch merge submits the
+   delete of the source branch without a wait for the Git merge, so a later read of that branch can
+   fail.
+8. `merge_git_repository` reads the destination graph commit when the Git merge runs, under the
+   repository lock. The default branch is never deleted, and an earlier Git merge can move it after
+   the dispatch: two merges in a row both see the old trunk commit at dispatch.
 
 **Equal, not an ancestor.** The classification of section 1 treats a graph commit that is an
 ancestor of the remote head as a fast-forward. This guard does not: such a remote holds commits the

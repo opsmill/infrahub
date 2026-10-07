@@ -105,7 +105,6 @@ async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
                 destination_branch_id=str(default_branch.get_uuid()),
                 repository_kind=InfrahubKind.REPOSITORY,
                 source_commit=BRANCH_COMMIT,
-                destination_commit=TRUNK_COMMIT,
             )
         }
     ]

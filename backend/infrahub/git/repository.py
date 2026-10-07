@@ -920,15 +920,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         is behind its remote head, or diverged from it, is moved onto that head when the graph records it:
         the graph imported that head, and only this clone is stale. A diverged branch whose graph commit
         differs is refused, because the rewrite is not reconciled yet: no branch moves, so the next
-        synchronization still finds the rewrite to record and import. A branch behind a head the graph
-        has not imported is moved onto the graph commit when that commit lies between the two, so the
-        merge holds what the graph merged, and is left as it is otherwise.
+        synchronization still finds the rewrite to record and import. A destination behind a head the
+        graph does not record is refused too, because the remote would reject the push. A source behind
+        a head the graph has not imported is moved onto the graph commit when that commit lies between
+        the two, so the merge holds what the graph merged, and is left as it is otherwise.
 
-        The graph commits come from the caller, read when the merge was dispatched, because the source
-        branch can be deleted in Infrahub before this runs.
+        The source commit is the one read when the merge was dispatched, because the source branch can
+        be deleted in Infrahub before this runs. The destination commit must be read under the
+        repository lock, because an earlier merge can move the trunk after the dispatch.
 
         Raises:
-            RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record.
+            RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record,
+                or the destination is behind such a head.
             RepositoryError: When git cannot fetch or compare a branch.
 
         """
@@ -953,16 +956,23 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             if graph_commit == remote_head:
                 moves.append((branch_name, local_head, graph_commit))
             elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
-                raise RepositoryDivergentHistoryError(
-                    identifier=self.name,
-                    message=(
-                        f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. "
+                raise self._unfinished_merge(
+                    source_branch=source_branch,
+                    dest_branch=dest_branch,
+                    reason=(
                         f"The remote history of {self._get_mapped_remote_branch(branch_name=branch_name)} does not "
                         f"contain the local commit {local_head}. Infrahub records {graph_commit or 'no commit'} for "
-                        f"{branch_name}, not the remote head {remote_head}. The branch is merged in Infrahub and not "
-                        f"in Git. To finish the merge, merge {self._get_mapped_remote_branch(branch_name=source_branch)} "
-                        f"into {self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The "
-                        "next synchronization imports the result."
+                        f"{branch_name}, not the remote head {remote_head}."
+                    ),
+                )
+            elif branch_name == dest_branch:
+                raise self._unfinished_merge(
+                    source_branch=source_branch,
+                    dest_branch=dest_branch,
+                    reason=(
+                        f"The remote head {remote_head} of {self._get_mapped_remote_branch(branch_name=branch_name)} "
+                        f"is ahead of the local commit {local_head}, and Infrahub records {graph_commit or 'no commit'} "
+                        f"for {branch_name}, not that head."
                     ),
                 )
             elif graph_commit is not None and self._lies_between(
@@ -983,6 +993,18 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commit,
                 extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
             )
+
+    def _unfinished_merge(self, source_branch: str, dest_branch: str, reason: str) -> RepositoryDivergentHistoryError:
+        return RepositoryDivergentHistoryError(
+            identifier=self.name,
+            message=(
+                f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. {reason} The "
+                f"branch is merged in Infrahub and not in Git. To finish the merge, merge "
+                f"{self._get_mapped_remote_branch(branch_name=source_branch)} into "
+                f"{self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The next "
+                "synchronization imports the result."
+            ),
+        )
 
     def _lies_between(self, older_commit: str, commit: str, newer_commit: str) -> bool:
         """Whether the commit descends from the older commit, differs from it, and is in the history of the newer one.

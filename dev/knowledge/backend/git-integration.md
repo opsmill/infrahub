@@ -279,12 +279,14 @@ imports the new head:
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
   cycle. A remote that cannot be read does not block the merge.
 - In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches and compares both
-  branches again. The graph commits come in the merge model (`GitRepositoryMerge`), read when the
-  merge was dispatched, because the source branch can be deleted before the Git merge runs. A branch
-  whose clone is behind or diverged is moved onto the remote head when the graph commit equals that
-  head. A clone behind the graph commit, when the remote history holds that commit, is moved onto
-  the graph commit. A diverged branch whose graph commit differs refuses the merge with
-  `RepositoryDivergentHistoryError`. That refusal comes after the graph merge: the branch is merged
+  branches again. The source graph commit comes in the merge model (`GitRepositoryMerge`), read when
+  the merge was dispatched, because the source branch can be deleted before the Git merge runs.
+  `merge_git_repository` reads the destination graph commit under the repository lock, because an
+  earlier Git merge can move the trunk after the dispatch. A branch whose clone is behind or diverged
+  is moved onto the remote head when the graph commit equals that head. A source behind the graph
+  commit, when the remote history holds that commit, is moved onto the graph commit. A diverged
+  branch whose graph commit differs, and a destination behind a head the graph does not record,
+  refuse the merge with `RepositoryDivergentHistoryError`. That refusal comes after the graph merge: the branch is merged
   in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user to
   finish the merge in Git.
 

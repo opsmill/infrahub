@@ -140,10 +140,6 @@ class GitRepositoryMerge(BaseModel):
     source_commit: str | None = Field(
         ..., description="The commit the graph records for the source branch, None when it records no full commit id"
     )
-    destination_commit: str | None = Field(
-        ...,
-        description="The commit the graph records for the destination branch, None when it records no full commit id",
-    )
 
 
 class GitRepositoryImportObjects(BaseModel):
