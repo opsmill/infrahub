@@ -27,9 +27,9 @@ allocation list with holder, provenance, range and division. The generic resourc
 frozen for number pools and gain a description note.
 
 The work is sequenced so the frontend and the SDK are unblocked first: the schema attribute and the
-parameters field land, the dedicated surface is published and frozen with real pool, range and
-allocation data and a deterministic mock partition for the divisions of a scoped pool, then the
-allocation and utilization seams, then the internals in parallel, then the mock is removed.
+parameters field land, the dedicated surface is published and frozen over a fixed in-memory
+dataset that reads nothing from the database, then the allocation and utilization seams, then the
+internals in parallel, then the real reads replace the fixed dataset.
 
 ---
 
@@ -83,7 +83,7 @@ temporary mock module, 1 new checker, 1 new repository, 3 GraphQL root fields wi
 | **II. Branch-Safe by Default** | ⚠️ gated, this is the principle under test | The cross-branch read is the design: records are `-global-`, nodes are branch-aware, the division is a union over live branches with the visibility rule the value read already uses. Merge needs no new validator (the scope does not merge; the values it reads do). Every branch case in the spec's edge list gets a two-branch component test. |
 | **III. Type Safety & Explicit Contracts** | ✅ passes | Three contracts agreed before implementation (`contracts/`). Query results come back as frozen dataclasses; the division key is a frozen dataclass; GraphQL types are explicit and pinned by an SDL snapshot test. |
 | **IV. Test Discipline** | ✅ passes | Unit for `entries_in_force`, `ScopeValidator`, `DivisionReporter` and the SDL snapshot; component for `division_of`, every query, mutation and checker, and the three dedicated GraphQL queries on an unscoped pool, a scoped pool and an IP pool; functional for the journeys and the concurrent case; one integration-docker test for the schema-load refusal; no E2E because no screen ships. The shared snow fixture's pooled attribute is `unique`, which the global taken-values scan masks, so scoped tests use a non-unique pooled attribute on a kind with a required cardinality-one relationship and a required scalar attribute (extending `tests/helpers/number_pool.py` with such a schema). |
-| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-005 and SC-006 are benchmarks under `tests/query_benchmark/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes `range_id`, the pool's space, `branch` and `provenance` into Cypher; the `division` filter is Python-side only while the mock partition exists. |
+| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-005 and SC-006 are benchmarks under `tests/query_benchmark/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes the pool's space, `range_id`, `branch` and `provenance` into Cypher; the first delivery filters its fixed dataset in memory and runs no query. |
 | **VI. Security & Input Boundaries** | ✅ passes | Scope entries validated at the mutation and the schema-load boundary before any query uses them; entry names are bound as parameters, never interpolated (the relationship identifier and attribute name are looked up from the schema and bound). The `division` filter's paths are checked against the scope in force before any read. Errors name the entry, the pool or the range, never internals. |
 | **VII. Simplicity** | ✅ passes with two justifications | Derived scope: no hook, no migration, no batch, no new kind. One shared Cypher visibility constant is extracted because it reaches three consumers (the bar the query guideline sets). The repository and the three pure modules each serve two callers at introduction; the dedicated surface is a new module rather than fields on the generic queries (see Complexity Tracking). |
 
@@ -135,11 +135,11 @@ backend/infrahub/
 │       └── node/attribute.py                    # size check against the largest division
 ├── templates/node_applier.py                    # pool allocation deferred until relationships are applied
 ├── pools/
-│   ├── effective_space.py                       # keeps the values of the pool's space and computes its size from the range set (new; replaced by P1's shared calculation)
+│   ├── effective_space.py                       # test keeping only the values of the pool's space, and its size (new; replaced by P1's shared calculation)
 │   ├── default_allocator.py                     # no longer allocates from the raw field dict
 │   ├── scope.py                                 # ScopeEntry, DivisionKey, DivisionResolver, ScopeValidator (new)
 │   ├── division_report.py                       # DivisionReporter (new, pure)
-│   ├── division_mock.py                         # mock partition (new in B, deleted in E)
+│   ├── number_pool_mock.py                      # fixed in-memory dataset (new in B, deleted in E)
 │   ├── referencing.py                           # PoolsReferencingField (new repository)
 │   ├── number.py                                # NumberUtilizationGetter → seam over DivisionReporter
 │   ├── schema_number_pool_upserter.py           # writes allocation_scope at creation
@@ -189,13 +189,13 @@ module, so the generic file changes in description strings only. The checker goe
 | Set | Content | Depends on | Unblocks |
 |---|---|---|---|
 | **A. Schema** | `allocation_scope` on the pool kind; `NumberPoolParameters.allocation_scope`; the hand-maintained SDK generator entry in `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields`; regenerate protocols, GraphQL schema, OpenAPI, SDK models, docs snippet | — | everything |
-| **B. Surface** | `graphql/queries/number_pool.py` with the three root fields and every type of the contract; `NumberPoolGetAllocated` projecting provenance with an optional bounds filter; real pool, range and allocation data; `pools/division_mock.py` for the divisions of a scoped pool; description notes on the generic queries and types; regenerate `schema/schema.graphql` and the frontend types; SDL snapshot test | A | frontend, SDK |
+| **B. Surface** | `graphql/queries/number_pool.py` with the three root fields and every type of the contract, answering from the fixed in-memory dataset of `pools/number_pool_mock.py` (no database read); description notes on the generic queries and types; regenerate `schema/schema.graphql` and the frontend types; SDL snapshot test | A | frontend, SDK |
 | **C. Seams** | `DivisionKey`; `get_resource(division=…)` threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `handle_pool` deferred in `from_graphql`) and from the attribute-add backfill; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division | A | D1, D2 |
 | **D1. Scoped allocation** | `DivisionResolver`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the scoped `get_free` / `get_used`; the unscoped snapshot test | C | F |
-| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the reporter instead of the mock; peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
+| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the pool, its ranges, its rows and the reporter instead of the fixed dataset (with `NumberPoolGetAllocated` projecting provenance and filtering on the pool's space, the bounds, branch and provenance); peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
 | **D3. Scope write path** | `ScopeValidator`; the mutation validation against the mutation branch, invoked only when the scope changes; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back; `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
 | **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the three update constraints and the two removal migrations; integration-docker test | A | — |
-| **E. Mock removal** | delete `pools/division_mock.py` and its call sites; the no-mock test on a scoped pool; the SDL snapshot unchanged | D2 | F |
+| **E. Mock removal** | delete `pools/number_pool_mock.py` and its call sites; the test that the three queries return the requested pool's own data and refuse an unknown `pool_id`; the SDL snapshot unchanged | D2 | F |
 | **F. Close** | SC-006 benchmark, SC-005 timed scenario, `measurements.md`; user docs; knowledge entry; changelog fragments; the form A versus form B review | D1, E | ship |
 
 B, C, D3 and D4 run concurrently once A lands. D1 and D2 run concurrently once C lands, D2 taking
@@ -292,28 +292,28 @@ if D1 has not landed; the function is pure).
 
 | Root field | Reads | Builds |
 |---|---|---|
-| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over the pool's space, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of values of the pool's space; `allocation_scope` from the entries in force |
-| `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the mock partition), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
-| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), the attribute's `excluded_values` and limits, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges |
+| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over every range, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of values of the pool's space; `allocation_scope` from the entries in force |
+| `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the fixed dataset), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
+| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the pool's space (or the part of it in the range of `range_id`), `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges (set B: every column comes from the fixed dataset) |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
 mirror leaves it null on a pool holding several ranges, where today's getter and allocated query
 stop working. A small pure helper (`pools/effective_space.py`, kept until P1's shared calculation
-replaces it) keeps only the values of the pool's space and computes the size of that space from
-the range set, the attribute's `excluded_values` and its `min_value` / `max_value`.
+replaces it) keeps only the values of the pool's space and computes its size from the range set,
+the attribute's `excluded_values` and its `min_value` / `max_value`. The three resolvers restrict
+every row to the pool's space: a value outside it is not listed and counts in no figure.
 
-In set B the `division` filter is applied in Python after the query, on the mock partition, and
-`count`, `offset` and `limit` apply to the filtered list. In D2 the filter moves into the scoped
-records fragment with the writer's division replaced by the requested entries, so `count` is a
-Cypher count again.
+In set B every filter is applied in Python to the fixed dataset, and `count`, `offset` and `limit`
+apply to the filtered list. In D2 the filters move into the queries: the `division` filter into the
+scoped records fragment with the writer's division replaced by the requested entries, so `count` is
+a Cypher count.
 
-`NumberPoolGetAllocated` gains `ranges: Sequence[tuple[int, int]] | None` (None: no bounds
-filter, every tracked value; a list: values of the pool's space inside any of the given bounds,
-the pool's range set or the one range of `range_id`, not excluded and within the attribute's
-limits), `branch: str | None` and
-`provenance: PoolRecordProvenance | None` filters, and projects `coalesce(ir.provenance,
-"allocated") AS provenance`. The generic `InfrahubResourcePoolAllocated` and `NumberUtilizationGetter`
-keep today's shorthand filter and render the same text as today.
+`NumberPoolGetAllocated` gains `ranges: Sequence[tuple[int, int]] | None` (None: no bounds filter,
+every tracked value; a list: the values of the pool's space inside any of the given bounds, the
+pool's range set or the one range of `range_id`, not excluded by the attribute and within its
+limits), `branch: str | None` and `provenance: PoolRecordProvenance | None` filters, and projects
+`coalesce(ir.provenance, "allocated") AS provenance`. The generic `InfrahubResourcePoolAllocated`
+and `NumberUtilizationGetter` keep today's shorthand filter and render the same text as today.
 
 The reporter, after D2, returns:
 
@@ -346,12 +346,14 @@ nothing for an entry carries an empty value, so the non-null fields never void t
 tests pin `InfrahubResourcePoolAllocated`'s count, offset and limit and the generic utilization
 figures across the move onto the shared fragment.
 
-The mock partition (`pools/division_mock.py`, set B) exposes `division_of_row(holder_id, entries)
--> DivisionKey` and `divisions(entries) -> tuple[DivisionKey, ...]`, assigning `mock-1..3` by
-`int(UUID(holder_id)) % 3 + 1` and building entries from the real paths in force with the division's
-name as value and label. The three resolvers call it only when the scope in force is not empty. Set
-E deletes the module, and a component test on the scoped fixture asserts that no `value` or
-`display_label` returned by the three queries begins with `mock-`.
+The fixed dataset (`pools/number_pool_mock.py`, set B) holds two pools: a pool scoped by `site`
+returned for any `pool_id`, and an unscoped pool returned for the reserved id `mock-unscoped`
+(contract section "Fixed dataset of the first delivery"). It exposes `get_utilization`,
+`get_divisions` and `get_allocations`, which compute every figure from the dataset's rows, apply the
+filters, ordering and pagination in memory and raise the contract's `range_id` and `division`
+refusals, including the refusal of an incomplete `division` on the utilization query. The resolvers
+read nothing from the database. Set E deletes the module, and a component test asserts that the
+three queries return the requested pool's own data and refuse a `pool_id` naming no number pool.
 
 The generic queries change in description strings only: `description=` on the two root `Field`s in
 `graphql/queries/resource_manager.py` and `class Meta: description` on `PoolUtilization`,
@@ -399,13 +401,14 @@ diffing `schema/schema.graphql` for those types.
   (unknown entry dropped, all unknown → empty), `ScopeValidator` (every refusal row, normalisation,
   unchanged scope accepted), `DivisionReporter` (ordering by utilization, one division over the
   pool and within a range, empty division, branch split, unscoped single division, absolute counts),
-  the mock partition (stable, three divisions, entries from the paths in force),
+  the fixed dataset (figures computed from the rows, each filter, the partial division filter,
+  ordering, pagination, the refusals),
   `ScopedPoolDependencyChecker` with a `node_schema` lacking the field, and the SDL snapshot of
   every type of the dedicated surface plus `allocation_scope` on the three pool inputs.
 - **Component**: the three dedicated queries on an unscoped pool (figures, ranges, one division,
-  rows with provenance and `range`, no row for a value no range holds nor for an excluded value,
-  every filter, pagination, a pool holding two ranges with a null shorthand), on a scoped pool at
-  contract time (mock partition agreement, SC-010) and after D2
+  rows with provenance and range, a value no range holds and an excluded value absent from the
+  rows and the figures, every filter, pagination, a pool holding two ranges with
+  a null shorthand), on the fixed scoped dataset of set B (divisions, rows and filters agree, SC-010) and after D2
   (real divisions, the FR-025 two-division row), on an IP pool and an unknown id (refusals);
   `division_of` (relationship, attribute, enum, peer by id); the scoped fragment with one and two
   entries, relationship and attribute entries, both anchor orders; the FR-001/FR-007 two-branch
@@ -435,11 +438,11 @@ diffing `schema/schema.graphql` for those types.
 |---|---|
 | The hop's fork-window leg makes the scoped free query slow at high occupancy | SC-006 measures; the stored key is the documented next lever |
 | Deferring `handle_pool` on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
-| P1's remaining work and this slice touch `NumberPoolParameters`, `get_next`, the size calculation and the SDK generator | Fragment change is parameter-only; whichever lands second rebases one hunk; each slice opens its own SDK regeneration PR; the landing order is the P1 owner's call (open question in the critique); the dedicated surface's `size`, `used` and the values of the pool's space it lists are computed by a small helper with the definition P1's shared calculation will carry, so the switch is an implementation swap, not a contract change |
+| P1's remaining work and this slice touch `NumberPoolParameters`, `get_next`, the size calculation and the SDK generator | Fragment change is parameter-only; whichever lands second rebases one hunk; each slice opens its own SDK regeneration PR; the landing order is the P1 owner's call (open question in the critique); the dedicated surface's `size`, `used` and the values of the pool's space are computed by a small helper with the definition P1's shared calculation will carry, so the switch is an implementation swap, not a contract change |
 | The generic queries and today's getter read the deprecated shorthand, null on a pool holding several ranges | The dedicated surface never reads the shorthand; the generic queries stay as they are (frozen), and their behaviour on a multi-range pool is P1's to fix |
 | The record-side anchor runs the entry subqueries once per record at full occupancy | Both anchor orders rendered and profiled before one is kept |
 | `NumberPoolGetAllocated` on the shared fragment changes the allocation lists on a deleting branch | Intended; changelog entry; component test |
-| The mock partition is mistaken for final data on a scoped pool | The contract states it; the division labels read `mock-N`; set E's no-mock test fails the slice until the real reads land |
+| The fixed dataset is mistaken for final data | The contract states it; any `pool_id` returns the same pool; set E's test fails the slice until the real reads land |
 | The generic queries drift while the dedicated surface is built | SC-009 schema diff in the contract change set; regression tests on their responses |
 | Form A is replaced by form B at the final review | Only the three root field names would change; every type is kept; the frontend is told at contract time |
 
@@ -453,7 +456,7 @@ diffing `schema/schema.graphql` for those types.
 | `PoolsReferencingField` repository | two callers at introduction (the dependency checker, the attribute-add checker's scoped branch) and the rename path later | inlining `NodeManager.query` plus a Python filter in each checker |
 | Three pure modules in `pools/` | each has two callers (mutation + schema load; allocation + utilization; utilization + the attribute-add check) and none needs a database | keeping the logic in `handle_pool`, the mutation and the getter spreads the branch and schema subtleties across four files |
 | A dedicated GraphQL module with three root fields | the frontend needs ranges, divisions, holders, provenance and absolute figures that the generic queries cannot carry for IP pools; `resource_id` is already required and ignored for number pools | `divisions` on `PoolUtilization` and a `division` argument on `InfrahubResourcePoolAllocated`: empty or ignored for IP pools, range rows stay IP types, no holder label |
-| A temporary mock module | the frontend builds the division view against plausible data before the division reads exist | a single empty-key division (nothing to build a division view against); waiting for D2 (blocks the frontend) |
+| A temporary module holding a fixed dataset | the frontend builds every screen against plausible data before the reads exist | a single empty-key division (nothing to build a division view against); waiting for D2 (blocks the frontend) |
 
 ---
 

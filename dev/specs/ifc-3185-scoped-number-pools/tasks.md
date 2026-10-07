@@ -45,7 +45,7 @@ user story it delivers.
       `start_range` / `end_range` is null on a pool holding several ranges) and
       `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py` (where the scope
       validation of Phase 7 goes).
-- [ ] T003 [P] Add a scoped-pool test schema to `backend/tests/helpers/number_pool.py`: a kind with
+- [X] T003 [P] Add a scoped-pool test schema to `backend/tests/helpers/number_pool.py`: a kind with
       a **non-unique** `Number` attribute to pool, a required cardinality-one relationship (`site`
       → a site kind), a required scalar attribute (`role`, Dropdown), an optional attribute, a many
       relationship and a self-referencing cardinality-one relationship (for the direction case).
@@ -54,8 +54,6 @@ user story it delivers.
       helper that creates N sites and M nodes per site, and a helper that creates a pool with two
       ranges (`1 - 50` weighted 10, `51 - 100` unweighted) so the contract examples can be
       reproduced.
-      Deferred by the user: nothing in change set A allocates, so the schema, fixture and helper
-      are added by the first phase that uses them (D1).
 - [X] T004 [P] Create `backend/tests/unit/pools/__init__.py` if absent and
       `backend/tests/component/core/constraint_validators/__init__.py` if absent, so the new test
       modules are collected.
@@ -102,10 +100,16 @@ user story it delivers.
 
 ## Phase 3: US1 — The number-pool GraphQL surface is published and frozen (change set B, Priority: P1) 🎯 MVP
 
-**Goal**: publish and freeze the three dedicated root fields with real pool, range and allocation
-data and the mock partition for a scoped pool's divisions
+**Goal**: publish and freeze the three dedicated root fields over a fixed in-memory dataset
 ([contract](./contracts/graphql-number-pool-surface.md)); add the description notes to the generic
 queries; regenerate; pin the SDL. This phase is one change set the frontend starts from.
+
+**Note**: the contract delivery ships a fixed in-memory dataset and reads nothing from the database
+(contract section "Fixed dataset of the first delivery"): `backend/infrahub/pools/number_pool_mock.py`
+holds a pool scoped by `site` returned for any `pool_id` and an unscoped pool returned for the
+reserved id `mock-unscoped`. T011, T013, T017, T018, T022, T023 and T024 are done for that
+delivery. T012, T014, T015, T016, T016a and T019 to T021 describe the real reads and stay open
+until those reads replace the dataset; T025 is done; T026 stays open.
 
 **Independent Test**: export the GraphQL schema, regenerate the frontend types, read the three
 queries on an unscoped pool, a scoped pool and an IP pool, diff the generic types for description
@@ -113,40 +117,39 @@ changes only.
 
 ### 3a. Tests first
 
-- [ ] T011 [P] [US1] Unit tests in `backend/tests/unit/pools/test_division_mock.py`: the partition
-      is stable for one holder id across calls, uses exactly the three names `mock-1..3`, and builds
-      one entry per path in force with `value` and `display_label` equal to the division's name and
-      `peer_kind` None; with no path in force it is never consulted (the caller guards).
+- [X] T011 [P] [US1] Unit tests in `backend/tests/unit/pools/test_number_pool_mock.py`: the
+      figures computed from the dataset's rows (the figures of one division over the pool and over
+      each range, distinct values never summed across divisions, site D absent from the divisions
+      list), each filter alone and combined, the partial division filter keeping `D1`'s row on
+      `branch1`, ordering, `count` before `offset` and `limit`, the `range_id` and `division`
+      refusals, a missing or incomplete `division` refused by the utilization query on the scoped
+      dataset, a dataset holding a value the pool cannot allocate refused, the unscoped dataset.
 - [ ] T012 [P] [US1] Component tests in
       `backend/tests/component/graphql/queries/test_number_pool_surface.py` on the unscoped
       two-range pool of T003 (its shorthand `start_range` / `end_range` is null, which today's
-      generic queries cannot handle) holding 1 and 51 on the default branch and 7 on `b1` only,
+      generic queries cannot handle) holding 1 and 51 on the default branch, 7 on `b1` only, 500
+      provided on the default branch and held by no range, and 40 provided on the default branch
       while the attribute lists 40 in `excluded_values`: `InfrahubNumberPoolUtilization` returns
       `allocation_scope: []`, `figures` `{size: 99, used: 3, used_default_branch: 2, used_branches: 1}`
-      with the three percentages, and two ranges ordered by start with id, display label, start,
-      end, weight (10 and 0) and figures `{50, 2, 1, 1}` and `{50, 1, 1, 0}`;
+      with the three percentages, two ranges ordered by start with id, display label, start, end,
+      weight (10 and 0) and figures `{50, 2, 1, 1}` and `{50, 1, 1, 0}`;
       `InfrahubNumberPoolDivisions` returns one division with `entries: []`, `display_label: ""`
-      and the pool's figures; `InfrahubNumberPoolAllocations` returns three rows ordered by value
-      then branch then holder id, each with `holder {id hfid kind display_label}` read on the row's
-      branch, `identifier`, `provenance` `ALLOCATED`, `range` (`1 - 50` for 1 and 7, `51 - 100`
-      for 51); the filters `branch: "b1"` (the row 7), `provenance: PROVIDED`
-      (no row), `range_id` of `51 - 100` (the row 51) each return the expected rows with `count`
-      before pagination; `offset` and `limit` page the ordered list; `division` on this pool is
-      refused with the contract's message, and so is `division` on `InfrahubNumberPoolUtilization`.
-      A second case with the attribute's `max_value` below a range's end checks that a value above
-      the limit is not listed and counts in no figure.
-- [ ] T013 [P] [US1] Component tests in the same file on a pool scoped by `["site"]` at contract
-      time: `allocation_scope: ["site"]` on utilization and divisions; the divisions list holds
-      the mock divisions holding at least one row, ordered by utilization descending then label,
-      each entry with `path: "site"`; the utilization query with `[{path: "site", value:
-      "mock-2"}]` reports `mock-2` over the pool and over each range; filtering the allocation
-      list on `[{path: "site", value: "mock-2"}]` returns the rows whose holder the partition puts
-      in `mock-2`, and the number of distinct values among them equals `mock-2`'s `used`
-      (SC-010); `[{path: "site", value: "nope"}]` returns an
-      empty list with `count: 0`; `[{path: "role", value: "x"}]` (not in the scope) and
-      `[{path: "site", value: "a"}, {path: "site", value: "b"}]` are refused naming the entry; read
-      on a branch whose schema lacks `site`, `allocation_scope` is `[]` and the division filter is
-      refused; without `division` the pool's `figures` are pool-wide.
+      and the pool's figures; `InfrahubNumberPoolAllocations` returns three rows (1, 7 and 51; 40
+      and 500 are not listed) ordered by value then branch then holder id, each with `holder {id
+      hfid kind display_label}` read on the row's branch, `identifier`, `provenance` (`ALLOCATED`)
+      and `range`; the filters `branch: "b1"`, `provenance: PROVIDED` (no row), `range_id` of
+      `1 - 50` (1 and 7) each return the expected rows with `count` before pagination; `offset`
+      and `limit` page the ordered list; `division` on this pool is refused with the contract's
+      message. A second case with the attribute's `max_value` below a range's end checks that a
+      value above the limit is not listed and counts in no figure.
+- [X] T013 [P] [US1] Component tests in the same file on the fixed dataset, read through the
+      GraphQL schema: the scoped utilization refused without `division`, the divisions A, B, C
+      over the whole pool without site D, the utilization of site B (30 of 100, `1 - 50` 0 of 50,
+      `51 - 100` 30 of 50), a filtered read on site B whose `count` equals site B's `used`, the
+      filter on site A returning `D1`'s row on `branch1`, the
+      `provenance` filter, the unscoped dataset for `mock-unscoped`, and every refusal message the
+      dataset applies (unknown `range_id` on the allocations query, `division` on the unscoped
+      dataset on both queries, a path other than `site`, the same path twice).
 - [ ] T014 [P] [US1] Component tests in the same file for refusals: an IP prefix pool as
       `pool_id` and a random uuid both raise `NodeNotFoundError` naming the id; `range_id` of
       another pool's range raises `ValidationError` naming the pool and the range; an unknown
@@ -154,7 +157,7 @@ changes only.
 - [ ] T015 [P] [US1] Regression tests in
       `backend/tests/component/graphql/queries/test_resource_pool.py`: `InfrahubResourcePoolUtilization`
       and `InfrahubResourcePoolAllocated` on the same unscoped pool return exactly what they
-      return before this phase (count, percentages, edges); on the scoped pool
+      return before this phase (count, percentages, edges, the 500 row absent); on the scoped pool
       they return pool-wide figures and the whole pool's values (FR-029).
 
 ### 3b. The allocated rows query
@@ -162,39 +165,38 @@ changes only.
 - [ ] T016 [US1] Extend `backend/infrahub/core/query/resource_manager.py::NumberPoolGetAllocated`:
       constructor arguments `ranges: Sequence[tuple[int, int]] | None` (the bounds to filter on:
       None lists every tracked value; the dedicated callers pass the pool's range set or the one
-      range of `range_id`, and the rows then hold only values of the pool's space: inside the given
-      bounds, not in the attribute's `excluded_values`, within its `min_value` / `max_value`, limits
-      and exclusions bound as parameters; absent, the generic callers keep today's `start_range` /
-      `end_range` filter), `branch_name: str | None = None`, `provenance: PoolRecordProvenance | None = None`; project
-      `coalesce(ir.provenance, $allocated_provenance) AS provenance`; add `provenance:
+      range of `range_id`, and the rows are kept to the values of the pool's space, not in the
+      attribute's `excluded_values` and within its `min_value` / `max_value`, limits and exclusions
+      bound as parameters; absent, the generic callers keep today's `start_range` / `end_range`
+      filter), `branch_name: str | None = None`, `provenance: PoolRecordProvenance | None = None`;
+      project `coalesce(ir.provenance, $allocated_provenance) AS provenance`; add `provenance:
       PoolRecordProvenance` to `NumberPoolAllocatedResult`; keep `ORDER BY av.value, hv.branch,
       n.uuid`. The generic callers (`resolve_number_pool_allocation`, `NumberUtilizationGetter`)
       pass nothing new and render the same text as today. Component test in
       `backend/tests/component/core/resource_manager/test_number_pool.py` (extend): each filter
-      alone and combined; an excluded value and a value beyond `max_value` absent from the rows;
-      two ranges with a null shorthand; the default renders today's rows.
-- [ ] T016a [US1] Create `backend/infrahub/pools/effective_space.py` (pure): `in_pool_space(value,
+      alone and combined; two ranges with a null shorthand; the default renders today's rows.
+- [ ] T016a [US1] Create `backend/infrahub/pools/effective_space.py` (pure): `holds(value,
       ranges, excluded_values, excluded_ranges, min_value, max_value) -> bool`, the test that keeps
-      only values of the pool's space, and `space_size(...) -> int`, the size of that space, over a
-      range set and the attribute's `NumberAttributeParameters`, with the definition of the
-      contract's Vocabulary table. One-sentence module docstring: it stands in until the
+      only the values of the pool's space, and `space_size(...) -> int`, over a range set and the
+      attribute's `NumberAttributeParameters`, with the definition of the contract's Vocabulary
+      table. One-sentence module docstring: it stands in until the
       shared effective-space calculation exists. Unit tests in
       `backend/tests/unit/pools/test_effective_space.py`: value in a range, excluded single value,
       value in an excluded range, value above `max_value`, no range → size 0, two ranges.
 
-### 3c. The mock partition
+### 3c. The fixed dataset
 
-- [ ] T017 [US1] Create `backend/infrahub/pools/division_mock.py` with
-      `division_of_row(holder_id: str, entries: tuple[ScopeEntry, ...]) -> DivisionKey` and
-      `divisions(entries) -> tuple[DivisionKey, ...]`, assigning `mock-{int(UUID(holder_id)) % 3 + 1}`
-      and building one `ScopeEntry` value per path in force. A one-sentence module docstring says
-      it stands in for the division reads until they exist. Create `backend/infrahub/pools/scope.py`
-      with the frozen dataclasses `ScopeEntry` and `DivisionKey` (`data-model.md` §3) and the pure
-      `entries_in_force(scope, schema_branch, kind)` if Phase 4 has not created them yet.
+- [X] T017 [US1] Create `backend/infrahub/pools/number_pool_mock.py` (pure, no database read): the
+      scoped dataset of the contract (sites A, B and C, and site D with no value; `D1` in site A on
+      `main` and in site C on `branch1`; a `PROVIDED` row; every row inside the pool's space)
+      returned for any `pool_id`, the unscoped dataset returned for `mock-unscoped`, and
+      `get_utilization`, `get_divisions` and `get_allocations`, which compute every figure from the
+      rows, filter, order and paginate in memory, and raise the contract's `range_id` and `division`
+      refusals.
 
 ### 3d. The dedicated surface
 
-- [ ] T018 [US1] Create `backend/infrahub/graphql/queries/number_pool.py` with the object types
+- [X] T018 [US1] Create `backend/infrahub/graphql/queries/number_pool.py` with the object types
       `NumberPoolUtilization`, `NumberPoolUtilizationFigures`, `NumberPoolRangeUtilization`,
       `NumberPoolDivisions`, `NumberPoolDivision`, `NumberPoolDivisionEntry`,
       `NumberPoolAllocations`, `NumberPoolAllocation`, `NumberPoolHolder`, `NumberPoolRangeRef`,
@@ -203,43 +205,43 @@ changes only.
       `_load_number_pool(graphql_context, pool_id) -> CoreNumberPool` raising
       `NodeNotFoundError(node_type="CoreNumberPool", identifier=pool_id)` for any other kind, a
       shared `_ranges(db, pool, branch, at)` ordered by `start`, and a shared
-      `_scope_in_force(pool, branch) -> tuple[ScopeEntry, ...]` over `entries_in_force`.
+      `_scope_in_force(pool, branch) -> tuple[ScopeEntry, ...]` over `entries_in_force`. (Done for
+      the types; the resolvers call the fixed dataset, and the shared loaders land with T019–T021.)
 - [ ] T019 [US1] Add `_figures(size, used_default_branch, used_branches) -> dict` in the same
       module (absolute counts plus the three percentages, 0 when `size` is 0) and the resolver
       `resolve_number_pool_utilization_surface`: rows from `NumberPoolGetAllocated(ranges=<range
-      set>)`, which holds only values of the pool's space, split into default-branch and
-      other-branch value sets as `NumberUtilizationGetter.load_data` does today (do not call the
-      getter: it reads the null shorthand); pool `figures` with `size` from
-      `effective_space.space_size` over the range set; each range's figures from the values within
-      its bounds and `end - start + 1`; `allocation_scope` from `_scope_in_force`; `id` and
-      `display_label` from the pool. Validate `division` as T021 does and also refuse one that omits
-      a path in force, naming the missing paths; with it, keep the rows of that mock division before
-      computing every figure. Pool-wide figures on a scoped pool read without `division` at this
-      phase.
+      set>)` split into default-branch and other-branch value sets as
+      `NumberUtilizationGetter.load_data` does today (do not call the getter: it reads the null
+      shorthand); pool `figures` with `size` from `effective_space.space_size` over the range set;
+      each range's figures from the values within its bounds and `end - start + 1`;
+      `allocation_scope` from `_scope_in_force`; `id` and `display_label` from the pool. Validate
+      `division` as T021 does and also refuse one that omits a path in force, naming the missing
+      paths; with it, compute every figure and the count over the rows of that division. Pool-wide
+      figures on a scoped pool read without `division` at this phase.
 - [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return one
-      division `{display_label: "", entries: [], figures: <pool figures>}`; otherwise partition the
-      rows with `division_mock.division_of_row`, list the mock divisions holding at least one row,
-      compute each division's figures over the pool's space, build `entries` with `value` and
-      `display_label` from the key and `peer_kind` None, join labels with `" / "`, order by
-      `utilization` descending then `display_label`, set `count`.
+      division `{display_label: "", entries: [], figures: <pool figures>}`; otherwise list the
+      divisions holding at least one row from the real division reads (Phase 6) in place of the
+      fixed dataset, compute each division's figures over the pool's space, build `entries` with
+      `value` and `display_label` from the key and `peer_kind` None, join labels with `" / "`, order
+      by `utilization` descending then `display_label`, set `count`.
 - [ ] T021 [US1] Add `resolve_number_pool_allocations`: validate `range_id`; translate it to the
       one range's bounds, otherwise pass the pool's range set; validate `division`
       (non-empty scope in force, every path in force, no duplicate; messages of the contract); run
       `NumberPoolGetAllocated` with `ranges`, `branch_name` (after
       `registry.get_branch` so an unknown branch raises `BranchNotFoundError`), `provenance`,
       `offset`, `limit`; when `division` is given, run without `offset`/`limit`, keep rows whose
-      `division_mock.division_of_row` matches every given entry, then slice; `count` accordingly;
+      division matches every given entry, then slice; `count` accordingly;
       build each row: `holder` from one `NodeManager.get_many(ids, branch=<row branch>, at)` per
       distinct branch (`display_label`, `hfid` via `get_hfid`, `kind` from the pool's `node`),
       `range` from `_ranges` by bounds.
-- [ ] T022 [US1] Register the three root fields in
+- [X] T022 [US1] Register the three root fields in
       `backend/infrahub/graphql/schema.py::InfrahubBaseQuery` as `InfrahubNumberPoolUtilization`,
       `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`, each a `Field` with the
       arguments and the root-field descriptions of the contract, `required=True`.
 
 ### 3e. The generic queries' description notes
 
-- [ ] T023 [P] [US1] In `backend/infrahub/graphql/queries/resource_manager.py`, add
+- [X] T023 [P] [US1] In `backend/infrahub/graphql/queries/resource_manager.py`, add
       `description=` to the root `Field`s `InfrahubResourcePoolUtilization` and
       `InfrahubResourcePoolAllocated` and a `class Meta: description = …` to `PoolUtilization`,
       `PoolAllocated` and `PoolAllocatedNode`, with the two note texts of the contract's "Generic
@@ -247,12 +249,12 @@ changes only.
 
 ### 3f. Freeze
 
-- [ ] T024 [US1] Regenerate: `uv run invoke schema.generate-graphqlschema`, then
+- [X] T024 [US1] Regenerate: `uv run invoke schema.generate-graphqlschema`, then
       `cd frontend/app && pnpm codegen`. Diff `schema/schema.graphql` against the contract's SDL
       and confirm that `PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`,
       `IPPrefixUtilizationEdge`, `IPPoolUtilizationResource` and the two generic root fields differ
       from the previous export in description text only (SC-009). Run `uv run invoke docs.validate`.
-- [ ] T025 [US1] Add the snapshot test
+- [X] T025 [US1] Add the snapshot test
       `backend/tests/unit/graphql/test_number_pool_surface_contract.py` pinning the printed SDL of
       the ten object types, the input, the enum, the three root fields and the `allocation_scope`
       field of the three `CoreNumberPool` inputs, so a later phase cannot rename, retype or remove
@@ -261,8 +263,8 @@ changes only.
       `uv run pytest backend/tests/component/graphql/queries/test_resource_pool.py`.
 
 **Checkpoint**: B merges. Frontend and SDK start from the exported schema. Everything below changes
-no published field; the only later visible change is the mock partition giving way to real
-divisions.
+no published field; the only later visible change is the fixed dataset giving way to real
+reads.
 
 ---
 
@@ -406,7 +408,7 @@ division rows, the range rows and the filtered allocation list against the recor
       node with no record still yields its division; a deleted node's division disappears; a
       `DELETING` branch's nodes are excluded; two entries.
 - [ ] T047 [P] [US3] Extend `backend/tests/component/graphql/queries/test_number_pool_surface.py`
-      with the real-division cases, replacing the T013 mock assertions: the spec's User Story 3
+      with the real-division cases, replacing the T013 fixed-dataset assertions: the spec's User Story 3
       scenario 1 (A 50 records, B two nodes no records, C no nodes → A alone listed with 50 of
       100, no division for B or C, utilization without `division` refused); scenario 2 (branch
       split over the division read); scenario 3 (the division of A reports 40 of 100, `1 - 50` 40
@@ -414,10 +416,10 @@ division rows, the range rows and the filtered allocation list against the recor
       `51 - 100` 30 of 50); scenario 4 (a division keyed by a site that exists
       only on `b1`, read from the default branch, is listed with `display_label` falling back to the
       id and `peer_kind` null); scenario 5 (D1 holding 5 in A on the default branch and moved to C
-      on `b1`: the allocation list filtered on A returns D1's two rows, although D1 sits in C on
-      `b1`; filtered on C, the same two rows; SC-010 holds for both); a partial two-entry filter on
-      a `["site", "role"]` pool; `InfrahubResourcePoolAllocated` count, offset and limit unchanged
-      across the fragment move.
+      on `b1`: the allocation list filtered on A returns D1's two rows, the `b1` row listed because
+      D1 carries A on the default branch; filtered on C, the same two rows; SC-010 holds for both);
+      a partial two-entry filter on a `["site", "role"]` pool; `InfrahubResourcePoolAllocated`
+      count, offset and limit unchanged across the fragment move.
 - [ ] T048 [US3] Add `NumberPoolDivisions` to `backend/infrahub/core/query/resource_manager.py`:
       over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` with the visibility constant on the
       `IS_PART_OF` edge and one `CALL` per entry (same shape as T042), return the distinct tuple of
@@ -431,13 +433,13 @@ division rows, the range rows and the filtered allocation list against the recor
 - [ ] T050 [US3] Complete `NumberUtilizationGetter.load_data`: run both queries, resolve the entries
       in force on the reading branch, hand everything to `DivisionReporter`; expose
       `report.divisions`, `report.of` and `report.of_within`.
-- [ ] T051 [US3] Replace the mock in `backend/infrahub/graphql/queries/number_pool.py`: pool
+- [ ] T051 [US3] Replace the fixed dataset in `backend/infrahub/graphql/queries/number_pool.py`: pool
       `figures` from `of(key)`; each range's figures from `of_within(key, start, end)`; the
       divisions list from `report.divisions`; the `division` filter
       passed to `NumberPoolGetAllocated` so `count`, `offset` and `limit` are Cypher-side again;
       peer display labels and kinds from one `NodeManager.get_many(..., branch_agnostic=True)` over
       the distinct peer ids, falling back to the id; attribute values as text; a missing value as
-      `""`. The module no longer imports `division_mock`.
+      `""`. The module no longer imports `number_pool_mock`.
 - [ ] T052 [US3] Run T046, T047, T025 (the SDL snapshot must not change) and the regression set.
 
 **Checkpoint**: User Stories 2 and 3 work; the three queries return real divisions.
@@ -592,16 +594,17 @@ branch, the full scope after merge, the scope in force reported by the dedicated
 
 ## Phase 10: Change set E — mock removal (serves US1 and US3)
 
-**Goal**: no mock division is returned by any query; the contract is unchanged.
+**Goal**: no row of the fixed dataset is returned by any query; the contract is unchanged.
 
-- [ ] T071 [US3] Delete `backend/infrahub/pools/division_mock.py` and
-      `backend/tests/unit/pools/test_division_mock.py`; confirm with `grep -rn "division_mock\|mock-"
-      backend/infrahub` that no reference remains.
+- [ ] T071 [US3] Delete `backend/infrahub/pools/number_pool_mock.py` and
+      `backend/tests/unit/pools/test_number_pool_mock.py`, and remove the fixed-dataset cases of
+      `backend/tests/component/graphql/queries/test_number_pool_surface.py`; confirm with
+      `grep -rn "number_pool_mock\|mock-unscoped" backend/infrahub` that no reference remains.
 - [ ] T072 [US3] Add to `backend/tests/component/graphql/queries/test_number_pool_surface.py` the
-      no-mock test: on the scoped fixture with values in three sites, read the three queries and
-      assert that no `value` or `display_label` in any division entry or division row begins
-      with `mock-`, and that the divisions listed are exactly the sites (FR-019,
-      SC-011).
+      real-data test: on the scoped fixture with values in three sites, read the three queries and
+      assert that they return the pool's own ranges, rows and sites, that the divisions listed are
+      exactly the sites, and that `pool_id` `mock-unscoped` or a random id is refused with
+      `NodeNotFoundError` (FR-019, SC-011).
 - [ ] T073 [US3] Run T025 (SDL snapshot unchanged), T072 and the regression set.
 
 **Checkpoint**: E merges. SC-011 holds.
@@ -687,7 +690,7 @@ Phase 11 (US7): blocked on P2 attach; outside this slice's definition of done.
 
 - **Phase 2 blocks everything**: every generated type derives from the attribute and the field.
 - **Phase 3 unblocks the frontend and the SDK** and freezes the contract; T025 guards it. It needs
-  nothing from Phase 4: the mock partition and today's getter supply its data.
+  nothing from Phase 4: the fixed in-memory dataset supplies its data.
 - **Phase 4 is the fan-out point**: once the seams exist, D1 and D2 are different files and can be
   built by two people; D3 and D4 depend only on A and can start as soon as it merges (T061 waits
   for T048).
@@ -714,13 +717,13 @@ Phase 11 (US7): blocked on P2 attach; outside this slice's definition of done.
 
 ## Implementation strategy
 
-1. **MVP = Phase 2 + Phase 3**: the schema and the frozen surface with real pool, range and
-   allocation data and mock divisions. Frontend and SDK work starts here.
+1. **MVP = Phase 2 + Phase 3**: the schema and the frozen surface over a fixed in-memory dataset.
+   Frontend and SDK work starts here.
 2. **Capability = Phase 4 + Phase 5**: scoped allocation through the ordinary, template and update
    paths.
 3. **Operability = Phase 6, 7, 8**: real divisions on the surface, the scope write path and the
    schema-declared scope, every refusal. Three people can take these three concurrently.
-4. **Honesty = Phase 10**: the mock is gone and a test says so.
+4. **Honesty = Phase 10**: the fixed dataset is gone and a test says so.
 5. **Confidence = Phase 9, 12**: the two-branch suites and the measurements.
 6. **Ship = Phase 13**, including the form A versus form B review.
 

@@ -72,15 +72,19 @@ mutation { CoreNumberPoolCreate(data: {name: {value: "p"}, node: {value: "InfraD
 query { InfrahubNumberPoolUtilization(pool_id: "<id>") {
   allocation_scope figures { size used utilization } ranges { display_label figures { size used } } } }
 query { InfrahubNumberPoolDivisions(pool_id: "<id>") { count divisions { display_label entries { path value } figures { used } } } }
-query { InfrahubNumberPoolAllocations(pool_id: "<id>", division: [{path: "site", value: "mock-1"}]) {
+query { InfrahubNumberPoolAllocations(pool_id: "<id>", division: [{path: "site", value: "<value of Site A>"}]) {
   count allocations { value branch provenance holder { display_label } range { display_label } } } }
 ```
 
-Expected: the scope reads back `["site"]`; the utilization carries `allocation_scope: ["site"]`
-and real figures; the divisions list holds `mock-1`, `mock-2` and `mock-3`; the filtered
-allocation list returns the rows of `mock-1`, and the number of distinct values among them equals
-the `used` of `mock-1`. On an unscoped pool, `allocation_scope` is `[]`, the divisions list holds
-one division with no entry, and the `division` filter is refused.
+Expected: the scope reads back `["site"]`. The first delivery of the three queries returns the
+fixed in-memory dataset of the
+[contract](./contracts/graphql-number-pool-surface.md#fixed-dataset-of-the-first-delivery) and reads
+nothing from the database, so any `pool_id` returns the scoped dataset: `allocation_scope:
+["site"]`, a utilization refused without `division` and reporting 40 of 100 for Site A, the
+divisions Site A (40), Site B (30) and Site C (1), and 41 rows when filtered on Site A. The reserved
+`pool_id` `mock-unscoped` returns the unscoped dataset: `allocation_scope` is `[]`, the divisions
+list holds one division with no entry, and the `division` filter is refused. Once the real reads
+land, the same requests return the created pool's own data.
 
 ## Scenario 2 — one pool, every site (User Story 2, FR-001 to FR-007, SC-001, SC-002, SC-004)
 
@@ -96,8 +100,8 @@ in `backend/tests/component/core/resource_manager/test_number_pool_scoped_query.
 nodes no records, C no nodes → A alone listed with 50 of 100, no division for B or C, the
 utilization query without `division` refused; the utilization query with the division of B reports
 30 of 100, `1 - 50` 0 of 50 and `51 - 100` 30 of 50; the allocation list filtered on A
-returns D1's two rows and so does the filter on C; no `mock-` value or label is returned on a scoped
-pool.
+returns D1's two rows and so does the filter on C; no row of the fixed dataset of the first delivery
+is returned, and an unknown `pool_id` is refused.
 
 ## Scenario 4 — scope in the schema (User Story 4, FR-012, FR-013)
 

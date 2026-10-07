@@ -90,18 +90,20 @@ numbers to the taken set. The same rule decides which rows a `division` filter o
 ### Division enumeration
 
 `NumberPoolDivisions` (new query): distinct tuples of entry values over every node of the kind
-reachable on any live branch, with the count of nodes per tuple. Used for the divisions list
-(divisions with nodes but no records report 0) and for the attribute-add size check.
+reachable on any live branch, with the count of nodes per tuple. Used for the attribute-add size
+check. The divisions list holds the divisions the allocation rows occupy, so it does not need this
+query.
 
 ### Allocation rows
 
 `NumberPoolGetAllocated` (existing query, extended): one row per (record, branch-resolved value)
 carrying the holder's id, the branch, the value, the record's identifier and its provenance
 (`coalesce(provenance, "allocated")`), and, when the pool is scoped, the holder's division on the
-row's branch. Today the query filters on the deprecated `start_range` / `end_range` pair; the
-filter becomes an optional list of range bounds so the dedicated allocation query can list every
-tracked value, or the values of one range, on a pool holding any number of ranges. The generic
-`InfrahubResourcePoolAllocated` keeps today's behaviour.
+row's branch, which the `division` filter and the division figures read and no row returns. Today
+the query filters on the deprecated `start_range` / `end_range` pair; the filter becomes an optional
+list of range bounds so the dedicated allocation query can list every tracked value, or the values
+of one range, on a pool holding any number of ranges. The generic `InfrahubResourcePoolAllocated`
+keeps today's behaviour.
 
 ### Division report
 
@@ -120,16 +122,17 @@ pool and within a range (FR-015, FR-017).
 | Range row of a scoped pool | the values of that range held in the division given as `division`, against the range's `size`, with its branch split |
 | Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
 | Unscoped pool | exactly one division with no entry and an empty label; figures as today |
-| Rows listed | only values of the pool's space: inside a range, not excluded by the attribute and within its `min_value` / `max_value`; a value left out counts in no figure |
+| Rows listed and counted | only values of the pool's space: inside a range, not excluded by the attribute and within its `min_value` / `max_value`; a value outside it is not listed and counts in no figure |
 | `range` of a row | the range whose bounds hold the value |
 
-### Mock partition (contract change set only)
+### Fixed dataset (contract change set only)
 
-`pools/division_mock.py` (deleted by the last change set): for a scoped pool whose scope in force
-is not empty, assigns each row to one of three divisions `mock-1`, `mock-2`, `mock-3` by
-`int(holder_uuid) % 3 + 1`, builds the division entries from the real scope paths in force with the
-division's name as value and label, and answers the divisions list and the division filter from
-the same assignment. Never called for an unscoped pool.
+`pools/number_pool_mock.py` (deleted by the last change set) holds the fixed in-memory dataset the
+three dedicated queries return until the real reads exist: a pool scoped by `site` for any
+`pool_id`, and an unscoped pool for the reserved id `mock-unscoped`. Nothing is read from the
+database. Every figure is computed from the dataset's rows with the definitions above, and the
+filters, ordering, pagination and refusals apply to the dataset, so lists, filters and counts agree.
+The contents are listed in the contract, section "Fixed dataset of the first delivery".
 
 ---
 

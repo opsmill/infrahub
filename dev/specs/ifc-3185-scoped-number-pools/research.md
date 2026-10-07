@@ -14,7 +14,7 @@ written on `feature-number-pools-1.12` at HEAD, and the plan is built on the cor
 
 | PRD assumption | What the code says | Consequence |
 |---|---|---|
-| "P1 (several weighted ranges) has landed: allocation walks a range set" | The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, and `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several) shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still draws from the shorthand and raises the pool-exhausted error when it is null; `NumberPoolParameters` has no `ranges`; the shared effective-space calculation does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; the dedicated surface computes `size`, `used` and the values of the pool's space it lists from the range set and the attribute's limits, never from the shorthand, until P1's shared calculation replaces the computation |
+| "P1 (several weighted ranges) has landed: allocation walks a range set" | The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, and `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several) shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still draws from the shorthand and raises the pool-exhausted error when it is null; `NumberPoolParameters` has no `ranges`; the shared effective-space calculation does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; the dedicated surface computes `size`, `used` and the values of the pool's space from the range set and the attribute's limits, never from the shorthand, until P1's shared calculation replaces the computation |
 | "The records lookup already resolves each record to its owning object" | `core/query/resource_manager.py::reserved_values_query` matches `(pool)-[:IS_RESERVED]->(attr:Attribute {name})` and reads `HAS_VALUE` forward; it never touches the holder. Only `NumberPoolGetAllocated` resolves the holder, and that one lacks the deleting-branch and fork-window logic the used/free fragment has | The scoped fragment adds the `(n)-[:HAS_ATTRIBUTE]->(attr)` hop and the per-entry division reads; the allocated query is brought onto the same fragment so utilization and allocation read the same liveness |
 | "Relationships are processed before attributes when a node is written" | True on create: `core/node/__init__.py::Node._process_fields` runs relationships before attributes. False on update: `Node.from_graphql` applies the payload in dict order and `core/attribute.py::BaseAttribute.from_graphql` calls `handle_pool` inline | On update, pool handling is deferred until every field in the payload has been applied (D4) |
 | "P2 attach is in flight" | The ledger re-anchoring and the retirement of dead records are merged: the global `(pool)-[:IS_RESERVED {identifier, provenance}]->(:Attribute)` edge, migrated by `m081_reanchor_number_pool_reservations` (re-anchor, delete legacy pool source edges, collapse shared-attribute records, delete legacy records), the forward liveness read, closure through the branch-agnostic retirement queries on delete, rename, merge, rebase and branch delete, and `core/query/resource_manager.py::PoolRecordProvenance`. The attach, detach and intent-resolver work is not built; the attach tasks are unchecked | User Story 7 stays gated on attach. Everything else in this slice reads the ledger as it is today; `provenance` is real data from the first change set |
@@ -256,7 +256,7 @@ enum, hand-written in a new module `graphql/queries/number_pool.py` and register
 number-pool data model: one figures block with absolute counts reused for the pool, each range and
 each division; ranges typed as ranges; rows carrying the holder as a flat type (id, hfid, kind,
 display label), the provenance and the range; a structured `division` filter mirroring the
-division entries; `allocation_scope` in force on the results. See
+entries of a listed division; `allocation_scope` in force on the results. See
 [contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md).
 
 `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated`, `PoolUtilization`,
@@ -264,8 +264,8 @@ division entries; `allocation_scope` in force on the results. See
 pool reports pool-wide figures there. Their descriptions gain a note pointing number-pool consumers
 at the dedicated queries. No `@deprecated`: GraphQL cannot deprecate a field for one pool kind.
 P2's provenance, which `dev/specs/ifc-3184-pool-number-attach` placed on the generic pool queries,
-is carried by the dedicated surface instead (`provenance` on each row). The allocations query
-lists only values of the pool's space.
+is carried by the dedicated surface instead (`provenance` on each row). The dedicated surface
+lists only values of the pool's space; a value outside it is not listed and counts in no figure.
 
 Form A (several root fields, following the `Infrahub*` convention) is published; form B (one root
 object with sub-fields) is re-judged at the final review of the surface.
@@ -327,29 +327,24 @@ The SDK, OpenAPI and frontend REST models are not introspected from the Pydantic
 `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` lists the parameter fields by
 hand, so the new field is added there as a `List` field and the generators re-run.
 
-### D11 — Contract first, with real pool data and a deterministic mock partition for the divisions of a scoped pool
+### D11 — Contract first, over a fixed in-memory dataset
 
 **Decision**: the delivery order the spec records. The schema attribute and the parameters field
-land first; then the dedicated surface with every shape frozen. From that change set the pool,
-range and allocation data are real: every `size` and `used`, and the values of the pool's space
-the rows hold, computed from the range set, the attribute's `excluded_values` and its `min_value` /
-`max_value` (never from the deprecated shorthand, which is null on a pool holding several ranges);
-holder, branch, identifier, provenance (`coalesce(provenance, "allocated")` on the record) and
-range from the rows. The divisions of a scoped pool and the `division` filter come from
-`pools/division_mock.py`: each row is put in one of three divisions `mock-1`, `mock-2`, `mock-3` by
-a stable hash of its holder's id; the entries carry the real scope paths in force; the three queries
-read the same partition so lists, filters and counts agree (SC-010). An unscoped pool never reaches
-the mock. The utilization of a scoped pool is read for one mock division at contract time, and for
-one real division when the division reads land.
+land first; then the dedicated surface with every shape frozen. That change set answers the three
+queries from a fixed in-memory dataset in `pools/number_pool_mock.py` and reads nothing from the
+database: a pool scoped by `site` for any `pool_id`, and an unscoped pool for the reserved id
+`mock-unscoped`. Every figure is computed from the dataset's rows with the contract's definitions
+(on the scoped dataset, the headline and range rows of the division given), and the filters,
+ordering, pagination and refusals apply to the dataset, so lists, filters and counts agree (SC-010).
 The generated artefacts are regenerated once at the contract step and must not change afterwards
-(FR-018); a snapshot test pins the SDL. The last change set of the slice deletes the mock module
-and adds a test asserting that no value or label beginning with `mock-` is returned (FR-019,
-SC-011).
+(FR-018); a snapshot test pins the SDL. The real reads replace the module, and the last change set
+of the slice deletes it and adds a test asserting that the three queries return the requested pool's
+own data (FR-019, SC-011).
 
-**Rationale**: the user asked for real data mocks so the frontend builds against plausible data,
-not an empty or single-row placeholder. A deterministic partition keyed on the holder's id is
-stable across requests and across the three queries, which is what makes the contract testable
-before the internals exist. The model is the weighted-ranges contract change set, which published
+**Rationale**: the user decided that the first delivery reads nothing from the database, so the
+frontend builds every screen against plausible data with the final shapes before any read exists.
+A fixed dataset reproducing the contract's scoped example is the same on every request and across
+the three queries, which is what makes the contract testable before the internals exist. The model is the weighted-ranges contract change set, which published
 the whole GraphQL surface with indicative range figures and landed the allocation internals later.
 
 **Alternatives**: a single empty-key division on every pool (the frontend cannot build the division
@@ -371,19 +366,19 @@ Both record their figures in `dev/specs/ifc-3185-scoped-number-pools/measurement
 
 ```text
 A  schema attribute + parameters field + SDK generator entry       (one PR, small, first)
-B  dedicated GraphQL surface: three root fields, real pool/range/   (depends on A; unblocks frontend + SDK)
-   allocation data, mock partition for a scoped pool's divisions,
+B  dedicated GraphQL surface: three root fields over a fixed        (depends on A; unblocks frontend + SDK)
+   in-memory dataset (no database read),
    description notes on the generic queries, regen, SDL snapshot
 C  seams: DivisionKey, get_resource(division) on all three write    (depends on A; parallel with B)
    paths, NumberUtilizationGetter → DivisionReporter
 D1 DivisionResolver + scoped records fragment + allocation          (depends on C)       ┐
-D2 NumberPoolDivisions + scoped allocated rows + real divisions     (depends on B, C)    ├ parallel
+D2 NumberPoolDivisions + scoped allocated rows + real reads        (depends on B, C)    ├ parallel
    in the three queries
 D3 scope write path: ScopeValidator in the mutation, schema-pool    (depends on A)       │
    refusal, upserter/synchronizer, schema-load validation,
    attribute-add size check
 D4 ScopedPoolDependencyChecker + PoolsReferencingField              (depends on A)       ┘
-E  mock removal: delete division_mock.py, no-mock test              (depends on D2)
+E  mock removal: delete number_pool_mock.py, real-data test         (depends on D2)
 F  measurement, docs, changelog                                     (depends on D1, E)
 ```
 
@@ -392,8 +387,8 @@ calculation and the SDK regeneration; D1 touches the fragment those queries shar
 the same parameters class and generator. Whichever slice lands second rebases a small hunk, and each
 slice opens its own SDK regeneration PR when it lands. Which lands first is the P1 owner's call and
 is recorded as an open question in the critique. When P1's shared effective-space calculation
-lands, the resolver-side computation of `size`, `used` and the pool's space is replaced by it
-without a contract change; the definition is the same.
+lands, the resolver-side computation of `size`, `used` and the values of the pool's space is
+replaced by it without a contract change; the definition is the same.
 
 ---
 
@@ -414,8 +409,8 @@ without a contract change; the definition is the same.
 - **`NumberPoolGetAllocated` on the shared fragment** changes which records the allocation lists
   show on a deleting branch. That is the fix the P2 research already asked for; it is noted in the
   changelog.
-- **The mock partition mistaken for final data**: the contract states it, the division labels are
-  named `mock-N`, and the no-mock test of set E fails the slice until the real reads land.
+- **The fixed dataset mistaken for final data**: the contract states it, any `pool_id` returns the
+  same pool, and the test of set E fails the slice until the real reads land.
 - **Form A versus form B**: a switch to one root object before ship would rename the three root
   fields but keep every type; the frontend is told at contract time that this one point is
   re-judged at the final review.
