@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import os
+import signal
 import tempfile
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -7,7 +10,7 @@ from typing import TYPE_CHECKING
 import git
 from git.exc import GitCommandError
 
-from infrahub.exceptions import RepositoryError, RepositoryInvalidBranchError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 
@@ -55,26 +58,44 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
     return RemoteRefs(default_branch=default_branch, branches=frozenset(branches))
 
 
-def list_remote_heads(name: str, url: str, branch_names: Sequence[str], timeout_seconds: int) -> dict[str, str]:
+async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], timeout_seconds: int) -> dict[str, str]:
     """Return the head commit of each named branch the remote holds, without cloning it.
 
     A branch the remote does not hold is absent from the result.
 
     Raises:
-        RepositoryError: For any git failure, a command that runs longer than ``timeout_seconds``
-            included, raised as its connection or credentials subtype where the failure can be classified.
+        RepositoryConnectionError: When the remote does not answer within ``timeout_seconds``.
+        RepositoryError: For any other git failure, raised as its connection or credentials subtype
+            where the failure can be classified.
 
     """
-    cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
     refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
+    command = ["git", "ls-remote", url, *refs]
+    # A session of its own lets the timeout stop the remote helpers git starts, which keep the pipes open.
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        cwd=tempfile.gettempdir(),
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        start_new_session=True,
+    )
     try:
-        listing = cmd.ls_remote(url, *refs, kill_after_timeout=timeout_seconds)
-    except GitCommandError as exc:
-        InfrahubRepositoryBase._raise_enriched_error_static(name=name, location=url, error=exc)
+        output, error_output = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
+    except TimeoutError as exc:
+        os.killpg(process.pid, signal.SIGKILL)
+        await process.wait()
+        raise RepositoryConnectionError(
+            identifier=name,
+            message=f"The remote of repository {name} did not answer within {timeout_seconds} seconds.",
+        ) from exc
 
-    if not isinstance(listing, str):
-        raise RepositoryError(identifier=name, message=f"Unable to read the branches of the repository {name}.")
+    if process.returncode != 0:
+        InfrahubRepositoryBase._raise_enriched_error_static(
+            name=name, location=url, error=GitCommandError(command, process.returncode, error_output.decode())
+        )
 
+    listing = output.decode()
     heads: dict[str, str] = {}
     for line in listing.splitlines():
         commit, _, ref = line.partition("\t")

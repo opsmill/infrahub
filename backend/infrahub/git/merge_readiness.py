@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -55,12 +54,8 @@ class GitRemoteHeadReader:
         self.timeout_seconds = timeout_seconds
 
     async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
-        return await asyncio.to_thread(
-            list_remote_heads,
-            name=repository_name,
-            url=location,
-            branch_names=branch_names,
-            timeout_seconds=self.timeout_seconds,
+        return await list_remote_heads(
+            name=repository_name, url=location, branch_names=branch_names, timeout_seconds=self.timeout_seconds
         )
 
 

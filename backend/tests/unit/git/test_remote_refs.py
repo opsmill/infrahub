@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 import pytest
@@ -115,7 +116,7 @@ def test_ensure_branch_exists_does_not_name_a_default_branch_the_remote_hides() 
         ensure_branch_exists(refs, branch_name="main", repository_name="demo", location="https://example.com/demo.git")
 
 
-def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path: Path) -> None:
+async def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path: Path) -> None:
     """Git also lists a ref whose name ends with the requested one, such as team/refs/heads/feature."""
     source_dir = tmp_path / "source-repo"
     source = _init_source(source_dir, initial_branch="production")
@@ -123,8 +124,26 @@ def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path: Path)
     source.git.branch("team/refs/heads/feature")
     head = source.head.commit.hexsha
 
-    heads = list_remote_heads(
+    heads = await list_remote_heads(
         name="demo", url=f"file://{source_dir}", branch_names=["feature", "missing"], timeout_seconds=30
     )
 
     assert heads == {"feature": head}
+
+
+@pytest.mark.timeout(60)
+async def test_list_remote_heads_stops_a_remote_that_does_not_answer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The remote helper git starts keeps the pipes open after git stops, so it has to stop too."""
+    helper_directory = tmp_path / "bin"
+    helper_directory.mkdir()
+    helper = helper_directory / "git-remote-silent"
+    helper.write_text("#!/bin/sh\nexec sleep 600\n", encoding="utf-8")
+    helper.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+
+    with pytest.raises(
+        RepositoryConnectionError, match=r"^The remote of repository demo did not answer within 2 seconds\.$"
+    ):
+        await list_remote_heads(name="demo", url="silent::nowhere", branch_names=["main"], timeout_seconds=2)
