@@ -70,7 +70,11 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
-from infrahub.git.constants import REMOTE_HEADS_PARALLEL_READS, REMOTE_HEADS_TIMEOUT_SECONDS
+from infrahub.git.constants import (
+    REMOTE_HEADS_DEADLINE_SECONDS,
+    REMOTE_HEADS_PARALLEL_READS,
+    REMOTE_HEADS_TIMEOUT_SECONDS,
+)
 from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
 from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
@@ -484,6 +488,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
         reader=GitRemoteHeadReader(timeout_seconds=REMOTE_HEADS_TIMEOUT_SECONDS),
         log=log,
         parallel_reads=REMOTE_HEADS_PARALLEL_READS,
+        deadline_seconds=REMOTE_HEADS_DEADLINE_SECONDS,
     )
     async with database.start_session() as db:
         await check_remote_heads_imported(db=db, branch_name=branch, check=check)

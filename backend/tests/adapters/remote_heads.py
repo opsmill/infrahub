@@ -75,3 +75,21 @@ class CountingRemoteHeadReader(InMemoryRemoteHeadReader):
             )
         finally:
             self.in_flight -= 1
+
+
+class StalledRemoteHeadReader(InMemoryRemoteHeadReader):
+    """RemoteHeadReader whose reads of the given repositories never answer, and that keeps every read it cancels."""
+
+    def __init__(self, heads: dict[str, dict[str, str]], stalled: set[str]) -> None:
+        super().__init__(heads=heads)
+        self.stalled = stalled
+        self.cancelled: list[str] = []
+
+    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
+        if repository_name in self.stalled:
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                self.cancelled.append(repository_name)
+                raise
+        return await super().read_heads(repository_name=repository_name, location=location, branch_names=branch_names)

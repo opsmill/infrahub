@@ -61,21 +61,30 @@ class RemoteHeadsMergeCheck:
     The refusal comes before the graph merge, so the branch stays open and the merge can run again once
     Infrahub records the head. A remote that cannot be reached, or does not answer in time, does not block
     the merge: the Git merge then fetches from the same remote, and when that remote still cannot be
-    reached, the Git merge fails after the graph merge. A remote that refuses the credentials blocks the
+    reached, the Git merge fails after the graph merge. All the reads together stop at one deadline, and a
+    repository not read by then does not block the merge either. A remote that refuses the credentials blocks the
     merge when the repository needs a Git merge, because that Git merge would read the remote with the
     same credentials and fail after the graph merge.
     """
 
-    def __init__(self, reader: RemoteHeadReader, log: Logger | LoggerAdapter[Logger], parallel_reads: int) -> None:
+    def __init__(
+        self,
+        reader: RemoteHeadReader,
+        log: Logger | LoggerAdapter[Logger],
+        parallel_reads: int,
+        deadline_seconds: float,
+    ) -> None:
         """Build the check.
 
         Args:
             parallel_reads: The most remotes read at the same time, because each read runs a git process.
+            deadline_seconds: The longest time all the reads together may take, because the merge waits for them.
 
         """
         self.reader = reader
         self.log = log
         self.parallel_reads = parallel_reads
+        self.deadline_seconds = deadline_seconds
 
     async def check(self, source_branch: str, targets: Sequence[GitMergeTarget]) -> None:
         """Compare, for each repository, the graph commit of both branches with their remote heads.
@@ -89,12 +98,8 @@ class RemoteHeadsMergeCheck:
 
         """
         expected_heads = [self._expected_heads(source_branch=source_branch, target=target) for target in targets]
-        reads = asyncio.Semaphore(self.parallel_reads)
-        read_heads = await asyncio.gather(
-            *(
-                self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected), reads=reads)
-                for target, expected in zip(targets, expected_heads, strict=True)
-            )
+        read_heads = await self._read_all_heads(
+            source_branch=source_branch, targets=targets, expected_heads=expected_heads
         )
         refused = [read for read in read_heads if isinstance(read, RepositoryCredentialsError)]
         if refused:
@@ -135,6 +140,38 @@ class RemoteHeadsMergeCheck:
         if nothing_to_merge_in_git(source_commit=target.source_commit, destination_commit=target.destination_commit):
             return {target.remote_source_branch: target.source_commit}
         return {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
+
+    async def _read_all_heads(
+        self, source_branch: str, targets: Sequence[GitMergeTarget], expected_heads: Sequence[dict[str, str | None]]
+    ) -> list[dict[str, str] | RepositoryCredentialsError | None]:
+        if not targets:
+            return []
+        reads = asyncio.Semaphore(self.parallel_reads)
+        tasks = [
+            asyncio.create_task(
+                self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected), reads=reads)
+            )
+            for target, expected in zip(targets, expected_heads, strict=True)
+        ]
+        try:
+            done, _ = await asyncio.wait(tasks, timeout=self.deadline_seconds)
+        finally:
+            for task in tasks:
+                task.cancel()
+            # A cancelled read kills its git process, and the merge must not go on before that is done.
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        read_heads: list[dict[str, str] | RepositoryCredentialsError | None] = []
+        for target, task in zip(targets, tasks, strict=True):
+            if task in done:
+                read_heads.append(task.result())
+                continue
+            self.log.warning(
+                f"Unable to read the remote heads of repository {target.name} within {self.deadline_seconds} seconds, "
+                f"the merge of branch {source_branch} goes on without this check"
+            )
+            read_heads.append(None)
+        return read_heads
 
     async def _read_heads(
         self, source_branch: str, target: GitMergeTarget, branch_names: list[str], reads: asyncio.Semaphore

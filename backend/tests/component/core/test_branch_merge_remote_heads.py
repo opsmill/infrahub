@@ -43,7 +43,9 @@ async def test_a_branch_that_is_not_open_reads_no_remote(
     await check_remote_heads_imported(
         db=db,
         branch_name="feature",
-        check=RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(__name__), parallel_reads=8),
+        check=RemoteHeadsMergeCheck(
+            reader=reader, log=logging.getLogger(__name__), parallel_reads=8, deadline_seconds=30
+        ),
     )
 
     assert reader.reads == []

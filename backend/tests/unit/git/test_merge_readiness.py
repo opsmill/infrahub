@@ -16,6 +16,7 @@ from tests.adapters.remote_heads import (
     FailingRemoteHeadReader,
     HeadRead,
     InMemoryRemoteHeadReader,
+    StalledRemoteHeadReader,
     TogetherRemoteHeadReader,
 )
 
@@ -42,8 +43,15 @@ def target(
     )
 
 
-def check(reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader, parallel_reads: int = 8) -> RemoteHeadsMergeCheck:
-    return RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(LOGGER_NAME), parallel_reads=parallel_reads)
+def check(
+    reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader, parallel_reads: int = 8, deadline_seconds: float = 30
+) -> RemoteHeadsMergeCheck:
+    return RemoteHeadsMergeCheck(
+        reader=reader,
+        log=logging.getLogger(LOGGER_NAME),
+        parallel_reads=parallel_reads,
+        deadline_seconds=deadline_seconds,
+    )
 
 
 @dataclass
@@ -264,3 +272,36 @@ async def test_a_credentials_error_on_a_repository_the_branch_did_not_change_let
         f"Unable to read the remote heads of repository network-repo, the merge of branch {SOURCE} goes on "
         "without this check: Authentication failed for network-repo, please validate the credentials."
     ]
+
+
+async def test_a_remote_not_read_by_the_deadline_lets_the_merge_go_on_with_a_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The check runs before the global merge lock, so all its reads together must stop delaying the merge."""
+    caplog.set_level(logging.WARNING, logger=LOGGER_NAME)
+    reader = StalledRemoteHeadReader(
+        heads={name: {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD} for name in ("fast-repo", "slow-repo")},
+        stalled={"slow-repo"},
+    )
+
+    await asyncio.wait_for(
+        check(reader=reader, deadline_seconds=0.1).check(
+            source_branch=SOURCE, targets=[target(name="fast-repo"), target(name="slow-repo")]
+        ),
+        timeout=10,
+    )
+
+    assert reader.cancelled == ["slow-repo"]
+    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+        f"Unable to read the remote heads of repository slow-repo within 0.1 seconds, the merge of branch {SOURCE} "
+        "goes on without this check"
+    ]
+
+
+async def test_a_merge_with_no_repository_to_read_goes_on() -> None:
+    """A branch merge with no Git repository reads no remote and is not held."""
+    reader = InMemoryRemoteHeadReader(heads={})
+
+    await check(reader=reader).check(source_branch=SOURCE, targets=[])
+
+    assert reader.reads == []

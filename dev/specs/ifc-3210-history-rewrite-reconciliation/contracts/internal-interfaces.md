@@ -810,9 +810,10 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
 (FR-005d):
 
 1. For each repository whose merge runs in Git, read the remote heads of the source branch and of the
-   trunk with `git ls-remote`, with no clone and no lock, bounded by
-   `REMOTE_HEADS_TIMEOUT_SECONDS`, and at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes at once. A
-   repository whose source branch records the commit its trunk
+   trunk with `git ls-remote`, with no clone and no lock. One read stops after
+   `REMOTE_HEADS_TIMEOUT_SECONDS`, at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes are read at once,
+   and all the reads together stop at `REMOTE_HEADS_DEADLINE_SECONDS`: a repository not read by then
+   is treated as a remote that cannot be reached. A repository whose source branch records the commit its trunk
    records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch only, and
    `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs again, so its
    source branch is still compared.
