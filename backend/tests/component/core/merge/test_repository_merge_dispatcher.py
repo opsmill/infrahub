@@ -152,3 +152,41 @@ async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
         "changed-repo",
         "unchanged-repo",
     ]
+
+
+async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commit_of_the_branch(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The source branch can be deleted before the Git merge runs, so the merge must not read it again."""
+    repository = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
+    await repository.new(
+        db=db,
+        name="read-only-repo",
+        location="https://git.example.com/read-only-repo.git",
+        ref="main",
+        commit=TRUNK_COMMIT,
+    )
+    await repository.save(db=db)
+    feature = await create_feature_branch(db=db, sync_with_git=True)
+    await update_on_branch(db=db, repository=repository, branch=feature, ref="v2", commit=BRANCH_COMMIT)
+    workflow = WorkflowRecorder()
+
+    await RepositoryMergeDispatcher(
+        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
+    ).merge_core_read_only_repositories()
+
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)] == [
+        {
+            "model": GitRepositoryMerge(
+                repository_id=repository.id,
+                repository_name="read-only-repo",
+                internal_status=RepositoryInternalStatus.INACTIVE.value,
+                source_branch="feature",
+                destination_branch=default_branch.name,
+                destination_branch_id=str(default_branch.get_uuid()),
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+                source_commit=BRANCH_COMMIT,
+                source_ref="v2",
+            )
+        }
+    ]

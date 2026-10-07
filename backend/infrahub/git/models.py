@@ -141,6 +141,9 @@ class GitRepositoryMerge(BaseModel):
         default=None,
         description="The commit the graph records for the source branch, None when it records no full commit id",
     )
+    source_ref: str | None = Field(
+        default=None, description="The ref the graph records for the source branch of a read-only repository"
+    )
 
 
 class GitRepositoryImportObjects(BaseModel):

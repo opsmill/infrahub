@@ -764,7 +764,9 @@ reaches it. This guard closes that.
 7. The source graph commit comes in `GitRepositoryMerge` (`source_commit`), which
    `RepositoryMergeDispatcher` fills when it submits the Git merge. The branch merge submits the
    delete of the source branch without a wait for the Git merge, so a later read of that branch can
-   fail.
+   fail. A read-only repository gets `source_ref` and `source_commit` the same way, and its merge
+   copies them to the trunk. Only a merge that an older version queued carries neither, and reads
+   the source branch.
 8. `merge_git_repository` reads the destination graph commit when the Git merge runs, under the
    repository lock. The default branch is never deleted, and an earlier Git merge can move it after
    the dispatch: two merges in a row both see the old trunk commit at dispatch.

@@ -64,6 +64,7 @@ class RepositoryMergeDispatcher:
                 internal_status=repo.internal_status.value,
                 repository_kind=InfrahubKind.READONLYREPOSITORY,
                 source_commit=readable_commit(repo.commit.value),
+                source_ref=repo.ref.value,
             )
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 

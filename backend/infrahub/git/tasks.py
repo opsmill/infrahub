@@ -1026,19 +1026,22 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
     # local clone, so it must not build a read-write repository object: its node is not a
     # CoreRepository, and resolving one would raise.
     if model.repository_kind == InfrahubKind.READONLYREPOSITORY:
-        repo_source = await client.get(kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch)
         repo_destination = await client.get(
             kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.destination_branch
         )
+        source_ref, source_commit = model.source_ref, model.source_commit
+        # Only a merge that an older version queued carries neither value.
+        if source_ref is None and source_commit is None:
+            repo_source = await client.get(
+                kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch
+            )
+            source_ref, source_commit = repo_source.ref.value, repo_source.commit.value
 
-        if (
-            repo_destination.ref.value != repo_source.ref.value
-            or repo_destination.commit.value != repo_source.commit.value
-        ):
+        if repo_destination.ref.value != source_ref or repo_destination.commit.value != source_commit:
             log.info(f"Merging {model.repository_kind}")
 
-            repo_destination.ref.value = repo_source.ref.value
-            repo_destination.commit.value = repo_source.commit.value
+            repo_destination.ref.value = source_ref
+            repo_destination.commit.value = source_commit
             await repo_destination.save()
 
             log.info(f"Finished merging {model.repository_kind}")

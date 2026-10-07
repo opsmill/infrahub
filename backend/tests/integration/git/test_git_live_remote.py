@@ -1600,3 +1600,44 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         assert (await client.branch.get(branch_name=tracked.branch_name)).status == BranchStatus.MERGED
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
         assert gogs_branches_containing(gogs_server.container, tracked.name, tracked.imported_commit) == []
+
+
+class TestReadOnlyRepositoryMerge(TestInfrahubApp):
+    """The merge of a read-only repository copies the ref and the commit of the source branch to the trunk."""
+
+    async def test_a_merge_that_runs_after_the_source_branch_is_deleted_copies_the_dispatched_values(
+        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer
+    ) -> None:
+        """A branch merge submits the delete of the source branch without a wait for the Git merge."""
+        location = create_gogs_repo(
+            gogs_server.base_url, gogs_server.token, "dispatched-ref-repo", gogs_server.container
+        )
+        v2_commit = commit_to_remote_branch(
+            gogs_server.container, "dispatched-ref-repo", "v2", files={"v2.txt": "v2\n"}
+        )
+        node = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY,
+            data={"name": "dispatched-ref-repo", "location": location, "ref": "main"},
+        )
+        await node.save()
+        branch = await client.branch.create(branch_name="dispatched-ref-branch", sync_with_git=False)
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+        model = GitRepositoryMerge(
+            repository_id=node.id,
+            repository_name="dispatched-ref-repo",
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+            source_branch=branch.name,
+            destination_branch=registry.default_branch,
+            destination_branch_id=trunk.id,
+            repository_kind=InfrahubKind.READONLYREPOSITORY,
+            source_ref="v2",
+            source_commit=v2_commit,
+        )
+        assert await client.branch.delete(branch_name=branch.name)
+
+        await merge_git_repository(model=model)
+
+        on_trunk: CoreReadOnlyRepository = await NodeManager.get_one(
+            db=db, id=node.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
+        )
+        assert (on_trunk.ref.value, on_trunk.commit.value) == ("v2", v2_commit)
