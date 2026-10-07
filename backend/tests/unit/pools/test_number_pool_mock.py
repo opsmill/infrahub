@@ -207,16 +207,14 @@ def test_rows_are_ordered_by_value_then_branch_then_holder() -> None:
     assert keys == sorted(keys)
 
 
-def test_unscoped_pool_figures_and_single_division() -> None:
+def test_unscoped_pool_figures_and_no_division() -> None:
     utilization = get_utilization(pool_id=UNSCOPED_POOL_ID, request_branch="main")
     divisions = get_divisions(pool_id=UNSCOPED_POOL_ID)
 
     assert utilization.allocation_scope == ()
     assert _counts(utilization.figures) == (99, 3, 2, 1)
     assert [_counts(item.figures) for item in utilization.ranges] == [(50, 2, 1, 1), (50, 1, 1, 0)]
-    assert [(item.display_label, item.entries, item.figures) for item in divisions.divisions] == [
-        ("", (), utilization.figures)
-    ]
+    assert (divisions.count, divisions.allocation_scope, divisions.divisions) == (0, (), ())
 
 
 @pytest.mark.parametrize(
@@ -310,14 +308,23 @@ def test_zero_offset_and_limit_return_an_empty_page_with_the_full_count() -> Non
     assert (allocations.count, allocations.allocations) == (71, ())
 
 
-def test_a_pool_without_any_division_is_refused() -> None:
-    with pytest.raises(ValueError, match="needs at least one division"):
+@pytest.mark.parametrize(
+    ("allocation_scope", "divisions", "message"),
+    [
+        pytest.param(("site",), (), "has an allocation scope and needs at least one division", id="scoped-no-division"),
+        pytest.param((), ((),), "has no allocation scope and cannot hold a division", id="unscoped-with-division"),
+    ],
+)
+def test_a_pool_whose_divisions_contradict_its_scope_is_refused(
+    allocation_scope: tuple[str, ...], divisions: tuple[tuple[MockDivisionEntry, ...], ...], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
         MockPool(
             display_label="empty",
-            allocation_scope=(),
+            allocation_scope=allocation_scope,
             ranges=UNSCOPED_POOL.ranges,
             excluded_values=frozenset(),
-            divisions=(),
+            divisions=divisions,
             rows=(),
         )
 
@@ -336,6 +343,6 @@ def test_a_pool_holding_a_value_it_cannot_allocate_is_refused(value: int) -> Non
             allocation_scope=(),
             ranges=UNSCOPED_POOL.ranges,
             excluded_values=frozenset({40}),
-            divisions=((),),
+            divisions=(),
             rows=(replace(UNSCOPED_POOL.rows[0], value=value),),
         )
