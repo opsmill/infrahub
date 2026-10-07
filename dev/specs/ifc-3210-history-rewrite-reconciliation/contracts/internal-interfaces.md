@@ -338,7 +338,9 @@ one: `collect_pending_imports` moves every branch with `reset_to_commit`, which 
   aborts collection for every branch and skips the broadcast; the record write must therefore be
   isolated per branch like the other per-branch failures. The failure joins `failed_imports` at
   step `record`, and the import of the branch stays queued, so the failure fails the run but never
-  writes `error-import` (FR-013).
+  writes `error-import` (FR-013). It is logged once, where it is caught, as a failed import is: the
+  store chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised.
 
 **Not after the import.** The commit is written during collection, so a recorder placed after the
 import would find the next cycle reading the *new* head as the imported commit and classifying

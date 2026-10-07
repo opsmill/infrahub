@@ -34,12 +34,20 @@ class InMemoryRepositoryRecordStore:
 
 
 class FailingRepositoryRecordStore:
-    """RepositoryRecordStore whose every call fails the way the Infrahub API fails."""
+    """RepositoryRecordStore whose every call fails the way the Infrahub API fails.
+
+    The error is chained from ``cause`` when one is given, as the SDK store chains the SDK error.
+    """
+
+    def __init__(self, cause: Exception | None = None) -> None:
+        self.cause = cause
 
     async def write_record(
         self, repository_id: str, infrahub_branch_name: str, build_record: Callable[[int | None], RewriteRecord]
     ) -> None:
-        raise RepositoryError(identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}")
+        raise RepositoryError(
+            identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}"
+        ) from self.cause
 
 
 def build_in_memory_recorder() -> HistoryRewriteRecorder:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,12 +11,13 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
-from infrahub_sdk.exceptions import GraphQLError
+from infrahub_sdk.exceptions import GraphQLError, ServerNotReachableError
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.constants import RepositoryInternalStatus
 from infrahub.core.registry import registry
+from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification, RefDivergence, RewriteRecord
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
@@ -768,3 +770,57 @@ async def test_a_record_that_fails_fails_its_branch_alone_and_keeps_its_import(
         (OTHER, advanced),
     ]
     assert tracked.client.recorded_commits == [(TRACKED, rewritten), ("main", rewritten_trunk), (OTHER, advanced)]
+
+
+@dataclass
+class FailedRecordLogCase:
+    name: str
+    cause: Exception
+    reason: str
+    keeps_traceback: bool
+
+
+FAILED_RECORD_LOG_CASES: list[FailedRecordLogCase] = [
+    FailedRecordLogCase(
+        name="graphql_error_gives_the_message_of_the_api",
+        cause=GraphQLError(errors=[{"message": "Branch feature must be rebased before any updates can be made"}]),
+        reason="Branch feature must be rebased before any updates can be made",
+        keeps_traceback=False,
+    ),
+    FailedRecordLogCase(
+        name="lost_connection_keeps_its_traceback",
+        cause=ServerNotReachableError(address="http://infrahub-server:8000"),
+        reason="ServerNotReachableError: Unable to connect to 'http://infrahub-server:8000'.",
+        keeps_traceback=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in FAILED_RECORD_LOG_CASES])
+async def test_a_record_that_fails_is_logged_once_with_the_reason_of_its_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, test_case: FailedRecordLogCase
+) -> None:
+    """A recognised failure reads as the API worded it, and only an unexpected one carries its traceback."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    tracked.remote.commit(branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(FailingRepositoryRecordStore(cause=test_case.cause))
+    )
+    with pytest.raises(
+        RepositoryError,
+        match=rf"^Unable to synchronize the following branches of repository tracked-repo: "
+        rf"{TRACKED} \(step=record\): {re.escape(test_case.reason)}$",
+    ):
+        tracked.repository.raise_if_branches_failed(collected.failed_imports)
+
+    failure_logs = [
+        record
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and record.getMessage().startswith(("Failed to record", "Failed to synchronize"))
+    ]
+    assert [record.getMessage() for record in failure_logs] == [
+        f"Failed to record the history rewrite of branch {TRACKED} of repository tracked-repo: {test_case.reason}"
+    ]
+    logged_error = failure_logs[0].exc_info[1] if failure_logs[0].exc_info else None
+    assert logged_error is (test_case.cause if test_case.keeps_traceback else None)

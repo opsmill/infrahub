@@ -155,6 +155,9 @@ worktree records nothing.
   graph already holds the new commit, so no later cycle selects the branch again to import it, and
   that rewrite stays unrecorded. The import still runs, so the failure leaves `sync_status` alone. On
   the default branch it is logged at error level, and the run fails although the import converged.
+- **A failed record is logged once, where it is caught, the way a failed import is.** The store
+  chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised, such as a lost connection.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 

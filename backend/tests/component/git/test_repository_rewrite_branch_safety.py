@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from infrahub_sdk.exceptions import NodeNotFoundError
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -16,6 +18,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.models import RefClassification, RefDivergence
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.store import SdkRepositoryRecordStore
@@ -203,3 +206,20 @@ class TestRewriteRecordBranchSafety(TestInfrahubApp):
                 await read_record(client=client, repository_id=repository_id, branch_name=default_branch.name)
                 == NO_RECORD
             )
+
+    async def test_a_record_the_api_refuses_fails_with_the_error_of_the_api_as_its_cause(
+        self, default_branch: Branch, initialize_registry: None, recorder: HistoryRewriteRecorder
+    ) -> None:
+        """The cause is what lets a failed record be logged with the reason the API gave."""
+        repository_id = str(UUIDT())
+
+        with pytest.raises(
+            RepositoryError,
+            match=rf"^Unable to access the rewrite record of repository {repository_id} on branch {default_branch.name}: ",
+        ) as failure:
+            await recorder.record(
+                repository_id=repository_id,
+                divergence=rewrite(branch_name=default_branch.name, imported_commit=IMPORTED, remote_head=REWRITTEN),
+            )
+
+        assert isinstance(failure.value.__cause__, NodeNotFoundError)

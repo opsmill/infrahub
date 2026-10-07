@@ -31,8 +31,9 @@ class AncestryGateway(Protocol):
 class RepositoryRecordStore(Protocol):
     """Writes the rewrite record a repository holds on one Infrahub branch.
 
-    Implementations raise RepositoryError for every failure, so the logic above them handles one
-    exception type and imports no client library.
+    Implementations raise RepositoryError for every failure, chained from the error that caused it, so
+    the logic above them handles one exception type, imports no client library, and can still describe
+    the cause.
     """
 
     async def write_record(

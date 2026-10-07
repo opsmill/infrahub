@@ -35,6 +35,7 @@ from infrahub.git.divergence.detector import RemoteDivergenceDetector
 from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN, GitAncestryGateway
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
+from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_run_logger
 
@@ -313,7 +314,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.
 
-        A branch whose import failed is not logged again here, because the import already logged it once.
+        A branch whose import or rewrite record failed is not logged again here, because that step already
+        logged it once.
 
         Raises:
             RepositoryError: When at least one branch failed to synchronize.
@@ -323,7 +325,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             return
 
         for failed in failed_imports:
-            if failed.step is ImportStep.IMPORT:
+            if failed.step in (ImportStep.IMPORT, ImportStep.RECORD):
                 continue
             # extra= preserves step and reason as discrete LogRecord fields so log shippers
             # and alert rules can filter on them, even though the message already contains them.
@@ -677,10 +679,31 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 FailedImport(
                     branch_name=divergence.branch_name,
                     step=ImportStep.RECORD,
-                    reason=str(exc),
+                    reason=self._log_record_failure(branch_name=divergence.branch_name, exc=exc),
                     on_default_branch=pending_import.on_default_branch,
                 )
             )
+
+    def _log_record_failure(self, branch_name: str, exc: RepositoryError) -> str:
+        """Log a failed rewrite record once and return its reason.
+
+        The reason describes the error the store wrapped, and the traceback is logged only when that error
+        is not a recognised failure, as for a failed import.
+        """
+        cause = exc.__cause__ or exc
+        reason = describe_import_error(cause)
+        recognised = reason is not None
+        if reason is None:
+            reason = f"{type(cause).__name__}: {cause}"
+        log.warning(
+            "Failed to record the history rewrite of branch %s of repository %s: %s",
+            branch_name,
+            self.name,
+            reason,
+            exc_info=None if recognised else cause,
+            extra={"repository": self.name, "branch": branch_name, "step": ImportStep.RECORD.value, "reason": reason},
+        )
+        return reason
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
         """Return the local branches whose commit in the graph is not the remote head.
