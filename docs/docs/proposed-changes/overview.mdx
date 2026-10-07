@@ -49,11 +49,7 @@ Infrahub runs several types of automated validations during the review process:
 - **Data Integrity**: Records each conflict between the source branch and the default branch. The check stays failed while it lists conflicts, including ones you have already resolved; the merge is blocked only while a conflict has no branch selected, or while a delete-versus-modify conflict remains.
 - **Schema Integrity**: Checks that the schema changes on the branch are valid, and that the branch's data meets uniqueness and other constraints. Infrahub checks these constraints again at merge.
 - **Git repository integration**: Displays merge conflicts for connected Git repositories, ensuring alignment between infrastructure code and configuration.
-<<<<<<< HEAD
 - **Repository Import Check**: Fails when the last object import for a connected Git repository failed on the source branch, which blocks the merge until the import succeeds and the checks are run again.
-- **Schema validation**: Verifies potential changes made to the schema.
-=======
->>>>>>> origin/stable
 
 ![Checks tab showing all validation check types](../media/topics/proposed_change/pc_tab_checks.png)
 
