@@ -13,7 +13,7 @@ import ujson
 import yaml
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from infrahub_sdk.exceptions import Error as SdkError
-from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, ValidationError
+from infrahub_sdk.exceptions import ModuleImportError, NodeNotFoundError, TrackingGroupCleanupError, ValidationError
 from infrahub_sdk.graphql.query_renderer import render_query
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import (
@@ -1795,26 +1795,34 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         defer: bool | None = None,
         tracking_suffix: str = "",
     ) -> None:
+        log = get_run_logger()
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         file_pathes = [branch_wt.directory / file_path for file_path in files_pathes]
 
-        # A tracking_suffix isolates a subset of the same object_type in its own group so its
-        # delete_unused reconciliation does not remove members tracked by the other subset.
-        # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
-        async with self.sdk.start_tracking(
-            identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
-            delete_unused_nodes=True,
-            branch=branch_name,
-            group_type="CoreRepositoryGroup",
-            group_params={"content": object_type.value, "repository": str(self.id)},
-        ):
-            file_type = repo_object_type_to_file_type(object_type)
-            await self._load_objects(
-                paths=file_pathes,
+        try:
+            # A tracking_suffix isolates a subset of the same object_type in its own group so its
+            # delete_unused reconciliation does not remove members tracked by the other subset.
+            # We currently assume there can't be concurrent imports, but if so, we might need to clone the client before tracking here.
+            async with self.sdk.start_tracking(
+                identifier=f"group-repo-{object_type.value}{tracking_suffix}-{self.id}",
+                delete_unused_nodes=True,
                 branch=branch_name,
-                file_type=file_type,
-                worktree_directory=branch_wt.directory,
-                defer=defer,
+                group_type="CoreRepositoryGroup",
+                group_params={"content": object_type.value, "repository": str(self.id)},
+            ):
+                file_type = repo_object_type_to_file_type(object_type)
+                await self._load_objects(
+                    paths=file_pathes,
+                    branch=branch_name,
+                    file_type=file_type,
+                    worktree_directory=branch_wt.directory,
+                    defer=defer,
+                )
+        # The refused objects stay in the tracking group, so the next import retries them.
+        except TrackingGroupCleanupError as exc:
+            log.warning(
+                f"Unable to delete {len(exc.failures)} {object_type.value}(s) no longer "
+                f"defined in the repository: {exc}"
             )
 
     async def import_objects(

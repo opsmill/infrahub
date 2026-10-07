@@ -222,6 +222,15 @@ read-only flows through `import_objects_from_files`.
   `bootstrap_local_repository` returns the repository when the default-branch import fails, so the
   scheduled sync continues with its other branches; it returns `None` when the clone fails or when
   that import raises a connection or credential error.
+- **A refused object deletion is not an import failure.** Removing an object file deletes its objects
+  through the SDK tracking group in `_import_file_paths`. When the server refuses one of those
+  deletes, because another object holds a mandatory relationship to it, the SDK raises
+  `TrackingGroupCleanupError`; `_import_file_paths` catches it, logs a warning and the import
+  continues. The refused objects stay in the tracking group, so the next import retries them. This
+  differs from the failures above because the cause is an object in the instance, which the
+  repository cannot fix, and failing would skip every later step of the import until it is removed.
+  A failure of the request itself, such as an unreachable server, is not caught and reaches the
+  boundary.
 - **Calling an import step directly.** The steps write to the run logger, which Prefect provides only
   inside a flow or task run. A test that calls one directly wraps the call in a flow
   (`tests/helpers/flow.py::call_in_flow`).
