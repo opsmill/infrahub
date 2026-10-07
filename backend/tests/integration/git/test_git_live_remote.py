@@ -1669,38 +1669,3 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
             db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
         assert trunk.commit.value == tracked.imported_commit
-
-    async def test_a_read_only_repository_moved_to_another_branch_records_nothing(
-        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer
-    ) -> None:
-        """The new branch does not hold the commit the repository imported from the old one."""
-        repo_name = "retargeted-read-only-repo"
-        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        release_head = commit_to_remote_branch(
-            gogs_server.container, repo_name, branch="release", files={"release.txt": "release v1\n"}
-        )
-        main_head = commit_to_remote_branch(
-            gogs_server.container, repo_name, branch="main", files={"main.txt": "main v2\n"}
-        )
-        repository = await client.create(
-            kind=InfrahubKind.READONLYREPOSITORY, name=repo_name, location=location, ref="main"
-        )
-        await repository.save()
-        imported: CoreReadOnlyRepository = await NodeManager.get_one(
-            db=db, id=repository.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
-        )
-        assert imported.commit.value == main_head
-
-        repository.ref.value = "release"
-        await repository.save()
-
-        moved: CoreReadOnlyRepository = await NodeManager.get_one(
-            db=db, id=repository.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
-        )
-        assert (
-            moved.commit.value,
-            moved.last_rewrite_previous_commit.value,
-            moved.last_rewrite_commit.value,
-            moved.last_rewrite_at.value,
-            moved.rewrite_count.value,
-        ) == (release_head, None, None, None, None)

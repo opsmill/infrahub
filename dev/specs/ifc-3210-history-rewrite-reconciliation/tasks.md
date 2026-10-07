@@ -655,9 +655,11 @@ read-write repository's configured default branch. Neither writes a record.
       written and no trunk event fires on **any** cycle, not only the first. One cycle passes while
       the bug is present: the marker suppresses cycle 1, and cycles 2 onward are what record a false
       rewrite and fire a false trunk webhook once a minute.
-- [x] T086 [US6] Add a live-remote test in
+- [ ] T086 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, beside the other live-remote tests:
       changing the tracked ref to a different branch records nothing.
+      This test lands with T072. Before the read-only detection exists, nothing can record a
+      rewrite on that path, so the test passes whatever the flag says.
 
 **Checkpoint**: SC-007 holds. Routine re-pointing produces no noise.
 
