@@ -226,10 +226,10 @@ nothing needs resetting. `pull` cannot be relied on to close the gap: it returns
 `if commit_after == commit_before: return True`, **before** `update_commit_value`, so a worktree
 that did not move writes no commit and queues no import.
 
-Without that row the graph never catches up. A `default_branch` edit then consumes its marker on
-the first cycle and classifies `RETARGET`, and every cycle after that classifies `REWRITE`, writes
-a record and fires the trunk event again. The failure repeats once a minute for the life of the
-repository.
+Without that row the graph never catches up. A `default_branch` edit then classifies `RETARGET`
+while its marker lives, because the sweep never sees the trunk on the new head, and every cycle
+after the marker expires classifies `REWRITE`, writes a record and fires the trunk event again. The
+failure repeats once a minute for the life of the repository.
 
 A worker whose graph already matches the remote still resets when its own worktree does not. That
 is the `UNCHANGED` row of the first table meeting the last row of the second, and it is the whole
@@ -685,8 +685,8 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 4. Deleting at classification time is wrong. The reset, the commit write and the import all come
    after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
    re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
-   webhook**. Deleting after the commit write means a failed cycle simply retries with the marker
-   still in place.
+   webhook**. Clearing only once the trunk records the remote head means a failed cycle simply
+   retries with the marker still in place.
 5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
@@ -698,7 +698,7 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:
    `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
-8. **A marker whose branch never becomes a candidate is still deleted at the end of the cycle.**
+8. **A marker no candidate reads is still swept, once the trunk records the head it names.**
    A re-point can leave the graph commit and the worktree both equal to the remote head, for
    example when the remote default branch is renamed without moving and `default_branch` is edited
    to match. The branch then enters no candidate set, nothing reads the marker, and until it expires

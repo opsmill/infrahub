@@ -245,9 +245,10 @@ record lands is never retried.
 
 ### The re-target suppression marker
 
-Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`, which the update and every upsert path call. Read and
-cleared by the component that calls the detector. See `research.md` R4 for why this shape was
-chosen, and why the recorder must not be the reader.
+Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`,
+which the update and every upsert path call. Read and cleared by the component that calls the
+detector. See `research.md` R4 for why this shape was chosen, and why the recorder must not be the
+reader.
 
 | Property | Value |
 |---|---|
@@ -261,7 +262,7 @@ chosen, and why the recorder must not be the reader.
 | Cleared | After the collection, and only when the trunk records the remote head of the git branch the marker names, which comes after the commit write for that branch. Reading leaves the marker in place. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
 
 **The recorder must not read this key.** It returns early on any classification other than
-`REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The
+`REWRITE`, so on a `RETARGET` it would never reach the read and never clear the marker. The
 marker would then survive until it expires and suppress the next genuine rewrite of that branch.
 
 ---

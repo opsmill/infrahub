@@ -286,9 +286,10 @@ case costs nothing extra.
 
 **Why the caller reads it and not the recorder.** The recorder writes nothing unless the
 classification is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker
-and never consume it. The marker would then survive until it expires and suppress the *next*, genuine, rewrite
-of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
-tests, and deleting after the commit write keeps a failed cycle retryable.
+and never clear it. The marker would then survive until it expires and suppress the *next*,
+genuine, rewrite of that branch. Reading at classification time keeps `RETARGET` reachable in the
+detector's own tests, and clearing only once the trunk records the remote head keeps a failed cycle
+retryable.
 
 **Rationale**: the cache is how this codebase already coordinates repository state across workers,
 and the read-write edit has no in-band channel to travel on. The marker is cleared once the trunk
