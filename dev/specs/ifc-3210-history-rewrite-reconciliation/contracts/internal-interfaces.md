@@ -705,6 +705,9 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    an inactive repository and a default branch the remote does not hold yet all leave the trunk on
    another commit. They keep the marker for the cycle that synchronises the trunk, so the retry of
    rule 4 still finds it.
+   The sweep runs only in a cycle whose read found a marker for the target it synchronises. A cycle
+   with no marker therefore costs one cache read and no walk of the remote refs, and a marker
+   written after the read waits for the next cycle, which reads it.
 9. **A marker applies only to a cycle that synchronises the target it names.** The cycle reads
    `default_branch` when it builds the repository, before it reads or sweeps the marker. An edit
    that lands between the two leaves a cycle that synchronises the old target while the marker

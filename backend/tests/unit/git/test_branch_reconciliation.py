@@ -772,6 +772,32 @@ async def test_a_record_that_fails_is_logged_once_with_the_reason_of_its_cause(
     assert logged_error is (test_case.cause if test_case.keeps_traceback else None)
 
 
+class CountingCache(MemoryCache):
+    """Counts the reads, so a test can check how often a cycle asks the cache."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    async def get(self, key: str) -> str | None:
+        self.reads += 1
+        return await super().get(key)
+
+
+class CacheWrittenDuringTheCycle(MemoryCache):
+    """Applies a pending write right after the first read, as an edit that lands while a cycle runs does."""
+
+    def __init__(self, pending: dict[str, str]) -> None:
+        super().__init__()
+        self.pending = pending
+
+    async def get(self, key: str) -> str | None:
+        value = await super().get(key)
+        self.storage.update(self.pending)
+        self.pending = {}
+        return value
+
+
 @dataclass(frozen=True)
 class RePointedTrunk:
     tracked: TrackedRepository
@@ -1045,3 +1071,36 @@ async def test_a_default_branch_the_remote_does_not_hold_yet_keeps_its_marker(
     )
 
     assert await is_marked(markers, tracked, target="release")
+
+
+async def test_a_cycle_without_a_marker_reads_the_cache_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    cache = CountingCache()
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=RetargetMarkers(cache=cache),
+    )
+
+    assert cache.reads == 1
+
+
+async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trunk is already on the remote head, so a sweep of this cycle would delete the new marker."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    edit = MemoryCache()
+    await RetargetMarkers(cache=edit).mark(
+        repository_id=str(tracked.repository.id), infrahub_branch_name="main", target="main"
+    )
+    markers = RetargetMarkers(cache=CacheWrittenDuringTheCycle(pending=edit.storage))
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=markers,
+    )
+
+    assert await is_marked(markers, tracked, target="main")

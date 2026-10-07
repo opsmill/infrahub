@@ -390,9 +390,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             recorder: Records each rewrite the classification finds, right after the branch's new
                 commit is written. Without it no rewrite is recorded.
             retarget_markers: Tell a deliberate change of the default branch apart from a rewrite of
-                the trunk. The marker of the trunk is cleared when the collection ends with the trunk on
-                the remote head of the default branch. Without them, every lineage break of the trunk is
-                a rewrite.
+                the trunk. A marker that applied to this cycle is cleared when the collection ends with
+                the trunk on the remote head of the default branch. Without them, every lineage break of
+                the trunk is a rewrite.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -413,8 +413,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             trunk_retargeted=trunk_retargeted,
         )
 
+        # A marker written after the read is left alone here, and the next cycle reads it.
         if (
-            graph_commits is not None
+            trunk_retargeted
+            and graph_commits is not None
             and retarget_markers is not None
             and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
         ):
@@ -432,14 +434,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """
         if not self.has_origin:
             return False
-        remote_branch = self.get_branches_from_remote().get(self.default_branch)
-        if remote_branch is None:
+        remote_head = self._get_remote_tracking_commit(self.default_branch)
+        if remote_head is None:
             return False
         trunk_commit = graph_commits.get(registry.default_branch)
         for reconciled in collected.reconciled:
             if reconciled.infrahub_branch_name == registry.default_branch:
                 trunk_commit = reconciled.commit
-        return trunk_commit == remote_branch.commit
+        return trunk_commit == remote_head
 
     async def _collect_pending_imports(
         self,
