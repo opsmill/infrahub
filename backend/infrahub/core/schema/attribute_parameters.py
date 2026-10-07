@@ -248,7 +248,7 @@ class NumberPoolParameters(AttributeParameters):
             "allocation returns the lowest free number within the writer's division. "
             "Same notation as uniqueness constraints."
         ),
-        json_schema_extra={"update": UpdateSupport.ALLOWED.value},
+        json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
     )
 
     @property
