@@ -915,14 +915,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def prepare_branches_for_merge(
         self, source_branch: str, dest_branch: str, graph_commits: GraphCommitReader
     ) -> None:
-        """Reset a merge branch that diverged from its remote head when the graph records that head, or refuse the merge.
+        """Move a merge branch onto its remote head when the graph records that head, or refuse the merge.
 
-        A branch that is the remote head, or an ancestor of it, is left as it is. The merge reads the
-        source from its local ref and builds on the local destination, so a diverged branch would put
-        commits the remote discarded back on it. When the graph records the remote head, only this clone
-        is behind, and the branch is reset. When the graph records another commit, the rewrite is not
-        reconciled yet: the merge is refused and no branch moves, so the next synchronization still finds
-        the rewrite to record and import.
+        The merge reads the source from its local ref and builds on the local destination. A branch that
+        is behind its remote head, or diverged from it, is moved onto that head when the graph records it:
+        the graph imported that head, and only this clone is stale. A diverged branch whose graph commit
+        differs is refused, because the rewrite is not reconciled yet: no branch moves, so the next
+        synchronization still finds the rewrite to record and import. A branch behind a head the graph
+        has not imported is left as it is.
 
         Raises:
             RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record.
@@ -940,17 +940,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             dest_branch: str(dest_worktree.head.commit) if dest_worktree is not None else None,
         }
 
-        resets: list[tuple[str, str, str]] = []
+        moves: list[tuple[str, str, str]] = []
         for branch_name, local_head in local_heads.items():
             remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=branch_name))
-            if (
-                local_head is None
-                or remote_head is None
-                or self._leads_to_remote_head(local_head=local_head, remote_head=remote_head)
-            ):
+            if local_head is None or remote_head is None or local_head == remote_head:
                 continue
             graph_commit = await graph_commits.get_commit(repository_id=str(self.id), infrahub_branch_name=branch_name)
-            if graph_commit != remote_head:
+            if graph_commit == remote_head:
+                moves.append((branch_name, local_head, remote_head))
+            elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
                 raise RepositoryDivergentHistoryError(
                     identifier=self.name,
                     message=(
@@ -963,20 +961,19 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         "next synchronization imports the result."
                     ),
                 )
-            resets.append((branch_name, local_head, remote_head))
 
-        for branch_name, local_head, remote_head in resets:
+        for branch_name, local_head, remote_head in moves:
             if self._get_branch_worktree(branch_name) is None:
                 await self._move_branch_ref(branch_name=branch_name, commit=remote_head)
             else:
                 await self.reset_to_commit(branch_name=branch_name, commit=remote_head, update_commit_value=False)
             log.info(
-                "Reset branch %s of repository %s onto the remote head %s before the merge, "
-                "the local commit %s does not lead to it",
+                "Moved branch %s of repository %s from %s onto the remote head %s before the merge, "
+                "which the graph records",
                 branch_name,
                 self.name,
-                remote_head,
                 local_head,
+                remote_head,
                 extra={"repository": self.name, "branch": branch_name, "commit": remote_head},
             )
 

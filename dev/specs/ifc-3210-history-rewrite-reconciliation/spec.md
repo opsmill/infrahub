@@ -282,11 +282,12 @@ here. See "Out of Scope".
 - **FR-005a**: The merge path MUST fetch and compare both the source branch and the destination
   branch against the remote before it merges. The merge path reads its source commit from the local
   branch ref and advances the destination worktree from local state, without contacting the remote,
-  so FR-005 does not reach it. A branch whose clone does not lead to the remote head is decided by
-  its graph commit. When the graph commit equals the remote head, only this clone is behind, and the
-  merge path MUST reset the branch and merge. When the graph commit differs, the rewrite is not
-  reconciled yet, and the merge path MUST refuse the merge with a typed error naming a divergent
-  remote history. It MUST NOT reconcile that branch itself.
+  so FR-005 does not reach it. A branch whose clone is not the remote head is decided by its graph
+  commit. When the graph commit equals the remote head, only this clone is stale, and the merge path
+  MUST move the branch onto that head and merge, whether the clone is behind or diverged. When the
+  graph commit differs and the clone diverged, the rewrite is not reconciled yet, and the merge path
+  MUST refuse the merge with a typed error naming a divergent remote history. It MUST NOT reconcile
+  that branch itself.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.

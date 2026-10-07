@@ -52,6 +52,10 @@ class MergeClone:
         self.remote.move_branch(branch_name=branch_name, commit=parent)
         return parent
 
+    def advance(self, branch_name: str) -> str:
+        """Add a commit on top of the remote branch and return the new remote head."""
+        return self.remote.commit(branch_name=branch_name, files={"advanced.txt": "advanced\n"})
+
     def rewrite(self, branch_name: str) -> str:
         """Replace the last commit of the remote branch and return the new remote head."""
         return self.remote.commit(branch_name=branch_name, files={"rewritten.txt": "rewritten\n"}, amend=True)
@@ -130,14 +134,37 @@ def refusal_message(
     )
 
 
-async def test_branches_that_lead_to_their_remote_heads_are_merged_as_they_are(merge_clone: MergeClone) -> None:
-    advanced = merge_clone.remote.commit(branch_name=DESTINATION, files={"trunk.txt": "advanced\n"})
-    assert advanced != merge_clone.local_heads[DESTINATION]
-
+async def test_branches_on_their_remote_heads_are_merged_without_a_graph_read(merge_clone: MergeClone) -> None:
     await merge_clone.prepare()
 
     assert merge_clone.heads() == merge_clone.local_heads
     assert merge_clone.commits.reads == []
+
+
+@pytest.mark.parametrize("branch_name", [SOURCE, DESTINATION])
+async def test_a_branch_behind_a_head_the_graph_has_not_imported_is_merged_as_it_is(
+    merge_clone: MergeClone, branch_name: str
+) -> None:
+    """The merge then builds on the commit the graph records, not on content the graph never imported."""
+    merge_clone.advance(branch_name)
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
+@pytest.mark.parametrize("branch_name", [SOURCE, DESTINATION])
+async def test_a_branch_behind_a_head_the_graph_records_is_moved_onto_it_before_the_merge(
+    merge_clone: MergeClone, branch_name: str
+) -> None:
+    """A worker that missed a broadcast would merge an old source, or push onto an old trunk and be rejected."""
+    remote_head = merge_clone.advance(branch_name)
+    merge_clone.commits.commits[branch_name] = remote_head
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == {**merge_clone.local_heads, branch_name: remote_head}
+    assert merge_clone.client.recorded_commits == []
 
 
 @pytest.mark.parametrize("case", DIVERGED_BRANCH_CASES, ids=lambda case: case.name)

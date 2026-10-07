@@ -740,21 +740,23 @@ reaches it. This guard closes that.
 1. Fetch, then compare the **source** branch ref, which the merge reads, and the **destination**
    branch worktree against their remote heads, using the same ancestry gateway as section 1. A
    branch with no remote head, and a destination with no worktree, are not compared.
-2. When either does not lead to its remote head, compare the **graph commit** for that branch
-   against the remote head as well. The two answers mean different things:
+2. When either is not its remote head, compare the **graph commit** for that branch against the
+   remote head as well. The answers mean different things:
 
 | Clone | Graph commit | Action |
 |---|---|---|
-| Does not lead to the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Does not lead to the remote head | equals the remote head | **Reset the branch and merge.** The rewrite is already recorded; only this clone is behind. |
+| Is the remote head | not read | **Merge.** |
+| Behind the remote head, or diverged from it | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
+| Diverged from the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
+| Behind the remote head | differs from the remote head | **Merge as it is.** The merge builds on content the graph imported. The check before the graph merge refuses this case first. |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
    "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and
    how to finish the merge in Git.
 4. Never reset a branch whose **graph commit** differs from the remote head and then merge it
    (FR-005c). That is the case where the merge commit would hide the rewrite.
-5. A worktree ahead of its remote has been rewound. It does not lead to the remote head, so the table
-   decides: reset when the graph commit equals the remote head, refuse otherwise.
+5. A worktree ahead of its remote has been rewound. It is diverged from the remote head, so the table
+   decides: move it when the graph commit equals the remote head, refuse otherwise.
 6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
    ref.
 

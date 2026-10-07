@@ -1430,6 +1430,32 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
         assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
 
+    async def test_a_merge_on_a_worker_behind_an_imported_source_merges_the_imported_head(
+        self,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """A plain push the cycle imported, which the worker that merges never heard about."""
+        tracked = await tracked_branch_repository("behind-source-merge-repo", "behind-source-merge-branch")
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        advanced = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+        )
+        await sync_remote_repositories()
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+
+        with repositories_directory(second_worker):
+            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == advanced
+
     async def test_a_worker_that_missed_the_broadcast_resets_in_its_next_cycle_and_records_nothing(
         self,
         db: InfrahubDatabase,
