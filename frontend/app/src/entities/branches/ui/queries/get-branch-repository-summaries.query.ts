@@ -78,6 +78,8 @@ export function useGetBranchRepositorySummaries(
       offset: 0,
     }),
     enabled: Boolean(defaultBranch),
+    // Only the ids are read here; each repository's status query polls while it syncs.
+    refetchInterval: false,
   });
   const listFetch: RepositoryStatusFetch | null =
     branchesError && !allBranches
