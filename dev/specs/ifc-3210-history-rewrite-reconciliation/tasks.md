@@ -11,7 +11,6 @@ description: "Task list for Git history-rewrite reconciliation (IFC-3210)"
 [data-model.md](data-model.md), [contracts/](contracts/)
 
 **Branch**: `history-rewrite-reconciliation-ifc-3210`, branched from `develop`.
-**Prerequisite**: PR #10465, which must reach `develop` before any reset ships.
 
 **Tests**: included. The constitution requires them, and the PRD names the test set.
 
@@ -30,10 +29,8 @@ its own.
 
 | Gate | Blocks | Who |
 |---|---|---|
-| **PR #10465 merged into `develop` and forward-merged** | Phase 5 in full, the reset inside the sync-path task in Phase 3, and the widened broadcast in Phase 4. | Patrick Ogenstad |
 | **Schema and GraphQL sign-off** ("Ask First" under `AGENTS.md`) | Phase 6 | A maintainer |
 | **The FR-014 consumer confirmed** | Phase 7 | Patrick Ogenstad |
-| **Merge order agreed against PR #10542** | Phase 5 | Patrick Ogenstad |
 | **Whether to wait for PR #10669 to reach `develop`** | Phase 8, and only which file it attaches to | Patrick Ogenstad |
 
 ---
@@ -42,15 +39,15 @@ its own.
 
 **Purpose**: prepare the worktree so the tests can run at all.
 
-- [ ] T001 Initialise the submodules in this worktree and reinstall the SDK in editable mode, so
+- [x] T001 Initialise the submodules in this worktree and reinstall the SDK in editable mode, so
       `backend/tests/` can import `infrahub_sdk`. Run `git submodule update --init --recursive`
       then `uv sync --all-groups`.
-- [ ] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
+- [x] T002 Confirm the test environment is clean: unset every `INFRAHUB_*` variable inherited from
       the dev shell, then set `INFRAHUB_USE_TEST_CONTAINERS=1`. A leftover
       `INFRAHUB_USE_TEST_CONTAINERS=false` sends the suite at an external Neo4j. See
       [quickstart.md](quickstart.md).
-- [ ] T003 [P] Create the package `backend/infrahub/git/divergence/` with an empty `__init__.py`.
-- [ ] T004 [P] Create the test package `backend/tests/unit/git/divergence/` with an empty
+- [x] T003 [P] Create the package `backend/infrahub/git/divergence/` with an empty `__init__.py`.
+- [x] T004 [P] Create the test package `backend/tests/unit/git/divergence/` with an empty
       `__init__.py`.
 
 ---
@@ -61,32 +58,36 @@ its own.
 
 **Blocks**: every phase from 3 onwards.
 
-- [ ] T005 [P] Define `RefClassification` and `RefDivergence` in
+- [x] T005 [P] Define `RefClassification` and `RefDivergence` in
       `backend/infrahub/git/divergence/models.py`, per
       [data-model.md](data-model.md), "New in-process types". `RefClassification` is a `StrEnum`
-      with `UNCHANGED`, `FAST_FORWARD`, `LOCAL_AHEAD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
+      with `UNCHANGED`, `FAST_FORWARD`, `REWRITE`, `RETARGET` and `REMOTE_ABSENT`.
       `RefDivergence` holds a nullable `remote_head` and enforces the three validation rules in
       that section.
-- [ ] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
+- [x] T006 [P] Define `ReconciledBranch` in `backend/infrahub/git/divergence/models.py`. It carries
       the Infrahub branch name, the branch UUID, the commit, and an optional `RefDivergence`.
-- [ ] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`. It exposes
-      `is_ancestor` and `has_commit` as a `Protocol`, plus a GitPython implementation over
-      `Repo.is_ancestor`. Every git failure leaves as a `RepositoryError`, so the detector imports no
-      git library. Mirror the shape of `backend/infrahub/git/refs_check/gateway.py` from PR #10669.
-- [ ] T008 Make `has_commit` distinguish a missing object from a failed git call. Without it both
+- [x] T007 Write the ancestry gateway in `backend/infrahub/git/divergence/gateway.py`, and declare
+      `is_ancestor`, `has_commit`, `require_commit` and `require_present_commit` as a `Protocol`
+      in `divergence/protocols.py` so the module
+      naming them imports no git library. The gateway runs `git merge-base --is-ancestor` as a
+      plain git command through GitPython, and reads exit status 1 as "not an ancestor". Every git
+      failure leaves as a `RepositoryError`, so the detector imports no git library. Bind the
+      implementation to one repository at construction, so neither call takes a repository argument
+      and the `Protocol` names no git type.
+- [x] T008 Make `has_commit` distinguish a missing object from a failed git call. Without it both
       arrive as `RepositoryError`, so a garbage-collected commit raises on every cycle and the
       branch never classifies. The absent-object rows of the contract table depend on this.
-- [ ] T009 Write `RemoteDivergenceDetector.classify` in
+- [x] T009 Write `RemoteDivergenceDetector.classify` in
       `backend/infrahub/git/divergence/detector.py`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1. It takes
       `target_changed` from its caller and never reads the cache itself.
-- [ ] T010 [P] Write unit tests for the detector in
+- [x] T010 [P] Write unit tests for the detector in
       `backend/tests/unit/git/divergence/test_detector.py`. Cover every row of the contract table.
-      The negative cases carry the most weight: a fast-forward, a deliberate re-target, a branch
-      that is only ahead of its remote, and an absent remote ref must all come out clean. The
-      locally-ahead case is the one that would discard an unpushed commit if it were wrong, so
-      assert it names `LOCAL_AHEAD` and not `REWRITE`. No database.
-- [ ] T011 [P] Write unit tests for the models in
+      The negative cases carry the most weight: a fast-forward, a deliberate re-target and an
+      absent remote ref must all come out clean. Cover the rewound remote too: a remote head that
+      is an ancestor of the imported commit names `REWRITE`, and `RETARGET` when the target
+      changed. No database.
+- [x] T011 [P] Write unit tests for the models in
       `backend/tests/unit/git/divergence/test_models.py`. Assert that a `REWRITE` without an
       `imported_commit` is rejected.
 
@@ -110,9 +111,7 @@ head, the imported objects match the rewritten tree, and the repository reports 
 - [ ] T012 [US1] Add a force-push helper to
       `backend/tests/integration/git/test_git_live_remote.py`, beside the existing
       `_push_commit_to_remote`, which lives in that module and not in `conftest.py`. It builds a
-      divergent history inside the Gogs container and pushes it with `--force`. The two
-      `pre-receive` hook helpers are **not** on this branch: they come from #10465, and no task
-      here needs them.
+      divergent history inside the Gogs container and pushes it with `--force`.
 - [ ] T013 [P] [US1] Add a fixture that creates a Gogs repository with a tracked non-default branch
       already imported, in `backend/tests/integration/git/conftest.py`. The rewrite tests all start
       from that state.
@@ -144,9 +143,10 @@ head, the imported objects match the rewritten tree, and the repository reports 
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1, "Two
       comparisons, not one".
 - [ ] T018 [US1] Decide the reset in `collect_pending_imports` from **this worker's worktree
-      against the remote head**, not from the classification. Reset when neither is an ancestor of
-      the other. Pull as today when the worktree is behind. Do nothing when the worktree is ahead,
-      or when the remote carries no such ref.
+      against the remote head**, not from the classification. Reset whenever the worktree does not
+      lead to the remote head, which covers both a parted history and a worktree left ahead by a
+      rewind. Pull as today when the worktree is behind. Do nothing when the worktree already is
+      the remote head, or when the remote carries no such ref.
       **When the worktree already equals the remote head but the graph commit does not, write the
       commit and queue the import anyway.** Do not fall through to `pull` for this: it returns early
       at `if commit_after == commit_before: return True`, before `update_commit_value`, so a
@@ -161,18 +161,23 @@ head, the imported objects match the rewritten tree, and the repository reports 
       The record follows the classification instead, and only `REWRITE` reaches the recorder. See
       the two tables in
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 1.
-      **This reset is gated on PR #10465** for the same reason T041 is: a branch that is both ahead
-      locally and rewritten remotely classifies `REWRITE`, and resetting it discards the unpushed
-      merge commit.
+      A branch that is both ahead locally and rewritten remotely classifies `REWRITE`, and the
+      reset moves it to the remote head. That is safe: `merge` pushes before it records and resets
+      the destination on failure, so no merge commit survives on one worker alone.
 - [ ] T019 [US1] Make `backend/infrahub/git/tasks.py::git_branch_create` write the new branch's
       commit to the graph after it creates and pushes the branch. It never does today, and `commit`
       is LOCAL, so the branch inherits the trunk's value at the fork point. The classifier then
       compares a branch's remote head against a trunk commit that has nothing to do with it, which
-      can classify a healthy branch `REWRITE`. It also makes the "no recorded commit means
-      `FAST_FORWARD`" rule in the contract dead code, because an inherited value is always present.
-      **No backfill is needed for branches created before this lands.** Their first synchronisation
-      writes the real commit through the ordinary import path, so the inherited value survives only
-      until the branch next moves. A migration would race that write for no gain.
+      can classify a healthy branch `REWRITE`. Together with the read below it also makes the "no
+      recorded commit means `FAST_FORWARD`" rule in the contract reachable, which an always-present
+      inherited value would otherwise leave unreachable.
+      **Branches created before this lands need no migration, and they do need the read to change.**
+      The classification runs before the import writes anything, so such a branch reaches the
+      detector carrying the trunk's value, not nothing. Make the per-branch read report a commit the
+      branch never had as absent: `get_repositories_commit_per_branch` returns `commit.value`, which
+      the `LOCAL` fallback fills in, so it must also know which branch wrote it. The branch then
+      classifies `FAST_FORWARD` and imports as usual. A migration would race the first sync for no
+      gain.
 - [ ] T020 [US1] Return `ReconciledBranch` entries from `collect_pending_imports`, so the syncer and
       then the broadcast can name every branch the cycle advanced.
 - [ ] T021 [US1] Give the divergent-branches case its own message in
@@ -186,7 +191,7 @@ head, the imported objects match the rewritten tree, and the repository reports 
 - [ ] T023 [US1] Rename `backend/tests/component/git/test_git_repository.py::test_pull_branch_conflict`
       and change it to assert the corrected message: a diverged pull names a divergent history and
       never says "conflict" (FR-003, FR-017). **Do not** assert that `pull` resets the branch here.
-      That behaviour is built in Phase 5 and is gated on #10465, so asserting it in Phase 3 fails.
+      That behaviour is built in Phase 5, so asserting it in Phase 3 fails.
       The reset assertion belongs to the Phase 5 component test, which is its only home.
 - [ ] T024 [P] [US1] Leave the `"Need to specify how to reconcile"` parameter in
       `backend/tests/integration/git/test_repository.py::test_repository_operational_status`
@@ -276,9 +281,9 @@ healthy branch is still sent, and a second worker converges on it.
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on
       it.
-      **This test moves with the widened broadcast, for the same reason T026 does.** The second
-      worker converges on a branch that is not the trunk, which only the widened broadcast delivers,
-      and that is gated on PR #10465.
+      **This test needs the widened broadcast of T030, for the same reason T026 does.** The second
+      worker converges on a branch that is not the trunk, which only the widened broadcast
+      delivers.
 
 **Checkpoint**: SC-005 holds. One developer's rebase is no longer a repository-wide event.
 
@@ -295,12 +300,10 @@ emits no signal.
 
 **Maps to**: FR-005, FR-007, SC-004.
 
-> **Gated on PR #10465.** Do not start T041–T052 until the writeback ordering fix has merged into
-> `develop` and this branch has been forward-merged. Without it, an unconditional reset can
-> silently discard a merge commit that exists on one worker only.
->
-> **Also check the merge order against PR #10542**, which rewrites `backend/infrahub/git/base.py`
-> heavily. Landing #10542 first removes the trunk fallback this phase would otherwise inherit.
+> **PR #10542 landed first**, so this phase builds on its `backend/infrahub/git/base.py`. It
+> removed `default_branch` and added `_get_mapped_remote_branch`, `_get_mapped_target_branch` and
+> `_resolve_worktree_identifier`, and the trunk fallback this phase would otherwise have inherited
+> is gone. Read `pull` as it stands before changing it.
 
 - [ ] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
       before the `origin.pull` call, per
@@ -323,12 +326,11 @@ emits no signal.
       nothing is lost, and refusing there would refuse again on every retry, because the cron heals
       whichever worker runs it rather than the one the merge lands on. A refusal raises a typed
       error naming a divergent remote history.
-      **In that refusing case, do not reset and merge instead.** `merge` calls
-      `update_commit_value` on the destination before it
-      pushes, so a reset-then-merge writes the merge commit to the graph. The next cycle then finds
-      the graph and the remote in agreement, classifies `UNCHANGED`, and the rewrite is never
-      recorded, never signalled and never re-imported. Resetting the source is worse: it merges
-      objects the graph never imported.
+      **In that refusing case, do not reset and merge instead.** `merge` pushes the merge commit
+      before it records it on the destination, so a reset-then-merge puts the merge commit on the
+      remote and in the graph. The next cycle then finds the graph and the remote in agreement,
+      classifies `UNCHANGED`, and the rewrite is never recorded, never signalled and never
+      re-imported. Resetting the source is worse: it merges objects the graph never imported.
       The source side is the dangerous one either way. `merge` reads the commit it merges from the
       local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
       worker holding a stale source branch would merge the pre-rewrite history into the trunk and
@@ -410,7 +412,7 @@ emits no signal.
       needs no change.
 - [ ] T059 [P] [US1] Unit-test the recorder in
       `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
-      the increment from absent to 1 and 1 to 2, a `RETARGET`, a `LOCAL_AHEAD` and a
+      the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a
       `REMOTE_ABSENT` each writing nothing, and a rejected divergence whose two commits are equal.
       No database, no mocks.
 - [ ] T060 [US1] Component-test the read inheritance in
@@ -613,12 +615,25 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/merge-failure-recovery.md`. It attributes the merge-start logic to
       `core/branch/tasks.py::_do_merge_branch`. That logic now lives in
       `core/merge/orchestrator.py`. Check the surrounding prose for the same claim.
-- [ ] T089 Rewrite the **one** "Volatile section" note in
-      `dev/knowledge/backend/git-integration.md` that describes this feature as planned, the one
-      under "How git errors are classified". It now describes what shipped: the ancestry detection,
-      the pull-path reset, the widened broadcast and the record. Leave the other three alone: they
-      cover the trunk fallback (PR #10542), the persisted writeback state (IFC-3220) and
-      push-before-graph-write (PR #10465). Rewriting those would claim three other fixes shipped.
+- [ ] T089 Rewrite **two** of the three "Volatile section" notes in
+      `dev/knowledge/backend/git-integration.md`. The one under "How git errors are classified"
+      describes this feature as planned; it now describes what shipped: the ancestry detection, the
+      pull-path reset, the widened broadcast and the record. The one on the merge ordering
+      describes push-before-graph-write as intended, and IFC-1449 shipped it, so the section it
+      sits in, "The writeback direction has no reconciliation", is stale around it. Correct the
+      note and that section together. Its first bullet still states that
+      `InfrahubRepository.merge` writes the new commit to the graph before pushing. Its third
+      bullet, "Re-running the merge no-ops", still describes a local merge commit that stays on
+      disk after a rejected push, which the reset now removes, so a retry re-derives the merge and
+      reaches the push again. The paragraph below the bullets still claims a merge commit "exists
+      on exactly one worker's disk". Leave the second bullet, "Nothing ever re-pushes", as it is.
+      There are three such notes, not four: PR #10542 removed the trunk-fallback one when it
+      landed. Leave the remaining one alone, the persisted writeback state (IFC-3220). Rewriting it
+      would claim another fix shipped.
+      Correct the Known limitation in the same file as well, the one that says a branch left ahead
+      of its remote is re-reported every cycle because `pull()` returns `True` with no change. The
+      reset reads the worktree against the remote head and moves such a branch onto it, so the
+      once-a-minute log line stops.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
@@ -665,47 +680,40 @@ Phase 1 (Setup)
         │           ├─> Phase 7 (US4: the trunk signal)  [needs the consumer confirmed]
         │           └─> Phase 9 (US6: re-target suppression)
         │                 └─> Phase 8 (US5: read-only)  [needs Phase 9's in-band flag]
-        └─> Phase 5 (US2: self-heal in the pull path)  [GATED on PR #10465]
+        └─> Phase 5 (US2: self-heal in the pull path)
 
 Phase 10 (Documentation) follows whatever has landed.
 ```
 
-### What waits for PR #10465
+### Why every reset here is safe
 
-**Every step that resets a worktree.** That is the whole of Phase 5, the reset inside the
-sync-path task in Phase 3, and the widened broadcast in Phase 4, which makes the convergence
-handler reset every branch on every other worker rather than only the trunk. Everything else can be
-written, reviewed and merged before the writeback ordering fix lands.
+**Every step in this plan that resets a worktree.** That is the whole of Phase 5, the reset inside
+the sync-path task in Phase 3, and the widened broadcast in Phase 4, which makes the convergence
+handler reset every branch on every other worker rather than only the trunk.
 
-The reason is narrow and must not be relaxed. On `develop`, a repository merge writes the commit to
-the graph before it pushes, so a rejected push leaves a merge commit on one worker's disk and
-nowhere else. A reset onto the remote head discards it silently. #10465 reorders that. This branch
-is rebased onto `develop`, so it carries the old ordering too; the gate is about the reconciliation
-not reaching a deployment that still has it.
+The one state that would make such a reset lossy is a merge commit that exists on a single worker's
+disk and nowhere else. `InfrahubRepository.merge` no longer leaves it: it pushes the merge commit,
+records it second, and resets the destination worktree to its pre-merge commit when either step
+fails. A rejected push leaves the destination either at its pre-merge state, where a later attempt
+re-derives the merge, or trailing the remote, which the periodic synchronisation repairs. That
+ordering arrived with IFC-1449.
 
-**Every reset site carries that hazard, not just the pull path.** The sync path resets a branch for
-exactly the same reason, and so does the widened broadcast.
+The reset reads this worker's worktree against the remote head, never the classification. It
+resets whenever the worktree does not lead to the remote head, which covers a parted history and a
+worktree the remote was rewound behind. Keeping the two comparisons apart is what lets one worker
+record while every other worker converges.
 
-The `LOCAL_AHEAD` classification narrows the hole a long way. The ordinary shape of a rejected push
-is a branch merely ahead of its remote, and that classifies `LOCAL_AHEAD`, which resets nothing.
-What is left is the branch that is **both** ahead locally and rewritten remotely: neither commit is
-an ancestor of the other, the classification is `REWRITE`, and the reset discards the unpushed
-commit. Rare, but real, and the reason the gate survives.
+The Gogs harness, `_push_commit_to_remote` and the two `pre-receive` hook helpers are already on
+`develop`. The force-push helper is not. T012 adds it.
 
-T012's force-push helper is not gated. The Gogs harness and `_push_commit_to_remote` are on
-`develop` already. Only the two `pre-receive` hook helpers come from #10465, and no task here
-needs them.
-
-Inside Phase 3, T016 (build the candidate set), T017 (classify), T020 and T021 to T024 are not
-gated: they change no worktree. **T018 is gated, and so is anything that asserts its behaviour.**
-T026 asserts that a rewritten branch reconciles, which only T018 delivers, so it moves with T018
-rather than shipping with the rest of the phase.
+Inside Phase 3, T016 (build the candidate set), T017 (classify), T020 and T021 to T024 change no
+worktree. T026 asserts that a rewritten branch reconciles, which only T018 delivers, so it moves
+with T018 rather than shipping with the rest of the phase.
 
 ### What waits for a person
 
 | Tasks | Waiting on | Who |
 |---|---|---|
-| Every reset: Phase 5, the sync-path reset in Phase 3, the widened broadcast in Phase 4 | PR #10465 merged, and the merge order agreed against PR #10542 | Patrick Ogenstad |
 | Phase 6 | Schema and GraphQL sign-off | A maintainer |
 | Phase 7 | The FR-014 consumer confirmed | Patrick Ogenstad |
 | Phase 8 | Whether to wait for PR #10669 to reach `develop` | Patrick Ogenstad |
@@ -731,14 +739,10 @@ rather than shipping with the rest of the phase.
 
 ## Implementation strategy
 
-**Minimum viable increment**: Phases 1, 2 and 3, **and it needs PR #10465**. Those phases fix the
+**Minimum viable increment**: Phases 1, 2 and 3. Those phases fix the
 reported bug: a rewritten non-default branch stops being stuck, stops being described as a conflict,
-and returns to a healthy state with no user action. They ship without the schema change and without
-the signal, but the step that actually reconciles the branch is a reset, and every reset is gated.
-
-What ships before #10465 is the classification and the corrected error message, which stop the
-wrong "conflict" wording and the status flap without changing any worktree. The reset that actually
-reconciles a branch waits.
+and returns to a healthy state with no user action. They ship without the schema change and
+without the signal.
 
 **Second increment**: Phase 4. It removes the outage half of the bug, where one branch's failure
 stops every other branch converging. It also needs no schema change.
