@@ -186,7 +186,7 @@ When verifying against a CA bundle, the client also verifies the hostname. Senti
 Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which accepts the same URL grammar — use a `redis+sentinel://` URL so messaging discovers the master through the Sentinel nodes and follows failover, plus the `ssl_*` query parameters for TLS:
 
 ```bash
-PREFECT_REDIS_MESSAGING_URL=rediss+sentinel://:mypassword@cache-redis:26379/mymaster?ssl_cert_reqs=none&ssl_check_hostname=false
+export PREFECT_REDIS_MESSAGING_URL='rediss+sentinel://:mypassword@cache-redis:26379/mymaster?ssl_cert_reqs=none&ssl_check_hostname=false'
 ```
 
 For a self-signed certificate, set **both** `ssl_cert_reqs=none` and `ssl_check_hostname=false`: with a `rediss://` URL the client enables hostname checking by default, and disabling certificate verification without also disabling hostname checking is rejected. To verify against a private CA instead, use `?ssl_ca_certs=/etc/ssl/redis-ca.pem`.
