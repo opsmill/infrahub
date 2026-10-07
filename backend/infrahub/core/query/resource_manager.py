@@ -1032,6 +1032,37 @@ class NumberPoolReleaseReserved(Query):
         self.add_to_query(query)
 
 
+class NumberPoolReleaseAllReserved(Query):
+    """End every live IS_RESERVED edge a number pool holds, leaving each attribute's value in place."""
+
+    name = "numberpool_release_all_reserved"
+    type = QueryType.WRITE
+    insert_return = False
+
+    def __init__(
+        self,
+        pool_id: str,
+        **kwargs: Unpack[QueryInitKwargs],
+    ) -> None:
+        self.pool_id = pool_id
+
+        super().__init__(**kwargs)
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params["pool_id"] = self.pool_id
+        self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
+
+        query = """
+        MATCH (:Node:%(number_pool)s { uuid: $pool_id })-[live:IS_RESERVED]->(:Attribute)
+        WHERE live.status = "active"
+          AND live.to IS NULL
+        SET live.to = $at, live.to_user_id = $user_id
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+
+        self.add_to_query(query)
+
+
 class PrefixPoolGetIdentifiers(Query):
     name = "prefixpool_get_identifiers"
     type = QueryType.READ
