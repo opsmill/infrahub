@@ -27,8 +27,8 @@ class NumberPoolNumberReader(Protocol):
 class NumberPoolAllocator:
     """Picks the next number a pool hands out for the attribute it feeds."""
 
-    def __init__(self, numbers: NumberPoolNumberReader) -> None:
-        self.numbers = numbers
+    def __init__(self, number_reader: NumberPoolNumberReader) -> None:
+        self.number_reader = number_reader
 
     async def next_number(self, pool: CoreNumberPool, branch: Branch, attribute: AttributeSchema) -> int:
         """Return the next number `pool` hands out for `attribute`.
@@ -41,13 +41,13 @@ class NumberPoolAllocator:
 
         """
         space = EffectiveSpace(
-            ranges=await self.numbers.get_pool_ranges(pool_id=pool.get_id()),
+            ranges=await self.number_reader.get_pool_ranges(pool_id=pool.get_id()),
             domain=attribute_domain(attribute=attribute),
         )
         if space.is_empty:
             raise PoolExhaustedError(f"Pool {_label(pool)} has no number the attribute accepts in its ranges.")
         # Only a globally unique attribute rejects a duplicate, so skip existing values only then.
-        taken = await self.numbers.get_taken(pool=pool, branch=branch, space=space) if attribute.unique else set()
+        taken = await self.number_reader.get_taken(pool=pool, branch=branch, space=space) if attribute.unique else set()
 
         for segment in space.segments:
             cursor = segment.start
@@ -56,7 +56,7 @@ class NumberPoolAllocator:
                 if cursor in taken:
                     cursor += 1
                     continue
-                candidate = await self.numbers.get_free(
+                candidate = await self.number_reader.get_free(
                     pool=pool, branch=branch, min_value=cursor, max_value=segment.end
                 )
                 if candidate is None:

@@ -34,7 +34,7 @@ class CoreNumberPool(Node):
         at: Timestamp | None = None,
     ) -> int:
         repository = NumberPoolRepository(db=db)
-        allocator = NumberPoolAllocator(numbers=repository)
+        allocator = NumberPoolAllocator(number_reader=repository)
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # If the attribute already exists, try to get its pool reservation
             if attribute_id is not None:

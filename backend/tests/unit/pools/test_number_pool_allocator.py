@@ -35,7 +35,9 @@ async def test_the_heaviest_range_is_drained_before_the_lowest_one(pool: CoreNum
     )
 
     assert (
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
         == 207
     )
 
@@ -46,7 +48,9 @@ async def test_a_full_range_hands_over_to_the_next_one(pool: CoreNumberPool) -> 
     )
 
     assert (
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
         == 10
     )
     assert numbers.free_lookups == [(1, 3), (10, 12)]
@@ -57,7 +61,9 @@ async def test_a_run_of_values_held_by_hand_costs_a_single_free_lookup(pool: Cor
     numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], taken={1, 2, 3})
 
     assert (
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
         == 4
     )
     assert numbers.free_lookups == [(4, 10)]
@@ -67,7 +73,9 @@ async def test_a_free_number_the_target_holds_by_hand_is_skipped(pool: CoreNumbe
     numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], accounted={1}, taken={2})
 
     assert (
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
         == 3
     )
     assert numbers.free_lookups == [(1, 10), (3, 10)]
@@ -77,7 +85,9 @@ async def test_a_shared_attribute_ignores_values_held_by_hand(pool: CoreNumberPo
     numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=10)], taken={1, 2, 3})
 
     assert (
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=SHARED_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=SHARED_ATTRIBUTE
+        )
         == 1
     )
 
@@ -91,7 +101,9 @@ async def test_the_numbers_the_attribute_accepts_clip_the_ranges(pool: CoreNumbe
         parameters=NumberAttributeParameters(min_value=5, max_value=20, excluded_values="5-6"),
     )
 
-    assert await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=attribute) == 7
+    assert (
+        await NumberPoolAllocator(number_reader=numbers).next_number(pool=pool, branch=BRANCH, attribute=attribute) == 7
+    )
     assert numbers.free_lookups == [(7, 10)]
 
 
@@ -99,7 +111,9 @@ async def test_a_pool_without_a_free_number_is_exhausted(pool: CoreNumberPool) -
     numbers = InMemoryNumberPoolNumbers(ranges=[PoolRange(id="only", start=1, end=3)], accounted={1, 2}, taken={3})
 
     with pytest.raises(PoolExhaustedError) as exc_info:
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
     assert exc_info.value.message == "Pool tickets (pool-1) has no free number left in its ranges."
 
 
@@ -107,7 +121,9 @@ async def test_a_pool_without_a_range_is_exhausted(pool: CoreNumberPool) -> None
     numbers = InMemoryNumberPoolNumbers()
 
     with pytest.raises(PoolExhaustedError) as exc_info:
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE)
+        await NumberPoolAllocator(number_reader=numbers).next_number(
+            pool=pool, branch=BRANCH, attribute=UNIQUE_ATTRIBUTE
+        )
     assert exc_info.value.message == "Pool tickets (pool-1) has no number the attribute accepts in its ranges."
     assert numbers.free_lookups == []
 
@@ -120,6 +136,6 @@ async def test_a_pool_whose_ranges_the_attribute_rejects_is_exhausted(pool: Core
     )
 
     with pytest.raises(PoolExhaustedError) as exc_info:
-        await NumberPoolAllocator(numbers=numbers).next_number(pool=pool, branch=BRANCH, attribute=attribute)
+        await NumberPoolAllocator(number_reader=numbers).next_number(pool=pool, branch=BRANCH, attribute=attribute)
     assert exc_info.value.message == "Pool tickets (pool-1) has no number the attribute accepts in its ranges."
     assert numbers.free_lookups == []

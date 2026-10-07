@@ -71,7 +71,7 @@ async def _create_hand_set_ticket(db: InfrahubDatabase, kind: str, value: int) -
 async def _next_number(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool, kind: str = TICKET.kind) -> int:
     """Return the number the pool would hand out next, without reserving it."""
     attribute = registry.schema.get_node_schema(name=kind, branch=branch).get_attribute(name="ticket_id")
-    allocator = NumberPoolAllocator(numbers=NumberPoolRepository(db=db))
+    allocator = NumberPoolAllocator(number_reader=NumberPoolRepository(db=db))
     return await allocator.next_number(pool=pool, branch=branch, attribute=attribute)
 
 
