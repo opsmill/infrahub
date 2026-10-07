@@ -9,7 +9,7 @@ Infrahub lets you control the menu on the left side of the web interface.
 
 The menu has two sections. The bottom section is fixed — it lists navigation for built-in Infrahub features. The top section is user-controlled: organize your schema's node types in the order that makes sense for your use case, with custom groupings and icons.
 
-By default, nodes without a menu placement are grouped under **Other**.
+Without a menu file, Infrahub gives each node its own entry at the top level of the menu. To leave a node out of the menu, set `include_in_menu: false` on it. To put its entry under the entry of another node, set `menu_placement`, as described in [Nested menus](./nested-menus).
 
 ## Prerequisites
 

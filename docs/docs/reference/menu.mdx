@@ -13,7 +13,7 @@ At the top of the file we define a bit of boilerplate statements, to define the 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
 ---
-apiversion: infrahub.app/v1
+apiVersion: infrahub.app/v1
 kind: Menu
 spec:
   data:
@@ -32,7 +32,7 @@ A menu item is a mapping in which you can define the following key/value pairs:
 | path         | string   | selecting this menu will take you to this path (URL)                                                                                                  | :x:                |
 | icon         | string   | the icon of the menu item                                                                                                                             | :x:                |
 | order_weight | integer  | controls the ordering of menu items (lower values are ordered first)                                                                                  | :x:                |
-| parent       | string   | a parent menu item (concatenated namespace + name)                                                                                                    | :x:                |
+| parent       | list     | the namespace and name of the parent menu item, for example `[Dcim, Mainmenu]`; see [Nested menus](../menu/nested-menus)                              | :x:                |
 | children     | sequence | list of nested menu items                                                                                                                             | :x:                |
 
 ## Example
@@ -40,7 +40,7 @@ A menu item is a mapping in which you can define the following key/value pairs:
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
 ---
-apiversion: infrahub.app/v1
+apiVersion: infrahub.app/v1
 kind: Menu
 spec:
   data:
@@ -68,15 +68,15 @@ spec:
       icon: "mdi:domain"
       children:
         data:
-          - namespace: Network
+          - namespace: Dcim
             name: Device
             label: Devices
-            kind: NetworkDevice
+            kind: DcimDevice
             icon: "mdi:router"
 
-          - namespace: Network
+          - namespace: Dcim
             name: Interface
             label: Interface
-            kind: NetworkInterface
+            kind: DcimInterface
             icon: "mdi:ethernet"
 ```

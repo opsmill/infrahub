@@ -362,12 +362,16 @@ To deploy the observability stack (Grafana, Prometheus, Loki, Tempo, Alloy) on K
 </TabItem>
 </Tabs>
 
-## Log in with the default account
+## Log in
 
 Infrahub creates an administrator account the first time it starts with an empty database. Open the web interface, select **Log in** in the bottom-left corner, and enter the default credentials:
 
+:::info Default credentials
+
 - Username: `admin`
 - Password: `infrahub`
+
+:::
 
 With Docker Compose or a clone of the repository, the web interface is at [http://localhost:8000](http://localhost:8000). With Helm, use the address of the ingress or service that exposes the Infrahub API server.
 
