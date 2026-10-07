@@ -110,6 +110,7 @@ from .sync import (
 )
 from .sync_status import BranchImportVerdict, RepositoryBranchSyncStatusReader, classify_branch_import
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+from .writeback.ports import DeliveryStatePort
 from .writeback.store import build_intent_store
 
 
@@ -440,6 +441,7 @@ async def bootstrap_local_repository(
     repository: CoreRepository,
     infrahub_branch: str,
     client: InfrahubClient,
+    state: DeliveryStatePort,
 ) -> InfrahubRepository | None:
     """Ensure this worker has a usable local clone and seed the graph for a freshly created repo.
 
@@ -447,7 +449,8 @@ async def bootstrap_local_repository(
     Returns None when the repository should be skipped for this cycle: the clone fails, or the
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
-    returned and its other branches still synchronize.
+    returned and its other branches still synchronize. While merged changes wait for their push to
+    the remote, the seed import is skipped, because it would remove the objects of those merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -481,13 +484,19 @@ async def bootstrap_local_repository(
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
         if default_import_git_branch is not None:
-            # Pin the commit while the lock is held so the import below reads an immutable
-            # worktree even though it is built after the lock is released.
-            pending_import = PendingObjectImport(
-                infrahub_branch_name=infrahub_branch,
-                git_branch_name=default_import_git_branch,
-                commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
-            )
+            if str(repo.id) in await state.pending_repository_ids():
+                log.info(
+                    f"Skipped the import of the default branch {default_import_git_branch} of repository "
+                    f"{repo.name}: a push of merged changes to the remote is pending"
+                )
+            else:
+                # Pin the commit while the lock is held so the import below reads an immutable
+                # worktree even though it is built after the lock is released.
+                pending_import = PendingObjectImport(
+                    infrahub_branch_name=infrahub_branch,
+                    git_branch_name=default_import_git_branch,
+                    commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
+                )
 
     if pending_import is not None:
         try:
@@ -623,7 +632,11 @@ async def report_failed_branches(
 
 
 async def sync_remote_repository(
-    repo_name: str, repository_data: RepositoryData, branches: dict[str, BranchData], client: InfrahubClient
+    repo_name: str,
+    repository_data: RepositoryData,
+    branches: dict[str, BranchData],
+    client: InfrahubClient,
+    state: DeliveryStatePort,
 ) -> None:
     """Synchronize one repository with its origin, cloning it on this worker first when needed."""
     repository: CoreRepository = repository_data.repository
@@ -640,6 +653,7 @@ async def sync_remote_repository(
         repository=repository,
         infrahub_branch=infrahub_branch,
         client=client,
+        state=state,
     )
     if repo is None:
         return
@@ -665,15 +679,16 @@ async def sync_remote_repositories() -> None:
     branches = await client.branch.all()
     async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
+        state = await build_intent_store(db=dbs, lock_registry=lock.registry)
 
-    for repo_name, repository_data in repositories.items():
-        try:
-            await sync_remote_repository(
-                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
-            )
-        # One repository that fails must not stop the cycle for the repositories after it.
-        except Exception:
-            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
+        for repo_name, repository_data in repositories.items():
+            try:
+                await sync_remote_repository(
+                    repo_name=repo_name, repository_data=repository_data, branches=branches, client=client, state=state
+                )
+            # One repository that fails must not stop the cycle for the repositories after it.
+            except Exception:
+                log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(
