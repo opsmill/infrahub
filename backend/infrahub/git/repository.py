@@ -21,6 +21,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
+    BranchNotFoundError,
     CommitNotFoundError,
     RepositoryError,
 )
@@ -555,7 +556,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 git_branch_name=git_branch_name,
             )
         # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
-        except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError, GraphQLError) as exc:
+        except (
+            RepositoryError,
+            BranchNotFoundError,
+            CommitNotFoundError,
+            GitCommandError,
+            ValueError,
+            GraphQLError,
+        ) as exc:
             collected.failed_imports.append(
                 FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
             )
@@ -576,7 +584,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             RepositoryError: When git cannot classify the branch or move its worktree.
-            ValueError: When the graph has no Infrahub branch for the branch, or it has no worktree here.
+            BranchNotFoundError: When the graph has no Infrahub branch for the branch.
+            ValueError: When the branch has no worktree here.
 
         """
         advanced_branch = self._get_mapped_target_branch(branch_name=branch_name)
@@ -645,11 +654,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Return the UUID of an Infrahub branch.
 
         Raises:
-            ValueError: When the graph has no such branch, so no commit can be recorded for it.
+            BranchNotFoundError: When the graph has no such branch, so no commit can be recorded for it.
 
         """
         if infrahub_branch not in graph_branches:
-            raise ValueError(f"Infrahub has no branch {infrahub_branch} to record the commit of repository {self.name}")
+            raise BranchNotFoundError(
+                identifier=infrahub_branch,
+                message=f"Infrahub has no branch {infrahub_branch} to record the commit of repository {self.name}",
+            )
         return graph_branches[infrahub_branch].id
 
     async def _advance_branch(
