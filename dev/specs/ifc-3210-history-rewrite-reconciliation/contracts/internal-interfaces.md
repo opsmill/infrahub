@@ -289,10 +289,12 @@ The sole write path for the four attributes. It owns last-write-wins, the increm
 signal.
 
 ```text
-record(repository_id, repository_name, infrahub_branch_name, divergence, is_default_branch) -> bool
+record(repository_id, divergence) -> None
 ```
 
-Returns whether a record was written.
+It writes on the Infrahub branch that `divergence.infrahub_branch_name` names. Nothing reads a
+return value, so it returns none. The trunk signal of rule 6 adds the repository name, whether the
+branch is the repository's default branch, and the `RewriteEventEmitter` port (T067).
 
 ### Contract
 
@@ -334,7 +336,11 @@ one: `collect_pending_imports` moves every branch with `reset_to_commit`, which 
   reverse ordering would be worse, because it would let a record name a commit that was never
   written. `collect_pending_imports` also lets graph errors propagate, so a failed record write
   aborts collection for every branch and skips the broadcast; the record write must therefore be
-  isolated per branch like the other per-branch failures.
+  isolated per branch like the other per-branch failures. The failure joins `failed_imports` at
+  step `record`, and the import of the branch stays queued, so the failure fails the run but never
+  writes `error-import` (FR-013). It is logged once, where it is caught, as a failed import is: the
+  store chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised.
 
 **Not after the import.** The commit is written during collection, so a recorder placed after the
 import would find the next cycle reading the *new* head as the imported commit and classifying
@@ -352,18 +358,19 @@ protocols passed to the constructor, so the recorder's unit tests need no databa
 
 | Port | What it does |
 |---|---|
-| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
-| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. |
+| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, passes it to a function the recorder supplies, and writes the record that function returns. One method, one read and one write, so the increment stays in the recorder. |
+| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. It comes with the trunk signal (T067), because before that there is no event to emit. |
 
-The production `RepositoryRecordStore` is backed by the SDK node API. A test substitutes an
-in-memory one. The recorder itself imports neither the SDK nor the event service.
+The production `RepositoryRecordStore` is backed by the SDK node API. It reads the repository
+through the generic, and the node's own kind picks the update mutation, so one store serves both
+repository kinds. A test substitutes an in-memory one. The recorder itself imports neither the SDK nor the event service.
 
 ### Rules
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The production store writes through the SDK node API. It does not change the `python_sdk`
-  submodule.
+- The production store writes through the SDK node API. It changes no SDK code. Only the
+  generated `infrahub_sdk/protocols.py` gains the four attributes.
 
 ---
 
@@ -460,7 +467,7 @@ reconciliation, and it propagates no failed branch. The raise that tags the repo
 the tagging flow `sync_git_repo_with_origin_and_tag_on_failure` makes for any failed branch: that
 flow links its run to the repository and fails it, as it did before, and this function catches the
 error. A failed configured default branch is then logged at error level and recorded on the
-repository's synchronisation status. The failure of any other branch is logged at info level, as
+repository's synchronisation status, unless only its rewrite record failed. The failure of any other branch is logged at info level, as
 it was before. The failure is handled even when the send of the message raises, and the send's
 error then propagates. The per-repository `try` added to `sync_remote_repositories` catches whatever
 else a repository raises.
@@ -513,7 +520,9 @@ message built from `outcome.reconciled`, and only then handles the failure. The 
   the git branch name, and `PendingObjectImport.on_default_branch` carries it to an import failure.
   A staging repository's trunk is covered too: the collector isolates it like any other branch, so
   its failure is flagged as the default branch, and the record goes on the staging branch the trunk
-  imports into.
+  imports into. A failed rewrite record of the trunk is logged at error level too, but it writes no
+  `error-import`: its import still runs and writes `in-sync`, and FR-013 keeps the rewrite record
+  out of the synchronisation status.
 
   Propagating would be a worse bug than the one it reports. `sync_remote_repositories` loops over
   every repository with no per-repository `try`, so a raise from one repository aborts the cycle

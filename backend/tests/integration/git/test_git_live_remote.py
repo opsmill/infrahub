@@ -6,6 +6,7 @@ import logging
 import re
 import shutil
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -1022,6 +1023,52 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             f"Reconciled branch {tracked.branch_name} of repository {tracked.name} with the remote history: "
             f"{tracked.imported_commit} was discarded and replaced by {rewritten}"
         ]
+
+    async def test_a_force_pushed_branch_is_recorded_once_however_many_cycles_run(
+        self,
+        db: InfrahubDatabase,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The record has attributes of its own, so the synchronisation status does not change."""
+        tracked = await tracked_branch_repository("recorded-rewrite-repo", "recorded-rewrite-branch")
+        _, sync_status_before = await _tracked_graph_state(db=db, tracked=tracked)
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+            amend=True,
+        )
+        started_at = datetime.now(tz=UTC)
+
+        for _ in range(3):
+            await sync_remote_repositories()
+
+        finished_at = datetime.now(tz=UTC)
+        on_branch: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=tracked.branch_name, raise_on_error=True
+        )
+        assert (
+            on_branch.last_rewrite_previous_commit.value,
+            on_branch.last_rewrite_commit.value,
+            on_branch.rewrite_count.value,
+        ) == (tracked.imported_commit, rewritten, 1)
+        assert on_branch.last_rewrite_at.value is not None
+        assert started_at <= datetime.fromisoformat(on_branch.last_rewrite_at.value) <= finished_at
+        assert (sync_status_before, on_branch.sync_status.value) == (
+            RepositorySyncStatus.IN_SYNC.value,
+            RepositorySyncStatus.IN_SYNC.value,
+        )
+        on_trunk: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert (
+            on_trunk.last_rewrite_previous_commit.value,
+            on_trunk.last_rewrite_commit.value,
+            on_trunk.last_rewrite_at.value,
+            on_trunk.rewrite_count.value,
+        ) == (None, None, None, None)
 
     async def test_a_fast_forwarded_branch_is_imported_without_a_reconciliation(
         self,

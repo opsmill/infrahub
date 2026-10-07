@@ -6,6 +6,7 @@ from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
 from infrahub.git.sync import RepositorySyncer
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
+from tests.adapters.repository_record_store import build_in_memory_recorder
 
 
 async def test_repository_lock_scopes_import_build_and_apply(
@@ -22,7 +23,9 @@ async def test_repository_lock_scopes_import_build_and_apply(
 
     timeline = LockTimeline()
     syncer = RepositorySyncer(
-        lock_registry=RecordingLockRegistry(timeline=timeline), importer=RecordingImporter(timeline)
+        lock_registry=RecordingLockRegistry(timeline=timeline),
+        importer=RecordingImporter(timeline),
+        recorder=build_in_memory_recorder(),
     )
 
     await syncer.sync(git_repo_04)

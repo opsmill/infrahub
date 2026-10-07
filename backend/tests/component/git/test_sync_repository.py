@@ -29,19 +29,22 @@ from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
+from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.sync import (
     RepositoryBranchesFailedError,
     RepositoryFileImporter,
     RepositorySyncer,
     SyncOutcome,
     SyncReport,
+    raise_if_branches_failed,
 )
-from infrahub.git.tasks import sync_remote_repositories, sync_repository_from_origin
+from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
+from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -472,7 +475,9 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             infrahub_branch_name=registry.default_branch,
         )
 
-        outcome = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
+        outcome = await RepositorySyncer(
+            lock_registry=lock.registry, importer=RepositoryFileImporter(), recorder=build_in_memory_recorder()
+        ).sync(repo)
 
         assert outcome == SyncOutcome(
             report=SyncReport(
@@ -902,6 +907,61 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
         )
         assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+    async def test_a_failed_rewrite_record_of_the_default_branch_leaves_its_sync_status_in_sync(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The import of the rewritten trunk still runs, so its objects match the branch."""
+        caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
+        name = "failing-trunk-record-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        imported = repo.get_commit_value(branch_name="main", remote=False)
+        rewritten = remote.commit(branch_name="main", files={"data.txt": "trunk rewritten\n"}, amend=True)
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
+        )
+
+        @flow(name="test-sync-a-trunk-whose-rewrite-record-fails")
+        async def _run_sync() -> SyncOutcome:
+            outcome = await syncer.sync(repo, graph_commits={registry.default_branch: imported})
+            with pytest.raises(RepositoryBranchesFailedError) as failure:
+                raise_if_branches_failed(repo=repo, outcome=outcome)
+            await report_failed_branches(repo=repo, failure=failure.value, infrahub_branch=registry.default_branch)
+            return outcome
+
+        outcome = await _run_sync()
+
+        assert outcome.report.imported_branches == (registry.default_branch,)
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert (recorded.commit.value, recorded.sync_status.value) == (rewritten, RepositorySyncStatus.IN_SYNC.value)
+        assert [
+            (record.levelno, record.getMessage())
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize the default")
+        ] == [
+            (
+                logging.ERROR,
+                f"Unable to synchronize the default branch main of repository {name} at step record: "
+                "The API is unreachable from main",
+            )
+        ]
 
 
 class TestSynchronisationCycleIsolation(TestInfrahubApp):

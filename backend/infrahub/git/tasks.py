@@ -67,6 +67,8 @@ from ..workflows.utils import add_branch_tag, add_tags
 from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
+from .divergence.recorder import HistoryRewriteRecorder
+from .divergence.store import SdkRepositoryRecordStore
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -180,8 +182,14 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     """
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
+    client = get_client()
     importer = RepositoryFileImporter()
-    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=get_client()).add(model)
+    syncer = RepositorySyncer(
+        lock_registry=lock.registry,
+        importer=importer,
+        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+    )
+    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
     repo = added.repository
 
     if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
@@ -189,7 +197,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             raise added.import_error
         return
 
-    outcome = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    outcome = await syncer.sync(repo)
     log_skipped_branches(repo=repo, report=outcome.report)
     raise_if_branches_failed(repo=repo, outcome=outcome)
 
@@ -327,7 +335,11 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         CommitNotFoundError: When a commit the sync needs cannot be found.
 
     """
-    syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
+    syncer = RepositorySyncer(
+        lock_registry=lock.registry,
+        importer=RepositoryFileImporter(),
+        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+    )
     online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
         # Constructed inside the handler: it reads the repository node, so a failing read has to be
@@ -565,10 +577,11 @@ async def sync_repository_from_origin(
 async def report_failed_branches(
     repo: InfrahubRepository, failure: RepositoryBranchesFailedError, infrahub_branch: str
 ) -> None:
-    """Log the branches a synchronization failed, and record a failed default branch on the repository.
+    """Log the branches a synchronization failed, and record a failed import of the default branch on the repository.
 
     A failed default branch is loud but never raised, since a raise would stop every repository after
-    this one.
+    this one. A failed rewrite record is logged like any other failure of the default branch, but it
+    leaves the synchronization status alone, because the objects of the branch were still imported.
     """
     log = get_run_logger()
     default_branch_failures = failure.outcome.default_branch_failures
@@ -577,7 +590,7 @@ async def report_failed_branches(
             f"Unable to synchronize the default branch {repo.default_branch} of repository "
             f"{repo.name} at step {failed.step.value}: {failed.reason}"
         )
-    if default_branch_failures:
+    if failure.outcome.default_branch_import_failures:
         await repo.record_import_failure(infrahub_branch_name=infrahub_branch)
     if len(default_branch_failures) < len(failure.outcome.failed):
         log.info(failure.message)
