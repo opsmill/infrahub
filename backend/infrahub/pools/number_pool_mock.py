@@ -323,7 +323,7 @@ def _own_rows(pool: MockPool, division: Sequence[DivisionFilterEntry]) -> list[_
     return [row for row in pool.rows if _row_in_division(entries=row.division, division=division)]
 
 
-def _division_list(pool: MockPool, space: MockRange | None) -> tuple[MockDivision, ...]:
+def _division_list(pool: MockPool) -> tuple[MockDivision, ...]:
     divisions = []
     for entries in pool.divisions:
         rows = _own_rows(pool=pool, division=_as_filter(entries))
@@ -333,7 +333,7 @@ def _division_list(pool: MockPool, space: MockRange | None) -> tuple[MockDivisio
             MockDivision(
                 display_label=_division_label(entries),
                 entries=entries,
-                figures=_space_figures(pool=pool, rows=rows, space=space),
+                figures=_space_figures(pool=pool, rows=rows, space=None),
             )
         )
     return tuple(sorted(divisions, key=lambda division: (-division.figures.utilization, division.display_label)))
@@ -350,28 +350,27 @@ def _get_range(pool: MockPool, pool_id: str, range_id: str | None) -> MockRange 
     )
 
 
-def _fullest_figures(pool: MockPool, space: MockRange | None) -> MockFigures:
-    divisions = _division_list(pool=pool, space=space)
-    if divisions:
-        return divisions[0].figures
-    return _space_figures(pool=pool, rows=(), space=space)
-
-
 def get_utilization(
     pool_id: str, request_branch: str, division: Sequence[DivisionFilterEntry] | None = None
 ) -> MockUtilization:
     pool = get_mock_pool(pool_id)
     listed_rows: Sequence[_Row] = pool.rows
+    counted_rows: Sequence[_Row] = pool.rows
     if division:
         _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
         _validate_complete_division(pool=pool, division=division, request_branch=request_branch)
         listed_rows = _division_rows(pool=pool, holder_divisions=_holder_divisions(pool), division=division)
         counted_rows = _own_rows(pool=pool, division=division)
+    elif pool.allocation_scope:
+        raise ValidationError(
+            input_value=(
+                f"The pool {pool_id} has an allocation scope in force on branch {request_branch}; "
+                "give a division to read its utilization"
+            )
+        )
 
     def figures_of(space: MockRange | None) -> MockFigures:
-        if division:
-            return _space_figures(pool=pool, rows=counted_rows, space=space)
-        return _fullest_figures(pool=pool, space=space)
+        return _space_figures(pool=pool, rows=counted_rows, space=space)
 
     ranges = tuple(
         MockRangeUtilization(
@@ -396,7 +395,7 @@ def get_utilization(
 
 def get_divisions(pool_id: str) -> MockDivisions:
     pool = get_mock_pool(pool_id)
-    divisions = _division_list(pool=pool, space=None)
+    divisions = _division_list(pool=pool)
     return MockDivisions(count=len(divisions), allocation_scope=pool.allocation_scope, divisions=divisions)
 
 

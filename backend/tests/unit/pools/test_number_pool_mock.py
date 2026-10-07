@@ -32,18 +32,25 @@ def _site_filter(*sites: str) -> list[DivisionFilterEntry]:
     return [DivisionFilterEntry(path="site", value=site) for site in sites]
 
 
-def test_scoped_utilization_reports_the_fullest_division() -> None:
-    utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main")
+def test_scoped_utilization_requires_a_division() -> None:
+    with pytest.raises(ValidationError) as exc:
+        get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main")
+
+    assert exc.value.message == (
+        f"The pool {SCOPED_POOL_ID} has an allocation scope in force on branch main; "
+        "give a division to read its utilization"
+    )
+
+
+def test_scoped_utilization_of_one_division_describes_the_pool_and_its_ranges() -> None:
+    utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(SITE_B))
 
     assert utilization.id == SCOPED_POOL_ID
+    assert utilization.display_label == "Device index"
     assert utilization.allocation_scope == ("site",)
-    assert _counts(utilization.figures) == (100, 40, 40, 0)
-    assert utilization.figures.utilization == 40.0
+    assert utilization.figures.utilization == 30.0
     assert [(item.display_label, item.weight) for item in utilization.ranges] == [("1 - 50", 10), ("51 - 100", 0)]
-    assert _counts(utilization.ranges[0].figures) == (50, 40, 40, 0)
-    assert _counts(utilization.ranges[1].figures) == (50, 30, 27, 3)
     assert utilization.ranges[1].figures.utilization == 60.0
-    assert utilization.out_of_space_count == 1
 
 
 def test_scoped_divisions_list_only_the_divisions_holding_a_value() -> None:

@@ -120,28 +120,6 @@ class TestNumberPoolSurface:
         assert result.errors is not None
         return result.errors[0].message
 
-    async def test_scoped_utilization(self, gql_params: GraphqlParams) -> None:
-        data = await self._data(gql_params, UTILIZATION_QUERY, pool_id=SCOPED_POOL_ID)
-
-        utilization = data["InfrahubNumberPoolUtilization"]
-        assert utilization["id"] == SCOPED_POOL_ID
-        assert utilization["display_label"] == "Device index"
-        assert utilization["allocation_scope"] == ["site"]
-        assert utilization["figures"] == {
-            "size": 100,
-            "used": 40,
-            "used_default_branch": 40,
-            "used_branches": 0,
-            "utilization": 40.0,
-            "utilization_default_branch": 40.0,
-            "utilization_branches": 0.0,
-        }
-        assert [
-            (item["display_label"], item["start"], item["end"], item["weight"], item["figures"]["used"])
-            for item in utilization["ranges"]
-        ] == [("1 - 50", 1, 50, 10, 40), ("51 - 100", 51, 100, 0, 30)]
-        assert utilization["out_of_space_count"] == 1
-
     async def test_scoped_divisions_list_only_the_divisions_holding_a_value(self, gql_params: GraphqlParams) -> None:
         data = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
 
@@ -164,7 +142,18 @@ class TestNumberPoolSurface:
         )
 
         utilization = data["InfrahubNumberPoolUtilization"]
-        assert (utilization["figures"]["size"], utilization["figures"]["used"]) == (100, 30)
+        assert utilization["id"] == SCOPED_POOL_ID
+        assert utilization["display_label"] == "Device index"
+        assert utilization["allocation_scope"] == ["site"]
+        assert utilization["figures"] == {
+            "size": 100,
+            "used": 30,
+            "used_default_branch": 27,
+            "used_branches": 3,
+            "utilization": 30.0,
+            "utilization_default_branch": 27.0,
+            "utilization_branches": 3.0,
+        }
         assert [
             (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in utilization["ranges"]
         ] == [("1 - 50", 50, 0), ("51 - 100", 50, 30)]
@@ -232,6 +221,13 @@ class TestNumberPoolSurface:
     @pytest.mark.parametrize(
         ("query", "variables", "message"),
         [
+            pytest.param(
+                UTILIZATION_QUERY,
+                {"pool_id": SCOPED_POOL_ID},
+                f"The pool {SCOPED_POOL_ID} has an allocation scope in force on branch main; "
+                "give a division to read its utilization",
+                id="utilization-scoped-pool-without-division",
+            ),
             pytest.param(
                 UTILIZATION_QUERY,
                 {"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
