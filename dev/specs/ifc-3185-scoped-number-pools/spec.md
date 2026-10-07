@@ -83,11 +83,11 @@ frozen for number pools.
 The work is sequenced so the frontend is unblocked first and the rest is split across people, one
 Jira ticket per pull request, each a coherent piece of behaviour with its own tests:
 
-1. **The documents first** (IFC-3346): this directory and the written contract of the three
-   queries, the bottom of the stack every other pull request is based on.
-2. **The internal schema** (IFC-3334): the `allocation_scope` attribute on the pool kind and the
+1. **The internal schema** (IFC-3334): the `allocation_scope` attribute on the pool kind and the
    matching field in the number-pool attribute parameters, because every generated type derives
-   from them.
+   from them. It merges on its own.
+2. **The documents** (IFC-3346): this directory and the written contract of the three queries,
+   the bottom of the stack every later pull request is based on.
 3. **The dedicated GraphQL surface**, with its shapes frozen (IFC-3347): utilization with absolute
    figures per pool and per range, the divisions list, the allocation list with holder, provenance
    and range, and the scope in force on the reading branch, over a fixed in-memory dataset (a
@@ -111,8 +111,8 @@ publishes.
 
 | Ticket | Delivers | User stories and requirements |
 |---|---|---|
+| [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917), merged on its own | User Story 1 scenario 1; FR-014, FR-018, FR-021 |
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | This spec directory and the written contract of the three queries; the bottom of the stack (#10911) | User Story 1; FR-015, FR-016, FR-022 to FR-030 |
-| [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917) | User Story 1 scenario 1; FR-014, FR-018, FR-021 |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | The three queries over a fixed dataset, so the frontend can build (#10932) | User Story 1 scenarios 2 to 9; FR-019, FR-029; SC-007, SC-009, SC-010 |
 | [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | A scope that cannot divide the pool is refused when the pool is saved, against the default branch's schema | User Story 5 scenario 1; User Story 6 scenarios 1 and 6; FR-009, FR-013, FR-020 |
 | [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | A schema change that breaks a scoped field, or makes the pool's attribute unique, is refused naming the pool | User Story 5 scenarios 2 and 3; FR-010 |
