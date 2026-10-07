@@ -94,8 +94,10 @@ class RemoteHeadsMergeCheck:
     async def check(self, source_branch: str, targets: Sequence[GitMergeTarget]) -> None:
         """Compare, for each repository, the graph commit of both branches with their remote heads.
 
-        A repository the branch did not change has nothing to merge in Git, so its trunk can move without
-        holding the merge. Its source branch is still compared: a branch merges once and never syncs again.
+        A repository whose branch records the commit of its trunk has nothing to merge in Git, so its trunk
+        can move without holding the merge. Its source branch is still compared: a branch merges once and
+        never syncs again. Every other repository compares its trunk, also when the branch changed no file
+        of it, because the rule is equality and not ancestry.
 
         Raises:
             RepositoryCredentialsRefusedError: When a remote refuses the credentials of a repository that needs a Git

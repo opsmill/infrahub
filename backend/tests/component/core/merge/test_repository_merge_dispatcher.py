@@ -114,7 +114,7 @@ async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
     ]
 
 
-async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
+async def test_a_repository_whose_branch_records_the_trunk_commit_gets_no_git_merge(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,

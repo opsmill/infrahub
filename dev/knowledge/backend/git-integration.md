@@ -199,8 +199,8 @@ merge after a plain push and keeps the branch open:
   (`git/merge_readiness.py::RemoteHeadsMergeCheck`). While one differs, it refuses the merge with
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
   cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
-  repository the branch changed, holds the merge too, not only a rewrite, until the next cycle imports
-  the new head. A remote that refuses the credentials blocks the merge, with
+  repository whose branch records a commit other than the commit of its trunk, holds the merge too,
+  not only a rewrite, until the next cycle imports the new head. A remote that refuses the credentials blocks the merge, with
   `RepositoryCredentialsRefusedError`, when the repository needs a Git merge: that Git merge would
   fail the same way after the graph merge. Any other failure to read a remote, and a remote not read
   before the total deadline of the check (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does

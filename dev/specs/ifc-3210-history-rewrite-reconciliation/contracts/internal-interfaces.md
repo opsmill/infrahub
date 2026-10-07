@@ -829,8 +829,8 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    merge in Git.
 5. A remote that refuses the credentials blocks the merge with `RepositoryCredentialsRefusedError` when the
    repository needs a Git merge: that Git merge would read the remote with the same credentials and
-   fail after the graph merge. For a repository the branch did not change, no Git merge runs, so the
-   check only logs the warning.
+   fail after the graph merge. For a repository whose branch records the commit of its trunk, no Git
+   merge runs, so the check only logs the warning.
 
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
 refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as

@@ -106,7 +106,7 @@ UNIMPORTED_HEAD_CASES = [
         ),
     ),
     UnimportedHeadCase(
-        name="source-moved-on-a-repository-the-branch-did-not-change",
+        name="source-moved-on-a-repository-whose-branch-records-the-trunk-commit",
         targets=[target(source_commit=TRUNK_HEAD)],
         remote_heads={"network-repo": {SOURCE: NEWER, "main": NEWER}},
         message=(
@@ -221,7 +221,7 @@ async def test_a_source_named_like_the_remote_trunk_compares_only_the_trunk_with
     ]
 
 
-async def test_a_trunk_that_moved_does_not_hold_the_merge_of_a_repository_the_branch_did_not_change() -> None:
+async def test_a_trunk_that_moved_does_not_hold_a_merge_whose_branch_records_the_trunk_commit() -> None:
     """The branch records the trunk commit, so the Git merge of that repository has nothing to push."""
     reader = InMemoryRemoteHeadReader(heads={"network-repo": {SOURCE: TRUNK_HEAD, "main": NEWER}})
 
@@ -267,7 +267,7 @@ async def test_a_remote_that_refuses_the_credentials_refuses_the_merge() -> None
     assert type(refusal.value.__cause__) is RepositoryCredentialsError
 
 
-async def test_a_credentials_error_on_a_repository_the_branch_did_not_change_lets_the_merge_go_on(
+async def test_a_credentials_error_on_a_repository_whose_branch_records_the_trunk_commit_lets_the_merge_go_on(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """That repository gets no Git merge, so nothing reads its remote after the merge in Infrahub."""
