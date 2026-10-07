@@ -16,7 +16,7 @@ Every piece of state has exactly one owner. When in doubt, push it up; never dup
 | Cross-page global state | Jotai atoms | `shared/stores/` or `entities/*/stores.ts` |
 | Local UI state (open/closed, hover) | Component | `useState` |
 
-Table rows: the page or a hook owns the fetch and builds per-row derived data into a view-model row, and cells only render that row. A fetch inside a cell duplicates the query and its derivation across columns and keeps the derivation out of pure tests.
+Table rows: when several columns need the same fetched data, the page or a hook owns the fetch and builds the per-row derived data into a view-model row, and those cells only render that row. A fetch inside each cell would repeat the query and its derivation in every column, and keep the derivation out of pure tests.
 
 ### Forbidden patterns
 
