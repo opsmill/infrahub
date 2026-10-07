@@ -23,7 +23,7 @@ Binding contract: `rework-contract-a.md`; reasoning: research R15; spec: Clarifi
 | `frontend/app/src/entities/repository/api/get-repository-branch-status-from-api.ts` | `identical except a no-op `processErrorMessage` in the request context (added after cubic found the status request still toasted; #10658's card may want the same)` |
 | `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.ts` | differs: calls `hasOnlyThrownCatalogueCode` instead of #10658's `hasThrownCatalogueCode`, so a denial mixed with another failure reads as UNKNOWN |
 | `frontend/app/src/entities/repository/domain/use-cases/get-repository-branch-status.test.ts` | differs: one added case, a denial mixed with another failure maps to UNKNOWN |
-| `frontend/app/src/shared/api/graphql/error-handling.ts` | not lifted: `hasThrownCatalogueCode` is already on the base (as in #10658); this PR adds `hasOnlyThrownCatalogueCode`, true only when every GraphQL error carries the code |
+| `frontend/app/src/shared/api/graphql/error-handling.ts` | not lifted and not changed: #10658's `hasThrownCatalogueCode` is not taken. The base already has `hasOnlyThrownCatalogueCode`, true only when every GraphQL error carries the code, and the use case calls it |
 
 Not lifted: #10658's `get-repository-branch-status.query.ts` hook, which forces the current branch. This base gets a factory-only file at the same path (`getRepositoryBranchStatusQueryOptions`).
 

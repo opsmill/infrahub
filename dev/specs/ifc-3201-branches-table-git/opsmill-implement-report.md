@@ -121,3 +121,5 @@ Still pending: T032, T034 and T042 (live stack), now against the rework A quicks
 ---
 
 **Erratum (2026-10-06):** the hook named `useBranchRepositorySummaries` in `ui/hooks/` above is now `useGetBranchRepositorySummaries` in `frontend/app/src/entities/branches/ui/queries/get-branch-repository-summaries.query.ts`. The body above is left as written.
+
+**Erratum (2026-10-07):** the "Lifted from #10658" row above lists `hasThrownCatalogueCode`. It was not lifted: `frontend/app/src/shared/api/graphql/error-handling.ts` is unchanged, and the status use case calls the base's `hasOnlyThrownCatalogueCode`. The body above is left as written.

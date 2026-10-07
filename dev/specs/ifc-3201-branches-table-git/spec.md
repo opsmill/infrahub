@@ -205,7 +205,7 @@ A branch that is not synced with Git, or that has no repositories at all, says s
 - The repositories per branch follow the backend: a read/write repository appears only on branches synced with Git; a read-only repository appears on every branch. The list uses the branch's sync flag only to choose the empty-state wording.
 - A read-only repository appears on every branch, so with R read-only repositories every branch counts at least R repositories in its "+N more" and `n/N` figures.
 - Merged and deleting branches, if shown by the current list filters, read "No repositories": the status query excludes them.
-- The status query needs repository view permission on all branches; without it the whole column reads "No permission".
+- The status query needs repository view permission on all branches. A repository whose status read is denied is left out; the whole column reads "No permission" only when the repository list is denied or every status read is denied (FR-012).
 - The commit shown for a fresh synced branch is the fork-point commit, as the backend resolves it.
 - The epic spec (`dev/specs/infp-671-cross-branch-repo-status/spec.md`) lists "extra columns on the global branches view" as out of scope for the backend query work; this ticket is the frontend follow-up that supersedes that line, reads the epic's query and adds no backend change.
 - The branches table is rendered only by the branches page, so no other screen changes.

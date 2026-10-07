@@ -24,7 +24,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **Language/Version**: TypeScript (strict), React 19 with the React Compiler (no `useMemo`/`useCallback`/`React.memo`).
 
-**Primary Dependencies**: TanStack Table v8 (8.21.3; unchanged row selection), TanStack Query (`useQueries` with `combine`; #10779's `getBranchRepositoriesQueryOptions` for the repository list), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`, `LinkPill`), Tailwind v4 theme tokens (`text-foreground-muted` for the state texts), `lucide-react`. No new dependency.
+**Primary Dependencies**: TanStack Table v8 (8.21.3; unchanged row selection), TanStack Query (`useQueries` with `combine`; #10779's `getBranchRepositoriesQueryOptions` for the repository list), `@infrahub/ui` (`Checkbox`, `Spinner`, `Tooltip`), the app's `LinkPill` (`@/shared/components/ui/link-pill`), Tailwind v4 theme tokens (`text-foreground-muted` for the state texts), `lucide-react`. No new dependency.
 
 **Storage**: N/A (reads only).
 
@@ -51,9 +51,9 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 | III. Type Safety & Explicit Contracts | ✅ | `BranchRepositorySummary` and `RepositoryStatusFetch` are discriminated unions; cells narrow on `status`. `BranchTableRow extends BranchListItem`, so the table's consumers keep receiving branches. No `any` or `!`. Contracts are in `contracts/`. |
 | IV. Test Discipline | ✅ | Test details are listed after this table. |
 | V. Query Performance & Efficiency | ✅ | 1 + R requests, independent of branch count and of pages loaded. The backend `repository_ids` follow-up collapses it to 2 without touching cells or rules. |
-| VI. Security & Input Boundaries | ✅ | Reads only. Permission is enforced by the server: a `PERMISSION_DENIED` on a status request reads "No permission" on every row (FR-012). Text is rendered as text. |
+| VI. Security & Input Boundaries | ✅ | Reads only. Permission is enforced by the server: a denied repository list, or a `PERMISSION_DENIED` on every status request, reads "No permission" on every row; a single denied status request leaves that repository out (FR-012). Text is rendered as text. |
 | VII. Simplicity & Maintainability | ✅ | Details are listed after this table. |
-| Quality gates | ✅ | biome ci, knip, betterer ci, vitest. Towncrier fragment `changelog/+ifc-3201-branches-table-git.added.md`. |
+| Quality gates | ✅ | biome ci, knip, betterer ci, vitest. Towncrier fragment `changelog/+branches-list-git-columns.added.md`. |
 
 - **User-facing documentation**: the section in `docs/docs/git-integration/branch-synchronization.mdx` describing the two columns and the four state texts; rework A changes the ordering sentence and the "No repositories" and "No permission" sentences.
 - **Knowledge capture**: `dev/knowledge/frontend/react.md` keeps the `useQueries` `combine` structural-sharing pitfall without a ticket id; `dev/guidelines/frontend/page-architecture.md` § State ownership states that table cells render a view-model and do not fetch.
@@ -102,7 +102,7 @@ All paths are under `frontend/app/`.
 
 ```text
 src/shared/api/graphql/
-└── error-handling.ts                             # CHANGED + hasOnlyThrownCatalogueCode (hasThrownCatalogueCode is already on the base)
+└── error-handling.ts                             # UNCHANGED: the status use case calls the base's hasOnlyThrownCatalogueCode
 
 src/entities/repository/
 ├── api/
@@ -140,7 +140,7 @@ src/entities/branches/
 
 Not lifted: #10658's hook `get-repository-branch-status.query.ts` with its hook (it forces the current branch); this base gets a factory-only file at the same path.
 
-Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md`; `docs/docs/git-integration/branch-synchronization.mdx`; `tests/e2e/branches/conftest.py` (promoted fixture), `tests/e2e/branches/test_branches_git_columns.py`, `tests/e2e/branches/test_branch_details_repositories.py` (changed premise); `tests/e2e/branches/test_branches.py` back to base.
+Outside `frontend/app/`: `changelog/+branches-list-git-columns.added.md`; `docs/docs/git-integration/branch-synchronization.mdx`; `tests/e2e/branches/conftest.py` (promoted fixture), `tests/e2e/branches/test_branches_git_columns.py`, `tests/e2e/branches/test_branch_details_repositories.py` (changed premise); `tests/e2e/branches/test_branches.py` back to base.
 
 **Structure Decision**: This follows the entity layer in `dev/knowledge/frontend/entities-structure.md`. `branches/domain/rules/summarize-branch-repositories.ts` imports its own model and the repository entity's severity rule; the hook in `branches/ui/hooks` imports `repository/ui/queries`; the cells import `repository/ui/branch-repositories` (`GitStatePill`) and their own `domain/rules`.
 
@@ -148,7 +148,7 @@ Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md`; `doc
 
 | Risk | Mitigation |
 |---|---|
-| One status denial or failure blanks the whole column. | Spec consequence, accepted by the owner (spec Session 2026-10-01, architecture review). The branch cells always render; the message stays reachable on "Could not load repositories". |
+| A failed status read, a denied repository list or a denial of every status read blanks the whole column; a single denied status read leaves that repository out. | Spec consequence, accepted by the owner (spec Session 2026-10-01, architecture review). The branch cells always render; the message stays reachable on "Could not load repositories". |
 | A non-permission GraphQL error toasts through the shared client (`error-handling.ts::handleGraphQLErrors`) unless the request opts out. | The status use case maps errors to `RepositoryBranchStatusError` (`code`, `message`); the rendered failure is "Could not load repositories" with that message. `branches-table.test.tsx` asserts no toast on a status error. |
 | `limit: 500` (`REPOSITORY_BRANCH_STATUS_LIMIT`) truncates a list of more than 500 branches per repository. | Far above real counts; `count > rows.length` is detected and the branches the cut could hide read "Could not load repositories" with the reason. |
 | The branches page reload button refreshes branch queries and repository status. | Its busy indicator covers that reload only; the 10 s syncing poll does not spin it. |
@@ -161,7 +161,7 @@ Outside `frontend/app/`: `changelog/+ifc-3201-branches-table-git.added.md`; `doc
 |-----------|------------|-------------------------------------|
 | ~~A shared file changes: `get-toggle-selected-row-handler.ts`~~ | Superseded 2026-10-01: one row per branch needs no handler change; the file is back to base. | — |
 | ~~One repositories request per visible branch (N+1 at the HTTP layer).~~ | Superseded by rework A: 1 + R requests over `InfrahubRepositoryBranchStatus` (research R15). | — |
-| Lifting #10658's status files (`repository-branch-status.ts`, `get-repository-branch-status-from-api.ts`, `get-repository-branch-status.ts`, their tests, `hasThrownCatalogueCode`) before #10658 merges. | The list needs the epic's status read now; byte-identical copies merge cleanly as add/add of equal content. | Writing a second status read duplicates the GraphQL document and its mapping. |
+| Lifting #10658's status files (`repository-branch-status.ts`, `get-repository-branch-status-from-api.ts`, `get-repository-branch-status.ts`, their tests; the use case calls the base's `hasOnlyThrownCatalogueCode` instead of #10658's `hasThrownCatalogueCode`) before #10658 merges. | The list needs the epic's status read now; byte-identical copies merge cleanly as add/add of equal content. | Writing a second status read duplicates the GraphQL document and its mapping. |
 | Adding `branchStatus` to #10779's `repository.query-keys.ts` with #10658's name and key shape, plus a factory-only `get-repository-branch-status.query.ts`. | #10658's hook forces the current branch; the list needs the default branch. | Lifting the hook would send the current branch. The key addition is a deliberate small merge conflict in one file, visible when #10658 lands. |
 | Touching #10779's `get-branch-repositories-from-api.ts::fetchConnection` to pass a no-op `processErrorMessage`. | The details card renders its own failed state; a toast for it is the wrong surface. | Catching the toast downstream is impossible (it fires inside the client). |
 | Promoting #10779's class-local E2E fixture `broken_repository` to `tests/e2e/branches/conftest.py`. | The constitution requires an E2E case for user-facing changes; the fixture already builds the exact import-error scenario. | Duplicating the fixture body doubles a 50-line async setup and its cleanup. |
