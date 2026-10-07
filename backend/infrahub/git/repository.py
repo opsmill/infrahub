@@ -83,7 +83,7 @@ def _push_rejection_reason(flags: int) -> PushRejectionReason:
 
 
 class _RemoteLineCollector(RemoteProgress):
-    """Keeps every ``remote:`` line in order, as GitPython silently drops one shaped like a progress line."""
+    """Keeps, in order, the ``remote:`` lines that are not known progress steps, those GitPython drops included."""
 
     __slots__ = ("remote_lines",)
 
