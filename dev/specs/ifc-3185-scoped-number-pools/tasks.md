@@ -306,18 +306,17 @@ be built concurrently.
 - [ ] T033 [US3] Reduce `backend/infrahub/pools/number.py::NumberUtilizationGetter` to a seam: it
       loads rows and hands them to `DivisionReporter`; add
       `backend/infrahub/pools/division_report.py` with `Figures`, `DivisionFigures`,
-      `DivisionReport` (`fullest`, `fullest_within(start, end)`, `within(start, end)`) and
+      `DivisionReport` (`divisions`, `of(key)`, `of_within(key, start, end)`) and
       `DivisionReporter.report(rows, divisions, size, entries)`. With no entries it returns one
       division with an empty key and today's figures. `utilization`, `utilization_default_branch`,
       `utilization_branches`, `used_default_branch` and `used_branches` on the getter keep their
       values for an unscoped pool, so the generic resolver and the dedicated resolvers of Phase 3
       read unchanged figures.
-- [ ] T034 [P] [US3] Unit tests in `backend/tests/unit/pools/test_division_report.py`: fullest
-      selection; a division with nodes and no records reports 0; branch split per division;
-      absolute counts (`size`, `used`, `used_default_branch`, `used_branches`) per division;
-      unscoped single division equals the whole; `fullest_within` picks a different division than
-      the headline when another range's holder is fuller (spec User Story 3, scenario 3); `within`
-      lists every division over one range with the range's size.
+- [ ] T034 [P] [US3] Unit tests in `backend/tests/unit/pools/test_division_report.py`: divisions
+      ordered by utilization; a division with nodes and no records is not listed; branch split per
+      division; absolute counts (`size`, `used`, `used_default_branch`, `used_branches`) per
+      division; unscoped single division equals the whole; `of_within` reports `used` 0 for a range
+      in which the division holds no value (spec User Story 3, scenario 3).
 - [ ] T035 [US3] Regression: run `uv run pytest backend/tests/component/core/resource_manager/
       backend/tests/component/graphql/resource_manager/ backend/tests/component/graphql/queries/
       backend/tests/functional/pools/` and confirm identical figures (FR-005, SC-003) and an
@@ -397,9 +396,9 @@ allocation path, on one branch and on two.
 
 ## Phase 6: US3 — Which site is about to run out, and which numbers it holds (change set D2, Priority: P2)
 
-**Goal**: the three dedicated queries read real divisions: headline from the fullest division,
-every division listed including empty ones, range rows from the fullest division within the range,
-the division filter in Cypher, one value visible in two divisions.
+**Goal**: the three dedicated queries read real divisions: the divisions holding a value listed
+from the fullest, the utilization of one division over the pool and each range, the division
+filter in Cypher, one value visible in two divisions.
 
 **Independent Test**: uneven occupancy across sites on the scoped fixture; compare the headline, the
 division rows, the range rows and the filtered allocation list against the records.
@@ -411,11 +410,11 @@ division rows, the range rows and the filtered allocation list against the recor
       `DELETING` branch's nodes are excluded; two entries.
 - [ ] T047 [P] [US3] Extend `backend/tests/component/graphql/queries/test_number_pool_surface.py`
       with the real-division cases, replacing the T013 mock assertions: the spec's User Story 3
-      scenario 1 (A 50 records, B two nodes no records, C no nodes → headline A's 50 of 100 with
-      `used: 50`, A 50/100, no division for B or C); scenario 2 (branch split over the fullest
-      division); scenario 3 (range rows: `1 - 50` reports A's 40 of 50, `51 - 100` B's 30 of 50,
-      headline A's 40 of 100; the utilization query with the division of B reports 30 of 100,
-      `1 - 50` 0 of 50 and `51 - 100` 30 of 50); scenario 4 (a division keyed by a site that exists
+      scenario 1 (A 50 records, B two nodes no records, C no nodes → A alone listed with 50 of
+      100, no division for B or C, utilization without `division` refused); scenario 2 (branch
+      split over the division read); scenario 3 (the division of A reports 40 of 100, `1 - 50` 40
+      of 50 and `51 - 100` 0 of 50; the division of B reports 30 of 100, `1 - 50` 0 of 50 and
+      `51 - 100` 30 of 50); scenario 4 (a division keyed by a site that exists
       only on `b1`, read from the default branch, is listed with `display_label` falling back to the
       id and `peer_kind` null); scenario 5 (D1 holding 5 in A on the default branch and moved to C
       on `b1`: the allocation list filtered on A returns D1's two rows, the `b1` row's `division`
@@ -434,10 +433,10 @@ division rows, the range rows and the filtered allocation list against the recor
       class.
 - [ ] T050 [US3] Complete `NumberUtilizationGetter.load_data`: run both queries, resolve the entries
       in force on the reading branch, hand everything to `DivisionReporter`; expose
-      `report.divisions`, `report.fullest`, `report.fullest_within` and `report.within`.
+      `report.divisions`, `report.of` and `report.of_within`.
 - [ ] T051 [US3] Replace the mock in `backend/infrahub/graphql/queries/number_pool.py`: pool
-      `figures` from `fullest`; each range's figures from `fullest_within(start, end)`; the
-      divisions list from `report.divisions` or `report.within(start, end)`; a row's `division`
+      `figures` from `of(key)`; each range's figures from `of_within(key, start, end)`; the
+      divisions list from `report.divisions`; a row's `division`
       from the per-entry values the query returns for the row's branch; the `division` filter
       passed to `NumberPoolGetAllocated` so `count`, `offset` and `limit` are Cypher-side again;
       peer display labels and kinds from one `NodeManager.get_many(..., branch_agnostic=True)` over

@@ -107,8 +107,8 @@ tracked value, or the values of one range, on a pool holding any number of range
 
 `pools/division_report.py::DivisionReporter` (pure): takes the allocation rows (holder, value,
 branch, per-entry value sets) and the enumerated divisions; returns per division the distinct values
-used on the default branch and on other branches, names the fullest division, and answers the
-fullest division within a range (FR-011, FR-017).
+used on the default branch and on other branches, and answers one division's figures over the
+pool and within a range (FR-015, FR-017).
 
 | Quantity | Rule |
 |---|---|
@@ -116,8 +116,8 @@ fullest division within a range (FR-011, FR-017).
 | `size` of a range | `end - start + 1` |
 | `used` | distinct values of the measured space held on any live branch; `used_default_branch` on the default branch; `used_branches` on other branches and not on the default branch |
 | Division figures | `used` restricted to the values held by holders in that division, over the pool's `size` (divisions query, utilization headline with `division`) or over a range's `size` (utilization range rows with `division`) |
-| Headline figures of a scoped pool | the fullest division's figures |
-| Range row of a scoped pool | the division holding the most of that range's values, against the range's `size`, with its branch split |
+| Headline figures of a scoped pool | the figures of the division given as `division`, which a scoped pool requires |
+| Range row of a scoped pool | the values of that range held in the division given as `division`, against the range's `size`, with its branch split |
 | Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
 | Unscoped pool | exactly one division with no entry and an empty label; figures as today |
 | `in_space` of a row | the value is inside a range, not excluded by the attribute and within its `min_value` / `max_value`; false for an excluded or out-of-limits value even when a range holds it |
