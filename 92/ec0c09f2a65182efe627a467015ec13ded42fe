@@ -1,0 +1,26 @@
+dev/specs/ifc-3184-pool-number-attach/tasks.md
+  s_575f062cf51b5c::t_e17b877874c03b 603-608
+  s_575f062cf51b5c::t_0fdc5c68f59829 600-602
+  s_575f062cf51b5c::t_88d77c357fc661 571,576,578,580,582,584,598-599
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92ec0c09f2a65182efe627a467015ec13ded42fe",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_575f062cf51b5c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a39a1b-da6b-4ce1-a5f0-efeedace76e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
