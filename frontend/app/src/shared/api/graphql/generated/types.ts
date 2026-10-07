@@ -23841,7 +23841,7 @@ export type NumberPoolDivision = {
   display_label: Scalars['String']['output'];
   /** One entry per scope entry in force, in scope order. */
   entries: Array<NumberPoolDivisionEntry>;
-  /** Figures over the pool's space, or over the range given as range_id, for this division. */
+  /** Figures over the pool's whole space for this division. */
   figures: NumberPoolUtilizationFigures;
 };
 
@@ -23880,8 +23880,9 @@ export type NumberPoolDivisions = {
   /** Number of divisions listed. */
   count: Scalars['Int']['output'];
   /**
-   * Every division occupied by a node of the pool's kind on any live branch, ordered by utilization
-   * descending then by display_label. An unscoped pool lists one division with no entry.
+   * Every division whose holders hold at least one value the pool tracks on any live branch, ordered
+   * by utilization descending then by display_label. An unscoped pool lists one division with no
+   * entry.
    */
   divisions: Array<NumberPoolDivision>;
 };
@@ -23918,8 +23919,8 @@ export type NumberPoolRangeUtilization = {
   /** Last value of the range, included. */
   end: Scalars['BigInt']['output'];
   /**
-   * Figures over the range's values. On a scoped pool, the figures of the division holding the most
-   * of this range's values.
+   * Figures over the range's values. On a scoped pool, the figures of the division given as
+   * division, or of the division holding the most of this range's values when none is given.
    */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
@@ -23943,11 +23944,18 @@ export type NumberPoolUtilization = {
   allocation_scope: Array<Scalars['String']['output']>;
   /** The pool's display label, read on the request's branch. */
   display_label: Scalars['String']['output'];
-  /** Figures over the pool's whole space. On a scoped pool, the figures of the fullest division. */
+  /**
+   * Figures over the pool's whole space. On a scoped pool, the figures of the division given as
+   * division, or of the fullest division when none is given.
+   */
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */
   id: Scalars['String']['output'];
-  /** Number of allocation rows whose value lies outside the pool's space (in_space false). */
+  /**
+   * Number of allocation rows whose value lies outside the pool's space (in_space false): one per
+   * holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the
+   * division given as division.
+   */
   out_of_space_count: Scalars['BigInt']['output'];
   /** The pool's ranges ordered by start, each with its own figures. */
   ranges: Array<NumberPoolRangeUtilization>;
@@ -26154,11 +26162,14 @@ export type Query = {
   /** The numbers one number pool tracks, filtered and paginated. */
   InfrahubNumberPoolAllocations: NumberPoolAllocations;
   /**
-   * The divisions of one number pool with their figures, over the whole pool or over one range.
-   * Complete list, no pagination.
+   * The divisions of one number pool that hold at least one value, with their figures over the whole
+   * pool. Complete list, no pagination.
    */
   InfrahubNumberPoolDivisions: NumberPoolDivisions;
-  /** Utilization of one number pool and of its ranges. */
+  /**
+   * Utilization of one number pool and of its ranges, for the fullest division or for the division
+   * given as division.
+   */
   InfrahubNumberPoolUtilization: NumberPoolUtilization;
   /** Find all shortest paths between two nodes in the graph */
   InfrahubPathTraversal: PathTraversalResultType;
@@ -38320,11 +38331,11 @@ export type QueryInfrahubNumberPoolAllocationsArgs = {
 
 export type QueryInfrahubNumberPoolDivisionsArgs = {
   pool_id: Scalars['String']['input'];
-  range_id?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryInfrahubNumberPoolUtilizationArgs = {
+  division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
   pool_id: Scalars['String']['input'];
 };
 
