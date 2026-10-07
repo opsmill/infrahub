@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
 import { BranchContext } from "@/entities/branches/ui/branches-provider";
@@ -24,10 +24,6 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe("useRelationships", () => {
   const useObjectsCountMock = vi.mocked(useObjectsCount);
   const getRelationshipsMock = vi.mocked(getRelationships);
-
-  afterEach(() => {
-    vi.resetAllMocks();
-  });
 
   test("searches for the text without its surrounding whitespace", async () => {
     // GIVEN
