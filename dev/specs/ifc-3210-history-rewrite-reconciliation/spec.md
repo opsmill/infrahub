@@ -235,6 +235,11 @@ either case.
   records a commit the remote never carried, so the remote discarded content here exactly as a
   rewrite does. It is reconciled and recorded like any other rewrite, on every worker: a worktree
   the remote head is an ancestor of was rewound too, and FR-001b resets it.
+- **A plain push that the synchronisation has not imported yet.** The check before the graph merge
+  compares each remote head with the graph commit for equality (FR-005d). It therefore refuses a
+  merge after a plain push to the source branch or to the trunk too, not only after a rewrite. The
+  branch stays open, and the merge goes through once the next cycle imports the head. Contract
+  section 9 says why the rule is equality and not ancestry.
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.

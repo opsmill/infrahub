@@ -269,7 +269,9 @@ remote head by ancestry first, and resets a worktree that does not lead to that 
   its own.
 
 A merge goes through neither path: it builds on the local destination and merges the local source
-ref. Two checks keep it off a rewritten history:
+ref. Two checks keep it on the commits the graph imported. Both compare for equality, so a plain push
+to the source branch or to the trunk holds the merge too, not only a rewrite, until the next cycle
+imports the new head:
 
 - Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the trunk
   with `git ls-remote` and compares them with the commits the graph records
