@@ -53,9 +53,16 @@ own. The reader performs, in order:
 | reply | `GitBranchHeadsGetResponse` with `GitBranchHeadsGetResponseData` | see `data-model.md` |
 
 Handler `infrahub.message_bus.operations.git.branch_heads::get` is shallow in the same way. Step 1
-above is the same code, reached through the same reader rather than written a second time; the reader
-then makes one pass over `get_branches_from_remote()` plus tag refs to resolve every row's head and
-classifies each row, with no pending count. Exactly one message regardless of branch count (FR-004).
+above is the same code, reached through the same reader rather than written a second time. The
+warm-up it starts is pinned to the first row with a tracked commit, or the first row when none has
+one, so a read-write repository whose rows all have nothing imported claims and submits nothing. The
+reader then resolves each distinct ref the rows name, once, by its full name: `refs/remotes/origin/<ref>`,
+then `refs/tags/<ref>` and a commit-hash match for the read-only kind. It never lists every remote
+branch or tag, and a ref that names no commit the clone holds reads as absent. It classifies each row,
+with no pending count. Exactly one message regardless of branch count (FR-004). The drift resolver sends none when
+no row resolves a `git_ref`, or when the query selects neither `fetched_at` nor `unavailable`, and
+neither `remote_head` nor `condition` under `edges.node` (FR-008). Selecting only `branch_name`,
+`git_ref` and `tracked_commit` under `edges.node` sends none.
 
 ## Changed: `InfrahubMessageBus.rpc`
 

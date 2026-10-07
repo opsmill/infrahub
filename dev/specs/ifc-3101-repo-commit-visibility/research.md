@@ -226,8 +226,8 @@ reusing the due key for `checked_at` (rejected above).
 branch with a new `RepositoryBranchValuesQuery` (`infrahub.core.query.repository`) in one database
 query, then sends a single `GitBranchHeadsGet` carrying `[{branch_name, git_ref, tracked_commit}]`.
 The row set is decided entirely on the API side, so `sync_with_git` does not travel. The worker
-answers from `InfrahubRepositoryBase.get_branches_from_remote()` (the
-local mirror of `origin/*`, no fetch) and tag refs, and classifies each row: `NOT_TRACKED` when there
+answers from the clone's `origin` remote refs (the local mirror of `origin/*`, no fetch), stripping
+only the leading `origin/` so a branch name containing `origin/` keeps its head, and tag refs, and classifies each row: `NOT_TRACKED` when there
 is no tracked commit, `REF_MISSING` when a read-only row's configured ref has no remote counterpart,
 `NO_REMOTE` when a mapped read-write branch has none, else `IN_SYNC` / `BEHIND` /
 `REWRITTEN` by the same rule as above, without a pending count. The row set is branches synchronised

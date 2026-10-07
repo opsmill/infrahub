@@ -177,7 +177,7 @@ class CommitLogResult:
 @dataclass(frozen=True)
 class BranchDriftRow:
     branch_name: str
-    git_ref: str | None
+    git_ref: str
     tracked_commit: str | None
     remote_head: str | None
     condition: RepositoryGitCondition
@@ -194,9 +194,6 @@ class BranchDriftResult:
 
     def __post_init__(self) -> None:
         """Reject a result whose unavailable fields contradict the reason it carries.
-
-        The rows are graph-resolved, so this result carries them alongside an unavailable column
-        rather than instead of it.
 
         Raises:
             ValueError: When a field belonging to the unavailable path is set without it.

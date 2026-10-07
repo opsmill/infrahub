@@ -36,8 +36,9 @@ uv run invoke dev.build && uv run invoke dev.start   # full stack with at least 
    answer follows it.
 
    Every row's `condition` is `UNAVAILABLE` until the worker read path ships, except a branch with
-   no tracked ref, or with nothing tracked or inherited, which reports `NOT_TRACKED` from the graph
-   alone. Add `?at=` with a timestamp from before an import and confirm the rows report the commit
+   no tracked ref, which reports `NOT_TRACKED` from the graph alone. A branch that resolves a ref but
+   has nothing tracked or inherited stays `UNAVAILABLE`: whether it is `NOT_TRACKED` or `REF_MISSING`
+   depends on the clone, so the worker decides it. Add `?at=` with a timestamp from before an import and confirm the rows report the commit
    that was tracked then, not the current one.
 
    The branch-switch half does hold from the contract pull request onward, and is worth running
@@ -208,18 +209,36 @@ uv run pytest backend/tests/component/git/test_check_refs.py backend/tests/integ
 ## Phase D: branch drift
 
 Repository with many branches, three behind their remote. `InfrahubRepositoryBranchDrift` returns one
-row per branch in the row set, exactly three with `condition: BEHIND` and a differing `remote_head`,
-read-write branches with `sync_with_git = false` absent from the rows, and a read-only branch with
-nothing imported or inherited as `NOT_TRACKED`. `BusRecorder` shows exactly one
-`git.branch_heads.get` message.
+row per branch in the row set, exactly three with `condition: BEHIND` and a `remote_head` that differs
+from `tracked_commit`; the other rows carry a `remote_head` equal to it and `condition: IN_SYNC`.
+Read-write branches with `sync_with_git = false` are absent from the rows. A read-only branch with
+nothing imported or inherited reports `NOT_TRACKED` once the worker answers and its ref resolves on
+the clone (`REF_MISSING` when it does not); before that it is `UNAVAILABLE`, since a branch that
+resolves a ref is sent to the worker. Only a branch with no ref at all reports `NOT_TRACKED` from the
+graph alone. `BusRecorder` shows exactly one `git.branch_heads.get` message.
+
+The resolver sends no `git.branch_heads.get` message when no row resolves a `git_ref`, or when the
+query selects neither `fetched_at` nor `unavailable`, and neither `remote_head` nor `condition`
+under `edges.node`. A worker with no local copy answers
+`unavailable.reason: NOT_CLONED` and no rows from the worker, and starts the warm-up pinned to the
+first row with a tracked commit, or the first row when none has one.
+
+The live run needs a running stack. Locally, the same assertions are split across component tests:
+the one-message assertion runs against 200 branches through the bus-backed reader
+(`test_drift_reads_every_branch_in_one_worker_request`), and the three-behind classification runs
+on the handler against a `git_fixture_repo` remote with 12 branches
+(`test_only_the_branches_whose_remote_moved_read_as_behind`).
 
 Per-branch resolution and the query-count invariant, on the new graph query directly: a branch with
 its own commit reports it; a branch that never imported reports its origin branch's fork-point value,
 still does after the default branch imports a newer commit, and reports the newer one after a rebase;
-the recorded database query count is identical for a fixture with 5 branches and one with 200.
+the query runs exactly once, returning one row per branch, for a fixture with 5 branches and one with
+20, both under a lowered `query_size_limit`. At the default limit 200 branches would also run once
+whether or not the query carries its own bound, so a lowered limit with 20 branches tests the bound
+and 200 would add nothing.
 
 ```bash
-uv run pytest backend/tests/component/core/query/test_repository_branch_values.py
+INFRAHUB_USE_TEST_CONTAINERS=true uv run pytest -n 0 backend/tests/component/core/query/test_repository_branch_values.py backend/tests/component/message_bus/operations/git/test_branch_heads.py backend/tests/component/graphql/queries/test_repository_git_state.py
 ```
 
 ## Phase E: frontend and end to end

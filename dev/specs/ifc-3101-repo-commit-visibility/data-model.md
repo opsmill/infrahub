@@ -203,12 +203,18 @@ GitBranchHeadsGetResponseData
   fetched_at: datetime | None
   unavailable_reason: RepositoryGitUnavailableReason | None
   warm_up_task_id: str | None
-  branches: list[BranchDriftRow]
-    BranchDriftRow: branch_name, git_ref, tracked_commit, remote_head: str | None, condition
-  error_message, http_code
+  branches: list[GitBranchDriftRow]
+    GitBranchDriftRow: branch_name: str, git_ref: str, tracked_commit: str | None,
+                       remote_head: str | None, condition
+  error_message
 
 GitBranchHeadsGetResponse(InfrahubResponse)   routing key git.branch_heads.get
 ```
+
+Every nullable field of `GitBranchDriftRow` defaults to None, because a reply is serialised without
+its null fields and must parse again. `infrahub.git.state.branch_heads_wire` converts both directions
+between these and the domain `BranchHeadsRequest`, `BranchRef`, `BranchDriftResult` and
+`BranchDriftRow`, and turns contradictory reply fields into an `RPCError`, as `commit_log_wire` does.
 
 ### `infrahub.git.models` additions (Pydantic, workflow parameters)
 
