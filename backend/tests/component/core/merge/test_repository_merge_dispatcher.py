@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -15,10 +16,13 @@ from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
+    import pytest
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
+LOGGER_NAME = "tests.repository_merge_dispatcher"
 TRUNK_COMMIT = "a" * 40
 BRANCH_COMMIT = "b" * 40
 
@@ -111,7 +115,10 @@ async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
 
 
 async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """The branch records the commit the default branch records, so the Git merge has nothing to push."""
     changed = await create_repository(db=db, name="changed-repo", commit=TRUNK_COMMIT)
@@ -124,11 +131,20 @@ async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
         db=db, repository=staging, branch=feature, internal_status=RepositoryInternalStatus.STAGING.value
     )
     workflow = WorkflowRecorder()
+    caplog.set_level(logging.INFO, logger=LOGGER_NAME)
 
     await RepositoryMergeDispatcher(
-        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
+        db=db,
+        source_branch=feature,
+        destination_branch=default_branch,
+        workflow=workflow,
+        logger=logging.getLogger(LOGGER_NAME),
     ).merge_core_repositories()
 
+    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+        f"Skipped the Git merge of repository unchanged-repo: branch feature records commit {TRUNK_COMMIT}, which "
+        "the default branch records too, so there is nothing to push"
+    ]
     assert sorted(
         call["parameters"]["model"].repository_name for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)
     ) == ["changed-repo", "staging-repo"]

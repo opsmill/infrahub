@@ -88,10 +88,18 @@ class RepositoryMergeDispatcher:
     def _needs_a_git_merge(self, repo: CoreRepository, repo_on_destination: CoreRepository) -> bool:
         if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
             return True
-        return self.source_branch.sync_with_git and not nothing_to_merge_in_git(
-            source_commit=readable_commit(repo.commit.value),
-            destination_commit=readable_commit(repo_on_destination.commit.value),
-        )
+        if not self.source_branch.sync_with_git:
+            return False
+        source_commit = readable_commit(repo.commit.value)
+        if nothing_to_merge_in_git(
+            source_commit=source_commit, destination_commit=readable_commit(repo_on_destination.commit.value)
+        ):
+            self.log.info(
+                f"Skipped the Git merge of repository {repo.name.value}: branch {self.source_branch.name} records "
+                f"commit {source_commit}, which the default branch records too, so there is nothing to push"
+            )
+            return False
+        return True
 
 
 async def list_shared_core_repositories(
