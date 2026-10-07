@@ -70,10 +70,10 @@ mutation { CoreNumberPoolCreate(data: {name: {value: "p"}, node: {value: "InfraD
   node_attribute: {value: "vlan_id"}, start_range: {value: 1}, end_range: {value: 100},
   allocation_scope: {value: ["site"]}}) { object { id allocation_scope { value } } } }
 query { InfrahubNumberPoolUtilization(pool_id: "<id>") {
-  allocation_scope figures { size used utilization } ranges { display_label figures { size used } } out_of_space_count } }
+  allocation_scope figures { size used utilization } ranges { display_label figures { size used } } } }
 query { InfrahubNumberPoolDivisions(pool_id: "<id>") { count divisions { display_label entries { path value } figures { used } } } }
 query { InfrahubNumberPoolAllocations(pool_id: "<id>", division: [{path: "site", value: "mock-1"}]) {
-  count allocations { value branch provenance in_space holder { display_label } range { display_label } division { value } } } }
+  count allocations { value branch provenance holder { display_label } range { display_label } division { value } } } }
 ```
 
 Expected: the scope reads back `["site"]`; the utilization carries `allocation_scope: ["site"]`

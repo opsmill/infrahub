@@ -120,30 +120,26 @@ changes only.
 - [ ] T012 [P] [US1] Component tests in
       `backend/tests/component/graphql/queries/test_number_pool_surface.py` on the unscoped
       two-range pool of T003 (its shorthand `start_range` / `end_range` is null, which today's
-      generic queries cannot handle) holding 1 and 51 on the default branch, 7 on `b1` only, 500
-      provided on the default branch and held by no range, and 40 provided on the default branch
+      generic queries cannot handle) holding 1 and 51 on the default branch and 7 on `b1` only,
       while the attribute lists 40 in `excluded_values`: `InfrahubNumberPoolUtilization` returns
       `allocation_scope: []`, `figures` `{size: 99, used: 3, used_default_branch: 2, used_branches: 1}`
-      with the three percentages, two ranges ordered by start with id, display label, start, end,
-      weight (10 and 0) and figures `{50, 2, 1, 1}` and `{50, 1, 1, 0}`, `out_of_space_count: 2`;
+      with the three percentages, and two ranges ordered by start with id, display label, start,
+      end, weight (10 and 0) and figures `{50, 2, 1, 1}` and `{50, 1, 1, 0}`;
       `InfrahubNumberPoolDivisions` returns one division with `entries: []`, `display_label: ""`
-      and the pool's figures; `InfrahubNumberPoolAllocations` returns
-      five rows ordered by value then branch then holder id, each with `holder {id hfid kind
-      display_label}` read on the row's branch, `identifier`, `provenance` (`PROVIDED` for 40 and
-      500, `ALLOCATED` otherwise), `in_space` (false for 40 and 500), `range` (`1 - 50` for 40,
-      `null` for 500) and `division: []`; the filters `in_space: false`, `branch: "b1"`,
-      `provenance: PROVIDED`, `range_id` of `51 - 100` each return the expected rows with `count`
+      and the pool's figures; `InfrahubNumberPoolAllocations` returns three rows ordered by value
+      then branch then holder id, each with `holder {id hfid kind display_label}` read on the row's
+      branch, `identifier`, `provenance` `ALLOCATED`, `range` (`1 - 50` for 1 and 7, `51 - 100`
+      for 51) and `division: []`; the filters `branch: "b1"` (the row 7), `provenance: PROVIDED`
+      (no row), `range_id` of `51 - 100` (the row 51) each return the expected rows with `count`
       before pagination; `offset` and `limit` page the ordered list; `division` on this pool is
       refused with the contract's message, and so is `division` on `InfrahubNumberPoolUtilization`.
-      A second case with the attribute's `max_value` below a range's end checks `in_space: false`
-      with `range` set for a value above the limit.
+      A second case with the attribute's `max_value` below a range's end checks that a value above
+      the limit is not listed and counts in no figure.
 - [ ] T013 [P] [US1] Component tests in the same file on a pool scoped by `["site"]` at contract
       time: `allocation_scope: ["site"]` on utilization and divisions; the divisions list holds
       the mock divisions holding at least one row, ordered by utilization descending then label,
       each entry with `path: "site"`; the utilization query with `[{path: "site", value:
-      "mock-2"}]` reports `mock-2` over the pool and over each range, and its `out_of_space_count`
-      equals the `count` of the allocation list filtered on `mock-2` with `in_space: false`; every
-      row's `division` is one of the listed divisions; filtering on `[{path: "site", value:
+      "mock-2"}]` reports `mock-2` over the pool and over each range; every row's `division` is one of the listed divisions; filtering on `[{path: "site", value:
       "mock-2"}]` returns rows whose `division` is `mock-2`, and the number of distinct values
       among them equals `mock-2`'s `used` (SC-010); `[{path: "site", value: "nope"}]` returns an
       empty list with `count: 0`; `[{path: "role", value: "x"}]` (not in the scope) and
@@ -157,7 +153,7 @@ changes only.
 - [ ] T015 [P] [US1] Regression tests in
       `backend/tests/component/graphql/queries/test_resource_pool.py`: `InfrahubResourcePoolUtilization`
       and `InfrahubResourcePoolAllocated` on the same unscoped pool return exactly what they
-      return before this phase (count, percentages, edges, the 500 row absent); on the scoped pool
+      return before this phase (count, percentages, edges); on the scoped pool
       they return pool-wide figures and the whole pool's values (FR-029).
 
 ### 3b. The allocated rows query
@@ -165,21 +161,22 @@ changes only.
 - [ ] T016 [US1] Extend `backend/infrahub/core/query/resource_manager.py::NumberPoolGetAllocated`:
       constructor arguments `ranges: Sequence[tuple[int, int]] | None` (the bounds to filter on:
       None lists every tracked value; the dedicated callers pass the pool's range set or the one
-      range of `range_id`; absent, the generic callers keep today's `start_range` / `end_range`
-      filter), `in_space: bool | None = None` (True: inside the given bounds, not in the
-      attribute's `excluded_values`, within its `min_value` / `max_value`; False: the complement
-      over every tracked value; limits and exclusions bound as parameters), `branch_name: str |
-      None = None`, `provenance: PoolRecordProvenance | None = None`; project
+      range of `range_id`, and the rows then hold only values of the pool's space: inside the given
+      bounds, not in the attribute's `excluded_values`, within its `min_value` / `max_value`, limits
+      and exclusions bound as parameters; absent, the generic callers keep today's `start_range` /
+      `end_range` filter), `branch_name: str | None = None`, `provenance: PoolRecordProvenance | None = None`; project
       `coalesce(ir.provenance, $allocated_provenance) AS provenance`; add `provenance:
       PoolRecordProvenance` to `NumberPoolAllocatedResult`; keep `ORDER BY av.value, hv.branch,
       n.uuid`. The generic callers (`resolve_number_pool_allocation`, `NumberUtilizationGetter`)
       pass nothing new and render the same text as today. Component test in
       `backend/tests/component/core/resource_manager/test_number_pool.py` (extend): each filter
-      alone and combined; two ranges with a null shorthand; the default renders today's rows.
-- [ ] T016a [US1] Create `backend/infrahub/pools/effective_space.py` (pure): `in_space(value,
-      ranges, excluded_values, excluded_ranges, min_value, max_value) -> bool` and `space_size(...)
-      -> int` over a range set and the attribute's `NumberAttributeParameters`, with the definition
-      of the contract's Vocabulary table. One-sentence module docstring: it stands in until the
+      alone and combined; an excluded value and a value beyond `max_value` absent from the rows;
+      two ranges with a null shorthand; the default renders today's rows.
+- [ ] T016a [US1] Create `backend/infrahub/pools/effective_space.py` (pure): `in_pool_space(value,
+      ranges, excluded_values, excluded_ranges, min_value, max_value) -> bool`, the test that keeps
+      only values of the pool's space, and `space_size(...) -> int`, the size of that space, over a
+      range set and the attribute's `NumberAttributeParameters`, with the definition of the
+      contract's Vocabulary table. One-sentence module docstring: it stands in until the
       shared effective-space calculation exists. Unit tests in
       `backend/tests/unit/pools/test_effective_space.py`: value in a range, excluded single value,
       value in an excluded range, value above `max_value`, no range → size 0, two ranges.
@@ -209,15 +206,15 @@ changes only.
 - [ ] T019 [US1] Add `_figures(size, used_default_branch, used_branches) -> dict` in the same
       module (absolute counts plus the three percentages, 0 when `size` is 0) and the resolver
       `resolve_number_pool_utilization_surface`: rows from `NumberPoolGetAllocated(ranges=<range
-      set>, in_space=True)` split into default-branch and other-branch value sets as
-      `NumberUtilizationGetter.load_data` does today (do not call the getter: it reads the null
-      shorthand); pool `figures` with `size` from `effective_space.space_size` over the range set;
-      each range's figures from the values within its bounds and `end - start + 1`;
-      `out_of_space_count` from `NumberPoolGetAllocated(in_space=False).count`; `allocation_scope`
-      from `_scope_in_force`; `id` and `display_label` from the pool. Validate `division` as T021
-      does and also refuse one that omits a path in force, naming the missing paths; with it, keep
-      the rows of that mock division before computing every figure and the count. Pool-wide
-      figures on a scoped pool read without `division` at this phase.
+      set>)`, which holds only values of the pool's space, split into default-branch and
+      other-branch value sets as `NumberUtilizationGetter.load_data` does today (do not call the
+      getter: it reads the null shorthand); pool `figures` with `size` from
+      `effective_space.space_size` over the range set; each range's figures from the values within
+      its bounds and `end - start + 1`; `allocation_scope` from `_scope_in_force`; `id` and
+      `display_label` from the pool. Validate `division` as T021 does and also refuse one that omits
+      a path in force, naming the missing paths; with it, keep the rows of that mock division before
+      computing every figure. Pool-wide figures on a scoped pool read without `division` at this
+      phase.
 - [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return one
       division `{display_label: "", entries: [], figures: <pool figures>}`; otherwise partition the
       rows with `division_mock.division_of_row`, list the mock divisions holding at least one row,
@@ -225,16 +222,15 @@ changes only.
       `display_label` from the key and `peer_kind` None, join labels with `" / "`, order by
       `utilization` descending then `display_label`, set `count`.
 - [ ] T021 [US1] Add `resolve_number_pool_allocations`: validate `range_id`; translate it to the
-      one range's bounds, otherwise pass no bounds (every tracked value); validate `division`
+      one range's bounds, otherwise pass the pool's range set; validate `division`
       (non-empty scope in force, every path in force, no duplicate; messages of the contract); run
-      `NumberPoolGetAllocated` with `ranges`, `in_space`, `branch_name` (after
+      `NumberPoolGetAllocated` with `ranges`, `branch_name` (after
       `registry.get_branch` so an unknown branch raises `BranchNotFoundError`), `provenance`,
       `offset`, `limit`; when `division` is given, run without `offset`/`limit`, keep rows whose
       `division_mock.division_of_row` matches every given entry, then slice; `count` accordingly;
       build each row: `holder` from one `NodeManager.get_many(ids, branch=<row branch>, at)` per
       distinct branch (`display_label`, `hfid` via `get_hfid`, `kind` from the pool's `node`),
-      `range` from `_ranges` by bounds, `in_space` from `effective_space.in_space`, `division`
-      from the mock or `[]`.
+      `range` from `_ranges` by bounds, `division` from the mock or `[]`.
 - [ ] T022 [US1] Register the three root fields in
       `backend/infrahub/graphql/schema.py::InfrahubBaseQuery` as `InfrahubNumberPoolUtilization`,
       `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`, each a `Field` with the

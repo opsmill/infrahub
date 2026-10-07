@@ -53,7 +53,7 @@ frozen for number pools.
 | Slice | Content | In P3 |
 |-------|---------|-------|
 | P1 | Several weighted ranges per pool, ranges declared in the schema (`dev/specs/ifc-3065-number-pool-ranges`) | Landed in part on this branch: the range kind and its mutations, the migration giving every existing pool one range, the shorthand mirror; allocation over a range set and the shared effective-space calculation have not. Consumed, not changed |
-| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | In flight; the consolidation journey (User Story 7) waits for it. Provenance and the out-of-space signal P2 specified for the pool queries are carried by this slice's dedicated surface |
+| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | In flight; the consolidation journey (User Story 7) waits for it. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface |
 | P3 | `allocation_scope` on the pool and in number-pool attribute parameters; per-division allocation and utilization; the dedicated GraphQL surface | Yes |
 | Frontend | Scope on the pool form, the range view, the division view, the allocation list | No; the dedicated surface carries everything those screens need, and their migration to it is its own ticket |
 | Generic resource-pool queries | `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated` and their types | Frozen for number pools: shape and meaning unchanged, descriptions gain a note |
@@ -72,7 +72,7 @@ frozen for number pools.
 4. **Nothing about a division is stored.** A record's division is derived from its holder's fields
    at read time. Setting, changing or clearing a scope moves no data.
 5. **Number-pool reads live on a surface shaped like number pools.** Divisions, the scope in force,
-   ranges with absolute figures, holders, provenance and out-of-space values are published on
+   ranges with absolute figures, holders and provenance are published on
    queries dedicated to number pools, never as number-pool-only arguments or fields on the generic
    queries, which stay as they are.
 
@@ -131,8 +131,7 @@ examples.
 2. **Given** an unscoped pool with two ranges, **When** `InfrahubNumberPoolUtilization` is read,
    **Then** the result carries `allocation_scope: []`, pool figures with `size`, `used`,
    `used_default_branch`, `used_branches` and the three percentages, one row per range ordered by
-   start with id, display label, start, end, weight and the same figures block, and
-   `out_of_space_count`.
+   start with id, display label, start, end, weight and the same figures block.
 3. **Given** a scoped pool read on a branch whose schema defines every entry, **When**
    `InfrahubNumberPoolUtilization` is read with a `division`, **Then** `allocation_scope` lists the
    entries in force in scope order; read without `division`, **Then** it is refused naming the
@@ -145,18 +144,16 @@ examples.
    and figures over the whole pool, ordered by utilization descending then display label.
 5. **Given** a pool tracking values on two branches, one of them provided by a user and held by no
    range, another inside a range but listed in the attribute's excluded values, **When**
-   `InfrahubNumberPoolAllocations` is read, **Then** each row carries the value, the branch, the
-   holder (id, hfid, kind, display label read on the row's branch), the identifier, the provenance,
-   whether the value is in space (false for both of those values), the range holding it (null for
-   the first, set for the second) and the holder's division (empty on an unscoped pool), ordered by value then
-   branch then holder id and paginated with `offset` and `limit`; **When** `branch`, `provenance`,
-   `range_id` or `in_space` is given, **Then** only matching rows are returned and `count` reports
-   them before pagination.
+   `InfrahubNumberPoolAllocations` is read, **Then** those two values are not listed, and each
+   other row carries the value, the branch, the holder (id, hfid, kind, display label read on the
+   row's branch), the identifier, the provenance, the range holding it and the holder's division
+   (empty on an unscoped pool), ordered by value then branch then holder id and paginated with
+   `offset` and `limit`; **When** `branch`, `provenance` or `range_id` is given, **Then** only
+   matching rows are returned and `count` reports them before pagination.
 6. **Given** a scoped pool, **When** `InfrahubNumberPoolAllocations` is read with a `division`
    filter on a path in force, **Then** only rows whose holder carries the given values are
    returned; **When** `InfrahubNumberPoolUtilization` is read with a `division` giving a value for
-   every entry in force, **Then** the pool figures, every range row and `out_of_space_count`
-   report that division; **When** that `division` omits an entry in force, **Then** the
+   every entry in force, **Then** the pool figures and every range row report that division; **When** that `division` omits an entry in force, **Then** the
    utilization query is refused naming the missing entries; **When** the pool is unscoped, or the
    path is not in force on the reading branch, or a path is given twice, **Then** either query is
    refused naming the pool or the entry.
@@ -420,11 +417,11 @@ spec directory.
 - A scope is widened on a pool holding records: numbers taken under the finer division become free.
   Narrowed: more numbers appear taken. No number already handed out changes.
 - A pool's last range is removed: the dedicated utilization query lists no range, every figure
-  reports `size` 0, and every tracked value is out of space with `range: null`. Allocation raises
+  reports `size` 0, and the allocation list is empty. Allocation raises
   the existing pool-exhausted error, as P1 defines.
 - A tracked value sits inside a range but the attribute lists it in `excluded_values`, or it falls
-  outside the attribute's `min_value` / `max_value`: the row reports the range and
-  `in_space: false`; the value counts in no figure and in `out_of_space_count`.
+  outside the attribute's `min_value` / `max_value`: the allocation list does not list it and the
+  value counts in no figure.
 - A pool holds several ranges: its deprecated `start_range` / `end_range` pair is null, and the
   dedicated surface computes every figure from the range set, so it reports the pool where the
   generic queries, which read the pair, cannot.
@@ -524,14 +521,13 @@ specification adds.
   scope; explicit null on update clears it. *(User Story 1, scenario 1)*
 - **FR-015**: A query dedicated to number pools, `InfrahubNumberPoolUtilization`, MUST return for
   one pool: the scope in force on the reading branch, the pool's figures, one row per range ordered
-  by start with the range's id, display label, start, end, weight and figures, and the count of
-  tracked values outside the pool's space. The query MUST accept a `division` argument naming one
-  division with a value for every scope entry in force on the reading branch; with it, the pool's
-  figures, every range row and the out-of-space count report that division, a range in which it
-  holds no value reporting `used` 0. `division` MUST be required on a pool whose scope in force is
-  not empty, and its absence refused naming the pool and the branch (FR-011). A `division` that
-  omits an entry in force MUST be refused naming the missing entries; the other `division`
-  refusals of FR-024 apply. *(User Story 1, scenarios 2 and 3;
+  by start with the range's id, display label, start, end, weight and figures. The query MUST
+  accept a `division` argument naming one division with a value for every scope entry in force on
+  the reading branch; with it, the pool's figures and every range row report that division, a
+  range in which it holds no value reporting `used` 0. `division` MUST be required on a pool whose
+  scope in force is not empty, and its absence refused naming the pool and the branch (FR-011). A
+  `division` that omits an entry in force MUST be refused naming the missing entries; the other
+  `division` refusals of FR-024 apply. *(User Story 1, scenarios 2 and 3;
   User Story 3, scenarios 1 to 3)*
 - **FR-016**: A division MUST be identified by one entry per scope entry in force on the reading
   branch, in scope order, each entry carrying the path, the value (a relationship entry: the
@@ -567,12 +563,12 @@ specification adds.
 - **FR-023**: A query dedicated to number pools, `InfrahubNumberPoolAllocations`, MUST return for
   one pool a paginated list of rows, one per (record, branch-resolved value), each carrying the
   value, the branch holding it, the holder (id, hfid, kind, display label read on the row's
-  branch), the identifier, the provenance (`ALLOCATED` or `PROVIDED`), whether the value is in the
-  pool's space, the range holding the value (null when none does) and the holder's division on the
-  row's branch (empty on an unscoped pool). Rows are ordered by value, then branch, then holder id,
+  branch), the identifier, the provenance (`ALLOCATED` or `PROVIDED`), the range holding the value
+  and the holder's division on the row's branch (empty on an unscoped pool). The list holds only
+  values of the pool's space (FR-028). Rows are ordered by value, then branch, then holder id,
   and `count` reports the filtered rows before `offset` and `limit`. *(User Story 1, scenario 5)*
 - **FR-024**: `InfrahubNumberPoolAllocations` MUST accept the filters `division`, `range_id`,
-  `in_space`, `branch` and `provenance`, combined with "and". A `division` filter is a list of
+  `branch` and `provenance`, combined with "and". A `division` filter is a list of
   (path, value) entries; a partial tuple is allowed; a row matches when its holder carries the
   requested value for every given entry on at least one live branch (FR-007). A `division` filter
   MUST be refused on a pool whose scope in force is empty, and an entry whose path is not in force
@@ -594,13 +590,12 @@ specification adds.
   (`allocation_scope` on the utilization and divisions results, the paths accepted in a division
   filter), empty for an unscoped pool and for a scoped pool none of whose entries the branch
   defines. *(User Story 1, scenario 3; User Story 6, scenarios 2 and 3)*
-- **FR-028**: The provenance of each tracked number and the out-of-space signal that P2 specified
-  for the pool queries MUST be carried by the dedicated surface: `provenance` on each row, `in_space`
-  on each row with `range: null` for a value no range holds, the `in_space` filter, and
-  `out_of_space_count` on the utilization result. `out_of_space_count` MUST count rows, one per
-  holder and value, and equal the `count` of `InfrahubNumberPoolAllocations` with `in_space: false`
-  and the same `division`, so that it drops by one for each row a user fixes. They MUST NOT be added
-  to the generic queries. *(User Story 1, scenario 5)*
+- **FR-028**: The provenance of each tracked number that P2 specified for the pool queries MUST be
+  carried by the dedicated surface as `provenance` on each row, and MUST NOT be added to the
+  generic queries. `InfrahubNumberPoolAllocations` MUST list only values of the pool's space: inside
+  one of the pool's ranges, not among the attribute's `excluded_values`, and within its
+  `min_value` / `max_value` when set. A value the list leaves out counts in no figure of the
+  dedicated surface. *(User Story 1, scenario 5)*
 - **FR-029**: The generic queries `InfrahubResourcePoolUtilization` and
   `InfrahubResourcePoolAllocated` and their types MUST keep their shape and meaning for every pool
   kind. For a number pool they report pool-wide figures and the whole pool's values, scope or not.
@@ -644,7 +639,7 @@ specification adds.
   used, used on the default branch, used on other branches, and the three percentages), applied to
   the pool, each range and each division.
 - **Allocation row** *(new read shape)*: one tracked value as held on one branch: value, branch,
-  holder, identifier, provenance, in-space flag, range and division.
+  holder, identifier, provenance, range and division.
 - **Number-pool GraphQL surface** *(new)*: the three root query fields `InfrahubNumberPoolUtilization`,
   `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations` and their types, hand-written
   beside the generic resource-pool queries.
@@ -714,7 +709,7 @@ Using the repository's "ask first" list.
   text on the generic resource-pool queries and types.
 - [x] Published schema contract (ADR 0010) — `allocation_scope` in the number-pool attribute
   parameters; one review shared with P1's `ranges` and P2's changes, in which this slice's
-  dedicated surface is named as the carrier of P2's provenance and out-of-space signal.
+  dedicated surface is named as the carrier of P2's provenance.
 - [ ] New dependency
 - [ ] CI/CD workflow change
 - [ ] Authentication or authorization change
@@ -728,9 +723,10 @@ Using the repository's "ask first" list.
   or several). Allocation still draws from the shorthand, so it works on a pool holding exactly one
   range; allocation over a range set and the shared effective-space calculation have not landed.
   The division filter is independent of the range walk, so the two land in either order. The
-  dedicated surface computes every `size`, `used` and `in_space` from the range set, the
-  attribute's `excluded_values` and its `min_value` / `max_value`, never from the shorthand, and
-  switches to P1's shared calculation when it lands without a contract change.
+  dedicated surface computes every `size` and `used`, and the values of the pool's space it lists,
+  from the range set, the attribute's `excluded_values` and its `min_value` / `max_value`, never
+  from the shorthand, and switches to P1's shared calculation when it lands without a contract
+  change.
 - P2's foundational re-anchoring has landed on this branch: the `IS_RESERVED` record is a global
   edge from the pool to the holder's attribute vertex, re-anchored by migration with the legacy
   pool source edges deleted and shared-attribute records collapsed; the liveness read is a union
@@ -817,4 +813,4 @@ Using the repository's "ask first" list.
 | Implementation Decisions, Testing Decisions | Carried verbatim into the plan phase; not reopened here |
 | User's delivery constraint | Delivery order, User Story 1, FR-018, FR-019, SC-007, SC-010, SC-011 |
 | Frontend needs and grilling decisions of 2026-10-06 (not in the PRD) | User Story 1, FR-015, FR-016, FR-019, FR-022 to FR-030, SC-009 to SC-011, Open points |
-| P2's provenance and out-of-space signal (`dev/specs/ifc-3184-pool-number-attach`) | FR-028; the contract |
+| P2's provenance (`dev/specs/ifc-3184-pool-number-attach`) | FR-028; the contract |

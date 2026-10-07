@@ -112,7 +112,7 @@ pool and within a range (FR-015, FR-017).
 
 | Quantity | Rule |
 |---|---|
-| `size` of the pool | the number of in-space values over the range set: values inside a range, not in the attribute's `excluded_values` (single values and excluded ranges), within its `min_value` / `max_value`. Never read from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges. P1's shared effective-space calculation replaces the resolver-side computation when it lands |
+| `size` of the pool | the number of values of the pool's space over the range set: values inside a range, not in the attribute's `excluded_values` (single values and excluded ranges), within its `min_value` / `max_value`. Never read from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges. P1's shared effective-space calculation replaces the resolver-side computation when it lands |
 | `size` of a range | `end - start + 1` |
 | `used` | distinct values of the measured space held on any live branch; `used_default_branch` on the default branch; `used_branches` on other branches and not on the default branch |
 | Division figures | `used` restricted to the values held by holders in that division, over the pool's `size` (divisions query, utilization headline with `division`) or over a range's `size` (utilization range rows with `division`) |
@@ -120,9 +120,8 @@ pool and within a range (FR-015, FR-017).
 | Range row of a scoped pool | the values of that range held in the division given as `division`, against the range's `size`, with its branch split |
 | Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
 | Unscoped pool | exactly one division with no entry and an empty label; figures as today |
-| `in_space` of a row | the value is inside a range, not excluded by the attribute and within its `min_value` / `max_value`; false for an excluded or out-of-limits value even when a range holds it |
-| `range` of a row | the range whose bounds hold the value, in space or not; null when none does |
-| `out_of_space_count` | the number of rows with `in_space` false, one per holder and value, restricted to the division given as `division` |
+| Rows listed | only values of the pool's space: inside a range, not excluded by the attribute and within its `min_value` / `max_value`; a value left out counts in no figure |
+| `range` of a row | the range whose bounds hold the value |
 
 ### Mock partition (contract change set only)
 
@@ -140,7 +139,7 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 
 | GraphQL type | Built from |
 |---|---|
-| `NumberPoolUtilization` | the pool node (id, display label), `entries_in_force`, the division report's headline and range figures, the `in_space` partition of the rows |
+| `NumberPoolUtilization` | the pool node (id, display label), `entries_in_force`, the division report's headline and range figures |
 | `NumberPoolUtilizationFigures` | one block per measured space, from the division report |
 | `NumberPoolRangeUtilization` | each `CoreNumberPoolRange` of the pool ordered by `start`, plus its figures |
 | `NumberPoolDivisions`, `NumberPoolDivision`, `NumberPoolDivisionEntry` | the division enumeration, the division report and one branch-agnostic `NodeManager.get_many` over the distinct peer ids for labels and kinds |

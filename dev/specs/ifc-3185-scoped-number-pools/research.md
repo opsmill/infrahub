@@ -14,7 +14,7 @@ written on `feature-number-pools-1.12` at HEAD, and the plan is built on the cor
 
 | PRD assumption | What the code says | Consequence |
 |---|---|---|
-| "P1 (several weighted ranges) has landed: allocation walks a range set" | The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, and `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several) shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still draws from the shorthand and raises the pool-exhausted error when it is null; `NumberPoolParameters` has no `ranges`; the shared effective-space calculation does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; the dedicated surface computes `size`, `used` and `in_space` from the range set and the attribute's limits, never from the shorthand, until P1's shared calculation replaces the computation |
+| "P1 (several weighted ranges) has landed: allocation walks a range set" | The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, and `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several) shipped. `core/node/resource_manager/number_pool.py::CoreNumberPool.get_next` still draws from the shorthand and raises the pool-exhausted error when it is null; `NumberPoolParameters` has no `ranges`; the shared effective-space calculation does not exist | The division filter is added inside the shared records fragment, which P1's range walk will call once per range. The two changes are orthogonal and can land in either order; the dedicated surface computes `size`, `used` and the values of the pool's space it lists from the range set and the attribute's limits, never from the shorthand, until P1's shared calculation replaces the computation |
 | "The records lookup already resolves each record to its owning object" | `core/query/resource_manager.py::reserved_values_query` matches `(pool)-[:IS_RESERVED]->(attr:Attribute {name})` and reads `HAS_VALUE` forward; it never touches the holder. Only `NumberPoolGetAllocated` resolves the holder, and that one lacks the deleting-branch and fork-window logic the used/free fragment has | The scoped fragment adds the `(n)-[:HAS_ATTRIBUTE]->(attr)` hop and the per-entry division reads; the allocated query is brought onto the same fragment so utilization and allocation read the same liveness |
 | "Relationships are processed before attributes when a node is written" | True on create: `core/node/__init__.py::Node._process_fields` runs relationships before attributes. False on update: `Node.from_graphql` applies the payload in dict order and `core/attribute.py::BaseAttribute.from_graphql` calls `handle_pool` inline | On update, pool handling is deferred until every field in the payload has been applied (D4) |
 | "P2 attach is in flight" | The ledger re-anchoring and the retirement of dead records are merged: the global `(pool)-[:IS_RESERVED {identifier, provenance}]->(:Attribute)` edge, migrated by `m081_reanchor_number_pool_reservations` (re-anchor, delete legacy pool source edges, collapse shared-attribute records, delete legacy records), the forward liveness read, closure through the branch-agnostic retirement queries on delete, rename, merge, rebase and branch delete, and `core/query/resource_manager.py::PoolRecordProvenance`. The attach, detach and intent-resolver work is not built; the attach tasks are unchecked | User Story 7 stays gated on attach. Everything else in this slice reads the ledger as it is today; `provenance` is real data from the first change set |
@@ -27,8 +27,7 @@ requirements:
 - `resolve_number_pool_allocation` sets `display_label` to the value itself and returns the
   holder's id and kind but not its own label or hfid.
 - `NumberPoolGetAllocated` filters `av.value >= $start_range and av.value <= $end_range` on the
-  deprecated shorthand, so a value held by no range is never listed and P2's out-of-space signal
-  has no carrier; on a pool holding several ranges the shorthand is null and the query lists
+  deprecated shorthand; on a pool holding several ranges the shorthand is null and the query lists
   nothing.
 - `pools/number.py::NumberUtilizationGetter` reads `int(pool.start_range.value)` and sizes the pool
   as `end_range - start_range + 1` minus the attribute's excluded values; on a pool holding several
@@ -264,9 +263,9 @@ mirroring the output entries; `allocation_scope` in force on the results. See
 `PoolAllocated` and `PoolAllocatedNode` keep their shape and meaning for every pool kind; a scoped
 pool reports pool-wide figures there. Their descriptions gain a note pointing number-pool consumers
 at the dedicated queries. No `@deprecated`: GraphQL cannot deprecate a field for one pool kind.
-P2's provenance and out-of-space signal, which `dev/specs/ifc-3184-pool-number-attach` placed on
-the generic pool queries, are carried by the dedicated surface instead (`provenance` and
-`in_space` on each row, `range: null` for a value no range holds, `out_of_space_count`).
+P2's provenance, which `dev/specs/ifc-3184-pool-number-attach` placed on the generic pool queries,
+is carried by the dedicated surface instead (`provenance` on each row). The allocations query
+lists only values of the pool's space.
 
 Form A (several root fields, following the `Infrahub*` convention) is published; form B (one root
 object with sub-fields) is re-judged at the final review of the surface.
@@ -332,9 +331,10 @@ hand, so the new field is added there as a `List` field and the generators re-ru
 
 **Decision**: the delivery order the spec records. The schema attribute and the parameters field
 land first; then the dedicated surface with every shape frozen. From that change set the pool,
-range and allocation data are real: every `size`, `used` and `in_space` computed from the range
-set, the attribute's `excluded_values` and its `min_value` / `max_value` (never from the deprecated
-shorthand, which is null on a pool holding several ranges); holder, branch, identifier, provenance
+range and allocation data are real: every `size` and `used`, and the values of the pool's space
+the rows hold, computed from the range set, the attribute's `excluded_values` and its `min_value` /
+`max_value` (never from the deprecated shorthand, which is null on a pool holding several ranges);
+holder, branch, identifier, provenance
 (`coalesce(provenance, "allocated")` on the record) and range from the rows. The divisions of a
 scoped pool, the `division` on each row and the `division`
 filter come from `pools/division_mock.py`: each row is put in one of three divisions `mock-1`,
@@ -393,8 +393,8 @@ calculation and the SDK regeneration; D1 touches the fragment those queries shar
 the same parameters class and generator. Whichever slice lands second rebases a small hunk, and each
 slice opens its own SDK regeneration PR when it lands. Which lands first is the P1 owner's call and
 is recorded as an open question in the critique. When P1's shared effective-space calculation
-lands, the resolver-side computation of `size`, `used` and `in_space` is replaced by it without a
-contract change; the definition is the same.
+lands, the resolver-side computation of `size`, `used` and the pool's space is replaced by it
+without a contract change; the definition is the same.
 
 ---
 
