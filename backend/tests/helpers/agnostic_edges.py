@@ -59,6 +59,8 @@ class EdgeState:
     to_time: str | None
     to_user_id: str | None = None
     """Who closed the edge. `None` on an open edge, and on one closed before the actor was recorded."""
+    from_user_id: str | None = None
+    """Who opened the edge, where a query reports it. `None` on an edge written before the actor was recorded."""
     direction: str | None = None
     """`"outbound"` or `"inbound"` relative to the vertex the query anchored on, where a query
     reports it. Copying an edge onto a new vertex is direction-specific, so a test that cannot see
@@ -240,7 +242,7 @@ async def attribute_edges(db: InfrahubDatabase, node_id: str, attribute_name: st
         WITH DISTINCT a
         MATCH (a)-[e]-()
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id,
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id, e.from_user_id AS from_user_id,
                CASE WHEN startNode(e) = a THEN "outbound" ELSE "inbound" END AS direction,
                elementId(e) AS edge_id
         """,
@@ -449,7 +451,7 @@ async def pool_reservation_edges(db: InfrahubDatabase, pool_id: str, attribute_i
         query="""
         MATCH (:Node {uuid: $pool_id})-[e:IS_RESERVED]->(:Attribute {uuid: $attribute_id})
         RETURN type(e) AS edge_type, e.branch AS branch, e.status AS status,
-               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id
+               e.from AS from_time, e.to AS to_time, e.to_user_id AS to_user_id, e.from_user_id AS from_user_id
         """,
         params={"pool_id": pool_id, "attribute_id": attribute_id},
     )
@@ -544,6 +546,20 @@ async def attributes_holding_only_is_reserved_edges(db: InfrahubDatabase, pool_i
         params={"pool_id": pool_id},
     )
     return results[0]["nbr"]
+
+
+async def node_metadata(db: InfrahubDatabase, node_id: str) -> VertexMetadata:
+    """The audit stamps on the one `:Node` vertex carrying this uuid."""
+    results = await db.execute_query(
+        query="""
+        MATCH (v:Node {uuid: $node_id})
+        RETURN v.updated_at AS updated_at, v.updated_by AS updated_by,
+           v.previous_updated_at AS previous_updated_at, v.previous_updated_by AS previous_updated_by
+        """,
+        params={"node_id": node_id},
+    )
+    assert len(results) == 1, f"Expected a single Node vertex for {node_id}, found {len(results)}"
+    return VertexMetadata(**dict(results[0]))
 
 
 async def attribute_metadata(db: InfrahubDatabase, node_id: str, attribute_name: str) -> VertexMetadata:

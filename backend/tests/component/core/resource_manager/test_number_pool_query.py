@@ -7,7 +7,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID, InfrahubKind
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
 from infrahub.core.diff.merger.merger import DiffMerger
@@ -818,6 +818,7 @@ class TestCreateRecordsItsReservation:
             "branch_level": 1,
             "status": "active",
             "from": edges["value_from"],
+            "from_user_id": SYSTEM_USER_ID,
             "identifier": first.get_id(),
             "provenance": PoolRecordProvenance.ALLOCATED.value,
         }
