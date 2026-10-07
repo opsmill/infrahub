@@ -568,20 +568,20 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
 **Independent Test**: attach a number, detach it, assert the object's value is unchanged, the in-use
 count dropped by one, and the number is offered again.
 
-- [ ] T054 [US3] Implement the release query in `core/query/resource_manager.py` — end the single
+- [X] T054 [US3] Implement the release query in `core/query/resource_manager.py` — end the single
       `-global-` record between a pool and an `Attribute`. **No identifier matching.** Time-close
       (`to = $at`), never `status = "deleted"`: a tombstone is terminal per the database-schema doc,
       which is wrong for a record a later re-attach may recreate. This query is new — nothing releases
       a reservation today.
-- [ ] T055 [US3] Wire the `DETACH` intent through the executor (FR-025). The number on the object is
+- [X] T055 [US3] Wire the `DETACH` intent through the executor (FR-025). The number on the object is
       unchanged, and nothing is cleared from `HAS_SOURCE` because the pool was never written there.
-- [ ] T056 [P] [US3] Component test: detach leaves the value untouched, drops the in-use count by one,
+- [X] T056 [P] [US3] Component test: detach leaves the value untouched, drops the in-use count by one,
       and makes the number allocatable again (SC-014).
-- [ ] T057 [P] [US3] Component test: with 50 held by two objects under one pool, detaching one ends
+- [X] T057 [P] [US3] Component test: with 50 held by two objects under one pool, detaching one ends
       only that record; the other still reports 50 (FR-028a).
-- [ ] T058 [P] [US3] Component test: detach on a branch, then delete that branch — no branch reports a
+- [X] T058 [P] [US3] Component test: detach on a branch, then delete that branch — no branch reports a
       pool source and the pool reports nothing for it (SC-020).
-- [ ] T058a [US3] Revisit
+- [X] T058a [US3] Revisit
       `backend/tests/component/core/resource_manager/test_number_pool_query.py::TestNumberPoolGetAllocated`.
       Its five source-gate tests were inverted in Phase 1: clearing, reassigning or merging a change to
       an attribute's `source` used to drop the number from what the pool reports, and now leaves it
@@ -595,6 +595,17 @@ count dropped by one, and the number is offered again.
       proving the two are independent — or move the source-independence assertion to one test and give
       detach its own, rather than leaving five tests describing a gesture that no longer means
       anything.
+      *Resolved by pairing: each of the five keeps its source manipulation and then ends the record
+      with `NumberPoolReleaseReserved` on the same attribute, asserting the number leaves the
+      allocated list. The NumberPool attribute kind is read-only, so the release is driven through the
+      query rather than a `from_pool: null` mutation.*
+
+      *Found while wiring T055, not fixed here: a read puts the pool that tracks an attribute into
+      the attribute's in-memory source when the user set none. Saving the attribute after a detach
+      or a re-pool ends that pool's IS_RESERVED edge therefore stores a `HAS_SOURCE` edge to the
+      pool, which contradicts FR-030b. The fix is left to IFC-3328, which reads the tracking pool
+      into its own property for a dedicated `from_pool` output field. Until then, the detach
+      component test does not assert the source after a detach on the default branch.*
 
 **Checkpoint**: detach works and is permanent, symmetric with allocation.
 
