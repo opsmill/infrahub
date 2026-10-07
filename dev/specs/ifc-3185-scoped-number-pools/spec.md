@@ -53,7 +53,7 @@ frozen for number pools.
 | Slice | Content | In P3 |
 |-------|---------|-------|
 | P1 | Several weighted ranges per pool, ranges declared in the schema (`dev/specs/ifc-3065-number-pool-ranges`) | Landed in part on this branch: the range kind and its mutations, the migration giving every existing pool one range, the shorthand mirror; allocation over a range set and the shared effective-space calculation have not. Consumed, not changed |
-| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | In flight; the consolidation journey (User Story 7) waits for it. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface |
+| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | In flight; the consolidation journey (User Story 7) waits for it. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface, which lists only values of the pool's space |
 | P3 | `allocation_scope` on the pool and in number-pool attribute parameters; per-division allocation and utilization; the dedicated GraphQL surface | Yes |
 | Frontend | Scope on the pool form, the range view, the division view, the allocation list | No; the dedicated surface carries everything those screens need, and their migration to it is its own ticket |
 | Generic resource-pool queries | `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated` and their types | Frozen for number pools: shape and meaning unchanged, descriptions gain a note |
@@ -85,16 +85,15 @@ split across people:
    field in the number-pool attribute parameters, because every generated type derives from them.
 2. **The dedicated GraphQL surface next**, with its shapes frozen: utilization with absolute
    figures per pool and per range, the divisions list, the allocation list with holder, provenance
-   and range, and the scope in force on the reading branch. Pool, range and allocation data are
-   real from the first change set; the divisions of a scoped pool are a deterministic mock until
-   the division reads exist. An unscoped pool never returns mock data. The generic queries gain a
-   description note and nothing else.
+   and range, and the scope in force on the reading branch. The first change set returns a fixed
+   in-memory dataset (a scoped pool and an unscoped pool) and reads nothing from the database,
+   until the real reads exist. The generic queries gain a description note and nothing else.
 3. **The utilization and allocation seams**: the per-division utilization getter and the
    allocator entry point that takes the writer's division, as seams other work plugs into.
 4. **The internals**: the division resolver, the scoped records lookup, division enumeration,
    the validators and the schema-load checker, in parallel once the seams exist.
-5. **Mock removal**: the real division reads replace the mock partition in the three queries, the
-   mock is deleted, and a test asserts that no mock division is returned.
+5. **Mock removal**: the real reads replace the fixed dataset in the three queries, the dataset
+   module is deleted, and a test asserts that the queries return the requested pool's data.
 
 User Story 1 below is the contract story. Nothing after it may rename, retype or remove a field it
 publishes.
@@ -112,8 +111,8 @@ through create, update or upsert and reads it back; and builds the pool page, th
 division view and the allocation list from three queries dedicated to number pools:
 `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`
 ([contract](./contracts/graphql-number-pool-surface.md)). The generic queries the consumer used
-until now keep working unchanged. The shapes are final: later stories replace the mocked divisions
-of a scoped pool with real ones but change no field.
+until now keep working unchanged. The shapes are final: later stories replace the fixed dataset of
+the first delivery with real reads but change no field.
 
 **Why this priority**: The frontend and the SDK can only start once the contract exists and will not
 move. Publishing it first lets that work and the backend internals proceed concurrently.
@@ -144,27 +143,28 @@ examples.
    and figures over the whole pool, ordered by utilization descending then display label.
 5. **Given** a pool tracking values on two branches, one of them provided by a user and held by no
    range, another inside a range but listed in the attribute's excluded values, **When**
-   `InfrahubNumberPoolAllocations` is read, **Then** those two values are not listed, and each
-   other row carries the value, the branch, the holder (id, hfid, kind, display label read on the
-   row's branch), the identifier, the provenance and the range holding it, ordered by value then
-   branch then holder id and paginated with `offset` and `limit`; **When** `branch`, `provenance` or
-   `range_id` is given, **Then** only matching rows are returned and `count` reports them before
-   pagination.
+   `InfrahubNumberPoolAllocations` is read, **Then** each row carries the value, the branch, the
+   holder (id, hfid, kind, display label read on the row's branch), the identifier, the provenance
+   and the range holding it, ordered by value then branch then holder id and paginated with
+   `offset` and `limit`, and neither of those two values is listed; **When** `branch`,
+   `provenance` or `range_id` is given, **Then** only matching rows are returned and `count`
+   reports them before pagination.
 6. **Given** a scoped pool, **When** `InfrahubNumberPoolAllocations` is read with a `division`
    filter on a path in force, **Then** only rows whose holder carries the given values are
    returned; **When** `InfrahubNumberPoolUtilization` is read with a `division` giving a value for
    every entry in force, **Then** the pool figures and every range row report that division;
    **When** that `division` omits an entry in force, **Then** the utilization query is refused
    naming the missing entries; **When** the pool is unscoped, or the path is not in force on the
-   reading branch, or a path is given twice, **Then** either query is refused naming the pool or the
-   entry.
+   reading branch, or a path is given twice, **Then** either query is refused naming the pool or
+   the entry.
 7. **Given** `pool_id` naming an IP pool, an unknown node, or `range_id` naming a range of another
    pool, **When** any of the three queries is read, **Then** it is refused with the existing
    not-found or validation error naming the id.
-8. **Given** a scoped pool at contract time, **When** the three queries are read, **Then** the
-   divisions listed and the `division` filter agree: the `used` figure of a division equals the
-   number of distinct values among the rows returned when filtering on it. An unscoped pool returns no
-   mock division.
+8. **Given** the fixed scoped dataset of the first delivery, **When** the three queries are read,
+   **Then** the divisions listed and the `division` filter agree: filtering on a listed division
+   returns every row its figures count, and the `used` figure of a division equals the number of
+   distinct values held while the holder sits in that division on the row's branch. The reserved
+   `pool_id` `mock-unscoped` returns the fixed unscoped dataset.
 9. **Given** the exported GraphQL schema before and after the contract change set, **When** the
    two are diffed, **Then** the only change to `PoolUtilization`, `PoolAllocated`,
    `PoolAllocatedNode`, `IPPrefixUtilizationEdge`, `IPPoolUtilizationResource` and the two generic
@@ -222,8 +222,8 @@ through the ordinary allocation path, and check which numbers come back, on one 
 ### User Story 3 - Which site is about to run out, and which numbers it holds (Priority: P2)
 
 An operator views every division holding numbers, ordered from the fullest, and for one division
-its figures over the pool and over each range and the numbers it holds, so that a site about to
-run out is visible before it does. The mock partition of User Story 1 is replaced by these reads.
+its figures over the pool and over each range and the numbers it holds, so that a site about to run
+out is visible before it does. The fixed dataset of User Story 1 is replaced by these reads.
 
 **Why this priority**: Reporting is what makes a scoped pool operable, and it depends on the division
 reads User Story 2 introduces.
@@ -250,11 +250,12 @@ list against the records.
    label or, when the peer cannot be read, by its id.
 5. **Given** device D1 holding 5 in site A on the default branch and moved to site C on `b1`,
    **When** `InfrahubNumberPoolAllocations` is filtered on site A, **Then** D1's two rows are
-   returned (one per branch, although D1 sits in C on `b1`); **When** filtered on site C,
-   **Then** the same two rows are returned, so 5 counts in A and in C and the two divisions'
-   `used` figures do not sum to the pool's.
-6. **Given** a scoped pool after this story lands, **When** the three queries are read, **Then** no
-   value or label beginning with `mock-` is returned.
+   returned (one per branch, because D1 carries site A on the default branch); **When** filtered
+   on site C, **Then** the same two rows are returned, so 5 counts in A and in C and the two
+   divisions' `used` figures do not sum to the pool's.
+6. **Given** a scoped pool after this story lands, **When** the three queries are read, **Then**
+   they return that pool's own data, no row of the fixed dataset is returned, and a `pool_id` naming
+   no number pool is refused.
 
 ---
 
@@ -417,11 +418,11 @@ spec directory.
 - A scope is widened on a pool holding records: numbers taken under the finer division become free.
   Narrowed: more numbers appear taken. No number already handed out changes.
 - A pool's last range is removed: the dedicated utilization query lists no range, every figure
-  reports `size` 0, and the allocation list is empty. Allocation raises
+  reports `size` 0, and the allocations list is empty. Allocation raises
   the existing pool-exhausted error, as P1 defines.
 - A tracked value sits inside a range but the attribute lists it in `excluded_values`, or it falls
-  outside the attribute's `min_value` / `max_value`: the allocation list does not list it and the
-  value counts in no figure.
+  outside the attribute's `min_value` / `max_value`: the allocations query does not list it and it
+  counts in no figure.
 - A pool holds several ranges: its deprecated `start_range` / `end_range` pair is null, and the
   dedicated surface computes every figure from the range set, so it reports the pool where the
   generic queries, which read the pair, cannot.
@@ -522,12 +523,13 @@ specification adds.
 - **FR-015**: A query dedicated to number pools, `InfrahubNumberPoolUtilization`, MUST return for
   one pool: the scope in force on the reading branch, the pool's figures, one row per range ordered
   by start with the range's id, display label, start, end, weight and figures. The query MUST
-  accept a `division` argument naming one division with a value for every scope entry in force on
-  the reading branch; with it, the pool's figures and every range row report that division, a
-  range in which it holds no value reporting `used` 0. `division` MUST be required on a pool whose
-  scope in force is not empty, and its absence refused naming the pool and the branch (FR-011). A
-  `division` that omits an entry in force MUST be refused naming the missing entries; the other
-  `division` refusals of FR-024 apply. *(User Story 1, scenarios 2 and 3;
+  accept a `division` argument naming one
+  division with a value for every scope entry in force on the reading branch; with it, the pool's
+  figures and every range row report that division, a range in which it
+  holds no value reporting `used` 0. `division` MUST be required on a pool whose scope in force is
+  not empty, and its absence refused naming the pool and the branch (FR-011). A `division` that
+  omits an entry in force MUST be refused naming the missing entries; the other `division`
+  refusals of FR-024 apply. *(User Story 1, scenarios 2 and 3;
   User Story 3, scenarios 1 to 3)*
 - **FR-016**: A division MUST be identified by one entry per scope entry in force on the reading
   branch, in scope order, each entry carrying the path, the value (a relationship entry: the
@@ -544,14 +546,14 @@ specification adds.
   types, attribute-parameter documentation) MUST carry the new fields and MUST be regenerated, never
   edited. The contract published by User Story 1 MUST NOT be renamed, retyped or removed by any
   later story in this slice. *(User Story 1, scenario 10)*
-- **FR-019**: Until the division reads exist, the three dedicated queries MAY report the divisions
-  of a scoped pool from one deterministic mock partition: every row of the pool is put in one of
-  three divisions named `mock-1`, `mock-2` and `mock-3` by a stable hash of its holder's id, the
-  entries carry the real scope paths in force, and the divisions list and the division filter read
-  the same partition so that lists, filters and counts agree. The mock
-  MUST NOT be observable on an unscoped pool. It MUST be removed before the slice ships, and a test
-  MUST assert that no value or label beginning with `mock-` is returned by any of the three queries
-  on a scoped pool. *(User Story 1, scenario 8; User Story 3, scenario 6)*
+- **FR-019**: Until the real reads exist, the three dedicated queries MAY return a fixed in-memory
+  dataset and read nothing from the database: a scoped dataset for any `pool_id`, and an unscoped
+  dataset for the reserved `pool_id` `mock-unscoped` (contract section "Fixed dataset of the first
+  delivery"). Every figure MUST be computed from the dataset's rows so that lists, filters and
+  counts agree, and the filters, ordering, pagination and the `range_id` and `division` refusals
+  MUST apply to the dataset. The dataset MUST be removed before the slice ships, and a test MUST
+  assert that the three queries return the requested pool's own data and refuse a `pool_id` naming
+  no number pool. *(User Story 1, scenario 8; User Story 3, scenario 6)*
 - **FR-022**: A query dedicated to number pools, `InfrahubNumberPoolDivisions`, MUST return for one
   pool the scope in force, the count of divisions and the complete list of divisions, each with its
   entries, display label and figures, ordered by utilization descending then display label, without
@@ -562,11 +564,12 @@ specification adds.
   `division` (FR-015). *(User Story 1, scenario 4; User Story 3, scenarios 1 and 4)*
 - **FR-023**: A query dedicated to number pools, `InfrahubNumberPoolAllocations`, MUST return for
   one pool a paginated list of rows, one per (record, branch-resolved value), each carrying the
-  value, the branch holding it, the holder (id, hfid, kind, display label read on the row's branch),
-  the identifier, the provenance (`ALLOCATED` or `PROVIDED`) and the range holding the value. The
-  list holds only values of the pool's space (FR-028). Rows are ordered by value, then branch, then
-  holder id, and `count` reports the filtered rows before `offset` and `limit`. *(User Story 1,
-  scenario 5)*
+  value, the branch holding it, the holder (id, hfid, kind, display label read on the row's
+  branch), the identifier, the provenance (`ALLOCATED` or `PROVIDED`) and the range holding the
+  value. Only values of the pool's space are listed; a value outside it (excluded, outside
+  `min_value` / `max_value`, or held by no range) is not listed and counts in no figure. Rows are
+  ordered by value, then branch, then holder id,
+  and `count` reports the filtered rows before `offset` and `limit`. *(User Story 1, scenario 5)*
 - **FR-024**: `InfrahubNumberPoolAllocations` MUST accept the filters `division`, `range_id`,
   `branch` and `provenance`, combined with "and". A `division` filter is a list of
   (path, value) entries; a partial tuple is allowed; a row matches when its holder carries the
@@ -591,11 +594,8 @@ specification adds.
   filter), empty for an unscoped pool and for a scoped pool none of whose entries the branch
   defines. *(User Story 1, scenario 3; User Story 6, scenarios 2 and 3)*
 - **FR-028**: The provenance of each tracked number that P2 specified for the pool queries MUST be
-  carried by the dedicated surface as `provenance` on each row, and MUST NOT be added to the
-  generic queries. `InfrahubNumberPoolAllocations` MUST list only values of the pool's space: inside
-  one of the pool's ranges, not among the attribute's `excluded_values`, and within its
-  `min_value` / `max_value` when set. A value the list leaves out counts in no figure of the
-  dedicated surface. *(User Story 1, scenario 5)*
+  carried by the dedicated surface as `provenance` on each row. It MUST NOT be added to the generic
+  queries. *(User Story 1, scenario 5)*
 - **FR-029**: The generic queries `InfrahubResourcePoolUtilization` and
   `InfrahubResourcePoolAllocated` and their types MUST keep their shape and meaning for every pool
   kind. For a number pool they report pool-wide figures and the whole pool's values, scope or not.
@@ -681,10 +681,11 @@ specification adds.
   `PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`, `IPPrefixUtilizationEdge`,
   `IPPoolUtilizationResource` and the two generic root fields other than description text.
 - **SC-010**: From the contract change set on, a scoped pool's divisions list and the
-  division-filtered lists agree: a division's `used` equals the number of distinct values among the
-  rows returned when filtering on it.
-- **SC-011**: At the end of the slice no mock division is returned by any of the three dedicated
-  queries, and the test asserting it passes.
+  division-filtered lists agree: filtering on a listed division returns every row its figures
+  count, and a division's `used` equals the number of distinct values those rows hold while the
+  holder sits in that division on the row's branch.
+- **SC-011**: At the end of the slice no row of the fixed dataset is returned by any of the three
+  dedicated queries, and the test asserting it passes.
 
 ## Behaviour changes for the changelog
 
@@ -722,10 +723,9 @@ Using the repository's "ask first" list.
   or several). Allocation still draws from the shorthand, so it works on a pool holding exactly one
   range; allocation over a range set and the shared effective-space calculation have not landed.
   The division filter is independent of the range walk, so the two land in either order. The
-  dedicated surface computes every `size` and `used`, and the values of the pool's space it lists,
-  from the range set, the attribute's `excluded_values` and its `min_value` / `max_value`, never
-  from the shorthand, and switches to P1's shared calculation when it lands without a contract
-  change.
+  dedicated surface computes every `size` and `used`, and the values of the pool's space, from the
+  range set, the attribute's `excluded_values` and its `min_value` / `max_value`, never from the
+  shorthand, and switches to P1's shared calculation when it lands without a contract change.
 - P2's foundational re-anchoring has landed on this branch: the `IS_RESERVED` record is a global
   edge from the pool to the holder's attribute vertex, re-anchored by migration with the legacy
   pool source edges deleted and shared-attribute records collapsed; the liveness read is a union
@@ -760,9 +760,9 @@ Using the repository's "ask first" list.
   (one allocation's latency and plan) is a query benchmark. Both record figures, neither gates.
 - Allocation locks on the pool as today; a per-division lock key is an implementation choice
   taken only if SC-005 says so.
-- Data mocks are acceptable on the feature branch: the contract change set ships the divisions of
-  a scoped pool as a deterministic partition so the frontend can build against real shapes with
-  plausible data, and the mock is removed before the slice ships (FR-019).
+- Data mocks are acceptable on the feature branch: the contract change set ships the three
+  queries over a fixed in-memory dataset so the frontend can build against the final shapes with
+  plausible data, and the dataset is removed before the slice ships (FR-019).
 - No frontend ships in this slice. The dedicated surface is designed so the pool form, the range
   view, the division view and the allocation list need no further backend change.
 

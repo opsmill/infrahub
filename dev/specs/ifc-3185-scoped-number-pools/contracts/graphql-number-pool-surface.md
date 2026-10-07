@@ -8,8 +8,9 @@ types, hand-written in `graphql/queries/number_pool.py` and registered in
 meaning; only their descriptions change (section "Generic queries frozen for number pools").
 
 This contract is published by the contract change set and frozen: no later change set of the
-slice renames, retypes or removes a field below (FR-018). The division data a scoped pool returns
-is mocked at contract time (section "Mock partition at contract time"); everything else is real.
+slice renames, retypes or removes a field below (FR-018). The first delivery of the three queries
+returns a fixed in-memory dataset and reads nothing from the database (section "Fixed dataset of
+the first delivery"); the real reads replace it without changing a field.
 
 ## Why a dedicated surface
 
@@ -236,7 +237,7 @@ type Query {
 |---|---|---|
 | `pool_id` | all three | The number pool. Required. |
 | `range_id` | allocations | Rows whose value the range holds. |
-| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch (FR-007 union). A filter that omits an entry in force is refused (section "Refusals"). |
+| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch. A filter that omits an entry in force is refused (section "Refusals"). |
 | `division` | allocations | Rows whose holder carries, for every given entry, the given value on at least one live branch (FR-007 union). A partial filter is allowed: on a `["site", "tenant"]` pool, `[{path: "site", value: "<A>"}]` returns every row held in site A across tenants. |
 | `branch` | allocations | Rows whose value is held on that branch. Omitted: rows from every live branch. |
 | `provenance` | allocations | Rows with that provenance. |
@@ -288,9 +289,11 @@ one-row-per-(record, branch-resolved value) rule.
 | `range_id` is not a range of the pool | `ValidationError` | `The selected pool_id=<pool_id> doesn't contain the requested range_id=<range_id>` |
 | `division` given on a pool whose scope in force is empty (unscoped, or every entry unknown on the request's branch) | `ValidationError` | `The pool <pool_id> has no allocation scope in force on branch <branch>; the division filter cannot be applied` |
 | utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
+| utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
 | utilization only: `division` omits an entry in force on the request's branch | `ValidationError` | `The division filter must give a value for every allocation scope entry in force on branch <branch>; missing: <paths>`, where `<paths>` lists the missing entries in scope order, joined with ", " |
 | a `division` entry's `path` is not in the scope in force | `ValidationError` | `The division entry '<path>' is not in the allocation scope in force on branch <branch>` |
 | the same `path` twice in `division` | `ValidationError` | `The division entry '<path>' is given twice` |
+| `offset` or `limit` is negative | `ValidationError` | `<argument> must be 0 or greater`, where `<argument>` is `offset` or `limit` |
 | `branch` names no branch | `BranchNotFoundError` | `Branch: <branch> not found.` (existing) |
 
 A `division` entry whose `path` is in force but whose `value` matches no holder is not refused; the
@@ -317,20 +320,19 @@ percentages keep the names and meaning of `PoolUtilization`.
 | Pool state | `allocation_scope` on results | `NumberPoolUtilization.figures` | `ranges[].figures` | `NumberPoolDivisions.divisions` | `division` argument |
 |---|---|---|---|---|---|
 | unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | refused |
-| scoped | the entries in force | the division given as `division`; refused without it (FR-011); at contract time, from the mock partition | the division given as `division` (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | accepted for paths in force; complete on the utilization query |
+| scoped | the entries in force | the division given as `division`; refused without it (FR-011) | the division given as `division` (FR-017) | one row per division holding at least one tracked value on any live branch | accepted for paths in force; complete on the utilization query |
 | scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | refused |
 | no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | per the rows above |
 
-A pool with no range has an empty space, so its allocations list is empty.
+On a pool with no range, the allocations list is empty.
 
 On a scoped pool the utilization query reports one division at a time: the headline and every
 range row report the division given as `division`, including a range in which it holds no value
 (`used` 0). The fullest division is the first row of `InfrahubNumberPoolDivisions`, which orders
 the divisions by utilization descending.
 
-The allocations query returns only values of the pool's space; a value the attribute excludes,
-one beyond its `min_value` / `max_value`, or one no range holds is not listed and counts in no
-figure.
+The allocations query returns only values of the pool's space: a value outside it (excluded,
+outside `min_value` / `max_value`, or held by no range) is not listed and counts in no figure.
 
 Because a holder's division is resolved as a union over live branches, one value can appear in
 two divisions: a holder in site A on the default branch and moved to site C on branch `b1` puts
@@ -341,32 +343,80 @@ A scoped pool's division list includes a division keyed by a peer that exists on
 branch; its entry's `display_label` falls back to the peer's id and `peer_kind` is null. A division
 whose nodes exist but hold no value is not listed.
 
-## Mock partition at contract time
+## Fixed dataset of the first delivery
 
-The contract change set ships the three queries with real data for everything except the
-divisions of a scoped pool, which the division reads of later change sets compute. Until then:
+The first delivery of the three queries returns a fixed in-memory dataset so that the frontend can
+build against the final shapes before the real reads exist. The resolvers read nothing from the
+database: no pool, range, record, holder or branch is loaded. The dataset lives in
+`backend/infrahub/pools/number_pool_mock.py`, and the real reads replace that module without
+changing a type, a field or an argument.
 
-| Field | At contract time | Replaced by |
+`pool_id` selects one of two datasets:
+
+- `mock-unscoped`, a reserved id, returns the unscoped dataset.
+- Any other value returns the scoped dataset. No `pool_id` is refused: `NodeNotFoundError` is not
+  raised by the first delivery.
+
+The scoped dataset, pool `Device index`:
+
+| Item | Content |
+|---|---|
+| Allocation scope | `["site"]` |
+| Ranges | `1 - 50` with weight 10, `51 - 100` with weight 0 |
+| Excluded values | none |
+| Divisions | Site A, Site B, Site C and Site D; each entry has path `site`, the site's id as `value` and `peer_kind` `LocationSite` |
+| Site A | devices `D0` to `D39` hold 40 values in `1 - 50` on `main`: `D0` holds 1, `D1` holds 5, `D2` to `D39` hold 6 to 43 |
+| Site C | no value of its own; `D1` sits in site C on branch `branch1` and holds 5 there, so value 5 counts in site A and in site C |
+| Site B | devices `B0` to `B29` hold 51 to 80; 78, 79 and 80 are held on `branch1` only; `B0`'s 51 has provenance `PROVIDED` |
+| Site D | no value on any branch, so it is not listed |
+
+The unscoped dataset, pool `VLANs`:
+
+| Item | Content |
+|---|---|
+| Allocation scope | `[]` |
+| Ranges | `1 - 50` with weight 10, `51 - 100` with weight 0 |
+| Excluded values | 40 |
+| Divisions | one division with `entries: []` and `display_label: ""` |
+| Rows | 1 and 51 on `main`; 7 on `branch1` only; every row has provenance `ALLOCATED` |
+
+Holders are of kind `InfraDevice`, with a fixed id, `hfid` equal to `[display_label]`, and the
+same label on every branch. `display_label` on `NumberPoolUtilization` is the pool name above,
+and `id` echoes `pool_id`.
+
+Every figure is computed from the dataset's rows with the definitions of section "Figures":
+`size`, `used`, `used_default_branch`, `used_branches`, the percentages, and on the scoped
+dataset the headline and range rows of the division given as `division`. Lists, filters and
+counts therefore agree.
+
+The results this gives:
+
+| Read | Scoped dataset | Unscoped dataset |
 |---|---|---|
-| `NumberPoolUtilization.figures`, `ranges`, every `size` and `used` figure | real, computed by the resolvers from the range set, the attribute's `excluded_values` and its `min_value` / `max_value` | the shared effective-space calculation of P1 (IFC-3213), same definition, one implementation |
-| `holder`, `branch`, `identifier`, `provenance`, `range` | real | unchanged |
-| the restriction of rows to the pool's space | real, same definition as `size` | the shared effective-space calculation of P1 (IFC-3213) |
-| divisions of a scoped pool, the `division` filter | the mock partition below | the division reads of this slice |
+| `NumberPoolUtilization` without `division` | refused | `size` 99, `used` 3, `used_default_branch` 2, `used_branches` 1; `1 - 50`: 2 of 50; `51 - 100`: 1 of 50 |
+| `NumberPoolDivisions` | A (40), B (30), C (1), each of `size` 100; no row for site D | one division with the pool's figures |
+| `NumberPoolUtilization` with the division of site A | 40 of 100; `1 - 50`: 40 of 50; `51 - 100`: 0 of 50 | refused |
+| `NumberPoolUtilization` with the division of site B | 30 of 100 (27 on `main`, 3 on other branches); `1 - 50`: 0 of 50; `51 - 100`: 30 of 50 | refused |
+| `NumberPoolAllocations` filtered on site A | `count` 41: the 40 rows on `main` and `D1`'s row on `branch1` | refused |
+| `NumberPoolAllocations` without filter | `count` 71 | `count` 3 |
+| `NumberPoolAllocations` filtered on provenance `PROVIDED` | `count` 1: `B0`'s 51 | `count` 0 |
 
-The mock partition: every row of a scoped pool is put in one of three divisions named `mock-1`,
-`mock-2` and `mock-3` by a stable hash of its holder's id (the id's integer value modulo three,
-plus one). A mock division's `entries` carry the real scope paths in force on the request's
-branch, each with `value` and `display_label` equal to the division's name and `peer_kind` null.
-`NumberPoolDivisions` lists the mock divisions that hold at least one row, with figures computed
-over the rows in each. A `division` filter `[{path: "<path in force>", value: "mock-2"}]` returns
-the rows of `mock-2` from the allocations query and the figures of `mock-2` from the utilization
-query; a `path` not in force is refused as in the final behaviour; a `value` outside the three
-names returns an empty list and zero figures. The three queries read the same partition, so lists,
-filters and counts agree.
+Behaviour of the arguments on the dataset:
 
-An unscoped pool never returns mock data. The mock is removed by the last change set of the
-slice, and a test asserts that no value or label beginning with `mock-` is returned by any of the
-three queries on a scoped pool (FR-019).
+- `division`, `range_id`, `branch` and `provenance` filter the rows in memory and combine with
+  "and"; a `division` filter on the allocations query can name a subset of the scope, as in
+  section "Arguments". The utilization query keeps the rows of the given division before
+  computing its figures. Rows are then ordered as in section "Ordering", `count` is taken, and
+  `offset` and `limit` (defaults 0 and 10) select the page.
+- The refusals of section "Refusals" apply, with their messages, to an unknown `range_id`, a
+  `division` filter on the unscoped dataset, a utilization read of the scoped dataset without
+  `division`, a `path` other than `site`, the same `path` twice, a `division` on the utilization
+  query that omits an entry in force, and a negative `offset` or `limit`. The scoped dataset has
+  one scope entry, so only a dataset with two entries can reach the refusal of an incomplete
+  `division`. The branch named in these messages is the request's branch.
+- The `branch` filter accepts any string. A name that matches no row returns an empty list;
+  `BranchNotFoundError` is not raised by the first delivery.
+- The `at` of the request is ignored.
 
 ## Generic queries frozen for number pools
 
@@ -469,13 +519,13 @@ query {
     "count": 2,
     "allocations": [
       {
-        "value": 1, "branch": "main", "identifier": null, "provenance": "ALLOCATED",
-        "holder": { "id": "17f3d001-…", "hfid": ["sw-core-01"], "kind": "InfraDevice", "display_label": "sw-core-01" },
+        "value": 1, "branch": "main", "identifier": "access-vlan", "provenance": "ALLOCATED",
+        "holder": { "id": "17f3d001-…", "hfid": ["sw-access-01"], "kind": "InfraDevice", "display_label": "sw-access-01" },
         "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" }
       },
       {
         "value": 7, "branch": "b1", "identifier": null, "provenance": "ALLOCATED",
-        "holder": { "id": "17f3d002-…", "hfid": ["sw-core-02"], "kind": "InfraDevice", "display_label": "sw-core-02" },
+        "holder": { "id": "17f3d002-…", "hfid": ["sw-access-02"], "kind": "InfraDevice", "display_label": "sw-access-02" },
         "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" }
       }
     ]
@@ -485,10 +535,10 @@ query {
 
 The pool `Device index` in the next three examples is scoped by `["site"]`, with ranges `1 - 50`
 and `51 - 100`. Site A's devices hold forty values in `1 - 50`, site B's devices hold thirty in
-`51 - 100`, and site C has devices but no value of its own. Device `D1` of site A holds 5 on
-`main` and was moved to site C on branch `b1`. Site D has devices and no value on any branch. The
-responses show the final behaviour; at contract time the same requests return the mock
-partition.
+`51 - 100`, and site C has devices but no value. Device `D1` of site A holds 5 on `main` and was
+moved to site C on branch `b1`. The responses show the final behaviour. The scoped dataset of the
+first delivery reproduces these holdings, with the branch named `branch1` (section "Fixed dataset
+of the first delivery").
 
 ### Divisions of a scoped pool
 
@@ -600,29 +650,9 @@ query {
 
 `count` is 41: the forty values of site A's devices on `main`, plus `D1`'s value 5 as held on
 `b1`, because `D1` carries site A on `main` (the FR-007 union keeps every row of a holder that
-sits in the division on any live branch), although `D1` sits in site C on that branch. Filtering
-on site C also returns `D1`'s two rows, so value 5 is counted in A and in C; the two divisions'
-`used` figures (40 and 1) must not be summed.
-
-### A scoped pool read at contract time
-
-```json
-{
-  "InfrahubNumberPoolDivisions": {
-    "count": 3,
-    "allocation_scope": ["site"],
-    "divisions": [
-      {
-        "display_label": "mock-1",
-        "entries": [ { "path": "site", "value": "mock-1", "display_label": "mock-1", "peer_kind": null } ],
-        "figures": { "size": 100, "used": 24, "utilization": 24.0 }
-      },
-      { "display_label": "mock-2", "entries": [ { "path": "site", "value": "mock-2", "display_label": "mock-2", "peer_kind": null } ], "figures": { "size": 100, "used": 23, "utilization": 23.0 } },
-      { "display_label": "mock-3", "entries": [ { "path": "site", "value": "mock-3", "display_label": "mock-3", "peer_kind": null } ], "figures": { "size": 100, "used": 23, "utilization": 23.0 } }
-    ]
-  }
-}
-```
+sits in the division on any live branch), even though `D1` sits in site C on `b1`. Filtering on
+site C also lists `D1`'s two rows, so value 5 is counted in A and in C; the two divisions' `used`
+figures (40 and 1) must not be summed.
 
 ## Generated artefacts touched
 
