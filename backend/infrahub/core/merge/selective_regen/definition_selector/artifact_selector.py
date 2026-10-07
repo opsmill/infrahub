@@ -92,4 +92,5 @@ class ArtifactSelector(DefinitionSelectorBase[ProposedChangeArtifactDefinition, 
             artifact_definition_id=definition.definition_id,
             artifact_definition_name=definition.definition_name,
             members=members,
+            repository_id=definition.repository_id,
         )
