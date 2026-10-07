@@ -323,6 +323,18 @@ async def test_a_trunk_behind_a_head_the_graph_does_not_record_refuses_the_merge
     assert clone.heads() == clone.local_heads
 
 
+async def test_a_source_behind_its_remote_head_with_no_commit_in_the_graph_is_merged_as_it_is(
+    merge_clone: MergeClone,
+) -> None:
+    """A merge that an older version queued carries no source commit."""
+    merge_clone.advance(SOURCE)
+    merge_clone.commits[SOURCE] = None
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
 async def test_a_refused_branch_keeps_the_other_branch_where_it_is(merge_clone: MergeClone) -> None:
     """The refusal comes before any reset, so a refused merge leaves the clone exactly as it found it."""
     merge_clone.commits[SOURCE] = merge_clone.rewind(branch_name=SOURCE)
