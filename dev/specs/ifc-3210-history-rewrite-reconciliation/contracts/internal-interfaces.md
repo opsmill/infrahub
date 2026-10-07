@@ -834,7 +834,9 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
 refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as
 the message says, and the next cycle imports the result. The delivery queue of IFC-3220 does not
-recover this case: its FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause.
+recover this case. After a rewrite of the source or of the trunk, its FR-020 and FR-022 only mark
+such a delivery unreplayable, with a named cause. After a plain push to the trunk between the two
+checks, IFC-3220 specifies no recovery.
 
 ### Accepted residual risk
 

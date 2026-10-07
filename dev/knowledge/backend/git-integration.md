@@ -235,8 +235,10 @@ merge after a plain push and keeps the branch open:
 
 > **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
 > the guard refused: the user finishes it in Git. The delivery queue specified in
-> `dev/specs/ifc-3220-writeback-failure-handling/` does not recover it either: its FR-020 and FR-022
-> only mark such a delivery unreplayable. Update this section when either lands.
+> `dev/specs/ifc-3220-writeback-failure-handling/` does not recover it either. After a rewrite of the
+> source or of the trunk, it only marks such a delivery as one it cannot replay. After a plain push
+> to the trunk between the two checks, it specifies no recovery at all. Update this section when
+> either lands.
 
 ## Repository state and branch support
 

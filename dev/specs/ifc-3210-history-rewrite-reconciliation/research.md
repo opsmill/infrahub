@@ -210,8 +210,9 @@ the graph merge: the branch merge compares the remote heads with the graph commi
 `git ls-remote`, and refuses while one differs. The branch stays open, the next cycle imports the
 head, and the user merges again. The refusal of the Git merge itself is left for a remote that moves
 between the two checks. The user finishes that merge in Git, as the refusal message says. The
-delivery queue of IFC-3220 does not recover it: its FR-020 and FR-022 only mark such a delivery
-unreplayable, with a named cause.
+delivery queue of IFC-3220 does not recover it. After a rewrite of the source or of the trunk, its
+FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause. After a plain push to
+the trunk between the two checks, IFC-3220 specifies no recovery.
 
 **Accepted residual risk**: the remote can be rewritten between the guard's fetch and the push that
 follows. The guard narrows that window, it does not close it. FR-005b is a best-effort property,

@@ -332,8 +332,9 @@ here. See "Out of Scope".
   merge MUST block it, because that Git merge would fail the same way after the graph merge. A
   refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
   branch is merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes
-  that merge in Git. The delivery queue of IFC-3220 does not recover it: its FR-020 and FR-022 only
-  mark such a delivery unreplayable, with a named cause.
+  that merge in Git. The delivery queue of IFC-3220 does not recover it. After a rewrite of the
+  source or of the trunk, its FR-020 and FR-022 only mark such a delivery unreplayable, with a named
+  cause. After a plain push to the trunk between the two checks, IFC-3220 specifies no recovery.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
