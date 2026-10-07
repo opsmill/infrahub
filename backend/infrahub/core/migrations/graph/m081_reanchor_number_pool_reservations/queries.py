@@ -123,16 +123,20 @@ CALL (attr, branch_window) {
 // ----------------
 // Only make the new edge if everything is active and this value matches the reserved value
 // ----------------
-WITH pool, res, attr
+WITH pool, res, reserved_value, attr
 WHERE value_is_active AND latest_value = reserved_value
-WITH pool, res, collect(DISTINCT attr) AS attrs
+// ----------------
+// Mark the current value as the allocated one
+// ----------------
+WITH pool, res, reserved_value, collect(DISTINCT attr) AS attrs
 // ----------------
 // Create the new IS_RESERVED edge and delete the old one
 // ----------------
-CALL (pool, res, attrs) {
+CALL (pool, res, reserved_value, attrs) {
     UNWIND attrs AS attr
     CREATE (pool)-[new_res:IS_RESERVED]->(attr)
     SET new_res = properties(res)
+    SET new_res.allocated_values = [toInteger(reserved_value)]
     WITH DISTINCT res
     DELETE res
 } IN TRANSACTIONS OF $batch_size ROWS

@@ -16,6 +16,7 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated, PoolRecordProvenance
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
@@ -686,14 +687,67 @@ class TestMigration081:
     ) -> None:
         before = migrated.moved_record_before
         assert before.anchor == "AttributeValue"
-        assert "provenance" not in before.properties
+        assert "allocated_values" not in before.properties
 
         after = await self.records_for(db=db, migrated=migrated, ticket="moved")
         assert len(after) == 1
         assert after[0].anchor == "Attribute"
         assert after[0].attribute_id == migrated.attribute_ids["moved"]
         assert carried(after[0].properties) == carried(before.properties)
-        assert "provenance" not in after[0].properties, "an absent provenance already reads as allocated"
+        assert after[0].properties["allocated_values"] == [
+            migrated.tickets["moved"].get_attribute(TRACKED_ATTRIBUTE_NAME).value
+        ], "the legacy record hung off the value the pool allocated, so that value is the one the pool allocated"
+
+    @pytest.mark.parametrize(
+        ("ticket", "pool", "rows"),
+        [
+            ("on_main_a", "alpha", {"main": ("reserved", PoolRecordProvenance.ALLOCATED)}),
+            ("on_feature", "alpha", {"feature": ("reserved", PoolRecordProvenance.ALLOCATED)}),
+            ("set_back_main", "gamma", {"main": ("reserved", PoolRecordProvenance.ALLOCATED)}),
+            (
+                "set_back_branch",
+                "gamma",
+                {
+                    "main": (SET_BACK_BRANCH_MAIN_VALUE, PoolRecordProvenance.PROVIDED),
+                    "feature": ("reserved", PoolRecordProvenance.ALLOCATED),
+                },
+            ),
+            (
+                "updated_after_branching",
+                "gamma",
+                {
+                    "main": (UPDATED_AFTER_BRANCHING_VALUE, PoolRecordProvenance.PROVIDED),
+                    "feature": ("reserved", PoolRecordProvenance.ALLOCATED),
+                },
+            ),
+        ],
+    )
+    async def test_a_migrated_record_lists_only_the_number_it_reserved(
+        self,
+        db: InfrahubDatabase,
+        migrated: MigratedDatabase,
+        ticket: str,
+        pool: str,
+        rows: dict[str, tuple[int | str, PoolRecordProvenance]],
+    ) -> None:
+        """The legacy record hung off one number, so that is the only number the pool allocated.
+
+        A branch holding it reads allocated; a branch holding any other number, including one the attribute held on
+        the way, reads provided.
+        """
+        reserved = migrated.tickets[ticket].get_attribute(TRACKED_ATTRIBUTE_NAME).value
+
+        [record] = live_records(await self.records_for(db=db, migrated=migrated, ticket=ticket))
+        assert record.properties["allocated_values"] == [reserved]
+        for branch_name, (value, provenance) in rows.items():
+            branch = await registry.get_branch(db=db, branch=branch_name)
+            query = await NumberPoolGetAllocated.init(
+                db=db, pool=migrated.pools[pool], ranges=[[POOL_START, POOL_END]], branch=branch
+            )
+            await query.execute(db=db)
+            row = next(row for row in query.get_data() if row.id == migrated.tickets[ticket].id)
+            expected_value = reserved if value == "reserved" else value
+            assert (row.value, row.provenance) == (expected_value, provenance), branch_name
 
     async def test_a_record_reserved_after_its_attribute_existed_moves(
         self, db: InfrahubDatabase, migrated: MigratedDatabase
