@@ -58,9 +58,9 @@ uv run pytest backend/tests/unit/git/divergence/ backend/tests/unit/message_bus/
 | Classifier, missing object | The imported commit is gone from the object database and the target did not change, so the result is `REWRITE`. With the target changed it is `RETARGET`. |
 | Classifier, missing remote head | The remote head is gone from the object database, so the classification raises a `RepositoryError` instead of reporting a rewrite. |
 | Classifier, never imported | No imported commit, so the result is never `REWRITE` or `RETARGET`. |
-| Suppression, present | A marker that names the git branch the cycle synchronises makes `target_changed` true and is gone afterwards. |
+| Suppression, present | A marker that names the git branch the cycle synchronises makes `target_changed` true. Reading it leaves it in place. |
 | Suppression, absent | An absent marker, or one that names another git branch, makes `target_changed` false. |
-| Suppression, consumed once | A second classification after the same marker is not suppressed. |
+| Suppression, cleared once | The marker is cleared once a cycle leaves the trunk on the remote head of the branch it names, so a later genuine rewrite is recorded. |
 | Recorder, last-write-wins | A second rewrite overwrites the first record. |
 | Recorder, increment | The count goes from absent to 1, then 1 to 2. |
 | Recorder, precondition | Every classification other than `REWRITE` writes nothing. The recorder never reads the cache. |

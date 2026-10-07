@@ -258,7 +258,7 @@ chosen, and why the recorder must not be the reader.
 | Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
 | Read when | Before every classification of Infrahub's default branch, not only before a `REWRITE`. No other branch can be re-pointed, so no other branch carries a marker. |
 | Effect | A marker that names the git branch this cycle synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
-| Consumed | Yes, but only after the commit write for that branch succeeds. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
+| Cleared | After the collection, and only when the trunk records the remote head of the git branch the marker names, which comes after the commit write for that branch. Reading leaves the marker in place. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
 
 **The recorder must not read this key.** It returns early on any classification other than
 `REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The

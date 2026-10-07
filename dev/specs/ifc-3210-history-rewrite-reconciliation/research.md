@@ -244,10 +244,11 @@ This is the hardest decision in the feature. FR-002 and SC-007 both depend on it
 repository was re-pointed at a different target. The detector sees only two commits. The tracking
 target that produced the imported commit is not stored anywhere.
 
-**Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
+**Decision**: the mutation that changes a tracking target writes a suppression marker in
 the shared cache. The component that calls the detector reads it, passes the result as
-`target_changed`, and deletes it after the commit write for that branch succeeds. Read-only repositories do not use it at all: their re-point
-travels in band on the workflow model.
+`target_changed`, and clears it once the trunk records the remote head of the git branch it names.
+Reading never deletes it. Read-only repositories do not use it at all: their re-point travels in band
+on the workflow model.
 
 - Key: repository id plus Infrahub branch name.
 - Read-only repositories write no marker. Their re-point travels in band on the workflow model,
@@ -258,8 +259,8 @@ travels in band on the workflow model.
   marker inside the update transaction, before it commits.
 - Reader: **the detector's caller, and nothing else.** A marker that names the git branch the cycle
   synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still
-  reset onto the remote head; only the record is skipped. The delete happens after the commit
-  write, not at the read.
+  reset onto the remote head; only the record is skipped. The clear happens after the
+  collection, not at the read.
 - Scope: **read-write repositories only.** A read-only re-target is carried in band on the
   workflow model, because the mutation already computes the comparison. That removes the cache from
   the read-only path entirely: no expiry, no timing question, no lost marker.
@@ -289,8 +290,8 @@ of that branch. Reading at classification time keeps `RETARGET` reachable in the
 tests, and deleting after the commit write keeps a failed cycle retryable.
 
 **Rationale**: the cache is how this codebase already coordinates repository state across workers,
-and the read-write edit has no in-band channel to travel on. The marker is deleted once the commit
-write lands, so it cannot suppress twice.
+and the read-write edit has no in-band channel to travel on. The marker is cleared once the trunk
+records the remote head of the branch it names, so it cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
@@ -298,18 +299,14 @@ row. The count on the branch goes one too high, and the trunk signal fires, so w
 has wired to that webhook receives a security-remediation notice for an ordinary configuration
 change.
 
-Two things keep the window small. The marker is deleted only after the commit write for that branch
-succeeds, so a cycle that fails anywhere earlier retries with the marker still in place. And the
-widened candidate set classifies a re-targeted trunk on the next cycle, within a minute of the
-edit.
+Two things keep the window small. The marker is cleared only once the trunk records the remote
+head of the branch it names, so a cycle that fails anywhere earlier, or never reaches the trunk,
+keeps it in place. And the widened candidate set classifies a re-targeted trunk on the next cycle,
+within a minute of the edit.
 
-The read and the delete are separate operations, because the cache has no atomic get-and-delete.
-`GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1` and `CANCEL_NEW`, so no second cycle enters
-that window. A user edit does. A second re-target between the read and the delete writes a fresh
-marker, the cycle deletes that newer marker, and the next cycle reports the second re-target as a
-rewrite. Deleting only the value that was read would close it, and the cache API would have to grow
-a compare-and-delete to do so. Accepted: the cost is the one in the risk table, for two deliberate
-re-targets of the same repository inside one cycle.
+Reading never deletes, and the clear compares the value before it deletes. A second re-target
+written during a cycle names another target, so it survives for the next cycle. The contract,
+section 8 rule 6, gives the one gap left between the comparison and the delete.
 
 **Alternatives rejected**:
 

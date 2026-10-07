@@ -188,8 +188,9 @@ import path, and the rule above is live rather than unreachable.
 - The detector is given the graph commit. It never reads the worktree, and it never decides whether
   this worker needs to reset. That decision belongs to the `pull` contract in section 3.
 - **`target_changed` is supplied by the caller, and the caller is the only component that touches
-  the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
-  the detector nor the recorder reads the cache. See section 8.
+  the suppression marker.** It reads the marker without deleting it, passes the result here, and
+  clears it after the collection once the trunk records the remote head of the git branch the
+  marker names. Neither the detector nor the recorder reads the cache. See section 8.
 - **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
   describe a branch whose local history no longer leads to the remote's, and both must end with
   the worktree on the remote head. Only `REWRITE` records. `FAST_FORWARD`, `REMOTE_ABSENT` and
@@ -675,9 +676,11 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    removes one that no cycle ever reconciles. A long one is safe because of rule 9: a marker whose
    target the repository no longer tracks does nothing.
 3. **Exactly one component touches the marker: the detector's caller in the sync path**,
-   `collect_pending_imports`. It reads the marker, passes the result to `classify` as
-   `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
-   The detector never touches the cache, and neither does the recorder.
+   `collect_pending_imports`. It reads the marker before any classification, without deleting it,
+   and passes the result to `classify` as `target_changed`. After the collection it clears the
+   marker, and **only when the trunk records the remote head of the git branch the marker names**,
+   which comes after the commit write for that branch (rule 8). The detector never touches the
+   cache, and neither does the recorder.
 4. Deleting at classification time is wrong. The reset, the commit write and the import all come
    after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
    re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
@@ -686,10 +689,12 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
-6. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
-   between them. Nothing guards that window except `GIT_REPOSITORIES_SYNC` running with
-   `concurrency_limit=1` and `CANCEL_NEW`, which keeps two cycles from overlapping. If that ever
-   changes, this needs a compare-and-delete.
+6. Reading never deletes. The clear compares the value before it deletes, so it removes only a
+   marker that names the target this cycle synchronised, and a marker an edit wrote for another
+   target during the cycle survives for the next one. The comparison and the delete are two cache
+   calls, so only an edit to yet another target that lands between those two calls is lost.
+   `GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1` and `CANCEL_NEW`, so no second cycle
+   reaches the marker at the same time.
 7. The marker is read within one cron cycle of being written, because the widened candidate
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:

@@ -643,10 +643,10 @@ read-write repository's configured default branch. Neither writes a record.
       T078 and T080 put on the workflow models.
 - [x] T083 [P] [US6] Unit-test the suppression in
       `backend/tests/unit/git/divergence/test_suppression.py`: a present marker that names the git
-      branch the cycle synchronises yields `target_changed` true and is gone afterwards, and an
-      absent marker yields false. Both directions are asserted, so the behaviour is stated rather
-      than assumed. Assert the marker is consumed exactly once, which is what stops it suppressing
-      a later genuine rewrite.
+      branch the cycle synchronises yields `target_changed` true, and reading it leaves it in place.
+      An absent marker yields false. Both directions are asserted, so the behaviour is stated rather
+      than assumed. Assert the marker is cleared once a cycle leaves the trunk on the remote head of
+      the branch it names, which is what stops it suppressing a later genuine rewrite.
 - [x] T084 [US6] Component-test both re-point paths in
       `backend/tests/component/graphql/mutations/test_repository.py`: a `CoreRepository`
       `default_branch` edit writes the cache marker before the workflows are submitted, and a
