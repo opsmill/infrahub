@@ -390,8 +390,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             recorder: Records each rewrite the classification finds, right after the branch's new
                 commit is written. Without it no rewrite is recorded.
             retarget_markers: Tell a deliberate change of the default branch apart from a rewrite of
-                the trunk. The marker of the trunk is cleared when the collection ends, unless the trunk
-                failed. Without them, every lineage break of the trunk is a rewrite.
+                the trunk. The marker of the trunk is cleared when the collection ends with the trunk on
+                the remote head of the default branch. Without them, every lineage break of the trunk is
+                a rewrite.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -412,13 +413,33 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             trunk_retargeted=trunk_retargeted,
         )
 
-        failed_on_trunk = any(failed.on_default_branch for failed in collected.failed_imports)
-        if graph_commits is not None and retarget_markers is not None and not failed_on_trunk:
+        if (
+            graph_commits is not None
+            and retarget_markers is not None
+            and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
+        ):
             # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite for its hour.
             await retarget_markers.clear(
                 repository_id=str(self.id), infrahub_branch_name=registry.default_branch, target=self.default_branch
             )
         return collected
+
+    def _trunk_is_on_remote_head(self, graph_commits: Mapping[str, str | None], collected: CollectedImports) -> bool:
+        """Whether the trunk records the remote head of the default branch once the collection ends.
+
+        A trunk that failed, an inactive repository, or a default branch the remote does not hold yet
+        leaves the trunk on another commit.
+        """
+        if not self.has_origin:
+            return False
+        remote_branch = self.get_branches_from_remote().get(self.default_branch)
+        if remote_branch is None:
+            return False
+        trunk_commit = graph_commits.get(registry.default_branch)
+        for reconciled in collected.reconciled:
+            if reconciled.infrahub_branch_name == registry.default_branch:
+                trunk_commit = reconciled.commit
+        return trunk_commit == remote_branch.commit
 
     async def _collect_pending_imports(
         self,

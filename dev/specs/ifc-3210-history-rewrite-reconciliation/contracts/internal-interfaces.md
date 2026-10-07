@@ -695,8 +695,11 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
    its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
    webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
-   every marker to one cycle. The sweep keeps the marker of a trunk that failed in this cycle, so
-   the retry of rule 4 still finds it.
+   every marker to the first cycle that reconciles the re-point. The sweep deletes the marker only
+   when the trunk records the remote head of the git branch the marker names. A trunk that failed,
+   an inactive repository and a default branch the remote does not hold yet all leave the trunk on
+   another commit. They keep the marker for the cycle that synchronises the trunk, so the retry of
+   rule 4 still finds it.
 9. **A marker applies only to a cycle that synchronises the target it names.** The cycle reads
    `default_branch` when it builds the repository, before it reads or sweeps the marker. An edit
    that lands between the two leaves a cycle that synchronises the old target while the marker

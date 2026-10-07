@@ -999,3 +999,49 @@ async def test_a_marker_for_another_target_is_left_for_the_cycle_that_synchronis
         written_record(tracked, branch_name="main", previous_commit=tracked.trunk_commit, commit=rewritten)
     ]
     assert await is_marked(markers, tracked, target=TRACKED)
+
+
+async def test_an_inactive_repository_keeps_its_marker_for_the_cycle_that_synchronises_the_trunk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cycle of an inactive repository leaves the trunk on the commit of the old default branch."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.INACTIVE
+
+    idle = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert idle.imports == []
+    assert await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.ACTIVE
+    active = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert active.imports == [
+        re_pointed.retarget(
+            RefClassification.RETARGET, imported_commit=re_pointed.discarded_commit, commit=re_pointed.new_head
+        )
+    ]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
+async def test_a_default_branch_the_remote_does_not_hold_yet_keeps_its_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    tracked.repository.default_branch = "release"
+    markers = await marked(tracked, target="release")
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=markers,
+    )
+
+    assert await is_marked(markers, tracked, target="release")
