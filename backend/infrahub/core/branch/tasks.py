@@ -520,6 +520,7 @@ async def check_remote_heads_imported(db: InfrahubDatabase, branch_name: str, ch
     It runs before the global merge lock, so a remote that is slow to answer delays this merge only.
 
     Raises:
+        RepositoryCredentialsError: When a remote refuses the credentials of a repository that needs a Git merge.
         RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
     """
