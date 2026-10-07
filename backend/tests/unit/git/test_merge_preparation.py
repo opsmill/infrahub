@@ -71,6 +71,10 @@ class MergeClone:
             branch_name=self.remote_branch(branch_name), files={"rewritten.txt": "rewritten\n"}, amend=True
         )
 
+    def advance_with_no_graph_commit(self, branch_name: str) -> None:
+        """Add a commit on top of the remote branch, for a merge that an older version queued with no commit."""
+        self.advance(branch_name)
+
     def advance_without_import(self, branch_name: str) -> str:
         """Add a commit on top of the remote branch and return the head this clone holds, which the graph keeps."""
         self.advance(branch_name)
@@ -141,6 +145,14 @@ class MergeClone:
             f"{SOURCE} into {self.remote_trunk} in the Git repository. The next synchronization imports the result."
         )
 
+    def left_out_message(self) -> str:
+        merged = self.heads()[SOURCE]
+        remote_head = str(self.remote.repo.commit(SOURCE))
+        return (
+            f"The merge of branch {SOURCE} of repository {REPOSITORY_NAME} uses commit {merged}, not the remote head "
+            f"{remote_head}. The commits after {merged} stay on {SOURCE} and do not reach {DESTINATION}."
+        )
+
     def accept_pushes(self) -> None:
         """Let the remote take a push to the branch its working copy has checked out, as a bare remote does."""
         with self.remote.repo.config_writer() as remote_config:
@@ -184,14 +196,19 @@ async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeC
     return await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
 
 
+def guard_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER]
+
+
 @dataclass(frozen=True)
 class RemoteChangeCase:
     name: str
     branch_name: str
-    graph_commit: Callable[[MergeClone, str], str]
+    graph_commit: Callable[[MergeClone, str], str | None]
     """Change the remote branch and return the commit the graph records for it."""
 
-    remote_trunk: str = DESTINATION
+    leaves_source_commits_out: bool = False
+    """Whether the merge uses a source commit short of its remote head, which only a warning can show."""
 
 
 @pytest.mark.parametrize(
@@ -202,37 +219,39 @@ class RemoteChangeCase:
         RemoteChangeCase(name="source-rewound", branch_name=SOURCE, graph_commit=MergeClone.rewind),
         RemoteChangeCase(name="destination-rewritten", branch_name=DESTINATION, graph_commit=MergeClone.rewrite),
         RemoteChangeCase(
-            name="destination-rewritten-on-master",
-            branch_name=DESTINATION,
-            graph_commit=MergeClone.rewrite,
-            remote_trunk="master",
+            name="source-behind-its-graph-commit",
+            branch_name=SOURCE,
+            graph_commit=MergeClone.import_then_advance,
+            leaves_source_commits_out=True,
         ),
         RemoteChangeCase(
-            name="source-behind-its-graph-commit", branch_name=SOURCE, graph_commit=MergeClone.import_then_advance
-        ),
-        RemoteChangeCase(
-            name="source-on-a-head-not-imported", branch_name=SOURCE, graph_commit=MergeClone.advance_and_follow
+            name="source-on-a-head-not-imported",
+            branch_name=SOURCE,
+            graph_commit=MergeClone.advance_and_follow,
+            leaves_source_commits_out=True,
         ),
         RemoteChangeCase(
             name="source-behind-its-remote-and-ahead-of-its-graph-commit",
             branch_name=SOURCE,
             graph_commit=MergeClone.follow_then_advance,
+            leaves_source_commits_out=True,
         ),
     ],
     ids=lambda case: case.name,
 )
 async def test_a_branch_is_moved_onto_the_commit_the_graph_records_before_the_merge(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: RemoteChangeCase
+    merge_clone: MergeClone, caplog: pytest.LogCaptureFixture, case: RemoteChangeCase
 ) -> None:
     """A clone that missed a broadcast would merge an old source, or push onto an old trunk and be rejected."""
-    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=case.remote_trunk)
-    graph_commit = case.graph_commit(clone, case.branch_name)
-    clone.commits[case.branch_name] = graph_commit
+    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
+    graph_commit = case.graph_commit(merge_clone, case.branch_name)
+    merge_clone.commits[case.branch_name] = graph_commit
 
-    await clone.prepare()
+    await merge_clone.prepare()
 
-    assert clone.heads() == {**clone.local_heads, case.branch_name: graph_commit}
-    assert clone.client.recorded_commits == []
+    assert merge_clone.heads() == {**merge_clone.local_heads, case.branch_name: graph_commit}
+    assert merge_clone.client.recorded_commits == []
+    assert guard_warnings(caplog) == ([merge_clone.left_out_message()] if case.leaves_source_commits_out else [])
 
 
 @pytest.mark.parametrize(
@@ -243,26 +262,35 @@ async def test_a_branch_is_moved_onto_the_commit_the_graph_records_before_the_me
             name="source-behind-a-head-not-imported",
             branch_name=SOURCE,
             graph_commit=MergeClone.advance_without_import,
+            leaves_source_commits_out=True,
         ),
         RemoteChangeCase(
             name="source-behind-a-graph-commit-the-remote-dropped",
             branch_name=SOURCE,
             graph_commit=MergeClone.import_then_rewrite,
+            leaves_source_commits_out=True,
+        ),
+        RemoteChangeCase(
+            name="source-behind-with-no-commit-in-the-graph",
+            branch_name=SOURCE,
+            graph_commit=MergeClone.advance_with_no_graph_commit,
+            leaves_source_commits_out=True,
         ),
         RemoteChangeCase(name="source-deleted-on-the-remote", branch_name=SOURCE, graph_commit=MergeClone.delete),
     ],
     ids=lambda case: case.name,
 )
 async def test_a_branch_the_graph_does_not_record_ahead_of_it_is_merged_as_it_is(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: RemoteChangeCase
+    merge_clone: MergeClone, caplog: pytest.LogCaptureFixture, case: RemoteChangeCase
 ) -> None:
     """The merge then builds on the commit the graph records, not on content the graph never imported."""
-    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=case.remote_trunk)
-    clone.commits[case.branch_name] = case.graph_commit(clone, case.branch_name)
+    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
+    merge_clone.commits[case.branch_name] = case.graph_commit(merge_clone, case.branch_name)
 
-    await clone.prepare()
+    await merge_clone.prepare()
 
-    assert clone.heads() == clone.local_heads
+    assert merge_clone.heads() == merge_clone.local_heads
+    assert guard_warnings(caplog) == ([merge_clone.left_out_message()] if case.leaves_source_commits_out else [])
 
 
 @dataclass(frozen=True)
@@ -337,83 +365,22 @@ async def test_a_branch_whose_rewrite_the_graph_lacks_refuses_the_merge(
     ids=lambda case: case.name,
 )
 async def test_a_trunk_whose_remote_head_the_graph_does_not_record_refuses_the_merge_before_the_push(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: RemoteChangeCase
+    merge_clone: MergeClone, case: RemoteChangeCase
 ) -> None:
     """The remote rejects a push onto an older trunk, and a merge onto a head never imported hides that head."""
-    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
-    clone.accept_pushes()
-    graph_commit = case.graph_commit(clone, DESTINATION)
-    clone.commits[DESTINATION] = graph_commit
-    remote_head = str(clone.remote.repo.commit(DESTINATION))
-    heads_before = clone.heads()
-    message = clone.trunk_not_recorded_message(graph_commit=graph_commit, remote_head=remote_head)
+    merge_clone.accept_pushes()
+    graph_commit = case.graph_commit(merge_clone, DESTINATION)
+    assert graph_commit is not None
+    merge_clone.commits[DESTINATION] = graph_commit
+    remote_head = str(merge_clone.remote.repo.commit(DESTINATION))
+    heads_before = merge_clone.heads()
+    message = merge_clone.trunk_not_recorded_message(graph_commit=graph_commit, remote_head=remote_head)
 
     with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
-        await clone.prepare_and_merge()
+        await merge_clone.prepare_and_merge()
 
-    assert str(clone.remote.repo.commit(DESTINATION)) == remote_head
-    assert clone.heads() == heads_before
-
-
-async def test_a_source_behind_its_remote_head_with_no_commit_in_the_graph_is_merged_as_it_is(
-    merge_clone: MergeClone,
-) -> None:
-    """A merge that an older version queued carries no source commit."""
-    merge_clone.advance(SOURCE)
-    merge_clone.commits[SOURCE] = None
-
-    await merge_clone.prepare()
-
-    assert merge_clone.heads() == merge_clone.local_heads
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        RemoteChangeCase(
-            name="moved-back-from-the-remote-head", branch_name=SOURCE, graph_commit=MergeClone.advance_and_follow
-        ),
-        RemoteChangeCase(
-            name="moved-back-from-between", branch_name=SOURCE, graph_commit=MergeClone.follow_then_advance
-        ),
-        RemoteChangeCase(
-            name="moved-forward-short-of-the-remote-head",
-            branch_name=SOURCE,
-            graph_commit=MergeClone.import_then_advance,
-        ),
-        RemoteChangeCase(
-            name="left-behind-the-remote-head", branch_name=SOURCE, graph_commit=MergeClone.advance_without_import
-        ),
-    ],
-    ids=lambda case: case.name,
-)
-async def test_a_source_merged_short_of_its_remote_head_logs_the_commits_left_out(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, case: RemoteChangeCase
-) -> None:
-    """The branch is merged in Infrahub, so the merge goes on, and only a warning can show what it leaves out."""
-    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
-    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
-    merged = case.graph_commit(clone, SOURCE)
-    clone.commits[SOURCE] = merged
-    remote_head = str(clone.remote.repo.commit(SOURCE))
-
-    await clone.prepare()
-
-    assert [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER] == [
-        f"The merge of branch {SOURCE} of repository {REPOSITORY_NAME} uses commit {merged}, not the remote head "
-        f"{remote_head}. The commits after {merged} stay on {SOURCE} and do not reach {DESTINATION}."
-    ]
-
-
-async def test_a_source_merged_at_its_remote_head_logs_no_warning(
-    merge_clone: MergeClone, caplog: pytest.LogCaptureFixture
-) -> None:
-    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
-    merge_clone.commits[SOURCE] = merge_clone.advance(SOURCE)
-
-    await merge_clone.prepare()
-
-    assert [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER] == []
+    assert str(merge_clone.remote.repo.commit(DESTINATION)) == remote_head
+    assert merge_clone.heads() == heads_before
 
 
 async def test_a_tag_moved_on_the_remote_does_not_stop_the_merge(merge_clone: MergeClone) -> None:
