@@ -1,8 +1,11 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.branch import BranchData
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.protocols import (
     CoreArtifact,
     CoreArtifactDefinition,
@@ -60,6 +63,7 @@ from ..workflows.catalogue import (
     REQUEST_ARTIFACT_GENERATE,
 )
 from ..workflows.utils import add_branch_tag, add_tags
+from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .models import (
     CheckRepositoryImportStatus,
@@ -307,6 +311,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     operational_status: str,
     infrahub_branch: str,
     staging_branch: str | None = None,
+    graph_commits: dict[str, str | None] | None = None,
 ) -> None:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
@@ -337,7 +342,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
     try:
-        report = await syncer.sync(repo, staging_branch=staging_branch)
+        report = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
     except RepositoryBranchesFailedError as exc:
         await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
         raise
@@ -358,6 +363,21 @@ async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub
         log_skipped_branches(repo=repo, report=report)
     if report.reports_skipped_branches or link_run:
         await add_tags(branches=[infrahub_branch, *report.attempted_import_branches], nodes=[str(repo.id)])
+
+
+def select_writable_branch_commits(
+    branch_commits: Mapping[str, str | None], branches: Mapping[str, BranchData]
+) -> dict[str, str | None]:
+    """Keep the commit of each Infrahub branch that can still record one.
+
+    A branch whose status rejects a commit, and a branch Infrahub no longer lists, would be selected
+    for one again on every cycle.
+    """
+    return {
+        name: commit
+        for name, commit in branch_commits.items()
+        if name in branches and accepts_commit_write(branches[name])
+    }
 
 
 def resolve_initial_import_branch(repo: InfrahubRepository, init_failed: bool) -> str | None:
@@ -446,6 +466,7 @@ async def sync_repository_from_origin(
     infrahub_branch: str,
     infrahub_branch_id: str,
     client: InfrahubClient,
+    graph_commits: dict[str, str | None] | None = None,
 ) -> None:
     """Sync the repository from its origin and notify the worker pool of the resulting commit."""
     log = get_run_logger()
@@ -458,6 +479,7 @@ async def sync_repository_from_origin(
             operational_status=repository.operational_status.value,
             staging_branch=staging_branch,
             infrahub_branch=infrahub_branch,
+            graph_commits=graph_commits,
         )
         try:
             pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -520,6 +542,7 @@ async def sync_remote_repositories() -> None:
             infrahub_branch=infrahub_branch,
             infrahub_branch_id=branches[infrahub_branch].id,
             client=client,
+            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
         )
 
 
@@ -553,12 +576,22 @@ async def git_branch_create(
         return
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
-        await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
+        created = await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
 
         try:
             pinned_commit: str | None = repo.get_commit_value(branch_name=branch, remote=False)
         except (ValueError, InvalidGitRepositoryError):
             pinned_commit = None
+        # Unwritten, the branch reads its origin branch's commit, and a sync would classify against that.
+        if created and pinned_commit is not None:
+            try:
+                await repo.update_commit_value(branch_name=branch, commit=pinned_commit)
+            except SdkError as exc:
+                # The next sync records a commit the graph lacks, but nothing resends the broadcast below.
+                log.warning(
+                    f"Unable to record commit {pinned_commit} of the new branch '{branch}' for repository "
+                    f"'{repository_name}', the next synchronization records it - {exc.message}"
+                )
         # New branch has been pushed remotely, tell workers to fetch it and check out the SHA it
         # was created at so the pool converges even if upstream advances during fan-out.
         message = messages.RefreshGitFetch(

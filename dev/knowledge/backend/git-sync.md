@@ -92,6 +92,47 @@ More than one worker can also each report the same
 push, at most once per worker. Reporting it reliably needs a baseline that only the sync writes, such
 as a worker-local ref updated after each comparison.
 
+## Rewritten history
+
+`InfrahubRepository.collect_pending_imports` compares each branch twice. Keep the two comparisons
+apart, because they drive different outcomes:
+
+- **The commit the graph records against the remote head** says what happened to the branch:
+  unchanged, fast-forward, rewrite or gone from the remote (`git/divergence/`). The classifier also
+  knows a re-target, but the sync is never told that a tracking target changed, so it never produces
+  one ([Known limitations](git-integration.md#known-limitations)). The commits are read once per
+  cycle by `get_repositories_commit_per_branch` and passed down through the sync flows.
+- **This worker's worktree head against the remote head** says whether the clone moves. The sync
+  moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
+  remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
+  to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
+  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
+  pushes before it records the commit, and resets the destination worktree when either step fails.
+  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
+  commit there, and the sync reset then discards it
+  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
+  already on the remote head stays there. When the graph records another commit, the sync resets the
+  worktree onto the same commit, which records it, and imports the branch again: a pull would move
+  nothing, so it would record nothing.
+
+A worker whose graph already holds the remote head can still hold the discarded history on disk. It
+resets and logs the reconciliation, and its classification stays unchanged.
+
+The sync considers the branches whose local head differs from the remote, and also the local
+branches whose graph commit differs from the remote head. Only branches that can still record a
+commit take part in the second comparison. A branch that needs a rebase, is being merged, failed a
+merge, is merged or is being deleted rejects the commit, and so does a branch Infrahub no longer
+lists, so it would be selected again on every cycle. `git/branch_status.py::accepts_commit_write`
+holds that rule for both comparisons. A commit write the graph still refuses, because the status
+changed after the listing, fails that branch alone. The sync classifies a branch new to this worker too,
+because the graph can hold a commit that another worker imported and the remote has since discarded.
+A graph commit that is empty or not a full commit id counts as none, so the branch classifies as a
+fast-forward and records a real commit. When git cannot read its object store, a new branch is still
+created, but a branch this worker holds fails before its worktree moves. Each reset that discards a
+commit, from the worktree or from the graph, logs one line with the branch, the discarded commit and
+the commit that replaced it. A plain fast-forward logs nothing. The add flow passes no graph
+commits, so it classifies nothing.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning

@@ -1197,8 +1197,14 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 identifier=name, message=f"Unable to correctly lookup credentials for repository {name} ({location})."
             ) from error
 
-        if any(err in error.stderr for err in ("Need to specify how to reconcile", "because you have unmerged files")):
-            target = f"the branch {branch_name} for repository {name}" if branch_name else f"repository {name}"
+        target = f"the branch {branch_name} for repository {name}" if branch_name else f"repository {name}"
+        if "Need to specify how to reconcile" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=f"Unable to pull {target}, its local history and the remote history have diverged.",
+            ) from error
+
+        if "because you have unmerged files" in error.stderr:
             raise RepositoryError(
                 identifier=name,
                 message=f"Unable to pull {target}, there are conflicts that must be resolved.",
