@@ -97,6 +97,32 @@ describe("useGetBranchRepositorySummaries", () => {
     ]);
   });
 
+  test("keeps an unchanged branch's summary object when another branch's status changes", async () => {
+    // GIVEN
+    const { queryClient, result } = await renderSummaries();
+    await expect.poll(() => result.current.feature?.status).toBe("ok");
+    const primaryBefore = result.current.primary;
+    const featureBefore = result.current.feature;
+    vi.mocked(getRepositoryBranchStatus).mockResolvedValue({
+      rows: [
+        mapRepositoryBranchStatusRow(
+          generateRepositoryBranchStatus({ name: { value: "primary" } })
+        ),
+        mapRepositoryBranchStatusRow(
+          generateRepositoryBranchStatus({ name: { value: "feature" }, commit: { value: "new" } })
+        ),
+      ],
+      count: 2,
+    });
+
+    // WHEN
+    await queryClient.refetchQueries();
+
+    // THEN
+    await expect.poll(() => result.current.feature).not.toBe(featureBefore);
+    expect(result.current.primary).toBe(primaryBefore);
+  });
+
   test("keys the summaries by branch name", async () => {
     // WHEN
     const { result } = await renderSummaries();
