@@ -92,20 +92,10 @@ class SchemaNumberPoolSynchronizer:
                 await self._delete_pool(schema_number_pool, user_id=user_id)
 
     async def _delete_pool(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
-        """Delete a pool together with its ranges, so no range outlives the pool it belongs to."""
+        """Delete a pool with its ranges and end the records it holds, so each number stays on its object untracked."""
         pool_id = schema_number_pool.get_id()
-        async with (
-            lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE),
-            within_transaction(db=self.db) as dbt,
-        ):
-            pool_node = await NodeManager.get_one(
-                db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True
-            )
-            if pool_node is None:
-                return
-            await NodeManager.delete(
-                db=dbt, nodes=[pool_node], branch=registry.default_branch, at=Timestamp(), user_id=user_id
-            )
+        async with lock.registry.get(name=pool_id, namespace=RESOURCE_POOL_LOCK_NAMESPACE):
+            await self._range_store_factory(db=self.db).delete_pool(pool_id=pool_id, user_id=user_id)
 
     async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
         """Reconcile a pool's ranges with the declaration on the default branch.

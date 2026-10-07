@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.core.constants import SYSTEM_USER_ID
+from infrahub.core.constants import SYSTEM_USER_ID, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPoolRange
@@ -11,15 +11,17 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetReserved,
     NumberPoolGetTaken,
     NumberPoolGetUsed,
+    NumberPoolReleaseAllReserved,
     NumberPoolSetReserved,
     PoolRecordProvenance,
 )
+from infrahub.core.timestamp import Timestamp
+from infrahub.database import within_transaction
 from infrahub.pools.number_pool_space import to_pool_ranges
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-    from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.pools.number_ranges import EffectiveSpace, PoolRange
 
@@ -56,6 +58,10 @@ class NumberPoolRangeStore(Protocol):
     async def delete_range(
         self, pool_range: CoreNumberPoolRange, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None: ...
+
+    async def delete_pool(
+        self, pool_id: str, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> list[Node]: ...
 
 
 class NumberPoolRangeStoreFactory(Protocol):
@@ -193,3 +199,19 @@ class NumberPoolRepository(NumberPoolRangeStore):
             at=at,
         )
         await query.execute(db=self.db)
+
+    async def delete_pool(self, pool_id: str, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> list[Node]:
+        """Delete the pool with its ranges and end every record it holds, so each number stays on its object.
+
+        Returns:
+            The pool and the nodes deleted along with it, empty when no such pool exists.
+
+        """
+        delete_at = Timestamp(at)
+        async with within_transaction(db=self.db) as dbt:
+            pool = await NodeManager.get_one(db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True)
+            if pool is None:
+                return []
+            release = await NumberPoolReleaseAllReserved.init(db=dbt, pool_id=pool_id, at=delete_at, user_id=user_id)
+            await release.execute(db=dbt)
+            return await NodeManager.delete(db=dbt, nodes=[pool], at=delete_at, user_id=user_id)
