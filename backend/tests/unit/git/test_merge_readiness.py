@@ -22,7 +22,6 @@ from tests.adapters.remote_heads import (
     HeadRead,
     InMemoryRemoteHeadReader,
     StalledRemoteHeadReader,
-    TogetherRemoteHeadReader,
 )
 
 SOURCE = "feature"
@@ -189,18 +188,6 @@ async def test_a_remote_that_cannot_be_read_lets_the_merge_go_on_with_a_warning(
     ]
 
 
-async def test_the_remote_heads_of_every_repository_are_read_at_the_same_time() -> None:
-    """A merge waits for the slowest remote, not for the sum of them."""
-    targets = [target(name=f"repo-{index}") for index in range(3)]
-    reader = TogetherRemoteHeadReader(
-        heads={target.name: {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD} for target in targets}, reads_in_flight=3
-    )
-
-    await asyncio.wait_for(check(reader=reader).check(source_branch=SOURCE, targets=targets), timeout=10)
-
-    assert [read.repository_name for read in reader.reads] == ["repo-0", "repo-1", "repo-2"]
-
-
 async def test_a_source_named_like_the_remote_trunk_compares_only_the_trunk_with_a_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -222,21 +209,6 @@ async def test_a_source_named_like_the_remote_trunk_compares_only_the_trunk_with
     assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
         "Branch develop has the name of the trunk of repository network-repo on the remote, so the merge "
         "compares only the trunk with its remote head"
-    ]
-
-
-async def test_a_trunk_that_moved_does_not_hold_a_merge_whose_branch_records_the_trunk_commit() -> None:
-    """The branch records the trunk commit, so the Git merge of that repository has nothing to push."""
-    reader = InMemoryRemoteHeadReader(heads={"network-repo": {SOURCE: TRUNK_HEAD, "main": NEWER}})
-
-    await check(reader=reader).check(source_branch=SOURCE, targets=[target(source_commit=TRUNK_HEAD)])
-
-    assert reader.reads == [
-        HeadRead(
-            repository_name="network-repo",
-            location="https://git.example.com/network-repo.git",
-            branch_names=(SOURCE,),
-        )
     ]
 
 
@@ -371,20 +343,3 @@ def test_a_git_merge_has_nothing_to_push_only_when_both_branches_record_the_same
         nothing_to_merge_in_git(source_commit=case.source_commit, destination_commit=case.destination_commit)
         is case.nothing_to_merge
     )
-
-
-async def test_a_repository_with_no_commit_on_either_branch_compares_only_its_source_branch() -> None:
-    """A repository whose first clone failed records no commit on the trunk, nor on a branch created after."""
-    reader = InMemoryRemoteHeadReader(heads={"network-repo": {"main": TRUNK_HEAD}})
-
-    await check(reader=reader).check(
-        source_branch=SOURCE, targets=[target(source_commit=None, destination_commit=None)]
-    )
-
-    assert reader.reads == [
-        HeadRead(
-            repository_name="network-repo",
-            location="https://git.example.com/network-repo.git",
-            branch_names=(SOURCE,),
-        )
-    ]

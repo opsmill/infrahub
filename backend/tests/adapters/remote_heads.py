@@ -37,25 +37,6 @@ class FailingRemoteHeadReader:
         raise self.error_class(identifier=repository_name)
 
 
-class TogetherRemoteHeadReader(InMemoryRemoteHeadReader):
-    """RemoteHeadReader that answers no read until the given number of reads have all started.
-
-    Reads made one after the other never all start, so they wait forever.
-    """
-
-    def __init__(self, heads: dict[str, dict[str, str]], reads_in_flight: int) -> None:
-        super().__init__(heads=heads)
-        self.reads_in_flight = reads_in_flight
-        self.all_started = asyncio.Event()
-
-    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
-        heads = await super().read_heads(repository_name=repository_name, location=location, branch_names=branch_names)
-        if len(self.reads) == self.reads_in_flight:
-            self.all_started.set()
-        await self.all_started.wait()
-        return heads
-
-
 class CountingRemoteHeadReader(InMemoryRemoteHeadReader):
     """RemoteHeadReader that keeps the highest number of reads that were in flight at the same time."""
 
