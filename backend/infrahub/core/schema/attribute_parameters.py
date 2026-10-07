@@ -241,6 +241,15 @@ class NumberPoolParameters(AttributeParameters):
         description="The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned.",
         json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value},
     )
+    allocation_scope: list[str] | None = Field(
+        default=None,
+        description=(
+            "Fields of the kind that divide the pool's space; "
+            "allocation returns the lowest free number within the writer's division. "
+            "Same notation as uniqueness constraints."
+        ),
+        json_schema_extra={"update": UpdateSupport.ALLOWED.value},
+    )
 
     @property
     def has_shorthand(self) -> bool:

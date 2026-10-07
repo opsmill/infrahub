@@ -7,6 +7,7 @@ from invoke.runners import Result
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import GenericAlias
 
     from infrahub.core.constants import Visibility
     from infrahub.core.schema.definitions.internal import SchemaAttribute, SchemaNode
@@ -902,6 +903,14 @@ class SdkSchemaGenerator:
                 "Only set after the number pool has been provisioned.",
                 optional=True,
             ),
+            self._field(
+                "allocation_scope",
+                "List",
+                "Fields of the kind that divide the pool's space; "
+                "allocation returns the lowest free number within the writer's division",
+                optional=True,
+                internal_kind=list[str],
+            ),
         ]
 
         self.computed_kind_description = "Defines how the value of the attribute is computed."
@@ -1025,6 +1034,7 @@ class SdkSchemaGenerator:
         regex: str | None = None,
         enum: list[str] | None = None,
         default_value: int | None = None,
+        internal_kind: "type[Any] | GenericAlias | None" = None,
     ) -> "SchemaAttribute":
         from infrahub.core.schema.definitions.internal import SchemaAttribute
 
@@ -1037,6 +1047,7 @@ class SdkSchemaGenerator:
             regex=regex,
             enum=enum,
             default_value=default_value,
+            internal_kind=internal_kind,
         )
 
     def _computed_kind_field(self, value: str) -> dict[str, str]:

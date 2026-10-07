@@ -29,11 +29,11 @@ allocating-branch read.
 
 **Purpose**: ground truth and the test fixture every later phase shares.
 
-- [ ] T001 Read `dev/knowledge/backend/database-schema.md` (edge activity, the Resource Pool
+- [X] T001 Read `dev/knowledge/backend/database-schema.md` (edge activity, the Resource Pool
       Reservations section, the retention predicate) and `dev/knowledge/backend/query-pattern.md`
       (branch-aware edge resolution, result dataclasses, "keep Cypher readable inline") before
       touching any query. Read `dev/guidelines/backend/component-design.md` before adding a class.
-- [ ] T002 Read `backend/infrahub/core/query/resource_manager.py::reserved_values_query` and its two
+- [X] T002 Read `backend/infrahub/core/query/resource_manager.py::reserved_values_query` and its two
       UNION legs in full, and `backend/infrahub/core/query/relationship.py::RelationshipGetPeerQuery`
       for how arrows are rendered from `direction`; D3's hop copies both.
 - [ ] T003 [P] Add a scoped-pool test schema to `backend/tests/helpers/number_pool.py`: a kind with
@@ -43,7 +43,9 @@ allocating-branch read.
       Do not reuse `tests/helpers/schema/snow.py::SNOW_TASK`: its pooled attribute is `unique`, and
       the global taken-values scan masks scoped behaviour. Add a `scoped_pool_schema` fixture and a
       helper that creates N sites and M objects per site.
-- [ ] T004 [P] Create `backend/tests/unit/pools/__init__.py` if absent and
+      Deferred by the user: nothing in change set A allocates, so the schema, fixture and helper
+      are added by the first phase that uses them (D1).
+- [X] T004 [P] Create `backend/tests/unit/pools/__init__.py` if absent and
       `backend/tests/component/core/constraint_validators/__init__.py` if absent, so the new test
       modules are collected.
 
@@ -55,16 +57,16 @@ allocating-branch read.
 
 **⚠️ CRITICAL**: no story work starts until A is merged; it is one small PR.
 
-- [ ] T005 Add `allocation_scope` (`kind="List"`, `optional=True`, description "Fields of the kind
+- [X] T005 Add `allocation_scope` (`kind="List"`, `optional=True`, description "Fields of the kind
       that divide the pool's space; allocation returns the lowest free number within the writer's
       division", order after `pool_type`) to
       `backend/infrahub/core/schema/definitions/core/resource_pool.py::core_number_pool`. No branch
       support override: the pool is agnostic.
-- [ ] T006 [P] Add `allocation_scope: list[str] | None = Field(default=None, …,
+- [X] T006 [P] Add `allocation_scope: list[str] | None = Field(default=None, …,
       json_schema_extra={"update": UpdateSupport.ALLOWED.value})` to
       `backend/infrahub/core/schema/attribute_parameters.py::NumberPoolParameters` with the same
       description as T005 and "same notation as uniqueness constraints".
-- [ ] T007 [P] Add the `List` field to the hand-maintained
+- [X] T007 [P] Add the `List` field to the hand-maintained
       `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` (the generated SDK,
       OpenAPI and REST models are not introspected from the Pydantic class).
 - [ ] T008 Regenerate: `uv run invoke backend.generate`, `uv run invoke
@@ -73,10 +75,13 @@ allocating-branch read.
       `CoreNumberPool` and `ListAttributeCreate` / `ListAttributeUpdate` on its three inputs, and
       `schema/openapi.json` carries it on `NumberPoolParametersWrite` / `Read`. Run `uv run pytest
       backend/tests/unit/core/schema/test_write_json_schema.py`.
-- [ ] T009 Component test in `backend/tests/component/core/schema/test_attribute_parameters.py`:
+      Partial: backend protocols, `schema.graphql` and docs regenerated; `openapi.json` still lacks
+      the field because `NumberPoolParametersWrite`/`Read` are the SDK models and the `python_sdk`
+      submodule regeneration is the separate SDK PR.
+- [X] T009 Component test in `backend/tests/component/core/schema/test_attribute_parameters.py`:
       a `NumberPool` attribute declaring `parameters.allocation_scope: ["site"]` loads and the
       parameters round-trip through the schema API; absent and `[]` both read back as unscoped.
-- [ ] T010 Component test in
+- [X] T010 Component test in
       `backend/tests/component/graphql/resource_manager/test_number_pool_mutation.py`: create a
       pool with `allocation_scope: {value: ["site"]}` and read it back; create without it and read
       `null`; update with `{value: null}` clears it. (Validation is not wired yet; this pins the

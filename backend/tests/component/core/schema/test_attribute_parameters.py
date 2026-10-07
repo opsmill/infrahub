@@ -1,5 +1,6 @@
 import sys
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any
 
 import pydantic
@@ -28,7 +29,9 @@ from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.helpers.schema import load_schema
 from tests.helpers.schema.snow import SNOW_INCIDENT, SNOW_REQUEST, SNOW_TASK
+from tests.helpers.schema.ticket import TICKET
 
 
 def build_synchronizer(db: InfrahubDatabase) -> SchemaNumberPoolSynchronizer:
@@ -642,3 +645,75 @@ async def test_list_attribute_regex_parameter_validation(
     another_node = await Node.init(db=db, schema=schema)
     with pytest.raises(ValidationError, match=r"ftp must conform with the regex"):
         await another_node.new(db=db, name="test-single", protocols=["ftp"])
+
+
+@dataclass(frozen=True)
+class DeclaredScopeCase:
+    name: str
+    attribute: str
+    expected_scope: list[str] | None
+    """The scope the reloaded parameters carry; None when the attribute must read back as unscoped."""
+
+
+DECLARED_SCOPE_CASES: list[DeclaredScopeCase] = [
+    DeclaredScopeCase(name="site", attribute="site_index", expected_scope=["title"]),
+    DeclaredScopeCase(name="absent", attribute="plain_index", expected_scope=None),
+    DeclaredScopeCase(name="empty", attribute="empty_index", expected_scope=None),
+]
+
+
+class TestNumberPoolAllocationScopeParameters:
+    """A NumberPool attribute's allocation_scope survives the write to and the reload from the database.
+
+    The schema is loaded once for the class, with one pooled attribute per declaration shape.
+    """
+
+    @pytest.fixture(scope="class")
+    async def reloaded_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> SchemaBranch:
+        ticket = deepcopy(TICKET)
+        ticket.attributes.extend(
+            [
+                AttributeSchema(
+                    name="site_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=["title"]),
+                ),
+                AttributeSchema(
+                    name="plain_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100),
+                ),
+                AttributeSchema(
+                    name="empty_index",
+                    kind="NumberPool",
+                    optional=False,
+                    read_only=True,
+                    parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=[]),
+                ),
+            ]
+        )
+        await load_schema(db=db, schema=SchemaRoot(nodes=[ticket]), update_db=True)
+        return await registry.schema.load_schema_from_db(db=db, branch=default_branch_scope_class)
+
+    @pytest.mark.parametrize("case", DECLARED_SCOPE_CASES, ids=lambda case: case.name)
+    async def test_declared_scope_round_trips_through_the_database(
+        self, reloaded_schema: SchemaBranch, case: DeclaredScopeCase
+    ) -> None:
+        parameters = (
+            reloaded_schema.get_node(name=TICKET.kind, duplicate=False).get_attribute(case.attribute).parameters
+        )
+
+        assert isinstance(parameters, NumberPoolParameters)
+        if case.expected_scope is None:
+            assert not parameters.allocation_scope
+        else:
+            assert parameters.allocation_scope == case.expected_scope
