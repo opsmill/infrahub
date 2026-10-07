@@ -764,7 +764,10 @@ reaches it. This guard closes that.
 5. A worktree ahead of its remote has been rewound. It is diverged from the remote head, so the table
    decides: move it when the graph commit equals the remote head, refuse otherwise.
 6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
-   ref.
+   ref. A source that this clone does not hold, as on a worker whose sync has not created it yet, is
+   created the same way at its graph commit when the remote history holds that commit. Otherwise
+   the guard refuses: the merge has no source to read, and the remote head can hold content the
+   graph never imported.
 7. When the merge does not use the remote head of the source, whether the source moved onto its
    graph commit, back or forward, or stayed behind, the guard logs a warning. It names the commit the
    merge uses and the remote head, and says that the commits after it stay on the source branch and

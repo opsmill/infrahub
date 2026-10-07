@@ -110,7 +110,9 @@ class BranchMove:
     """A merge branch that the merge guard moves onto the commit the graph records for it."""
 
     branch_name: str
-    local_head: str
+    local_head: str | None
+    """None when this clone does not hold the branch, so the move creates it."""
+
     target: str
 
 
@@ -934,8 +936,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         push onto an older trunk, and a merge onto a head the graph never imported hides that head from
         the next synchronization. A source that leads to its remote head is moved onto the graph commit
         when the remote history holds it, so the merge holds what the graph merged. It is left as it is
-        when the graph records no commit, or one the remote history no longer holds. When the merge does
-        not use the remote head of the source, a warning names the commits that stay out of the trunk.
+        when the graph records no commit, or one the remote history no longer holds. A source that this
+        clone does not hold is created at its graph commit when the remote history holds that commit, and
+        refused otherwise, because the merge then has no source to read. When the merge does not use the
+        remote head of the source, a warning names the commits that stay out of the trunk.
 
         The source commit is the one read when the merge was dispatched, because the source branch can
         be deleted in Infrahub before this runs. The destination commit must be read under the
@@ -943,7 +947,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record,
-                or the destination is on or behind such a head.
+                when the destination is on or behind such a head, or when this clone does not hold the source and
+                the remote history does not hold its graph commit.
             RepositoryError: When git cannot fetch or compare a branch.
 
         """
@@ -964,9 +969,25 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         for branch_name, local_head in local_heads.items():
             remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
             remote_head = remote_heads.get(remote_branch)
+            graph_commit = graph_commits[branch_name]
+            if local_head is None and branch_name == source_branch:
+                if (
+                    graph_commit is None
+                    or remote_head is None
+                    or not self._in_remote_history(commit=graph_commit, remote_head=remote_head)
+                ):
+                    raise self._unfinished_merge(
+                        source_branch=source_branch,
+                        dest_branch=dest_branch,
+                        reason=(
+                            f"This clone has no branch {branch_name}, and the remote history of {remote_branch} does "
+                            f"not contain the commit Infrahub records for it ({graph_commit or 'no commit'})."
+                        ),
+                    )
+                moves[branch_name] = BranchMove(branch_name=branch_name, local_head=None, target=graph_commit)
+                continue
             if local_head is None or remote_head is None:
                 continue
-            graph_commit = graph_commits[branch_name]
             if graph_commit == remote_head:
                 if local_head != remote_head:
                     moves[branch_name] = BranchMove(branch_name=branch_name, local_head=local_head, target=graph_commit)
@@ -1005,7 +1026,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 "Moved branch %s of repository %s from %s onto %s before the merge, which the graph records",
                 move.branch_name,
                 self.name,
-                move.local_head,
+                move.local_head or "no local branch",
                 move.target,
                 extra={"repository": self.name, "branch": move.branch_name, "commit": move.target},
             )

@@ -231,6 +231,9 @@ merge after a plain push and keeps the branch open:
     the graph commit when the remote history holds it, forward or back, so the merge holds what the
     graph merged. The commits after it stay on the source branch and do not reach the trunk, and a
     warning says so, because the branch is merged in Infrahub already and a refusal cannot help.
+  - A source that this clone does not hold, as on a worker whose sync has not created it yet: the
+    guard creates it at the graph commit when the remote history holds that commit, and refuses the
+    merge otherwise.
   - Known risk: a source whose graph commit is missing, or no longer in the remote history, is merged
     as it is, and can differ from what the graph merged.
 

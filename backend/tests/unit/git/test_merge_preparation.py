@@ -196,6 +196,22 @@ async def merge_clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> MergeC
     return await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
 
 
+def forget_source(clone: MergeClone) -> None:
+    """Remove the local source branch, as on a worker whose sync has not created it yet."""
+    main = clone.repository.get_git_repo_main()
+    main.git.worktree("remove", "--force", str(clone.repository.get_worktree(identifier=SOURCE).directory))
+    main.git.branch("-D", SOURCE)
+
+
+def missing_source_message(graph_commit: str | None) -> str:
+    return (
+        f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. This clone has no "
+        f"branch {SOURCE}, and the remote history of {SOURCE} does not contain the commit Infrahub records for it "
+        f"({graph_commit or 'no commit'}). The branch is merged in Infrahub and not in Git. To finish the merge, "
+        f"merge {SOURCE} into {DESTINATION} in the Git repository. The next synchronization imports the result."
+    )
+
+
 def guard_warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
     return [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER]
 
@@ -381,6 +397,64 @@ async def test_a_trunk_whose_remote_head_the_graph_does_not_record_refuses_the_m
 
     assert str(merge_clone.remote.repo.commit(DESTINATION)) == remote_head
     assert merge_clone.heads() == heads_before
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RemoteChangeCase(
+            name="graph-commit-is-the-remote-head", branch_name=SOURCE, graph_commit=MergeClone.local_head
+        ),
+        RemoteChangeCase(
+            name="graph-commit-behind-the-remote-head",
+            branch_name=SOURCE,
+            graph_commit=MergeClone.advance_without_import,
+            leaves_source_commits_out=True,
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_source_this_clone_does_not_hold_is_created_at_its_graph_commit(
+    merge_clone: MergeClone, caplog: pytest.LogCaptureFixture, case: RemoteChangeCase
+) -> None:
+    """The merge reads the source from its local ref, which a worker gets only from its sync."""
+    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
+    forget_source(merge_clone)
+    graph_commit = case.graph_commit(merge_clone, SOURCE)
+    merge_clone.commits[SOURCE] = graph_commit
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == {**merge_clone.local_heads, SOURCE: graph_commit}
+    assert guard_warnings(caplog) == ([merge_clone.left_out_message()] if case.leaves_source_commits_out else [])
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RemoteChangeCase(
+            name="no-commit-in-the-graph", branch_name=SOURCE, graph_commit=MergeClone.advance_with_no_graph_commit
+        ),
+        RemoteChangeCase(
+            name="graph-commit-the-remote-dropped", branch_name=SOURCE, graph_commit=MergeClone.import_then_rewrite
+        ),
+        RemoteChangeCase(name="source-deleted-on-the-remote", branch_name=SOURCE, graph_commit=MergeClone.delete),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_source_this_clone_does_not_hold_refuses_the_merge_when_the_remote_lacks_its_graph_commit(
+    merge_clone: MergeClone, case: RemoteChangeCase
+) -> None:
+    """The merge has no source to read, and the remote head may hold content the graph never imported."""
+    forget_source(merge_clone)
+    graph_commit = case.graph_commit(merge_clone, SOURCE)
+    merge_clone.commits[SOURCE] = graph_commit
+    message = missing_source_message(graph_commit=graph_commit)
+
+    with pytest.raises(RepositoryDivergentHistoryError, match=rf"^{re.escape(message)}$"):
+        await merge_clone.prepare()
+
+    assert SOURCE not in merge_clone.repository.get_branches_from_local(include_worktree=False)
 
 
 async def test_a_tag_moved_on_the_remote_does_not_stop_the_merge(merge_clone: MergeClone) -> None:
