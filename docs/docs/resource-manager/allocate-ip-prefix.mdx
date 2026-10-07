@@ -176,7 +176,7 @@ Allocate an IP prefix directly from the pool:
   ```python
   prefix = await client.allocate_next_ip_prefix(
       resource_pool=pool,
-      identifier=service.service_identifier.value,
+      identifier="svc-123-assigned-prefix",
       prefix_length=29,
   )
   ```

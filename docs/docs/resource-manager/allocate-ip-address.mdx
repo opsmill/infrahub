@@ -202,7 +202,7 @@ Allocate an IP address directly from the pool:
   ```python
   address = await client.allocate_next_ip_address(
       resource_pool=pool,
-      identifier=service.service_identifier.value,
+      identifier="my-allocated-ip",
   )
   ```
 
