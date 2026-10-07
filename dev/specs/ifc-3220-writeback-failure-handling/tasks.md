@@ -273,7 +273,7 @@ SC-002, SC-007.
 - [X] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
       `replay` with a clean merge and a conflict; `reset`; `fetch` on a clone with no `origin`.
-- [ ] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
+- [X] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
       `backend/tests/unit/git/writeback/fakes.py`. The Git fake records every call in order, and can
       fail at any step.
 - [ ] T032 [US1] Write `RepositoryWritebackService.deliver` in
