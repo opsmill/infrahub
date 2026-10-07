@@ -1,4 +1,4 @@
-import { CombinedError } from "@urql/core";
+import type { CombinedError } from "@urql/core";
 import React from "react";
 import { toast } from "react-toastify";
 
@@ -20,12 +20,15 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   );
 }
 
+const hasGraphQLErrors = (error: Error): error is Error & Pick<CombinedError, "graphQLErrors"> =>
+  "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
+
 // The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, and callers
 // may wrap that again, so the cause chain is walked until the GraphQL errors are found.
-function findThrownGraphQLErrors(error: unknown) {
+function findThrownGraphQLErrors(error: unknown): CombinedError["graphQLErrors"] {
   let current = error;
   while (current instanceof Error) {
-    if (current instanceof CombinedError) return current.graphQLErrors;
+    if (hasGraphQLErrors(current)) return current.graphQLErrors;
     current = current.cause;
   }
   return [];

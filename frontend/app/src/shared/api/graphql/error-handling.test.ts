@@ -92,6 +92,15 @@ describe("hasOnlyThrownCatalogueCode", () => {
     expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(true);
   });
 
+  it("skips a wrapper whose graphQLErrors is not a list", () => {
+    const error = Object.assign(new Error("Failed to load"), {
+      graphQLErrors: "not a list",
+      cause: thrownByTransport(permissionDenial()),
+    });
+
+    expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(true);
+  });
+
   it("is false for an error without GraphQL errors", () => {
     expect(hasOnlyThrownCatalogueCode(new Error("offline"), ERROR_CODES.PERMISSION_DENIED)).toBe(
       false
