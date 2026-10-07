@@ -221,10 +221,10 @@ provenance, makes its bounds filter optional, and, when the pool is scoped, retu
 collected values of each entry in force. `pools/number.py::NumberUtilizationGetter` becomes a seam
 that loads rows and hands them to a pure `pools/division_report.py::DivisionReporter`, which
 expands each row into the divisions it occupies, counts distinct values per division per branch
-split, and names the fullest division. The reporter answers every `NumberPoolUtilizationFigures`
-block: the pool's (the fullest division's on a scoped pool), each range's (the fullest division
-within the range, FR-017), each division's over the pool, and one given division's over the pool
-and over each range (FR-011, FR-015, FR-022). The divisions listed are those the rows occupy, so a
+split, and orders the divisions by utilization. The reporter answers every
+`NumberPoolUtilizationFigures` block: each division's over the pool, and one given division's over
+the pool and over each range (FR-011, FR-015, FR-017, FR-022); on an unscoped pool, the pool's and
+each range's. The divisions listed are those the rows occupy, so a
 division whose nodes hold no value is not listed (FR-011). A new `NumberPoolDivisions` query
 enumerates the distinct division tuples over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live
 branch, with the node count of each, for the sizing check on a scoped attribute add; relationship
@@ -340,8 +340,8 @@ scoped pool, the `division` on each row and the `division`
 filter come from `pools/division_mock.py`: each row is put in one of three divisions `mock-1`,
 `mock-2`, `mock-3` by a stable hash of its holder's id; the entries carry the real scope paths in
 force; the three queries read the same partition so lists, filters and counts agree (SC-010). An
-unscoped pool never reaches the mock. The headline and range figures of a scoped pool are pool-wide
-and range-wide at contract time, and become the fullest division's when the division reads land.
+unscoped pool never reaches the mock. The utilization of a scoped pool is read for one mock
+division at contract time, and for one real division when the division reads land.
 The generated artefacts are regenerated once at the contract step and must not change afterwards
 (FR-018); a snapshot test pins the SDL. The last change set of the slice deletes the mock module
 and adds a test asserting that no value or label beginning with `mock-` is returned (FR-019,

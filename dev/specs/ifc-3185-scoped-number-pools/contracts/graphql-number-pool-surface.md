@@ -62,7 +62,7 @@ type NumberPoolUtilization {
   allocation_scope: [String!]!
   """
   Figures over the pool's whole space. On a scoped pool, the figures of the division given as
-  division, or of the fullest division when none is given.
+  division, which a scoped pool requires.
   """
   figures: NumberPoolUtilizationFigures!
   """The pool's ranges ordered by start, each with its own figures."""
@@ -107,7 +107,7 @@ type NumberPoolRangeUtilization {
   weight: BigInt!
   """
   Figures over the range's values. On a scoped pool, the figures of the division given as
-  division, or of the division holding the most of this range's values when none is given.
+  division.
   """
   figures: NumberPoolUtilizationFigures!
 }
@@ -217,8 +217,8 @@ enum NumberPoolProvenance {
 
 type Query {
   """
-  Utilization of one number pool and of its ranges, for the fullest division or for the division
-  given as division.
+  Utilization of one number pool and of its ranges. On a scoped pool, division is required and
+  the figures are those of that division.
   """
   InfrahubNumberPoolUtilization(
     pool_id: String!
@@ -251,7 +251,7 @@ type Query {
 |---|---|---|
 | `pool_id` | all three | The number pool. Required. |
 | `range_id` | allocations | Rows whose value the range holds. |
-| `division` | utilization | One division: a value for every scope entry in force on the request's branch. `figures`, `ranges[].figures` and `out_of_space_count` are restricted to the holders that carry these values on at least one live branch (FR-007 union). A filter that omits an entry in force is refused (section "Refusals"). |
+| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch; `out_of_space_count` counts the rows the allocations query returns for the same `division` (FR-007 union). A filter that omits an entry in force is refused (section "Refusals"). |
 | `division` | allocations | Rows whose holder carries, for every given entry, the given value on at least one live branch (FR-007 union). A partial filter is allowed: on a `["site", "tenant"]` pool, `[{path: "site", value: "<A>"}]` returns every row held in site A across tenants. |
 | `in_space` | allocations | `true`: rows counted in the figures. `false`: rows outside the pool's space. Omitted: both. |
 | `branch` | allocations | Rows whose value is held on that branch. Omitted: rows from every live branch. |
@@ -303,6 +303,7 @@ one-row-per-(record, branch-resolved value) rule.
 | `pool_id` names no node, or a node that is not a `CoreNumberPool` | `NodeNotFoundError` | `Unable to find the node <pool_id> / CoreNumberPool in the database.` |
 | `range_id` is not a range of the pool | `ValidationError` | `The selected pool_id=<pool_id> doesn't contain the requested range_id=<range_id>` |
 | `division` given on a pool whose scope in force is empty (unscoped, or every entry unknown on the request's branch) | `ValidationError` | `The pool <pool_id> has no allocation scope in force on branch <branch>; the division filter cannot be applied` |
+| utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
 | utilization only: `division` omits an entry in force on the request's branch | `ValidationError` | `The division filter must give a value for every allocation scope entry in force on branch <branch>; missing: <paths>`, where `<paths>` lists the missing entries in scope order, joined with ", " |
 | a `division` entry's `path` is not in the scope in force | `ValidationError` | `The division entry '<path>' is not in the allocation scope in force on branch <branch>` |
 | the same `path` twice in `division` | `ValidationError` | `The division entry '<path>' is given twice` |
@@ -338,14 +339,14 @@ user detaches or moves, so the count drops by one for each row fixed. It equals 
 | Pool state | `allocation_scope` on results | `NumberPoolUtilization.figures` | `ranges[].figures` | `NumberPoolDivisions.divisions` | `NumberPoolAllocation.division` | `division` argument |
 |---|---|---|---|---|---|---|
 | unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | `[]` | refused |
-| scoped | the entries in force | the division given as `division`, otherwise the fullest division (FR-011); at contract time, from the mock partition | the division given as `division`, otherwise the division holding the most of the range's values (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | the holder's division on the row's branch; at contract time, the mock division | accepted for paths in force; complete on the utilization query |
+| scoped | the entries in force | the division given as `division`; refused without it (FR-011); at contract time, from the mock partition | the division given as `division` (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | the holder's division on the row's branch; at contract time, the mock division | accepted for paths in force; complete on the utilization query |
 | scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | `[]` | refused |
 | no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | `range: null` and `in_space: false` on every row | per the rows above |
 
-Without `division`, the headline and a range row can name different divisions: the headline is
-the fullest over the whole space, a range row the fullest within that range. Both are worst-case
-figures. With `division`, the headline and every range row report that one division, including a
-range in which it holds no value (`used` 0).
+On a scoped pool the utilization query reports one division at a time: the headline and every
+range row report the division given as `division`, including a range in which it holds no value
+(`used` 0). The fullest division is the first row of `InfrahubNumberPoolDivisions`, which orders
+the divisions by utilization descending.
 
 `range` and `in_space` are two different facts. A value the attribute lists in `excluded_values`,
 or outside its `min_value` / `max_value`, can sit inside a range (`range` set) and still be out of
@@ -505,43 +506,12 @@ query {
 }
 ```
 
-The pool `Device index` in the next four examples is scoped by `["site"]`, with ranges `1 - 50`
+The pool `Device index` in the next three examples is scoped by `["site"]`, with ranges `1 - 50`
 and `51 - 100`. Site A's devices hold forty values in `1 - 50`, site B's devices hold thirty in
 `51 - 100`, and site C has devices but no value of its own. Device `D1` of site A holds 5 on
 `main` and was moved to site C on branch `b1`. Site D has devices and no value on any branch. The
-responses show the final behaviour; at contract time the same requests return pool-wide `figures`
-and the mock partition.
-
-### Utilization of a scoped pool
-
-```graphql
-query {
-  InfrahubNumberPoolUtilization(pool_id: "2a91…") {
-    allocation_scope
-    figures { size used utilization }
-    ranges { display_label figures { size used utilization } }
-    out_of_space_count
-  }
-}
-```
-
-```json
-{
-  "InfrahubNumberPoolUtilization": {
-    "allocation_scope": ["site"],
-    "figures": { "size": 100, "used": 40, "utilization": 40.0 },
-    "ranges": [
-      { "display_label": "1 - 50", "figures": { "size": 50, "used": 40, "utilization": 80.0 } },
-      { "display_label": "51 - 100", "figures": { "size": 50, "used": 30, "utilization": 60.0 } }
-    ],
-    "out_of_space_count": 0
-  }
-}
-```
-
-The headline is site A's 40 of 100 (the fullest division). Range `1 - 50` reports A's 40 of 50,
-range `51 - 100` reports B's 30 of 50. The pool-wide distinct count, 70, appears on no figure of a
-scoped pool.
+responses show the final behaviour; at contract time the same requests return the mock
+partition.
 
 ### Divisions of a scoped pool
 

@@ -31,7 +31,8 @@ delivery constraint is carried as a Delivery order section, User Story 1, FR-018
 SC-010 and SC-011. The GraphQL surface comes from the frontend needs and the grilling decisions,
 which the PRD does not cover beyond asking for the per-division read to be agreed before
 implementation. The deltas below are additions and clarifications the PRD invited or the code
-forced; none drops or softens a PRD requirement.
+forced, except two changes the user made to the PRD's FR-011 on 2026-10-07: the divisions listing
+holds only the divisions holding a value, and no figure reports the fullest division by default.
 
 ## Findings
 
@@ -43,7 +44,7 @@ forced; none drops or softens a PRD requirement.
 | Minor | added | — (grilling decision 5) | FR-027 | The scope in force on the reading branch is reported by the three queries. The PRD's FR-008 defines the rule; reporting its result is additive. |
 | Minor | added | Open question 3 (enum or dropdown entries) | FR-020, Assumptions | Resolved to the PRD's stated default, "any required attribute", plus a refusal of list and JSON kinds, duplicates and the pool's own attribute. The last three are clarifications the PRD did not list; each is a refusal, not a capability. |
 | Minor | changed | FR-009 "Validation runs against the schema of the branch the mutation runs on" | FR-009 (last sentence) | Added: an unchanged scope re-sent whole is accepted without re-validation. Needed because the scope is written once on the global branch (PRD's own decision) and a pool saved from a branch that knows an entry would otherwise be un-resavable from any branch that does not. The PRD's rule still applies to every scope that changes. |
-| Minor | added | FR-011 (headline is the fullest division) | FR-017, User Story 3 scenario 3 | The PRD says nothing about the per-range rows P1 introduced. The spec defines them as the fullest division within each range, so a range exhausted in one site is visible. Additive. |
+| Major | changed | FR-011 (headline is the fullest division) | FR-011, FR-015, FR-017, User Story 3 scenarios 1 to 3 | Changed by the user on 2026-10-07: utilization on a scoped pool is read for one division at a time and refused without one; no figure reports the fullest division by default. The fullest division is the first row of the divisions list, which is ordered by utilization. Range rows report the division read. |
 | Minor | changed | Assumptions: "P1 has landed", "the records lookup already resolves each record to its owning object", "relationships are processed before attributes" | Assumptions | Corrected against the code: P1 landed in part (the range kind, its mutations, the range migration and the shorthand mirror shipped; allocation over a range set and the shared effective-space calculation not yet), the records lookup does not resolve the holder, and the ordering holds on ordinary create only; the spec states the deferral that makes it hold on template create and update. The PRD's requirements are unchanged by the corrections. |
 | Minor | changed | Edge case "a scoped pool over an attribute declared `unique: true`" | Edge Cases | Rewritten to describe today's behaviour (the global taken-values scan still masks the scope) and the post-P2 behaviour the PRD describes. No requirement changes; no test asserts the refusal. |
 | Minor | added | — (user's delivery constraint, grilling decision 8) | Delivery order, User Story 1, FR-018, FR-019, SC-007, SC-010, SC-011 | The contract-first ordering, the frozen-contract rule and the deterministic mock partition of a scoped pool's divisions at contract time, with its removal test. These exist to meet the user's ask, not the PRD, and change no PRD behaviour. |

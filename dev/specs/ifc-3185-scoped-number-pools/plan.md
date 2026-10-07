@@ -14,8 +14,9 @@ day. Research and decisions in [research.md](./research.md).
 
 A number pool gains `allocation_scope`, a list of fields of its kind. With a scope set, allocation
 returns the lowest free number within the division the node being written belongs to, and
-utilization reports the fullest division as the headline with every division listed. The scope
-decides which number comes next and nothing else: it refuses nothing and stores nothing. A record's
+utilization reports one division at a time, with every division holding a value listed from the
+fullest. The scope decides which number comes next and nothing else: it refuses nothing and stores
+nothing. A record's
 division is derived at read time from its holder's fields, as a union over every live branch,
 inside the records fragment the used and free reads already share. A pool with no scope issues the
 query it issues today.
@@ -191,7 +192,7 @@ module, so the generic file changes in description strings only. The checker goe
 | **B. Surface** | `graphql/queries/number_pool.py` with the three root fields and every type of the contract; `NumberPoolGetAllocated` projecting provenance with an optional bounds filter; real pool, range and allocation data; `pools/division_mock.py` for the divisions of a scoped pool; description notes on the generic queries and types; regenerate `schema/schema.graphql` and the frontend types; SDL snapshot test | A | frontend, SDK |
 | **C. Seams** | `DivisionKey`; `get_resource(division=…)` threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `handle_pool` deferred in `from_graphql`) and from the attribute-add backfill; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division | A | D1, D2 |
 | **D1. Scoped allocation** | `DivisionResolver`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the scoped `get_free` / `get_used`; the unscoped snapshot test | C | F |
-| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the reporter instead of the mock; peer display labels with the identifier fallback; range rows as the fullest division within the range; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
+| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the reporter instead of the mock; peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
 | **D3. Scope write path** | `ScopeValidator`; the mutation validation against the mutation branch, invoked only when the scope changes; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back; `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
 | **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the three update constraints and the two removal migrations; integration-docker test | A | — |
 | **E. Mock removal** | delete `pools/division_mock.py` and its call sites; the no-mock test on a scoped pool; the SDL snapshot unchanged | D2 | F |
@@ -330,16 +331,14 @@ class DivisionFigures:
 
 @dataclass(frozen=True)
 class DivisionReport:
-    divisions: tuple[DivisionFigures, ...]   # every enumerated division, fullest first
-    fullest: DivisionFigures
-    def fullest_within(self, start: int, end: int) -> DivisionFigures: ...
+    divisions: tuple[DivisionFigures, ...]   # every division holding a value, fullest first
     def of(self, key: DivisionKey) -> DivisionFigures: ...                         # one division over the pool
     def of_within(self, key: DivisionKey, start: int, end: int) -> DivisionFigures: ...   # one division over one range
 ```
 
-The utilization resolver computes the pool's block from `fullest`, each range's block from
-`fullest_within(start, end)`, or from `of(key)` and `of_within(key, start, end)` when `division` is
-given; the divisions resolver lists `divisions`. Peer display labels come from one
+The utilization resolver computes the pool's block from `of(key)` and each range's block from
+`of_within(key, start, end)`, `key` being the division given; the divisions resolver lists
+`divisions`. Peer display labels come from one
 `NodeManager.get_many(..., branch_agnostic=True)` over the distinct peer ids of relationship
 entries; a peer that still cannot be read is labelled by its identifier, and a holder holding
 nothing for an entry carries an empty value, so the non-null fields never void the list. Unscoped:
@@ -398,8 +397,8 @@ diffing `schema/schema.graphql` for those types.
 
 - **Unit** (`tests/unit/pools/`, `tests/unit/graphql/`): `DivisionResolver.entries_in_force`
   (unknown entry dropped, all unknown → empty), `ScopeValidator` (every refusal row, normalisation,
-  unchanged scope accepted), `DivisionReporter` (fullest selection, fullest within a range, every
-  division within a range, empty division, branch split, unscoped single division, absolute counts),
+  unchanged scope accepted), `DivisionReporter` (ordering by utilization, one division over the
+  pool and within a range, empty division, branch split, unscoped single division, absolute counts),
   the mock partition (stable, three divisions, entries from the paths in force),
   `ScopedPoolDependencyChecker` with a `node_schema` lacking the field, and the SDL snapshot of
   every type of the dedicated surface plus `allocation_scope` on the three pool inputs.
