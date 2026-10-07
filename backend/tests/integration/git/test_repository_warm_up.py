@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from git import Repo
 
+from infrahub import lock
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -19,7 +20,6 @@ from infrahub.git.repository import (
     get_initialized_repo,
 )
 from infrahub.git.state.warm_up import RepositoryWarmUp
-from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.operations.git import repository as repository_operations
 from infrahub.worker import WORKER_IDENTITY
@@ -195,7 +195,7 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         return RepositoryWarmUp(
             client=client,
             message_bus=bus,
-            lock_registry=InfrahubLockRegistry(local_only=True),
+            lock_registry=lock.registry,
             worker_identity=WORKER_IDENTITY,
         )
 
