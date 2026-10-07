@@ -5845,6 +5845,42 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch.
   """
   default_branch: TextAttribute
+  """
+  Message of the last failure to push or import, with credentials removed. Live on the default branch only.
+  """
+  delivery_error: TextAttribute
+  """
+  Why the last push to the remote, or the import that follows it, failed. Live on the default branch only.
+  """
+  delivery_failure_cause: Dropdown
+  """
+  Definitions and Python computed attributes held until the pending pushes reach the remote. Live on the default branch only.
+  """
+  delivery_held_regeneration: JSONAttribute
+  """
+  Who abandoned the last pending pushes, when, and which merged changes were dropped. Live on the default branch only.
+  """
+  delivery_last_abandonment: JSONAttribute
+  """
+  Commit of the last push that reached the remote. Live on the default branch only.
+  """
+  delivery_last_delivered_commit: TextAttribute
+  """
+  Times when the push attempt started and last moved, and when the next automatic retry is due. Live on the default branch only.
+  """
+  delivery_progress: JSONAttribute
+  """
+  Merged changes that wait to be pushed to the remote, in merge order. Live on the default branch only.
+  """
+  delivery_queue: JSONAttribute
+  """
+  A pushed commit that a rewrite of the remote branch history discarded. Live on the default branch only.
+  """
+  delivery_reverted: JSONAttribute
+  """
+  Whether merged changes wait to be pushed to the remote, and whether a user must act. Live on the default branch only.
+  """
+  delivery_status: Dropdown
   """Description of the repository"""
   description: TextAttribute
   display_label: String
@@ -17157,6 +17193,51 @@ type Query {
     repository__default_branch__source__id: ID
     repository__default_branch__value: String
     repository__default_branch__values: [String]
+    repository__delivery_error__is_protected: Boolean
+    repository__delivery_error__owner__id: ID
+    repository__delivery_error__source__id: ID
+    repository__delivery_error__value: String
+    repository__delivery_error__values: [String]
+    repository__delivery_failure_cause__is_protected: Boolean
+    repository__delivery_failure_cause__owner__id: ID
+    repository__delivery_failure_cause__source__id: ID
+    repository__delivery_failure_cause__value: String
+    repository__delivery_failure_cause__values: [String]
+    repository__delivery_held_regeneration__is_protected: Boolean
+    repository__delivery_held_regeneration__owner__id: ID
+    repository__delivery_held_regeneration__source__id: ID
+    repository__delivery_held_regeneration__value: GenericScalar
+    repository__delivery_held_regeneration__values: [GenericScalar]
+    repository__delivery_last_abandonment__is_protected: Boolean
+    repository__delivery_last_abandonment__owner__id: ID
+    repository__delivery_last_abandonment__source__id: ID
+    repository__delivery_last_abandonment__value: GenericScalar
+    repository__delivery_last_abandonment__values: [GenericScalar]
+    repository__delivery_last_delivered_commit__is_protected: Boolean
+    repository__delivery_last_delivered_commit__owner__id: ID
+    repository__delivery_last_delivered_commit__source__id: ID
+    repository__delivery_last_delivered_commit__value: String
+    repository__delivery_last_delivered_commit__values: [String]
+    repository__delivery_progress__is_protected: Boolean
+    repository__delivery_progress__owner__id: ID
+    repository__delivery_progress__source__id: ID
+    repository__delivery_progress__value: GenericScalar
+    repository__delivery_progress__values: [GenericScalar]
+    repository__delivery_queue__is_protected: Boolean
+    repository__delivery_queue__owner__id: ID
+    repository__delivery_queue__source__id: ID
+    repository__delivery_queue__value: GenericScalar
+    repository__delivery_queue__values: [GenericScalar]
+    repository__delivery_reverted__is_protected: Boolean
+    repository__delivery_reverted__owner__id: ID
+    repository__delivery_reverted__source__id: ID
+    repository__delivery_reverted__value: GenericScalar
+    repository__delivery_reverted__values: [GenericScalar]
+    repository__delivery_status__is_protected: Boolean
+    repository__delivery_status__owner__id: ID
+    repository__delivery_status__source__id: ID
+    repository__delivery_status__value: String
+    repository__delivery_status__values: [String]
     repository__description__is_protected: Boolean
     repository__description__owner__id: ID
     repository__description__source__id: ID
@@ -22599,6 +22680,60 @@ type Query {
     default_branch__source__id: ID
     default_branch__value: String
     default_branch__values: [String]
+    delivery_error__is_protected: Boolean
+    delivery_error__isnull: Boolean
+    delivery_error__owner__id: ID
+    delivery_error__source__id: ID
+    delivery_error__value: String
+    delivery_error__values: [String]
+    delivery_failure_cause__is_protected: Boolean
+    delivery_failure_cause__isnull: Boolean
+    delivery_failure_cause__owner__id: ID
+    delivery_failure_cause__source__id: ID
+    delivery_failure_cause__value: String
+    delivery_failure_cause__values: [String]
+    delivery_held_regeneration__is_protected: Boolean
+    delivery_held_regeneration__isnull: Boolean
+    delivery_held_regeneration__owner__id: ID
+    delivery_held_regeneration__source__id: ID
+    delivery_held_regeneration__value: GenericScalar
+    delivery_held_regeneration__values: [GenericScalar]
+    delivery_last_abandonment__is_protected: Boolean
+    delivery_last_abandonment__isnull: Boolean
+    delivery_last_abandonment__owner__id: ID
+    delivery_last_abandonment__source__id: ID
+    delivery_last_abandonment__value: GenericScalar
+    delivery_last_abandonment__values: [GenericScalar]
+    delivery_last_delivered_commit__is_protected: Boolean
+    delivery_last_delivered_commit__isnull: Boolean
+    delivery_last_delivered_commit__owner__id: ID
+    delivery_last_delivered_commit__source__id: ID
+    delivery_last_delivered_commit__value: String
+    delivery_last_delivered_commit__values: [String]
+    delivery_progress__is_protected: Boolean
+    delivery_progress__isnull: Boolean
+    delivery_progress__owner__id: ID
+    delivery_progress__source__id: ID
+    delivery_progress__value: GenericScalar
+    delivery_progress__values: [GenericScalar]
+    delivery_queue__is_protected: Boolean
+    delivery_queue__isnull: Boolean
+    delivery_queue__owner__id: ID
+    delivery_queue__source__id: ID
+    delivery_queue__value: GenericScalar
+    delivery_queue__values: [GenericScalar]
+    delivery_reverted__is_protected: Boolean
+    delivery_reverted__isnull: Boolean
+    delivery_reverted__owner__id: ID
+    delivery_reverted__source__id: ID
+    delivery_reverted__value: GenericScalar
+    delivery_reverted__values: [GenericScalar]
+    delivery_status__is_protected: Boolean
+    delivery_status__isnull: Boolean
+    delivery_status__owner__id: ID
+    delivery_status__source__id: ID
+    delivery_status__value: String
+    delivery_status__values: [String]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID

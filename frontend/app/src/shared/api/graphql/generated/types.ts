@@ -12812,6 +12812,24 @@ export type CoreRepository = CoreGenericRepository & CoreNode & CoreTaskTarget &
   credential: NestedEdgedCoreCredential;
   /** Remote branch that Infrahub maps onto its own default branch. Need not be the remote default branch. */
   default_branch: Maybe<TextAttribute>;
+  /** Message of the last failure to push or import, with credentials removed. Live on the default branch only. */
+  delivery_error: Maybe<TextAttribute>;
+  /** Why the last push to the remote, or the import that follows it, failed. Live on the default branch only. */
+  delivery_failure_cause: Maybe<Dropdown>;
+  /** Definitions and Python computed attributes held until the pending pushes reach the remote. Live on the default branch only. */
+  delivery_held_regeneration: Maybe<JsonAttribute>;
+  /** Who abandoned the last pending pushes, when, and which merged changes were dropped. Live on the default branch only. */
+  delivery_last_abandonment: Maybe<JsonAttribute>;
+  /** Commit of the last push that reached the remote. Live on the default branch only. */
+  delivery_last_delivered_commit: Maybe<TextAttribute>;
+  /** Times when the push attempt started and last moved, and when the next automatic retry is due. Live on the default branch only. */
+  delivery_progress: Maybe<JsonAttribute>;
+  /** Merged changes that wait to be pushed to the remote, in merge order. Live on the default branch only. */
+  delivery_queue: Maybe<JsonAttribute>;
+  /** A pushed commit that a rewrite of the remote branch history discarded. Live on the default branch only. */
+  delivery_reverted: Maybe<JsonAttribute>;
+  /** Whether merged changes wait to be pushed to the remote, and whether a user must act. Live on the default branch only. */
+  delivery_status: Maybe<Dropdown>;
   /** Description of the repository */
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
@@ -29530,6 +29548,51 @@ export type QueryCoreFileThreadArgs = {
   repository__default_branch__source__id?: InputMaybe<Scalars['ID']['input']>;
   repository__default_branch__value?: InputMaybe<Scalars['String']['input']>;
   repository__default_branch__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_error__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_error__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_error__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_error__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_error__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_failure_cause__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_failure_cause__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_failure_cause__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_failure_cause__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_failure_cause__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_held_regeneration__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_held_regeneration__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_held_regeneration__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_held_regeneration__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_held_regeneration__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_last_abandonment__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_last_abandonment__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_abandonment__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_abandonment__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_last_abandonment__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_last_delivered_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_last_delivered_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_delivered_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_last_delivered_commit__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_last_delivered_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  repository__delivery_progress__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_progress__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_progress__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_progress__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_progress__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_queue__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_queue__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_queue__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_queue__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_queue__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_reverted__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_reverted__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_reverted__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_reverted__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  repository__delivery_reverted__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  repository__delivery_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  repository__delivery_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  repository__delivery_status__value?: InputMaybe<Scalars['String']['input']>;
+  repository__delivery_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   repository__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   repository__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   repository__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34698,6 +34761,60 @@ export type QueryCoreRepositoryArgs = {
   default_branch__source__id?: InputMaybe<Scalars['ID']['input']>;
   default_branch__value?: InputMaybe<Scalars['String']['input']>;
   default_branch__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_error__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_error__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_error__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_error__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_error__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_error__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_failure_cause__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_failure_cause__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_failure_cause__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_failure_cause__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_failure_cause__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_failure_cause__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_held_regeneration__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_held_regeneration__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_held_regeneration__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_held_regeneration__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_held_regeneration__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_held_regeneration__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_last_abandonment__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_abandonment__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_abandonment__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_abandonment__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_abandonment__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_last_abandonment__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_last_delivered_commit__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_delivered_commit__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_last_delivered_commit__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_delivered_commit__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_last_delivered_commit__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_last_delivered_commit__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  delivery_progress__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_progress__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_progress__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_progress__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_progress__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_progress__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_queue__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_queue__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_queue__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_queue__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_queue__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_queue__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_reverted__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_reverted__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_reverted__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_reverted__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_reverted__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  delivery_reverted__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  delivery_status__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_status__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  delivery_status__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_status__source__id?: InputMaybe<Scalars['ID']['input']>;
+  delivery_status__value?: InputMaybe<Scalars['String']['input']>;
+  delivery_status__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
