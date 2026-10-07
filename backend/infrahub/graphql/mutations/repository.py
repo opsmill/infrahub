@@ -114,15 +114,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 include_metadata=MetadataOptions.LINKED_NODES,
             )
         if repo_node.get_kind() != InfrahubKind.READONLYREPOSITORY:
-            current_default_branch = repo_node.get_attribute("default_branch").value
-            obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
-            new_default_branch = obj.get_attribute("default_branch").value
-            if new_default_branch != current_default_branch:
-                # Without the marker, the next sync reports the switch to another git branch as a trunk rewrite.
-                await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
-                    repository_id=obj.id, infrahub_branch_name=registry.default_branch, target=str(new_default_branch)
-                )
-            return obj, result
+            return await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
 
         repo_node = cast("CoreReadOnlyRepository", repo_node)
         current_commit = repo_node.commit.value
@@ -178,6 +170,44 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 parameters={"model": git_read_only_repo_import_commit_model},
             )
         return obj, result
+
+    @classmethod
+    async def mutate_update_object(
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
+        skip_uniqueness_check: bool = False,
+    ) -> Node:
+        """Update the repository, and mark a change of the default branch of a read-write repository.
+
+        The marker is written before the transaction commits, so no sync reads the new default branch without
+        it. Without the marker, the next sync reports the switch to another git branch as a trunk rewrite.
+        """
+        if obj.get_kind() != InfrahubKind.REPOSITORY:
+            return await super().mutate_update_object(
+                db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            )
+
+        # Read from the database, because a retried update hands back the node an earlier attempt changed.
+        stored = await NodeManager.get_one(
+            db=db, id=obj.get_id(), kind=InfrahubKind.REPOSITORY, branch=branch, raise_on_error=True
+        )
+        current_default_branch = stored.get_attribute("default_branch").value
+
+        obj = await super().mutate_update_object(
+            db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+        )
+
+        new_default_branch = obj.get_attribute("default_branch").value
+        if new_default_branch != current_default_branch:
+            graphql_context: GraphqlContext = info.context
+            await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
+                repository_id=obj.get_id(), infrahub_branch_name=registry.default_branch, target=str(new_default_branch)
+            )
+        return obj
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:

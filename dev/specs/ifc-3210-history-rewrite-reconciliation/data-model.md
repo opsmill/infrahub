@@ -245,8 +245,8 @@ record lands is never retried.
 
 ### The re-target suppression marker
 
-Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`, read and
-deleted by the component that calls the detector. See `research.md` R4 for why this shape was
+Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`, which the update and every upsert path call. Read and
+cleared by the component that calls the detector. See `research.md` R4 for why this shape was
 chosen, and why the recorder must not be the reader.
 
 | Property | Value |
@@ -254,7 +254,7 @@ chosen, and why the recorder must not be the reader.
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
 | Value | The new tracking target: the git branch that now feeds Infrahub's default branch. A marker applies only to a cycle that synchronises that same git branch, so a cycle that started before the edit neither uses it nor deletes it. |
 | Time to live | One hour. |
-| Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands after the update succeeds and before any workflow is submitted. |
+| Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands inside the update transaction, before it commits, on the update and on every upsert path. A sync that reads the new `default_branch` therefore finds the marker too. A rolled-back update leaves a marker that names a target the repository does not track, so no cycle uses it. |
 | Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
 | Read when | Before every classification of Infrahub's default branch, not only before a `REWRITE`. No other branch can be re-pointed, so no other branch carries a marker. |
 | Effect | A marker that names the git branch this cycle synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |

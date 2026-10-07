@@ -424,6 +424,63 @@ async def test_a_default_branch_edit_marks_the_infrahub_default_branch_for_the_n
     assert workflow.submit_calls == []
 
 
+@dataclass
+class DefaultBranchUpsertTestCase:
+    name: str
+    data: str
+    """The upsert input that finds the repository and changes its default branch."""
+
+
+DEFAULT_BRANCH_UPSERT_TEST_CASES: list[DefaultBranchUpsertTestCase] = [
+    DefaultBranchUpsertTestCase(
+        name="upsert_by_id",
+        data='id: "{repository_id}", default_branch: {{ value: "release" }}',
+    ),
+    DefaultBranchUpsertTestCase(
+        name="upsert_by_name",
+        data=(
+            'name: {{ value: "upserted-repo" }}, location: {{ value: "/tmp/upserted-repo" }}, '
+            'default_branch: {{ value: "release" }}'
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DEFAULT_BRANCH_UPSERT_TEST_CASES])
+async def test_an_upsert_that_changes_the_default_branch_marks_the_infrahub_default_branch(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    create_test_admin: Node,
+    default_permission_backend: None,
+    test_case: DefaultBranchUpsertTestCase,
+) -> None:
+    cache = MemoryCache()
+    service = await InfrahubServices.new(database=db, cache=cache, workflow=WorkflowRecorder())
+    account_session = AccountSession(
+        authenticated=True, account_id=create_test_admin.id, session_id=None, auth_type=AuthType.API
+    )
+    repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
+    repo = await Node.init(schema=repository_model, db=db, branch=default_branch)
+    await repo.new(db=db, name="upserted-repo", location="/tmp/upserted-repo", default_branch="main")
+    await repo.save(db=db)
+
+    result = await graphql_mutation(
+        query=f"mutation {{ CoreRepositoryUpsert(data: {{ {test_case.data.format(repository_id=repo.id)} }}) {{ ok }} }}",
+        db=db,
+        service=service,
+        account_session=account_session,
+    )
+
+    assert result.errors is None
+    upserted = await NodeManager.get_one(db=db, id=repo.id, raise_on_error=True)
+    assert upserted.get_attribute("default_branch").value == "release"
+    assert await RetargetMarkers(cache=cache).is_retargeted(
+        repository_id=repo.id, infrahub_branch_name="main", target="release"
+    )
+    assert list(cache.storage.values()) == ["release"]
+
+
 async def test_an_edit_that_keeps_the_default_branch_writes_no_marker(
     db: InfrahubDatabase,
     register_core_models_schema: None,

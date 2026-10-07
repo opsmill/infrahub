@@ -652,7 +652,8 @@ never records.
 
 ## 8. Re-target suppression marker
 
-New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`.
+New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`,
+which the update and every upsert path call.
 
 ### Contract
 
@@ -665,9 +666,11 @@ it changes `ref` or `commit`, is carried in band on the workflow model instead. 
 different branch, tag **or commit**", and both of those reach the flow as an explicit
 `target_changed` flag rather than through the cache.
 
-1. The marker is written after the update succeeds, and before the mutation returns. Nothing else
-   in that mutation reads it, so the ordering only has to put the write before the first
-   synchronisation cycle that could classify the branch.
+1. The marker is written inside the update transaction, before it commits. A cycle that reads the
+   new `default_branch` therefore always finds the marker too. A write after the commit would leave
+   a gap in which a cycle reads the new target, finds no marker and records a false rewrite. A
+   rolled-back update leaves a marker that names a target the repository does not track, and rule 9
+   makes such a marker inert.
 2. It expires after one hour.
 3. **Exactly one component touches the marker: the detector's caller in the sync path**,
    `collect_pending_imports`. It reads the marker, passes the result to `classify` as
@@ -723,13 +726,13 @@ branch feeds Infrahub's default branch, so the graph commit for that branch stop
 remote head, and the next cron cycle picks it up. That is within a minute, well inside the marker's
 hour.
 
-### The read-write writer does not exist yet
+### Where the read-write writer compares
 
-`InfrahubRepositoryMutation.mutate_update` currently returns to `super().mutate_update` immediately
-for any kind other than `CoreReadOnlyRepository`, so there is **no** existing comparison of the old
-and new `default_branch`. Only the read-only comparison (`current_ref` against `new_ref`) is
-already there. The read-write marker therefore needs that comparison added before the early return.
-This is a change to the mutation, not a reuse of something already computed.
+`InfrahubRepositoryMutation.mutate_update` returns to `super().mutate_update` immediately for any
+kind other than `CoreReadOnlyRepository`, and an upsert never calls it. The comparison of the old
+and new `default_branch` therefore lives in `mutate_update_object`, which the update and every
+upsert path call inside the transaction. It reads the old value from the database rather than from
+the node, because a retried update hands back the node an earlier attempt already changed.
 
 ---
 

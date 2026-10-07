@@ -253,10 +253,9 @@ travels in band on the workflow model.
 - Read-only repositories write no marker. Their re-point travels in band on the workflow model,
   set from the comparison
   `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update` already makes.
-- Writer, read-write: **this comparison does not exist yet.** The same method returns to
-  `super().mutate_update` immediately for any kind other than read-only, so nothing there compares
-  the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
-  early return. It is a change to the mutation, not a reuse.
+- Writer, read-write: `InfrahubRepositoryMutation.mutate_update_object`, which the update and every
+  upsert path call. It compares the old and new `default_branch` on `CoreRepository` and writes the
+  marker inside the update transaction, before it commits.
 - Reader: **the detector's caller, and nothing else.** A marker that names the git branch the cycle
   synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still
   reset onto the remote head; only the record is skipped. The delete happens after the commit

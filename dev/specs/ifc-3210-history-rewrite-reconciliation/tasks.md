@@ -615,6 +615,8 @@ read-write repository's configured default branch. Neither writes a record.
       write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
       method returns to `super().mutate_update` immediately for any kind other than read-only, so
       the comparison goes before that early return.
+      The comparison lives in `mutate_update_object` instead, which the update and every upsert
+      path call inside the transaction, so the marker lands before the commit.
 - [x] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
       explicit `target_changed` flag to `GitRepositoryPullReadOnly` and
       `GitReadOnlyRepositoryImportCommit`, set from the comparison the mutation already computes.
