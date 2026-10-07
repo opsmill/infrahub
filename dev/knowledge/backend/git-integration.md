@@ -96,8 +96,9 @@ the commit first.
 
 ### No path runs `git pull`
 
-Each path that moves a branch worktree from the remote compares it with the remote head by ancestry
-first, and resets a worktree that does not lead to that head:
+The broadcast that pins a commit hard-resets onto it with no comparison, as above. The paths that
+move a branch worktree to the remote head compare it with that head by ancestry first, and reset a
+worktree that does not lead to it:
 
 - The periodic sync resets in its collector. `compare_local_remote` compares heads by equality only,
   and the collector then classifies each branch by ancestry.
