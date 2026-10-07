@@ -419,7 +419,7 @@ async def test_a_default_branch_edit_marks_the_infrahub_default_branch_for_the_n
 
     assert result.errors is None
     markers = RetargetMarkers(cache=cache)
-    assert await markers.is_retargeted(repository_id=repo.id, infrahub_branch_name="main", target="release")
+    assert await markers.is_retargeted(repository_id=repo.id, target="release")
     assert list(cache.storage.values()) == ["release"]
     assert workflow.submit_calls == []
 
@@ -475,9 +475,7 @@ async def test_an_upsert_that_changes_the_default_branch_marks_the_infrahub_defa
     assert result.errors is None
     upserted = await NodeManager.get_one(db=db, id=repo.id, raise_on_error=True)
     assert upserted.get_attribute("default_branch").value == "release"
-    assert await RetargetMarkers(cache=cache).is_retargeted(
-        repository_id=repo.id, infrahub_branch_name="main", target="release"
-    )
+    assert await RetargetMarkers(cache=cache).is_retargeted(repository_id=repo.id, target="release")
     assert list(cache.storage.values()) == ["release"]
 
 

@@ -843,14 +843,12 @@ async def re_point_the_trunk(
 
 async def marked(tracked: TrackedRepository, target: str) -> RetargetMarkers:
     markers = RetargetMarkers(cache=MemoryCache())
-    await markers.mark(repository_id=str(tracked.repository.id), infrahub_branch_name="main", target=target)
+    await markers.mark(repository_id=str(tracked.repository.id), target=target)
     return markers
 
 
 async def is_marked(markers: RetargetMarkers, tracked: TrackedRepository, target: str) -> bool:
-    return await markers.is_retargeted(
-        repository_id=str(tracked.repository.id), infrahub_branch_name="main", target=target
-    )
+    return await markers.is_retargeted(repository_id=str(tracked.repository.id), target=target)
 
 
 async def test_a_trunk_re_pointed_on_purpose_is_reset_records_nothing_and_clears_its_marker(
@@ -1092,9 +1090,7 @@ async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
     """The trunk is already on the remote head, so a sweep of this cycle would delete the new marker."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
     edit = MemoryCache()
-    await RetargetMarkers(cache=edit).mark(
-        repository_id=str(tracked.repository.id), infrahub_branch_name="main", target="main"
-    )
+    await RetargetMarkers(cache=edit).mark(repository_id=str(tracked.repository.id), target="main")
     markers = RetargetMarkers(cache=CacheWrittenDuringTheCycle(pending=edit.storage))
 
     await tracked.repository.collect_pending_imports(

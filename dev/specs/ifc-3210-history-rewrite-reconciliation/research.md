@@ -250,7 +250,8 @@ the shared cache. The component that calls the detector reads it, passes the res
 Reading never deletes it. Read-only repositories do not use it at all: their re-point travels in band
 on the workflow model.
 
-- Key: repository id plus Infrahub branch name.
+- Key: repository id plus a digest of the target git branch, so each target has a marker of its
+  own.
 - Read-only repositories write no marker. Their re-point travels in band on the workflow model,
   set from the comparison
   `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update` already makes.
@@ -304,9 +305,9 @@ head of the branch it names, so a cycle that fails anywhere earlier, or never re
 keeps it in place. And the widened candidate set classifies a re-targeted trunk on the next cycle,
 within a minute of the edit.
 
-Reading never deletes, and the clear compares the value before it deletes. A second re-target
-written during a cycle names another target, so it survives for the next cycle. The contract,
-section 8 rule 6, gives the one gap left between the comparison and the delete.
+Reading never deletes, and the clear deletes only the key of the target the cycle synchronised. A
+second re-target written during a cycle, or a marker left by a rolled-back update, has a key of its
+own, so it survives the clear.
 
 **Alternatives rejected**:
 

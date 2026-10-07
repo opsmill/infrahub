@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -10,34 +11,30 @@ RETARGET_MARKER_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 class RetargetMarkers:
-    """Marks an Infrahub branch whose repository was re-pointed on purpose, so a sync does not report it as a rewrite.
+    """Marks a repository whose default branch was re-pointed on purpose, so a sync does not report it as a rewrite.
 
-    A marker names the git branch that feeds the Infrahub branch after the change. It applies only to a sync
-    that reads that same git branch, so a sync that started before the change neither uses it nor deletes it.
+    Each marker names one git branch, the new default branch, and applies only to a sync that reads that same
+    git branch. A marker for one target never replaces or deletes the marker for another.
     """
 
     def __init__(self, cache: InfrahubCache) -> None:
         self.cache = cache
 
-    async def mark(self, repository_id: str, infrahub_branch_name: str, target: str) -> None:
-        """Mark the branch as re-pointed at the git branch ``target``, for seven days at most."""
+    async def mark(self, repository_id: str, target: str) -> None:
+        """Mark the repository as re-pointed at the git branch ``target``, for seven days at most."""
         await self.cache.set(
-            key=self._key(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name),
-            value=target,
-            expires=RETARGET_MARKER_TTL_SECONDS,
+            key=self._key(repository_id=repository_id, target=target), value=target, expires=RETARGET_MARKER_TTL_SECONDS
         )
 
-    async def is_retargeted(self, repository_id: str, infrahub_branch_name: str, target: str) -> bool:
-        """Whether the branch carries a marker that names ``target``. The marker stays in place."""
-        key = self._key(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name)
-        return await self.cache.get(key=key) == target
+    async def is_retargeted(self, repository_id: str, target: str) -> bool:
+        """Whether the repository carries a marker for ``target``. The marker stays in place."""
+        return await self.cache.get(key=self._key(repository_id=repository_id, target=target)) is not None
 
-    async def clear(self, repository_id: str, infrahub_branch_name: str, target: str) -> None:
-        """Delete the marker of the branch when it names ``target``, and leave a marker for another target."""
-        key = self._key(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name)
-        if await self.cache.get(key=key) == target:
-            await self.cache.delete(key=key)
+    async def clear(self, repository_id: str, target: str) -> None:
+        """Delete the marker for ``target``, and leave the markers for other targets."""
+        await self.cache.delete(key=self._key(repository_id=repository_id, target=target))
 
     @staticmethod
-    def _key(repository_id: str, infrahub_branch_name: str) -> str:
-        return f"git_retarget:{repository_id}:{infrahub_branch_name}"
+    def _key(repository_id: str, target: str) -> str:
+        # A git branch name can hold characters a cache key cannot, so the key carries a digest of it.
+        return f"git_retarget:{repository_id}:{hashlib.sha256(target.encode()).hexdigest()}"

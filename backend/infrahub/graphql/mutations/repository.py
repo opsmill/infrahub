@@ -205,7 +205,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         if new_default_branch != current_default_branch:
             graphql_context: GraphqlContext = info.context
             await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
-                repository_id=obj.get_id(), infrahub_branch_name=registry.default_branch, target=str(new_default_branch)
+                repository_id=obj.get_id(), target=str(new_default_branch)
             )
         return obj
 

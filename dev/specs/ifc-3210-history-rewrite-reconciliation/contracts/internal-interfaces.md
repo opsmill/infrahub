@@ -660,7 +660,7 @@ which the update and every upsert path call.
 
 | Trigger | Marker written for |
 |---|---|
-| `CoreRepository.default_branch` changes | Infrahub's default branch |
+| `CoreRepository.default_branch` changes | the repository and the new git branch, which feeds Infrahub's default branch |
 
 **That is the whole table.** Read-only repositories write no marker. A read-only re-point, whether
 it changes `ref` or `commit`, is carried in band on the workflow model instead. SC-007 covers "a
@@ -670,8 +670,9 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 1. The marker is written inside the update transaction, before it commits. A cycle that reads the
    new `default_branch` therefore always finds the marker too. A write after the commit would leave
    a gap in which a cycle reads the new target, finds no marker and records a false rewrite. A
-   rolled-back update leaves a marker that names a target the repository does not track, and rule 9
-   makes such a marker inert.
+   rolled-back update leaves a marker for a target the repository does not track. It has a key of
+   its own, so it does not replace the marker of a change that committed, and rule 9 makes it
+   inert.
 2. It expires after seven days. The sweep of rule 8 is what bounds a marker; the time to live only
    removes one that no cycle ever reconciles. A long one is safe because of rule 9: a marker whose
    target the repository no longer tracks does nothing.
@@ -689,12 +690,10 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
-6. Reading never deletes. The clear compares the value before it deletes, so it removes only a
-   marker that names the target this cycle synchronised, and a marker an edit wrote for another
-   target during the cycle survives for the next one. The comparison and the delete are two cache
-   calls, so only an edit to yet another target that lands between those two calls is lost.
-   `GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1` and `CANCEL_NEW`, so no second cycle
-   reaches the marker at the same time.
+6. Reading never deletes, and the clear is one delete of the key of the target this cycle
+   synchronised. A marker that an edit writes for another target during the cycle has a key of its
+   own, so it survives for the next cycle. `GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1`
+   and `CANCEL_NEW`, so no second cycle reaches the marker at the same time.
 7. The marker is read within one cron cycle of being written, because the widened candidate
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:

@@ -403,7 +403,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         trunk_retargeted = False
         if graph_commits is not None and retarget_markers is not None:
             trunk_retargeted = await retarget_markers.is_retargeted(
-                repository_id=str(self.id), infrahub_branch_name=registry.default_branch, target=self.default_branch
+                repository_id=str(self.id), target=self.default_branch
             )
 
         collected = await self._collect_pending_imports(
@@ -421,9 +421,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
         ):
             # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite until it expires.
-            await retarget_markers.clear(
-                repository_id=str(self.id), infrahub_branch_name=registry.default_branch, target=self.default_branch
-            )
+            await retarget_markers.clear(repository_id=str(self.id), target=self.default_branch)
         return collected
 
     def _trunk_is_on_remote_head(self, graph_commits: Mapping[str, str | None], collected: CollectedImports) -> bool:

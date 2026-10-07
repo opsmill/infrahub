@@ -169,10 +169,12 @@ commit in the graph is often not an ancestor of the new head. A marker in the ca
 trunk and records no rewrite.
 
 - **Written inside the update transaction.** `InfrahubRepositoryMutation.mutate_update_object` writes
-  it for the update and for every upsert of a read-write repository, before the commit. It names the
-  new git branch.
-- **Read only by `collect_pending_imports`**, once per cycle, for the trunk alone. A marker that names
-  another git branch than the one the cycle synchronises does not apply, and the cycle leaves it.
+  it for the update and for every upsert of a read-write repository, before the commit. It is keyed
+  by the new git branch, so each target has a marker of its own and a rolled-back update cannot
+  replace the marker of a change that committed.
+- **Read only by `collect_pending_imports`**, once per cycle, for the trunk alone. The cycle reads
+  only the marker of the git branch it synchronises, so markers for other targets do not apply and
+  stay.
 - **Cleared only by the cycle that reconciles it.** After the collection, the sync clears a marker
   it read once the trunk records the remote head of the branch the marker names. A failed trunk, an
   inactive repository, or a default branch the remote does not hold yet keeps it.
