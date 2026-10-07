@@ -116,7 +116,7 @@ worktree that does not lead to it:
 | Periodic sync | `git.tasks.sync_remote_repositories` | Cron `* * * * *`, `concurrency_limit=1`, `CANCEL_NEW` (`workflows/catalogue.py::GIT_REPOSITORIES_SYNC`). Pull direction only; it never pushes. |
 | Add repository | `git.tasks.add_git_repository` / `..._read_only` | Clone, import, broadcast. |
 | Create branch | `git.tasks.create_branch` | Create in git, push, broadcast. |
-| Proposed-change merge | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Merge and push, read-write repositories only. |
+| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Merge and push for a read-write repository; copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records the commit of its trunk gets no Git merge: there is nothing to push. |
 | Read-only pull | `git.tasks.pull_read_only` | On-demand fetch latest. |
 
 The merge trigger is **not ordered against post-merge regeneration**.
