@@ -18,7 +18,11 @@ from infrahub.lock import InfrahubLockRegistry
 from tests.adapters.lock import FailingImporter
 from tests.helpers.flow import call_in_flow
 from tests.helpers.repository_sync import FLOW_RUN_LOGGER
-from tests.helpers.test_client import REJECTED_REQUEST_MESSAGE, no_branches_async_request, rejected_async_request
+from tests.helpers.test_client import (
+    REJECTED_REQUEST_MESSAGE,
+    registered_branches_async_request,
+    rejected_async_request,
+)
 
 if TYPE_CHECKING:
     from infrahub.git import InfrahubRepository
@@ -107,7 +111,7 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
     monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
     branch = Branch(name="branch01", uuid=uuid4())
     monkeypatch.setitem(registry.branch, branch.name, branch)
-    git_repo_04.client = InfrahubClient(config=Config(requester=no_branches_async_request))
+    git_repo_04.client = InfrahubClient(config=Config(requester=registered_branches_async_request))
     syncer = RepositorySyncer(
         lock_registry=InfrahubLockRegistry(local_only=True), importer=FailingImporter(RuntimeError("lock lost"))
     )
