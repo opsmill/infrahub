@@ -64,8 +64,8 @@ class TestBranchDetailsDefaultBranch:
         await expect(admin_page.get_by_role("navigation", name="Tabs")).not_to_be_visible()
 
         # Branch attributes
-        await expect(admin_page.get_by_text("Name")).to_be_visible()
-        await expect(admin_page.get_by_text("Sync with Git")).to_be_visible()
+        await expect(admin_page.get_by_text("Name", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_text("Sync with Git", exact=True)).to_be_visible()
 
         # Non-default specific attributes should NOT be visible
         await expect(admin_page.get_by_text("Schema differs from default branch")).not_to_be_visible()
@@ -96,10 +96,10 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_role("button", name="Refresh data")).to_be_visible()
 
         # Branch attributes
-        await expect(admin_page.get_by_text("Name")).to_be_visible()
-        await expect(admin_page.get_by_text("Sync with Git")).to_be_visible()
-        await expect(admin_page.get_by_text("Schema differs from default branch")).to_be_visible()
-        await expect(admin_page.get_by_text("Last rebase")).to_be_visible()
+        await expect(admin_page.get_by_text("Name", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_text("Sync with Git", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_text("Schema differs from default branch", exact=True)).to_be_visible()
+        await expect(admin_page.get_by_text("Last rebase", exact=True)).to_be_visible()
 
         # Tabs navigation should be visible with all tabs
         tabs_nav = admin_page.get_by_role("navigation", name="Tabs")

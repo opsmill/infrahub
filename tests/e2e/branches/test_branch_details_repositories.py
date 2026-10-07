@@ -7,14 +7,13 @@ leaves it in Import Error on that branch.
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import re
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 import pytest
-from helpers import generate_random_branch_name
+from helpers import Deadline, generate_random_branch_name
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
 from playwright.async_api import expect
 
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
-POLL_ATTEMPTS = 30
+POLL_TIMEOUT_SECONDS = 150.0
 POLL_INTERVAL_SECONDS = 5
 BAND_TIMEOUT_MS = 30_000
 
@@ -48,17 +47,20 @@ query FailedImportTask($branch: String!, $repositoryId: String!) {
 
 
 async def _wait_for_import_error(client: InfrahubClient, branch: str, repository_name: str) -> str:
-    for _ in range(POLL_ATTEMPTS):
+    deadline = Deadline(f"repository {repository_name} to reach error-import on {branch}", timeout=POLL_TIMEOUT_SECONDS)
+    while True:
         repository = await client.get(kind="CoreRepository", name__value=repository_name, branch=branch)
         if repository.sync_status.value == "error-import":
             return repository.id
-        await asyncio.sleep(POLL_INTERVAL_SECONDS)
-    raise RuntimeError(f"Repository {repository_name} never reached error-import on {branch}")
+        await deadline.tick(pause=POLL_INTERVAL_SECONDS)
 
 
 async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> str:
     # sync_status flips before the flow run ends Failed; the band reads the run's error lines.
-    for _ in range(POLL_ATTEMPTS):
+    deadline = Deadline(
+        f"a failed import task for repository {repository_id} on {branch}", timeout=POLL_TIMEOUT_SECONDS
+    )
+    while True:
         response = await client.execute_graphql(
             query=FAILED_IMPORT_TASK_QUERY,
             variables={"branch": branch, "repositoryId": repository_id},
@@ -67,8 +69,7 @@ async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repo
         edges = response["InfrahubTask"]["edges"]
         if edges:
             return edges[0]["node"]["id"]
-        await asyncio.sleep(POLL_INTERVAL_SECONDS)
-    raise RuntimeError(f"No failed import task found for repository {repository_id} on {branch}")
+        await deadline.tick(pause=POLL_INTERVAL_SECONDS)
 
 
 class TestBranchDetailsRepositoryImportError:
