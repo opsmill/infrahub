@@ -13,7 +13,11 @@ locally-running Neo4j. The unit tests need no database at all.
 
 1. A running Docker daemon. The component, integration and live-remote tests start their services
    through testcontainers.
-2. A worktree with the submodules initialised and the SDK reinstalled in editable mode.
+2. A worktree with the submodules initialised and the SDK reinstalled in editable mode through the
+   root package: `uv sync --all-groups --reinstall-package infrahub-server`. Do not install
+   `python_sdk` on its own with `uv pip install -e`. Its `tests` package then hides `backend/tests`
+   from the Prefect test server process, and every component test that needs Prefect fails at
+   setup with "Timed out while attempting to connect to ephemeral Prefect API server".
 3. **Unset every `INFRAHUB_*` variable in the shell before running tests.** A dev-shell
    `INFRAHUB_USE_TEST_CONTAINERS=false`, or leftover credentials, makes the suite hit an external
    Neo4j or fail the SDK login.

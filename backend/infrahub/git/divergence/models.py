@@ -53,15 +53,28 @@ class RefDivergence:
                 f"reads {self.remote_head}"
             )
 
+    @property
+    def discarded_commit(self) -> str | None:
+        """The imported commit when the remote history no longer contains it, None when it still does."""
+        if self.classification in (RefClassification.REWRITE, RefClassification.RETARGET):
+            return self.imported_commit
+        return None
+
 
 @dataclass(frozen=True)
 class ReconciledBranch:
     """One branch a synchronisation cycle advanced, and the commit it advanced to."""
 
     infrahub_branch_name: str
+    """The branch whose commit the cycle wrote.
+
+    For a staging repository it is the branch the trunk maps onto, not the staging branch that receives
+    the objects.
+    """
+
     infrahub_branch_id: str
     """The branch UUID, not the database element id."""
 
     commit: str
     divergence: RefDivergence | None = None
-    """Set when the branch was reconciled from a rewrite, None for an ordinary fast-forward."""
+    """How the remote head compares to the commit the graph recorded, None when no graph commit was given."""

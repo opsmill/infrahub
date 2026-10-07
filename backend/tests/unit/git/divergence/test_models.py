@@ -155,3 +155,8 @@ def test_only_a_coherent_combination_is_accepted(test_case: CombinationTestCase)
 
     with pytest.raises(ValueError, match=rf"^{re.escape(test_case.message)}$"):
         build(test_case.classification, imported=test_case.imported, remote=test_case.remote)
+
+
+def test_a_retarget_discards_the_imported_commit_and_a_ref_gone_from_the_remote_does_not() -> None:
+    assert build(RefClassification.RETARGET).discarded_commit == IMPORTED
+    assert build(RefClassification.REMOTE_ABSENT, remote=None).discarded_commit is None
