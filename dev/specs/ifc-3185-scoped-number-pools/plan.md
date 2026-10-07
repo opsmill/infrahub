@@ -83,7 +83,7 @@ temporary mock module, 1 new checker, 1 new repository, 3 GraphQL root fields wi
 | **II. Branch-Safe by Default** | ⚠️ gated, this is the principle under test | The cross-branch read is the design: records are `-global-`, nodes are branch-aware, the division is a union over live branches with the visibility rule the value read already uses. Merge needs no new validator (the scope does not merge; the values it reads do). Every branch case in the spec's edge list gets a two-branch component test. |
 | **III. Type Safety & Explicit Contracts** | ✅ passes | Three contracts agreed before implementation (`contracts/`). Query results come back as frozen dataclasses; the division key is a frozen dataclass; GraphQL types are explicit and pinned by an SDL snapshot test. |
 | **IV. Test Discipline** | ✅ passes | Unit for `entries_in_force`, `ScopeValidator`, `DivisionReporter` and the SDL snapshot; component for `division_of`, every query, mutation and checker, and the three dedicated GraphQL queries on an unscoped pool, a scoped pool and an IP pool; functional for the journeys and the concurrent case; one integration-docker test for the schema-load refusal; no E2E because no screen ships. The shared snow fixture's pooled attribute is `unique`, which the global taken-values scan masks, so scoped tests use a non-unique pooled attribute on a kind with a required cardinality-one relationship and a required scalar attribute (extending `tests/helpers/number_pool.py` with such a schema). |
-| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-005 and SC-006 are benchmarks under `tests/query_benchmark/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes `range_id`, `in_space`, `branch` and `provenance` into Cypher; the `division` filter is Python-side only while the mock partition exists. |
+| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-005 and SC-006 are benchmarks under `tests/query_benchmark/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes `range_id`, the pool's space, `branch` and `provenance` into Cypher; the `division` filter is Python-side only while the mock partition exists. |
 | **VI. Security & Input Boundaries** | ✅ passes | Scope entries validated at the mutation and the schema-load boundary before any query uses them; entry names are bound as parameters, never interpolated (the relationship identifier and attribute name are looked up from the schema and bound). The `division` filter's paths are checked against the scope in force before any read. Errors name the entry, the pool or the range, never internals. |
 | **VII. Simplicity** | ✅ passes with two justifications | Derived scope: no hook, no migration, no batch, no new kind. One shared Cypher visibility constant is extracted because it reaches three consumers (the bar the query guideline sets). The repository and the three pure modules each serve two callers at introduction; the dedicated surface is a new module rather than fields on the generic queries (see Complexity Tracking). |
 
@@ -135,7 +135,7 @@ backend/infrahub/
 │       └── node/attribute.py                    # size check against the largest division
 ├── templates/node_applier.py                    # pool allocation deferred until relationships are applied
 ├── pools/
-│   ├── effective_space.py                       # in-space test and size over the range set (new; replaced by P1's shared calculation)
+│   ├── effective_space.py                       # keeps the values of the pool's space and computes its size from the range set (new; replaced by P1's shared calculation)
 │   ├── default_allocator.py                     # no longer allocates from the raw field dict
 │   ├── scope.py                                 # ScopeEntry, DivisionKey, DivisionResolver, ScopeValidator (new)
 │   ├── division_report.py                       # DivisionReporter (new, pure)
@@ -292,15 +292,15 @@ if D1 has not landed; the function is pure).
 
 | Root field | Reads | Builds |
 |---|---|---|
-| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over every range, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of in-space values of the range set; `out_of_space_count` as the rows with `in_space` false; `allocation_scope` from the entries in force |
+| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over the pool's space, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of values of the pool's space; `allocation_scope` from the entries in force |
 | `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the mock partition), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
-| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), `in_space`, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges, `in_space` from the range set and the attribute's limits, `division` from the reporter (set B: the mock partition) |
+| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), the attribute's `excluded_values` and limits, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges, `division` from the reporter (set B: the mock partition) |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
 mirror leaves it null on a pool holding several ranges, where today's getter and allocated query
 stop working. A small pure helper (`pools/effective_space.py`, kept until P1's shared calculation
-replaces it) answers "is this value in space" and "how many values is this space" from the range
-set, the attribute's `excluded_values` and its `min_value` / `max_value`.
+replaces it) keeps only the values of the pool's space and computes the size of that space from
+the range set, the attribute's `excluded_values` and its `min_value` / `max_value`.
 
 In set B the `division` filter is applied in Python after the query, on the mock partition, and
 `count`, `offset` and `limit` apply to the filtered list. In D2 the filter moves into the scoped
@@ -308,9 +308,9 @@ records fragment with the writer's division replaced by the requested entries, s
 Cypher count again.
 
 `NumberPoolGetAllocated` gains `ranges: Sequence[tuple[int, int]] | None` (None: no bounds
-filter, every tracked value; a list: values inside any of the given bounds, the pool's range set or
-the one range of `range_id`), `in_space: bool | None` (True: additionally not excluded and within
-the attribute's limits; False: the complement over every tracked value), `branch: str | None` and
+filter, every tracked value; a list: values of the pool's space inside any of the given bounds,
+the pool's range set or the one range of `range_id`, not excluded and within the attribute's
+limits), `branch: str | None` and
 `provenance: PoolRecordProvenance | None` filters, and projects `coalesce(ir.provenance,
 "allocated") AS provenance`. The generic `InfrahubResourcePoolAllocated` and `NumberUtilizationGetter`
 keep today's shorthand filter and render the same text as today.
@@ -403,9 +403,8 @@ diffing `schema/schema.graphql` for those types.
   `ScopedPoolDependencyChecker` with a `node_schema` lacking the field, and the SDL snapshot of
   every type of the dedicated surface plus `allocation_scope` on the three pool inputs.
 - **Component**: the three dedicated queries on an unscoped pool (figures, ranges, one division,
-  rows with provenance, `in_space`, `range: null` for a value no range holds, `in_space: false`
-  with `range` set for an excluded value, every filter, pagination, a pool holding two ranges with
-  a null shorthand), on a scoped pool at contract time (mock partition agreement, SC-010) and after D2
+  rows with provenance and `range`, no row for a value no range holds nor for an excluded value,
+  every filter, pagination, a pool holding two ranges with a null shorthand), on a scoped pool at contract time (mock partition agreement, SC-010) and after D2
   (real divisions, the FR-025 two-division row), on an IP pool and an unknown id (refusals);
   `division_of` (relationship, attribute, enum, peer by id); the scoped fragment with one and two
   entries, relationship and attribute entries, both anchor orders; the FR-001/FR-007 two-branch
@@ -435,7 +434,7 @@ diffing `schema/schema.graphql` for those types.
 |---|---|
 | The hop's fork-window leg makes the scoped free query slow at high occupancy | SC-006 measures; the stored key is the documented next lever |
 | Deferring `handle_pool` on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
-| P1's remaining work and this slice touch `NumberPoolParameters`, `get_next`, the size calculation and the SDK generator | Fragment change is parameter-only; whichever lands second rebases one hunk; each slice opens its own SDK regeneration PR; the landing order is the P1 owner's call (open question in the critique); the dedicated surface's `size`, `used` and `in_space` are computed by a small helper with the definition P1's shared calculation will carry, so the switch is an implementation swap, not a contract change |
+| P1's remaining work and this slice touch `NumberPoolParameters`, `get_next`, the size calculation and the SDK generator | Fragment change is parameter-only; whichever lands second rebases one hunk; each slice opens its own SDK regeneration PR; the landing order is the P1 owner's call (open question in the critique); the dedicated surface's `size`, `used` and the values of the pool's space it lists are computed by a small helper with the definition P1's shared calculation will carry, so the switch is an implementation swap, not a contract change |
 | The generic queries and today's getter read the deprecated shorthand, null on a pool holding several ranges | The dedicated surface never reads the shorthand; the generic queries stay as they are (frozen), and their behaviour on a multi-range pool is P1's to fix |
 | The record-side anchor runs the entry subqueries once per record at full occupancy | Both anchor orders rendered and profiled before one is kept |
 | `NumberPoolGetAllocated` on the shared fragment changes the allocation lists on a deleting branch | Intended; changelog entry; component test |

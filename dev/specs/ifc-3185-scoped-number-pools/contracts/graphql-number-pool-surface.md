@@ -41,7 +41,7 @@ range holding each one.
 | scope in force | The subset of the allocation scope that the reading branch's schema defines on the kind, in scope order (FR-008). |
 | division | One tuple of values of the scope in force, held by the holder of a tracked number. Derived at read time, never stored. |
 | holder | The node whose attribute holds a tracked number. |
-| in space | A value the pool can allocate: inside one of the pool's ranges, not among the attribute's `excluded_values` (single values or excluded ranges), and within the attribute's `min_value` and `max_value` when they are set. A value can sit inside a range and still be out of space. |
+| pool's space | The values the pool can allocate: inside one of the pool's ranges, not among the attribute's `excluded_values` (single values or excluded ranges), and within the attribute's `min_value` and `max_value` when they are set. |
 
 ## SDL
 
@@ -67,12 +67,6 @@ type NumberPoolUtilization {
   figures: NumberPoolUtilizationFigures!
   """The pool's ranges ordered by start, each with its own figures."""
   ranges: [NumberPoolRangeUtilization!]!
-  """
-  Number of allocation rows whose value lies outside the pool's space (in_space false): one per
-  holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the
-  division given as division.
-  """
-  out_of_space_count: BigInt!
 }
 
 """Absolute and relative utilization of one space: a pool, a range or a division."""
@@ -182,14 +176,8 @@ type NumberPoolAllocation {
   identifier: String
   """ALLOCATED when the pool picked the number, PROVIDED when a user gave it."""
   provenance: NumberPoolProvenance!
-  """
-  Whether the value lies inside the pool's space and counts in its figures: inside a range, not
-  excluded by the attribute, within its min and max. False for an excluded or out-of-limits value
-  even when a range holds it.
-  """
-  in_space: Boolean!
-  """The range whose bounds hold the value. Null when no range holds it."""
-  range: NumberPoolRangeRef
+  """The range whose bounds hold the value."""
+  range: NumberPoolRangeRef!
   """The holder's division on the row's branch, in scope order. Empty when the pool is unscoped."""
   division: [NumberPoolDivisionEntry!]!
 }
@@ -236,7 +224,6 @@ type Query {
     pool_id: String!
     division: [NumberPoolDivisionEntryInput!]
     range_id: String
-    in_space: Boolean
     branch: String
     provenance: NumberPoolProvenance
     offset: Int
@@ -251,9 +238,8 @@ type Query {
 |---|---|---|
 | `pool_id` | all three | The number pool. Required. |
 | `range_id` | allocations | Rows whose value the range holds. |
-| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch; `out_of_space_count` counts the rows the allocations query returns for the same `division` (FR-007 union). A filter that omits an entry in force is refused (section "Refusals"). |
+| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch (FR-007 union). A filter that omits an entry in force is refused (section "Refusals"). |
 | `division` | allocations | Rows whose holder carries, for every given entry, the given value on at least one live branch (FR-007 union). A partial filter is allowed: on a `["site", "tenant"]` pool, `[{path: "site", value: "<A>"}]` returns every row held in site A across tenants. |
-| `in_space` | allocations | `true`: rows counted in the figures. `false`: rows outside the pool's space. Omitted: both. |
 | `branch` | allocations | Rows whose value is held on that branch. Omitted: rows from every live branch. |
 | `provenance` | allocations | Rows with that provenance. |
 | `offset`, `limit` | allocations | Page of the ordered, filtered rows. Defaults: `offset` 0, `limit` 10, as on `InfrahubResourcePoolAllocated`. |
@@ -311,8 +297,7 @@ one-row-per-(record, branch-resolved value) rule.
 
 A `division` entry whose `path` is in force but whose `value` matches no holder is not refused; the
 allocations list is empty and `count` is 0, and the utilization query reports every `used` figure
-and `out_of_space_count` as 0. A `provenance` or `in_space` filter matching nothing behaves the
-same way.
+as 0. A `provenance` filter matching nothing behaves the same way.
 
 ## Figures
 
@@ -322,16 +307,11 @@ value held by three holders consumes one value. `used_branches` counts values he
 branch and not on the default branch, so `used == used_default_branch + used_branches`. The three
 percentages keep the names and meaning of `PoolUtilization`.
 
-`out_of_space_count` is not a figure of the space: it counts rows, one per holder and value, as the
-allocations list does. Values outside the space consume none of it, and each row is one value a
-user detaches or moves, so the count drops by one for each row fixed. It equals the `count` of
-`InfrahubNumberPoolAllocations` with `in_space: false` and the same `division`.
-
 | Space | `size` | `used` |
 |---|---|---|
-| pool | the number of in-space values: over every range, the values not excluded by the attribute and within its `min_value` / `max_value`. Computed from the range set, never from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges | distinct in-space values held |
+| pool | the number of values of the pool's space: over every range, the values not excluded by the attribute and within its `min_value` / `max_value`. Computed from the range set, never from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges | distinct values of the pool's space held |
 | range | `end - start + 1` | distinct values between `start` and `end` held |
-| division, whole pool | the pool's `size` | distinct in-space values held by holders in the division |
+| division, whole pool | the pool's `size` | distinct values of the pool's space held by holders in the division |
 | division, one range (`ranges[].figures` with `division`) | the range's `size` | distinct values of the range held by holders in the division |
 
 ## Semantics per pool state
@@ -341,19 +321,16 @@ user detaches or moves, so the count drops by one for each row fixed. It equals 
 | unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | `[]` | refused |
 | scoped | the entries in force | the division given as `division`; refused without it (FR-011); at contract time, from the mock partition | the division given as `division` (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | the holder's division on the row's branch; at contract time, the mock division | accepted for paths in force; complete on the utilization query |
 | scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | `[]` | refused |
-| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | `range: null` and `in_space: false` on every row | per the rows above |
+| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | no row: the allocations list is empty | per the rows above |
 
 On a scoped pool the utilization query reports one division at a time: the headline and every
 range row report the division given as `division`, including a range in which it holds no value
 (`used` 0). The fullest division is the first row of `InfrahubNumberPoolDivisions`, which orders
 the divisions by utilization descending.
 
-`range` and `in_space` are two different facts. A value the attribute lists in `excluded_values`,
-or outside its `min_value` / `max_value`, can sit inside a range (`range` set) and still be out of
-space (`in_space: false`): it does not count in any figure and `out_of_space_count` includes it. A
-value no range holds has `range: null` and is always out of space. Every pool holds at least one
-range since the migration that gave each existing pool the range its bounds described, so `range:
-null` with `in_space: true` does not occur.
+The allocations query returns only values of the pool's space; a value the attribute excludes,
+one beyond its `min_value` / `max_value`, or one no range holds is not listed and counts in no
+figure.
 
 Because a holder's division is resolved as a union over live branches, one value can appear in
 two divisions: a holder in site A on the default branch and moved to site C on branch `b1` puts
@@ -373,7 +350,7 @@ divisions of a scoped pool, which the division reads of later change sets comput
 |---|---|---|
 | `NumberPoolUtilization.figures`, `ranges`, every `size` and `used` figure | real, computed by the resolvers from the range set, the attribute's `excluded_values` and its `min_value` / `max_value` | the shared effective-space calculation of P1 (IFC-3213), same definition, one implementation |
 | `holder`, `branch`, `identifier`, `provenance`, `range` | real | unchanged |
-| `in_space`, `out_of_space_count` | real, same definition as `size` | the shared effective-space calculation of P1 (IFC-3213) |
+| the restriction of rows to the pool's space | real, same definition as `size` | the shared effective-space calculation of P1 (IFC-3213) |
 | divisions of a scoped pool, `division` on rows, the `division` filter | the mock partition below | the division reads of this slice |
 
 The mock partition: every row of a scoped pool is put in one of three divisions named `mock-1`,
@@ -411,9 +388,8 @@ working unchanged; their migration to the dedicated queries is its own ticket.
 ## Examples
 
 The pool `VLANs` in the first three examples has no allocation scope and two ranges, `1 - 50`
-weighted 10 and `51 - 100` with no weight. It tracks four values: 1 and 51 held on the default
-branch `main`, 7 held on branch `b1` only, and 500 provided by a user on `main`, which no range
-holds.
+weighted 10 and `51 - 100` with no weight. It tracks three values: 1 and 51 held on the default
+branch `main`, and 7 held on branch `b1` only.
 
 ### Utilization of an unscoped pool
 
@@ -428,7 +404,6 @@ query {
       id display_label start end weight
       figures { size used used_default_branch used_branches utilization }
     }
-    out_of_space_count
   }
 }
 ```
@@ -452,8 +427,7 @@ query {
         "id": "17f3c2e8-…", "display_label": "51 - 100", "start": 51, "end": 100, "weight": 0,
         "figures": { "size": 50, "used": 1, "used_default_branch": 1, "used_branches": 0, "utilization": 2.0 }
       }
-    ],
-    "out_of_space_count": 1
+    ]
   }
 }
 ```
@@ -474,14 +448,14 @@ query { InfrahubNumberPoolDivisions(pool_id: "17f3c0a2-…") { count allocation_
 }
 ```
 
-### Allocations of an unscoped pool outside its space
+### Allocations of an unscoped pool in one range
 
 ```graphql
 query {
-  InfrahubNumberPoolAllocations(pool_id: "17f3c0a2-…", in_space: false) {
+  InfrahubNumberPoolAllocations(pool_id: "17f3c0a2-…", range_id: "17f3c1d4-…") {
     count
     allocations {
-      value branch identifier provenance in_space
+      value branch identifier provenance
       holder { id hfid kind display_label }
       range { id display_label }
       division { path value }
@@ -493,12 +467,18 @@ query {
 ```json
 {
   "InfrahubNumberPoolAllocations": {
-    "count": 1,
+    "count": 2,
     "allocations": [
       {
-        "value": 500, "branch": "main", "identifier": null, "provenance": "PROVIDED", "in_space": false,
+        "value": 1, "branch": "main", "identifier": null, "provenance": "ALLOCATED",
         "holder": { "id": "17f3d001-…", "hfid": ["sw-core-01"], "kind": "InfraDevice", "display_label": "sw-core-01" },
-        "range": null,
+        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" },
+        "division": []
+      },
+      {
+        "value": 7, "branch": "b1", "identifier": null, "provenance": "ALLOCATED",
+        "holder": { "id": "17f3d002-…", "hfid": ["sw-core-02"], "kind": "InfraDevice", "display_label": "sw-core-02" },
+        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" },
         "division": []
       }
     ]
@@ -566,7 +546,6 @@ query {
     allocation_scope
     figures { size used utilization }
     ranges { display_label figures { size used utilization } }
-    out_of_space_count
   }
 }
 ```
@@ -579,8 +558,7 @@ query {
     "ranges": [
       { "display_label": "1 - 50", "figures": { "size": 50, "used": 40, "utilization": 80.0 } },
       { "display_label": "51 - 100", "figures": { "size": 50, "used": 0, "utilization": 0.0 } }
-    ],
-    "out_of_space_count": 0
+    ]
   }
 }
 ```
