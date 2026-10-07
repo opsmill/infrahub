@@ -256,6 +256,7 @@ const sidebars: SidebarsConfig = {
             'branches/rebase',
             'branches/delete',
             'branches/resolve-conflicts',
+            'branches/parallel-branches',
             'branches/branch-agnostic-data',
           ],
         },
