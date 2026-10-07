@@ -358,8 +358,9 @@ here. See "Out of Scope".
 #### Truthfulness of the error path
 
 - **FR-017**: When a pull fails for a reason the system cannot classify, the message MUST NOT claim
-  a merge conflict unless the system observed one. The divergent-branches case MUST get its own
-  message naming a divergent history.
+  a merge conflict unless the system observed one. No path runs `git pull`, so a pull never stops on
+  diverged branches. The merge guard carries the diverged case: its `RepositoryDivergentHistoryError`
+  MUST have its own message naming a divergent history.
 
 #### Failure handling and observability
 
