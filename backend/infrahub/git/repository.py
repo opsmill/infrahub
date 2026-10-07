@@ -105,6 +105,15 @@ class FailedImport:
     """Whether the branch is the repository's configured default branch."""
 
 
+@dataclass(frozen=True)
+class BranchMove:
+    """A merge branch that the merge guard moves onto the commit the graph records for it."""
+
+    branch_name: str
+    local_head: str
+    target: str
+
+
 @dataclass
 class CollectedImports:
     """Outcome of the git/branch-setup phase of a sync.
@@ -951,23 +960,24 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         }
         graph_commits = {source_branch: source_commit, dest_branch: destination_commit}
 
-        moves: list[tuple[str, str, str]] = []
+        moves: dict[str, BranchMove] = {}
         for branch_name, local_head in local_heads.items():
-            remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=branch_name))
+            remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
+            remote_head = remote_heads.get(remote_branch)
             if local_head is None or remote_head is None:
                 continue
             graph_commit = graph_commits[branch_name]
             if graph_commit == remote_head:
                 if local_head != remote_head:
-                    moves.append((branch_name, local_head, graph_commit))
+                    moves[branch_name] = BranchMove(branch_name=branch_name, local_head=local_head, target=graph_commit)
             elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
                 raise self._unfinished_merge(
                     source_branch=source_branch,
                     dest_branch=dest_branch,
                     reason=(
-                        f"The remote history of {self._get_mapped_remote_branch(branch_name=branch_name)} does not "
-                        f"contain the local commit {local_head}. Infrahub records {graph_commit or 'no commit'} for "
-                        f"{branch_name}, not the remote head {remote_head}."
+                        f"The remote history of {remote_branch} does not contain the local commit {local_head}. "
+                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, not the remote head "
+                        f"{remote_head}."
                     ),
                 )
             elif branch_name == dest_branch:
@@ -976,7 +986,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     dest_branch=dest_branch,
                     reason=(
                         f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, not the remote head "
-                        f"{remote_head} of {self._get_mapped_remote_branch(branch_name=branch_name)}."
+                        f"{remote_head} of {remote_branch}."
                     ),
                 )
             elif (
@@ -984,24 +994,26 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 and graph_commit != local_head
                 and self._in_remote_history(commit=graph_commit, remote_head=remote_head)
             ):
-                moves.append((branch_name, local_head, graph_commit))
+                moves[branch_name] = BranchMove(branch_name=branch_name, local_head=local_head, target=graph_commit)
 
-        for branch_name, local_head, graph_commit in moves:
-            if self._get_branch_worktree(branch_name) is None:
-                await self._move_branch_ref(branch_name=branch_name, commit=graph_commit)
+        for move in moves.values():
+            if self._get_branch_worktree(move.branch_name) is None:
+                await self._move_branch_ref(branch_name=move.branch_name, commit=move.target)
             else:
-                await self.reset_to_commit(branch_name=branch_name, commit=graph_commit, update_commit_value=False)
+                await self.reset_to_commit(branch_name=move.branch_name, commit=move.target, update_commit_value=False)
             log.info(
                 "Moved branch %s of repository %s from %s onto %s before the merge, which the graph records",
-                branch_name,
+                move.branch_name,
                 self.name,
-                local_head,
-                graph_commit,
-                extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
+                move.local_head,
+                move.target,
+                extra={"repository": self.name, "branch": move.branch_name, "commit": move.target},
             )
 
-        merged_source = next((commit for name, _, commit in moves if name == source_branch), local_heads[source_branch])
-        source_remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=source_branch))
+        source_move = moves.get(source_branch)
+        merged_source = source_move.target if source_move is not None else local_heads[source_branch]
+        remote_source_branch = self._get_mapped_remote_branch(branch_name=source_branch)
+        source_remote_head = remote_heads.get(remote_source_branch)
         if merged_source is not None and source_remote_head is not None and merged_source != source_remote_head:
             # The branch is merged in Infrahub already, so a refusal cannot help, and only this shows what stays out.
             log.warning(
@@ -1012,7 +1024,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 merged_source,
                 source_remote_head,
                 merged_source,
-                self._get_mapped_remote_branch(branch_name=source_branch),
+                remote_source_branch,
                 self._get_mapped_remote_branch(branch_name=dest_branch),
                 extra={"repository": self.name, "branch": source_branch, "commit": merged_source},
             )
