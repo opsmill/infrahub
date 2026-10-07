@@ -48,7 +48,7 @@ class NodeSchemaSource(Protocol):
 
 
 class SchemaAttributeDomains:
-    """Looks up, in the schema of one branch, the numbers the attribute a pool feeds accepts."""
+    """Looks up, in the schema of one branch, the numbers a pool-fed attribute accepts."""
 
     def __init__(self, schema: NodeSchemaSource, branch: Branch) -> None:
         self._schema = schema
