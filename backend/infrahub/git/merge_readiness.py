@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.exceptions import RepositoryError, RepositoryNotSynchronizedError
-from infrahub.git.remote_refs import list_remote_heads
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -45,18 +44,6 @@ class RemoteHeadReader(Protocol):
     async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
         """Return the head of each named branch the remote holds. A branch it does not hold is absent."""
         ...
-
-
-class GitRemoteHeadReader:
-    """Reads the remote heads with ``git ls-remote``, bounded in time."""
-
-    def __init__(self, timeout_seconds: int) -> None:
-        self.timeout_seconds = timeout_seconds
-
-    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
-        return await list_remote_heads(
-            name=repository_name, url=location, branch_names=branch_names, timeout_seconds=self.timeout_seconds
-        )
 
 
 class RemoteHeadsMergeCheck:

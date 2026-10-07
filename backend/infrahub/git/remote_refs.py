@@ -105,6 +105,18 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
     return heads
 
 
+class GitRemoteHeadReader:
+    """Reads the remote heads with ``git ls-remote``, bounded in time."""
+
+    def __init__(self, timeout_seconds: int) -> None:
+        self.timeout_seconds = timeout_seconds
+
+    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
+        return await list_remote_heads(
+            name=repository_name, url=location, branch_names=branch_names, timeout_seconds=self.timeout_seconds
+        )
+
+
 def ensure_branch_exists(refs: RemoteRefs, *, branch_name: str, repository_name: str, location: str) -> None:
     """Confirm the remote has the requested branch, whether or not it is the remote's default.
 

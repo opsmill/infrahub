@@ -71,7 +71,8 @@ from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
 from infrahub.git.constants import REMOTE_HEADS_TIMEOUT_SECONDS
-from infrahub.git.merge_readiness import GitRemoteHeadReader, RemoteHeadsMergeCheck
+from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
+from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
