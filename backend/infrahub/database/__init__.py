@@ -96,10 +96,14 @@ class DatabaseSchemaManager:
     def __init__(self, db: InfrahubDatabase) -> None:
         self._db = db
 
-    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes:
+    def get(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True, check_branch_only: bool = False
+    ) -> MainSchemaTypes:
         branch_name = get_branch_name(branch=branch)
         if branch_name not in self._db._schemas:
-            return registry.schema.get(name=name, branch=branch, duplicate=duplicate)
+            return registry.schema.get(
+                name=name, branch=branch, duplicate=duplicate, check_branch_only=check_branch_only
+            )
         return self._db._schemas[branch_name].get(name=name, duplicate=duplicate)
 
     def get_node_schema(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> NodeSchema:

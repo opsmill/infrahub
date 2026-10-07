@@ -44,7 +44,9 @@ def attribute_domain(attribute: AttributeSchema | None) -> NumberDomain:
 class NodeSchemaSource(Protocol):
     """Resolves a kind to its schema on a branch, raising SchemaNotFoundError for an unknown kind."""
 
-    def get(self, name: str, branch: Branch | str | None = None, duplicate: bool = True) -> MainSchemaTypes: ...
+    def get(
+        self, name: str, branch: Branch | str | None = None, duplicate: bool = True, check_branch_only: bool = False
+    ) -> MainSchemaTypes: ...
 
 
 class SchemaAttributeDomains:
@@ -61,7 +63,7 @@ class SchemaAttributeDomains:
         the attribute's min, max or excluded values.
         """
         try:
-            node_schema = self._schema.get(name=kind, branch=self._branch, duplicate=False)
+            node_schema = self._schema.get(name=kind, branch=self._branch, duplicate=False, check_branch_only=True)
         except SchemaNotFoundError:
             log.warning(
                 "Number pool feeds a kind missing from the schema, so it allocates from its full ranges without the attribute's limits",
