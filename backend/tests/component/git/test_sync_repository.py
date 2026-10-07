@@ -40,6 +40,7 @@ from infrahub.git.sync import (
     raise_if_branches_failed,
 )
 from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
+from infrahub.git.writeback.store import build_intent_store
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
@@ -482,6 +483,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             importer=RepositoryFileImporter(),
             recorder=build_in_memory_recorder(),
             retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         ).sync(repo)
 
         assert outcome == SyncOutcome(
@@ -940,6 +942,7 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             importer=RepositoryFileImporter(),
             recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
             retarget_markers=RetargetMarkers(cache=MemoryCache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         )
 
         @flow(name="test-sync-a-trunk-whose-rewrite-record-fails")

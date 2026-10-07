@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from infrahub.git.sync import RepositorySyncer
 from tests.adapters.cache import MemoryCache
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.repository_record_store import build_in_memory_recorder
+from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 
 async def test_repository_lock_scopes_import_build_and_apply(
@@ -29,6 +31,7 @@ async def test_repository_lock_scopes_import_build_and_apply(
         importer=RecordingImporter(timeline),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        state=InMemoryDeliveryState(clock=FixedClock(now=datetime.now(tz=UTC)), repository_names={}),
     )
 
     await syncer.sync(git_repo_04)
