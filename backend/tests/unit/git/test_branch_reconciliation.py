@@ -1055,6 +1055,47 @@ async def test_an_inactive_repository_keeps_its_marker_for_the_cycle_that_synchr
     assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
 
 
+async def test_a_re_pointed_trunk_of_a_staging_repository_records_nothing_and_clears_its_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The objects go to the staging branch, but the commit the classification compared is the trunk's."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.STAGING
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        staging_branch=STAGING,
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        PendingObjectImport(
+            infrahub_branch_name=STAGING,
+            commit=re_pointed.new_head,
+            git_branch_name=TRACKED,
+            on_default_branch=True,
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="main",
+                infrahub_branch_id="main-id",
+                commit=re_pointed.new_head,
+                divergence=RefDivergence(
+                    branch_name=TRACKED,
+                    infrahub_branch_name="main",
+                    imported_commit=re_pointed.discarded_commit,
+                    remote_head=re_pointed.new_head,
+                    classification=RefClassification.RETARGET,
+                ),
+            ),
+        )
+    ]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
 async def test_a_default_branch_the_remote_does_not_hold_yet_keeps_its_marker(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
