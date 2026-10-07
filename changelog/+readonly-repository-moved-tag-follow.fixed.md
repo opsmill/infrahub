@@ -1,0 +1,1 @@
+Fixed read-only repositories failing to follow a tracked tag that was moved upstream: an import either failed or kept the commit the tag used to point at, and workers other than the one running the import could not pick up the new commit.

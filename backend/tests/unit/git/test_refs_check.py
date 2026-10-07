@@ -28,7 +28,6 @@ from infrahub.git.refs_check.models import RefHeads
 from tests.helpers.schema.tag import TAG
 
 LIST_KILL_AFTER_SECONDS = 110
-FETCH_KILL_AFTER_SECONDS = 900
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -307,9 +306,7 @@ def build_local_copy(tmp_path: Path, *, origin: str) -> GitReadOnlyRepositoryChe
 
 def build_gateway() -> GitRepositoryRefsGateway:
     return GitRepositoryRefsGateway(
-        client=InfrahubClient(config=Config(address="http://mock")),
-        list_kill_after_seconds=LIST_KILL_AFTER_SECONDS,
-        fetch_kill_after_seconds=FETCH_KILL_AFTER_SECONDS,
+        client=InfrahubClient(config=Config(address="http://mock")), list_kill_after_seconds=LIST_KILL_AFTER_SECONDS
     )
 
 
