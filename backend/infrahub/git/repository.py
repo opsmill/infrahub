@@ -32,8 +32,8 @@ from infrahub.exceptions import (
     RepositoryError,
 )
 from infrahub.git.branch_status import accepts_commit_write
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.divergence.detector import RemoteDivergenceDetector
-from infrahub.git.divergence.gateway import readable_commit
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error

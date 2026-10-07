@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.git.divergence.gateway import readable_commit
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.merge_readiness import GitMergeTarget
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.log import get_logger

@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError, GitError
 
 from infrahub.exceptions import RepositoryError
+from infrahub.git.commit_id import COMMIT_SHA_PATTERN
 
 if TYPE_CHECKING:
     from git import Repo
-
-COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 GITPYTHON_STDERR_PREFIX = "stderr: '"
 """GitPython wraps the text git wrote in a newline, this prefix and a closing quote."""
@@ -34,11 +32,6 @@ cannot read the pack itself. Its other files are caches, and git answers without
 
 NOT_AN_ANCESTOR_STATUS = 1
 """What `git merge-base --is-ancestor` returns for a true comparison with a false answer."""
-
-
-def readable_commit(commit: str | None) -> str | None:
-    """Return a commit the graph records, or None when the value is empty or not a full commit id."""
-    return commit if commit and COMMIT_SHA_PATTERN.fullmatch(commit) else None
 
 
 class GitAncestryGateway:
