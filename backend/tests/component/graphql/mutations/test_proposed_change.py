@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
@@ -41,7 +40,7 @@ from infrahub.workflows.initialization import setup_deployments, setup_worker_po
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.dependency_override import override_dependency
-from tests.helpers.git import LocalRemote
+from tests.helpers.git import LocalRemote, install_remote_helper
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -843,17 +842,14 @@ class TestMergeProposedChangeHeldByGit(TestInfrahubApp):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         branch_name = "held-by-the-credentials"
-        helper_directory = tmp_path / "bin"
-        helper_directory.mkdir()
-        helper = helper_directory / "git-remote-fake"
-        helper.write_text("#!/bin/sh\necho \"fatal: Authentication failed for 'fake://nowhere/'\" >&2\nexit 128\n")
-        helper.chmod(0o755)
-        monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+        location = install_remote_helper(
+            tmp_path, monkeypatch, script="echo \"fatal: Authentication failed for 'fake://nowhere/'\" >&2\nexit 128"
+        )
         proposed_change = await self.open_proposed_change(
             db=db,
             branch_name=branch_name,
             repository_name="refused-repo",
-            location="fake::nowhere",
+            location=location,
             trunk_commit=self.TRUNK_COMMIT,
         )
 

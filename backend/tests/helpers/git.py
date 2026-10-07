@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -17,6 +18,7 @@ from tests.helpers.test_client import dummy_async_request
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
     from infrahub_sdk.exceptions import Error as SdkError
     from infrahub_sdk.types import HTTPMethod
     from testcontainers.core.container import DockerContainer
@@ -147,6 +149,17 @@ class GraphRecordingClient(InfrahubClient):
 
 def rejected_commit_message(branch_name: str) -> str:
     return f"Branch {branch_name} must be rebased before any updates can be made"
+
+
+def install_remote_helper(directory: Path, monkeypatch: pytest.MonkeyPatch, script: str) -> str:
+    """Put a git remote helper running ``script`` on the PATH, and return a URL that git hands to it."""
+    helper_directory = directory / "bin"
+    helper_directory.mkdir()
+    helper = helper_directory / "git-remote-fake"
+    helper.write_text(f"#!/bin/sh\n{script}\n", encoding="utf-8")
+    helper.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+    return "fake::nowhere"
 
 
 def build_repository_client(

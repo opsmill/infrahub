@@ -11,6 +11,7 @@ from git import Repo
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.remote_refs import RemoteRefs, ensure_branch_exists, list_remote_heads, list_remote_refs
+from tests.helpers.git import install_remote_helper
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -133,17 +134,6 @@ async def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path:
     )
 
     assert heads == {"feature": head}
-
-
-def install_remote_helper(directory: Path, monkeypatch: pytest.MonkeyPatch, script: str) -> str:
-    """Put a git remote helper running ``script`` on the PATH, and return a URL that git hands to it."""
-    helper_directory = directory / "bin"
-    helper_directory.mkdir()
-    helper = helper_directory / "git-remote-fake"
-    helper.write_text(f"#!/bin/sh\n{script}\n", encoding="utf-8")
-    helper.chmod(0o755)
-    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
-    return "fake::nowhere"
 
 
 @pytest.mark.timeout(60)
