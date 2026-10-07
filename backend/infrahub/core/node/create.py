@@ -439,7 +439,7 @@ async def _do_create_node(
     with creation_context:
         obj = await node_class.init(db=db, schema=schema, branch=branch)
         obj._object_template = object_template
-        await obj.new(db=db, pool_applier=pool_applier, **data)
+        await obj.new(db=db, pool_applier=pool_applier, user_id=user_id, **data)
         await node_constraint_runner.check(node=obj, field_filters=fields_to_validate)
         await obj.save(db=db, at=at, user_id=user_id)
 

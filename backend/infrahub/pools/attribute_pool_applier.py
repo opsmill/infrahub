@@ -33,7 +33,7 @@ class NumberPoolFinder(Protocol):
 
 
 class AttributeNumberAllocator(Protocol):
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
         """Return the number the pool gives the attribute.
 
         Raises:
@@ -42,11 +42,11 @@ class AttributeNumberAllocator(Protocol):
         """
         ...
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
+    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
         """Have the pool track the number the saved attribute already holds."""
         ...
 
-    async def release(self, attribute: BaseAttribute) -> None:
+    async def release(self, attribute: BaseAttribute, user_id: str) -> None:
         """Have every pool stop tracking the saved attribute, which keeps the number it holds."""
         ...
 
@@ -57,6 +57,7 @@ class AttributePoolApplierInterface(Protocol):
         node: Node,
         attribute: BaseAttribute,
         allocate: bool,
+        user_id: str,
     ) -> None:
         """Apply what a write naming a number pool on the attribute asks for.
 
@@ -75,6 +76,7 @@ class LoadedNodePoolApplier:
         node: Node,
         attribute: BaseAttribute,
         allocate: bool,  # noqa: ARG002
+        user_id: str,  # noqa: ARG002
     ) -> None:
         """Refuse, since reaching this means a loaded node was asked to draw a number.
 
@@ -107,6 +109,7 @@ class AttributePoolApplier:
         node: Node,
         attribute: BaseAttribute,
         allocate: bool,
+        user_id: str,
     ) -> None:
         """Apply what a write naming a number pool on the attribute asks for.
 
@@ -132,7 +135,11 @@ class AttributePoolApplier:
 
         if attribute.schema.kind == "NumberPool" and isinstance(attribute.schema.parameters, NumberPoolParameters):
             await self._apply_schema_number_pool(
-                node=node, attribute=attribute, pool_id=attribute.schema.parameters.number_pool_id, allocate=allocate
+                node=node,
+                attribute=attribute,
+                pool_id=attribute.schema.parameters.number_pool_id,
+                allocate=allocate,
+                user_id=user_id,
             )
             return
 
@@ -180,16 +187,20 @@ class AttributePoolApplier:
             case FromPoolIntent.NO_OP:
                 return
             case FromPoolIntent.DETACH:
-                await self.number_allocator.release(attribute=attribute)
+                await self.number_allocator.release(attribute=attribute, user_id=user_id)
             case FromPoolIntent.ATTACH:
-                await self._attach(node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute)
+                await self._attach(
+                    node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
+                )
             case FromPoolIntent.ALLOCATE:
-                await self._allocate(node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute)
+                await self._allocate(
+                    node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute, user_id=user_id
+                )
             case _:
                 assert_never(intent)
 
     async def _apply_schema_number_pool(
-        self, node: Node, attribute: BaseAttribute, pool_id: str | None, allocate: bool
+        self, node: Node, attribute: BaseAttribute, pool_id: str | None, allocate: bool, user_id: str
     ) -> None:
         """Allocate from the pool a NumberPool attribute is declared with, whatever the payload holds.
 
@@ -207,15 +218,15 @@ class AttributePoolApplier:
         pool = await self._find_pool(attribute=attribute, pool_ref=pool_id)
         attribute.from_pool = {"id": pool.get_id()}
         self._check_pool_targets_attribute(schema=node.get_schema(), pool=pool, attribute=attribute)
-        await self._allocate(node=node, pool=pool, attribute=attribute)
+        await self._allocate(node=node, pool=pool, attribute=attribute, user_id=user_id)
 
-    async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute) -> None:
+    async def _attach(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         attribute.pool_provenance = PoolRecordProvenance.PROVIDED
         # An attribute not saved yet is attached to the pool when the node is created.
         if attribute.id is not None:
-            await self.number_allocator.attach(pool=pool, node=node, attribute=attribute)
+            await self.number_allocator.attach(pool=pool, node=node, attribute=attribute, user_id=user_id)
 
-    async def _allocate(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute) -> None:
+    async def _allocate(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute, user_id: str) -> None:
         """Set the attribute's value from the pool.
 
         Raises:
@@ -224,7 +235,9 @@ class AttributePoolApplier:
         """
         attribute.pool_provenance = PoolRecordProvenance.ALLOCATED
         try:
-            attribute.value = await self.number_allocator.allocate(pool=pool, node=node, attribute=attribute)
+            attribute.value = await self.number_allocator.allocate(
+                pool=pool, node=node, attribute=attribute, user_id=user_id
+            )
         except PoolExhaustedError as exc:
             raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc
         attribute.is_default = False

@@ -500,6 +500,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         pool_applier: AttributePoolApplierInterface,
         process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> None:
         if "_source" in fields.keys():
             self._source = fields["_source"]
@@ -554,6 +555,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 pool_applier=pool_applier,
                 process_pools=process_pools,
                 template_pools=template_pools,
+                user_id=user_id,
             )
         )
 
@@ -634,6 +636,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         pool_applier: AttributePoolApplierInterface,
         process_pools: bool,
         template_pools: TemplatePoolFields | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> list[ValidationError]:
         errors: list[ValidationError] = []
 
@@ -665,7 +668,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         # one accounts for it, it does not ask for a second number.
                         attribute.from_pool = {"id": allocated_pool_id}
                     else:
-                        await pool_applier.apply(node=self, attribute=attribute, allocate=process_pools)
+                        await pool_applier.apply(
+                            node=self, attribute=attribute, allocate=process_pools, user_id=user_id
+                        )
 
                     if attr_schema.name in self._profile_provided_attrs:
                         continue
@@ -954,6 +959,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         id: str | None = None,
         process_pools: bool = True,
         pool_applier: AttributePoolApplierInterface | None = None,
+        user_id: str = SYSTEM_USER_ID,
         **kwargs: Any,
     ) -> Self:
         if id and not is_valid_uuid(id):
@@ -971,6 +977,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             fields=kwargs,
             pool_applier=pool_applier or build_attribute_pool_applier(db=db),
             process_pools=process_pools,
+            user_id=user_id,
         )
         await self._process_macros(db=db)
 
@@ -1368,15 +1375,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         db: InfrahubDatabase,
         pool_applier: AttributePoolApplierInterface,
         process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> bool:
-        """Update object from a GraphQL payload."""
+        """Update object from a GraphQL payload, drawing from or releasing to number pools as `user_id`."""
         changed = False
 
         for key, value in data.items():
             if key in self._attributes and isinstance(value, dict):
                 attribute = getattr(self, key)
                 changed |= await attribute.from_graphql(
-                    data=value, process_pools=process_pools, pool_applier=pool_applier
+                    data=value, process_pools=process_pools, pool_applier=pool_applier, user_id=user_id
                 )
 
             if key in self._relationships:

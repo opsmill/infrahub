@@ -28,6 +28,8 @@ ATTRIBUTE_ID = "18a0b9e3-0000-0000-0000-00000000dddd"
 POOL_ID = "5c1f6e0a-0000-0000-0000-00000000bbbb"
 OTHER_POOL_ID = "5c1f6e0a-0000-0000-0000-00000000eeee"
 OTHER_ATTRIBUTE_POOL_ID = "5c1f6e0a-0000-0000-0000-00000000cccc"
+ACTOR_ID = "17ce4c8a-6bf1-4b5f-9ec0-5cf6a9d4d1a2"
+OTHER_ACTOR_ID = "5b7d2e0c-4f3a-4c1e-9a6b-2d8f1c0e7a41"
 
 
 @dataclass
@@ -51,6 +53,7 @@ class PoolCall:
     pool_id: str | None
     node_id: str
     attribute_name: str
+    user_id: str = ACTOR_ID
 
 
 @dataclass
@@ -61,22 +64,40 @@ class RecordingNumberAllocator:
     exhausted: bool = False
     calls: list[PoolCall] = field(default_factory=list)
 
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
         self.calls.append(
-            PoolCall(action="allocate", pool_id=pool.get_id(), node_id=node.get_id(), attribute_name=attribute.name)
+            PoolCall(
+                action="allocate",
+                pool_id=pool.get_id(),
+                node_id=node.get_id(),
+                attribute_name=attribute.name,
+                user_id=user_id,
+            )
         )
         if self.exhausted:
             raise PoolExhaustedError(f"Pool tickets ({pool.get_id()}) has no free number left in its ranges.")
         return self.number
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
+    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
         self.calls.append(
-            PoolCall(action="attach", pool_id=pool.get_id(), node_id=node.get_id(), attribute_name=attribute.name)
+            PoolCall(
+                action="attach",
+                pool_id=pool.get_id(),
+                node_id=node.get_id(),
+                attribute_name=attribute.name,
+                user_id=user_id,
+            )
         )
 
-    async def release(self, attribute: BaseAttribute) -> None:
+    async def release(self, attribute: BaseAttribute, user_id: str) -> None:
         self.calls.append(
-            PoolCall(action="release", pool_id=None, node_id=attribute.node.get_id(), attribute_name=attribute.name)
+            PoolCall(
+                action="release",
+                pool_id=None,
+                node_id=attribute.node.get_id(),
+                attribute_name=attribute.name,
+                user_id=user_id,
+            )
         )
 
 
@@ -122,7 +143,7 @@ def applier(finder: InMemoryNumberPoolFinder, allocator: RecordingNumberAllocato
 
 
 async def _apply_on_create(applier: AttributePoolApplier, attribute: BaseAttribute, allocate: bool = True) -> None:
-    await applier.apply(node=attribute.node, attribute=attribute, allocate=allocate)
+    await applier.apply(node=attribute.node, attribute=attribute, allocate=allocate, user_id=ACTOR_ID)
 
 
 async def test_pool_named_by_id_gives_the_attribute_its_number(
@@ -137,6 +158,20 @@ async def test_pool_named_by_id_gives_the_attribute_its_number(
     assert ticket_id.pool_provenance is PoolRecordProvenance.ALLOCATED
     assert allocator.calls == [
         PoolCall(action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id")
+    ]
+
+
+async def test_the_account_making_the_write_reaches_the_allocator(
+    applier: AttributePoolApplier, allocator: RecordingNumberAllocator
+) -> None:
+    ticket_id = _ticket_id(payload={"from_pool": {"id": POOL_ID}})
+
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=OTHER_ACTOR_ID)
+
+    assert allocator.calls == [
+        PoolCall(
+            action="allocate", pool_id=POOL_ID, node_id=NODE_ID, attribute_name="ticket_id", user_id=OTHER_ACTOR_ID
+        )
     ]
 
 
@@ -190,7 +225,7 @@ async def test_a_number_provided_on_update_is_attached_to_the_pool(
 ) -> None:
     ticket_id = _ticket_id(payload={"value": 7, "from_pool": {"id": POOL_ID}}, saved=True)
 
-    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 7
     assert ticket_id.pool_provenance is PoolRecordProvenance.PROVIDED
@@ -212,7 +247,7 @@ async def test_the_pool_alone_on_a_number_no_pool_tracks_is_refused(
             r"number\. at ticket_id\.from_pool$"
         ),
     ):
-        await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+        await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
     assert allocator.calls == []
 
 
@@ -222,7 +257,7 @@ async def test_naming_another_pool_with_a_null_value_moves_the_attribute_to_it(
     finder.tracking_pool_ids[ATTRIBUTE_ID] = OTHER_POOL_ID
     ticket_id = _ticket_id(payload={"value": None, "from_pool": {"id": POOL_ID}}, saved=True)
 
-    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 42
     assert ticket_id.pool_provenance is PoolRecordProvenance.ALLOCATED
@@ -239,7 +274,7 @@ async def test_a_null_pool_on_a_tracked_number_releases_it_and_keeps_the_number(
     ticket_id.value = 3
     ticket_id.is_default = False
 
-    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 3
     assert ticket_id.from_pool is None
@@ -253,7 +288,7 @@ async def test_a_null_pool_on_a_number_no_pool_tracks_writes_nothing(
     ticket_id.value = 3
     ticket_id.is_default = False
 
-    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+    await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
 
     assert ticket_id.value == 3
     assert allocator.calls == []
@@ -268,7 +303,7 @@ async def test_naming_another_pool_alone_over_a_held_number_is_refused(
     ticket_id.is_default = False
 
     with pytest.raises(ValidationError, match=r"^'ticket_id' already holds 3, so 'from_pool' alone is ambiguous\. "):
-        await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True)
+        await applier.apply(node=ticket_id.node, attribute=ticket_id, allocate=True, user_id=ACTOR_ID)
     assert allocator.calls == []
 
 

@@ -353,7 +353,12 @@ class InfrahubMutationMixin:
         component_registry = get_component_registry()
         node_constraint_runner = await component_registry.get_component(NodeConstraintRunner, db=db, branch=branch)
 
-        await obj.from_graphql(db=db, data=data, pool_applier=build_attribute_pool_applier(db=db))
+        await obj.from_graphql(
+            db=db,
+            data=data,
+            pool_applier=build_attribute_pool_applier(db=db),
+            user_id=graphql_context.assigned_user_id,
+        )
         fields_to_validate = list(data)
         await node_constraint_runner.check(
             node=obj, field_filters=fields_to_validate, skip_uniqueness_check=skip_uniqueness_check
