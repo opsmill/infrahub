@@ -1,9 +1,10 @@
 # 03 — Decisions (refined: Readiness rail)
 
 Prototype: `http://localhost:8080/_proto/branch-details`. Parameters:
-- `?scenario=`: `incident`, `import-error`, `generator-failed`, `running`, `many-errors`,
+- `?dj.k.scenario=`: `incident`, `import-error`, `generator-failed`, `running`, `many-errors`,
   `tasks-unknown`, `all-clear`, `no-repos`, `loading`, `denied`
-- `repos`, `repos_page`, `bands`, `rail`, `upstream=0|1`
+- `dj.k.repos`, `dj.k.bands`, `dj.k.rail`, `dj.k.upstream=0|1`, with `dj.variant=` and `dj.rev=`
+  (namespaced since the URL change noted below); the table page is `repos_page`.
 
 Code: `frontend/app/src/pages/_proto/branch-details/`: `index.tsx`, `data.ts`,
 `git-repositories-card.tsx`, `merge-rail.tsx`, `branch-actions-menu.tsx`, `table-pagination.tsx`.
@@ -20,7 +21,7 @@ states are content changes, and the only transition is the tasks chevron's 150ms
 | Two columns (main + a sticky 360px rail) only when the **content area** is at least 1100px, using a container query. Below that the rail stacks **above** the main column. | The canvas table needs ~820px. A viewport breakpoint can't tell whether the sidebar is open, and a container query can. Stacking on top keeps the verdict and Merge where today's action row is: near the top, not below a 40-row table. |
 | In the DOM, the rail comes before the main column; in the wide layout it's placed in column 2. | Keyboard and screen-reader users reach the verdict and Merge before the evidence, which is the order in which the page is used. The trade-off is that on wide screens the tab order runs right then left. |
 | The attributes card is unchanged (Name, Sync with Git, Schema differs, Last rebase). | The IFC-3200 canvas keeps it untouched. `origin_branch` and `created_at` stay hidden, as today. |
-| Branch actions (Propose change, Rebase, Validate, Copy branch name, Go to Tasks and Proposed changes, Delete) move into one **"Actions ▾"** menu in the page header. | This is the `ObjectDetailsMenu` pattern (`object-details-menu.tsx:69`): same button, sections "Actions / Go to / Manage", Delete in red and last. Every detail page then has its actions in the same place, and Merge is the only prominent action. A full-width "Branch actions" dropdown in the rail was tried and rejected (user feedback): it competed with Merge and matched nothing else in the app. |
+| Branch actions (Propose change, Rebase, Validate, Copy branch name, Go to Tasks and Proposed changes, Delete) move into one **"Actions ▾"** menu in the page header. | This is the `ObjectDetailsMenu` pattern (`object-details-menu.tsx`): same button, sections "Actions / Go to / Manage", Delete in red and last. Every detail page then has its actions in the same place, and Merge is the only prominent action. A full-width "Branch actions" dropdown in the rail was tried and rejected (user feedback): it competed with Merge and matched nothing else in the app. |
 
 ## Git repositories card (IFC-3200 canvas, section 4)
 
@@ -187,7 +188,7 @@ New revision: Object layout rev 4 (`revs/rev-04/`). Legacy and Consistent are un
 
 **Correction (2026-09-29, Phase 5):** round 5 said an unplaced generator run "can't happen". That
 is wrong for the parent flow: `generator-definition-run` ("Run all generators",
-`generators/tasks.py:153`) is tagged with the branch only. Its child runs are tagged with the
+`generators/tasks.py`) is tagged with the branch only. Its child runs are tagged with the
 definition and can be placed. The prototype still has no footnote: the parent flow appears in the
 Tasks table as a branch task ("This branch"), which needs no explanation.
 

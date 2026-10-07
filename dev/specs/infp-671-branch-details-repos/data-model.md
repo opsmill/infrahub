@@ -59,7 +59,7 @@ type RepositoryImportError =
 - `getFailingRepositories(health)` — the band list: `importErrors`, then `unreachable` minus any already listed as an import error (one band per repository, import error wins: spec US2 scenario 5). Server order (name) within each group.
 - `countUnlistedFailures(health)` — failing repositories past the list limits (`importErrorCount + unreachableCount` minus the listed rows); the bands summary adds them as "and N more". _(2026-10-05: a listed repository that also fails the other way, and isn't listed there, is taken out of that list's remainder. One past both limits is still counted twice, because it can't be recognised from the capped lists.)_
 - `getBandKind(repo): "import-error" | "unreachable"`.
-- `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The single polling decision for the page query, the health query and the band lookups.
+- `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The shared polling condition for the page query, the health query and the band lookups. Each query adds its own: the page query polls while its rows show a sync (`isRepositorySyncing`), the health query while its last fetch failed, and the import-task lookup while an import runs, while its last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while it finds nothing. `pollWhileHealthy` (`shared/api/background-query.ts`) slows any of these polls to 60s after a failed fetch and stops it on a permission denial.
 - `isRepositorySyncing(repo)` (`is-repository-syncing.ts`) — `syncStatus.value === "syncing"`. Keeps the page query polling while its own rows still show a sync that the health query says has ended. _(Added 2026-10-05.)_
 - `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; follow-ups.md).
 
@@ -67,7 +67,7 @@ type RepositoryImportError =
 
 - `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasOnlyThrownCatalogueCode`, so every GraphQL error must carry it), else `"UNKNOWN"`.
 - `getBranchRepositoryHealth({ branchName, syncWithGit }) → BranchRepositoryHealth`.
-- `getRepositoryImportTask({ branchName, repositoryId }) → string | null` — the newest FAILED or CRASHED import task's id. A failed lookup returns `null` (the band never disappears).
+- `getRepositoryImportTask({ branchName, repositoryId }) → RepositoryImportTaskLookup` — two requests. `{ status: "running" }` while an import of the repository is RUNNING (the second request isn't sent; the caller keeps polling and doesn't look at older failed runs); `{ status: "failed", taskId }` for the newest FAILED or CRASHED import; `{ status: "not-found" }` otherwise. Only consecutive `not-found` results count against `MAX_IMPORT_TASK_LOOKUPS`. A failed request rejects, so the query retries it on the slowed poll.
 - `getImportTaskErrorMessage(taskId) → string | null` — `getLastErrorLine` over that task's log.
 - `getRepositoryNames({ branchName, ids }) → Record<string, string>` — for the Tasks card's Related column; ids that aren't repositories are absent.
 
@@ -111,7 +111,7 @@ URL: `repositories_page`, `tasks_page` (`useTablePagination` with `urlKey` `repo
 ## State transitions
 
 - Repositories card: `loading → ok | denied | failed`; `ok` renders `empty-not-synced | empty-none` when `count === 0`, else `table(+pager)` and the bands.
-- Bands: from the health query, independent of the table page. Hidden until it loads; a failed health query shows no band.
+- Bands: from the health query, independent of the table page. Hidden until it loads; a failed health query with no earlier data shows "Repository health couldn't be checked." (`BranchRepositoryHealthFailed`) in place of the bands, while the table still shows. A failed refetch keeps the earlier bands.
 - Band: `loading → found | not-found`; failure of either lookup behaves as `not-found` (the band never disappears).
 - Bands list: `collapsed (≤3 visible) ⇄ expanded (all)` — only when more than 3; resets on another branch.
 - Tasks card: `loading → ok(empty | table) | failed`.

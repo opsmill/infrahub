@@ -1,6 +1,7 @@
 import { AlertCircleIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import { Link } from "@/shared/components/ui/link";
 
 import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
@@ -25,8 +26,8 @@ export function ImportErrorBand({ repository, branchName, isSyncing }: ImportErr
   });
 
   return (
-    <div
-      className="flex items-start gap-2.5 border-danger/30 border-t bg-danger-surface px-4 py-3"
+    <Row
+      className="items-start gap-2.5 border-danger/30 border-t bg-danger-surface px-4 py-3"
       data-testid="repository-error-band"
       role="status"
     >
@@ -38,7 +39,7 @@ export function ImportErrorBand({ repository, branchName, isSyncing }: ImportErr
         <ImportErrorDetails importError={importError} />
       </div>
       <ImportErrorLink importError={importError} repository={repository} branchName={branchName} />
-    </div>
+    </Row>
   );
 }
 

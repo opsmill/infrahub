@@ -177,7 +177,7 @@ The branch page header matches the object details page: the branch name, a copy 
 
 #### Error bands
 
-- **FR-021**: For each repository in Import Error, the card MUST show a red band under the table with the repository name, "import failed", the last error-level log line of the repository's latest import task on this branch shown verbatim in monospace with line breaks kept (Prefect's `Finished in state <State>(…)` wrapper is unwrapped to the exception it carries), and a "View task log" link to that task's details page (`/tasks/<task id>`, which is not branch-scoped, FR-053).
+- **FR-021**: For each repository in Import Error, the card MUST show a red band under the table with the repository name, "import failed", the last error-level log line of the newest failed or crashed import task on this branch (none while an import is still running) shown verbatim in monospace with line breaks kept (Prefect's `Finished in state <State>(…)` wrapper is unwrapped to the exception it carries), and a "View task log" link to that task's details page (`/tasks/<task id>`, which is not branch-scoped, FR-053).
 - **FR-022**: When no import task, or no error-level log line, is found for a failing repository, its band MUST still show and say that the error details couldn't be found. If an import task was found without an error line, the band MUST link to that task's log ("View task log"); if no task was found, it MUST link to the repository's page ("Open repository").
 - **FR-023**: For each unreachable repository (FR-012) that is not in Import Error, the card MUST show an amber band with the repository name, the problem, the sentence "Infrahub can't fetch new commits, so the commit shown may be out of date." and an "Open repository" link.
 - **FR-024**: Bands MUST list import errors first, then unreachable repositories, by name within each group, and MUST cover every failing repository, not only those on the current page. They come from a server-filtered query independent of the table page, capped at 50 per group; failing repositories past the cap are counted in the summary ("and N more").
@@ -192,12 +192,17 @@ The branch page header matches the object details page: the branch name, a copy 
 #### Tasks card
 
 - **FR-040**: The Tasks card MUST list every task the task manager associates with this branch, newest first, 10 per page, paginated and counted by the server.
-- **FR-041**: Each row MUST show: Title, linking to that task's details page (`/tasks/<id>`, which is not branch-scoped, FR-053), with the whole title cell as the target; State, using the app's existing task state badges; Workflow, as a short label for known workflows (Import, Generator, Artifacts, Validate, Rebase, Merge, Sync) or the workflow identifier humanized otherwise (separators to spaces, first letter capitalised); Related, as in US4 scenario 3; Updated, as a date in the app's date format.
+- **FR-041**: Each row MUST show: Title, linking to that task's details page (`/tasks/<id>`, which is not branch-scoped, FR-053), with the whole title cell as the target; State, using the app's existing task state badges; Workflow, as a short label for known workflows (Import, Sync, Generator, Artifacts, Validate, Rebase, Merge, Create branch, Delete branch, Checks, Schema, Display labels, HFID, and, by workflow name prefix, Proposed change, Computed attribute, Webhook) or the workflow identifier humanized otherwise (separators to spaces, first letter capitalised); Related, as in US4 scenario 3; Updated, as a date in the app's date format.
 - **FR-042**: The card header MUST show the total number of tasks once loaded, the number of failed tasks on the branch when it is above zero (with a tooltip saying it counts every failed run on the branch, including runs retried since, and linking to the Tasks page filtered to failed tasks on this branch), and an "Open in Tasks" link to the Tasks page for this branch.
 - **FR-043**: Pagination MUST follow FR-014 and FR-015, with its own page parameter, independent of the repositories table.
 - **FR-044**: The card MUST have a loading state (placeholder rows, no count), an empty state that explains which tasks will appear, and a failed-to-load state that says the task results didn't load. None of them affect the rest of the page.
 - **FR-045**: Rows MUST NOT expand; the logs live on the task details page.
-- **FR-046**: The first page of the Tasks table and the failed count MUST update on their own, every 10 seconds, while the page is visible. Other pages MUST NOT change under the user; they refresh on Refresh or on a page change. Repositories and error lines MUST update on their own every 10 seconds while any listed repository is syncing, and otherwise on Refresh or when the window regains focus.
+- **FR-046**: The first page of the Tasks table and the failed count MUST update on their own, every 10 seconds, while the page is visible. Other pages MUST NOT change under the user; they refresh on Refresh or on a page change. Repositories and error lines MUST update on their own every 10 seconds while any repository on the branch is syncing, and otherwise on Refresh or when the window regains focus. They MUST also update on their own in these cases:
+  - the repositories table, while any of its rows still shows a sync.
+  - the repository health, after it could not be checked.
+  - an import error line, while an import of that repository is still running, and while no failed import is found, up to 6 lookups in all.
+
+  After a request fails, every automatic update on the page, the Tasks ones included, MUST slow to one every 60 seconds. When the user is denied permission, they MUST stop.
 
 #### Presentation
 

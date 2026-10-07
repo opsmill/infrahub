@@ -1,5 +1,7 @@
 import { Button } from "@infrahub/ui";
-import { useState } from "react";
+import React from "react";
+
+import { Row } from "@/shared/components/container";
 
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
 import { MAX_VISIBLE_BANDS } from "@/entities/repository/domain/model/repository";
@@ -23,7 +25,7 @@ export function RepositoryErrorBands({
   branchName,
   isSyncing,
 }: RepositoryErrorBandsProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(false);
   if (repositories.length === 0) return null;
 
   const visible = isExpanded ? repositories : repositories.slice(0, MAX_VISIBLE_BANDS);
@@ -47,7 +49,7 @@ export function RepositoryErrorBands({
       )}
 
       {hidden.length > 0 && (
-        <div className="flex items-center justify-between gap-2 border-danger/30 border-t bg-danger-surface px-4 py-2 text-danger-strong text-xs">
+        <Row className="justify-between border-danger/30 border-t bg-danger-surface px-4 py-2 text-danger-strong text-xs">
           <span className="tabular-nums">
             {isExpanded
               ? `${repositories.length} repositories with errors${andMore}`
@@ -56,7 +58,7 @@ export function RepositoryErrorBands({
           <Button variant="ghost" size="xs" onPress={() => setIsExpanded((value) => !value)}>
             {isExpanded ? "Collapse" : "Show all"}
           </Button>
-        </div>
+        </Row>
       )}
     </>
   );

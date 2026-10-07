@@ -1,6 +1,7 @@
 import { FolderGitIcon, GitCommitIcon, GitCompareArrowsIcon } from "lucide-react";
 import type React from "react";
 
+import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
@@ -46,10 +47,10 @@ interface HeaderCellProps {
 function HeaderCell({ children, className, icon }: HeaderCellProps) {
   return (
     <th scope="col" className={classNames("h-10 px-3 font-medium text-xs", className)}>
-      <span className="flex items-center gap-1.5">
+      <Row className="gap-1.5">
         {icon && <span aria-hidden>{icon}</span>}
         {children}
-      </span>
+      </Row>
     </th>
   );
 }

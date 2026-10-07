@@ -36,7 +36,7 @@ query GET_BRANCH_REPOSITORIES($limit: Int!, $offset: Int!) {
 - Context: `{ branch: branchName }`. Variables: `{ limit: PAGE_SIZE, offset: getOffset(page, PAGE_SIZE) }`.
 - `order` is `OrderInput { by: [OrderByItem { field, direction }] }` (checked in `schema/schema.graphql`).
 - Errors: a `PERMISSION_DENIED` catalogue code → `BranchRepositoriesError("PERMISSION_DENIED")` (the no-access state); anything else → `"UNKNOWN"` (the failed state).
-- Query key: `repositoryQueryKeys.branchRepositories({ branchName, syncWithGit, limit, offset })`. `refetchInterval`: 10s while `isAnyRepositorySyncing(health)` (Q1b), else off. `placeholderData`: the previous page while the same branch and list load the next one.
+- Query key: `repositoryQueryKeys.branchRepositories({ branchName, syncWithGit, limit, offset })`. `refetchInterval`: 10s while `isAnyRepositorySyncing(health)` (Q1b) or while any row of the page shows a sync (`isRepositorySyncing`), else off. After a failed fetch the interval is 60s; a permission denial stops it. `placeholderData`: the previous page while the same branch and list load the next one.
 
 ## Q1b — Failing and syncing repositories on the branch
 
@@ -65,7 +65,7 @@ query GET_BRANCH_REPOSITORY_HEALTH(
 - Same two-kind split as Q1. Variables: `{ importErrorStatuses: ["error-import"], unreachableStatuses: REPOSITORY_OPERATIONAL_ERRORS, syncingStatuses: ["syncing"] }`. `__values` is an exact-match list filter (checked on a live stack).
 - `limit: REPOSITORY_HEALTH_LIST_LIMIT` (50) on each list, with its `count`. Failures past the limit have no band; the summary line counts them from the server's `count` ("and N more"), without double-counting a repository that fails both ways.
 - Independent of the table page: feeds the bands and decides polling for Q1, Q1b and Q2.
-- Query key: `repositoryQueryKeys.branchHealth({ branchName, syncWithGit })`. `refetchInterval`: 10s while `syncing.count > 0`.
+- Query key: `repositoryQueryKeys.branchHealth({ branchName, syncWithGit })`. `refetchInterval`: 10s while `syncing.count > 0` or while the last fetch failed. After a failed fetch the interval is 60s; a permission denial stops it.
 
 ## Q2 — The newest failed import of one repository
 
@@ -90,9 +90,11 @@ query GET_REPOSITORY_FAILED_IMPORT_TASK(
 }
 ```
 
-- Variables: `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, states: ["FAILED", "CRASHED"] }`. The task manager returns runs newest first, so this is the newest *failed* import, not the newest import.
+- Sent twice per lookup by `getRepositoryImportTask`:
+  1. with `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, states: ["RUNNING"] }`. If it returns a task, the result is `running` and the second request isn't sent, because an older failed run isn't the one that set the repository's status.
+  2. with `states: ["FAILED", "CRASHED"]`. The task manager returns runs newest first, so this is the newest *failed* import, not the newest import. The result is `failed` with its task id, or `not-found`.
 - Issued only for rendered bands (≤ 3 until "Show all": hidden bands aren't mounted).
-- Query key: `repositoryQueryKeys.importTask({ branchName, repositoryId })`. `refetchInterval`: 10s while a repository is syncing.
+- Query key: `repositoryQueryKeys.importTask({ branchName, repositoryId })`. `refetchInterval`: 10s while any repository is syncing (Q1b), while the result is `running`, while the last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while the result is `not-found`. After a failed fetch the interval is 60s; a permission denial stops it.
 - Known gaps (follow-ups.md): a failure before the run is tagged with the repository, and the worker-bootstrap import, aren't findable. A miss yields `not-found`, never an error state.
 
 ## Q2b — That task's log
@@ -137,7 +139,7 @@ query GET_REPOSITORY_NAMES($ids: [ID]!) {
 }
 ```
 
-- Context: `{ branch: branchName }`. Variables: the sorted, unique related node ids of the Q3 page (`getRelatedNodeIds`). Ids of other kinds simply don't come back; those cells keep the kind label.
+- Context: `{ branch: branchName }`. Variables: the sorted, unique related node ids of the Q3 page (`getRelatedNodeIds`). Ids of other kinds don't come back; those cells keep the kind label.
 - Query key: `repositoryQueryKeys.names({ branchName, ids })`; disabled when the page has no related node.
 - Replaces the Tasks card's second read of the whole repository list.
 
@@ -151,4 +153,4 @@ Header `RefreshButton queryKeys={[branchesQueryKeys.all, repositoryQueryKeys.all
 
 ## Request budget per page view
 
-1 (branch details, existing) + 1 (Q1) + 1 (Q1b) + ≤ 3 (Q2) + ≤ 3 (Q2b, once per task) + 1 (Q3) + 1 (Q4) + ≤ 1 (Q5). Constant in the number of repositories and tasks. A page past the end costs one more Q1 or Q3 request (the clamp).
+1 (branch details, existing) + 1 (Q1) + 1 (Q1b) + ≤ 6 (Q2: an active-import lookup, then a failed-import lookup, per rendered band) + ≤ 3 (Q2b, once per task) + 1 (Q3) + 1 (Q4) + ≤ 1 (Q5). Constant in the number of repositories and tasks. A page past the end costs one more Q1 or Q3 request (the clamp).

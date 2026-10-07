@@ -41,7 +41,7 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
     branchName,
     syncWithGit,
   });
-  // A failed health check stops polling, so its last syncing count no longer drives the others.
+  // A failed health check polls only every 60 s, so its last syncing count is too old to drive the others.
   const isSyncing = !isHealthError && isAnyRepositorySyncing(health);
   const { page: currentPage, query } = useGetBranchRepositories({
     branchName,

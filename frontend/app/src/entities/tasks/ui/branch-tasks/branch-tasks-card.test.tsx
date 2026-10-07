@@ -156,6 +156,24 @@ describe("BranchTasksCard", () => {
     });
   });
 
+  test("keeps the task rows and count when the repository names can't be read", async () => {
+    // GIVEN
+    serve([
+      generateTask(1, { relatedNodes: [{ id: "repo-1", kind: "CoreRepository" }] }),
+      generateTask(2),
+    ]);
+    vi.mocked(getRepositoryNames).mockRejectedValue(new Error("Permission denied"));
+
+    // WHEN
+    const component = await renderCard();
+
+    // THEN
+    await expect.element(component.getByText("Task 1")).toBeVisible();
+    await expect.element(component.getByText("Task 2")).toBeVisible();
+    await expect.element(component.getByText("2", { exact: true })).toBeVisible();
+    expect(cellText(component.container, 0, 3)).toBe("CoreRepository");
+  });
+
   test("doesn't look up names when no task on the page has a related node", async () => {
     // GIVEN
     serve(generateTasks(2));

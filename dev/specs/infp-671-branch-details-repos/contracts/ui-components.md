@@ -36,7 +36,7 @@ interface BranchRepositoriesCardProps {
 
 - Owns its page (`useTablePagination({ urlKey: "repositories" })` → `repositories_page`), its data (Q1 page, Q1b health, Q2/Q2b per band through `ui/queries/`) and the "Show all" toggle.
 - Computes `isSyncing = isAnyRepositorySyncing(health)` once and passes it to the page query and the bands.
-- Children (same folder): `branch-repositories-table.tsx` (a plain hand-written table of one page's rows), `repository-row.tsx`, `git-state-pill.tsx`, `repository-error-bands.tsx` (list + summary line + toggle), `import-error-band.tsx`, `unreachable-band.tsx`, `branch-repositories-states.tsx` (loading, denied, empty, failed). The card renders the fixed-height wrapper and the pager.
+- Children (same folder): `branch-repositories-table.tsx` (a plain hand-written table of one page's rows), `repository-row.tsx`, `git-state-pill.tsx`, `repository-error-bands.tsx` (list + summary line + toggle), `import-error-band.tsx`, `unreachable-band.tsx`, `branch-repositories-states.tsx` (loading, denied, empty, failed, and `BranchRepositoryHealthFailed`: a failed health query with no earlier data shows "Repository health couldn't be checked." in place of the bands). The card renders the fixed-height wrapper and the pager.
 - Rows come in the server's name order; failing ones are not moved to page 1, the bands show them whichever page the table is on.
 - Test ids: `branch-repositories-card`, `branch-repositories-table`, `repository-error-band`.
 - Each band is a `role="status"` (polite) region: bands render as the page loads, so an assertive alert would interrupt on every visit. The row's unreachable icon shows its reason in a `Tooltip` as well as its `aria-label`.

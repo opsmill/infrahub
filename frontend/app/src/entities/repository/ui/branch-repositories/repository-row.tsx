@@ -1,6 +1,7 @@
 import { Tooltip } from "@infrahub/ui";
 import { AlertTriangleIcon, FolderGitIcon } from "lucide-react";
 
+import { Row } from "@/shared/components/container";
 import { Link } from "@/shared/components/ui/link";
 
 import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
@@ -23,7 +24,7 @@ export function RepositoryRow({ repository, branchName }: RepositoryRowProps) {
   return (
     <tr className="h-10 border-b last:border-b-0">
       <td className="px-3">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <Row className="min-w-0 gap-1.5">
           <FolderGitIcon className="size-3.5 shrink-0 text-foreground-muted" aria-hidden />
           <Link
             to={getObjectDetailsUrl(kind, id, [getBranchQsp(branchName)])}
@@ -37,10 +38,10 @@ export function RepositoryRow({ repository, branchName }: RepositoryRowProps) {
               Read-only
             </span>
           )}
-        </div>
+        </Row>
       </td>
       <td className="px-3">
-        <span className="flex items-center gap-1.5">
+        <Row className="gap-1.5">
           <GitStatePill syncStatus={syncStatus} />
           {unreachableLabel && (
             <Tooltip message={unreachableLabel} nonInteractiveTrigger>
@@ -53,7 +54,7 @@ export function RepositoryRow({ repository, branchName }: RepositoryRowProps) {
               </span>
             </Tooltip>
           )}
-        </span>
+        </Row>
       </td>
       <td className="px-3 font-mono text-xs tabular-nums">
         {commit ? (

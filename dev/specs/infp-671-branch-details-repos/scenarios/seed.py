@@ -23,7 +23,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,7 +40,7 @@ DAEMON_PID = STATE / "git-daemon.pid"
 HTTP_PID = {"serve": STATE / "githttp-serve.pid", "deny": STATE / "githttp-deny.pid"}
 # How the task workers reach this machine.
 GIT_HOST = os.environ.get("SCN_GIT_HOST", "host.docker.internal")
-# The fixture servers have no auth and accept pushes, so they stay on loopback; githttp.py reads it too.
+# The fixture servers have no auth and accept pushes, so every one of them binds to loopback.
 GIT_BIND = os.environ.setdefault("SCN_GIT_BIND", "127.0.0.1")
 CRED_PORT = int(os.environ.get("SCN_CRED_PORT", "9419"))  # answers 401 once seeded
 CONN_PORT = int(os.environ.get("SCN_CONN_PORT", "9420"))  # nothing listens once seeded
@@ -236,7 +236,7 @@ def push_overlay(repo: str, branch: str, overlay: str) -> None:
 
 
 def read_pids(pid_file: Path) -> list[int]:
-    """Pids in the file, which holds one per server (`start_http` writes several, space-separated)."""
+    """Pids in the file, which holds one per server, space-separated."""
     if not pid_file.exists():
         return []
     try:
@@ -279,8 +279,8 @@ def start_git_daemon() -> None:
     log(f"git daemon serving {BARE} on git://{GIT_HOST}:9418/")
 
 
-def start_http(mode: str, ports: list[int]) -> None:
-    """Start githttp.py on each port; `serve` serves BARE over smart HTTP, `deny` answers 401."""
+def start_http(mode: Literal["serve", "deny"], ports: list[int]) -> None:
+    """Start an HTTP git server on each port; `serve` serves BARE over smart HTTP, `deny` answers 401."""
     if pid_alive(HTTP_PID[mode]):
         return
     stop_http(mode)  # a partly dead set still holds some of the ports
@@ -296,7 +296,7 @@ def start_http(mode: str, ports: list[int]) -> None:
     log(f"HTTP git server ({mode}) on port(s) {ports}")
 
 
-def stop_http(mode: str) -> None:
+def stop_http(mode: Literal["serve", "deny"]) -> None:
     stop_pid(HTTP_PID[mode], f"HTTP git server ({mode})")
 
 
@@ -483,7 +483,7 @@ def pad_tasks(api: Api) -> None:
 
 
 def remove_unreachable(api: Api) -> None:
-    """`up` without --with-unreachable converges back to a seed with every remote reachable."""
+    """Converge back to a seed where every remote is reachable."""
     for name, repo in api.repos().items():
         if name in UNREACHABLE:
             api.gql("mutation($id: String!) { CoreRepositoryDelete(data: {id: $id}) { ok } }", {"id": repo["id"]})
@@ -493,7 +493,7 @@ def remove_unreachable(api: Api) -> None:
 
 
 def remove_extra_branches(api: Api, keep: set[str]) -> None:
-    """`up` converges: extra branches past the requested --many-branches count are deleted."""
+    """Delete the extra branches past the requested count, so the seed converges."""
     for name in sorted(api.branches()):
         if name.startswith(EXTRA_PREFIX) and name not in keep:
             api.gql(
@@ -525,8 +525,7 @@ def up(with_unreachable: bool, many_branches: int) -> int:
 
     remove_extra_branches(api, set(branches))
     if set(branches) - set(api.branches()) and set(UNREACHABLE) & set(api.repos()):
-        # Infrahub can't push a new branch to them, which fails the branch's "Create branch in Git
-        # Repositories" task and skips the remotes after them. They are added back at the end.
+        # Infrahub can't push a new branch to an unreachable remote, so they are re-added after the branches exist.
         log("new branches to create: removing the unreachable repositories first")
         remove_unreachable(api)
     create_branches(api, branches)

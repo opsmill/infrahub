@@ -10,7 +10,7 @@ import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
-// `all` rather than `details`: the header itself reads the all-branches query.
+// Every branch query is refreshed, because the header reads the list of all branches.
 const REFRESHED_QUERY_KEYS = [branchesQueryKeys.all, repositoryQueryKeys.all, tasksQueryKeys.all];
 
 interface BranchDetailsHeaderProps {
