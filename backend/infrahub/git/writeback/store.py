@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -17,6 +19,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.node import NodeGetListQuery
+from infrahub.core.registry import registry
 from infrahub.exceptions import DeliveryStateUnavailableError, DeliveryStateUnreadableError
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
 from infrahub.git.writeback.models import (
@@ -31,7 +34,6 @@ from infrahub.git.writeback.queries import RepositoryWriteLockQuery
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Callable, Mapping
-    from datetime import datetime
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
@@ -391,3 +393,11 @@ def _stored[ModelT: BaseModel](
         return model.model_validate(value)
     except PydanticValidationError as exc:
         raise DeliveryStateUnreadableError(repository_name=repository_name, attribute_name=attribute) from exc
+
+
+async def build_intent_store(db: InfrahubDatabase, lock_registry: InfrahubLockRegistry) -> WritebackIntentStore:
+    """Build the store on the default branch, with a timezone-aware wall clock."""
+    default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+    return WritebackIntentStore(
+        db=db, lock_registry=lock_registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+    )
