@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import signal
 import tempfile
@@ -65,37 +66,50 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
 
     Raises:
         RepositoryConnectionError: When the remote does not answer within ``timeout_seconds``.
-        RepositoryError: For any other git failure, raised as its connection or credentials subtype
-            where the failure can be classified.
+        RepositoryError: When git cannot start, or for any other git failure, raised as its connection or
+            credentials subtype where the failure can be classified.
 
     """
     refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
     command = ["git", "ls-remote", url, *refs]
-    # A session of its own lets the timeout stop the remote helpers git starts, which keep the pipes open.
-    process = await asyncio.create_subprocess_exec(
-        *command,
-        cwd=tempfile.gettempdir(),
-        stdin=asyncio.subprocess.DEVNULL,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        start_new_session=True,
-    )
+    try:
+        # A session of its own lets the kill below stop the remote helpers git starts, which keep the pipes open.
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            cwd=tempfile.gettempdir(),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+            # The error classifier matches the English text of git.
+            env={**os.environ, "LANGUAGE": "C", "LC_ALL": "C"},
+        )
+    except OSError as exc:
+        raise RepositoryError(
+            identifier=name, message=f"Unable to run git to read the remote of repository {name}: {exc}"
+        ) from exc
+
     try:
         output, error_output = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
     except TimeoutError as exc:
-        os.killpg(process.pid, signal.SIGKILL)
-        await process.wait()
         raise RepositoryConnectionError(
             identifier=name,
             message=f"The remote of repository {name} did not answer within {timeout_seconds} seconds.",
         ) from exc
+    finally:
+        # A timeout or a cancel must not leave git or its remote helpers running.
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
 
     if process.returncode != 0:
         InfrahubRepositoryBase._raise_enriched_error_static(
-            name=name, location=url, error=GitCommandError(command, process.returncode, error_output.decode())
+            name=name,
+            location=url,
+            error=GitCommandError(command, process.returncode, error_output.decode(errors="replace")),
         )
 
-    listing = output.decode()
+    listing = output.decode(errors="replace")
     heads: dict[str, str] = {}
     for line in listing.splitlines():
         commit, _, ref = line.partition("\t")
