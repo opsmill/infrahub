@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub import lock
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
@@ -32,6 +33,7 @@ class CoreNumberPool(Node):
         identifier: str,
         attribute_id: str | None = None,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> int:
         repository = NumberPoolRepository(db=db)
         picker = NumberPoolNumberPicker(number_reader=repository)
@@ -54,5 +56,6 @@ class CoreNumberPool(Node):
                     attribute_id=attribute_id,
                     provenance=PoolRecordProvenance.ALLOCATED,
                     at=at,
+                    user_id=user_id,
                 )
             return number

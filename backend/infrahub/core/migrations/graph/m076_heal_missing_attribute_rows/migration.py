@@ -463,6 +463,7 @@ class Migration076(MigrationRequiringRebase):
                         attribute=attribute,
                         attribute_id=node_attribute.id,
                         at=migration_input.at,
+                        user_id=migration_input.user_id,
                     )
                     node_attribute.value = number
                     await node.save(db=dbt, fields=[attribute.name], at=migration_input.at)

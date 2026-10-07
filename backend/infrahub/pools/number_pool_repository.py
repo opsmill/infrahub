@@ -188,6 +188,7 @@ class NumberPoolRepository(NumberPoolRangeStore):
         attribute_id: str,
         provenance: PoolRecordProvenance,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> None:
         """Record that the pool accounts for the attribute, whatever value it holds."""
         query = await NumberPoolSetReserved.init(
@@ -197,6 +198,7 @@ class NumberPoolRepository(NumberPoolRangeStore):
             attribute_id=attribute_id,
             provenance=provenance,
             at=at,
+            user_id=user_id,
         )
         await query.execute(db=self.db)
 
