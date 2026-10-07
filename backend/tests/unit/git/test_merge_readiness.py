@@ -31,6 +31,7 @@ def target(
     return GitMergeTarget(
         name=name,
         location=f"https://git.example.com/{name}.git",
+        remote_source_branch=SOURCE,
         remote_trunk=remote_trunk,
         source_commit=source_commit,
         destination_commit=TRUNK_HEAD,

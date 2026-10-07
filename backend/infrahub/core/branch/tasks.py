@@ -43,7 +43,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeRecomputeCoordinator,
 )
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
-from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
+from infrahub.core.merge.repository_merge_dispatcher import list_git_merge_targets
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.selective_regen.generator_output import (
     GeneratorCascadeOutput,
@@ -480,8 +480,9 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
     await add_tags(branches=[branch, registry.default_branch])
 
     database = await get_database()
+    check = RemoteHeadsMergeCheck(reader=GitRemoteHeadReader(timeout_seconds=REMOTE_HEADS_TIMEOUT_SECONDS), log=log)
     async with database.start_session() as db:
-        await _check_remote_heads_imported(db=db, branch_name=branch, log=log)
+        await check_remote_heads_imported(db=db, branch_name=branch, check=check)
 
         # Hold the global merge lock for the whole flow and load the branch under it, so the merge
         # decision and the orchestrator operate on branch state that cannot change mid-merge.
@@ -504,9 +505,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             )
 
 
-async def _check_remote_heads_imported(
-    db: InfrahubDatabase, branch_name: str, log: Logger | LoggerAdapter[Logger]
-) -> None:
+async def check_remote_heads_imported(db: InfrahubDatabase, branch_name: str, check: RemoteHeadsMergeCheck) -> None:
     """Refuse the merge while a Git repository holds a remote head that the graph has not imported.
 
     It runs before the global merge lock, so a remote that is slow to answer delays this merge only.
@@ -518,12 +517,9 @@ async def _check_remote_heads_imported(
     source_branch = await Branch.get_by_name(db=db, name=branch_name)
     if source_branch.status != BranchStatus.OPEN:
         return
-    destination_branch = await registry.get_branch(db=db, branch=registry.default_branch)
-    dispatcher = RepositoryMergeDispatcher(
-        db=db, source_branch=source_branch, destination_branch=destination_branch, workflow=get_workflow(), logger=log
+    await check.check(
+        source_branch=source_branch.name, targets=await list_git_merge_targets(db=db, source_branch=source_branch)
     )
-    check = RemoteHeadsMergeCheck(reader=GitRemoteHeadReader(timeout_seconds=REMOTE_HEADS_TIMEOUT_SECONDS), log=log)
-    await check.check(source_branch=source_branch.name, targets=await dispatcher.list_git_merge_targets())
 
 
 async def _do_merge_branch(

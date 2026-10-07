@@ -17,6 +17,9 @@ class GitMergeTarget:
 
     name: str
     location: str
+    remote_source_branch: str
+    """The remote branch the source of the merge maps onto."""
+
     remote_trunk: str
     """The remote branch the repository maps onto the destination of the merge."""
 
@@ -68,7 +71,8 @@ class RemoteHeadsMergeCheck:
 
         """
         expected_heads = [
-            {source_branch: target.source_commit, target.remote_trunk: target.destination_commit} for target in targets
+            {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
+            for target in targets
         ]
         read_heads = await asyncio.gather(
             *(

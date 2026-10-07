@@ -67,7 +67,7 @@ class RepositoryMergeDispatcher:
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
     async def merge_core_repositories(self) -> None:
-        for repo, _ in await self._list_shared_core_repositories():
+        for repo, _ in await list_shared_core_repositories(db=self.db, source_branch=self.source_branch):
             if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
                 model = GitRepositoryMerge(
                     repository_id=repo.id,
@@ -80,31 +80,36 @@ class RepositoryMergeDispatcher:
                 )
                 await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
-    async def list_git_merge_targets(self) -> list[GitMergeTarget]:
-        """Return the repositories whose part of the merge runs in Git, with the commit each branch records."""
-        if not self.source_branch.sync_with_git:
-            return []
-        return [
-            GitMergeTarget(
-                name=repo.name.value,
-                location=repo.location.value,
-                remote_trunk=repo_on_destination.default_branch.value,
-                source_commit=readable_commit(repo.commit.value),
-                destination_commit=readable_commit(repo_on_destination.commit.value),
-            )
-            for repo, repo_on_destination in await self._list_shared_core_repositories()
-            if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value
-        ]
 
-    async def _list_shared_core_repositories(self) -> list[tuple[CoreRepository, CoreRepository]]:
-        """Return each repository of the source branch that the destination also holds and that is not inactive.
+async def list_shared_core_repositories(
+    db: InfrahubDatabase, source_branch: Branch
+) -> list[tuple[CoreRepository, CoreRepository]]:
+    """Return each repository of the source branch that the default branch also holds and that is not inactive.
 
-        Each one comes with its node on the destination, which carries the commit the destination records.
-        """
-        repos_in_main = {repo.id: repo for repo in await NodeManager.query(schema=CoreRepository, db=self.db)}
-        repos_in_branch = await NodeManager.query(schema=CoreRepository, db=self.db, branch=self.source_branch)
-        return [
-            (repo, repos_in_main[repo.id])
-            for repo in repos_in_branch
-            if repo.id in repos_in_main and repo.internal_status.value != RepositoryInternalStatus.INACTIVE.value
-        ]
+    Each one comes with its node on the default branch, which carries the commit that branch records.
+    """
+    repos_in_main = {repo.id: repo for repo in await NodeManager.query(schema=CoreRepository, db=db)}
+    repos_in_branch = await NodeManager.query(schema=CoreRepository, db=db, branch=source_branch)
+    return [
+        (repo, repos_in_main[repo.id])
+        for repo in repos_in_branch
+        if repo.id in repos_in_main and repo.internal_status.value != RepositoryInternalStatus.INACTIVE.value
+    ]
+
+
+async def list_git_merge_targets(db: InfrahubDatabase, source_branch: Branch) -> list[GitMergeTarget]:
+    """Return the repositories whose part of a merge of the source branch runs in Git."""
+    if not source_branch.sync_with_git:
+        return []
+    return [
+        GitMergeTarget(
+            name=repo.name.value,
+            location=repo.location.value,
+            remote_source_branch=source_branch.name,
+            remote_trunk=repo_on_destination.default_branch.value,
+            source_commit=readable_commit(repo.commit.value),
+            destination_commit=readable_commit(repo_on_destination.commit.value),
+        )
+        for repo, repo_on_destination in await list_shared_core_repositories(db=db, source_branch=source_branch)
+        if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value
+    ]
