@@ -22,7 +22,9 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetAllocated,
     NumberPoolGetReserved,
     NumberPoolGetTaken,
+    NumberPoolGetTrackingPool,
     NumberPoolGetUsed,
+    NumberPoolReleaseReserved,
     NumberPoolSetReserved,
     PoolRecordProvenance,
 )
@@ -126,6 +128,35 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, b
     query1 = await NumberPoolGetReserved.init(db=db, pool_id=pool.get_id(), branch=branch)
     await query1.execute(db=db)
     return {item.identifier: item.value for item in query1.get_data()}
+
+
+async def get_allocated_values(db: InfrahubDatabase, pool: CoreNumberPoolProtocol, branch: Branch) -> list[int]:
+    query = await NumberPoolGetAllocated.init(
+        db=db, pool=pool, ranges=whole_pool_ranges(pool), branch=branch, branch_agnostic=True
+    )
+    await query.execute(db=db)
+    return sorted(result.value for result in query.get_data())
+
+
+async def get_number_attribute_id(db: InfrahubDatabase, node_id: str, branch: Branch) -> str:
+    node = await NodeManager.get_one(db=db, id=node_id, branch=branch)
+    assert node is not None
+    attribute_id = node.get_attribute("number").id
+    assert attribute_id is not None
+    return attribute_id
+
+
+async def get_tracking_pool_id(db: InfrahubDatabase, attribute_id: str) -> str | None:
+    query = await NumberPoolGetTrackingPool.init(db=db, attribute_id=attribute_id)
+    await query.execute(db=db)
+    return query.get_pool_id()
+
+
+async def detach(db: InfrahubDatabase, node_id: str, branch: Branch) -> None:
+    """End the live IS_RESERVED edge on the node's `number` attribute, as a write sending `from_pool: null` does."""
+    attribute_id = await get_number_attribute_id(db=db, node_id=node_id, branch=branch)
+    query = await NumberPoolReleaseReserved.init(db=db, attribute_id=attribute_id)
+    await query.execute(db=db)
 
 
 class TestNumberPoolGetUsed:
@@ -284,14 +315,14 @@ class TestNumberPoolGetAllocated:
             f"Expected allocation (value=2) to remain visible (active on main), got {allocated_values}"
         )
 
-    async def test_source_cleared_on_a_branch_leaves_the_allocation_reported(
+    async def test_source_cleared_on_a_branch_neither_detaches_nor_prevents_a_detach(
         self,
         db: InfrahubDatabase,
         register_test_schema: SchemaBranch,
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """What a pool accounts for is its own record, not the source stored on the attribute."""
+        """What a pool accounts for is its own IS_RESERVED edge, not the source stored on the attribute."""
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
         pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
@@ -305,21 +336,22 @@ class TestNumberPoolGetAllocated:
         await incident2.save(db=db)
 
         for branch in (br1, default_branch):
-            query = await NumberPoolGetAllocated.init(
-                db=db, pool=incident_pool, ranges=whole_pool_ranges(incident_pool), branch=branch, branch_agnostic=True
-            )
-            await query.execute(db=db)
-            allocated_values = sorted([r.value for r in query.get_data()])
+            allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=branch)
             assert allocated_values == [1, 2, 3], f"Expected every allocation on {branch.name}, got {allocated_values}"
 
-    async def test_source_cleared_on_the_allocating_branch_leaves_the_allocation_reported(
+        await detach(db=db, node_id=incidents[1].get_id(), branch=br1)
+
+        for branch in (br1, default_branch):
+            assert await get_allocated_values(db=db, pool=incident_pool, branch=branch) == [1, 3]
+
+    async def test_source_cleared_on_the_allocating_branch_neither_detaches_nor_prevents_a_detach(
         self,
         db: InfrahubDatabase,
         register_test_schema: SchemaBranch,
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """Clearing the source where the number was allocated does not release it."""
+        """Clearing the source where the number was allocated does not release it; ending the IS_RESERVED edge does."""
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
         pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
@@ -331,30 +363,25 @@ class TestNumberPoolGetAllocated:
         incident2.get_attribute("number").clear_source()
         await incident2.save(db=db)
 
-        query = await NumberPoolGetAllocated.init(
-            db=db,
-            pool=incident_pool,
-            ranges=whole_pool_ranges(incident_pool),
-            branch=default_branch,
-            branch_agnostic=True,
-        )
-        await query.execute(db=db)
-
-        allocated_values = sorted([r.value for r in query.get_data()])
+        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
 
-    async def test_source_cleared_on_two_branches_leaves_the_allocation_reported(
+        await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
+
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+
+    async def test_source_cleared_on_two_branches_neither_detaches_nor_prevents_a_detach(
         self,
         db: InfrahubDatabase,
         register_test_schema: SchemaBranch,
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """A source cleared on a branch and then on main still leaves the number accounted for."""
+        """Clearing the source on a branch and then on main does not release the number; ending the IS_RESERVED edge does."""
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-        pools: list[CoreNumberPool] = await NodeManager.query(
-            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
         )
         incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
@@ -368,30 +395,26 @@ class TestNumberPoolGetAllocated:
         incident2_on_main.get_attribute("number").clear_source()
         await incident2_on_main.save(db=db)
 
-        query = await NumberPoolGetAllocated.init(
-            db=db,
-            pool=incident_pool,
-            ranges=whole_pool_ranges(incident_pool),
-            branch=default_branch,
-            branch_agnostic=True,
-        )
-        await query.execute(db=db)
-
-        allocated_values = sorted([r.value for r in query.get_data()])
+        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
 
-    async def test_source_reassigned_to_the_pool_on_a_branch_leaves_the_allocation_reported(
+        await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
+
+        for branch in (br1, default_branch):
+            assert await get_allocated_values(db=db, pool=incident_pool, branch=branch) == [1, 3]
+
+    async def test_source_reassigned_to_the_pool_on_a_branch_neither_detaches_nor_prevents_a_detach(
         self,
         db: InfrahubDatabase,
         register_test_schema: SchemaBranch,
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """Clearing and restoring the source leaves one record and one reported allocation."""
+        """Clearing and restoring the source leaves one IS_RESERVED edge, which a detach still ends."""
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-        pools: list[CoreNumberPool] = await NodeManager.query(
-            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
         )
         incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
@@ -418,18 +441,24 @@ class TestNumberPoolGetAllocated:
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
         assert len([r for r in results if r.value == 2]) == 1, "an allocation is reported once, whatever the source"
 
-    async def test_merging_a_cleared_source_leaves_the_allocation_reported(
+        await detach(db=db, node_id=incidents[1].get_id(), branch=br1)
+
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=br1) == [1, 3], (
+            "a source naming the pool does not keep a detached number reported"
+        )
+
+    async def test_merging_a_cleared_source_neither_detaches_nor_prevents_a_detach(
         self,
         db: InfrahubDatabase,
         register_test_schema: SchemaBranch,
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """Merging a branch that cleared the source does not release the number."""
+        """Merging a branch that cleared the source does not release the number; ending the IS_RESERVED edge does."""
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
-        pools: list[CoreNumberPool] = await NodeManager.query(
-            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
         )
         incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
 
@@ -445,17 +474,12 @@ class TestNumberPoolGetAllocated:
         diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=br1)
         await diff_merger.merge_graph(at=Timestamp())
 
-        query = await NumberPoolGetAllocated.init(
-            db=db,
-            pool=incident_pool,
-            ranges=whole_pool_ranges(incident_pool),
-            branch=default_branch,
-            branch_agnostic=True,
-        )
-        await query.execute(db=db)
-
-        allocated_values = sorted([r.value for r in query.get_data()])
+        allocated_values = await get_allocated_values(db=db, pool=incident_pool, branch=default_branch)
         assert allocated_values == [1, 2, 3], f"Expected value=2 to stay allocated, got {allocated_values}"
+
+        await detach(db=db, node_id=incidents[1].get_id(), branch=default_branch)
+
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
 
 
 GAPPED_RANGES = [[7, 8], [2, 3]]
@@ -517,6 +541,49 @@ async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: 
         params={"node_id": node_id, "attribute_name": attribute_name},
     )
     return int(results[0]["live"])
+
+
+class TestNumberPoolReleaseReserved:
+    async def test_a_release_ends_the_live_edge_of_whichever_pool_tracks_the_attribute(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """A release ends the live IS_RESERVED edge even when a pool other than the allocating one now tracks the attribute."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        pools: list[CoreNumberPoolProtocol] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+        other_pool = next(pool for pool in pools if pool.get_attribute("node").value == REQUEST.kind)
+        moved = incidents[1]
+        attribute_id = await get_number_attribute_id(db=db, node_id=moved.get_id(), branch=default_branch)
+
+        move = await NumberPoolSetReserved.init(
+            db=db,
+            pool_id=other_pool.get_id(),
+            identifier=moved.get_id(),
+            attribute_id=attribute_id,
+            provenance=PoolRecordProvenance.PROVIDED,
+        )
+        await move.execute(db=db)
+        assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) == other_pool.get_id()
+        assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 1
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+
+        await detach(db=db, node_id=moved.get_id(), branch=default_branch)
+
+        assert await live_record_count(db=db, node_id=moved.get_id(), attribute_name="number") == 0
+        assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) is None
+        assert await get_allocated_values(db=db, pool=incident_pool, branch=default_branch) == [1, 3]
+        reloaded = await NodeManager.get_one(db=db, id=moved.get_id(), branch=default_branch)
+        assert reloaded is not None
+        assert reloaded.get_attribute("number").value == 2, "a release keeps the number on the object"
+        for untouched in (incidents[0], incidents[2]):
+            assert await live_record_count(db=db, node_id=untouched.get_id(), attribute_name="number") == 1
 
 
 class TestNumberPoolChangeReserved:

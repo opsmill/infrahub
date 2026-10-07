@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
 from infrahub.core.manager import NodeManager
@@ -36,6 +37,14 @@ mutation UpdateTicket($id: String!, $ticket_id: NumberAttributeUpdate, $sequence
     TestingTicketUpdate(data: { id: $id, ticket_id: $ticket_id, sequence: $sequence }) {
         ok
         object { ticket_id { value } sequence { value } }
+    }
+}
+"""
+
+TICKET_SOURCES = """
+query TicketSources($id: ID!) {
+    TestingTicket(ids: [$id]) {
+        edges { node { ticket_id { value source { id } } sequence { value source { id } } } }
     }
 }
 """
@@ -132,10 +141,21 @@ async def _is_reserved_edges(db: InfrahubDatabase, node_id: str, attribute_name:
     return sorted((edge for edge in edges if edge.edge_type == "IS_RESERVED"), key=lambda edge: edge.edge_id or "")
 
 
-async def _tracking_pool_id(db: InfrahubDatabase, node_id: str) -> str | None:
+async def _sources(db: InfrahubDatabase, branch: Branch, node_id: str) -> dict[str, tuple[int | None, str | None]]:
+    """The value of each pooled number on the ticket, with the id of the source a read of it reports."""
+    data = await _execute(db=db, branch=branch, source=TICKET_SOURCES, variables={"id": node_id})
+    assert data
+    [edge] = data["TestingTicket"]["edges"]
+    return {
+        name: (edge["node"][name]["value"], (edge["node"][name]["source"] or {}).get("id"))
+        for name in ("ticket_id", "sequence")
+    }
+
+
+async def _tracking_pool_id(db: InfrahubDatabase, node_id: str, attribute_name: str = "ticket_id") -> str | None:
     ticket = await NodeManager.get_one(db=db, id=node_id)
     assert ticket is not None
-    attribute_id = ticket.get_attribute(name="ticket_id").id
+    attribute_id = ticket.get_attribute(name=attribute_name).id
     assert attribute_id is not None
     query = await NumberPoolGetTrackingPool.init(db=db, attribute_id=attribute_id)
     await query.execute(db=db)
@@ -147,6 +167,16 @@ class ResendCase:
     name: str
     start_range: int
     create_payload: dict[str, Any]
+    expected_value: int
+    expected_provenance: str
+
+
+@dataclass(frozen=True)
+class ReattachCase:
+    name: str
+    start_range: int
+    reattach_payload: dict[str, Any]
+    """What the write after the detach sends besides `from_pool`."""
     expected_value: int
     expected_provenance: str
 
@@ -437,3 +467,151 @@ class TestNumberPoolAttach:
         ]
         assert await _used(db=db, branch=main_branch, pool=ticket_pool) == [1100]
         assert await _used(db=db, branch=main_branch, pool=sequence_pool) == [1155]
+
+    async def test_detaching_a_number_keeps_it_on_the_object_and_frees_it_in_the_pool(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await _new_pool(db=db, name="detach", start_range=1200, end_range=1209, node_attribute="sequence")
+        detached = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach",
+            ticket_id={"value": 1290},
+            sequence={"from_pool": {"id": pool.id}},
+        )
+        kept = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach-kept",
+            ticket_id={"value": 1291},
+            sequence={"from_pool": {"id": pool.id}},
+        )
+        assert await _used(db=db, branch=main_branch, pool=pool) == [1200, 1201]
+
+        changed = await _update_ticket(db=db, branch=main_branch, node_id=detached["id"], sequence={"from_pool": None})
+
+        assert changed["sequence"]["value"] == 1200
+        assert await _used(db=db, branch=main_branch, pool=pool) == [1201]
+        assert await _open_is_reserved_edges(db=db, pool=pool) == {(kept["id"], "allocated")}
+        [closed] = await _is_reserved_edges(db=db, node_id=detached["id"], attribute_name="sequence")
+        assert (closed.status, closed.is_open) == ("active", False), "the IS_RESERVED edge is ended, not deleted"
+        assert await _tracking_pool_id(db=db, node_id=detached["id"], attribute_name="sequence") is None
+        following = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach-next",
+            ticket_id={"value": 1292},
+            sequence={"from_pool": {"id": pool.id}},
+        )
+        assert following["sequence"]["value"] == 1200, "the detached number is offered again"
+
+    async def test_detaching_one_holder_of_a_duplicate_leaves_the_other_reported(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await _new_pool(
+            db=db, name="detach-duplicate", start_range=1300, end_range=1309, node_attribute="sequence"
+        )
+        first = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach-duplicate-first",
+            ticket_id={"value": 1390},
+            sequence={"value": 1300, "from_pool": {"id": pool.id}},
+        )
+        second = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach-duplicate-second",
+            ticket_id={"value": 1391},
+            sequence={"value": 1300, "from_pool": {"id": pool.id}},
+        )
+        assert await _used(db=db, branch=main_branch, pool=pool) == [1300, 1300]
+
+        await _update_ticket(db=db, branch=main_branch, node_id=first["id"], sequence={"from_pool": None})
+
+        assert await _open_is_reserved_edges(db=db, pool=pool) == {(second["id"], "provided")}
+        assert await _allocated(db=db, branch=main_branch, pool=pool) == [(second["id"], "main", 1300)]
+        assert await _used(db=db, branch=main_branch, pool=pool) == [1300]
+        following = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="detach-duplicate-next",
+            ticket_id={"value": 1392},
+            sequence={"from_pool": {"id": pool.id}},
+        )
+        assert following["sequence"]["value"] == 1301, "the other holder still keeps 1300 taken"
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ReattachCase(
+                name="held-value",
+                start_range=1500,
+                reattach_payload={"value": 1505},
+                expected_value=1505,
+                expected_provenance="provided",
+            ),
+            ReattachCase(
+                name="null-value",
+                start_range=1600,
+                reattach_payload={"value": None},
+                expected_value=1600,
+                expected_provenance="allocated",
+            ),
+        ],
+        ids=lambda case: case.name,
+    )
+    async def test_a_detached_number_can_be_tracked_again_by_the_same_pool(
+        self, db: InfrahubDatabase, main_branch: Branch, case: ReattachCase
+    ) -> None:
+        pool = await _new_pool(
+            db=db, name=f"reattach-{case.name}", start_range=case.start_range, end_range=case.start_range + 9
+        )
+        ticket = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title=f"reattach-{case.name}",
+            ticket_id={"value": case.start_range + 5, "from_pool": {"id": pool.id}},
+        )
+        await _update_ticket(db=db, branch=main_branch, node_id=ticket["id"], ticket_id={"from_pool": None})
+        [ended] = await _is_reserved_edges(db=db, node_id=ticket["id"])
+        assert (ended.status, ended.is_open) == ("active", False)
+        assert await _allocated(db=db, branch=main_branch, pool=pool) == []
+
+        changed = await _update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=ticket["id"],
+            ticket_id={**case.reattach_payload, "from_pool": {"id": pool.id}},
+        )
+
+        assert changed["ticket_id"]["value"] == case.expected_value
+        edges = await _is_reserved_edges(db=db, node_id=ticket["id"])
+        assert sorted((edge.status, edge.is_open) for edge in edges) == [("active", False), ("active", True)]
+        assert ended in edges, "the ended IS_RESERVED edge stays ended"
+        assert await _open_is_reserved_edges(db=db, pool=pool) == {(ticket["id"], case.expected_provenance)}
+        assert await _allocated(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", case.expected_value)]
+        assert await _tracking_pool_id(db=db, node_id=ticket["id"]) == pool.get_id()
+        sources = await _sources(db=db, branch=main_branch, node_id=ticket["id"])
+        assert sources["ticket_id"] == (case.expected_value, pool.get_id())
+
+    async def test_a_detach_on_a_deleted_branch_stays_in_effect_on_every_branch(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await _new_pool(db=db, name="detach-branch", start_range=1400, end_range=1409)
+        ticket = await _create_ticket(
+            db=db, branch=main_branch, title="detach-branch", ticket_id={"from_pool": {"id": pool.id}}
+        )
+        assert ticket["ticket_id"]["value"] == 1400
+        other_branch = await create_branch(branch_name="detach-branch-other", db=db)
+        detaching_branch = await create_branch(branch_name="detach-branch-detaching", db=db)
+
+        await _update_ticket(db=db, branch=detaching_branch, node_id=ticket["id"], ticket_id={"from_pool": None})
+        await BranchDataDeleter(db=db, batch_size=5).delete(branch=detaching_branch)
+
+        for branch in (main_branch, other_branch):
+            sources = await _sources(db=db, branch=branch, node_id=ticket["id"])
+            assert sources["ticket_id"] == (1400, None), f"{branch.name} reports a pool source"
+        assert await _open_is_reserved_edges(db=db, pool=pool) == set()
+        assert await _allocated(db=db, branch=main_branch, pool=pool) == []
+        assert await _used(db=db, branch=main_branch, pool=pool) == []

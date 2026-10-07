@@ -46,6 +46,10 @@ class AttributeNumberAllocator(Protocol):
         """Have the pool track the number the saved attribute already holds."""
         ...
 
+    async def release(self, attribute: BaseAttribute) -> None:
+        """Have every pool stop tracking the saved attribute, which keeps the number it holds."""
+        ...
+
 
 class AttributePoolApplierInterface(Protocol):
     async def apply(
@@ -176,8 +180,7 @@ class AttributePoolApplier:
             case FromPoolIntent.NO_OP:
                 return
             case FromPoolIntent.DETACH:
-                # Detaching from a pool is not supported yet.
-                return
+                await self.number_allocator.release(attribute=attribute)
             case FromPoolIntent.ATTACH:
                 await self._attach(node=node, pool=self._require_pool(pool=pool, intent=intent), attribute=attribute)
             case FromPoolIntent.ALLOCATE:
