@@ -998,16 +998,20 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
             )
 
+    def unfinished_merge_message(self, source_branch: str, dest_branch: str, reason: str) -> str:
+        """Say why a Git merge stopped after the merge in Infrahub, and which remote branches to merge by hand."""
+        return (
+            f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. {reason} The "
+            f"branch is merged in Infrahub and not in Git. To finish the merge, merge "
+            f"{self._get_mapped_remote_branch(branch_name=source_branch)} into "
+            f"{self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The next "
+            "synchronization imports the result."
+        )
+
     def _unfinished_merge(self, source_branch: str, dest_branch: str, reason: str) -> RepositoryDivergentHistoryError:
         return RepositoryDivergentHistoryError(
             identifier=self.name,
-            message=(
-                f"Unable to merge {source_branch} into {dest_branch} in the Git repository {self.name}. {reason} The "
-                f"branch is merged in Infrahub and not in Git. To finish the merge, merge "
-                f"{self._get_mapped_remote_branch(branch_name=source_branch)} into "
-                f"{self._get_mapped_remote_branch(branch_name=dest_branch)} in the Git repository. The next "
-                "synchronization imports the result."
-            ),
+            message=self.unfinished_merge_message(source_branch=source_branch, dest_branch=dest_branch, reason=reason),
         )
 
     def _in_remote_history(self, commit: str, remote_head: str) -> bool:

@@ -990,7 +990,9 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
-async def _read_destination_commit(client: InfrahubClient, model: GitRepositoryMerge) -> str | None:
+async def _read_destination_commit(
+    client: InfrahubClient, repo: InfrahubRepository, model: GitRepositoryMerge
+) -> str | None:
     """Return the commit the graph records for the destination now, which an earlier merge can move after the dispatch.
 
     Raises:
@@ -1002,11 +1004,13 @@ async def _read_destination_commit(client: InfrahubClient, model: GitRepositoryM
     except SdkError as exc:
         raise RepositoryError(
             identifier=model.repository_name,
-            message=(
-                f"Unable to read the commit Infrahub records for branch {model.destination_branch} of repository "
-                f"{model.repository_name}: {exc.message}. The branch is merged in Infrahub and not in Git. To finish "
-                f"the merge, merge {model.source_branch} into the default branch of the Git repository. The next "
-                "synchronization imports the result."
+            message=repo.unfinished_merge_message(
+                source_branch=model.source_branch,
+                dest_branch=model.destination_branch,
+                reason=(
+                    f"Infrahub cannot read the commit it records for {model.destination_branch} "
+                    f"({exc.message.rstrip('.')})."
+                ),
             ),
         ) from exc
     return readable_commit(repository.commit.value)
@@ -1075,7 +1079,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                 source_branch=model.source_branch,
                 dest_branch=model.destination_branch,
                 source_commit=model.source_commit,
-                destination_commit=await _read_destination_commit(client=client, model=model),
+                destination_commit=await _read_destination_commit(client=client, repo=repo, model=model),
             )
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:
