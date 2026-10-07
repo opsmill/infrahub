@@ -6,7 +6,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.message_bus import InfrahubMessage, Meta
-from infrahub.message_bus.messages import ROUTING_KEY_MAP
+from infrahub.message_bus.messages import ROUTING_KEY_MAP, RefreshGitFetch
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -45,6 +45,21 @@ class FailingBus(BusRecorder):
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
         raise ConnectionError("The message bus cannot be reached")
+
+
+class RepositoryFailingBus(BusRecorder):
+    """A message bus that fails to publish the fetch message of one repository and records every other message."""
+
+    def __init__(self, failing_repository_id: str) -> None:
+        super().__init__()
+        self.failing_repository_id = failing_repository_id
+
+    async def publish(
+        self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
+    ) -> None:
+        if isinstance(message, RefreshGitFetch) and message.repository_id == self.failing_repository_id:
+            raise ConnectionError("The message bus cannot be reached")
+        await super().publish(message=message, routing_key=routing_key, delay=delay, is_retry=is_retry)
 
 
 class BusSimulator(InfrahubMessageBus):

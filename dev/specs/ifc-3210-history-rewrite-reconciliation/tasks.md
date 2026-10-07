@@ -289,9 +289,10 @@ healthy branch is still sent, and a second worker converges on it.
       in the same cycle (FR-018a). `sync_remote_repositories` has no per-repository guard today, so
       this test holds the one this phase adds. It is the repository-level version of the outage US3
       removes at branch level.
-      *As landed:* in `backend/tests/component/git/test_sync_repository.py`. The failure it uses is
-      real and reaches the loop today: on a worker with no clone yet, the first import of a schema
-      the server rejects raises the SDK's `ValidationError`, which the clone step does not catch.
+      *As landed:* in `backend/tests/component/git/test_sync_repository.py`. The failure it uses is a
+      broadcast that fails for one repository: after it handles that repository's failures, the cycle
+      raises the send's error. The schema failure it used first no longer escapes: the clone step now
+      records a failed first import on its branch.
 - [x] T038 [P] [US3] Unit-test the handler fan-out in `backend/tests/unit/git/test_convergence.py`,
       which mirrors `backend/infrahub/git/convergence.py`, where the handler's logic lives: N pairs
       are reset inside one lock acquisition and one fetch. Use a fake lock registry, not a mock.

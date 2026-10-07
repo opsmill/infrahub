@@ -41,7 +41,7 @@ from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
-from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus
+from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -904,12 +904,6 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
         assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
 
 
-BROKEN_SCHEMA_FILES = {
-    ".infrahub.yml": "---\nschemas:\n  - schema.yml\n",
-    "schema.yml": '---\nversion: "1.0"\nnodes:\n  - name: Broken\n',
-}
-
-
 class TestSynchronisationCycleIsolation(TestInfrahubApp):
     """A synchronization cycle over repositories this worker holds no clone of yet.
 
@@ -922,32 +916,32 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
         client: InfrahubClient,
         initialize_registry: None,
         caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """The first import of a schema the server rejects raises out of that repository's clone."""
+        """A broadcast that fails raises out of its repository once the repository's failures are handled."""
         caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
-        broken = LocalRemote.create(directory=tmp_path / "broken-schema-repo", trunk="main", branches=[])
-        broken.commit(branch_name="main", files=BROKEN_SCHEMA_FILES)
-        healthy = LocalRemote.create(directory=tmp_path / "healthy-cycle-repo", trunk="main", branches=[])
-        healthy_head = healthy.commit(branch_name="main", files={"data.txt": "healthy v2\n"})
-        for name, remote in (("broken-schema-repo", broken), ("healthy-cycle-repo", healthy)):
-            await create_repository_node(
+        nodes: dict[str, Node] = {}
+        for name in ("unreachable-broadcast-repo", "healthy-cycle-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
                 db=db,
                 name=name,
                 location=str(remote.directory),
                 default_branch="main",
                 operational_status=RepositoryOperationalStatus.ONLINE.value,
             )
+        bus = RepositoryFailingBus(failing_repository_id=nodes["unreachable-broadcast-repo"].id)
 
-        await sync_remote_repositories()
+        with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
+            await sync_remote_repositories()
 
-        recorded = await NodeManager.query(
-            db=db, schema=CoreRepositoryNode, filters={"name__value": "healthy-cycle-repo"}
-        )
-        assert [repository.commit.value for repository in recorded] == [healthy_head]
+        assert [message.repository_id for message in bus.messages if isinstance(message, RefreshGitFetch)] == [
+            nodes["healthy-cycle-repo"].id
+        ]
         assert [
             record.getMessage()
             for record in caplog.records
             if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
-        ] == ["Unable to synchronize repository broken-schema-repo, continuing with the other repositories"]
+        ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]
