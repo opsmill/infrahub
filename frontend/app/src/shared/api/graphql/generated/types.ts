@@ -23829,7 +23829,7 @@ export type NumberPoolAllocations = {
 /** One division: a tuple of values of the scope in force. */
 export type NumberPoolDivision = {
   __typename: 'NumberPoolDivision';
-  /** The entries' display labels joined with " / ". Empty for the division of an unscoped pool. */
+  /** The entries' display labels joined with " / ". */
   display_label: Scalars['String']['output'];
   /** One entry per scope entry in force, in scope order. */
   entries: Array<NumberPoolDivisionEntry>;
@@ -23873,8 +23873,7 @@ export type NumberPoolDivisions = {
   count: Scalars['Int']['output'];
   /**
    * Every division whose holders hold at least one value the pool tracks on any live branch, ordered
-   * by utilization descending then by display_label. An unscoped pool lists one division with no
-   * entry.
+   * by utilization descending then by display_label. Empty when the scope in force is empty.
    */
   divisions: Array<NumberPoolDivision>;
 };

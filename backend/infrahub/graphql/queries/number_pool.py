@@ -164,7 +164,7 @@ class NumberPoolDivision(ObjectType):
     display_label = Field(
         String,
         required=True,
-        description='The entries\' display labels joined with " / ". Empty for the division of an unscoped pool.',
+        description='The entries\' display labels joined with " / ".',
     )
     entries = Field(
         List(NonNull(NumberPoolDivisionEntry)),
@@ -193,8 +193,7 @@ class NumberPoolDivisions(ObjectType):
         required=True,
         description=(
             "Every division whose holders hold at least one value the pool tracks on any live branch, ordered\n"
-            "by utilization descending then by display_label. An unscoped pool lists one division with no\n"
-            "entry."
+            "by utilization descending then by display_label. Empty when the scope in force is empty."
         ),
     )
 

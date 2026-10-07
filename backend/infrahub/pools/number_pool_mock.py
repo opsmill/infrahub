@@ -142,8 +142,12 @@ class MockPool:
     rows: tuple[_Row, ...] = field(repr=False)
 
     def __post_init__(self) -> None:
-        if not self.divisions:
-            raise ValueError(f"The mock pool {self.display_label} needs at least one division, even an empty one")
+        if self.allocation_scope and not self.divisions:
+            raise ValueError(
+                f"The mock pool {self.display_label} has an allocation scope and needs at least one division"
+            )
+        if not self.allocation_scope and self.divisions:
+            raise ValueError(f"The mock pool {self.display_label} has no allocation scope and cannot hold a division")
         for row in self.rows:
             if row.value in self.excluded_values or not self._in_a_range(row.value):
                 raise ValueError(f"The mock pool {self.display_label} holds {row.value}, a value it cannot allocate")
@@ -231,7 +235,7 @@ def _build_unscoped_pool() -> MockPool:
         allocation_scope=(),
         ranges=_two_ranges("bbbb"),
         excluded_values=frozenset({40}),
-        divisions=((),),
+        divisions=(),
         rows=(
             _Row(value=1, branch=DEFAULT_BRANCH, holder=_holder(201, "sw-access-01"), identifier="access-vlan"),
             _Row(value=7, branch=OTHER_BRANCH, holder=_holder(202, "sw-access-02")),
@@ -304,7 +308,7 @@ def _division_list(pool: MockPool) -> tuple[MockDivision, ...]:
     divisions = []
     for entries in pool.divisions:
         rows = _own_rows(pool=pool, division=_as_filter(entries))
-        if pool.allocation_scope and not rows:
+        if not rows:
             continue
         divisions.append(
             MockDivision(

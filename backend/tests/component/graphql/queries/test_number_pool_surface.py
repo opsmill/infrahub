@@ -197,9 +197,9 @@ class TestNumberPoolSurface:
         assert pool["allocation_scope"] == []
         assert (pool["figures"]["size"], pool["figures"]["used"]) == (99, 3)
         assert divisions["InfrahubNumberPoolDivisions"] == {
-            "count": 1,
+            "count": 0,
             "allocation_scope": [],
-            "divisions": [{"display_label": "", "entries": [], "figures": pool["figures"]}],
+            "divisions": [],
         }
         assert allocations["InfrahubNumberPoolAllocations"]["count"] == 2
         rows = allocations["InfrahubNumberPoolAllocations"]["allocations"]
