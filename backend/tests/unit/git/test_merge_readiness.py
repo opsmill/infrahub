@@ -42,8 +42,8 @@ def target(
     )
 
 
-def check(reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader) -> RemoteHeadsMergeCheck:
-    return RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(LOGGER_NAME))
+def check(reader: InMemoryRemoteHeadReader | FailingRemoteHeadReader, parallel_reads: int = 8) -> RemoteHeadsMergeCheck:
+    return RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(LOGGER_NAME), parallel_reads=parallel_reads)
 
 
 @dataclass
@@ -224,16 +224,16 @@ async def test_a_trunk_that_moved_does_not_hold_the_merge_of_a_repository_the_br
     ]
 
 
-async def test_the_merge_check_reads_at_most_eight_remotes_at_the_same_time() -> None:
+async def test_the_merge_check_reads_at_most_the_given_number_of_remotes_at_the_same_time() -> None:
     """Each read starts a git process, so a merge over many repositories must not start them all at once."""
     targets = [target(name=f"repo-{index}") for index in range(20)]
     reader = CountingRemoteHeadReader(
         heads={target.name: {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD} for target in targets}
     )
 
-    await check(reader=reader).check(source_branch=SOURCE, targets=targets)
+    await check(reader=reader, parallel_reads=3).check(source_branch=SOURCE, targets=targets)
 
-    assert (reader.most_in_flight, len(reader.reads)) == (8, 20)
+    assert (reader.most_in_flight, len(reader.reads)) == (3, 20)
 
 
 async def test_a_remote_that_refuses_the_credentials_refuses_the_merge() -> None:

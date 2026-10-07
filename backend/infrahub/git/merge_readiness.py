@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryNotSynchronizedError
-from infrahub.git.constants import REMOTE_HEADS_PARALLEL_READS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -67,9 +66,16 @@ class RemoteHeadsMergeCheck:
     same credentials and fail after the graph merge.
     """
 
-    def __init__(self, reader: RemoteHeadReader, log: Logger | LoggerAdapter[Logger]) -> None:
+    def __init__(self, reader: RemoteHeadReader, log: Logger | LoggerAdapter[Logger], parallel_reads: int) -> None:
+        """Build the check.
+
+        Args:
+            parallel_reads: The most remotes read at the same time, because each read runs a git process.
+
+        """
         self.reader = reader
         self.log = log
+        self.parallel_reads = parallel_reads
 
     async def check(self, source_branch: str, targets: Sequence[GitMergeTarget]) -> None:
         """Compare, for each repository, the graph commit of both branches with their remote heads.
@@ -83,7 +89,7 @@ class RemoteHeadsMergeCheck:
 
         """
         expected_heads = [self._expected_heads(source_branch=source_branch, target=target) for target in targets]
-        reads = asyncio.Semaphore(REMOTE_HEADS_PARALLEL_READS)
+        reads = asyncio.Semaphore(self.parallel_reads)
         read_heads = await asyncio.gather(
             *(
                 self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected), reads=reads)

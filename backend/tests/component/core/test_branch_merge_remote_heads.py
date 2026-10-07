@@ -41,7 +41,9 @@ async def test_a_branch_that_is_not_open_reads_no_remote(
     reader = InMemoryRemoteHeadReader(heads={"network-repo": {"feature": "c" * 40, "main": TRUNK_COMMIT}})
 
     await check_remote_heads_imported(
-        db=db, branch_name="feature", check=RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(__name__))
+        db=db,
+        branch_name="feature",
+        check=RemoteHeadsMergeCheck(reader=reader, log=logging.getLogger(__name__), parallel_reads=8),
     )
 
     assert reader.reads == []
