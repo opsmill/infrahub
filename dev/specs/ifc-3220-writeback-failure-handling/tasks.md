@@ -427,11 +427,11 @@ deployment rule.** T070 to T073 are not.
 - [X] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
       `FullRegenerationReason.TERMINAL_SELECTION_FAILED` to
       `backend/infrahub/core/constants/__init__.py`, where T018 moved the enum.
-- [ ] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
+- [X] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
       `RegenerationBarrier` in `backend/infrahub/core/merge/regeneration_barrier.py`, per contracts
       section 8, rules 1 to 7. A refreshed item's cache entry is the union of the previous entry and
       the new request, or nothing when the previous entry is missing.
-- [ ] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
+- [X] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
       empty fast path, the partition, a hold that returns `None` admits, an unknown owner held under
       every pending repository, `releasing`, a cache write failure, one `hold` call per repository,
       and two holds of one artifact definition with different members whose release covers both
