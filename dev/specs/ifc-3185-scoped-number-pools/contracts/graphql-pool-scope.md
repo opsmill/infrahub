@@ -41,9 +41,12 @@ The input types are the generated list-attribute inputs every `List` attribute a
 | `{value: ["site"]}` | scoped by the `site` relationship |
 | `{value: ["site", "role__value"]}` | scoped by `site` and the `role` attribute; stored as `["site", "role"]` |
 
-## Validation (mutation branch's schema)
+## Validation (default branch's schema)
 
-Refused with a `ValidationError` on the `allocation_scope` field naming the entry:
+The scope is validated against the default branch's schema, whatever branch the mutation runs on,
+on every create, update or upsert that carries `allocation_scope`. A field that exists only on a
+branch enters a scope once it is merged; a pool re-sent whole from any branch validates against the
+same schema. Refused with a `ValidationError` on the `allocation_scope` field:
 
 | Entry | Reason given |
 |---|---|
@@ -53,8 +56,9 @@ Refused with a `ValidationError` on the `allocation_scope` field naming the entr
 | list or JSON attribute | must be a single scalar value |
 | the pool's own `node_attribute` | cannot scope a pool by the attribute it allocates |
 | repeated entry | duplicate |
-| unknown on this branch | not defined on the kind |
-| unchanged (the normalised submitted scope equals the stored value) | accepted on every branch without re-validation, so a pool re-sent whole from a branch that lacks an entry is not refused |
+| not defined on the kind in the default branch's schema | not defined on the kind |
+| any entry, when the pool's target attribute is `unique: true` | cannot scope a pool whose attribute is unique (names the attribute) |
+| an entry not declared on the generic, when the pool's attribute is inherited from a generic | must be a required cardinality-one field of the generic (names the generic) |
 
 On a pool whose `pool_type` is `Schema`, any change to `allocation_scope` is refused with a message
 of the same form as the existing refusal of a shorthand write on such a pool: `allocation_scope

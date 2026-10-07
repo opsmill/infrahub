@@ -286,9 +286,15 @@ Three write paths reach allocation, and each reads the division after the scoped
 | Update | `Node.from_graphql` applies the payload in dict order and `BaseAttribute.from_graphql` calls `handle_pool` inline | `from_graphql` applies every attribute with `process_pools=False`, then calls `handle_pool` for each attribute whose payload carried `from_pool` |
 
 Invariant on the update path: `from_pool` is still assigned inline by `BaseAttribute.from_graphql`;
-only the allocation is deferred. `core/node/lock_utils.py::get_lock_names_on_object_mutation` reads
-`from_pool` to take the pool lock before the node is saved, and `Node.from_graphql` has exactly two
-callers. The functional test pins both the deferral and the lock.
+only the allocation is deferred, and `Node.from_graphql` has exactly two callers. The allocation
+lock is keyed by pool and division on a scoped pool (`resource_pool.<pool id>.<division key>`) and
+by pool alone on an unscoped pool; `get_resource` takes it after the division is resolved, which
+on update is after every field of the payload is applied. The mutation-level pool lock that
+`core/node/lock_utils.py::get_lock_names_on_object_mutation` derives from `from_pool` before the
+node is saved would serialise every division of a scoped pool; D1 either removes it for `from_pool`
+allocations or keeps it as a pool-level guard, and a functional test pins the outcome: two writers
+in different divisions allocate in parallel, two writers in one division serialise, and the
+deferral holds.
 
 ### 4. The dedicated surface (B, D2, E)
 
@@ -412,7 +418,7 @@ diffing `schema/schema.graphql` for those types.
 
 - **Unit** (`tests/unit/pools/`, `tests/unit/graphql/`): `DivisionResolver.entries_in_force`
   (unknown entry dropped, all unknown → empty), `ScopeValidator` (every refusal row, normalisation,
-  unchanged scope accepted), `DivisionReporter` (ordering by utilization, one division over the
+  the `unique: true` and generic refusals), `DivisionReporter` (ordering by utilization, one division over the
   pool and within a range, empty division, branch split, unscoped single division, absolute counts),
   the fixed dataset (figures computed from the rows, each filter, the partial division filter,
   ordering, pagination, the refusals),
@@ -435,7 +441,8 @@ diffing `schema/schema.graphql` for those types.
 - **Functional**: the User Story 2 journey through GraphQL including fifty concurrent creates per
   division; a template-created node in a scoped division; the User Story 6 branch journey with the
   divisions query on both branches; the update-path deferral (scoped field changed and allocated in
-  one update) with the pool lock still taken.
+  one update) with the lock per pool and division taken after the division is resolved; two
+  divisions allocating in parallel and two writers in one division serialising.
 - **Integration docker**: the FR-010 removal refusal through the schema-load API.
 - **Measurement**: SC-006 as a query benchmark; SC-005 as a timed functional scenario excluded from
   the default run; figures and the chosen anchor order to `measurements.md`.

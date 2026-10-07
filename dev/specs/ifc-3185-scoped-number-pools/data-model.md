@@ -27,7 +27,10 @@ A string naming one field of the pool's `node` kind:
 
 Refused at save, naming the entry: an optional field; a many relationship; a path into a related
 node (`site__name__value`); an attribute of list or JSON kind; the pool's own `node_attribute`; a
-duplicate entry; an entry the mutation branch's schema does not define.
+duplicate entry; an entry the default branch's schema does not define on the kind; when the pool's
+attribute is inherited from a generic, an entry not declared on the generic itself (named with the
+generic). Refused naming the attribute: any scope on a pool whose target attribute is
+`unique: true`.
 
 ---
 
@@ -155,10 +158,10 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 
 | Surface | Component | Rule | Error names |
 |---|---|---|---|
-| Pool create / update / upsert | `pools/scope.py::ScopeValidator` against the mutation branch's schema, invoked only when the normalised submitted scope differs from the stored one | FR-009 and the local rules in §1; the required check covers relationships locally | the entry |
-| Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters` | same | the entry |
+| Pool create / update / upsert | `pools/scope.py::ScopeValidator` against the default branch's schema, whatever branch the mutation runs on, on every save that carries `allocation_scope` | FR-009 and the local rules in §1; the required check covers relationships locally; the `unique: true` and generic rules | the entry; the attribute; the generic |
+| Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters`, against the schema being loaded | same | the entry; the attribute; the generic |
 | Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
-| Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field | refused when a pool names the field | the pool |
+| Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`, and for the constraint that makes an attribute unique; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field; a field declared on a generic is checked on the generic | refused when a pool names the field, or when the pool's own attribute becomes `unique: true` while the pool carries a scope | the pool |
 | Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
 | The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path, and on the utilization query a value for every path in force | the pool, the range, the entry (messages in the contract) |
 
@@ -190,4 +193,5 @@ The pool has no new state machine. Scope changes are plain attribute writes:
 - The IP pool kinds and their queries.
 - The generic resource-pool query types (`PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`,
   `IPPrefixUtilizationEdge`, `IPPoolUtilizationResource`): description text only.
-- The allocation lock key.
+- The allocation lock namespace. The key gains the division on a scoped pool
+  (`resource_pool.<pool id>.<division key>`, FR-031) and is unchanged on an unscoped pool.
