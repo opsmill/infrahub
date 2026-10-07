@@ -68,7 +68,7 @@ from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
 from .divergence.recorder import HistoryRewriteRecorder
-from .divergence.store import SdkRepositoryReader, SdkRepositoryRecordStore
+from .divergence.store import SdkRepositoryRecordStore
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -1048,7 +1048,8 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             await repo.prepare_branches_for_merge(
                 source_branch=model.source_branch,
                 dest_branch=model.destination_branch,
-                graph_commits=SdkRepositoryReader(client=client),
+                source_commit=model.source_commit,
+                destination_commit=model.destination_commit,
             )
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:

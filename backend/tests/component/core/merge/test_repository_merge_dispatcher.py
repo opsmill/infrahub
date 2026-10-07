@@ -7,9 +7,12 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.merge.repository_merge_dispatcher import list_git_merge_targets
+from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher, list_git_merge_targets
 from infrahub.core.node import Node
 from infrahub.git.merge_readiness import GitMergeTarget
+from infrahub.git.models import GitRepositoryMerge
+from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
+from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -76,3 +79,33 @@ async def test_a_branch_not_synced_with_git_has_no_git_merge_target(
     feature = await create_feature_branch(db=db, sync_with_git=False)
 
     assert await list_git_merge_targets(db=db, source_branch=feature) == []
+
+
+async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The source branch can be deleted before the Git merge runs, so the merge must not read it again."""
+    repository = await create_repository(db=db, name="active-repo", commit=TRUNK_COMMIT)
+    feature = await create_feature_branch(db=db, sync_with_git=True)
+    await update_on_branch(db=db, repository=repository, branch=feature, commit=BRANCH_COMMIT)
+    workflow = WorkflowRecorder()
+
+    await RepositoryMergeDispatcher(
+        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
+    ).merge_core_repositories()
+
+    assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)] == [
+        {
+            "model": GitRepositoryMerge(
+                repository_id=repository.id,
+                repository_name="active-repo",
+                internal_status=RepositoryInternalStatus.ACTIVE.value,
+                source_branch="feature",
+                destination_branch=default_branch.name,
+                destination_branch_id=str(default_branch.get_uuid()),
+                repository_kind=InfrahubKind.REPOSITORY,
+                source_commit=BRANCH_COMMIT,
+                destination_commit=TRUNK_COMMIT,
+            )
+        }
+    ]

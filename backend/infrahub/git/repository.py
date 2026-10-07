@@ -48,7 +48,6 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
-    from infrahub.git.divergence.protocols import GraphCommitReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 
 log = get_run_logger()
@@ -913,7 +912,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return True
 
     async def prepare_branches_for_merge(
-        self, source_branch: str, dest_branch: str, graph_commits: GraphCommitReader
+        self, source_branch: str, dest_branch: str, source_commit: str | None, destination_commit: str | None
     ) -> None:
         """Move a merge branch onto its remote head when the graph records that head, or refuse the merge.
 
@@ -924,9 +923,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         synchronization still finds the rewrite to record and import. A branch behind a head the graph
         has not imported is left as it is.
 
+        The graph commits come from the caller, read when the merge was dispatched, because the source
+        branch can be deleted in Infrahub before this runs.
+
         Raises:
             RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record.
-            RepositoryError: When git cannot fetch or compare a branch, or the graph commit cannot be read.
+            RepositoryError: When git cannot fetch or compare a branch.
 
         """
         if not await self.fetch():
@@ -939,13 +941,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             source_branch: local_source.commit if local_source is not None else None,
             dest_branch: str(dest_worktree.head.commit) if dest_worktree is not None else None,
         }
+        graph_commits = {source_branch: source_commit, dest_branch: destination_commit}
 
         moves: list[tuple[str, str, str]] = []
         for branch_name, local_head in local_heads.items():
             remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=branch_name))
             if local_head is None or remote_head is None or local_head == remote_head:
                 continue
-            graph_commit = await graph_commits.get_commit(repository_id=str(self.id), infrahub_branch_name=branch_name)
+            graph_commit = graph_commits[branch_name]
             if graph_commit == remote_head:
                 moves.append((branch_name, local_head, remote_head))
             elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):

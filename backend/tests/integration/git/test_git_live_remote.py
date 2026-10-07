@@ -978,7 +978,16 @@ def _rewrite_the_trunk(container: DockerContainer, tracked: TrackedBranchReposit
     )
 
 
-def _merge_into_the_trunk(tracked: TrackedBranchRepository, trunk_id: str) -> GitRepositoryMerge:
+async def _merge_into_the_trunk(
+    db: InfrahubDatabase, tracked: TrackedBranchRepository, trunk_id: str
+) -> GitRepositoryMerge:
+    """Build the Git merge of the tracked branch with the commits the graph records now, as a branch merge does."""
+    on_branch: CoreRepository = await NodeManager.get_one(
+        db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=tracked.branch_name, raise_on_error=True
+    )
+    on_trunk: CoreRepository = await NodeManager.get_one(
+        db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+    )
     return GitRepositoryMerge(
         repository_id=tracked.node_id,
         repository_name=tracked.name,
@@ -987,6 +996,8 @@ def _merge_into_the_trunk(tracked: TrackedBranchRepository, trunk_id: str) -> Gi
         destination_branch=registry.default_branch,
         destination_branch_id=trunk_id,
         repository_kind=InfrahubKind.REPOSITORY,
+        source_commit=on_branch.commit.value,
+        destination_commit=on_trunk.commit.value,
     )
 
 
@@ -1328,7 +1339,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
                 tracked=tracked, branch_name="main", local_commit=imported, graph_commit=imported, remote_head=rewritten
             ),
         ):
-            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
 
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
         clone = await _open_clone(client=client, tracked=tracked)
@@ -1340,6 +1351,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
 
     async def test_a_merge_from_a_branch_rewritten_since_the_last_cycle_is_refused(
         self,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
@@ -1365,7 +1377,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
                 remote_head=rewritten,
             ),
         ):
-            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
 
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == tracked.trunk_commit
         assert gogs_branches_containing(gogs_server.container, tracked.name, tracked.imported_commit) == []
@@ -1384,7 +1396,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
         rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
         trunk = await client.branch.get(branch_name=registry.default_branch)
-        model = _merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id)
+        model = await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id)
         with pytest.raises(
             RepositoryDivergentHistoryError,
             match=_refused_merge_message(
@@ -1400,7 +1412,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         )
         assert (previous_commit, commit, rewrite_count) == (imported, rewritten, 1)
 
-        await merge_git_repository(model=model)
+        await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
 
         merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
         assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
@@ -1408,6 +1420,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
 
     async def test_a_merge_on_a_worker_behind_a_reconciled_trunk_resets_the_trunk_and_merges(
         self,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         tmp_path: Path,
@@ -1424,7 +1437,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         trunk = await client.branch.get(branch_name=registry.default_branch)
 
         with repositories_directory(second_worker):
-            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
 
         merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
         assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
@@ -1432,6 +1445,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
 
     async def test_a_merge_on_a_worker_behind_an_imported_source_merges_the_imported_head(
         self,
+        db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         tmp_path: Path,
@@ -1452,7 +1466,36 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         trunk = await client.branch.get(branch_name=registry.default_branch)
 
         with repositories_directory(second_worker):
-            await merge_git_repository(model=_merge_into_the_trunk(tracked=tracked, trunk_id=trunk.id))
+            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
+
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == advanced
+
+    async def test_a_merge_that_runs_after_the_source_branch_is_deleted_merges_the_imported_head(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """A branch merge submits the delete of the source branch without a wait for the Git merge."""
+        tracked = await tracked_branch_repository("deleted-source-merge-repo", "deleted-source-merge-branch")
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        advanced = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+        )
+        await sync_remote_repositories()
+        trunk = await client.branch.get(branch_name=registry.default_branch)
+        model = await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id)
+        assert await client.branch.delete(branch_name=tracked.branch_name)
+
+        with repositories_directory(second_worker):
+            await merge_git_repository(model=model)
 
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == advanced
 

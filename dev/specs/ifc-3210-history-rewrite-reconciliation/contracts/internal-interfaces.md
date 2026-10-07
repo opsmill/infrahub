@@ -759,6 +759,10 @@ reaches it. This guard closes that.
    decides: move it when the graph commit equals the remote head, refuse otherwise.
 6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
    ref.
+7. The graph commits come in `GitRepositoryMerge` (`source_commit`, `destination_commit`), which
+   `RepositoryMergeDispatcher` fills when it submits the Git merge. The guard reads no node: the
+   branch merge submits the delete of the source branch without a wait for the Git merge, so a read
+   of that branch can fail.
 
 **Equal, not an ancestor.** The classification of section 1 treats a graph commit that is an
 ancestor of the remote head as a fast-forward. This guard does not: such a remote holds commits the

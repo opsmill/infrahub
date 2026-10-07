@@ -137,6 +137,13 @@ class GitRepositoryMerge(BaseModel):
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
     repository_kind: str = Field(..., description="The kind of the repository.")
+    source_commit: str | None = Field(
+        ..., description="The commit the graph records for the source branch, None when it records no full commit id"
+    )
+    destination_commit: str | None = Field(
+        ...,
+        description="The commit the graph records for the destination branch, None when it records no full commit id",
+    )
 
 
 class GitRepositoryImportObjects(BaseModel):

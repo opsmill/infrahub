@@ -149,6 +149,8 @@ async def test_git_rpc_merge(
         destination_branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
+        source_commit=repo.get_commit_value(branch_name=branch01.name),
+        destination_commit=commit_main_before,
     )
 
     client = build_repository_client(

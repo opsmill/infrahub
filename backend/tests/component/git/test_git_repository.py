@@ -684,6 +684,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         client=client,
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    develop_before = Repo(upstream_path).commit("develop").hexsha
 
     model = GitRepositoryMerge(
         repository_id=repo_node.id,
@@ -693,10 +694,11 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         destination_branch_id=str(default_branch.get_uuid()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
+        source_commit=repo.get_commit_value(branch_name=branch01.name),
+        destination_commit=develop_before,
     )
     assert "default_branch" not in model.model_dump()
 
-    develop_before = Repo(upstream_path).commit("develop").hexsha
     bus_simulator = await helper.get_message_bus_simulator()
     with (
         dependency_provider.scope(build_client, lambda: client),
