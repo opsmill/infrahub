@@ -310,7 +310,9 @@ here. See "Out of Scope".
   - When the graph commit differs and the source clone is on or behind its remote head, the merge
     path MUST move the source onto the graph commit when the remote history holds that commit, and
     MUST merge the source as it is otherwise. In that last case the Git merge can hold a source that
-    differs from the one the graph merged, which is an accepted risk.
+    differs from the one the graph merged, which is an accepted risk. When the merge does not use
+    the remote head of the source, the merge path MUST log a warning that names the commit it uses,
+    the remote head, and that the commits after it stay on the source branch.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.
@@ -326,16 +328,16 @@ here. See "Out of Scope".
   of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
   the merge while one differs. A repository whose source branch records the commit that its trunk
   records has nothing to merge in Git: the system MUST NOT run its Git merge, and MUST compare only
-  the remote head of its source branch. That refusal leaves the branch open, and the merge can run again after
-  the synchronisation imports the head. A remote that refuses the credentials of a repository that
-  needs a Git merge MUST block the merge, because that Git merge would fail the same way after the
-  graph merge. Any other failure to read a remote, and a remote not read before the total deadline of
-  the check, MUST be logged as a warning and MUST NOT block the merge. A
-  refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
-  branch is merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes
-  that merge in Git. The delivery queue of IFC-3220 does not recover it. After a rewrite of the
-  source or of the trunk, its FR-020 and FR-022 only mark such a delivery unreplayable, with a named
-  cause. After a plain push to the trunk between the two checks, IFC-3220 specifies no recovery.
+  the remote head of its source branch. That refusal leaves the branch open, and the merge can run
+  again after the synchronisation imports the head. A remote that refuses the credentials of a
+  repository that needs a Git merge MUST block the merge, because that Git merge would fail the same
+  way after the graph merge. Any other failure to read a remote, and a remote not read before the
+  total deadline of the check, MUST be logged as a warning and MUST NOT block the merge. A refusal
+  of the Git merge itself, after a remote moved between the two checks, MUST say that the branch is
+  merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes that
+  merge in Git. The delivery queue of IFC-3220 does not recover it. After a rewrite of the source or
+  of the trunk, its FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause.
+  After a plain push to the trunk between the two checks, IFC-3220 specifies no recovery.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
