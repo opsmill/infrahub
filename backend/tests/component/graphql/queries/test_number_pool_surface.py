@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.initialization import create_branch
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
-from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL_ID
+from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL, UNSCOPED_POOL_ID
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -28,7 +28,6 @@ query NumberPoolUtilization($pool_id: String!, $division: [NumberPoolDivisionEnt
     allocation_scope
     figures {{ {FIGURES} }}
     ranges {{ id display_label start end weight figures {{ {FIGURES} }} }}
-    out_of_space_count
   }}
 }}
 """
@@ -52,7 +51,6 @@ query NumberPoolAllocations(
   $pool_id: String!
   $division: [NumberPoolDivisionEntryInput!]
   $range_id: String
-  $in_space: Boolean
   $branch: String
   $provenance: NumberPoolProvenance
   $offset: Int
@@ -62,7 +60,6 @@ query NumberPoolAllocations(
     pool_id: $pool_id
     division: $division
     range_id: $range_id
-    in_space: $in_space
     branch: $branch
     provenance: $provenance
     offset: $offset
@@ -74,10 +71,8 @@ query NumberPoolAllocations(
       branch
       identifier
       provenance
-      in_space
       holder { id hfid kind display_label }
       range { id display_label }
-      division { path value display_label peer_kind }
     }
   }
 }
@@ -137,9 +132,6 @@ class TestNumberPoolSurface:
     async def test_utilization_of_one_division(self, gql_params: GraphqlParams) -> None:
         division = [{"path": "site", "value": SITE_B}]
         data = await self._data(gql_params, UTILIZATION_QUERY, pool_id=SCOPED_POOL_ID, division=division)
-        out_of_space = await self._data(
-            gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, division=division, in_space=False
-        )
 
         utilization = data["InfrahubNumberPoolUtilization"]
         assert utilization["id"] == SCOPED_POOL_ID
@@ -157,7 +149,6 @@ class TestNumberPoolSurface:
         assert [
             (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in utilization["ranges"]
         ] == [("1 - 50", 50, 0), ("51 - 100", 50, 30)]
-        assert utilization["out_of_space_count"] == out_of_space["InfrahubNumberPoolAllocations"]["count"] == 1
 
     async def test_filtered_allocations_count_matches_the_division_figures(self, gql_params: GraphqlParams) -> None:
         divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
@@ -170,7 +161,6 @@ class TestNumberPoolSurface:
             ALLOCATIONS_QUERY,
             pool_id=SCOPED_POOL_ID,
             division=[{"path": "site", "value": SITE_B}],
-            in_space=True,
         )
 
         assert data["InfrahubNumberPoolAllocations"]["count"] == site_b["figures"]["used"] == 30
@@ -187,35 +177,35 @@ class TestNumberPoolSurface:
         assert first["holder"]["kind"] == "InfraDevice"
         assert first["range"]["display_label"] == "1 - 50"
         assert (second["value"], second["branch"], second["holder"]["display_label"]) == (5, "branch1", "D1")
-        assert second["division"][0]["value"] == SITE_C
 
     async def test_allocations_filter_on_provenance(self, gql_params: GraphqlParams) -> None:
         data = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, provenance="PROVIDED")
 
         allocations = data["InfrahubNumberPoolAllocations"]["allocations"]
-        assert [(row["value"], row["provenance"], row["in_space"]) for row in allocations] == [
-            (51, "PROVIDED", True),
-            (500, "PROVIDED", False),
+        assert [(row["value"], row["provenance"], row["range"]["display_label"]) for row in allocations] == [
+            (51, "PROVIDED", "51 - 100"),
         ]
-        assert allocations[1]["range"] is None
 
     async def test_unscoped_dataset(self, gql_params: GraphqlParams) -> None:
         utilization = await self._data(gql_params, UTILIZATION_QUERY, pool_id=UNSCOPED_POOL_ID)
         divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=UNSCOPED_POOL_ID)
-        allocations = await self._data(gql_params, ALLOCATIONS_QUERY, pool_id=UNSCOPED_POOL_ID, in_space=False)
+        allocations = await self._data(
+            gql_params, ALLOCATIONS_QUERY, pool_id=UNSCOPED_POOL_ID, range_id=UNSCOPED_POOL.ranges[0].id
+        )
 
         pool = utilization["InfrahubNumberPoolUtilization"]
         assert pool["allocation_scope"] == []
-        assert (pool["figures"]["size"], pool["figures"]["used"], pool["out_of_space_count"]) == (99, 3, 2)
+        assert (pool["figures"]["size"], pool["figures"]["used"]) == (99, 3)
         assert divisions["InfrahubNumberPoolDivisions"] == {
             "count": 1,
             "allocation_scope": [],
             "divisions": [{"display_label": "", "entries": [], "figures": pool["figures"]}],
         }
+        assert allocations["InfrahubNumberPoolAllocations"]["count"] == 2
         rows = allocations["InfrahubNumberPoolAllocations"]["allocations"]
-        assert [(row["value"], row["range"] and row["range"]["display_label"], row["division"]) for row in rows] == [
-            (40, "1 - 50", []),
-            (500, None, []),
+        assert [(row["value"], row["branch"], row["provenance"], row["range"]["display_label"]) for row in rows] == [
+            (1, "main", "ALLOCATED", "1 - 50"),
+            (7, "branch1", "ALLOCATED", "1 - 50"),
         ]
 
     @pytest.mark.parametrize(

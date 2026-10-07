@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from infrahub.core.query.resource_manager import PoolRecordProvenance
@@ -70,25 +72,23 @@ def test_scoped_divisions_list_only_the_divisions_holding_a_value() -> None:
 
 
 @pytest.mark.parametrize(
-    ("site", "pool_counts", "range_counts", "out_of_space_count"),
+    ("site", "pool_counts", "range_counts"),
     [
-        pytest.param(SITE_A, (100, 40, 40, 0), [(50, 40, 40, 0), (50, 0, 0, 0)], 0, id="site-a"),
-        pytest.param(SITE_B, (100, 30, 27, 3), [(50, 0, 0, 0), (50, 30, 27, 3)], 1, id="site-b"),
-        pytest.param(SITE_C, (100, 1, 0, 1), [(50, 1, 0, 1), (50, 0, 0, 0)], 0, id="site-c"),
-        pytest.param("nope", (100, 0, 0, 0), [(50, 0, 0, 0), (50, 0, 0, 0)], 0, id="unknown-site"),
+        pytest.param(SITE_A, (100, 40, 40, 0), [(50, 40, 40, 0), (50, 0, 0, 0)], id="site-a"),
+        pytest.param(SITE_B, (100, 30, 27, 3), [(50, 0, 0, 0), (50, 30, 27, 3)], id="site-b"),
+        pytest.param(SITE_C, (100, 1, 0, 1), [(50, 1, 0, 1), (50, 0, 0, 0)], id="site-c"),
+        pytest.param("nope", (100, 0, 0, 0), [(50, 0, 0, 0), (50, 0, 0, 0)], id="unknown-site"),
     ],
 )
 def test_utilization_of_one_division_over_the_pool_and_each_range(
     site: str,
     pool_counts: tuple[int, int, int, int],
     range_counts: list[tuple[int, int, int, int]],
-    out_of_space_count: int,
 ) -> None:
     utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site))
 
     assert _counts(utilization.figures) == pool_counts
     assert [_counts(item.figures) for item in utilization.ranges] == range_counts
-    assert utilization.out_of_space_count == out_of_space_count
 
 
 def test_utilization_of_a_division_matches_its_divisions_row() -> None:
@@ -100,19 +100,9 @@ def test_utilization_of_a_division_matches_its_divisions_row() -> None:
         assert utilization.figures == division.figures
 
 
-def test_out_of_space_count_of_a_division_matches_its_out_of_space_rows() -> None:
-    for site in (SITE_A, SITE_B, SITE_C):
-        utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site))
-        allocations = get_allocations(
-            pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site), in_space=False
-        )
-
-        assert utilization.out_of_space_count == allocations.count
-
-
 def test_division_used_figures_count_a_shared_value_in_each_division() -> None:
     divisions = {item.display_label: item.figures.used for item in get_divisions(pool_id=SCOPED_POOL_ID).divisions}
-    distinct_values = {row.value for row in SCOPED_POOL.rows if SCOPED_POOL.in_space(row.value)}
+    distinct_values = {row.value for row in SCOPED_POOL.rows}
 
     assert sum(divisions.values()) == len(distinct_values) + 1
 
@@ -125,7 +115,6 @@ def test_division_filter_keeps_every_row_of_a_holder_in_the_division_on_any_bran
         (1, "main", "D0"),
         (5, "branch1", "D1"),
     ]
-    assert allocations.allocations[1].division[0].value == SITE_C
 
 
 def test_division_filter_on_site_c_returns_both_rows_of_the_moved_holder() -> None:
@@ -144,11 +133,13 @@ def test_filtered_count_matches_the_division_rows() -> None:
     for division in get_divisions(pool_id=SCOPED_POOL_ID).divisions:
         site = division.entries[0].value
         rows = get_allocations(
-            pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site), in_space=True, limit=1000
+            pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site), limit=1000
         ).allocations
-        own_rows = [row for row in rows if row.division == division.entries]
+        listed = {(row.value, row.branch, row.holder.id) for row in rows}
+        own = {(row.value, row.branch, row.holder.id) for row in SCOPED_POOL.rows if row.division == division.entries}
 
-        assert len({row.value for row in own_rows}) == division.figures.used
+        assert own <= listed
+        assert len({value for value, _, _ in own}) == division.figures.used
 
 
 def test_range_filter_returns_the_values_the_range_holds() -> None:
@@ -158,14 +149,13 @@ def test_range_filter_returns_the_values_the_range_holds() -> None:
     assert all(51 <= row.value <= 100 for row in allocations.allocations)
 
 
-def test_in_space_filter_returns_the_out_of_space_rows() -> None:
-    scoped = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", in_space=False)
-    unscoped = get_allocations(pool_id=UNSCOPED_POOL_ID, request_branch="main", in_space=False)
+def test_unscoped_range_filter_returns_the_rows_of_that_range() -> None:
+    allocations = get_allocations(pool_id=UNSCOPED_POOL_ID, request_branch="main", range_id=UNSCOPED_POOL.ranges[0].id)
 
-    assert [(row.value, row.range) for row in scoped.allocations] == [(500, None)]
-    assert [(row.value, row.range.display_label if row.range else None) for row in unscoped.allocations] == [
-        (40, "1 - 50"),
-        (500, None),
+    assert allocations.count == 2
+    assert [(row.value, row.branch, row.range.display_label) for row in allocations.allocations] == [
+        (1, "main", "1 - 50"),
+        (7, "branch1", "1 - 50"),
     ]
 
 
@@ -186,7 +176,7 @@ def test_provenance_filter_returns_the_provided_rows() -> None:
         pool_id=SCOPED_POOL_ID, request_branch="main", provenance=PoolRecordProvenance.PROVIDED
     )
 
-    assert [row.value for row in allocations.allocations] == [51, 500]
+    assert [row.value for row in allocations.allocations] == [51]
 
 
 def test_filters_combine_with_and() -> None:
@@ -195,7 +185,6 @@ def test_filters_combine_with_and() -> None:
         request_branch="main",
         division=_site_filter(SITE_B),
         provenance=PoolRecordProvenance.PROVIDED,
-        in_space=True,
     )
 
     assert [row.value for row in allocations.allocations] == [51]
@@ -206,7 +195,7 @@ def test_pagination_counts_before_offset_and_limit() -> None:
     second_page = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", offset=10, limit=5)
     every_row = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", limit=1000).allocations
 
-    assert first_page.count == second_page.count == len(SCOPED_POOL.rows) == 72
+    assert first_page.count == second_page.count == len(SCOPED_POOL.rows) == 71
     assert first_page.allocations == every_row[:10]
     assert second_page.allocations == every_row[10:15]
 
@@ -225,13 +214,9 @@ def test_unscoped_pool_figures_and_single_division() -> None:
     assert utilization.allocation_scope == ()
     assert _counts(utilization.figures) == (99, 3, 2, 1)
     assert [_counts(item.figures) for item in utilization.ranges] == [(50, 2, 1, 1), (50, 1, 1, 0)]
-    assert utilization.out_of_space_count == 2
     assert [(item.display_label, item.entries, item.figures) for item in divisions.divisions] == [
         ("", (), utilization.figures)
     ]
-    assert all(
-        row.division == () for row in get_allocations(pool_id=UNSCOPED_POOL_ID, request_branch="main").allocations
-    )
 
 
 @pytest.mark.parametrize(
@@ -322,7 +307,7 @@ def test_negative_page_arguments_are_refused(offset: int | None, limit: int | No
 def test_zero_offset_and_limit_return_an_empty_page_with_the_full_count() -> None:
     allocations = get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", offset=0, limit=0)
 
-    assert (allocations.count, allocations.allocations) == (72, ())
+    assert (allocations.count, allocations.allocations) == (71, ())
 
 
 def test_a_pool_without_any_division_is_refused() -> None:
@@ -334,4 +319,23 @@ def test_a_pool_without_any_division_is_refused() -> None:
             excluded_values=frozenset(),
             divisions=(),
             rows=(),
+        )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param(40, id="excluded-value"),
+        pytest.param(500, id="value-held-by-no-range"),
+    ],
+)
+def test_a_pool_holding_a_value_it_cannot_allocate_is_refused(value: int) -> None:
+    with pytest.raises(ValueError, match=f"holds {value}, a value it cannot allocate"):
+        MockPool(
+            display_label="VLANs",
+            allocation_scope=(),
+            ranges=UNSCOPED_POOL.ranges,
+            excluded_values=frozenset({40}),
+            divisions=((),),
+            rows=(replace(UNSCOPED_POOL.rows[0], value=value),),
         )
