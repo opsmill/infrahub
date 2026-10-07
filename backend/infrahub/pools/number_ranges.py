@@ -122,11 +122,18 @@ class EffectiveSpace:
         return segment.range_id if segment else None
 
     def segments_of(self, range_id: str) -> tuple[EffectiveSegment, ...]:
-        return tuple(segment for segment in self.segments if segment.range_id == range_id)
+        return self._by_range.get(range_id, ())
 
     def size_of(self, range_id: str) -> int:
         """Return how many numbers the range contributes to the space, 0 for a range it does not hold."""
         return sum(segment.size for segment in self.segments_of(range_id))
+
+    @cached_property
+    def _by_range(self) -> dict[str, tuple[EffectiveSegment, ...]]:
+        by_range: dict[str, list[EffectiveSegment]] = {}
+        for segment in self.segments:
+            by_range.setdefault(segment.range_id, []).append(segment)
+        return {range_id: tuple(segments) for range_id, segments in by_range.items()}
 
     @cached_property
     def _by_start(self) -> tuple[EffectiveSegment, ...]:
