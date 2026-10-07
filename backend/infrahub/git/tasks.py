@@ -110,6 +110,7 @@ from .sync import (
 )
 from .sync_status import BranchImportVerdict, RepositoryBranchSyncStatusReader, classify_branch_import
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+from .writeback.store import build_intent_store
 
 
 def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
@@ -200,22 +201,25 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     client = get_client()
+    database = await get_database()
     importer = RepositoryFileImporter()
-    syncer = RepositorySyncer(
-        lock_registry=lock.registry,
-        importer=importer,
-        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
-        retarget_markers=RetargetMarkers(cache=await get_cache()),
-    )
-    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
-    repo = added.repository
+    async with database.start_session() as db:
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=importer,
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            retarget_markers=RetargetMarkers(cache=await get_cache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
+        )
+        added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
+        repo = added.repository
 
-    if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
-        if added.import_error:
-            raise added.import_error
-        return
+        if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
+            if added.import_error:
+                raise added.import_error
+            return
 
-    outcome = await syncer.sync(repo)
+        outcome = await syncer.sync(repo)
     log_skipped_branches(repo=repo, report=outcome.report)
     raise_if_branches_failed(repo=repo, outcome=outcome)
 
@@ -353,34 +357,37 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         CommitNotFoundError: When a commit the sync needs cannot be found.
 
     """
-    syncer = RepositorySyncer(
-        lock_registry=lock.registry,
-        importer=RepositoryFileImporter(),
-        recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
-        retarget_markers=RetargetMarkers(cache=await get_cache()),
-    )
-    online = operational_status == RepositoryOperationalStatus.ONLINE.value
-    try:
-        # Constructed inside the handler: it reads the repository node, so a failing read has to be
-        # tagged with the repository like any other sync failure.
-        repo = await InfrahubRepository.init(
-            id=repository_id,
-            name=repository_name,
-            location=repository_location,
-            client=client,
-            infrahub_branch_name=infrahub_branch,
+    database = await get_database()
+    async with database.start_session() as db:
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            retarget_markers=RetargetMarkers(cache=await get_cache()),
+            state=await build_intent_store(db=db, lock_registry=lock.registry),
         )
-    except (RepositoryError, CommitNotFoundError):
-        if online:
-            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
-        raise
+        online = operational_status == RepositoryOperationalStatus.ONLINE.value
+        try:
+            # Constructed inside the handler: it reads the repository node, so a failing read has to be
+            # tagged with the repository like any other sync failure.
+            repo = await InfrahubRepository.init(
+                id=repository_id,
+                name=repository_name,
+                location=repository_location,
+                client=client,
+                infrahub_branch_name=infrahub_branch,
+            )
+        except (RepositoryError, CommitNotFoundError):
+            if online:
+                await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+            raise
 
-    try:
-        outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
-    except (RepositoryError, CommitNotFoundError):
-        if online:
-            await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
-        raise
+        try:
+            outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
+        except (RepositoryError, CommitNotFoundError):
+            if online:
+                await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
+            raise
     await report_sync_run(
         repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
     )

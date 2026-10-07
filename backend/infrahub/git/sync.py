@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from .divergence.suppression import RetargetMarkers
     from .integrator import ObjectImportPlan
     from .models import GitRepositoryAdd
+    from .writeback.ports import DeliveryStatePort
 
 
 @dataclass(frozen=True)
@@ -240,7 +241,8 @@ class RepositorySyncer:
     The lock serializes mutations of the repository's on-disk git state. Each synced branch is then
     built outside the lock, reading from the per-commit worktree pinned during the locked phase, and
     applied to the graph under the lock so that concurrent imports of the same repository are
-    serialized.
+    serialized. A branch that an import must not move while merged changes wait for their push to the
+    remote is left out.
     """
 
     def __init__(
@@ -249,11 +251,13 @@ class RepositorySyncer:
         importer: RepositoryImporter,
         recorder: HistoryRewriteRecorder,
         retarget_markers: RetargetMarkers,
+        state: DeliveryStatePort,
     ) -> None:
         self._lock_registry = lock_registry
         self._importer = importer
         self._recorder = recorder
         self._retarget_markers = retarget_markers
+        self._state = state
 
     async def sync(
         self,
@@ -278,6 +282,7 @@ class RepositorySyncer:
                 graph_commits=graph_commits,
                 recorder=self._recorder,
                 retarget_markers=self._retarget_markers,
+                state=self._state,
             )
 
         failed_imports = list(collected.failed_imports)
