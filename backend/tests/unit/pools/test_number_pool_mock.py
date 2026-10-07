@@ -4,11 +4,13 @@ import pytest
 
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.exceptions import ValidationError
+from infrahub.pools import number_pool_mock
 from infrahub.pools.number_pool_mock import (
     SCOPED_POOL,
     UNSCOPED_POOL,
     UNSCOPED_POOL_ID,
     DivisionFilterEntry,
+    MockDivisionEntry,
     MockFigures,
     MockPool,
     get_allocations,
@@ -17,9 +19,9 @@ from infrahub.pools.number_pool_mock import (
 )
 
 SCOPED_POOL_ID = "any-pool-id"
-SITE_A, SITE_B, SITE_C = (entries[0].value for entries in SCOPED_POOL.divisions)
-FIRST_RANGE, SECOND_RANGE = (item.id for item in SCOPED_POOL.ranges)
-UNSCOPED_FIRST_RANGE, UNSCOPED_SECOND_RANGE = (item.id for item in UNSCOPED_POOL.ranges)
+SITE_A, SITE_B, SITE_C, SITE_D = (entries[0].value for entries in SCOPED_POOL.divisions)
+SECOND_RANGE = SCOPED_POOL.ranges[1].id
+UNSCOPED_SECOND_RANGE = UNSCOPED_POOL.ranges[1].id
 
 
 def _counts(figures: MockFigures) -> tuple[int, int, int, int]:
@@ -31,7 +33,7 @@ def _site_filter(*sites: str) -> list[DivisionFilterEntry]:
 
 
 def test_scoped_utilization_reports_the_fullest_division() -> None:
-    utilization = get_utilization(pool_id=SCOPED_POOL_ID)
+    utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main")
 
     assert utilization.id == SCOPED_POOL_ID
     assert utilization.allocation_scope == ("site",)
@@ -44,8 +46,10 @@ def test_scoped_utilization_reports_the_fullest_division() -> None:
     assert utilization.out_of_space_count == 1
 
 
-def test_scoped_divisions_over_the_whole_pool() -> None:
+def test_scoped_divisions_list_only_the_divisions_holding_a_value() -> None:
     divisions = get_divisions(pool_id=SCOPED_POOL_ID)
+
+    assert SITE_D not in {item.entries[0].value for item in divisions.divisions}
 
     assert divisions.count == 3
     assert divisions.allocation_scope == ("site",)
@@ -58,14 +62,45 @@ def test_scoped_divisions_over_the_whole_pool() -> None:
     assert (entry.path, entry.value, entry.peer_kind) == ("site", SITE_A, "LocationSite")
 
 
-def test_scoped_divisions_restricted_to_one_range_sort_by_utilization() -> None:
-    divisions = get_divisions(pool_id=SCOPED_POOL_ID, range_id=FIRST_RANGE)
+@pytest.mark.parametrize(
+    ("site", "pool_counts", "range_counts", "out_of_space_count"),
+    [
+        pytest.param(SITE_A, (100, 40, 40, 0), [(50, 40, 40, 0), (50, 0, 0, 0)], 0, id="site-a"),
+        pytest.param(SITE_B, (100, 30, 27, 3), [(50, 0, 0, 0), (50, 30, 27, 3)], 1, id="site-b"),
+        pytest.param(SITE_C, (100, 1, 0, 1), [(50, 1, 0, 1), (50, 0, 0, 0)], 0, id="site-c"),
+        pytest.param("nope", (100, 0, 0, 0), [(50, 0, 0, 0), (50, 0, 0, 0)], 0, id="unknown-site"),
+    ],
+)
+def test_utilization_of_one_division_over_the_pool_and_each_range(
+    site: str,
+    pool_counts: tuple[int, int, int, int],
+    range_counts: list[tuple[int, int, int, int]],
+    out_of_space_count: int,
+) -> None:
+    utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site))
 
-    assert [(item.display_label, _counts(item.figures)) for item in divisions.divisions] == [
-        ("Site A", (50, 40, 40, 0)),
-        ("Site C", (50, 1, 0, 1)),
-        ("Site B", (50, 0, 0, 0)),
-    ]
+    assert _counts(utilization.figures) == pool_counts
+    assert [_counts(item.figures) for item in utilization.ranges] == range_counts
+    assert utilization.out_of_space_count == out_of_space_count
+
+
+def test_utilization_of_a_division_matches_its_divisions_row() -> None:
+    for division in get_divisions(pool_id=SCOPED_POOL_ID).divisions:
+        utilization = get_utilization(
+            pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(division.entries[0].value)
+        )
+
+        assert utilization.figures == division.figures
+
+
+def test_out_of_space_count_of_a_division_matches_its_out_of_space_rows() -> None:
+    for site in (SITE_A, SITE_B, SITE_C):
+        utilization = get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site))
+        allocations = get_allocations(
+            pool_id=SCOPED_POOL_ID, request_branch="main", division=_site_filter(site), in_space=False
+        )
+
+        assert utilization.out_of_space_count == allocations.count
 
 
 def test_division_used_figures_count_a_shared_value_in_each_division() -> None:
@@ -177,9 +212,8 @@ def test_rows_are_ordered_by_value_then_branch_then_holder() -> None:
 
 
 def test_unscoped_pool_figures_and_single_division() -> None:
-    utilization = get_utilization(pool_id=UNSCOPED_POOL_ID)
+    utilization = get_utilization(pool_id=UNSCOPED_POOL_ID, request_branch="main")
     divisions = get_divisions(pool_id=UNSCOPED_POOL_ID)
-    range_divisions = get_divisions(pool_id=UNSCOPED_POOL_ID, range_id=UNSCOPED_FIRST_RANGE)
 
     assert utilization.allocation_scope == ()
     assert _counts(utilization.figures) == (99, 3, 2, 1)
@@ -188,7 +222,6 @@ def test_unscoped_pool_figures_and_single_division() -> None:
     assert [(item.display_label, item.entries, item.figures) for item in divisions.divisions] == [
         ("", (), utilization.figures)
     ]
-    assert range_divisions.divisions[0].figures == utilization.ranges[0].figures
     assert all(
         row.division == () for row in get_allocations(pool_id=UNSCOPED_POOL_ID, request_branch="main").allocations
     )
@@ -219,21 +252,50 @@ def test_unscoped_pool_figures_and_single_division() -> None:
     ],
 )
 def test_division_filter_refusals(pool_id: str, division: list[DivisionFilterEntry], message: str) -> None:
-    with pytest.raises(ValidationError) as exc:
-        get_allocations(pool_id=pool_id, request_branch="main", division=division)
-
-    assert exc.value.message == message
-
-
-def test_unknown_range_is_refused_by_divisions_and_allocations() -> None:
-    message = f"The selected pool_id={SCOPED_POOL_ID} doesn't contain the requested range_id={UNSCOPED_SECOND_RANGE}"
-
-    with pytest.raises(ValidationError) as divisions_exc:
-        get_divisions(pool_id=SCOPED_POOL_ID, range_id=UNSCOPED_SECOND_RANGE)
     with pytest.raises(ValidationError) as allocations_exc:
+        get_allocations(pool_id=pool_id, request_branch="main", division=division)
+    with pytest.raises(ValidationError) as utilization_exc:
+        get_utilization(pool_id=pool_id, request_branch="main", division=division)
+
+    assert allocations_exc.value.message == utilization_exc.value.message == message
+
+
+def _two_entry_pool() -> MockPool:
+    site = MockDivisionEntry(path="site", value="site-a", display_label="Site A", peer_kind="LocationSite")
+    tenant = MockDivisionEntry(
+        path="tenant", value="tenant-x", display_label="Tenant X", peer_kind="OrganizationTenant"
+    )
+    return MockPool(
+        display_label="Device index per tenant",
+        allocation_scope=("site", "tenant"),
+        ranges=UNSCOPED_POOL.ranges,
+        excluded_values=frozenset(),
+        divisions=((site, tenant),),
+        rows=(),
+    )
+
+
+def test_utilization_refuses_a_division_that_omits_an_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(number_pool_mock, "get_mock_pool", lambda pool_id: _two_entry_pool())  # noqa: ARG005
+    partial = [DivisionFilterEntry(path="site", value="site-a")]
+
+    with pytest.raises(ValidationError) as exc:
+        get_utilization(pool_id=SCOPED_POOL_ID, request_branch="main", division=partial)
+
+    assert exc.value.message == (
+        "The division filter must give a value for every allocation scope entry in force on branch main; "
+        "missing: tenant"
+    )
+    assert get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", division=partial).count == 0
+
+
+def test_unknown_range_is_refused_by_allocations() -> None:
+    with pytest.raises(ValidationError) as exc:
         get_allocations(pool_id=SCOPED_POOL_ID, request_branch="main", range_id=UNSCOPED_SECOND_RANGE)
 
-    assert divisions_exc.value.message == allocations_exc.value.message == message
+    assert exc.value.message == (
+        f"The selected pool_id={SCOPED_POOL_ID} doesn't contain the requested range_id={UNSCOPED_SECOND_RANGE}"
+    )
 
 
 @pytest.mark.parametrize(

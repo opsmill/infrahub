@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from graphene import BigInt, Boolean, Enum, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 
@@ -19,6 +19,12 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.graphql.initialization import GraphqlContext
+
+
+def _division_filter(division: list[dict[str, str]] | None) -> list[DivisionFilterEntry] | None:
+    if division is None:
+        return None
+    return [DivisionFilterEntry(path=entry["path"], value=entry["value"]) for entry in division]
 
 
 NumberPoolProvenance = Enum.from_enum(
@@ -66,8 +72,8 @@ class NumberPoolRangeUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the range's values. On a scoped pool, the figures of the division holding the most\n"
-            "of this range's values."
+            "Figures over the range's values. On a scoped pool, the figures of the division given as\n"
+            "division, or of the division holding the most of this range's values when none is given."
         ),
     )
 
@@ -92,7 +98,10 @@ class NumberPoolUtilization(ObjectType):
     figures = Field(
         NumberPoolUtilizationFigures,
         required=True,
-        description="Figures over the pool's whole space. On a scoped pool, the figures of the fullest division.",
+        description=(
+            "Figures over the pool's whole space. On a scoped pool, the figures of the division given as\n"
+            "division, or of the fullest division when none is given."
+        ),
     )
     ranges = Field(
         List(NonNull(NumberPoolRangeUtilization)),
@@ -102,16 +111,24 @@ class NumberPoolUtilization(ObjectType):
     out_of_space_count = Field(
         BigInt,
         required=True,
-        description="Number of allocation rows whose value lies outside the pool's space (in_space false).",
+        description=(
+            "Number of allocation rows whose value lies outside the pool's space (in_space false): one per\n"
+            "holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the\n"
+            "division given as division."
+        ),
     )
 
     @staticmethod
     async def resolve(
         root: dict,  # noqa: ARG004
-        info: GraphQLResolveInfo,  # noqa: ARG004
+        info: GraphQLResolveInfo,
         pool_id: str,
+        division: list[dict[str, str]] | None = None,
     ) -> MockUtilization:
-        return get_utilization(pool_id=pool_id)
+        graphql_context: GraphqlContext = info.context
+        return get_utilization(
+            pool_id=pool_id, request_branch=graphql_context.branch.name, division=_division_filter(division)
+        )
 
 
 class NumberPoolDivisionEntry(ObjectType):
@@ -167,7 +184,7 @@ class NumberPoolDivision(ObjectType):
     figures = Field(
         NumberPoolUtilizationFigures,
         required=True,
-        description="Figures over the pool's space, or over the range given as range_id, for this division.",
+        description="Figures over the pool's whole space for this division.",
     )
 
 
@@ -185,8 +202,9 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division occupied by a node of the pool's kind on any live branch, ordered by utilization\n"
-            "descending then by display_label. An unscoped pool lists one division with no entry."
+            "Every division whose holders hold at least one value the pool tracks on any live branch, ordered\n"
+            "by utilization descending then by display_label. An unscoped pool lists one division with no\n"
+            "entry."
         ),
     )
 
@@ -195,9 +213,8 @@ class NumberPoolDivisions(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,  # noqa: ARG004
         pool_id: str,
-        range_id: str | None = None,
     ) -> MockDivisions:
-        return get_divisions(pool_id=pool_id, range_id=range_id)
+        return get_divisions(pool_id=pool_id)
 
 
 class NumberPoolHolder(ObjectType):
@@ -268,7 +285,7 @@ class NumberPoolAllocations(ObjectType):
         root: dict,  # noqa: ARG004
         info: GraphQLResolveInfo,
         pool_id: str,
-        division: list[dict[str, Any]] | None = None,
+        division: list[dict[str, str]] | None = None,
         range_id: str | None = None,
         in_space: bool | None = None,
         branch: str | None = None,
@@ -280,9 +297,7 @@ class NumberPoolAllocations(ObjectType):
         return get_allocations(
             pool_id=pool_id,
             request_branch=graphql_context.branch.name,
-            division=[DivisionFilterEntry(path=entry["path"], value=entry["value"]) for entry in division]
-            if division is not None
-            else None,
+            division=_division_filter(division),
             range_id=range_id,
             in_space=in_space,
             branch=branch,
@@ -295,20 +310,23 @@ class NumberPoolAllocations(ObjectType):
 InfrahubNumberPoolUtilization = Field(
     NumberPoolUtilization,
     pool_id=String(required=True),
+    division=List(NonNull(NumberPoolDivisionEntryInput), required=False),
     resolver=NumberPoolUtilization.resolve,
     required=True,
-    description="Utilization of one number pool and of its ranges.",
+    description=(
+        "Utilization of one number pool and of its ranges, for the fullest division or for the division\n"
+        "given as division."
+    ),
 )
 
 InfrahubNumberPoolDivisions = Field(
     NumberPoolDivisions,
     pool_id=String(required=True),
-    range_id=String(required=False),
     resolver=NumberPoolDivisions.resolve,
     required=True,
     description=(
-        "The divisions of one number pool with their figures, over the whole pool or over one range.\n"
-        "Complete list, no pagination."
+        "The divisions of one number pool that hold at least one value, with their figures over the whole\n"
+        "pool. Complete list, no pagination."
     ),
 )
 

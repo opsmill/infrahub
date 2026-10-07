@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.initialization import create_branch
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
-from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL, UNSCOPED_POOL_ID
+from infrahub.pools.number_pool_mock import SCOPED_POOL, UNSCOPED_POOL_ID
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
@@ -15,14 +15,14 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 SCOPED_POOL_ID = "2a91c0de-0000-4000-8000-000000000001"
-SITE_A, SITE_B, SITE_C = (entries[0].value for entries in SCOPED_POOL.divisions)
+SITE_A, SITE_B, SITE_C, SITE_D = (entries[0].value for entries in SCOPED_POOL.divisions)
 FIRST_RANGE = SCOPED_POOL.ranges[0].id
 
 FIGURES = "size used used_default_branch used_branches utilization utilization_default_branch utilization_branches"
 
 UTILIZATION_QUERY = f"""
-query NumberPoolUtilization($pool_id: String!) {{
-  InfrahubNumberPoolUtilization(pool_id: $pool_id) {{
+query NumberPoolUtilization($pool_id: String!, $division: [NumberPoolDivisionEntryInput!]) {{
+  InfrahubNumberPoolUtilization(pool_id: $pool_id, division: $division) {{
     id
     display_label
     allocation_scope
@@ -34,8 +34,8 @@ query NumberPoolUtilization($pool_id: String!) {{
 """
 
 DIVISIONS_QUERY = f"""
-query NumberPoolDivisions($pool_id: String!, $range_id: String) {{
-  InfrahubNumberPoolDivisions(pool_id: $pool_id, range_id: $range_id) {{
+query NumberPoolDivisions($pool_id: String!) {{
+  InfrahubNumberPoolDivisions(pool_id: $pool_id) {{
     count
     allocation_scope
     divisions {{
@@ -142,18 +142,33 @@ class TestNumberPoolSurface:
         ] == [("1 - 50", 1, 50, 10, 40), ("51 - 100", 51, 100, 0, 30)]
         assert utilization["out_of_space_count"] == 1
 
-    async def test_scoped_divisions_restricted_to_one_range(self, gql_params: GraphqlParams) -> None:
-        data = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID, range_id=FIRST_RANGE)
+    async def test_scoped_divisions_list_only_the_divisions_holding_a_value(self, gql_params: GraphqlParams) -> None:
+        data = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
 
         divisions = data["InfrahubNumberPoolDivisions"]
         assert divisions["count"] == 3
         assert divisions["allocation_scope"] == ["site"]
         assert [
             (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in divisions["divisions"]
-        ] == [("Site A", 50, 40), ("Site C", 50, 1), ("Site B", 50, 0)]
+        ] == [("Site A", 100, 40), ("Site B", 100, 30), ("Site C", 100, 1)]
+        assert SITE_D not in {item["entries"][0]["value"] for item in divisions["divisions"]}
         assert divisions["divisions"][0]["entries"] == [
             {"path": "site", "value": SITE_A, "display_label": "Site A", "peer_kind": "LocationSite"}
         ]
+
+    async def test_utilization_of_one_division(self, gql_params: GraphqlParams) -> None:
+        division = [{"path": "site", "value": SITE_B}]
+        data = await self._data(gql_params, UTILIZATION_QUERY, pool_id=SCOPED_POOL_ID, division=division)
+        out_of_space = await self._data(
+            gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, division=division, in_space=False
+        )
+
+        utilization = data["InfrahubNumberPoolUtilization"]
+        assert (utilization["figures"]["size"], utilization["figures"]["used"]) == (100, 30)
+        assert [
+            (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in utilization["ranges"]
+        ] == [("1 - 50", 50, 0), ("51 - 100", 50, 30)]
+        assert utilization["out_of_space_count"] == out_of_space["InfrahubNumberPoolAllocations"]["count"] == 1
 
     async def test_filtered_allocations_count_matches_the_division_figures(self, gql_params: GraphqlParams) -> None:
         divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
@@ -218,11 +233,11 @@ class TestNumberPoolSurface:
         ("query", "variables", "message"),
         [
             pytest.param(
-                DIVISIONS_QUERY,
-                {"pool_id": SCOPED_POOL_ID, "range_id": UNSCOPED_POOL.ranges[0].id},
-                f"The selected pool_id={SCOPED_POOL_ID} doesn't contain the requested "
-                f"range_id={UNSCOPED_POOL.ranges[0].id}",
-                id="divisions-unknown-range",
+                UTILIZATION_QUERY,
+                {"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
+                "The pool mock-unscoped has no allocation scope in force on branch main; "
+                "the division filter cannot be applied",
+                id="utilization-division-on-unscoped-pool",
             ),
             pytest.param(
                 ALLOCATIONS_QUERY,

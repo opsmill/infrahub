@@ -188,7 +188,7 @@ def _two_ranges(prefix: str) -> tuple[MockRange, ...]:
 
 
 def _build_scoped_pool() -> MockPool:
-    site_a, site_b, site_c = _site("A", 1), _site("B", 2), _site("C", 3)
+    site_a, site_b, site_c, site_d = _site("A", 1), _site("B", 2), _site("C", 3), _site("D", 4)
     rows: list[_Row] = []
 
     site_a_values = [1, 5, *range(6, 44)]
@@ -229,7 +229,7 @@ def _build_scoped_pool() -> MockPool:
         allocation_scope=("site",),
         ranges=_two_ranges("aaaa"),
         excluded_values=frozenset(),
-        divisions=(site_a, site_b, site_c),
+        divisions=(site_a, site_b, site_c, site_d),
         rows=tuple(rows),
     )
 
@@ -300,21 +300,42 @@ def _division_label(entries: tuple[MockDivisionEntry, ...]) -> str:
     return " / ".join(entry.display_label for entry in entries)
 
 
-def _counted_rows(pool: MockPool, space: MockRange | None) -> list[_Row]:
-    return [row for row in pool.rows if pool.in_space(row.value) and (space is None or space.holds(row.value))]
+def _counted_rows(pool: MockPool, rows: Iterable[_Row], space: MockRange | None) -> list[_Row]:
+    return [row for row in rows if pool.in_space(row.value) and (space is None or space.holds(row.value))]
+
+
+def _space_figures(pool: MockPool, rows: Iterable[_Row], space: MockRange | None) -> MockFigures:
+    return _figures(rows=_counted_rows(pool=pool, rows=rows, space=space), size=space.size if space else pool.size)
+
+
+def _as_filter(entries: tuple[MockDivisionEntry, ...]) -> list[DivisionFilterEntry]:
+    return [DivisionFilterEntry(path=entry.path, value=entry.value) for entry in entries]
+
+
+def _row_in_division(entries: tuple[MockDivisionEntry, ...], division: Sequence[DivisionFilterEntry]) -> bool:
+    return all(
+        any(entry.path == wanted.path and entry.value == wanted.value for entry in entries) for wanted in division
+    )
+
+
+def _own_rows(pool: MockPool, division: Sequence[DivisionFilterEntry]) -> list[_Row]:
+    """The rows held while the holder sits in the division on the row's branch, which the figures count."""
+    return [row for row in pool.rows if _row_in_division(entries=row.division, division=division)]
 
 
 def _division_list(pool: MockPool, space: MockRange | None) -> tuple[MockDivision, ...]:
-    size = space.size if space else pool.size
-    rows = _counted_rows(pool=pool, space=space)
-    divisions = [
-        MockDivision(
-            display_label=_division_label(entries),
-            entries=entries,
-            figures=_figures(rows=[row for row in rows if row.division == entries], size=size),
+    divisions = []
+    for entries in pool.divisions:
+        rows = _own_rows(pool=pool, division=_as_filter(entries))
+        if pool.allocation_scope and not rows:
+            continue
+        divisions.append(
+            MockDivision(
+                display_label=_division_label(entries),
+                entries=entries,
+                figures=_space_figures(pool=pool, rows=rows, space=space),
+            )
         )
-        for entries in pool.divisions
-    ]
     return tuple(sorted(divisions, key=lambda division: (-division.figures.utilization, division.display_label)))
 
 
@@ -329,8 +350,29 @@ def _get_range(pool: MockPool, pool_id: str, range_id: str | None) -> MockRange 
     )
 
 
-def get_utilization(pool_id: str) -> MockUtilization:
+def _fullest_figures(pool: MockPool, space: MockRange | None) -> MockFigures:
+    divisions = _division_list(pool=pool, space=space)
+    if divisions:
+        return divisions[0].figures
+    return _space_figures(pool=pool, rows=(), space=space)
+
+
+def get_utilization(
+    pool_id: str, request_branch: str, division: Sequence[DivisionFilterEntry] | None = None
+) -> MockUtilization:
     pool = get_mock_pool(pool_id)
+    listed_rows: Sequence[_Row] = pool.rows
+    if division:
+        _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
+        _validate_complete_division(pool=pool, division=division, request_branch=request_branch)
+        listed_rows = _division_rows(pool=pool, holder_divisions=_holder_divisions(pool), division=division)
+        counted_rows = _own_rows(pool=pool, division=division)
+
+    def figures_of(space: MockRange | None) -> MockFigures:
+        if division:
+            return _space_figures(pool=pool, rows=counted_rows, space=space)
+        return _fullest_figures(pool=pool, space=space)
+
     ranges = tuple(
         MockRangeUtilization(
             id=item.id,
@@ -338,7 +380,7 @@ def get_utilization(pool_id: str) -> MockUtilization:
             start=item.start,
             end=item.end,
             weight=item.weight,
-            figures=_division_list(pool=pool, space=item)[0].figures,
+            figures=figures_of(item),
         )
         for item in sorted(pool.ranges, key=lambda item: item.start)
     )
@@ -346,16 +388,15 @@ def get_utilization(pool_id: str) -> MockUtilization:
         id=pool_id,
         display_label=pool.display_label,
         allocation_scope=pool.allocation_scope,
-        figures=_division_list(pool=pool, space=None)[0].figures,
+        figures=figures_of(None),
         ranges=ranges,
-        out_of_space_count=sum(1 for row in pool.rows if not pool.in_space(row.value)),
+        out_of_space_count=sum(1 for row in listed_rows if not pool.in_space(row.value)),
     )
 
 
-def get_divisions(pool_id: str, range_id: str | None = None) -> MockDivisions:
+def get_divisions(pool_id: str) -> MockDivisions:
     pool = get_mock_pool(pool_id)
-    space = _get_range(pool=pool, pool_id=pool_id, range_id=range_id)
-    divisions = _division_list(pool=pool, space=space)
+    divisions = _division_list(pool=pool, space=None)
     return MockDivisions(count=len(divisions), allocation_scope=pool.allocation_scope, divisions=divisions)
 
 
@@ -383,6 +424,18 @@ def _validate_division_filter(
         seen.add(entry.path)
 
 
+def _validate_complete_division(pool: MockPool, division: Sequence[DivisionFilterEntry], request_branch: str) -> None:
+    given = {entry.path for entry in division}
+    missing = [path for path in pool.allocation_scope if path not in given]
+    if missing:
+        raise ValidationError(
+            input_value=(
+                "The division filter must give a value for every allocation scope entry in force "
+                f"on branch {request_branch}; missing: {', '.join(missing)}"
+            )
+        )
+
+
 def _validate_page(offset: int | None, limit: int | None) -> None:
     for name, value in (("offset", offset), ("limit", limit)):
         if value is not None and value < 0:
@@ -400,10 +453,15 @@ def _holder_divisions(pool: MockPool) -> dict[str, set[tuple[MockDivisionEntry, 
 def _matches_division(
     holder_divisions: set[tuple[MockDivisionEntry, ...]], division: Sequence[DivisionFilterEntry]
 ) -> bool:
-    return any(
-        all(any(entry.path == wanted.path and entry.value == wanted.value for entry in entries) for wanted in division)
-        for entries in holder_divisions
-    )
+    return any(_row_in_division(entries=entries, division=division) for entries in holder_divisions)
+
+
+def _division_rows(
+    pool: MockPool,
+    holder_divisions: dict[str, set[tuple[MockDivisionEntry, ...]]],
+    division: Sequence[DivisionFilterEntry],
+) -> list[_Row]:
+    return [row for row in pool.rows if _matches_division(holder_divisions[row.holder.id], division)]
 
 
 def _to_allocation(pool: MockPool, row: _Row) -> MockAllocation:
@@ -437,15 +495,14 @@ def get_allocations(
     if division:
         _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
 
-    holder_divisions = _holder_divisions(pool)
+    candidates = _division_rows(pool=pool, holder_divisions=_holder_divisions(pool), division=division or ())
     rows = [
         row
-        for row in pool.rows
+        for row in candidates
         if (space is None or space.holds(row.value))
         and (in_space is None or pool.in_space(row.value) == in_space)
         and (branch is None or row.branch == branch)
         and (provenance is None or row.provenance == provenance)
-        and (not division or _matches_division(holder_divisions[row.holder.id], division))
     ]
     rows.sort(key=lambda row: (row.value, row.branch, row.holder.id))
 
