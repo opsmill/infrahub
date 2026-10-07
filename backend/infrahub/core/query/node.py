@@ -296,7 +296,7 @@ class NodeCreateAllQuery(NodeQuery):
                 UNWIND attr.pool_prop AS prop
                 MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
                 CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
-                SET reserved.provenance = prop.provenance
+                SET reserved.allocated_values = CASE WHEN prop.allocated_value IS NULL THEN [] ELSE [prop.allocated_value] END
                 %(stamp_pool)s
             }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
 

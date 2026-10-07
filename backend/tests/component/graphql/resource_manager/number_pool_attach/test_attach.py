@@ -76,10 +76,10 @@ class TestNumberPoolAttach:
         )
 
         assert changed["ticket_id"]["value"] == 107
-        assert await open_is_reserved_edges(db=db, pool=pool) == {
-            (hand_set["id"], "provided"),
-            (allocated["id"], "provided"),
-        }
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(hand_set["id"], ()), (allocated["id"], (100,))}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == sorted(
+            [(allocated["id"], "main", 107, "provided"), (hand_set["id"], "main", 105, "provided")]
+        )
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [105, 107]
 
     async def test_a_number_a_uniqueness_constraint_holds_is_refused_by_the_constraint(
@@ -102,8 +102,8 @@ class TestNumberPoolAttach:
         assert result.errors
         assert str(result.errors[0].message) == "Violates uniqueness constraint 'ticket_id'"
         assert await NodeManager.query(db=db, schema=TICKET.kind, filters={"title__value": "unique-second"}) == []
-        assert await open_is_reserved_edges(db=db, pool=pool) == {(first["id"], "provided")}
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(first["id"], "main", 200)]
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(first["id"], ())}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(first["id"], "main", 200, "provided")]
 
     async def test_each_holder_of_an_attached_duplicate_is_reported_and_the_number_is_not_reallocated(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -133,10 +133,17 @@ class TestNumberPoolAttach:
 
         assert third["sequence"]["value"] == 301
         assert await open_is_reserved_edges(db=db, pool=pool) == {
-            (first["id"], "provided"),
-            (second["id"], "provided"),
-            (third["id"], "allocated"),
+            (first["id"], ()),
+            (second["id"], ()),
+            (third["id"], (301,)),
         }
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == sorted(
+            [
+                (first["id"], "main", 300, "provided"),
+                (second["id"], "main", 300, "provided"),
+                (third["id"], "main", 301, "allocated"),
+            ]
+        )
         # One entry per IS_RESERVED edge, so each holder of the duplicate is listed.
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [300, 300, 301]
 
@@ -154,7 +161,9 @@ class TestNumberPoolAttach:
 
         assert changed["ticket_id"]["value"] == 405
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(ticket["id"], "main", 405)]
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
+            (ticket["id"], "main", 405, "provided")
+        ], "a number the user changed by hand is no longer the one the pool allocated"
         following = await create_ticket(
             db=db, branch=main_branch, title="value-change-next", ticket_id={"from_pool": {"id": pool.id}}
         )
@@ -176,8 +185,8 @@ class TestNumberPoolAttach:
         assert changed["ticket_id"]["value"] == 501
         assert await is_reserved_edges(db=db, node_id=ticket["id"]) == before
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
-            (ticket["id"], "branch-change", 501),
-            (ticket["id"], "main", 500),
+            (ticket["id"], "branch-change", 501, "provided"),
+            (ticket["id"], "main", 500, "allocated"),
         ]
         following = await create_ticket(
             db=db, branch=main_branch, title="branch-change-next", ticket_id={"from_pool": {"id": pool.id}}
@@ -202,8 +211,10 @@ class TestNumberPoolAttach:
         assert moved["ticket_id"]["value"] == 601, "the ticket's own number is taken under the uniqueness constraint"
         assert await open_is_reserved_edges(db=db, pool=pool_a) == set()
         assert await allocated_rows(db=db, branch=main_branch, pool=pool_a) == []
-        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], "allocated")}
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool_b) == [(ticket["id"], "main", 601)]
+        assert await open_is_reserved_edges(db=db, pool=pool_b) == {(ticket["id"], (601,))}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool_b) == [
+            (ticket["id"], "main", 601, "allocated")
+        ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_b.get_id()
 
     async def test_naming_another_pool_with_a_number_outside_the_first_pool_moves_the_attribute(
@@ -222,7 +233,8 @@ class TestNumberPoolAttach:
 
         assert moved["ticket_id"]["value"] == 755
         assert await open_is_reserved_edges(db=db, pool=pool_a) == set()
-        assert await open_is_reserved_edges(db=db, pool=pool_c) == {(ticket["id"], "provided")}
+        assert await open_is_reserved_edges(db=db, pool=pool_c) == {(ticket["id"], ())}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool_c) == [(ticket["id"], "main", 755, "provided")]
         assert await used_numbers(db=db, branch=main_branch, pool=pool_c) == [755]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool_c.get_id()
 
@@ -271,7 +283,9 @@ class TestNumberPoolAttach:
         assert resent["ticket_id"]["value"] == case.expected_value
         after = await attribute_edges(db=db, node_id=ticket["id"], attribute_name="ticket_id")
         assert sorted(after, key=lambda edge: edge.edge_id or "") == sorted(before, key=lambda edge: edge.edge_id or "")
-        assert await open_is_reserved_edges(db=db, pool=pool) == {(ticket["id"], case.expected_provenance)}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
+            (ticket["id"], "main", case.expected_value, case.expected_provenance)
+        ]
 
     async def test_naming_the_pool_alone_on_a_hand_set_number_is_refused_and_writes_nothing(
         self, db: InfrahubDatabase, main_branch: Branch
@@ -320,10 +334,10 @@ class TestNumberPoolAttach:
         assert created["sequence"]["value"] == 1155
         results = await db.execute_query(query=LIVE_IS_RESERVED_EDGES_BY_ATTRIBUTE, params={"node_id": created["id"]})
         assert sorted(
-            (result.get("attribute_name"), result.get("pool_id"), result.get("provenance")) for result in results
+            (result.get("attribute_name"), result.get("pool_id"), result.get("allocated_values")) for result in results
         ) == [
-            ("sequence", sequence_pool.get_id(), "provided"),
-            ("ticket_id", ticket_pool.get_id(), "allocated"),
+            ("sequence", sequence_pool.get_id(), []),
+            ("ticket_id", ticket_pool.get_id(), [1100]),
         ]
         assert await used_numbers(db=db, branch=main_branch, pool=ticket_pool) == [1100]
         assert await used_numbers(db=db, branch=main_branch, pool=sequence_pool) == [1155]
@@ -352,7 +366,7 @@ class TestNumberPoolAttach:
 
         assert changed["sequence"]["value"] == 1200
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [1201]
-        assert await open_is_reserved_edges(db=db, pool=pool) == {(kept["id"], "allocated")}
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(kept["id"], (1201,))}
         [closed] = await is_reserved_edges(db=db, node_id=detached["id"], attribute_name="sequence")
         assert (closed.status, closed.is_open) == ("active", False), "the IS_RESERVED edge is ended, not deleted"
         assert await tracking_pool_id(db=db, node_id=detached["id"], attribute_name="sequence") is None
@@ -389,8 +403,8 @@ class TestNumberPoolAttach:
 
         await update_ticket(db=db, branch=main_branch, node_id=first["id"], sequence={"from_pool": None})
 
-        assert await open_is_reserved_edges(db=db, pool=pool) == {(second["id"], "provided")}
-        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(second["id"], "main", 1300)]
+        assert await open_is_reserved_edges(db=db, pool=pool) == {(second["id"], ())}
+        assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [(second["id"], "main", 1300, "provided")]
         assert await used_numbers(db=db, branch=main_branch, pool=pool) == [1300]
         following = await create_ticket(
             db=db,
@@ -449,9 +463,8 @@ class TestNumberPoolAttach:
         edges = await is_reserved_edges(db=db, node_id=ticket["id"])
         assert sorted((edge.status, edge.is_open) for edge in edges) == [("active", False), ("active", True)]
         assert ended in edges, "the ended IS_RESERVED edge stays ended"
-        assert await open_is_reserved_edges(db=db, pool=pool) == {(ticket["id"], case.expected_provenance)}
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == [
-            (ticket["id"], "main", case.expected_value)
+            (ticket["id"], "main", case.expected_value, case.expected_provenance)
         ]
         assert await tracking_pool_id(db=db, node_id=ticket["id"]) == pool.get_id()
         sources = await pooled_sources(db=db, branch=main_branch, node_id=ticket["id"])
@@ -497,9 +510,9 @@ class TestNumberPoolAttach:
         )
         other_branch = await create_branch(branch_name="delete-pool-other", db=db)
         assert await open_is_reserved_edges(db=db, pool=pool) == {
-            (first["id"], "allocated"),
-            (second["id"], "allocated"),
-            (provided["id"], "provided"),
+            (first["id"], (1700,)),
+            (second["id"], (1701,)),
+            (provided["id"], ()),
         }
 
         await execute(db=db, branch=main_branch, source=DELETE_POOL, variables={"id": pool.id})
@@ -522,11 +535,13 @@ class TestNumberPoolAttach:
                 ticket_id={"value": value, "from_pool": {"id": successor.id}},
             )
             assert changed["ticket_id"]["value"] == value
-        assert await open_is_reserved_edges(db=db, pool=successor) == {
-            (first["id"], "provided"),
-            (second["id"], "provided"),
-            (provided["id"], "provided"),
-        }
+        assert await allocated_rows(db=db, branch=main_branch, pool=successor) == sorted(
+            [
+                (first["id"], "main", 1700, "provided"),
+                (second["id"], "main", 1701, "provided"),
+                (provided["id"], "main", 1705, "provided"),
+            ]
+        ), "the successor tracks numbers it never allocated"
         assert await used_numbers(db=db, branch=main_branch, pool=successor) == [1700, 1701, 1705]
 
     async def test_pool_writes_record_the_acting_account_on_the_record_and_the_pool(

@@ -19,7 +19,6 @@ from infrahub.core.convert_object_type.object_conversion import convert_object_t
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from tests.component.core.resource_manager.conftest import delete_branch
 from tests.helpers.agnostic_edges import (
@@ -28,7 +27,7 @@ from tests.helpers.agnostic_edges import (
     is_reserved_edge_on,
     node_metadata,
     open_is_reserved_edge_on,
-    set_open_is_reserved_edge_provenance,
+    set_open_is_reserved_edge_allocated_values,
 )
 from tests.helpers.number_pool import add_pool_range, pool_lowest_free_number, pool_used_numbers
 from tests.helpers.schema import load_schema
@@ -123,18 +122,18 @@ async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replac
 ) -> None:
     """The pool keeps accounting for the number, through an IS_RESERVED edge that says what it said before.
 
-    The IS_RESERVED edge's provenance is preserved.
+    The IS_RESERVED edge's list of allocated values is preserved.
     """
     holder = await holder_holding_a_pooled_number(db=db, branch=default_branch, pool=convert_pool)
     allocated = holder.get_attribute(TRACKED_ATTRIBUTE_NAME).value
     assert allocated == POOL_START
     assert await pool_used_numbers(db=db, pool=convert_pool, branch=default_branch) == [allocated]
 
-    await set_open_is_reserved_edge_provenance(
+    await set_open_is_reserved_edge_allocated_values(
         db=db,
         node_id=holder.get_id(),
         attribute_name=TRACKED_ATTRIBUTE_NAME,
-        provenance=PoolRecordProvenance.PROVIDED.value,
+        values=[allocated, POOL_END],
     )
 
     converted = await convert_to(db=db, branch=default_branch, node=holder, target_kind=TARGET_KIND)
@@ -158,8 +157,8 @@ async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replac
     ), "no branch predates the conversion, so the IS_RESERVED edge on the replaced object is closed"
 
     moved = await open_is_reserved_edge_on(db=db, node_id=converted.get_id(), attribute_name=TRACKED_ATTRIBUTE_NAME)
-    assert moved["provenance"] == PoolRecordProvenance.PROVIDED.value, (
-        "the move must carry the provenance across rather than assume the pool chose the number"
+    assert moved["allocated_values"] == [allocated, POOL_END], (
+        "the move must carry the allocated values across rather than start the record over"
     )
     assert moved["identifier"] == converted.get_id()
     assert moved["branch"] == GLOBAL_BRANCH_NAME

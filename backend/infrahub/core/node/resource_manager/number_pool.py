@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core.constants import SYSTEM_USER_ID
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
@@ -54,7 +53,7 @@ class CoreNumberPool(Node):
                     pool_id=self.get_id(),
                     identifier=identifier,
                     attribute_id=attribute_id,
-                    provenance=PoolRecordProvenance.ALLOCATED,
+                    allocated_value=number,
                     at=at,
                     user_id=user_id,
                 )

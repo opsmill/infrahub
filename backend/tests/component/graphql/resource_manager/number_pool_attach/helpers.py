@@ -53,13 +53,13 @@ mutation DeletePool($id: String!) {
 OPEN_IS_RESERVED_EDGES_OF_POOL = """
 MATCH (:Node { uuid: $pool_id })-[reserved:IS_RESERVED]->(:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
 WHERE reserved.status = "active" AND reserved.to IS NULL
-RETURN DISTINCT node.uuid AS node_id, elementId(reserved) AS edge_id, reserved.provenance AS provenance
+RETURN DISTINCT node.uuid AS node_id, elementId(reserved) AS edge_id, reserved.allocated_values AS allocated_values
 """
 
 LIVE_IS_RESERVED_EDGES_BY_ATTRIBUTE = """
 MATCH (:Node { uuid: $node_id })-[:HAS_ATTRIBUTE]->(attr:Attribute)<-[reserved:IS_RESERVED]-(pool:Node)
 WHERE reserved.status = "active" AND reserved.to IS NULL
-RETURN attr.name AS attribute_name, pool.uuid AS pool_id, reserved.provenance AS provenance
+RETURN attr.name AS attribute_name, pool.uuid AS pool_id, reserved.allocated_values AS allocated_values
 """
 
 SECOND_ACTOR_ID = "5b7d2e0c-4f3a-4c1e-9a6b-2d8f1c0e7a41"
@@ -143,16 +143,16 @@ async def new_pool(
     return pool
 
 
-async def open_is_reserved_edges(db: InfrahubDatabase, pool: CoreNumberPool) -> set[tuple[str, str | None]]:
-    """The holder and provenance of each open IS_RESERVED edge the pool has, on any attribute."""
+async def open_is_reserved_edges(db: InfrahubDatabase, pool: CoreNumberPool) -> set[tuple[str, tuple[int, ...]]]:
+    """The holder and allocated values of each open IS_RESERVED edge the pool has, on any attribute."""
     results = await db.execute_query(query=OPEN_IS_RESERVED_EDGES_OF_POOL, params={"pool_id": pool.get_id()})
     edge_ids = [result.get("edge_id") for result in results]
     assert len(edge_ids) == len(set(edge_ids))
-    return {(result.get("node_id"), result.get("provenance")) for result in results}
+    return {(result.get("node_id"), tuple(result.get("allocated_values"))) for result in results}
 
 
-async def allocated_rows(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool) -> list[tuple[str, str, int]]:
-    """The holder, branch and value of every row the pool's in-use list reports."""
+async def allocated_rows(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool) -> list[tuple[str, str, int, str]]:
+    """The holder, branch, value and provenance of every row the pool's in-use list reports."""
     space = EffectiveSpace(
         ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
     )
@@ -160,7 +160,7 @@ async def allocated_rows(db: InfrahubDatabase, branch: Branch, pool: CoreNumberP
         db=db, pool=pool, ranges=space.as_query_ranges(), branch=branch, branch_agnostic=True
     )
     await query.execute(db=db)
-    return sorted((row.id, row.branch, row.value) for row in query.get_data())
+    return sorted((row.id, row.branch, row.value, row.provenance.value) for row in query.get_data())
 
 
 async def used_numbers(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool) -> list[int]:

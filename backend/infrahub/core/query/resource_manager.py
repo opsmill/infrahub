@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class PoolRecordProvenance(StrEnum):
-    """How the number the attribute currently holds got there."""
+    """Whether the pool allocated a value or a user provided it."""
 
     ALLOCATED = "allocated"
     PROVIDED = "provided"
@@ -64,6 +64,9 @@ class NumberPoolAllocatedResult:
 
     identifier: str
     """Identifier used for the reservation."""
+
+    provenance: PoolRecordProvenance
+    """Whether the pool allocated the value the branch holds or a user provided it."""
 
 
 @dataclass(frozen=True)
@@ -232,11 +235,13 @@ class NumberPoolGetAllocated(Query):
         }
         self.add_to_query(query)
 
+        # A record without a list predates the list and reads as allocated for every value it accounts for.
         self.return_labels = [
             "DISTINCT n.uuid as id",
             "hv.branch as branch",
             "av.value as value",
             "ir.identifier as identifier",
+            "ir.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN ir.allocated_values AS is_provided",
         ]
         self.order_by = ["av.value"]
 
@@ -253,6 +258,9 @@ class NumberPoolGetAllocated(Query):
                 branch=result.get_as_type("branch", str),
                 value=result.get_as_type("value", int),
                 identifier=result.get_as_type("identifier", str),
+                provenance=PoolRecordProvenance.PROVIDED
+                if result.get_as_type("is_provided", bool)
+                else PoolRecordProvenance.ALLOCATED,
             )
             for result in self.get_results()
         ]
@@ -877,13 +885,14 @@ class NumberPoolGetTaken(Query):
 class NumberPoolSetReserved(Query):
     """Record that a number pool accounts for an attribute.
 
-    Takes a write lock on the Attribute vertex, then keeps this pool's live IS_RESERVED edge when its
-    provenance is one the write accepts, ends every other live IS_RESERVED edge on the attribute, and
-    creates an edge with the write's provenance when none was kept.
+    Takes a write lock on the Attribute vertex, then keeps this pool's live IS_RESERVED edge unless the write
+    allocates a number the record does not list yet. When no edge is kept, it ends every live IS_RESERVED edge
+    on the attribute and creates this pool's record, whose `allocated_values` carries every number the pool
+    allocated to the attribute so far plus the one allocated now, if any.
 
-    The write accepts its own provenance. With `value`, a `provided` write also accepts `allocated` when the
-    attribute already holds that value on the write's branch, so restating a number the pool allocated
-    keeps it recorded as allocated.
+    The list is never changed in place: extending it closes the record and creates a new one, which keeps the
+    history and stamps the pool like any other record change. The list is only ever tested for membership, so
+    its order carries no meaning.
     """
 
     name = "numberpool_set_reserved"
@@ -894,17 +903,13 @@ class NumberPoolSetReserved(Query):
         pool_id: str,
         identifier: str,
         attribute_id: str,
-        provenance: PoolRecordProvenance,
-        value: int | None = None,
+        allocated_value: int | None,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool_id = pool_id
         self.identifier = identifier
         self.attribute_id = attribute_id
-        self.provenance = provenance
-        self.value = value
-        if value is not None and kwargs.get("branch") is None:
-            raise ValueError("A restated value can only be compared on the branch it is written to")
+        self.allocated_value = allocated_value
 
         super().__init__(**kwargs)
 
@@ -913,38 +918,8 @@ class NumberPoolSetReserved(Query):
         self.params["identifier"] = self.identifier
         self.params["at"] = self.at.to_string()
         self.params["user_id"] = self.user_id
-        self.params["provenance"] = self.provenance.value
-        # An IS_RESERVED edge written before provenance existed carries none, and an absent provenance already
-        # reads as an allocation.
-        self.params["allocated_provenance"] = PoolRecordProvenance.ALLOCATED.value
+        self.params["allocated_value"] = self.allocated_value
         self.params["attribute_id"] = self.attribute_id
-        accepted_provenances = "WITH pool, attr, [$provenance] AS accepted_provenances"
-        if self.value is not None:
-            self.params["value"] = self.value
-            self.params["provided_provenance"] = PoolRecordProvenance.PROVIDED.value
-            branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-            self.params.update(branch_params)
-            accepted_provenances = """
-        // ----------
-        // Read the value the attribute holds on the branch before this write saves its own
-        // ----------
-        CALL (attr) {
-            OPTIONAL MATCH (attr)-[r:HAS_VALUE]->(av:AttributeValue)
-            WHERE %(branch_filter)s
-            WITH r, av
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-            RETURN CASE WHEN r.status = "active" THEN av.value ELSE NULL END AS held_value
-        }
-        // ----------
-        // Don't overwrite provenance="allocated" with "provided" if the value does not change
-        // ----------
-        WITH pool, attr,
-            CASE WHEN $provenance = $provided_provenance AND toInteger(held_value) = $value
-                THEN [$provenance, $allocated_provenance]
-                ELSE [$provenance]
-            END AS accepted_provenances
-            """ % {"branch_filter": branch_filter}
 
         global_branch = registry.get_global_branch()
         self.params["rel_prop"] = {
@@ -954,7 +929,6 @@ class NumberPoolSetReserved(Query):
             "from": self.at.to_string(),
             "from_user_id": self.user_id,
             "identifier": self.identifier,
-            "provenance": self.provenance.value,
         }
 
         query = """
@@ -972,15 +946,25 @@ class NumberPoolSetReserved(Query):
         SET attr._number_pool_lock = TRUE
         REMOVE attr._number_pool_lock
         WITH pool, attr
-        %(accepted_provenances)s
         // ----------
-        // Keep this pool's live IS_RESERVED edge when its provenance is one the write accepts
+        // Keep this pool's live IS_RESERVED edge unless the write allocates a number it does not list yet
         // ----------
-        OPTIONAL MATCH (pool)-[kept:IS_RESERVED]->(attr)
-        WHERE kept.status = "active"
-          AND kept.to IS NULL
-          AND coalesce(kept.provenance, $allocated_provenance) IN accepted_provenances
-        WITH pool, attr, collect(kept) AS kept_edges
+        OPTIONAL MATCH (pool)-[own:IS_RESERVED]->(attr)
+        WHERE own.status = "active"
+          AND own.to IS NULL
+        WITH pool, attr, own
+        ORDER BY own.from DESC
+        LIMIT 1
+        WITH pool, attr,
+            CASE
+                WHEN own IS NULL THEN []
+                WHEN $allocated_value IS NULL OR $allocated_value IN coalesce(own.allocated_values, []) THEN [own]
+                ELSE []
+            END AS kept_edges,
+            CASE
+                WHEN $allocated_value IS NULL THEN coalesce(own.allocated_values, [])
+                ELSE coalesce(own.allocated_values, []) + [$allocated_value]
+            END AS allocated_values
         // ----------
         // End every other live IS_RESERVED edge on the attribute, and stamp the pool that loses it
         // ----------
@@ -995,13 +979,13 @@ class NumberPoolSetReserved(Query):
         // ----------
         // Create the expected IS_RESERVED edge unless one was kept, which is the only case the pool changes
         // ----------
-        WITH pool, attr, kept_edges
+        WITH pool, attr, kept_edges, allocated_values
         WHERE size(kept_edges) = 0
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
+        SET rel.allocated_values = allocated_values
         %(stamp_pool)s
         """ % {
             "number_pool": InfrahubKind.NUMBERPOOL,
-            "accepted_provenances": accepted_provenances,
             "stamp_other_pool": stamp_vertex_metadata("other_pool"),
             "stamp_pool": stamp_vertex_metadata("pool"),
         }

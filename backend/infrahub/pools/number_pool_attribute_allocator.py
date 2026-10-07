@@ -6,7 +6,6 @@ from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.query.resource_manager import (
     NumberPoolReleaseReserved,
     NumberPoolSetReserved,
-    PoolRecordProvenance,
 )
 from infrahub.exceptions import InitializationError
 
@@ -73,9 +72,7 @@ class NumberPoolAttributeAllocator:
             pool_id=pool.get_id(),
             identifier=node.get_id(),
             attribute_id=attribute.id,
-            provenance=PoolRecordProvenance.PROVIDED,
-            value=attribute.value,
-            branch=node.get_branch(),
+            allocated_value=None,
             user_id=user_id,
         )
         await query.execute(db=self.db)
