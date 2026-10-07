@@ -1,0 +1,21 @@
+schema/openapi.json
+  s_0d946e7ab4dd58::t_87f2ff0216a896 7155-7169,7220-7234
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_0d946e7ab4dd58::t_1151eb5ef90787 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26d25ef29c17a94a75c7f8ba3be4db548cf6a4fb",
+  "prompts": {},
+  "sessions": {
+    "s_0d946e7ab4dd58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e5b54bb-72c0-45ce-9655-bb63548c5cbf",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
