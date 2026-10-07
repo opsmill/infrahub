@@ -106,9 +106,7 @@ first, and resets a worktree that does not lead to that head:
   worktree does not lead to it. Otherwise it fast-forwards with `git merge --ff-only`, whatever the
   pull settings of the clone. It writes no rewrite record and emits no event.
 
-A worker that missed a broadcast recovers through the next sync message, which lists the trunk on
-every cycle with its commit, and resets onto that commit. `pull` runs only for an entry that pins no
-commit, as when the cycle cannot read the trunk commit.
+`pull` runs only for a message entry that pins no commit, as [above](#how-the-workers-converge).
 
 ## Sync triggers, and what does not wait for what
 
