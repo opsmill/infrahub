@@ -1,0 +1,19 @@
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_331443ad360300::t_69dbe2a65147d9 10918-10919,11050-11051,11241-11242,11274-11275,33511-33516,33681-33685
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8909fa068a0db90e03e94ada4354f56eabd1d869",
+  "prompts": {},
+  "sessions": {
+    "s_331443ad360300": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8fb17d7-e0a5-4f2c-b0b0-98da91f26efb",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
