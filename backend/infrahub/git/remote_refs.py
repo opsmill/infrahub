@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import git
-from git.exc import GitCommandError
+from git.exc import GitCommandError, UnsafeOptionError
 
 from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
@@ -40,7 +40,13 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
     # which in a worktree build references a host path the container does not have.
     cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
     try:
-        listing = cmd.ls_remote("--symref", url, "HEAD", "refs/heads/*")
+        # The separator keeps git from reading a location that starts with a dash as an option.
+        listing = cmd.ls_remote("--symref", "--", url, "HEAD", "refs/heads/*")
+    except UnsafeOptionError as exc:
+        raise RepositoryError(
+            identifier=name,
+            message=f"Unable to read the remote of repository {name}: git does not accept the location {url}.",
+        ) from exc
     except GitCommandError as exc:
         InfrahubRepositoryBase._raise_enriched_error_static(name=name, location=url, error=exc)
 
@@ -71,7 +77,7 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
 
     """
     refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
-    command = ["git", "ls-remote", url, *refs]
+    command = ["git", "ls-remote", "--", url, *refs]
     try:
         # A session of its own lets the kill below stop the remote helpers git starts, which keep the pipes open.
         process = await asyncio.create_subprocess_exec(

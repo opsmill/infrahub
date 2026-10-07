@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import time
 from typing import TYPE_CHECKING
 
@@ -221,3 +222,30 @@ async def test_list_remote_heads_reports_a_git_that_cannot_start(
 
     with pytest.raises(RepositoryError, match=r"^Unable to run git to read the remote of repository demo: "):
         await list_remote_heads(name="demo", url="file:///nowhere", branch_names=["main"], timeout_seconds=30)
+
+
+def location_that_reads_as_an_option(directory: Path) -> tuple[str, Path]:
+    """Return a location that git would read as an option running a script, and the file the script writes."""
+    marker = directory / "upload-pack-ran"
+    script = directory / "upload-pack.sh"
+    script.write_text(f"#!/bin/sh\ntouch '{marker}'\nexit 1\n", encoding="utf-8")
+    script.chmod(0o755)
+    return f"--upload-pack={script}", marker
+
+
+def test_list_remote_refs_reads_a_location_that_looks_like_an_option_as_a_location(tmp_path: Path) -> None:
+    location, marker = location_that_reads_as_an_option(directory=tmp_path)
+
+    with pytest.raises(RepositoryError, match=re.escape(location)):
+        list_remote_refs(name="demo", url=location)
+
+    assert not marker.exists()
+
+
+async def test_list_remote_heads_reads_a_location_that_looks_like_an_option_as_a_location(tmp_path: Path) -> None:
+    location, marker = location_that_reads_as_an_option(directory=tmp_path)
+
+    with pytest.raises(RepositoryError, match=re.escape(location)):
+        await list_remote_heads(name="demo", url=location, branch_names=["main"], timeout_seconds=30)
+
+    assert not marker.exists()
