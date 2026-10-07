@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlencode
 
 if TYPE_CHECKING:
     import redis.asyncio as redis
@@ -61,6 +62,21 @@ def _is_tls_url(url: str) -> bool:
     """
     scheme, separator, _ = url.partition("://")
     return bool(separator) and scheme.lower() in TLS_URL_SCHEMES
+
+
+def add_default_ca_bundle(url: str, ca_file: str | None) -> str:
+    """Return ``url`` verifying against ``ca_file`` when it selects TLS and names no CA bundle itself.
+
+    The configured CA, ``INFRAHUB_CACHE_TLS_CA_FILE`` or the global ``INFRAHUB_TLS_CA_BUNDLE`` that
+    fills it, is only a default: an explicit ``?ssl_ca_certs=`` on the URL wins. On a
+    ``rediss+sentinel://`` URL the ``ssl_*`` options also reach the Sentinel daemon connections, so the
+    one CA covers the whole topology.
+    """
+    base, _, query = url.partition("?")
+    if ca_file is None or not _is_tls_url(url) or "ssl_ca_certs" in parse_qs(query, keep_blank_values=True):
+        return url
+    option = urlencode({"ssl_ca_certs": ca_file})
+    return f"{base}?{query}&{option}" if query else f"{base}?{option}"
 
 
 def _url_connection_defaults() -> dict[str, Any]:
@@ -136,15 +152,8 @@ def build_redis_connection(settings: CacheSettings) -> redis.Redis:
 
     from prefect_redis.connection import redis_from_url  # noqa: PLC0415
 
-    url = settings.url.get_secret_value()
-    options = _url_connection_defaults()
-    if settings.tls_ca_file is not None and _is_tls_url(url):
-        # The CA the deployment configured, either as INFRAHUB_CACHE_TLS_CA_FILE or through the
-        # global INFRAHUB_TLS_CA_BUNDLE that fills it, is the default for a TLS URL; an explicit
-        # ?ssl_ca_certs= still wins. On a rediss+sentinel:// URL prefect-redis shares the ssl_*
-        # options with the daemon connections, so the one CA covers the whole topology.
-        options["ssl_ca_certs"] = settings.tls_ca_file
-    return redis_from_url(url, asynchronous=True, **options)
+    url = add_default_ca_bundle(settings.url.get_secret_value(), settings.tls_ca_file)
+    return redis_from_url(url, asynchronous=True, **_url_connection_defaults())
 
 
 async def aclose_redis_connection(connection: redis.Redis) -> None:

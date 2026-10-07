@@ -6,6 +6,7 @@ from urllib.parse import quote_plus
 
 import pytest
 import redis
+from prefect_redis.connection import close_redis_client, redis_from_url
 from pydantic import SecretStr
 from redis.connection import Connection, SSLConnection
 
@@ -197,11 +198,62 @@ class ConnectionStringCase:
             ),
             id="url_sentinel_tls_and_auth_passed_through",
         ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_tls_verifies_against_the_configured_ca_bundle",
+                cache_kwargs={"url": "rediss://cache:6379/0", "tls_ca_file": CA_BUNDLE},
+                expected_url=f"rediss://cache:6379/0?ssl_ca_certs={CA_BUNDLE_QUOTED}",
+            ),
+            id="url_tls_verifies_against_the_configured_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_tls_keeps_its_own_options_alongside_the_ca_bundle",
+                cache_kwargs={
+                    "url": "rediss+sentinel://s1:26379/mymaster?ssl_check_hostname=false",
+                    "tls_ca_file": CA_BUNDLE,
+                },
+                expected_url=(
+                    f"rediss+sentinel://s1:26379/mymaster?ssl_check_hostname=false&ssl_ca_certs={CA_BUNDLE_QUOTED}"
+                ),
+            ),
+            id="url_tls_keeps_its_own_options_alongside_the_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_ssl_ca_certs_wins_over_the_configured_ca_bundle",
+                cache_kwargs={
+                    "url": "rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem",
+                    "tls_ca_file": CA_BUNDLE,
+                },
+                expected_url="rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem",
+            ),
+            id="url_ssl_ca_certs_wins_over_the_configured_ca_bundle",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_plaintext_ignores_the_configured_ca_bundle",
+                cache_kwargs={"url": "redis://cache:6379/0", "tls_ca_file": CA_BUNDLE},
+                expected_url="redis://cache:6379/0",
+            ),
+            id="url_plaintext_ignores_the_configured_ca_bundle",
+        ),
     ],
 )
 def test_build_cache_connection_string(case: ConnectionStringCase) -> None:
     cache = CacheSettings(**case.cache_kwargs)
     assert build_cache_connection_string(cache) == case.expected_url
+
+
+def test_url_ca_bundle_reaches_the_result_storage_client() -> None:
+    """The result-storage block decodes the appended CA for the data nodes and the Sentinel daemons alike."""
+    cache = CacheSettings(url=SecretStr("rediss+sentinel://s1:26379/mymaster"), tls_ca_file=CA_BUNDLE)
+
+    client = redis_from_url(build_cache_connection_string(cache))
+
+    assert client.connection_pool.connection_kwargs["ssl_ca_certs"] == CA_BUNDLE
+    assert client.connection_pool.sentinel_manager.sentinel_kwargs["ssl_ca_certs"] == CA_BUNDLE
+    close_redis_client(client)
 
 
 def test_cache_url_is_ignored_for_a_non_redis_driver() -> None:

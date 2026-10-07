@@ -152,11 +152,11 @@ def test_tls_is_detected_on_a_sentinel_url_urlsplit_cannot_parse() -> None:
 
 def test_url_ssl_ca_certs_option_overrides_the_configured_bundle() -> None:
     """The setting is a default; a CA spelled out on the URL wins."""
-    url = f"rediss://cache:6379/0?ssl_ca_certs={CA_BUNDLE}"
+    url = "rediss://cache:6379/0?ssl_ca_certs=/etc/ssl/url-ca.pem"
 
     kwargs = _build(url, tls_ca_file=CA_BUNDLE).connection_pool.connection_kwargs
 
-    assert kwargs["ssl_ca_certs"] == CA_BUNDLE
+    assert kwargs["ssl_ca_certs"] == "/etc/ssl/url-ca.pem"
 
 
 def test_plaintext_url_ignores_the_configured_ca_bundle() -> None:
