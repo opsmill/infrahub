@@ -1,0 +1,25 @@
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_19ed5fb88e64ca::t_f49425b0cb1c7a 70-71
+frontend/app/src/shared/api/rest/types.generated.ts
+  s_19ed5fb88e64ca::t_8e0c5e2cb70048 2703,2728
+schema/openapi.json
+  s_19ed5fb88e64ca::t_f663aca90f3c4c 7149,7194
+schema/schema.graphql
+  s_19ed5fb88e64ca::t_17e1f4df7cfbc8 5048,5087,5213,5245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb36d0f751c1af185279b9ce0a6e7bb4ea58c851",
+  "prompts": {},
+  "sessions": {
+    "s_19ed5fb88e64ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61926aa9-d5d8-4686-a1ea-3cd71d6c8848",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
