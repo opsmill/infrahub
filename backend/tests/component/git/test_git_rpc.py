@@ -157,6 +157,7 @@ async def test_git_rpc_merge(
         name=repo.name,
         location=repo.get_location(),
         default_branch="main",
+        commit=commit_main_before,
     )
     bus_simulator = await helper.get_message_bus_simulator()
     workflow = WorkflowLocalExecution()

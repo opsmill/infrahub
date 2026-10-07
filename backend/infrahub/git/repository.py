@@ -920,10 +920,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         is behind its remote head, or diverged from it, is moved onto that head when the graph records it:
         the graph imported that head, and only this clone is stale. A diverged branch whose graph commit
         differs is refused, because the rewrite is not reconciled yet: no branch moves, so the next
-        synchronization still finds the rewrite to record and import. A destination behind a head the
-        graph does not record is refused too, because the remote would reject the push. A source behind
-        a head the graph has not imported is moved onto the graph commit when that commit lies between
-        the two, so the merge holds what the graph merged, and is left as it is otherwise.
+        synchronization still finds the rewrite to record and import. A destination whose remote head the
+        graph does not record is refused too, also when this clone holds that head: the remote rejects a
+        push onto an older trunk, and a merge onto a head the graph never imported hides that head from
+        the next synchronization. A source that leads to its remote head is moved onto the graph commit
+        when the remote history holds it, so the merge holds what the graph merged. It is left as it is
+        when the graph records no commit, or one the remote history no longer holds.
 
         The source commit is the one read when the merge was dispatched, because the source branch can
         be deleted in Infrahub before this runs. The destination commit must be read under the
@@ -931,7 +933,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         Raises:
             RepositoryDivergentHistoryError: When a branch does not lead to a remote head the graph does not record,
-                or the destination is behind such a head.
+                or the destination is on or behind such a head.
             RepositoryError: When git cannot fetch or compare a branch.
 
         """
@@ -950,11 +952,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         moves: list[tuple[str, str, str]] = []
         for branch_name, local_head in local_heads.items():
             remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=branch_name))
-            if local_head is None or remote_head is None or local_head == remote_head:
+            if local_head is None or remote_head is None:
                 continue
             graph_commit = graph_commits[branch_name]
             if graph_commit == remote_head:
-                moves.append((branch_name, local_head, graph_commit))
+                if local_head != remote_head:
+                    moves.append((branch_name, local_head, graph_commit))
             elif not self._leads_to_remote_head(local_head=local_head, remote_head=remote_head):
                 raise self._unfinished_merge(
                     source_branch=source_branch,
@@ -970,13 +973,14 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     source_branch=source_branch,
                     dest_branch=dest_branch,
                     reason=(
-                        f"The remote head {remote_head} of {self._get_mapped_remote_branch(branch_name=branch_name)} "
-                        f"is ahead of the local commit {local_head}, and Infrahub records {graph_commit or 'no commit'} "
-                        f"for {branch_name}, not that head."
+                        f"Infrahub records {graph_commit or 'no commit'} for {branch_name}, not the remote head "
+                        f"{remote_head} of {self._get_mapped_remote_branch(branch_name=branch_name)}."
                     ),
                 )
-            elif graph_commit is not None and self._lies_between(
-                older_commit=local_head, commit=graph_commit, newer_commit=remote_head
+            elif (
+                graph_commit is not None
+                and graph_commit != local_head
+                and self._in_remote_history(commit=graph_commit, remote_head=remote_head)
             ):
                 moves.append((branch_name, local_head, graph_commit))
 
@@ -1006,22 +1010,16 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             ),
         )
 
-    def _lies_between(self, older_commit: str, commit: str, newer_commit: str) -> bool:
-        """Whether the commit descends from the older commit, differs from it, and is in the history of the newer one.
+    def _in_remote_history(self, commit: str, remote_head: str) -> bool:
+        """Whether the remote head holds the commit in its history.
 
         Raises:
             RepositoryError: When git cannot read or compare the commits.
 
         """
-        if commit == older_commit:
-            return False
         gateway = self._get_ancestry_gateway()
         # A commit absent after the fetch is not in the remote history, and a comparison with it would raise.
-        return (
-            gateway.has_commit(commit)
-            and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=newer_commit)
-            and gateway.is_ancestor(ancestor_commit=older_commit, descendant_commit=commit)
-        )
+        return gateway.has_commit(commit) and gateway.is_ancestor(ancestor_commit=commit, descendant_commit=remote_head)
 
     async def _move_branch_ref(self, branch_name: str, commit: str) -> None:
         # The merge reads its source from this ref, which a branch without a worktree still has.

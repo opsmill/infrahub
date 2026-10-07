@@ -158,6 +158,7 @@ def build_repository_client(
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
     commit_update_error: SdkError | None = None,
+    commit: str | None = None,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -168,6 +169,7 @@ def build_repository_client(
 
     Args:
         commit_update_error: Raise this error for every commit update instead of answering it.
+        commit: The commit the graph records for the repository, on every branch.
 
     """
     node = {
@@ -177,6 +179,7 @@ def build_repository_client(
         "location": {"value": location},
         "default_branch": {"value": default_branch},
         "internal_status": {"value": internal_status.value},
+        "commit": {"value": commit},
     }
 
     async def requester(

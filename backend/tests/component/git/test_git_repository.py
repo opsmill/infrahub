@@ -665,6 +665,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     """
     upstream_path = str(git_upstream_repo_01["path"])
     Repo(upstream_path).git.branch("develop", "main")
+    develop_before = Repo(upstream_path).commit("develop").hexsha
 
     repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo_node.new(db=db, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="develop")
@@ -675,6 +676,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         name=str(git_upstream_repo_01["name"]),
         location=upstream_path,
         default_branch="develop",
+        commit=develop_before,
     )
     repo = await clone_repository(
         id=repo_node.id,
@@ -697,7 +699,6 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     )
     assert "default_branch" not in model.model_dump()
 
-    develop_before = Repo(upstream_path).commit("develop").hexsha
     bus_simulator = await helper.get_message_bus_simulator()
     with (
         dependency_provider.scope(build_client, lambda: client),
