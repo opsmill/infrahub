@@ -107,6 +107,9 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
         if process.returncode is None:
             with contextlib.suppress(ProcessLookupError):
                 os.killpg(process.pid, signal.SIGKILL)
+            # The wait reaps the killed git, and the shield lets that finish when a second cancel arrives.
+            with contextlib.suppress(OSError):
+                await asyncio.shield(process.wait())
 
     if process.returncode != 0:
         InfrahubRepositoryBase._raise_enriched_error_static(
