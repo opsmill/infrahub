@@ -715,9 +715,9 @@ read-write repository's configured default branch. Neither writes a record.
       carries that entry as `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its
       own `changelog/+repository-rewrite-record.added.md`.
       IFC-3283, stacked on IFC-3284, adds `changelog/+merge-after-force-push.fixed.md`: a branch
-      merge uses the commits Infrahub imported, and it is refused while a force push or a plain push
-      is not imported yet, instead of pushing the discarded commits again or leaving imported ones
-      out. A worker that missed the broadcast and now follows the new history on its own is
+      merge no longer puts commits removed by a force push back in the Git repository, and it is
+      refused, with a message to merge again later, while Infrahub has not recorded the latest commit
+      pushed to the branch or to its target. A worker that missed the broadcast and now follows the new history on its own is
       the fix `changelog/6299.fixed.md` describes, so it adds no entry.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
