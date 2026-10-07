@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -16,8 +18,6 @@ from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
-    import pytest
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
@@ -154,10 +154,14 @@ async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
     ]
 
 
+@pytest.mark.parametrize("commit", [BRANCH_COMMIT, "b1a2c3d"], ids=["full-commit-id", "short-commit-id"])
 async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commit_of_the_branch(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, commit: str
 ) -> None:
-    """The source branch can be deleted before the Git merge runs, so the merge must not read it again."""
+    """The source branch can be deleted before the Git merge runs, so the merge must not read it again.
+
+    The merge copies the commit as the branch stores it, whatever its form.
+    """
     repository = await Node.init(db=db, schema=InfrahubKind.READONLYREPOSITORY)
     await repository.new(
         db=db,
@@ -168,7 +172,7 @@ async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commi
     )
     await repository.save(db=db)
     feature = await create_feature_branch(db=db, sync_with_git=True)
-    await update_on_branch(db=db, repository=repository, branch=feature, ref="v2", commit=BRANCH_COMMIT)
+    await update_on_branch(db=db, repository=repository, branch=feature, ref="v2", commit=commit)
     workflow = WorkflowRecorder()
 
     await RepositoryMergeDispatcher(
@@ -185,7 +189,7 @@ async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commi
                 destination_branch=default_branch.name,
                 destination_branch_id=str(default_branch.get_uuid()),
                 repository_kind=InfrahubKind.READONLYREPOSITORY,
-                source_commit=BRANCH_COMMIT,
+                source_commit=commit,
                 source_ref="v2",
             )
         }

@@ -63,7 +63,8 @@ class RepositoryMergeDispatcher:
                 destination_branch_id=str(self.destination_branch.get_uuid()),
                 internal_status=repo.internal_status.value,
                 repository_kind=InfrahubKind.READONLYREPOSITORY,
-                source_commit=readable_commit(repo.commit.value),
+                # The merge copies this value to the trunk, so it must stay as the branch stores it.
+                source_commit=repo.commit.value,
                 source_ref=repo.ref.value,
             )
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})

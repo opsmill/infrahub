@@ -139,7 +139,10 @@ class GitRepositoryMerge(BaseModel):
     repository_kind: str = Field(..., description="The kind of the repository.")
     source_commit: str | None = Field(
         default=None,
-        description="The commit the graph records for the source branch, None when it records no full commit id",
+        description=(
+            "The commit the graph records for the source branch: for a read-write repository, None when it records "
+            "no full commit id, and for a read-only repository, the value as stored"
+        ),
     )
     source_ref: str | None = Field(
         default=None, description="The ref the graph records for the source branch of a read-only repository"
