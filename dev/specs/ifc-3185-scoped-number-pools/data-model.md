@@ -115,14 +115,14 @@ fullest division within a range (FR-011, FR-017).
 | `size` of the pool | the number of in-space values over the range set: values inside a range, not in the attribute's `excluded_values` (single values and excluded ranges), within its `min_value` / `max_value`. Never read from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges. P1's shared effective-space calculation replaces the resolver-side computation when it lands |
 | `size` of a range | `end - start + 1` |
 | `used` | distinct values of the measured space held on any live branch; `used_default_branch` on the default branch; `used_branches` on other branches and not on the default branch |
-| Division figures | `used` restricted to the values held by holders in that division, over the pool's `size`, or over a range's `size` when the divisions query is read with `range_id` |
+| Division figures | `used` restricted to the values held by holders in that division, over the pool's `size` (divisions query, utilization headline with `division`) or over a range's `size` (utilization range rows with `division`) |
 | Headline figures of a scoped pool | the fullest division's figures |
 | Range row of a scoped pool | the division holding the most of that range's values, against the range's `size`, with its branch split |
 | Division display label | the entries' display labels joined with " / "; a relationship entry: the peer's display label read branch-agnostically, falling back to its id; an attribute entry: the value as text; a holder holding nothing for an entry: the empty string |
 | Unscoped pool | exactly one division with no entry and an empty label; figures as today |
 | `in_space` of a row | the value is inside a range, not excluded by the attribute and within its `min_value` / `max_value`; false for an excluded or out-of-limits value even when a range holds it |
 | `range` of a row | the range whose bounds hold the value, in space or not; null when none does |
-| `out_of_space_count` | the number of rows with `in_space` false |
+| `out_of_space_count` | the number of rows with `in_space` false, one per holder and value, restricted to the division given as `division` |
 
 ### Mock partition (contract change set only)
 
@@ -158,7 +158,7 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 | Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
 | Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field | refused when a pool names the field | the pool |
 | Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
-| The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path | the pool, the range, the entry (messages in the contract) |
+| The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path, and on the utilization query a value for every path in force | the pool, the range, the entry (messages in the contract) |
 
 ### Pools-referencing-field lookup
 

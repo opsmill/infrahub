@@ -93,10 +93,11 @@ in `backend/tests/component/core/resource_manager/test_number_pool_scoped_query.
 ## Scenario 3 — which site is about to run out (User Story 3, FR-011, FR-015 to FR-017, FR-022 to FR-025, SC-011)
 
 `backend/tests/component/graphql/queries/test_number_pool_surface.py`: A 50 records, B two
-nodes no records, C no nodes → headline A's 50 of 100, A 50/100, B 0/100, no division for C; range
-rows computed over the fullest division within each range; the divisions query with `range_id`
-reports A 40 of 50; the allocation list filtered on A returns D1's two rows and so does the filter
-on C; no `mock-` value or label is returned on a scoped pool.
+nodes no records, C no nodes → headline A's 50 of 100, A 50/100, no division for B or C; range
+rows computed over the fullest division within each range; the utilization query with the division
+of B reports 30 of 100, `1 - 50` 0 of 50 and `51 - 100` 30 of 50; the allocation list filtered on A
+returns D1's two rows and so does the filter on C; no `mock-` value or label is returned on a scoped
+pool.
 
 ## Scenario 4 — scope in the schema (User Story 4, FR-012, FR-013)
 

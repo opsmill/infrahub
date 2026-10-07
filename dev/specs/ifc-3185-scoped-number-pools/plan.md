@@ -291,8 +291,8 @@ if D1 has not landed; the function is pure).
 
 | Root field | Reads | Builds |
 |---|---|---|
-| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over every range, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of in-space values of the range set; `out_of_space_count` as the rows with `in_space` false; `allocation_scope` from the entries in force |
-| `InfrahubNumberPoolDivisions` | the same rows; with `range_id`, that range as the measured space | one `NumberPoolDivision` per division from the reporter (set B: from the mock partition), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
+| `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over every range, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of in-space values of the range set; `out_of_space_count` as the rows with `in_space` false; `allocation_scope` from the entries in force |
+| `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the mock partition), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
 | `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), `in_space`, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges, `in_space` from the range set and the attribute's limits, `division` from the reporter (set B: the mock partition) |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
@@ -333,17 +333,19 @@ class DivisionReport:
     divisions: tuple[DivisionFigures, ...]   # every enumerated division, fullest first
     fullest: DivisionFigures
     def fullest_within(self, start: int, end: int) -> DivisionFigures: ...
-    def within(self, start: int, end: int) -> tuple[DivisionFigures, ...]: ...   # every division over one range
+    def of(self, key: DivisionKey) -> DivisionFigures: ...                         # one division over the pool
+    def of_within(self, key: DivisionKey, start: int, end: int) -> DivisionFigures: ...   # one division over one range
 ```
 
 The utilization resolver computes the pool's block from `fullest`, each range's block from
-`fullest_within(start, end)`; the divisions resolver lists `divisions`, or `within(start, end)`
-with `range_id`. Peer display labels come from one `NodeManager.get_many(..., branch_agnostic=True)`
-over the distinct peer ids of relationship entries; a peer that still cannot be read is labelled by
-its identifier, and a holder holding nothing for an entry carries an empty value, so the non-null
-fields never void the list. Unscoped: `divisions` is one entry with an empty key, and the pool's
-block equals today's figures. Regression tests pin `InfrahubResourcePoolAllocated`'s count, offset
-and limit and the generic utilization figures across the move onto the shared fragment.
+`fullest_within(start, end)`, or from `of(key)` and `of_within(key, start, end)` when `division` is
+given; the divisions resolver lists `divisions`. Peer display labels come from one
+`NodeManager.get_many(..., branch_agnostic=True)` over the distinct peer ids of relationship
+entries; a peer that still cannot be read is labelled by its identifier, and a holder holding
+nothing for an entry carries an empty value, so the non-null fields never void the list. Unscoped:
+`divisions` is one entry with an empty key, and the pool's block equals today's figures. Regression
+tests pin `InfrahubResourcePoolAllocated`'s count, offset and limit and the generic utilization
+figures across the move onto the shared fragment.
 
 The mock partition (`pools/division_mock.py`, set B) exposes `division_of_row(holder_id, entries)
 -> DivisionKey` and `divisions(entries) -> tuple[DivisionKey, ...]`, assigning `mock-1..3` by
@@ -377,8 +379,8 @@ diffing `schema/schema.graphql` for those types.
 - `NodeAttributeAddChecker`: for a scoped declaration, size against the largest division's node
   count from `NumberPoolDivisions`.
 - The three dedicated resolvers: `range_id` must be one of the pool's ranges; a `division` filter
-  needs a non-empty scope in force, every path in force, no duplicate path (messages in the
-  contract).
+  needs a non-empty scope in force, every path in force, no duplicate path, and on the utilization
+  query a value for every path in force (messages in the contract).
 
 ### 6. Interface contracts
 

@@ -139,10 +139,9 @@ examples.
    empty and the figures are pool-wide.
 4. **Given** an unscoped pool, **When** `InfrahubNumberPoolDivisions` is read, **Then** it lists
    exactly one division with no entry, an empty display label and figures equal to the pool's;
-   **Given** a scoped pool, **Then** it lists every division with its entries (path, value, display
-   label, peer kind), a display label joining the entries' labels, and figures, ordered by
-   utilization descending then display label; **When** `range_id` is given, **Then** the same
-   divisions are listed with figures restricted to that range and `size` equal to the range's.
+   **Given** a scoped pool, **Then** it lists every division holding at least one value, with its
+   entries (path, value, display label, peer kind), a display label joining the entries' labels,
+   and figures over the whole pool, ordered by utilization descending then display label.
 5. **Given** a pool tracking values on two branches, one of them provided by a user and held by no
    range, another inside a range but listed in the attribute's excluded values, **When**
    `InfrahubNumberPoolAllocations` is read, **Then** each row carries the value, the branch, the
@@ -154,8 +153,12 @@ examples.
    them before pagination.
 6. **Given** a scoped pool, **When** `InfrahubNumberPoolAllocations` is read with a `division`
    filter on a path in force, **Then** only rows whose holder carries the given values are
-   returned; **When** the pool is unscoped, or the path is not in force on the reading branch, or
-   a path is given twice, **Then** the query is refused naming the pool or the entry.
+   returned; **When** `InfrahubNumberPoolUtilization` is read with a `division` giving a value for
+   every entry in force, **Then** the pool figures, every range row and `out_of_space_count`
+   report that division; **When** that `division` omits an entry in force, **Then** the
+   utilization query is refused naming the missing entries; **When** the pool is unscoped, or the
+   path is not in force on the reading branch, or a path is given twice, **Then** either query is
+   refused naming the pool or the entry.
 7. **Given** `pool_id` naming an IP pool, an unknown node, or `range_id` naming a range of another
    pool, **When** any of the three queries is read, **Then** it is refused with the existing
    not-found or validation error naming the id.
@@ -221,9 +224,9 @@ through the ordinary allocation path, and check which numbers come back, on one 
 ### User Story 3 - Which site is about to run out, and which numbers it holds (Priority: P2)
 
 An operator reads a scoped pool's utilization and views the fullest division as the headline, every
-division listed, including those with nodes but no numbers yet, and the numbers one division holds,
-so that a site about to run out is visible before it does. The mock partition of User Story 1 is
-replaced by these reads.
+division holding numbers, and for one division its figures over the pool and over each range and
+the numbers it holds, so that a site about to run out is visible before it does. The mock
+partition of User Story 1 is replaced by these reads.
 
 **Why this priority**: Reporting is what makes a scoped pool operable, and it depends on the division
 reads User Story 2 introduces.
@@ -236,18 +239,18 @@ list against the records.
 
 1. **Given** sites A (50 records), B (two nodes, no records) and C (no nodes) on a 100-number
    pool scoped by site, **When** `InfrahubNumberPoolUtilization` and `InfrahubNumberPoolDivisions`
-   are read, **Then** the headline figures are A's 50 of 100, A reports 50 of 100, B reports 0 of
-   100, and there is no division for C.
+   are read, **Then** the headline figures are A's 50 of 100, A reports 50 of 100, and there is
+   no division for B or C.
 2. **Given** a scoped pool, **When** the default-branch and other-branch figures of the headline
    are read, **Then** they are computed over the fullest division.
 3. **Given** a scoped pool with ranges 1–50 and 51–100, site A holding forty numbers in 1–50 and
    site B holding thirty in 51–100, **When** the range rows are read, **Then** 1–50 reports A's 40
    of 50 and 51–100 reports B's 30 of 50, while the headline reports A's 40 of 100; **When**
-   `InfrahubNumberPoolDivisions` is read with the id of 1–50, **Then** A reports 40 of 50 and B 0
-   of 50.
-4. **Given** a division listing, **When** a node of the kind exists on a non-default branch only,
-   **Then** its division appears in the listing, labelled by the peer's display label or, when the
-   peer cannot be read, by its id.
+   `InfrahubNumberPoolUtilization` is read with the division of site B, **Then** the headline
+   reports 30 of 100, 1–50 reports 0 of 50 and 51–100 reports 30 of 50.
+4. **Given** a division listing, **When** a node of the kind holds a value on a non-default
+   branch only, **Then** its division appears in the listing, labelled by the peer's display
+   label or, when the peer cannot be read, by its id.
 5. **Given** device D1 holding 5 in site A on the default branch and moved to site C on `b1`,
    **When** `InfrahubNumberPoolAllocations` is filtered on site A, **Then** D1's two rows are
    returned (one per branch, the `b1` row's division naming C); **When** filtered on site C,
@@ -441,7 +444,9 @@ spec directory.
   entries the reading branch defines: refused naming the pool and the branch.
 - `range_id` names a range of another pool: refused naming the pool and the range.
 - A `division` filter with a partial tuple on a two-entry scope (`[{path: "site", value: A}]`):
-  accepted; every row held in site A across tenants is returned.
+  accepted by the allocations query, which returns every row held in site A across tenants;
+  refused by the utilization query naming the missing entry, because numbers are unique per
+  (site, tenant) pair and figures over several divisions match no space the pool allocates from.
 - The frontend's existing `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated`
   reads on a scoped pool: pool-wide figures and the whole pool's values, as before the slice.
 
@@ -496,9 +501,10 @@ specification adds.
 #### Reporting
 
 - **FR-011**: On a scoped pool, the headline figures MUST be those of the fullest division, and the
-  division listing MUST include every division occupied by a node of the kind on any live branch,
-  reporting 0 for a division holding no record. The branch-split figures are computed over the
-  fullest division. *(PRD FR-011; User Story 3, scenarios 1 and 2)*
+  division listing MUST include every division whose holders hold at least one tracked value on any
+  live branch. A division whose nodes hold no value is not listed. The branch-split figures are
+  computed over the fullest division. *(PRD FR-011, narrowed to divisions holding a value; User
+  Story 3, scenarios 1 and 2)*
 
 #### Pools the schema creates
 
@@ -519,7 +525,12 @@ specification adds.
   one pool: the scope in force on the reading branch, the pool's figures, one row per range ordered
   by start with the range's id, display label, start, end, weight and figures, and the count of
   tracked values outside the pool's space. On a scoped pool the pool's figures are the fullest
-  division's (FR-011). *(User Story 1, scenarios 2 and 3; User Story 3, scenarios 1 to 3)*
+  division's (FR-011). The query MUST accept an optional `division` argument naming one division
+  with a value for every scope entry in force on the reading branch; with it, the pool's figures,
+  every range row and the out-of-space count report that division, a range in which it holds no
+  value reporting `used` 0. A `division` that omits an entry in force MUST be refused naming the
+  missing entries; the other `division` refusals of FR-024 apply. *(User Story 1, scenarios 2 and 3;
+  User Story 3, scenarios 1 to 3)*
 - **FR-016**: A division MUST be identified by one entry per scope entry in force on the reading
   branch, in scope order, each entry carrying the path, the value (a relationship entry: the
   peer's id; an attribute entry: the value as text; a holder holding nothing for the entry: an
@@ -528,12 +539,12 @@ specification adds.
   entry whose peer can be read, the peer's kind. A division's display label joins the entries'
   labels with " / ". The same entry type MUST identify a division in the divisions list and on an
   allocation row. *(User Story 1, scenario 4; User Story 3, scenario 4)*
-- **FR-017**: On a scoped pool holding several ranges, every range row MUST report the fullest
-  division within that range: the largest count, over divisions, of that range's values held in one
-  division, against the range's size. The headline and its branch split report the fullest division
-  over the whole space. Every figure the pool reports is therefore a worst case, and a range about
-  to run out in one site is visible even when another range hides it in the headline. *(User Story
-  3, scenario 3)*
+- **FR-017**: On a scoped pool holding several ranges and read without `division`, every range
+  row MUST report the fullest division within that range: the largest count, over divisions, of that
+  range's values held in one division, against the range's size. The headline and its branch split
+  report the fullest division over the whole space. Every figure the pool reports is therefore a
+  worst case, and a range about to run out in one site is visible even when another range hides it
+  in the headline. *(User Story 3, scenario 3)*
 - **FR-018**: The generated artefacts (GraphQL schema export, OpenAPI schema, SDK and frontend
   types, attribute-parameter documentation) MUST carry the new fields and MUST be regenerated, never
   edited. The contract published by User Story 1 MUST NOT be renamed, retyped or removed by any
@@ -550,9 +561,10 @@ specification adds.
   pool the scope in force, the count of divisions and the complete list of divisions, each with its
   entries, display label and figures, ordered by utilization descending then display label, without
   pagination. On an unscoped pool, or on a branch where no entry is in force, the list MUST hold
-  exactly one division with no entry, an empty display label and figures equal to the pool's. With
-  `range_id`, the same divisions MUST be listed with figures restricted to that range and `size`
-  equal to the range's size. *(User Story 1, scenario 4; User Story 3, scenarios 1, 3 and 4)*
+  exactly one division with no entry, an empty display label and figures equal to the pool's. On a
+  scoped pool the list holds the divisions FR-011 lists, each with figures over the pool's whole
+  space. A division's figures per range are read from `InfrahubNumberPoolUtilization` with
+  `division` (FR-015). *(User Story 1, scenario 4; User Story 3, scenarios 1 and 4)*
 - **FR-023**: A query dedicated to number pools, `InfrahubNumberPoolAllocations`, MUST return for
   one pool a paginated list of rows, one per (record, branch-resolved value), each carrying the
   value, the branch holding it, the holder (id, hfid, kind, display label read on the row's
@@ -586,8 +598,10 @@ specification adds.
 - **FR-028**: The provenance of each tracked number and the out-of-space signal that P2 specified
   for the pool queries MUST be carried by the dedicated surface: `provenance` on each row, `in_space`
   on each row with `range: null` for a value no range holds, the `in_space` filter, and
-  `out_of_space_count` on the utilization result. They MUST NOT be added to the generic queries.
-  *(User Story 1, scenario 5)*
+  `out_of_space_count` on the utilization result. `out_of_space_count` MUST count rows, one per
+  holder and value, and equal the `count` of `InfrahubNumberPoolAllocations` with `in_space: false`
+  and the same `division`, so that it drops by one for each row a user fixes. They MUST NOT be added
+  to the generic queries. *(User Story 1, scenario 5)*
 - **FR-029**: The generic queries `InfrahubResourcePoolUtilization` and
   `InfrahubResourcePoolAllocated` and their types MUST keep their shape and meaning for every pool
   kind. For a number pool they report pool-wide figures and the whole pool's values, scope or not.

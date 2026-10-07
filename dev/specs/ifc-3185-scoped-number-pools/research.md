@@ -223,13 +223,15 @@ that loads rows and hands them to a pure `pools/division_report.py::DivisionRepo
 expands each row into the divisions it occupies, counts distinct values per division per branch
 split, and names the fullest division. The reporter answers every `NumberPoolUtilizationFigures`
 block: the pool's (the fullest division's on a scoped pool), each range's (the fullest division
-within the range, FR-017), each division's over the pool or over one range (FR-011, FR-022). A new
-`NumberPoolDivisions` query enumerates the distinct division tuples over
-`(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live branch so that a division with nodes but no
-records reports 0 (FR-011); relationship peers are resolved to display labels by one
-`NodeManager.get_many(..., branch_agnostic=True)` over the distinct peer ids, and a peer that still
-cannot be read (a division keyed by a node that exists only on a branch the reader cannot see)
-is labelled by its identifier so the non-null field never voids the list.
+within the range, FR-017), each division's over the pool, and one given division's over the pool
+and over each range (FR-011, FR-015, FR-022). The divisions listed are those the rows occupy, so a
+division whose nodes hold no value is not listed (FR-011). A new `NumberPoolDivisions` query
+enumerates the distinct division tuples over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live
+branch, with the node count of each, for the sizing check on a scoped attribute add; relationship
+peers are resolved to display labels by one `NodeManager.get_many(..., branch_agnostic=True)` over
+the distinct peer ids, and a peer that still cannot be read (a division keyed by a node that exists
+only on a branch the reader cannot see) is labelled by its identifier so the non-null field never
+voids the list.
 
 The generic `InfrahubResourcePoolAllocated` query shares `NumberPoolGetAllocated`, so the row shape
 keeps holder id, branch, value and record identifier and the generic resolver keeps the bounds
