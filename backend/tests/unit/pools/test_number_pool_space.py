@@ -87,7 +87,7 @@ def test_a_pool_feeding_a_kind_the_schema_no_longer_holds_is_unbounded(domains: 
     assert domain == NumberDomain()
     assert records == [
         {
-            "event": "Number pool feeds a kind the schema does not hold, so its ranges are not clipped",
+            "event": "Number pool feeds a kind missing from the schema, so it allocates from its full ranges without the attribute's limits",
             "log_level": "warning",
             "kind": "TestingGone",
             "attribute": "ticket_id",
@@ -103,7 +103,7 @@ def test_a_pool_feeding_an_attribute_the_kind_no_longer_holds_is_unbounded(domai
     assert domain == NumberDomain()
     assert records == [
         {
-            "event": "Number pool feeds an attribute its kind does not hold, so its ranges are not clipped",
+            "event": "Number pool feeds an attribute missing from its kind, so it allocates from its full ranges without the attribute's limits",
             "log_level": "warning",
             "kind": "TestingTicket",
             "attribute": "gone",

@@ -57,13 +57,14 @@ class SchemaAttributeDomains:
     def domain_of(self, kind: str, attribute_name: str) -> NumberDomain:
         """Return the numbers `attribute_name` of `kind` accepts.
 
-        A pool can outlive the kind or attribute it was created for, and then has no domain to clip its ranges to.
+        A pool can outlive the kind or attribute it was created for; it then allocates from its full ranges, without
+        the attribute's min, max or excluded values.
         """
         try:
             node_schema = self._schema.get(name=kind, branch=self._branch, duplicate=False)
         except SchemaNotFoundError:
             log.warning(
-                "Number pool feeds a kind the schema does not hold, so its ranges are not clipped",
+                "Number pool feeds a kind missing from the schema, so it allocates from its full ranges without the attribute's limits",
                 kind=kind,
                 attribute=attribute_name,
                 branch=self._branch.name,
@@ -72,7 +73,7 @@ class SchemaAttributeDomains:
         attribute = node_schema.get_attribute_or_none(name=attribute_name)
         if attribute is None:
             log.warning(
-                "Number pool feeds an attribute its kind does not hold, so its ranges are not clipped",
+                "Number pool feeds an attribute missing from its kind, so it allocates from its full ranges without the attribute's limits",
                 kind=kind,
                 attribute=attribute_name,
                 branch=self._branch.name,
