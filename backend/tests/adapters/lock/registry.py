@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class RecordingLock(InfrahubLock):
-    """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
+    """A local lock that logs its real (non-re-entrant) waits, acquires and releases to a timeline."""
 
     def __init__(
         self,
@@ -31,6 +31,8 @@ class RecordingLock(InfrahubLock):
 
     async def acquire(self) -> None:
         reentrant = self._recursion_var.get() is not None
+        if not reentrant:
+            self._timeline.record(self.name, LockAction.WAIT)
         await super().acquire()
         if not reentrant:
             self._timeline.record(self.name, LockAction.ACQUIRE)

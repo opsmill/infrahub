@@ -161,6 +161,13 @@ worktree records nothing.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 
+A read-only repository records from the import of its last commit
+(`InfrahubReadOnlyRepository.update_latest_commit`). Under the repository lock, it classifies the
+commit the ref resolves to against the commit the graph records, imports that commit as before, and
+records a rewrite once the new commit is written. It never resets the clone: a read-only repository
+follows its remote. A graph read or a classification that fails logs a warning and records nothing,
+and a record that fails fails the run after the import.
+
 ### The re-target marker
 
 A change of `default_branch` moves the git branch that feeds Infrahub's default branch, so the trunk

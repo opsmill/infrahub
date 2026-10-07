@@ -52,3 +52,10 @@ class FailingRepositoryRecordStore:
 
 def build_in_memory_recorder() -> HistoryRewriteRecorder:
     return HistoryRewriteRecorder(store=InMemoryRepositoryRecordStore())
+
+
+class FailingGraphCommitReader:
+    """GraphCommitReader whose every read fails the way the Infrahub API fails."""
+
+    async def get_commit(self, repository_id: str, infrahub_branch_name: str) -> str | None:
+        raise RepositoryError(identifier=repository_id, message=f"The API is unreachable from {infrahub_branch_name}")

@@ -1,0 +1,1 @@
+Added the rewrite record to read-only repositories: the next import of the last commit after a force push to the tracked branch records the commit Infrahub had imported and the commit that replaced it, and a change of `ref` or `commit` records nothing.

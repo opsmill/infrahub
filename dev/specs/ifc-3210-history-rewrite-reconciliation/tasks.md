@@ -561,7 +561,7 @@ classification can tell them apart.
 > `backend/infrahub/git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The record
 > and the precondition are identical either way. See [research.md](research.md) R10.
 
-- [ ] T072 [US5] Classify the resolved commit against the graph commit in
+- [x] T072 [US5] Classify the resolved commit against the graph commit in
       `backend/infrahub/git/tasks.py::import_read_only_repository_last_commit`, and call the
       recorder on a `REWRITE`. Perform no reset (FR-009).
       **Take `target_changed` from the model, never from the fact that this flow is running.** Two
@@ -573,9 +573,9 @@ classification can tell them apart.
       classification first records a false rewrite on every read-only re-point.
 - [ ] T073 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
-- [ ] T074 [P] [US5] Component-test the read-only classification in
+- [x] T074 [P] [US5] Component-test the read-only classification in
       `backend/tests/component/git/test_readonly_rewrite.py`.
-- [ ] T075 [US5] Read the previously imported commit from the graph **inside the repository lock**,
+- [x] T075 [US5] Read the previously imported commit from the graph **inside the repository lock**,
       in `backend/infrahub/git/tasks.py::import_read_only_repository_last_commit`, which already
       takes that lock around `update_latest_commit`. Do not read it in the mutation and carry it on
       the model: that read is outside the lock, so two queued runs both carry the same old commit,
@@ -634,7 +634,7 @@ read-write repository's configured default branch. Neither writes a record.
       genuine trunk rewrite into a `RETARGET` until it expires: reset, no record, no trunk
       webhook. The sweep bounds every marker to the first cycle that puts the trunk on the remote
       head of the branch the marker names.
-- [ ] T082 [US6] Read the marker at classification time, and clear it after the collection once the
+- [x] T082 [US6] Read the marker at classification time, and clear it after the collection once the
       trunk records the remote head of the branch the marker names, in the two components that
       call the detector: `collect_pending_imports` reads the cache marker for read-write, and the
       read-only detection point of T072 reads the in-band flag from its workflow model. Pass either
