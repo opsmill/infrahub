@@ -1,0 +1,83 @@
+# GraphQL contract: cost estimate on InfrahubGraphQLQueryReport
+# Feature: INFP-739
+# Extends the IFC-2504 contract. The return type is named GraphQLQueryReport in the code and in
+# schema/schema.graphql. Existing fields and arguments do not change.
+
+type GraphQLQueryReport {
+  targets_unique_nodes: Boolean!
+
+  """
+  Estimated work of the submitted query for each field. Selecting this field requires read
+  permission, on the request's branch, for every kind in the submitted query; otherwise the
+  request fails with the permission error that running the query would return.
+  """
+  cost_estimate: GraphQLQueryCostEstimate!
+}
+
+enum GraphQLQueryCostEstimateMode {
+  "Every variable declared by the query has a value: the top-level nodes and the fields directly under them were counted."
+  COUNTED_FIRST_STEP
+  "At least one declared variable has no value: every figure comes from the statistics."
+  STATISTICS_ONLY
+}
+
+enum GraphQLQueryCostSource {
+  COUNTED
+  STATISTICS
+}
+
+type GraphQLQueryCostStatistics {
+  "Branch the statistics describe. Always main in this version."
+  branch: String!
+  "Time the statistics refresh started reading the branch."
+  computed_at: DateTime!
+  version: Int!
+}
+
+type GraphQLQueryCostFigures {
+  nodes: BigInt!
+  resolver_calls: BigInt!
+  database_rows: BigInt!
+}
+
+type GraphQLQueryFieldCostEstimate {
+  "Response keys from the top-level field, joined by '/', without edges, node and list indexes."
+  path: String!
+  kind: String!
+  "Relationship identifier; null for a top-level field."
+  relationship_identifier: String
+  "ONE or MANY; MANY for a top-level field."
+  cardinality: String!
+  "Null when reason is set."
+  expected: GraphQLQueryCostFigures
+  "Null when reason is set."
+  worst_case: GraphQLQueryCostFigures
+  "True when the worst case is an upper bound: statistics of the request's branch, no at time."
+  worst_case_is_bound: Boolean!
+  source: GraphQLQueryCostSource
+  "Why no estimate is given, for example 'no statistics'."
+  reason: String
+}
+
+type GraphQLQueryCostEstimate {
+  mode: GraphQLQueryCostEstimateMode!
+  "Null when no statistics exist yet."
+  statistics: GraphQLQueryCostStatistics
+  fields: [GraphQLQueryFieldCostEstimate!]!
+}
+
+extend type Query {
+  InfrahubGraphQLQueryReport(
+    "The raw GraphQL query string to analyze."
+    query: String!
+    "Values of the variables the query declares. When every declared variable has a value, the first step is counted."
+    variables: GenericScalar
+  ): GraphQLQueryReport!
+}
+
+# Errors:
+# - empty query, syntax error, unknown type: unchanged (IFC-2504)
+# - cost_estimate selected for a query with a mutation: "The cost estimate covers queries only."
+# - cost_estimate selected without read permission on one kind: PermissionDeniedError, same message
+#   as running the query
+# - variables that do not match their declared types: the graphql-core coercion error for that variable

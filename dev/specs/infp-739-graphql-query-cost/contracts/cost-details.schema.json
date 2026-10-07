@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://infrahub.app/schemas/graphql-query-cost-details.json",
+  "title": "QueryCostDetails",
+  "description": "Content of extensions.query_cost when a request carries the header X-Infrahub-Query-Cost: details (INFP-739).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["estimate_mode", "statistics", "fields", "estimate_queries"],
+  "properties": {
+    "estimate_mode": {
+      "enum": ["counted_first_step", "statistics_only"]
+    },
+    "statistics": {
+      "description": "Null when no statistics exist yet.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["branch", "computed_at", "version"],
+          "properties": {
+            "branch": { "type": "string" },
+            "computed_at": { "type": "string", "format": "date-time" },
+            "version": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "fields": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/field" }
+    },
+    "estimate_queries": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queries", "database_rows"],
+      "properties": {
+        "queries": { "type": "integer", "minimum": 0 },
+        "database_rows": { "type": "integer", "minimum": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "figures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodes", "resolver_calls", "database_rows"],
+      "properties": {
+        "nodes": { "type": "integer", "minimum": 0 },
+        "resolver_calls": { "type": "integer", "minimum": 0 },
+        "database_rows": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind", "relationship_identifier", "cardinality", "estimate", "actual"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Response keys from the top-level field joined by '/', without edges, node and list indexes."
+        },
+        "kind": { "type": "string" },
+        "relationship_identifier": { "type": ["string", "null"] },
+        "cardinality": { "enum": ["one", "many"] },
+        "estimate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expected", "worst_case", "worst_case_is_bound", "source", "reason"],
+          "properties": {
+            "expected": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/figures" }] },
+            "worst_case": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/figures" }] },
+            "worst_case_is_bound": { "type": "boolean" },
+            "source": { "enum": ["counted", "statistics", null] },
+            "reason": { "enum": ["no statistics", null] }
+          }
+        },
+        "actual": { "$ref": "#/$defs/figures" }
+      }
+    }
+  }
+}
