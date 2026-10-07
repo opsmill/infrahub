@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -11,7 +12,7 @@ from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
 from infrahub.core.registry import registry
-from infrahub.exceptions import RepositoryDivergentHistoryError
+from infrahub.exceptions import RepositoryDivergentHistoryError, RepositoryError
 from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
 
 if TYPE_CHECKING:
@@ -360,6 +361,33 @@ async def test_a_source_behind_its_remote_head_with_no_commit_in_the_graph_is_me
     merge_clone.commits[SOURCE] = None
 
     await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
+async def test_a_tag_moved_on_the_remote_does_not_stop_the_merge(merge_clone: MergeClone) -> None:
+    """A fetch of the tags would fail on that tag, after the merge in Infrahub."""
+    merge_clone.remote.repo.create_tag("v1", ref=merge_clone.local_heads[DESTINATION])
+    merge_clone.repository.get_git_repo_main().remotes.origin.fetch(tags=True)
+    merge_clone.remote.repo.create_tag("v1", ref=merge_clone.local_heads[SOURCE], force=True)
+
+    await merge_clone.prepare()
+
+    assert merge_clone.heads() == merge_clone.local_heads
+
+
+async def test_a_fetch_that_fails_says_how_to_finish_the_merge(merge_clone: MergeClone) -> None:
+    """The fetch runs after the merge in Infrahub, so its error must say how to finish the merge in Git."""
+    shutil.rmtree(merge_clone.remote.directory)
+    message = (
+        f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. Infrahub cannot fetch "
+        f"the remote (Unable to clone the repository {REPOSITORY_NAME}, please check the address and the credential). "
+        f"The branch is merged in Infrahub and not in Git. To finish the merge, merge {SOURCE} into {DESTINATION} in "
+        "the Git repository. The next synchronization imports the result."
+    )
+
+    with pytest.raises(RepositoryError, match=rf"^{re.escape(message)}$"):
+        await merge_clone.prepare()
 
     assert merge_clone.heads() == merge_clone.local_heads
 

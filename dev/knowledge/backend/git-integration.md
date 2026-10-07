@@ -206,8 +206,10 @@ merge after a plain push and keeps the branch open:
   repository needs a Git merge: that Git merge would fail the same way after the graph merge. For a
   repository whose source branch records the commit its trunk records, the check reads the source
   branch only, and the dispatcher runs no Git merge for it: there is nothing to push.
-- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches, then compares the local
-  source ref and the local trunk worktree with their remote heads. The source graph commit comes in
+- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches the heads of the remote
+  branches, with no tags because a tag moved on the remote would fail the fetch, then compares the
+  local source ref and the local trunk worktree with their remote heads. A fetch that fails says how
+  to finish the merge in Git. The source graph commit comes in
   the merge model (`GitRepositoryMerge`), read when the merge was dispatched, because the source
   branch can be deleted before the Git merge runs. `merge_git_repository` reads the destination graph
   commit under the repository lock, because an earlier Git merge can move the trunk after the

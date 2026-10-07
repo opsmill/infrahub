@@ -737,9 +737,13 @@ reaches it. This guard closes that.
 
 ### Contract
 
-1. Fetch, then compare the **source** branch ref, which the merge reads, and the **destination**
-   branch worktree against their remote heads, using the same ancestry gateway as section 1. A
-   branch with no remote head, and a destination with no worktree, are not compared.
+1. Fetch the heads of the remote branches with `--prune` and `--no-tags`, then compare the
+   **source** branch ref, which the merge reads, and the **destination** branch worktree against
+   their remote heads, using the same ancestry gateway as section 1. A branch with no remote head,
+   and a destination with no worktree, are not compared. The fetch leaves tags out, because a tag
+   moved on the remote would fail it after the graph merge, and it prunes, so a branch the remote
+   deleted has no remote head. A fetch that fails says that the branch is merged in Infrahub and
+   not in Git, and how to finish the merge in Git.
 2. Compare the **graph commit** for each branch against the remote head as well, also when the clone
    holds that head. The answers mean different things:
 
@@ -814,7 +818,8 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
 4. A remote that cannot be reached, or does not answer in time, does not block the merge. The check
    logs a warning and compares nothing for that repository. The guard of the Git merge fetches from
    the same remote, so it does not compare the heads either: when the remote still cannot be
-   reached, its fetch fails, and the Git merge fails after the graph merge.
+   reached, its fetch fails, and the Git merge fails after the graph merge, with how to finish the
+   merge in Git.
 5. A remote that refuses the credentials blocks the merge with `RepositoryCredentialsError` when the
    repository needs a Git merge: that Git merge would read the remote with the same credentials and
    fail after the graph merge. For a repository the branch did not change, no Git merge runs, so the

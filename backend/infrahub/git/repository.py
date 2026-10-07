@@ -937,8 +937,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             RepositoryError: When git cannot fetch or compare a branch.
 
         """
-        if not await self.fetch():
+        if not self.has_origin:
             return
+        await self._fetch_branch_heads(source_branch=source_branch, dest_branch=dest_branch)
 
         remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
         local_source = self.get_branches_from_local(include_worktree=False).get(source_branch)
@@ -997,6 +998,33 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commit,
                 extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
             )
+
+    async def _fetch_branch_heads(self, source_branch: str, dest_branch: str) -> None:
+        """Fetch the head of every remote branch, and drop the branches the remote deleted.
+
+        Raises:
+            RepositoryError: When git cannot fetch, with how to finish the merge in Git.
+
+        """
+        self.relocate_directory_root()
+        try:
+            try:
+                # A tag that moved on the remote would fail a fetch of the tags, after the merge in Infrahub.
+                self.get_git_repo_main().remotes.origin.fetch(
+                    "+refs/heads/*:refs/remotes/origin/*", prune=True, no_tags=True
+                )
+            except GitCommandError as exc:
+                await self._raise_enriched_error(error=exc)
+        except RepositoryError as exc:
+            raise RepositoryError(
+                identifier=self.name,
+                message=self.unfinished_merge_message(
+                    source_branch=source_branch,
+                    dest_branch=dest_branch,
+                    reason=f"Infrahub cannot fetch the remote ({exc.message.rstrip('.')}).",
+                ),
+            ) from exc
+        await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
     def unfinished_merge_message(self, source_branch: str, dest_branch: str, reason: str) -> str:
         """Say why a Git merge stopped after the merge in Infrahub, and which remote branches to merge by hand."""
