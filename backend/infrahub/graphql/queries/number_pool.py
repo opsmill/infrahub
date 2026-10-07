@@ -72,8 +72,7 @@ class NumberPoolRangeUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the range's values. On a scoped pool, the figures of the division given as\n"
-            "division, or of the division holding the most of this range's values when none is given."
+            "Figures over the range's values. On a scoped pool, the figures of the division given as\ndivision."
         ),
     )
 
@@ -100,7 +99,7 @@ class NumberPoolUtilization(ObjectType):
         required=True,
         description=(
             "Figures over the pool's whole space. On a scoped pool, the figures of the division given as\n"
-            "division, or of the fullest division when none is given."
+            "division, which a scoped pool requires."
         ),
     )
     ranges = Field(
@@ -314,8 +313,8 @@ InfrahubNumberPoolUtilization = Field(
     resolver=NumberPoolUtilization.resolve,
     required=True,
     description=(
-        "Utilization of one number pool and of its ranges, for the fullest division or for the division\n"
-        "given as division."
+        "Utilization of one number pool and of its ranges. On a scoped pool, division is required and\n"
+        "the figures are those of that division."
     ),
 )
 
