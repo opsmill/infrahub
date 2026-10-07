@@ -36,7 +36,6 @@ import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
-import { useFeatureFlag } from "@/entities/config/ui/hooks/use-feature-flag";
 import { ThemeMenuItem } from "@/entities/config/ui/theme-menu-item";
 import { MANAGE_GLOBAL_PREFERENCES } from "@/entities/permission/domain/model/permission";
 import { useHasGlobalPermission } from "@/entities/permission/ui/queries/has-global-permission.query";
@@ -59,16 +58,11 @@ export const AccountMenu = () => {
 };
 
 const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => {
-  const isDarkThemeEnabled = useFeatureFlag("dark_theme");
-
   return (
     <>
-      {isDarkThemeEnabled && (
-        <>
-          <ThemeMenuItem />
-          <MenuSeparator />
-        </>
-      )}
+      <ThemeMenuItem />
+
+      <MenuSeparator />
 
       <MenuItem onAction={onAboutClick}>
         <InfoIcon /> About Infrahub

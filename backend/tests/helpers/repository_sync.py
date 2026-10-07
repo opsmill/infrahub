@@ -28,6 +28,22 @@ if TYPE_CHECKING:
 
 FLOW_RUN_LOGGER = "prefect.flow_runs"
 SKIPPED_BRANCH_WARNING_PREFIX = "Skipped remote branch"
+INVALID_YAML_CONFIG = "schemas: [unclosed\n"
+
+
+def invalid_yaml_config_message(repository_name: str) -> str:
+    """Return the import failure for a `.infrahub.yml` holding `INVALID_YAML_CONFIG`."""
+    return (
+        f"Repository '{repository_name}' has an invalid configuration file '.infrahub.yml'. "
+        "The file could not be parsed as valid YAML: while parsing a flow sequence\n"
+        '  in "<unicode string>", line 1, column 10:\n'
+        "    schemas: [unclosed\n"
+        "             ^\n"
+        "expected ',' or ']', but got '<stream end>'\n"
+        '  in "<unicode string>", line 2, column 1:\n'
+        "    \n"
+        "    ^"
+    )
 
 
 def skipped_branch_warning(*, branch_name: str, repository_name: str, default_branch: str) -> str:

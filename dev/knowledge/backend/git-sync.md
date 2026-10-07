@@ -2,7 +2,7 @@
 
 > Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
 
-How Infrahub maps and imports branches from external git repositories, and how git errors surface.
+How Infrahub maps and imports branches from external git repositories, and how git and import errors surface.
 Read this before reasoning about which remote branches get imported or why a git failure carries
 (or lacks) a message — the logic is split across several methods and is easy to mis-trace.
 
@@ -133,6 +133,68 @@ The check before the lock still raises on a broken copy rather than replacing it
 
 The lock is reentrant per context, so a caller that already holds it for a wider critical section
 pays nothing extra.
+
+## Import failures
+
+A branch import is built by `build_import_plan` and applied by `apply_import_plan`. Each runs inside
+the same boundary, `_import_failure_boundary` on the integrator; the apply step does not run when the
+build step fails, so a failure is handled once. Every import goes through these two
+methods: the add and sync flows, the scheduled sync of a new clone, the import-objects flow, and the
+read-only flows through `import_objects_from_files`.
+
+- **What the boundary does.** On any failure it sets the branch to `ERROR_IMPORT`, logs the failure
+  once to the flow run's log, and raises `RepositoryImportError`
+  (`backend/infrahub/git/import_errors.py`). `RepositoryConnectionError` and
+  `RepositoryCredentialsError` also set the branch being imported to `ERROR_IMPORT`, but they are not
+  logged or converted: they pass through unchanged and still stop the repository's sync.
+  A failed `ERROR_IMPORT` write is logged and does not replace the import failure. The boundary
+  ends after the last import step: setting the branch to `IN_SYNC` and sending `CommitUpdatedEvent`
+  run outside it, so their failure cannot mark a fully imported branch as `ERROR_IMPORT`.
+- **Expected and unrecognised failures.** `describe_import_error` is the single function that maps an
+  exception to a readable message. A failure it recognises is logged at error level without a
+  traceback. A failure it does not recognise is logged once with its traceback, which is the signal
+  that the function needs a new entry. Both become `RepositoryImportError`. To make a new error
+  type expected, add a `case` to that function and nothing else. The SDK `Error` base class is
+  deliberately not mapped, because it also covers connection errors.
+- **One log entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
+  and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
+  logs its warning with the same fields only for branches that failed before the import (step
+  `collection`), so each failure appears once in the task log.
+- **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
+  loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
+  `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
+  and the message is prefixed with the notes, for example
+  `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
+  Schema files have no label, because their validation errors already name the file. The build
+  loops that import Python modules (checks, Python transforms, generators) also pass the worktree
+  directory to `import_entry`, so a syntax error names its file relative to the repository root.
+  The file can be a helper module, not the entry's own file.
+  Do not log inside an import step and then re-raise: the boundary logs, and a second entry
+  duplicates the failure.
+- **No Prefect traceback.** The import steps are plain methods, not `@task`s. An exception leaving a
+  task is logged by Prefect with its traceback before the boundary can convert it. When
+  `RepositoryImportError` or `RepositoryBranchesFailedError` leaves a flow, Prefect also writes a
+  record with the traceback. Both types are registered with `@suppress_traceback_in_logs`, so the
+  filter on the Prefect run loggers drops that record (see [Webhooks](webhooks.md) for the
+  mechanism). The filter matches the exact type, so each class is registered on its own. Prefect's
+  `Finished in state Failed(...)` entry has no traceback and stays.
+- **A failure stays on its branch.** Containment does not rely on the boundary converting every
+  failure. `import_branch` (`backend/infrahub/git/sync.py`) builds and applies one branch under the
+  repository lock and returns any failure instead of raising it, including one raised outside the
+  boundary such as a lock error, which it logs once with its traceback. Only
+  `RepositoryConnectionError` and `RepositoryCredentialsError` are re-raised, so only the branch
+  being imported is set to `ERROR_IMPORT`: recording them on every remaining branch would leave
+  those statuses in place until a new commit or a manual re-import. `RepositorySyncer.sync` records
+  a failed branch and continues with the next one. `RepositoryAdder.add` returns a failed
+  default-branch import. For an active repository, `add_git_repository` still syncs the other
+  branches and sends `RefreshGitFetch` before it fails with that error; for a repository that is
+  not active, it syncs no other branch and fails with that error at once.
+  `bootstrap_local_repository` returns the repository when the default-branch import fails, so the
+  scheduled sync continues with its other branches; it returns `None` when the clone fails or when
+  that import raises a connection or credential error.
+- **Calling an import step directly.** The steps write to the run logger, which Prefect provides only
+  inside a flow or task run. A test that calls one directly wraps the call in a flow
+  (`tests/helpers/flow.py::call_in_flow`).
 
 ## Git error surfacing
 

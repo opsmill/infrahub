@@ -22,3 +22,7 @@ REMOTE_TRANSPORT_ENVIRONMENT: Final[Mapping[str, str]] = MappingProxyType(
 # --dry-run; this name is merely improbable, so the probe is meaningful even on a remote that happens
 # to hold a branch by this name.
 WRITE_ACCESS_PROBE_REF = "infrahub-write-access-probe-do-not-create"
+
+IMPORT_STATUS_CHECK_KIND = "RepositoryImportCheck"
+IMPORT_STATUS_CHECK_NAME = "Repository Import Check"
+MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"

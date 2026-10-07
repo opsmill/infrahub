@@ -608,6 +608,13 @@ GIT_REPOSITORY_USER_CHECKS_TRIGGER = WorkflowDefinition(
     function="trigger_user_checks",
 )
 
+GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN = WorkflowDefinition(
+    name="git-repository-check-import-status",
+    type=WorkflowType.USER,
+    module="infrahub.git.tasks",
+    function="run_check_repository_import_status",
+)
+
 GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER = WorkflowDefinition(
     name="git-repository-trigger-internal-checks",
     type=WorkflowType.USER,
@@ -749,6 +756,7 @@ WORKFLOWS = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,
     GIT_REPOSITORY_USER_CHECKS_DEFINITIONS_TRIGGER,

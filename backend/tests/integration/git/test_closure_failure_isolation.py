@@ -10,6 +10,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.node import Node
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -80,7 +81,7 @@ class TestClosureFailureIsolation(TestInfrahubApp):
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # Queries must exist before the Jinja2 transforms that reference them are imported.

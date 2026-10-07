@@ -11,14 +11,17 @@
     <title>Infrahub</title>
     <script>
     "use strict";
-    try {
-      const theme = localStorage.getItem("infrahub.theme.choice");
+    {
+      let theme = null;
+      try {
+        theme = localStorage.getItem("infrahub.theme.choice");
+      } catch {
+        // Handle when site data is blocked
+      }
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (theme === "dark" || (theme === "system" && prefersDark)) {
+      if (theme === "dark" || (theme !== "light" && prefersDark)) {
         document.documentElement.classList.add("dark");
       }
-    } catch {
-      // Handle when site data is blocked
     }
     </script>
   </head>
