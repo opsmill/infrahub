@@ -24000,7 +24000,7 @@ export type NumberPoolRangeUtilization = {
   end: Scalars['BigInt']['output'];
   /**
    * Figures over the range's values. On a scoped pool, the figures of the division given as
-   * division, or of the division holding the most of this range's values when none is given.
+   * division.
    */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
@@ -24026,7 +24026,7 @@ export type NumberPoolUtilization = {
   display_label: Scalars['String']['output'];
   /**
    * Figures over the pool's whole space. On a scoped pool, the figures of the division given as
-   * division, or of the fullest division when none is given.
+   * division, which a scoped pool requires.
    */
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */
@@ -26247,8 +26247,8 @@ export type Query = {
    */
   InfrahubNumberPoolDivisions: NumberPoolDivisions;
   /**
-   * Utilization of one number pool and of its ranges, for the fullest division or for the division
-   * given as division.
+   * Utilization of one number pool and of its ranges. On a scoped pool, division is required and
+   * the figures are those of that division.
    */
   InfrahubNumberPoolUtilization: NumberPoolUtilization;
   /** Find all shortest paths between two nodes in the graph */
