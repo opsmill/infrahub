@@ -262,7 +262,7 @@ SC-002, SC-007.
       its first call, and a second `deliver` call, as the task retry makes it, that releases every
       item of the window under a new lease; an abandonment and a deletion guard that wait for the
       lock find the entries already settled.
-- [ ] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
+- [X] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
       one service per repository, with the adapter bound to the same repository. Until T069, it wires
       a releaser that does nothing, because no barrier holds anything yet.
 
