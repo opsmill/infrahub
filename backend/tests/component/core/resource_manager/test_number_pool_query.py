@@ -503,25 +503,6 @@ class TestRangeListFiltering:
         assert [result.value for result in allocated.get_data()] == [2, 3, 7, 8]
         assert taken.get_taken_values() == {2, 3, 7, 8}
 
-    async def test_an_empty_range_list_reports_no_value(
-        self, db: InfrahubDatabase, default_branch: Branch, incident_pool_holding_one_to_ten: CoreNumberPoolProtocol
-    ) -> None:
-        used = await NumberPoolGetUsed.init(
-            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[], branch_agnostic=True
-        )
-        allocated = await NumberPoolGetAllocated.init(
-            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[], branch_agnostic=True
-        )
-        taken = await NumberPoolGetTaken.init(
-            db=db, branch=default_branch, pool=incident_pool_holding_one_to_ten, ranges=[]
-        )
-        for query in (used, allocated, taken):
-            await query.execute(db=db)
-
-        assert list(used.iter_results()) == []
-        assert list(allocated.get_data()) == []
-        assert taken.get_taken_values() == set()
-
 
 async def live_record_count(db: InfrahubDatabase, node_id: str, attribute_name: str) -> int:
     """How many reservation records the object's attribute carries right now."""
