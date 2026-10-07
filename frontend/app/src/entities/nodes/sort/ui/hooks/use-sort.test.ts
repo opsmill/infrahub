@@ -195,19 +195,19 @@ describe("useSort", () => {
       searchParams: "?branches_sort=name__value__asc&branches_page=3",
       onUrlUpdate,
     });
-    const { result } = await renderHook(() => useSort(schema), {
+    const hook = await renderHook(() => useSort(schema), {
       wrapper: ({ children }) =>
         wrapper({ children: FilterScopeProvider({ urlKey: "branches", children }) }),
     });
 
     // WHEN
-    result.current.setCustomSort([{ field: "priority__value", direction: "DESC" }]);
+    await hook.act(() => {
+      hook.result.current.setCustomSort([{ field: "priority__value", direction: "DESC" }]);
+    });
 
     // THEN the page chosen against the old order does not survive it
-    await vi.waitFor(() => {
-      const search = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams;
-      expect(search?.get("branches_sort")).toBe("priority__value__desc");
-      expect(search?.get("branches_page")).toBeNull();
-    });
+    const search = onUrlUpdate.mock.lastCall?.[0].searchParams;
+    expect(search?.get("branches_sort")).toBe("priority__value__desc");
+    expect(search?.get("branches_page")).toBeNull();
   });
 });
