@@ -223,10 +223,7 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         bus: BusRecorder,
         warm_up: RepositoryWarmUp,
     ) -> None:
-        """Every copy, this one included, is reset to the commit the graph holds, not the remote head just cloned.
-
-        A copy left at the remote head would leave this worker's sync nothing to import.
-        """
+        """Every copy, this one included, is reset to the commit the graph holds, not the remote head just cloned."""
         await warm_up.warm_up(model=self._model(repository=repository, default_branch=default_branch))
 
         assert (
@@ -258,7 +255,7 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         bus: BusRecorder,
         warm_up: RepositoryWarmUp,
     ) -> None:
-        """A copy created here would sit at the remote head and leave the sync nothing to import."""
+        """The sync creates this copy along with its first import, so the warm-up neither clones nor broadcasts."""
         await warm_up.warm_up(model=self._model(repository=repository, default_branch=default_branch))
 
         assert not (git_repos_dir_module_scope / repository.id).exists()

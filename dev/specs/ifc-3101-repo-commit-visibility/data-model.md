@@ -220,7 +220,7 @@ GitRepositoryWarmUp
   It runs on whichever worker the workflow engine picks, so it broadcasts: RefreshGitFetch pinned to
   that commit when there is one, after resetting its own fresh copy to it; RefreshGitClone for a
   read-only branch with none; nothing for a read-write repository with none, which it does not
-  clone either, since a copy at the remote head would leave the sync nothing to import
+  clone either, since that repository's sync creates the copy along with its first import
 
 ### `infrahub.message_bus.messages.refresh_git_clone`
 

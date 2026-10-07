@@ -85,9 +85,10 @@ handled by `infrahub.message_bus.operations.git.repository::fetch`, which clones
 and resets to the pinned `commit` with `update_commit_value=False`. Both the warm-up flow and the
 read-only refs check send it with `commit` pinned to the imported commit, so convergence can never
 move the pin (FR-016, FR-017). The warm-up reads that commit through the client only once it holds the
-repository lock, and resets its own fresh copy to it as well, since a copy left at the remote head
-leaves that worker's sync nothing to import: the sync compares local branches with the remote, not
-with the graph. When a read-only branch has nothing imported it sends `refresh.git.clone` instead,
+repository lock, and resets its own fresh copy to it as well, so that worker holds the same commit as
+every worker the broadcast reaches rather than a remote head Infrahub has not imported. The sync
+moves every copy forward when it imports that head: it selects a branch whose commit in the graph
+differs from the remote head, whatever the worker's own copy holds. When a read-only branch has nothing imported it sends `refresh.git.clone` instead,
 since an unpinned fetch pulls the wrong remote branch for a read-only repository. A read-write
 repository with nothing imported is not warmed up at all; its sync creates and imports the copy.
 
