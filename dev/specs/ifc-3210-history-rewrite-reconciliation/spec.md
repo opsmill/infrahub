@@ -241,6 +241,14 @@ either case.
   too, not only after a rewrite. The
   branch stays open, and the merge goes through once the next cycle imports the head. Contract
   section 9 says why the rule is equality and not ancestry.
+- **A delivery that IFC-3220 holds while the trunk moves.** IFC-3220 FR-023 forbids an import of a
+  branch while a delivery for that branch is pending, so the graph keeps the old trunk commit. When
+  the remote trunk moves in that time, the check before the graph merge (FR-005d) finds a remote head
+  the graph does not record. It refuses every merge of a branch that changed that repository, until
+  the delivery is done. IFC-3220 expects the opposite: in its User Story 2, scenario 2 queues a second
+  merge behind the pending one, and scenario 3 replays onto a remote trunk that advanced. The two
+  rules conflict. This spec does not decide which one wins. The decision is open and belongs to
+  IFC-3220 (`dev/specs/ifc-3220-writeback-failure-handling/spec.md`).
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
