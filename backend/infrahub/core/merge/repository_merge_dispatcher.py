@@ -6,7 +6,7 @@ from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
 from infrahub.git.commit_id import readable_commit
-from infrahub.git.merge_readiness import GitMergeTarget
+from infrahub.git.merge_readiness import GitMergeTarget, nothing_to_merge_in_git
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.log import get_logger
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -68,8 +68,10 @@ class RepositoryMergeDispatcher:
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
     async def merge_core_repositories(self) -> None:
-        for repo, _ in await list_shared_core_repositories(db=self.db, source_branch=self.source_branch):
-            if self.source_branch.sync_with_git or repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
+        for repo, repo_on_destination in await list_shared_core_repositories(
+            db=self.db, source_branch=self.source_branch
+        ):
+            if self._needs_a_git_merge(repo=repo, repo_on_destination=repo_on_destination):
                 # The Git merge can run after the source branch is deleted, so it gets the source commit from here.
                 model = GitRepositoryMerge(
                     repository_id=repo.id,
@@ -82,6 +84,14 @@ class RepositoryMergeDispatcher:
                     source_commit=readable_commit(repo.commit.value),
                 )
                 await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+
+    def _needs_a_git_merge(self, repo: CoreRepository, repo_on_destination: CoreRepository) -> bool:
+        if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
+            return True
+        return self.source_branch.sync_with_git and not nothing_to_merge_in_git(
+            source_commit=readable_commit(repo.commit.value),
+            destination_commit=readable_commit(repo_on_destination.commit.value),
+        )
 
 
 async def list_shared_core_repositories(

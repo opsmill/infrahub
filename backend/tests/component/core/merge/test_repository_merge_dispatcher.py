@@ -108,3 +108,31 @@ async def test_the_git_merge_carries_the_commits_the_graph_records_at_dispatch(
             )
         }
     ]
+
+
+async def test_a_repository_the_branch_did_not_change_gets_no_git_merge(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The branch records the commit the default branch records, so the Git merge has nothing to push."""
+    changed = await create_repository(db=db, name="changed-repo", commit=TRUNK_COMMIT)
+    unchanged = await create_repository(db=db, name="unchanged-repo", commit=TRUNK_COMMIT)
+    staging = await create_repository(db=db, name="staging-repo", commit=TRUNK_COMMIT)
+    feature = await create_feature_branch(db=db, sync_with_git=True)
+    await update_on_branch(db=db, repository=changed, branch=feature, commit=BRANCH_COMMIT)
+    await update_on_branch(db=db, repository=unchanged, branch=feature, commit=TRUNK_COMMIT)
+    await update_on_branch(
+        db=db, repository=staging, branch=feature, internal_status=RepositoryInternalStatus.STAGING.value
+    )
+    workflow = WorkflowRecorder()
+
+    await RepositoryMergeDispatcher(
+        db=db, source_branch=feature, destination_branch=default_branch, workflow=workflow
+    ).merge_core_repositories()
+
+    assert sorted(
+        call["parameters"]["model"].repository_name for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)
+    ) == ["changed-repo", "staging-repo"]
+    assert sorted(target.name for target in await list_git_merge_targets(db=db, source_branch=feature)) == [
+        "changed-repo",
+        "unchanged-repo",
+    ]

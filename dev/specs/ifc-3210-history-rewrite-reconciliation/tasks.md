@@ -370,7 +370,9 @@ emits no signal.
       `backend/infrahub/core/branch/tasks.py::merge_branch` before the global merge lock. The Git
       merge runs after the graph merge, when the source branch never syncs again, so its own refusal
       cannot clear. Refuse with `RepositoryNotSynchronizedError` while a remote head differs from the
-      graph commit, and let the merge go on when the remote cannot be read. Add a live-remote test
+      graph commit, and let the merge go on when the remote cannot be read. A repository whose source
+      branch records the trunk commit has nothing to merge in Git: compare its source branch only,
+      and submit no Git merge for it. Add a live-remote test
       that merges a branch through the mutation, not through a direct call of the Git merge flow.
 - [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure

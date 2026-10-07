@@ -11,6 +11,11 @@ if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
 
+def nothing_to_merge_in_git(source_commit: str | None, destination_commit: str | None) -> bool:
+    """Whether the branch records the commit the default branch records, so the Git merge would push nothing."""
+    return source_commit is not None and source_commit == destination_commit
+
+
 @dataclass(frozen=True)
 class GitMergeTarget:
     """A read-write repository whose part of a branch merge runs in Git."""
@@ -66,6 +71,9 @@ class RemoteHeadsMergeCheck:
     async def check(self, source_branch: str, targets: Sequence[GitMergeTarget]) -> None:
         """Compare, for each repository, the graph commit of both branches with their remote heads.
 
+        A repository the branch did not change has nothing to merge in Git, so its trunk can move without
+        holding the merge. Its source branch is still compared: a branch merges once and never syncs again.
+
         Raises:
             RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
@@ -102,6 +110,8 @@ class RemoteHeadsMergeCheck:
                 "so the merge compares only the trunk with its remote head"
             )
             return {target.remote_trunk: target.destination_commit}
+        if nothing_to_merge_in_git(source_commit=target.source_commit, destination_commit=target.destination_commit):
+            return {target.remote_source_branch: target.source_commit}
         return {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
 
     async def _read_heads(

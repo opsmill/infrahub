@@ -237,7 +237,8 @@ either case.
   the remote head is an ancestor of was rewound too, and FR-001b resets it.
 - **A plain push that the synchronisation has not imported yet.** The check before the graph merge
   compares each remote head with the graph commit for equality (FR-005d). It therefore refuses a
-  merge after a plain push to the source branch or to the trunk too, not only after a rewrite. The
+  merge after a plain push to the source branch, or to the trunk of a repository the branch changed,
+  too, not only after a rewrite. The
   branch stays open, and the merge goes through once the next cycle imports the head. Contract
   section 9 says why the rule is equality and not ancestry.
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
@@ -306,7 +307,9 @@ here. See "Out of Scope".
   never synchronised again, so a refusal there cannot clear by a retry. The branch merge MUST
   therefore compare, before the graph merge, the remote heads of the source branch and of the trunk
   of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
-  the merge while one differs. That refusal leaves the branch open, and the merge can run again after
+  the merge while one differs. A repository whose source branch records the commit that its trunk
+  records has nothing to merge in Git: the system MUST NOT run its Git merge, and MUST compare only
+  the remote head of its source branch. That refusal leaves the branch open, and the merge can run again after
   the synchronisation imports the head. A remote that cannot be read MUST NOT block the merge. A
   refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
   branch is merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes

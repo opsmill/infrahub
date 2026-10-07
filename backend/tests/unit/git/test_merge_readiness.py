@@ -93,6 +93,23 @@ UNIMPORTED_HEAD_CASES = [
         ),
     ),
     UnimportedHeadCase(
+        name="source-moved-on-a-repository-the-branch-did-not-change",
+        targets=[target(source_commit=TRUNK_HEAD)],
+        remote_heads={"network-repo": {SOURCE: NEWER, "main": NEWER}},
+        message=(
+            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"{SOURCE} of repository network-repo ({NEWER} on the remote, {TRUNK_HEAD} in Infrahub). Merge again "
+            "after the next synchronization of the repository imports it."
+        ),
+        expected_reads=[
+            HeadRead(
+                repository_name="network-repo",
+                location="https://git.example.com/network-repo.git",
+                branch_names=(SOURCE,),
+            )
+        ],
+    ),
+    UnimportedHeadCase(
         name="two-repositories",
         targets=[target(name="first-repo"), target(name="second-repo")],
         remote_heads={
@@ -188,4 +205,19 @@ async def test_a_source_named_like_the_remote_trunk_compares_only_the_trunk_with
     assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
         "Branch develop has the name of the trunk of repository network-repo on the remote, so the merge "
         "compares only the trunk with its remote head"
+    ]
+
+
+async def test_a_trunk_that_moved_does_not_hold_the_merge_of_a_repository_the_branch_did_not_change() -> None:
+    """The branch records the trunk commit, so the Git merge of that repository has nothing to push."""
+    reader = InMemoryRemoteHeadReader(heads={"network-repo": {SOURCE: TRUNK_HEAD, "main": NEWER}})
+
+    await check(reader=reader).check(source_branch=SOURCE, targets=[target(source_commit=TRUNK_HEAD)])
+
+    assert reader.reads == [
+        HeadRead(
+            repository_name="network-repo",
+            location="https://git.example.com/network-repo.git",
+            branch_names=(SOURCE,),
+        )
     ]

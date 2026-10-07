@@ -270,14 +270,16 @@ remote head by ancestry first, and resets a worktree that does not lead to that 
 
 A merge goes through neither path: it builds on the local destination and merges the local source
 ref. Two checks keep it on the commits the graph imported. Both compare for equality, so a plain push
-to the source branch or to the trunk holds the merge too, not only a rewrite, until the next cycle
-imports the new head:
+to the source branch, or to the trunk of a repository the branch changed, holds the merge too, not
+only a rewrite, until the next cycle imports the new head:
 
 - Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the trunk
   with `git ls-remote` and compares them with the commits the graph records
   (`git/merge_readiness.py::RemoteHeadsMergeCheck`). While one differs, it refuses the merge with
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
-  cycle. A remote that cannot be read does not block the merge.
+  cycle. A remote that cannot be read does not block the merge. For a repository whose source branch
+  records the commit its trunk records, the check reads the source branch only, and the dispatcher
+  runs no Git merge for it: there is nothing to push.
 - In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches and compares both
   branches again. The source graph commit comes in the merge model (`GitRepositoryMerge`), read when
   the merge was dispatched, because the source branch can be deleted before the Git merge runs.
