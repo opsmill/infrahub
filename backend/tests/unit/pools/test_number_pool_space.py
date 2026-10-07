@@ -11,6 +11,7 @@ from infrahub.pools.number_ranges import NumberDomain, NumberSpan
 
 MAIN = Branch(name="main")
 FEATURE = Branch(name="feature")
+REMOVAL = Branch(name="removal")
 
 
 def test_number_parameters_give_the_bounds_and_every_exclusion() -> None:
@@ -92,6 +93,27 @@ def test_a_pool_feeding_a_kind_the_schema_no_longer_holds_is_unbounded(domains: 
             "kind": "TestingGone",
             "attribute": "ticket_id",
             "branch": "main",
+        }
+    ]
+
+
+def test_a_pool_feeding_a_kind_its_branch_no_longer_holds_is_unbounded(schema_manager: SchemaManager) -> None:
+    """The kind still exists on main, but the branch the lookup runs on does not hold it."""
+    other = NodeSchema(name="Other", namespace="Testing", attributes=[AttributeSchema(name="title", kind="Text")])
+    schema_manager.register_schema(schema=SchemaRoot(nodes=[other]), branch=REMOVAL.name)
+    removal_domains = SchemaAttributeDomains(schema=schema_manager, branch=REMOVAL)
+
+    with capture_logs() as records:
+        domain = removal_domains.domain_of(kind="TestingTicket", attribute_name="ticket_id")
+
+    assert domain == NumberDomain()
+    assert records == [
+        {
+            "event": "Number pool feeds a kind missing from the schema, so it allocates from its full ranges without the attribute's limits",
+            "log_level": "warning",
+            "kind": "TestingTicket",
+            "attribute": "ticket_id",
+            "branch": "removal",
         }
     ]
 
