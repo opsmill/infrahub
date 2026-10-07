@@ -129,7 +129,7 @@ changes only.
       and the pool's figures; `InfrahubNumberPoolAllocations` returns three rows ordered by value
       then branch then holder id, each with `holder {id hfid kind display_label}` read on the row's
       branch, `identifier`, `provenance` `ALLOCATED`, `range` (`1 - 50` for 1 and 7, `51 - 100`
-      for 51) and `division: []`; the filters `branch: "b1"` (the row 7), `provenance: PROVIDED`
+      for 51); the filters `branch: "b1"` (the row 7), `provenance: PROVIDED`
       (no row), `range_id` of `51 - 100` (the row 51) each return the expected rows with `count`
       before pagination; `offset` and `limit` page the ordered list; `division` on this pool is
       refused with the contract's message, and so is `division` on `InfrahubNumberPoolUtilization`.
@@ -139,9 +139,10 @@ changes only.
       time: `allocation_scope: ["site"]` on utilization and divisions; the divisions list holds
       the mock divisions holding at least one row, ordered by utilization descending then label,
       each entry with `path: "site"`; the utilization query with `[{path: "site", value:
-      "mock-2"}]` reports `mock-2` over the pool and over each range; every row's `division` is one of the listed divisions; filtering on `[{path: "site", value:
-      "mock-2"}]` returns rows whose `division` is `mock-2`, and the number of distinct values
-      among them equals `mock-2`'s `used` (SC-010); `[{path: "site", value: "nope"}]` returns an
+      "mock-2"}]` reports `mock-2` over the pool and over each range; filtering the allocation
+      list on `[{path: "site", value: "mock-2"}]` returns the rows whose holder the partition puts
+      in `mock-2`, and the number of distinct values among them equals `mock-2`'s `used`
+      (SC-010); `[{path: "site", value: "nope"}]` returns an
       empty list with `count: 0`; `[{path: "role", value: "x"}]` (not in the scope) and
       `[{path: "site", value: "a"}, {path: "site", value: "b"}]` are refused naming the entry; read
       on a branch whose schema lacks `site`, `allocation_scope` is `[]` and the division filter is
@@ -230,7 +231,7 @@ changes only.
       `division_mock.division_of_row` matches every given entry, then slice; `count` accordingly;
       build each row: `holder` from one `NodeManager.get_many(ids, branch=<row branch>, at)` per
       distinct branch (`display_label`, `hfid` via `get_hfid`, `kind` from the pool's `node`),
-      `range` from `_ranges` by bounds, `division` from the mock or `[]`.
+      `range` from `_ranges` by bounds.
 - [ ] T022 [US1] Register the three root fields in
       `backend/infrahub/graphql/schema.py::InfrahubBaseQuery` as `InfrahubNumberPoolUtilization`,
       `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`, each a `Field` with the
@@ -413,10 +414,10 @@ division rows, the range rows and the filtered allocation list against the recor
       `51 - 100` 30 of 50); scenario 4 (a division keyed by a site that exists
       only on `b1`, read from the default branch, is listed with `display_label` falling back to the
       id and `peer_kind` null); scenario 5 (D1 holding 5 in A on the default branch and moved to C
-      on `b1`: the allocation list filtered on A returns D1's two rows, the `b1` row's `division`
-      naming C; filtered on C, the same two rows; SC-010 holds for both); a partial two-entry filter
-      on a `["site", "role"]` pool; `InfrahubResourcePoolAllocated` count, offset and limit
-      unchanged across the fragment move.
+      on `b1`: the allocation list filtered on A returns D1's two rows, although D1 sits in C on
+      `b1`; filtered on C, the same two rows; SC-010 holds for both); a partial two-entry filter on
+      a `["site", "role"]` pool; `InfrahubResourcePoolAllocated` count, offset and limit unchanged
+      across the fragment move.
 - [ ] T048 [US3] Add `NumberPoolDivisions` to `backend/infrahub/core/query/resource_manager.py`:
       over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` with the visibility constant on the
       `IS_PART_OF` edge and one `CALL` per entry (same shape as T042), return the distinct tuple of
@@ -432,8 +433,7 @@ division rows, the range rows and the filtered allocation list against the recor
       `report.divisions`, `report.of` and `report.of_within`.
 - [ ] T051 [US3] Replace the mock in `backend/infrahub/graphql/queries/number_pool.py`: pool
       `figures` from `of(key)`; each range's figures from `of_within(key, start, end)`; the
-      divisions list from `report.divisions`; a row's `division`
-      from the per-entry values the query returns for the row's branch; the `division` filter
+      divisions list from `report.divisions`; the `division` filter
       passed to `NumberPoolGetAllocated` so `count`, `offset` and `limit` are Cypher-side again;
       peer display labels and kinds from one `NodeManager.get_many(..., branch_agnostic=True)` over
       the distinct peer ids, falling back to the id; attribute values as text; a missing value as
@@ -599,8 +599,8 @@ branch, the full scope after merge, the scope in force reported by the dedicated
       backend/infrahub` that no reference remains.
 - [ ] T072 [US3] Add to `backend/tests/component/graphql/queries/test_number_pool_surface.py` the
       no-mock test: on the scoped fixture with values in three sites, read the three queries and
-      assert that no `value` or `display_label` in any division entry, division row or allocation
-      row begins with `mock-`, and that the divisions listed are exactly the sites (FR-019,
+      assert that no `value` or `display_label` in any division entry or division row begins
+      with `mock-`, and that the divisions listed are exactly the sites (FR-019,
       SC-011).
 - [ ] T073 [US3] Run T025 (SDL snapshot unchanged), T072 and the regression set.
 

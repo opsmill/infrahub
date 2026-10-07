@@ -128,8 +128,8 @@ pool and within a range (FR-015, FR-017).
 `pools/division_mock.py` (deleted by the last change set): for a scoped pool whose scope in force
 is not empty, assigns each row to one of three divisions `mock-1`, `mock-2`, `mock-3` by
 `int(holder_uuid) % 3 + 1`, builds the division entries from the real scope paths in force with the
-division's name as value and label, and answers the divisions list, the division of each row and the
-division filter from the same assignment. Never called for an unscoped pool.
+division's name as value and label, and answers the divisions list and the division filter from
+the same assignment. Never called for an unscoped pool.
 
 ---
 

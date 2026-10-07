@@ -294,7 +294,7 @@ if D1 has not landed; the function is pure).
 |---|---|---|
 | `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over the pool's space, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of values of the pool's space; `allocation_scope` from the entries in force |
 | `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the mock partition), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
-| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), the attribute's `excluded_values` and limits, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges, `division` from the reporter (set B: the mock partition) |
+| `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the range set (or the one range of `range_id`), the attribute's `excluded_values` and limits, `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
 mirror leaves it null on a pool holding several ranges, where today's getter and allocated query
@@ -404,7 +404,8 @@ diffing `schema/schema.graphql` for those types.
   every type of the dedicated surface plus `allocation_scope` on the three pool inputs.
 - **Component**: the three dedicated queries on an unscoped pool (figures, ranges, one division,
   rows with provenance and `range`, no row for a value no range holds nor for an excluded value,
-  every filter, pagination, a pool holding two ranges with a null shorthand), on a scoped pool at contract time (mock partition agreement, SC-010) and after D2
+  every filter, pagination, a pool holding two ranges with a null shorthand), on a scoped pool at
+  contract time (mock partition agreement, SC-010) and after D2
   (real divisions, the FR-025 two-division row), on an IP pool and an unknown id (refusals);
   `division_of` (relationship, attribute, enum, peer by id); the scoped fragment with one and two
   entries, relationship and attribute entries, both anchor orders; the FR-001/FR-007 two-branch

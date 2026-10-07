@@ -255,8 +255,8 @@ enum, hand-written in a new module `graphql/queries/number_pool.py` and register
 `graphql/schema.py::InfrahubBaseQuery` beside the generic fields. Their shape follows the
 number-pool data model: one figures block with absolute counts reused for the pool, each range and
 each division; ranges typed as ranges; rows carrying the holder as a flat type (id, hfid, kind,
-display label), the provenance, the range and the division; a structured `division` filter
-mirroring the output entries; `allocation_scope` in force on the results. See
+display label), the provenance and the range; a structured `division` filter mirroring the
+division entries; `allocation_scope` in force on the results. See
 [contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md).
 
 `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated`, `PoolUtilization`,
@@ -334,14 +334,13 @@ land first; then the dedicated surface with every shape frozen. From that change
 range and allocation data are real: every `size` and `used`, and the values of the pool's space
 the rows hold, computed from the range set, the attribute's `excluded_values` and its `min_value` /
 `max_value` (never from the deprecated shorthand, which is null on a pool holding several ranges);
-holder, branch, identifier, provenance
-(`coalesce(provenance, "allocated")` on the record) and range from the rows. The divisions of a
-scoped pool, the `division` on each row and the `division`
-filter come from `pools/division_mock.py`: each row is put in one of three divisions `mock-1`,
-`mock-2`, `mock-3` by a stable hash of its holder's id; the entries carry the real scope paths in
-force; the three queries read the same partition so lists, filters and counts agree (SC-010). An
-unscoped pool never reaches the mock. The utilization of a scoped pool is read for one mock
-division at contract time, and for one real division when the division reads land.
+holder, branch, identifier, provenance (`coalesce(provenance, "allocated")` on the record) and
+range from the rows. The divisions of a scoped pool and the `division` filter come from
+`pools/division_mock.py`: each row is put in one of three divisions `mock-1`, `mock-2`, `mock-3` by
+a stable hash of its holder's id; the entries carry the real scope paths in force; the three queries
+read the same partition so lists, filters and counts agree (SC-010). An unscoped pool never reaches
+the mock. The utilization of a scoped pool is read for one mock division at contract time, and for
+one real division when the division reads land.
 The generated artefacts are regenerated once at the contract step and must not change afterwards
 (FR-018); a snapshot test pins the SDL. The last change set of the slice deletes the mock module
 and adds a test asserting that no value or label beginning with `mock-` is returned (FR-019,

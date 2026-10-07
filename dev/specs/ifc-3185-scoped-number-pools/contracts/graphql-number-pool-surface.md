@@ -178,8 +178,6 @@ type NumberPoolAllocation {
   provenance: NumberPoolProvenance!
   """The range whose bounds hold the value."""
   range: NumberPoolRangeRef!
-  """The holder's division on the row's branch, in scope order. Empty when the pool is unscoped."""
-  division: [NumberPoolDivisionEntry!]!
 }
 
 """The node holding a tracked number."""
@@ -264,7 +262,7 @@ branch, or still visible from a branch forked while the default branch held it).
 | Pool, ranges, records | every live branch (branch-agnostic) |
 | Values and the rows they produce | every live branch; `branch` on the row names which. The `branch` filter keeps rows for that branch only |
 | Scope in force (`allocation_scope` on the results, the `path` accepted in a filter) | the request's branch (FR-008) |
-| Division entries of a division row and of an allocation row | peer labels and kinds read on any branch; a row's `division` is the holder's division on the row's branch |
+| Division entries of a division row | peer labels and kinds read on any branch |
 | `holder.display_label`, `holder.hfid` | the row's branch |
 | `NumberPoolUtilization.display_label` | the request's branch |
 
@@ -316,12 +314,14 @@ percentages keep the names and meaning of `PoolUtilization`.
 
 ## Semantics per pool state
 
-| Pool state | `allocation_scope` on results | `NumberPoolUtilization.figures` | `ranges[].figures` | `NumberPoolDivisions.divisions` | `NumberPoolAllocation.division` | `division` argument |
-|---|---|---|---|---|---|---|
-| unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | `[]` | refused |
-| scoped | the entries in force | the division given as `division`; refused without it (FR-011); at contract time, from the mock partition | the division given as `division` (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | the holder's division on the row's branch; at contract time, the mock division | accepted for paths in force; complete on the utilization query |
-| scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | `[]` | refused |
-| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | no row: the allocations list is empty | per the rows above |
+| Pool state | `allocation_scope` on results | `NumberPoolUtilization.figures` | `ranges[].figures` | `NumberPoolDivisions.divisions` | `division` argument |
+|---|---|---|---|---|---|
+| unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | refused |
+| scoped | the entries in force | the division given as `division`; refused without it (FR-011); at contract time, from the mock partition | the division given as `division` (FR-017); at contract time, from the mock partition | one row per division holding at least one tracked value on any live branch; at contract time, the mock partition | accepted for paths in force; complete on the utilization query |
+| scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | refused |
+| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | per the rows above |
+
+A pool with no range has an empty space, so its allocations list is empty.
 
 On a scoped pool the utilization query reports one division at a time: the headline and every
 range row report the division given as `division`, including a range in which it holds no value
@@ -351,7 +351,7 @@ divisions of a scoped pool, which the division reads of later change sets comput
 | `NumberPoolUtilization.figures`, `ranges`, every `size` and `used` figure | real, computed by the resolvers from the range set, the attribute's `excluded_values` and its `min_value` / `max_value` | the shared effective-space calculation of P1 (IFC-3213), same definition, one implementation |
 | `holder`, `branch`, `identifier`, `provenance`, `range` | real | unchanged |
 | the restriction of rows to the pool's space | real, same definition as `size` | the shared effective-space calculation of P1 (IFC-3213) |
-| divisions of a scoped pool, `division` on rows, the `division` filter | the mock partition below | the division reads of this slice |
+| divisions of a scoped pool, the `division` filter | the mock partition below | the division reads of this slice |
 
 The mock partition: every row of a scoped pool is put in one of three divisions named `mock-1`,
 `mock-2` and `mock-3` by a stable hash of its holder's id (the id's integer value modulo three,
@@ -458,7 +458,6 @@ query {
       value branch identifier provenance
       holder { id hfid kind display_label }
       range { id display_label }
-      division { path value }
     }
   }
 }
@@ -472,14 +471,12 @@ query {
       {
         "value": 1, "branch": "main", "identifier": null, "provenance": "ALLOCATED",
         "holder": { "id": "17f3d001-…", "hfid": ["sw-core-01"], "kind": "InfraDevice", "display_label": "sw-core-01" },
-        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" },
-        "division": []
+        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" }
       },
       {
         "value": 7, "branch": "b1", "identifier": null, "provenance": "ALLOCATED",
         "holder": { "id": "17f3d002-…", "hfid": ["sw-core-02"], "kind": "InfraDevice", "display_label": "sw-core-02" },
-        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" },
-        "division": []
+        "range": { "id": "17f3c1d4-…", "display_label": "1 - 50" }
       }
     ]
   }
@@ -576,7 +573,6 @@ query {
       value branch provenance
       holder { id display_label }
       range { display_label }
-      division { path value display_label }
     }
   }
 }
@@ -590,14 +586,12 @@ query {
       {
         "value": 1, "branch": "main", "provenance": "ALLOCATED",
         "holder": { "id": "d0…", "display_label": "D0" },
-        "range": { "display_label": "1 - 50" },
-        "division": [ { "path": "site", "value": "a1…", "display_label": "Site A" } ]
+        "range": { "display_label": "1 - 50" }
       },
       {
         "value": 5, "branch": "b1", "provenance": "ALLOCATED",
         "holder": { "id": "d1…", "display_label": "D1" },
-        "range": { "display_label": "1 - 50" },
-        "division": [ { "path": "site", "value": "c3…", "display_label": "Site C" } ]
+        "range": { "display_label": "1 - 50" }
       }
     ]
   }
@@ -606,9 +600,9 @@ query {
 
 `count` is 41: the forty values of site A's devices on `main`, plus `D1`'s value 5 as held on
 `b1`, because `D1` carries site A on `main` (the FR-007 union keeps every row of a holder that
-sits in the division on any live branch). The `b1` row's own `division` names site C, where `D1`
-sits on that branch. Filtering on site C returns `D1`'s two rows, so value 5 is counted in A and
-in C; the two divisions' `used` figures (40 and 1) must not be summed.
+sits in the division on any live branch), although `D1` sits in site C on that branch. Filtering
+on site C also returns `D1`'s two rows, so value 5 is counted in A and in C; the two divisions'
+`used` figures (40 and 1) must not be summed.
 
 ### A scoped pool read at contract time
 
