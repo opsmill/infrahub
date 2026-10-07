@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from git import Repo
 from git.exc import GitCommandError
+from infrahub_sdk.protocols import CoreRepository
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
@@ -97,6 +98,12 @@ class RepositoryDeliveryGitAdapter:
                 if exc.status == UNKNOWN_REF_STATUS:
                     return None
                 raise
+
+    async def recorded_commit(self) -> str | None:
+        repository = await self.repository.sdk.get(
+            kind=CoreRepository, id=str(self.repository.id), branch=self.destination_branch
+        )
+        return repository.commit.value
 
     def is_ancestor(self, *, ancestor: str, descendant: str) -> bool:
         gateway = GitAncestryGateway(

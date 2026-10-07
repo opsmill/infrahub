@@ -276,7 +276,7 @@ SC-002, SC-007.
 - [X] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
       `backend/tests/unit/git/writeback/fakes.py`. The Git fake records every call in order, and can
       fail at any step.
-- [ ] T032 [US1] Write `RepositoryWritebackService.deliver` in
+- [X] T032 [US1] Write `RepositoryWritebackService.deliver` in
       `backend/infrahub/git/writeback/service.py`, per [research.md](research.md) R4 steps 0 to 17
       and contracts section 5. Step 0 enqueues the `entry` argument, when it is not `None`, before
       the repository lock, with the stage `enqueue` on a failure. Steps 1 to 15 run under the
@@ -285,7 +285,7 @@ SC-002, SC-007.
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
       failure with the stage `release` (R10, rule 4).
-- [ ] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
+- [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
       log line that names the repository, the source branch and the source commit; observation of
