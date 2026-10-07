@@ -147,7 +147,7 @@ Allocate an IP prefix directly from the pool:
 
   Create an IP prefix. Next to the **Prefix** field, click the pool button, labeled "select a pool", and choose `Customer Service Pool`, then save. Infrahub allocates the next available subnet from the pool and creates the IP prefix with it.
 
-  Infrahub allocates a new prefix on each save. To get the same prefix back when a script or a Generator runs again, use the GraphQL method with an `identifier`.
+  Infrahub allocates a new prefix on each save. To get the same prefix back when a script or a Generator runs again, use the GraphQL method or the Python SDK with an `identifier`.
 
   </TabItem>
   <TabItem value="graphql" label="GraphQL">
@@ -169,6 +169,19 @@ Allocate an IP prefix directly from the pool:
     }
   }
   ```
+
+  </TabItem>
+  <TabItem value="python" label="Python SDK">
+
+  ```python
+  prefix = await client.allocate_next_ip_prefix(
+      resource_pool=pool,
+      identifier=service.service_identifier.value,
+      prefix_length=29,
+  )
+  ```
+
+  The `identifier` associates the allocation with the request that created it. When a later allocation request to the same pool uses the same identifier, Resource Manager returns the existing allocation instead of allocating another resource.
 
   </TabItem>
 </Tabs>

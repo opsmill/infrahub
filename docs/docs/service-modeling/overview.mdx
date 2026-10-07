@@ -173,11 +173,9 @@ Resource Manager supports:
 
 Allocations are branch-agnostic. After Resource Manager allocates a resource on one branch, that resource is reserved across all branches and cannot be allocated again on another branch.
 
-When the Generator may run more than once for the same service, include an allocation identifier with the resource request. Resource Manager returns the same allocation when a later request uses the same identifier.
+When the Generator may run more than once for the same service, include an allocation identifier with the request for a prefix or an address. Resource Manager returns the allocation already reserved under that identifier instead of allocating another one. A number pool ignores identifiers: it keys each reservation on the object whose attribute it fills.
 
 Using `service_identifier` as the allocation identifier associates the resource with the service. For example, if Resource Manager allocates a prefix using a dedicated internet service's `service_identifier`, a later Generator run can request the prefix with that same identifier and receive the existing allocation instead of consuming another prefix from the pool.
-
-As a result, repeated Generator runs reuse the prefix, address, or numeric value already allocated to the service.
 
 You can also store a value that was assigned outside Resource Manager. If the Generator requests a resource from a pool with no available capacity, Resource Manager rejects the allocation request. The Generator run then fails.
 

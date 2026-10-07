@@ -123,8 +123,6 @@ If the NTP server is infrastructure you track and allocate addresses for — not
 
 ## Extend IPAM with a relationship to another object
 
-[Model a service](../service-modeling/overview) explains why the service schema, the Generator and the allocations are structured this way.
-
 Relationships from IPAM to other Infrahub objects are ordinary schema relationships, not metadata fields. The [Service Catalog demo](https://github.com/opsmill/infrahub-demo-service-catalog) relates `IpamIPPrefix` and `IpamIPAddress` to a `ServiceGeneric` node this way, declaring both directions and pairing them by `identifier`.
 
 Declare the relationship from the `Service` side first — inbound, paired by `identifier`:
@@ -163,6 +161,8 @@ extensions:
           direction: outbound
           identifier: service_prefix
 ```
+
+These relationships record which service each generated prefix and address implements. See [Model a service](../service-modeling/overview) for the complete workflow, from the service request through Generator execution and resource allocation.
 
 ## Next
 

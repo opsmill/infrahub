@@ -96,6 +96,14 @@ By default, if a specific value is not defined:
   - **branch-agnostic** only if both models on each end of the relationship are **branch-agnostic**. If either model is **branch-aware** the relationship will be set as **branch-aware**.
   - **branch-local** if either model, on each end of the relationship, is **branch-local**.
 
+## Branch behavior and inheritance
+
+A node that inherits from a Generic does not inherit the Generic's branch behavior. Configure `branch` independently on the node and on any attributes or relationships whose branch behavior differs from the default.
+
+For example, a Generic can define a branch-agnostic `service_identifier` while a node that inherits from that Generic is configured separately as branch-agnostic or branch-aware.
+
+See [Model a service](../service-modeling/overview) for an example that combines branch-agnostic service identity with branch-aware service attributes.
+
 ## Deleting branch-agnostic data
 
 A branch-agnostic attribute or relationship stores its value once and shares it with every branch, instead of keeping a copy per branch. Deleting the object that holds the field on one branch therefore does not release the value: it stays reserved for as long as any branch can still reach the object, and a later delete, merge, rebase, branch deletion, or schema change may be what finally releases it.

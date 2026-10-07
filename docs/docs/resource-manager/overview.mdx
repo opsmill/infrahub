@@ -298,6 +298,12 @@ The same `identifier` field is available on `from_pool` when you allocate throug
 - **Infrahub returns the reserved value only on a branch that can read it.** On another branch that cannot read the allocated object yet, Infrahub allocates a different value for a request with the same identifier, with no error.
 - **Build the identifier from the object it is allocated to**, such as the device and interface names. An identifier built from a run ID or a timestamp changes on every run, so Infrahub allocates a new value on every run.
 
+For a service workflow, you can use the service identifier as the allocation `identifier`.
+
+For example, if a Generator requests a prefix using `service_identifier` as the allocation identifier, Infrahub returns that same prefix to a later request carrying the same identifier, instead of allocating another one. Repeated Generator runs can therefore reuse the prefix already allocated to that service.
+
+See [Model a service](../service-modeling/overview) for the complete pattern, including the service object, Generator, Resource Manager allocations, and review or event-driven execution.
+
 ```mermaid
 sequenceDiagram
   participant A as branch-a
@@ -311,6 +317,10 @@ sequenceDiagram
   Note over P: reservation found, address 1 not readable on branch-b
   P-->>B: address 2, second reservation
 ```
+
+## When a pool has no resource left
+
+If a pool has no resource available that satisfies the request, Resource Manager rejects the allocation request. If the request was made during a Generator run, the Generator run fails and reports the allocation failure.
 
 ## Advanced features
 
