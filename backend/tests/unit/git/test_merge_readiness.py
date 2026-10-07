@@ -60,9 +60,9 @@ UNIMPORTED_HEAD_CASES = [
         targets=[target()],
         remote_heads={"network-repo": {SOURCE: NEWER, "main": TRUNK_HEAD}},
         message=(
-            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"Unable to merge branch {SOURCE}, because Infrahub has not recorded the latest commit of branch "
             f"{SOURCE} of repository network-repo ({NEWER} on the remote, {SOURCE_HEAD} in Infrahub). Merge again "
-            "after the next synchronization of the repository imports it."
+            "after Infrahub records the latest commit of that branch."
         ),
     ),
     UnimportedHeadCase(
@@ -70,9 +70,9 @@ UNIMPORTED_HEAD_CASES = [
         targets=[target(remote_trunk="master")],
         remote_heads={"network-repo": {SOURCE: SOURCE_HEAD, "master": NEWER}},
         message=(
-            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"Unable to merge branch {SOURCE}, because Infrahub has not recorded the latest commit of branch "
             f"master of repository network-repo ({NEWER} on the remote, {TRUNK_HEAD} in Infrahub). Merge again "
-            "after the next synchronization of the repository imports it."
+            "after Infrahub records the latest commit of that branch."
         ),
         expected_reads=[
             HeadRead(
@@ -87,9 +87,9 @@ UNIMPORTED_HEAD_CASES = [
         targets=[target(source_commit=None)],
         remote_heads={"network-repo": {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD}},
         message=(
-            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"Unable to merge branch {SOURCE}, because Infrahub has not recorded the latest commit of branch "
             f"{SOURCE} of repository network-repo ({SOURCE_HEAD} on the remote, no commit in Infrahub). Merge "
-            "again after the next synchronization of the repository imports it."
+            "again after Infrahub records the latest commit of that branch."
         ),
     ),
     UnimportedHeadCase(
@@ -97,9 +97,9 @@ UNIMPORTED_HEAD_CASES = [
         targets=[target(source_commit=TRUNK_HEAD)],
         remote_heads={"network-repo": {SOURCE: NEWER, "main": NEWER}},
         message=(
-            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"Unable to merge branch {SOURCE}, because Infrahub has not recorded the latest commit of branch "
             f"{SOURCE} of repository network-repo ({NEWER} on the remote, {TRUNK_HEAD} in Infrahub). Merge again "
-            "after the next synchronization of the repository imports it."
+            "after Infrahub records the latest commit of that branch."
         ),
         expected_reads=[
             HeadRead(
@@ -117,10 +117,10 @@ UNIMPORTED_HEAD_CASES = [
             "second-repo": {SOURCE: SOURCE_HEAD, "main": NEWER},
         },
         message=(
-            f"Unable to merge branch {SOURCE}, because Infrahub has not imported the latest commit of branch "
+            f"Unable to merge branch {SOURCE}, because Infrahub has not recorded the latest commit of branch "
             f"{SOURCE} of repository first-repo ({NEWER} on the remote, {SOURCE_HEAD} in Infrahub); branch main "
-            f"of repository second-repo ({NEWER} on the remote, {TRUNK_HEAD} in Infrahub). Merge again after the "
-            "next synchronization of the repository imports it."
+            f"of repository second-repo ({NEWER} on the remote, {TRUNK_HEAD} in Infrahub). Merge again after "
+            "Infrahub records the latest commit of these branches."
         ),
     ),
 ]

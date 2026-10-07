@@ -134,7 +134,8 @@ class RemoteHeadsMergeCheck:
             f"remote, {head.graph_commit or 'no commit'} in Infrahub)"
             for head in unimported
         )
+        branches = "that branch" if len(unimported) == 1 else "these branches"
         return (
-            f"Unable to merge branch {source_branch}, because Infrahub has not imported the latest commit of "
-            f"{heads}. Merge again after the next synchronization of the repository imports it."
+            f"Unable to merge branch {source_branch}, because Infrahub has not recorded the latest commit of "
+            f"{heads}. Merge again after Infrahub records the latest commit of {branches}."
         )

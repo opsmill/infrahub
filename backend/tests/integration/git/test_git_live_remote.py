@@ -1582,10 +1582,10 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         tracked = await tracked_branch_repository("waiting-branch-merge-repo", "waiting-branch-merge-branch")
         rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         refusal = (
-            f"Unable to merge branch {tracked.branch_name}, because Infrahub has not imported the latest commit "
+            f"Unable to merge branch {tracked.branch_name}, because Infrahub has not recorded the latest commit "
             f"of branch {tracked.branch_name} of repository {tracked.name} ({rewritten} on the remote, "
-            f"{tracked.imported_commit} in Infrahub). Merge again after the next synchronization of the "
-            "repository imports it."
+            f"{tracked.imported_commit} in Infrahub). Merge again after Infrahub records the latest commit of "
+            "that branch."
         )
 
         with pytest.raises(GraphQLError, match=re.escape(refusal)):
