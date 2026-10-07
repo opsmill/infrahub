@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import shutil
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ import git
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
+from infrahub import config, lock
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -23,9 +25,12 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
+from infrahub.git.convergence import WorktreeConverger
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.git.tasks import sync_remote_repositories
+from infrahub.message_bus.messages import RefreshGitFetch
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
@@ -50,6 +55,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.message_bus import BusSimulator
     from tests.helpers.git import GogsServer
 
 SYNC_LOGGER = "infrahub.tasks"
@@ -952,6 +958,32 @@ def _tracked_reconciliation_messages(caplog: pytest.LogCaptureFixture, tracked: 
     ]
 
 
+@contextmanager
+def repositories_directory(directory: Path) -> Generator[None, None, None]:
+    """Run the block as a worker whose clones live in ``directory``."""
+    original = config.SETTINGS.git.repositories_directory
+    config.SETTINGS.git.repositories_directory = str(directory)
+    try:
+        yield
+    finally:
+        config.SETTINGS.git.repositories_directory = original
+
+
+class FreshRepositoryLoader:
+    """Builds the repository from the current repositories directory, as a worker with a disk of its own does."""
+
+    def __init__(self, client: InfrahubClient) -> None:
+        self._client = client
+
+    async def load(self, message: RefreshGitFetch) -> InfrahubRepository:
+        return await InfrahubRepository.init(
+            id=message.repository_id,
+            name=message.repository_name,
+            client=self._client,
+            infrahub_branch_name=message.infrahub_branch_name,
+        )
+
+
 class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     """Periodic synchronisation cycles against a remote whose branches move or are rewritten.
 
@@ -1062,3 +1094,67 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, branch=branch.name, raise_on_error=True
         )
         assert repository.commit.value == created_at
+
+    async def test_a_failed_branch_does_not_keep_another_worker_off_a_healthy_branch(
+        self,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        bus_simulator: BusSimulator,
+        tmp_path: Path,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """A second worker with a clone of its own converges the healthy branch from the cycle's message alone."""
+        tracked = await tracked_branch_repository("partly-failing-cycle-repo", "healthy-cycle-branch")
+        main = await client.branch.get(branch_name=registry.default_branch)
+        healthy = await client.branch.get(branch_name=tracked.branch_name)
+        second_worker = tmp_path / "second-worker-repositories"
+        second_worker.mkdir()
+        with repositories_directory(second_worker):
+            clone = await InfrahubRepository.init(
+                id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
+            )
+            await clone.create_branch_in_git(branch_name=tracked.branch_name, branch_id=healthy.id, push_origin=False)
+            assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == tracked.imported_commit
+
+        await client.branch.create(branch_name="broken-cycle-branch", sync_with_git=False)
+        commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch="broken-cycle-branch",
+            files={".infrahub.yml": "schemas: [unclosed\n"},
+        )
+        advanced = commit_to_remote_branch(
+            gogs_server.container,
+            tracked.name,
+            branch=tracked.branch_name,
+            files=tracked_branch_files(repo_name=tracked.name, version=2),
+        )
+        sent_before = len(bus_simulator.messages)
+
+        await sync_remote_repositories()
+
+        cycle_messages = [
+            message
+            for message in bus_simulator.messages[sent_before:]
+            if isinstance(message, RefreshGitFetch) and message.repository_id == tracked.node_id
+        ]
+        assert [message.branches for message in cycle_messages] == [
+            (
+                BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id=main.id, commit=tracked.trunk_commit),
+                BranchCommitPair(
+                    infrahub_branch_name=tracked.branch_name, infrahub_branch_id=healthy.id, commit=advanced
+                ),
+            )
+        ]
+
+        with repositories_directory(second_worker):
+            converger = WorktreeConverger(
+                lock_registry=lock.registry,
+                loader=FreshRepositoryLoader(client=client),
+                worker_identity="second-worker",
+            )
+            await converger.converge(cycle_messages[0])
+            converged = await InfrahubRepository.init(
+                id=tracked.node_id, name=tracked.name, client=client, infrahub_branch_name=registry.default_branch
+            )
+            assert converged.get_commit_value(branch_name=tracked.branch_name, remote=False) == advanced

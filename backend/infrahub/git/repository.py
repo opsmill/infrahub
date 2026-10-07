@@ -18,7 +18,12 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    RepositorySyncStatus,
+)
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
@@ -73,6 +78,9 @@ class PendingObjectImport:
     the objects of a staging repository's trunk go to the staging branch.
     """
 
+    on_default_branch: bool = False
+    """Whether the import comes from the repository's configured default branch."""
+
 
 class ImportStep(StrEnum):
     """The phase of a branch synchronization in which a failure occurred."""
@@ -88,6 +96,8 @@ class FailedImport:
     branch_name: str
     step: ImportStep
     reason: str
+    on_default_branch: bool = False
+    """Whether the branch is the repository's configured default branch."""
 
 
 @dataclass
@@ -292,6 +302,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self.push(branch_name)
 
         return response
+
+    async def record_import_failure(self, infrahub_branch_name: str) -> None:
+        """Mark the synchronization status of the repository as failed to import on an Infrahub branch."""
+        await self._update_sync_status(branch_name=infrahub_branch_name, status=RepositorySyncStatus.ERROR_IMPORT)
 
     def raise_if_branches_failed(self, failed_imports: list[FailedImport]) -> None:
         """Log every branch that failed before its import and surface every failed branch as a single error.
@@ -504,7 +518,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
         except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
             collected.failed_imports.append(
-                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+                FailedImport(
+                    branch_name=branch_name,
+                    step=ImportStep.COLLECTION,
+                    reason=str(exc),
+                    on_default_branch=branch_name == self.default_branch,
+                )
             )
             return
 
@@ -516,6 +535,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             PendingObjectImport(
                 infrahub_branch_name=infrahub_branch,
                 commit=commit,
+                on_default_branch=branch_name == self.default_branch,
                 reconciled=ReconciledBranch(
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branch.id,
@@ -565,7 +585,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError,
         ) as exc:
             collected.failed_imports.append(
-                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+                FailedImport(
+                    branch_name=branch_name,
+                    step=ImportStep.COLLECTION,
+                    reason=str(exc),
+                    on_default_branch=branch_name == self.default_branch,
+                )
             )
 
     async def _queue_advanced_branch(
@@ -601,6 +626,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                     infrahub_branch_name=import_branch,
                     commit=commit,
                     git_branch_name=git_branch_name,
+                    on_default_branch=branch_name == self.default_branch,
                     reconciled=ReconciledBranch(
                         infrahub_branch_name=advanced_branch,
                         infrahub_branch_id=branch_id,

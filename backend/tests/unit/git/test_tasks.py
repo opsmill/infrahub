@@ -7,13 +7,16 @@ from infrahub_sdk.branch import BranchData, BranchStatus
 from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, Severity, ValidatorConclusion
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
+from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.tasks import (
     ImportStatusOutcome,
+    build_cycle_fetch_message,
     evaluate_import_status,
     format_check_log_entry,
     resolve_initial_import_branch,
     select_writable_branch_commits,
 )
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 
 
 @dataclass
@@ -217,3 +220,86 @@ def test_only_a_branch_that_can_still_record_a_commit_keeps_its_commit() -> None
         "open": "commit-open",
         "upgrade-rebase-needed": "commit-upgrade-rebase-needed",
     }
+
+
+TRUNK_COMMIT = "a" * 40
+FEATURE_COMMIT = "b" * 40
+TRUNK = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=TRUNK_COMMIT)
+TRUNK_TO_PULL = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=None)
+FEATURE = BranchCommitPair(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+
+
+@dataclass
+class CycleMessageCase:
+    name: str
+    trunk_commit: str | None
+    reconciled: list[ReconciledBranch]
+    expected_single_branch: tuple[str, str, str | None]
+    expected_branches: tuple[BranchCommitPair, ...]
+
+
+CYCLE_MESSAGE_CASES = [
+    # A cycle that advanced nothing still lists the trunk, which is what heals a worker that missed a message.
+    CycleMessageCase(
+        name="idle_cycle_lists_the_trunk",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK,),
+    ),
+    CycleMessageCase(
+        name="an_advanced_branch_follows_the_unchanged_trunk",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+        ],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK, FEATURE),
+    ),
+    CycleMessageCase(
+        name="an_advanced_trunk_is_listed_once",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT),
+            ReconciledBranch(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=TRUNK_COMMIT),
+        ],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK, FEATURE),
+    ),
+    CycleMessageCase(
+        name="without_a_trunk_commit_the_workers_pull_the_trunk",
+        trunk_commit=None,
+        reconciled=[],
+        expected_single_branch=("main", "main-id", None),
+        expected_branches=(TRUNK_TO_PULL,),
+    ),
+    CycleMessageCase(
+        name="without_a_trunk_commit_the_trunk_is_still_pulled_before_the_advanced_branch",
+        trunk_commit=None,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+        ],
+        expected_single_branch=("main", "main-id", None),
+        expected_branches=(TRUNK_TO_PULL, FEATURE),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CYCLE_MESSAGE_CASES, ids=[case.name for case in CYCLE_MESSAGE_CASES])
+def test_the_cycle_message_lists_the_trunk_first_then_every_advanced_branch(
+    case: CycleMessageCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(registry, "_default_branch", "main")
+
+    message = build_cycle_fetch_message(
+        location="https://git.example.com/repo.git",
+        repository_id="repository-id",
+        repository_name="repo",
+        repository_kind="CoreRepository",
+        default_branch_id="main-id",
+        trunk_commit=case.trunk_commit,
+        reconciled=case.reconciled,
+    )
+
+    assert (message.infrahub_branch_name, message.infrahub_branch_id, message.commit) == case.expected_single_branch
+    assert message.branches == case.expected_branches

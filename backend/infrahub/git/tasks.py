@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -45,6 +45,7 @@ from infrahub.exceptions import (
 )
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
 from infrahub.worker import WORKER_IDENTITY
@@ -65,6 +66,7 @@ from ..workflows.catalogue import (
 from ..workflows.utils import add_branch_tag, add_tags
 from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
+from .divergence.models import ReconciledBranch
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -76,6 +78,7 @@ from .models import (
     GitRepositoryImportObjects,
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
+    RepositoryData,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
     TriggerRepositoryInternalChecks,
@@ -89,8 +92,10 @@ from .sync import (
     RepositoryBranchesFailedError,
     RepositoryFileImporter,
     RepositorySyncer,
+    SyncOutcome,
     SyncReport,
     import_branch,
+    raise_if_branches_failed,
 )
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
@@ -184,12 +189,9 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             raise added.import_error
         return
 
-    try:
-        report = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
-    except RepositoryBranchesFailedError as exc:
-        log_skipped_branches(repo=repo, report=exc.report)
-        raise
-    log_skipped_branches(repo=repo, report=report)
+    outcome = await RepositorySyncer(lock_registry=lock.registry, importer=importer).sync(repo)
+    log_skipped_branches(repo=repo, report=outcome.report)
+    raise_if_branches_failed(repo=repo, outcome=outcome)
 
     try:
         pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
@@ -302,7 +304,8 @@ async def delete_git_branch(branch: str) -> None:
         pass
 
 
-@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
+# Only the in-process caller reads the outcome, so storing it would write one result per repository per cycle.
+@flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin", persist_result=False)
 async def sync_git_repo_with_origin_and_tag_on_failure(
     client: InfrahubClient,
     repository_id: str,
@@ -312,7 +315,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
     infrahub_branch: str,
     staging_branch: str | None = None,
     graph_commits: dict[str, str | None] | None = None,
-) -> None:
+) -> SyncOutcome:
     """Synchronize one repository, linking the run to it when there is something to see there.
 
     A run is linked when it imports a branch, when it reports a skipped branch, or when it fails while
@@ -342,15 +345,16 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         raise
 
     try:
-        report = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
-    except RepositoryBranchesFailedError as exc:
-        await report_sync_run(repo=repo, report=exc.report, infrahub_branch=infrahub_branch, link_run=online)
-        raise
+        outcome = await syncer.sync(repo, staging_branch=staging_branch, graph_commits=graph_commits)
     except (RepositoryError, CommitNotFoundError):
         if online:
             await add_tags(branches=[infrahub_branch], nodes=[str(repository_id)])
         raise
-    await report_sync_run(repo=repo, report=report, infrahub_branch=infrahub_branch, link_run=False)
+    await report_sync_run(
+        repo=repo, report=outcome.report, infrahub_branch=infrahub_branch, link_run=online and bool(outcome.failed)
+    )
+    raise_if_branches_failed(repo=repo, outcome=outcome)
+    return outcome
 
 
 async def report_sync_run(repo: InfrahubRepository, report: SyncReport, infrahub_branch: str, link_run: bool) -> None:
@@ -459,19 +463,65 @@ async def bootstrap_local_repository(
     return repo
 
 
+def build_cycle_fetch_message(
+    location: str,
+    repository_id: str,
+    repository_name: str,
+    repository_kind: str,
+    default_branch_id: str,
+    trunk_commit: str | None,
+    reconciled: Sequence[ReconciledBranch],
+) -> messages.RefreshGitFetch:
+    """Build the one fetch message of a synchronization cycle: the trunk, then every other branch it advanced.
+
+    The trunk is listed first on every cycle, even when it did not move, so a worker that missed an
+    earlier message converges on it again. Without a trunk commit the workers pull the trunk instead.
+    """
+    trunk = BranchCommitPair(
+        infrahub_branch_name=registry.default_branch, infrahub_branch_id=default_branch_id, commit=trunk_commit
+    )
+    advanced = tuple(
+        BranchCommitPair(
+            infrahub_branch_name=branch.infrahub_branch_name,
+            infrahub_branch_id=branch.infrahub_branch_id,
+            commit=branch.commit,
+        )
+        for branch in reconciled
+        if branch.infrahub_branch_name != trunk.infrahub_branch_name
+    )
+    return messages.RefreshGitFetch(
+        meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+        location=location,
+        repository_id=repository_id,
+        repository_name=repository_name,
+        repository_kind=repository_kind,
+        infrahub_branch_name=trunk.infrahub_branch_name,
+        infrahub_branch_id=trunk.infrahub_branch_id,
+        commit=trunk.commit,
+        branches=(trunk, *advanced),
+    )
+
+
 async def sync_repository_from_origin(
     repository: CoreRepository,
     repo: InfrahubRepository,
     staging_branch: str | None,
     infrahub_branch: str,
-    infrahub_branch_id: str,
+    default_branch_id: str,
     client: InfrahubClient,
     graph_commits: dict[str, str | None] | None = None,
 ) -> None:
-    """Sync the repository from its origin and notify the worker pool of the resulting commit."""
+    """Sync the repository from its origin and send the worker pool the commits of the cycle.
+
+    The message goes out before a failed branch is handled, so the failure never keeps the branches
+    that advanced from converging on the other workers. No failed branch is raised from here: a
+    failed default branch is logged as an error and recorded on the repository's synchronization
+    status, and the tagging flow has already linked and failed its own run.
+    """
     log = get_run_logger()
+    failure: RepositoryBranchesFailedError | None = None
     try:
-        await sync_git_repo_with_origin_and_tag_on_failure(
+        outcome = await sync_git_repo_with_origin_and_tag_on_failure(
             client=client,
             repository_id=repository.id,
             repository_name=repository.name.value,
@@ -481,29 +531,89 @@ async def sync_repository_from_origin(
             infrahub_branch=infrahub_branch,
             graph_commits=graph_commits,
         )
-        try:
-            pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-        except (ValueError, InvalidGitRepositoryError) as exc:
-            log.debug(
-                f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}"
-            )
-            pinned_commit = None
-        # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
-        # pool converges on the same commit even if upstream advances during fan-out.
-        message = messages.RefreshGitFetch(
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-            location=repository.location.value,
-            repository_id=repository.id,
-            repository_name=repository.name.value,
-            repository_kind=repository.get_kind(),
-            infrahub_branch_name=infrahub_branch,
-            infrahub_branch_id=infrahub_branch_id,
-            commit=pinned_commit,
-        )
-        message_bus = await get_message_bus()
-        await message_bus.send(message=message)
+    except RepositoryBranchesFailedError as exc:
+        outcome = exc.outcome
+        failure = exc
     except (RepositoryError, CommitNotFoundError) as exc:
         log.info(exc.message)
+        return
+
+    try:
+        trunk_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+    except (ValueError, InvalidGitRepositoryError) as exc:
+        log.debug(f"Could not resolve pinned commit for {repository.name.value}, workers will fall back to pull: {exc}")
+        trunk_commit = None
+    # Pinned SHAs, so the whole pool converges on the same commits even if upstream advances during fan-out.
+    message = build_cycle_fetch_message(
+        location=repository.location.value,
+        repository_id=repository.id,
+        repository_name=repository.name.value,
+        repository_kind=repository.get_kind(),
+        default_branch_id=default_branch_id,
+        trunk_commit=trunk_commit,
+        reconciled=outcome.reconciled,
+    )
+    try:
+        message_bus = await get_message_bus()
+        await message_bus.send(message=message)
+    finally:
+        # A broadcast that fails must not also hide a failed default branch.
+        if failure is not None:
+            await report_failed_branches(repo=repo, failure=failure, infrahub_branch=infrahub_branch)
+
+
+async def report_failed_branches(
+    repo: InfrahubRepository, failure: RepositoryBranchesFailedError, infrahub_branch: str
+) -> None:
+    """Log the branches a synchronization failed, and record a failed default branch on the repository.
+
+    A failed default branch is loud but never raised, since a raise would stop every repository after
+    this one.
+    """
+    log = get_run_logger()
+    default_branch_failures = failure.outcome.default_branch_failures
+    for failed in default_branch_failures:
+        log.error(
+            f"Unable to synchronize the default branch {repo.default_branch} of repository "
+            f"{repo.name} at step {failed.step.value}: {failed.reason}"
+        )
+    if default_branch_failures:
+        await repo.record_import_failure(infrahub_branch_name=infrahub_branch)
+    if len(default_branch_failures) < len(failure.outcome.failed):
+        log.info(failure.message)
+
+
+async def sync_remote_repository(
+    repo_name: str, repository_data: RepositoryData, branches: dict[str, BranchData], client: InfrahubClient
+) -> None:
+    """Synchronize one repository with its origin, cloning it on this worker first when needed."""
+    repository: CoreRepository = repository_data.repository
+
+    default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
+    staging_branch = None
+    if default_internal_status != RepositoryInternalStatus.ACTIVE.value:
+        staging_branch = repository_data.get_staging_branch()
+
+    infrahub_branch = staging_branch or registry.default_branch
+
+    repo = await bootstrap_local_repository(
+        repo_name=repo_name,
+        repository=repository,
+        infrahub_branch=infrahub_branch,
+        client=client,
+    )
+    if repo is None:
+        return
+
+    await sync_repository_from_origin(
+        repository=repository,
+        repo=repo,
+        staging_branch=staging_branch,
+        infrahub_branch=infrahub_branch,
+        default_branch_id=branches[registry.default_branch].id,
+        client=client,
+        graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
+    )
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
@@ -511,39 +621,20 @@ async def sync_remote_repositories() -> None:
     db = await get_database()
 
     client = get_client()
+    log = get_run_logger()
 
     branches = await client.branch.all()
     async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
 
     for repo_name, repository_data in repositories.items():
-        repository: CoreRepository = repository_data.repository
-
-        default_internal_status = repository_data.branch_info[registry.default_branch].internal_status
-        staging_branch = None
-        if default_internal_status != RepositoryInternalStatus.ACTIVE.value:
-            staging_branch = repository_data.get_staging_branch()
-
-        infrahub_branch = staging_branch or registry.default_branch
-
-        repo = await bootstrap_local_repository(
-            repo_name=repo_name,
-            repository=repository,
-            infrahub_branch=infrahub_branch,
-            client=client,
-        )
-        if repo is None:
-            continue
-
-        await sync_repository_from_origin(
-            repository=repository,
-            repo=repo,
-            staging_branch=staging_branch,
-            infrahub_branch=infrahub_branch,
-            infrahub_branch_id=branches[infrahub_branch].id,
-            client=client,
-            graph_commits=select_writable_branch_commits(branch_commits=repository_data.branches, branches=branches),
-        )
+        try:
+            await sync_remote_repository(
+                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
+            )
+        # One repository that fails must not stop the cycle for the repositories after it.
+        except Exception:
+            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(

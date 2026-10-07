@@ -333,7 +333,7 @@ class TestImportFailureLogs(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert sorted(error.report.failed_import_branches) == branches
+        assert sorted(error.outcome.report.failed_import_branches) == branches
         statuses = {branch_name: await sync_status(client, node.id, branch_name) for branch_name in branches}
         assert statuses == dict.fromkeys(branches, RepositorySyncStatus.IN_SYNC.value)
         assert sorted(
@@ -417,7 +417,7 @@ class TestImportFailureLogs(TestInfrahubApp):
                 repo=repo,
                 staging_branch=None,
                 infrahub_branch=registry.default_branch,
-                infrahub_branch_id=str(UUIDT()),
+                default_branch_id=str(UUIDT()),
                 client=client,
             )
         )

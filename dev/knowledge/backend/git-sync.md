@@ -58,9 +58,17 @@ The read-write kind implements the mapping described below; the read-only kind r
   fetch. Its remote-tracking ref is read before the fetch and compared after it. A branch absent from
   that earlier read counts as moved, because it was pushed after this clone's last fetch. A worker
   with no clone makes one before the read, so its first sync does not see the branch as new.
-- `RepositorySyncer.sync` returns a `SyncReport` of the skipped, imported and advanced branches. When
-  a branch fails, it raises `RepositoryBranchesFailedError` carrying the same report, so a caller can
-  still report the skipped branches before re-raising.
+- `RepositorySyncer.sync` returns a `SyncOutcome`: a `SyncReport` of the skipped, imported and
+  advanced branches, the branches it advanced with their commits, and the branches that failed. A
+  failed branch does not raise there. Its callers report the skipped branches, then raise
+  `RepositoryBranchesFailedError` carrying the outcome through `git/sync.py::raise_if_branches_failed`.
+- The periodic cycle catches that error, sends the fetch message, and raises nothing further. A
+  failed configured default branch is logged at error level and recorded as `error-import` on the
+  branch the trunk imports into, because a trunk failure while it is collected writes no status of
+  its own. The failure of any other branch is logged at info level.
+- The cycle wraps each repository in its own `try` (`git/tasks.py::sync_remote_repository` is the
+  per-repository step), so one repository that raises is logged and the cycle continues with the
+  next one.
 - The operator-facing record of the skip is a warning in the flow run's log, emitted through
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch

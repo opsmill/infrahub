@@ -106,6 +106,14 @@ class TrackedRepository:
         return str(self.repository.get_git_repo_worktree(identifier=branch_name).head.commit)
 
 
+def configure_repositories(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+
+
 async def clone_with_tracked_branches(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -114,11 +122,7 @@ async def clone_with_tracked_branches(
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
 ) -> TrackedRepository:
     """Clone a remote whose branches each carry one commit of their own, holding ``local_branches`` locally."""
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-    monkeypatch.setattr(registry, "_default_branch", "main")
-    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
-    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
+    configure_repositories(tmp_path=tmp_path, monkeypatch=monkeypatch)
 
     remote = LocalRemote.create(directory=tmp_path / "remote", trunk="main", branches=[])
     imported_commits = {
@@ -178,6 +182,7 @@ def queued(
         infrahub_branch_name=import_branch or branch_name,
         commit=commit,
         git_branch_name=git_branch_name,
+        on_default_branch=branch_name == "main",
         reconciled=ReconciledBranch(
             infrahub_branch_name=branch_name,
             infrahub_branch_id=f"{branch_name}-id",
@@ -571,6 +576,66 @@ async def test_a_staging_trunk_whose_commit_the_graph_refuses_fails_without_rais
                 "An error occurred while executing the GraphQL Query None, "
                 "[{'message': 'Branch main must be rebased before any updates can be made'}]"
             ),
+            on_default_branch=True,
         )
     ]
     assert collected.imports == []
+
+
+async def test_a_default_branch_new_to_this_worker_fails_as_the_default_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A changed default branch reaches this worker as a branch it does not hold yet."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, local_branches=())
+    tracked.repository.default_branch = TRACKED
+
+    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits())
+
+    assert collected.failed_imports == [
+        FailedImport(
+            branch_name=TRACKED,
+            step=ImportStep.COLLECTION,
+            reason=(
+                f"Unable to push the branch {TRACKED} to the remote for repository tracked-repo: "
+                "the remote branch has commits that are missing locally (non-fast-forward): "
+                "[rejected] (non-fast-forward)"
+            ),
+            on_default_branch=True,
+        )
+    ]
+    assert collected.imports == []
+
+
+async def test_a_default_branch_renamed_to_the_infrahub_default_is_queued_as_the_default_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The clone still holds the old default branch, so the renamed one reaches it as a new branch."""
+    configure_repositories(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    remote = LocalRemote.create(directory=tmp_path / "remote", trunk="master", branches=["main"])
+    trunk_commit = str(remote.repo.commit("master"))
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="tracked-repo",
+        location=str(remote.directory),
+        client=GraphRecordingClient(branch_names=("main",)),
+        default_branch="master",
+        update_commit_value=False,
+    )
+    repository.default_branch = "main"
+
+    collected = await repository.collect_pending_imports(graph_commits={"main": trunk_commit})
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        PendingObjectImport(
+            infrahub_branch_name="main",
+            commit=trunk_commit,
+            on_default_branch=True,
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="main",
+                infrahub_branch_id="main-id",
+                commit=trunk_commit,
+                divergence=divergence(trunk_commit, trunk_commit, RefClassification.UNCHANGED, branch_name="main"),
+            ),
+        )
+    ]

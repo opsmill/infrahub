@@ -713,6 +713,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
+        return await self._create_local_branch(branch_name=branch_name, branch_id=branch_id)
+
+    async def _create_local_branch(self, branch_name: str, branch_id: str | None = None) -> bool:
+        """Create a branch and its worktree in this clone only, whatever the repository does on creation."""
         repo = self.get_git_repo_main()
 
         # Check if the branch already exists locally, if it does do nothing
@@ -935,8 +939,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return None
 
     async def _create_branch_worktree(self, branch_name: str, branch_id: str) -> Repo:
-        """Create the branch in git and return its freshly created worktree."""
-        await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+        """Create the branch in this clone and return its freshly created worktree.
+
+        It never pushes: a worker that only converges must not re-create a branch the remote deleted.
+        """
+        await self._create_local_branch(branch_name=branch_name, branch_id=branch_id)
         return self.get_git_repo_worktree(identifier=branch_name)
 
     async def pull(
@@ -969,8 +976,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
             self.create_commit_worktree(commit=commit_after)
         elif create_if_missing and branch_id:
-            # create_branch_in_git already syncs any matching remote branch, and a local-only
-            # branch has no upstream ref to pull from, so skip the fast-forward here.
+            # A new branch already starts at its remote tip, and a local-only one has nothing to pull.
             repo = await self._create_branch_worktree(branch_name, branch_id)
             commit_after = str(repo.head.commit)
         else:
