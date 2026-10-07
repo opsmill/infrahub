@@ -7,9 +7,6 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
-[manifest]
-overrides = [{ name = "prefect", specifier = "==3.8.6" }]
-
 [[package]]
 name = "aio-pika"
 version = "9.4.3"
@@ -1617,7 +1614,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.65b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.65b0" },
     { name = "prefect", specifier = "==3.8.6" },
-    { name = "prefect-redis", git = "https://github.com/PrefectHQ/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=main" },
+    { name = "prefect-redis", specifier = "==0.3.0" },
     { name = "prometheus-client", specifier = ">=0.25,<0.26" },
     { name = "puremagic", specifier = ">=1.30,<2" },
     { name = "pyarrow", marker = "extra == 'object-transfer'", specifier = ">=14" },
@@ -2995,11 +2992,15 @@ wheels = [
 
 [[package]]
 name = "prefect-redis"
-version = "0.2.16.dev36+g4647d9324"
-source = { git = "https://github.com/PrefectHQ/prefect.git?subdirectory=src%2Fintegrations%2Fprefect-redis&branch=main#4647d9324933bc83544c3cbd0ebb1e97b4a3f6b3" }
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "prefect" },
     { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/58/d23ac6b0023406f637aea0f2c65faa16914d23fe496305d673e5fe980bf7/prefect_redis-0.3.0.tar.gz", hash = "sha256:724a65bb2ceed9a0eb9ad6af129e66e5427f0c4b364282f7ee5c9bacf8638549", size = 74363, upload-time = "2026-10-07T17:38:52.088Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/82/0635d455c00ed4cfd4d730555feedc3552786c5c2741fe2ae2d2c103a4dc/prefect_redis-0.3.0-py3-none-any.whl", hash = "sha256:d1ca0865a37f1c90a83d7c04127609c683c0f794d83ed491c5d0f33128dc1e42", size = 44819, upload-time = "2026-10-07T17:38:50.683Z" },
 ]
 
 [[package]]
