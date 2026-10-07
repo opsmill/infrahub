@@ -407,11 +407,6 @@ def test_load_request_reports_one_error_per_violation_located_on_the_field() -> 
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=PydanticValidationError,
-    reason="The SDK write model does not carry allocation_scope until the SDK submodule is regenerated.",
-)
 def test_number_pool_allocation_scope_reaches_the_internal_schema() -> None:
     payload = {
         "version": "1.0",

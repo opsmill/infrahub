@@ -7152,6 +7152,21 @@
                         ],
                         "title": "Number Pool Id",
                         "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned."
+                    },
+                    "allocation_scope": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allocation Scope",
+                        "description": "Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division"
                     }
                 },
                 "type": "object",
@@ -7202,6 +7217,21 @@
                         ],
                         "title": "Number Pool Id",
                         "description": "The ID of the numberpool associated with this attribute. Only set after the number pool has been provisioned."
+                    },
+                    "allocation_scope": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Allocation Scope",
+                        "description": "Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division"
                     }
                 },
                 "type": "object",

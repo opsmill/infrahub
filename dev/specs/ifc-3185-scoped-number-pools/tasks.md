@@ -69,15 +69,12 @@ allocating-branch read.
 - [X] T007 [P] Add the `List` field to the hand-maintained
       `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` (the generated SDK,
       OpenAPI and REST models are not introspected from the Pydantic class).
-- [ ] T008 Regenerate: `uv run invoke backend.generate`, `uv run invoke
+- [X] T008 Regenerate: `uv run invoke backend.generate`, `uv run invoke
       schema.generate-graphqlschema`, `uv run invoke schema.generate-jsonschema`, `uv run invoke
       docs.generate`. Confirm `schema/schema.graphql` carries `allocation_scope: ListAttribute` on
       `CoreNumberPool` and `ListAttributeCreate` / `ListAttributeUpdate` on its three inputs, and
       `schema/openapi.json` carries it on `NumberPoolParametersWrite` / `Read`. Run `uv run pytest
       backend/tests/unit/core/schema/test_write_json_schema.py`.
-      Partial: backend protocols, `schema.graphql` and docs regenerated; `openapi.json` still lacks
-      the field because `NumberPoolParametersWrite`/`Read` are the SDK models and the `python_sdk`
-      submodule regeneration is the separate SDK PR.
 - [X] T009 Component test in `backend/tests/component/core/schema/test_attribute_parameters.py`:
       a `NumberPool` attribute declaring `parameters.allocation_scope: ["site"]` loads and the
       parameters round-trip through the schema API; absent and `[]` both read back as unscoped.
