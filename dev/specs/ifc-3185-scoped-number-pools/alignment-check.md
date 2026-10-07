@@ -59,3 +59,12 @@ additions resolve the PRD's own open questions, carry the user's delivery constr
 decisions of 2026-10-06, and the corrections replace assumptions the code does not support with
 ones it does. Two items a PRD owner may want to confirm: the FR-017 per-range reporting choice,
 recorded in the spec's Assumptions, and the form A versus form B choice recorded in Open points.
+
+## Erratum (2026-10-07)
+
+- Journey P3 / User Story 7: attach of a provided number is merged on `feature-number-pools-1.12`
+  (a `<Kind>Update` sending `value` and `from_pool`), and User Story 7 is delivered by this epic
+  (IFC-3357), one node per update, with no bulk attach mutation. The "deferred" finding above no
+  longer applies; the spec's heading and the out-of-scope row are updated.
+- Grilling decision 2 (form A versus form B): form A is kept, decided on 2026-10-07; the Open
+  points section records the decision and no root field is renamed.

@@ -607,16 +607,20 @@ count dropped by one, and the number is offered again.
       adapter over `start_range`/`end_range` ∩ `[min_value, max_value]` minus intersecting exclusions.
       **Do not reimplement membership** — the adapter lifts arithmetic `get_next` already does inline,
       and it is deleted when P1's calculator lands.
+      *Replaced by part 3, [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329): `pools/number_ranges.py::EffectiveSpace` is the shared calculation; no stand-in module is created.*
 - [ ] T060 [P] [US2] Unit suite `backend/tests/unit/pools/test_reporting.py` — distinct-element
       counting with duplicates, the in-space/out-of-space partition, the branch split, and an **empty**
       effective space (must not divide by zero).
+      *Replaced by part 3, IFC-3329 (T034, `backend/tests/unit/pools/test_division_report.py`).*
 - [ ] T061 [US2] Create `backend/infrahub/pools/reporting.py` with `PoolUtilizationReporter` — pure.
       Takes a record set and an effective space; returns the distinct-element count, the branch split, and the out-of-space
       bucket. Owns invariant I4: count **distinct elements**, never records, or utilization exceeds
       100%. Handle a zero-size space without dividing.
+      *Replaced by part 3, IFC-3329 (T033, `pools/division_report.py::DivisionReporter`).*
 - [ ] T062 [US2] Reduce `pools/number.py::NumberUtilizationGetter` to a fetch-and-delegate seam,
       owning no arithmetic. Preserve today's distinct-union semantics exactly (the three set
       comprehensions in `load_data` partition a distinct union).
+      *Replaced by part 3, IFC-3329 (T033, T050).*
 - [ ] T063 [US2] Publish `provenance` per in-use row and the out-of-space rows carrying value,
       holder **and branch** (FR-027a), one row per **(record, branch-resolved value)**, on P3's
       dedicated number-pool surface (`graphql/queries/number_pool.py`:
@@ -625,16 +629,20 @@ count dropped by one, and the number is offered again.
       `dev/specs/ifc-3185-scoped-number-pools/contracts/graphql-number-pool-surface.md`). Do not
       touch the generic queries in `graphql/queries/resource_manager.py`, which are frozen for
       number pools. If P3's contract change set has already landed, this task is done by it.
+      *Replaced by part 3, IFC-3329 (T016, T049, T051).*
 - [ ] T064 [P] [US2] Component test: an attach outside the ranges succeeds, is bucketed not counted,
       and moves into the utilization fraction when a range is widened — with **no re-attach**
       (SC-015). Cover both paths into the state: attached out of range, and a range removed under a
       tracked value.
+      *Moved into part 3, IFC-3329 (T085), on the dedicated queries.*
 - [ ] T065 [P] [US2] Component test: one record straddling the boundary — in space on one branch, out
       of space on another — appears in the fraction **and** the bucket, told apart by the branch on the
       row.
+      *Moved into part 3, IFC-3329 (T086), on the dedicated queries.*
 - [ ] T066 [P] [US2] Component test: 50 allocated to A and attached on B with no uniqueness constraint
       gives **two rows** in the in-use list, one `allocated` and one `provided`, while utilization
       counts 50 **once** (SC-001).
+      *Moved into part 3, IFC-3329 (T087), on the dedicated queries.*
 
 ---
 

@@ -52,8 +52,8 @@ frozen for number pools.
 
 | Slice | Content | In P3 |
 |-------|---------|-------|
-| P1 | Several weighted ranges per pool, ranges declared in the schema (`dev/specs/ifc-3065-number-pool-ranges`) | Landed in part on this branch: the range kind and its mutations, the migration giving every existing pool one range, the shorthand mirror; allocation over a range set and the shared effective-space calculation have not. Consumed, not changed |
-| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | In flight; the consolidation journey (User Story 7) waits for it. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface, which lists only values of the pool's space |
+| P1 | Several weighted ranges per pool, ranges declared in the schema (`dev/specs/ifc-3065-number-pool-ranges`) | Landed on this branch: the range kind and its mutations, the migration giving every existing pool one range, the shorthand mirror, allocation across the weighted ranges and the shared effective-space calculation (`backend/infrahub/pools/number_ranges.py::EffectiveSpace`). Consumed, not changed |
+| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | Attach of a provided number has landed (a `<Kind>Update` sending `value` and `from_pool`); detach has not. The consolidation journey (User Story 7) uses that attach, one node per update. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface, which lists only values of the pool's space |
 | P3 | `allocation_scope` on the pool and in number-pool attribute parameters; per-division allocation and utilization; the dedicated GraphQL surface | Yes |
 | Frontend | Scope on the pool form, the range view, the division view, the allocation list | No; the dedicated surface carries everything those screens need, and their migration to it is its own ticket |
 | Generic resource-pool queries | `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated` and their types | Frozen for number pools: shape and meaning unchanged, descriptions gain a note |
@@ -78,25 +78,50 @@ frozen for number pools.
 
 ### Delivery order (user constraint)
 
-The user asked for the work to be sequenced so the frontend is unblocked first and the rest can be
-split across people:
+The work is sequenced so the frontend is unblocked first and the rest is split across people, one
+Jira ticket per pull request, each a coherent piece of behaviour with its own tests:
 
-1. **Internal schema first**: the `allocation_scope` attribute on the pool kind and the matching
-   field in the number-pool attribute parameters, because every generated type derives from them.
-2. **The dedicated GraphQL surface next**, with its shapes frozen: utilization with absolute
-   figures per pool and per range, the divisions list, the allocation list with holder, provenance
-   and range, and the scope in force on the reading branch. The first change set returns a fixed
-   in-memory dataset (a scoped pool and an unscoped pool) and reads nothing from the database,
-   until the real reads exist. The generic queries gain a description note and nothing else.
-3. **The utilization and allocation seams**: the per-division utilization getter and the
-   allocator entry point that takes the writer's division, as seams other work plugs into.
-4. **The internals**: the division resolver, the scoped records lookup, division enumeration,
-   the validators and the schema-load checker, in parallel once the seams exist.
-5. **Mock removal**: the real reads replace the fixed dataset in the three queries, the dataset
-   module is deleted, and a test asserts that the queries return the requested pool's data.
+1. **Internal schema first** (IFC-3334): the `allocation_scope` attribute on the pool kind and the
+   matching field in the number-pool attribute parameters, because every generated type derives
+   from them.
+2. **The dedicated GraphQL surface next**, with its shapes frozen (IFC-3346, the contract;
+   IFC-3347, the queries): utilization with absolute figures per pool and per range, the divisions
+   list, the allocation list with holder, provenance and range, and the scope in force on the
+   reading branch. IFC-3347 returns a fixed in-memory dataset (a scoped pool and an unscoped pool)
+   and reads nothing from the database. The generic queries gain a description note and nothing
+   else.
+3. **The refusals that keep a scope answerable** (IFC-3348 at pool save; IFC-3352 at schema
+   load), so that allocation only meets scopes the validator accepted.
+4. **Allocation within the writer's division** (IFC-3349), including the pool handling deferred on
+   update and on template create.
+5. **The schema side** (IFC-3353, the attribute-add size check per division; IFC-3351, the scope
+   declared in the schema).
+6. **The real reads** (IFC-3329): the three queries read the database and the fixed dataset is
+   deleted.
+7. **Consolidation, measurement, the branch seam, documentation** (IFC-3357, IFC-3355, IFC-3354,
+   IFC-3356).
 
 User Story 1 below is the contract story. Nothing after it may rename, retype or remove a field it
 publishes.
+
+### Jira tickets
+
+| Ticket | Delivers | User stories and requirements |
+|---|---|---|
+| [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917) | User Story 1 scenario 1; FR-014, FR-018, FR-021 |
+| [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | The written contract of the three queries and this spec directory (#10911) | User Story 1; FR-015, FR-016, FR-022 to FR-030 |
+| [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | The three queries over a fixed dataset, so the frontend can build (#10932) | User Story 1 scenarios 2 to 9; FR-019, FR-029; SC-007, SC-009, SC-010 |
+| [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | A scope that cannot divide the pool is refused when the pool is saved | User Story 5 scenario 1; FR-009, FR-013, FR-020 |
+| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | A schema change that breaks a scoped field is refused naming the pool | User Story 5 scenarios 2 and 3; FR-010 |
+| [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | Allocation returns the lowest free number within the writer's division | User Story 2; FR-001 to FR-008; SC-001 to SC-004 |
+| [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | Adding a scoped attribute is refused only when a division outgrows the pool | research decision D9 |
+| [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | The scope declared on a number-pool attribute reaches the schema-created pool | User Story 4; FR-012, FR-013 |
+| [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329) | The three queries read real pools; the fixed dataset is deleted | User Story 3, User Story 1 scenarios 2 to 7; FR-011, FR-015 to FR-017, FR-022 to FR-030; SC-010, SC-011 |
+| [IFC-3357](https://opsmill.atlassian.net/browse/IFC-3357) | Per-site pools consolidated into one scoped pool through attach | User Story 7; SC-001 |
+| [IFC-3355](https://opsmill.atlassian.net/browse/IFC-3355) | Latency and throughput measured; one anchor order kept | User Story 8; SC-005, SC-006 |
+| [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | The branch seam verified with two branches in every scenario | User Story 6; FR-007, FR-008, FR-021 |
+| [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | User docs, changelog fragments, knowledge entry, SDK pointer | Behaviour changes for the changelog; Open points |
+| [IFC-3358](https://opsmill.atlassian.net/browse/IFC-3358) | Follow-up, outside the definition of done: search, pagination and sort orders of the divisions list | Out of scope (search); FR-022 |
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -344,26 +369,29 @@ cannot distinguish a union from an allocating-branch read.
 
 ---
 
-### User Story 7 - Replace a pool per site with one scoped pool (Priority: P3, deferred: gated on P2 attach, not delivered by this slice)
+### User Story 7 - Replace a pool per site with one scoped pool (Priority: P3)
 
 An operator with one pool per site keeps one of them, sets its scope to site, widens its ranges,
 attaches the nodes the other pools served, and deletes the rest. No new mechanism is needed
-beyond attach.
+beyond the attach of part 2: one `<Kind>Update` per node, sending the node's `value` and
+`from_pool` naming the kept pool. No bulk attach mutation exists.
 
-**Why this priority**: Consolidation is the brownfield journey and depends on P2's attach landing on
-this branch. Attach is not built at the time of writing, so this story is specified here for
-traceability and carried by no change set of this slice; it is verified when attach lands. A new
-scoped pool adopts nothing; the old pools' numbers are invisible to it until their nodes are
-attached.
+**Why this priority**: Consolidation is the brownfield journey; it needs scoped allocation and the
+division reads before it can be verified. A new scoped pool adopts nothing; the old pools' numbers
+are invisible to it until their nodes are attached.
 
-**Independent Test**: With attach available, run the journey end to end and check the division
-figures and the next allocation.
+**Independent Test**: Run the journey end to end and check the division figures and the next
+allocation.
 
 **Acceptance Scenarios**:
 
 1. **Given** per-site pools P_A and P_B each having handed out 1–10, **When** P_A is scoped by site
-   and the ten site-B nodes are attached to it, **Then** P_A reports A 10 of 100 and B 10 of 100,
-   the next allocation in B returns 11, and P_B can be deleted.
+   and each of the ten site-B nodes is attached to it with one `<Kind>Update` sending `value` and
+   `from_pool`, **Then** P_A reports A 10 of 100 and B 10 of 100, the next allocation in B returns
+   11, P_B tracks no number and can be deleted, and P_A's records are unchanged after that
+   deletion.
+2. **Given** a number that no pool tracks, **When** a write sends `from_pool` without `value`,
+   **Then** it is refused (part 2's attach rule).
 
 ---
 
@@ -716,31 +744,33 @@ Using the repository's "ask first" list.
 
 ## Assumptions
 
-- P1 has landed only in part on this branch: the range kind, its mutations with overlap
-  validation, the pool mutations that accept `ranges` and the deprecated `start_range` /
-  `end_range` shorthand, the migration giving every existing pool one range, and the mirror that
-  keeps the shorthand equal to the bounds of a pool's single range (null for a pool holding none
-  or several). Allocation still draws from the shorthand, so it works on a pool holding exactly one
-  range; allocation over a range set and the shared effective-space calculation have not landed.
-  The division filter is independent of the range walk, so the two land in either order. The
-  dedicated surface computes every `size` and `used`, and the values of the pool's space, from the
-  range set, the attribute's `excluded_values` and its `min_value` / `max_value`, never from the
-  shorthand, and switches to P1's shared calculation when it lands without a contract change.
-- P2's foundational re-anchoring has landed on this branch: the `IS_RESERVED` record is a global
-  edge from the pool to the holder's attribute vertex, re-anchored by migration with the legacy
-  pool source edges deleted and shared-attribute records collapsed; the liveness read is a union
-  across branches with the deleting-branch exclusion; each record carries a provenance, absent
-  meaning allocated; a record is closed once no branch reaches its attribute vertex, through the
-  branch-agnostic retirement queries. The records lookup does not yet resolve each record to
-  its holder; the division hop adds that resolution inside the same subquery. The attach mutation
-  is not built; only User Story 7 waits for it.
+- P1 has landed on this branch: the range kind, its mutations with overlap validation, the pool
+  mutations that accept `ranges` and the deprecated `start_range` / `end_range` shorthand, the
+  migration giving every existing pool one range, the mirror that keeps the shorthand equal to the
+  bounds of a pool's single range (null for a pool holding none or several), allocation across the
+  weighted ranges (`NumberPoolNumberPicker.next_number` drains the ranges heaviest first) and the
+  shared effective-space calculation (`backend/infrahub/pools/number_ranges.py::EffectiveSpace`:
+  the ranges clipped to the attribute's `min_value` / `max_value` minus its `excluded_values`).
+  The division filter sits inside the records fragment the range walk calls, so it is independent
+  of the walk. The dedicated surface computes every `size`, `used` and `in_space` from
+  `EffectiveSpace`, never from the shorthand, so allocation and the surface use one definition of
+  the pool's space.
+- P2 has landed in part on this branch: the `IS_RESERVED` record is a global edge from the pool to
+  the holder's attribute vertex, re-anchored by migration with the legacy pool source edges deleted
+  and shared-attribute records collapsed; the liveness read is a union across branches with the
+  deleting-branch exclusion; each record carries a provenance, absent meaning allocated; a record
+  is closed once no branch reaches its attribute vertex, through the branch-agnostic retirement
+  queries; a `<Kind>Update` sending `value` and `from_pool` attaches a provided number to a pool
+  (User Story 7 uses it, one node per update). Detach (`from_pool: null`) is accepted by the
+  GraphQL schema and does nothing yet. The records lookup does not yet resolve each record to its
+  holder; the division hop adds that resolution inside the same subquery.
 - The scope-path notation is the one uniqueness constraints already use, parsed by the same code.
 - The writer's division is read from the node as it will be saved. On create through the ordinary
   path relationships are applied before attributes; on create through a template and on update the
   pool handling is deferred until every field is applied, so the same holds. Verified at planning
   time.
 - Number-pool reads live on three root query fields (form A) rather than on one root object with
-  sub-fields (form B); see Open points.
+  sub-fields (form B); decided on 2026-10-07, see Open points.
 - The divisions list and the allocation rows use flat lists (`divisions`, `allocations`, `ranges`)
   rather than the `edges { node }` wrapping of the generic queries, so the dedicated surface is
   uniform; the frontend's existing hooks are not reused for it.
@@ -781,18 +811,20 @@ Using the repository's "ask first" list.
 - A stored division key, a CRUD hook on scoped-field changes, a rescoping batch. SC-006 decides if
   ever.
 - A per-division lock. SC-005 decides.
-- Moving records between pools. Consolidation goes through attach.
-- Attach itself, and therefore the consolidation journey (User Story 7): specified for
-  traceability, delivered when P2's attach lands.
+- Moving records between pools. Consolidation goes through attach, one `<Kind>Update` per node.
 - Pools generated per site, or any automatic creation of a pool per division.
 - Changing the meaning of any existing utilization field for an unscoped pool.
 
 ## Open points
 
-- Form A (several root query fields, `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions`,
-  `InfrahubNumberPoolAllocations`) versus form B (one root object `InfrahubNumberPool` with
-  sub-fields): form A is published; the user wants the choice re-judged at the final review of the
-  surface, before the slice ships.
+None. Decided:
+
+- The surface keeps form A: three root query fields, `InfrahubNumberPoolUtilization`,
+  `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`, with the names the contract
+  publishes. Form B (one root object `InfrahubNumberPool` with sub-fields) is not built. Decided on
+  2026-10-07.
+- User Story 7 is delivered by this epic through the attach of part 2, one `<Kind>Update` per
+  node; no bulk attach mutation is added. Decided on 2026-10-07.
 
 ## Traceability to the PRD
 

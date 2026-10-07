@@ -74,3 +74,13 @@ Combined command, from `backend/`: `uv run pytest tests/component/graphql/resour
 1. Open the infrahub-sdk-python PR for the submodule commits (`a5e760f`, `939bff1`), then bump the `python_sdk` pointer.
 2. Push the branch and open a PR to `feature-number-pools-1.12` so the frontend team can start.
 3. Plan the real reads (Phases 4 to 13) as their own delivery.
+
+## Erratum (2026-10-07)
+
+- The SDK submodule commits are carried by
+  [infrahub-sdk-python#1402](https://github.com/opsmill/infrahub-sdk-python/pull/1402); the
+  `python_sdk` pointer moves to the merged commits in IFC-3356.
+- The real reads (listed above as "Phases 4 to 13") are the Jira tickets of `tasks.md`: IFC-3348,
+  IFC-3352, IFC-3349, IFC-3353, IFC-3351, IFC-3329 (the reads and the dataset removal), IFC-3357,
+  IFC-3355, IFC-3354 and IFC-3356. T016a is obsolete: `pools/number_ranges.py::EffectiveSpace` is
+  the shared effective-space calculation.

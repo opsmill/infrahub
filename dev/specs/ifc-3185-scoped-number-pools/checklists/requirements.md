@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain — the PRD's three open questions are resolved in Assumptions (three root query fields dedicated to number pools; any required scalar attribute may be an entry; the occupancy threshold is SC-006's output); the one open point (form A versus form B) is recorded for the final review, not left as a marker
+- [x] No [NEEDS CLARIFICATION] markers remain — the PRD's three open questions are resolved in Assumptions (three root query fields dedicated to number pools; any required scalar attribute may be an entry; the occupancy threshold is SC-006's output); the shape of the surface (form A, three root query fields) is decided and recorded in Open points
 - [x] Requirements are testable and unambiguous — every FR names the user story and scenario that verifies it
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
