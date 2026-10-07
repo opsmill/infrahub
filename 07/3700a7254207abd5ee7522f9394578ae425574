@@ -1,0 +1,33 @@
+docs/docs/deploy-manage/install-configure/production-deployment/overview.mdx
+  s_c0e6b6e1d6dc1d::t_aaf98df0643a91 67-68
+docs/sidebars.ts
+  s_c0e6b6e1d6dc1d::t_31ad736e359031 403
+.vale/styles/spelling-exceptions.txt
+  s_c0e6b6e1d6dc1d::t_8eb5f495709ea7 27
+docs/docs/deploy-manage/install-configure/production-deployment/red-hat-images.mdx
+  s_c0e6b6e1d6dc1d::t_fabe357fc39337 459
+  s_c0e6b6e1d6dc1d::t_5de87e6b2dc3bd 1-7,9,11-26,28-35,37,39,41-43,45-67,69-77,79-319,321-341,343-408,410-412,414-439,443-452,454-458,460-468,480-487
+  s_c0e6b6e1d6dc1d::t_a2ce77e170f5e4 440
+  s_c0e6b6e1d6dc1d::t_23126ac959b9cd 8,10,27,36,38,40,44,68,78,320,342,409,413,441-442,453
+  s_c0e6b6e1d6dc1d::t_18ba3895a3e261 469-479
+docs/docs/deploy-manage/install-configure/install/enterprise.mdx
+  s_c0e6b6e1d6dc1d::t_0c204ec1d886bc 126
+docs/docs/deploy-manage/install-configure/install/community.mdx
+  s_c0e6b6e1d6dc1d::t_0c204ec1d886bc 255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "073700a7254207abd5ee7522f9394578ae425574",
+  "prompts": {},
+  "sessions": {
+    "s_c0e6b6e1d6dc1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99ff56d7-1da6-480a-9a68-ea1878060213",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Simon AURA--SCUSSEL <simon@opsmill.com>"
+    }
+  }
+}
