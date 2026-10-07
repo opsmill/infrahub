@@ -26,12 +26,15 @@ LOGGER_NAME = "tests.merge_readiness"
 
 
 def target(
-    name: str = "network-repo", remote_trunk: str = "main", source_commit: str | None = SOURCE_HEAD
+    name: str = "network-repo",
+    remote_trunk: str = "main",
+    source_commit: str | None = SOURCE_HEAD,
+    remote_source_branch: str = SOURCE,
 ) -> GitMergeTarget:
     return GitMergeTarget(
         name=name,
         location=f"https://git.example.com/{name}.git",
-        remote_source_branch=SOURCE,
+        remote_source_branch=remote_source_branch,
         remote_trunk=remote_trunk,
         source_commit=source_commit,
         destination_commit=TRUNK_HEAD,
@@ -162,3 +165,27 @@ async def test_the_remote_heads_of_every_repository_are_read_at_the_same_time() 
     await asyncio.wait_for(check(reader=reader).check(source_branch=SOURCE, targets=targets), timeout=10)
 
     assert [read.repository_name for read in reader.reads] == ["repo-0", "repo-1", "repo-2"]
+
+
+async def test_a_source_named_like_the_remote_trunk_compares_only_the_trunk_with_a_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Both names map onto one remote branch, which can hold one head only."""
+    caplog.set_level(logging.WARNING, logger=LOGGER_NAME)
+    reader = InMemoryRemoteHeadReader(heads={"network-repo": {"develop": TRUNK_HEAD}})
+
+    await check(reader=reader).check(
+        source_branch="develop", targets=[target(remote_trunk="develop", remote_source_branch="develop")]
+    )
+
+    assert reader.reads == [
+        HeadRead(
+            repository_name="network-repo",
+            location="https://git.example.com/network-repo.git",
+            branch_names=("develop",),
+        )
+    ]
+    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+        "Branch develop has the name of the trunk of repository network-repo on the remote, so the merge "
+        "compares only the trunk with its remote head"
+    ]

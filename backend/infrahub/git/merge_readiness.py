@@ -70,10 +70,7 @@ class RemoteHeadsMergeCheck:
             RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
         """
-        expected_heads = [
-            {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
-            for target in targets
-        ]
+        expected_heads = [self._expected_heads(source_branch=source_branch, target=target) for target in targets]
         read_heads = await asyncio.gather(
             *(
                 self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected))
@@ -97,6 +94,15 @@ class RemoteHeadsMergeCheck:
             raise RepositoryNotSynchronizedError(
                 self._refusal_message(source_branch=source_branch, unimported=unimported)
             )
+
+    def _expected_heads(self, source_branch: str, target: GitMergeTarget) -> dict[str, str | None]:
+        if target.remote_source_branch == target.remote_trunk:
+            self.log.warning(
+                f"Branch {source_branch} has the name of the trunk of repository {target.name} on the remote, "
+                "so the merge compares only the trunk with its remote head"
+            )
+            return {target.remote_trunk: target.destination_commit}
+        return {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
 
     async def _read_heads(
         self, source_branch: str, target: GitMergeTarget, branch_names: list[str]
