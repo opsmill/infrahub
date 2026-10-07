@@ -286,16 +286,20 @@ plain push and keeps the branch open:
   the merge model (`GitRepositoryMerge`), read when the merge was dispatched, because the source
   branch can be deleted before the Git merge runs. `merge_git_repository` reads the destination graph
   commit under the repository lock, because an earlier Git merge can move the trunk after the
-  dispatch. A branch on its remote head is not compared. For any other branch:
-  - Behind, ahead (the remote was rewound) or diverged, with a graph commit equal to the remote
-    head: the branch moves onto that head, because only this clone is stale.
+  dispatch. Each branch is compared with its graph commit, also when the clone holds the remote head:
+  - A graph commit equal to the remote head: a clone behind, ahead (the remote was rewound) or
+    diverged moves onto that head, because only this clone is stale.
   - Ahead or diverged, with a graph commit that differs: the merge is refused, because the rewrite is
     not recorded yet.
-  - A trunk behind, with a graph commit that differs: the merge is refused, because the remote would
-    reject the push. A plain push to the trunk that lands between the two checks ends here.
-  - A source behind, with a graph commit that differs: the source moves onto the graph commit when the
-    remote history holds that commit past the clone. Otherwise the merge uses the source as it is,
-    which is the commit the graph merged or an older one.
+  - A trunk on or behind its remote head, with a graph commit that differs: the merge is refused. On
+    an older trunk the remote would reject the push. On a head the graph never imported, the record
+    of the merge commit would hide that head from the next cycle. A plain push to the trunk that
+    lands between the two checks ends here.
+  - A source on or behind its remote head, with a graph commit that differs: the source moves onto
+    the graph commit when the remote history holds it, forward or back, so the merge holds what the
+    graph merged.
+  - Known risk: a source whose graph commit is missing, or no longer in the remote history, is merged
+    as it is, and can differ from what the graph merged.
 
   A refusal raises `RepositoryDivergentHistoryError`. It comes after the graph merge: the branch is
   merged in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user

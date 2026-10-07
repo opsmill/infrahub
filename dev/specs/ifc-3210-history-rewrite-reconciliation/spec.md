@@ -303,11 +303,14 @@ here. See "Out of Scope".
   - When the graph commit differs and the clone is ahead or diverged, the rewrite is not reconciled
     yet. The merge path MUST refuse the merge with a typed error naming a divergent remote history.
     It MUST NOT reconcile that branch itself.
-  - When the graph commit differs and the destination clone is behind, the remote would reject the
-    push. The merge path MUST refuse the merge with the same typed error.
-  - When the graph commit differs and the source clone is behind, the merge path MUST move the source
-    onto the graph commit when the remote history holds that commit past the clone, and MUST merge
-    the source as it is otherwise.
+  - When the graph commit differs and the destination clone is on or behind its remote head, the
+    remote would reject a push onto an older trunk, and the record of a merge onto a head the graph
+    never imported would hide that head. The merge path MUST refuse the merge with the same typed
+    error.
+  - When the graph commit differs and the source clone is on or behind its remote head, the merge
+    path MUST move the source onto the graph commit when the remote history holds that commit, and
+    MUST merge the source as it is otherwise. In that last case the Git merge can hold a source that
+    differs from the one the graph merged, which is an accepted risk.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.

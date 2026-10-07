@@ -740,17 +740,17 @@ reaches it. This guard closes that.
 1. Fetch, then compare the **source** branch ref, which the merge reads, and the **destination**
    branch worktree against their remote heads, using the same ancestry gateway as section 1. A
    branch with no remote head, and a destination with no worktree, are not compared.
-2. When either is not its remote head, compare the **graph commit** for that branch against the
-   remote head as well. The answers mean different things:
+2. Compare the **graph commit** for each branch against the remote head as well, also when the clone
+   holds that head. The answers mean different things:
 
 | Clone | Graph commit | Action |
 |---|---|---|
-| Is the remote head | not read | **Merge.** |
-| Behind the remote head, or diverged from it | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
-| Diverged from the remote head | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Destination behind the remote head | differs from the remote head | **Refuse.** The merge would build on an older trunk, and the remote would reject the push after the graph merge. |
-| Source behind the graph commit, which the remote history holds | differs from the remote head | **Move the source onto the graph commit and merge.** The Git merge then holds the commit the graph merged, not an older one. |
-| Source behind the remote head, and not behind a graph commit the remote history holds | differs from the remote head | **Merge as it is.** The merge builds on the commit the graph merged, and the push goes to the trunk only. |
+| Is the remote head | equals the remote head | **Merge.** |
+| Behind, ahead or diverged | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
+| Ahead of the remote head, or diverged from it | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
+| Destination on or behind the remote head | differs from the remote head | **Refuse.** On an older trunk, the remote would reject the push after the graph merge. On a head the graph never imported, the record of the merge commit would hide that head from the next cycle. |
+| Source on or behind the remote head | differs, and the remote history holds it | **Move the source onto the graph commit and merge**, forward or back. The Git merge then holds the commit the graph merged. |
+| Source on or behind the remote head | none, or the remote history no longer holds it | **Merge as it is.** A known risk, see "Accepted residual risk". |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
    "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and
@@ -825,5 +825,10 @@ The remote can be rewritten between this guard's fetch and the push that follows
 guard narrows that window and does not close it, so FR-005b is best-effort rather than guaranteed.
 A source branch that was deleted on the remote has no remote head, so neither check compares it,
 and the merge reads the local ref.
+A source whose graph commit is missing, or no longer in the remote history, is merged as it is. The
+Git merge can then hold a source that differs from the one the graph merged. A merge that an older
+version queued carries no graph commit, and a value that is not a full commit id reads as none. A
+graph commit leaves the remote history when the source branch is rewritten after its last import,
+which the check before the graph merge refuses first, unless the remote cannot be read then.
 Closing it would need the remote to reject the push, which is branch protection on the remote and
 outside this work.
