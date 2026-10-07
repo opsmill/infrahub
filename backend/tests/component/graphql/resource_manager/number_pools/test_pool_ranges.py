@@ -409,7 +409,9 @@ async def test_a_number_held_outside_the_ranges_stays_recorded_until_a_range_cov
     }
     with pytest.raises(ValidationError) as exc_info:
         await _allocate_ticket(db=db, pool=pool, title="refused")
-    assert exc_info.value.message == "The pool TestingTicket is exhausted. at ticket_id.from_pool"
+    assert exc_info.value.message == (
+        f"Pool drained-pool ({pool.get_id()}) has no free number left in its ranges. at ticket_id.from_pool"
+    )
 
     await _create_range(db=db, branch=default_branch, pool=pool, start=14, end=18)
     assert await _utilization(db=db, branch=default_branch, pool=pool) == {

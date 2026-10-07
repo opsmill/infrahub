@@ -332,4 +332,6 @@ class TestNumberPoolCreate:
         with pytest.raises(ValidationError) as exc_info:
             await exhausted.new(db=db, title="third", ticket_id={"from_pool": {"id": pool_id}})
 
-        assert exc_info.value.message == "The pool TestingTicket is exhausted. at ticket_id.from_pool"
+        assert exc_info.value.message == (
+            f"Pool allocating-pool ({pool_id}) has no free number left in its ranges. at ticket_id.from_pool"
+        )

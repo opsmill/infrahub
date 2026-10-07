@@ -66,7 +66,7 @@ class RecordingNumberAllocator:
             PoolCall(action="allocate", pool_id=pool.get_id(), node_id=node.get_id(), attribute_name=attribute.name)
         )
         if self.exhausted:
-            raise PoolExhaustedError("There are no more values available in this pool.")
+            raise PoolExhaustedError(f"Pool tickets ({pool.get_id()}) has no free number left in its ranges.")
         return self.number
 
     async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
@@ -302,6 +302,9 @@ async def test_an_exhausted_pool_is_reported_against_the_attribute(
     ticket_id = _ticket_id(payload={"from_pool": {"id": POOL_ID}})
     allocator.exhausted = True
 
-    with pytest.raises(ValidationError, match=r"^The pool TestingTicket is exhausted\. at ticket_id\.from_pool$"):
+    with pytest.raises(ValidationError) as exc_info:
         await _apply_on_create(applier=applier, attribute=ticket_id)
+    assert exc_info.value.message == (
+        f"Pool tickets ({POOL_ID}) has no free number left in its ranges. at ticket_id.from_pool"
+    )
     assert ticket_id.value is None
