@@ -14,6 +14,7 @@ from infrahub.exceptions import (
     RepositoryCredentialsRefusedError,
     RepositoryNotSynchronizedError,
 )
+from infrahub.git.constants import REMOTE_HEADS_DEADLINE_SECONDS, REMOTE_HEADS_TIMEOUT_SECONDS
 from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
 from tests.adapters.remote_heads import (
     CountingRemoteHeadReader,
@@ -314,3 +315,8 @@ async def test_a_merge_with_no_repository_to_read_goes_on() -> None:
     await check(reader=reader).check(source_branch=SOURCE, targets=[])
 
     assert reader.reads == []
+
+
+def test_one_remote_read_stops_before_the_deadline_of_the_check() -> None:
+    """A read that hangs must free its place before the deadline, so that a read that waits can still run."""
+    assert REMOTE_HEADS_TIMEOUT_SECONDS < REMOTE_HEADS_DEADLINE_SECONDS

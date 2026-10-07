@@ -813,7 +813,8 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    trunk with `git ls-remote`, with no clone and no lock. One read stops after
    `REMOTE_HEADS_TIMEOUT_SECONDS`, at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes are read at once,
    and all the reads together stop at `REMOTE_HEADS_DEADLINE_SECONDS`: a repository not read by then
-   is treated as a remote that cannot be read. A repository whose source branch records the commit
+   is treated as a remote that cannot be read. The timeout of one read is lower than the deadline,
+   so a remote that hangs frees its place for a read that waits. A repository whose source branch records the commit
    its trunk records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch
    only, and `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs
    again, so its source branch is still compared.
