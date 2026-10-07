@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.manager import NodeManager
@@ -22,7 +22,43 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class NumberPoolRepository:
+class NumberPoolRangeStore(Protocol):
+    """Reads and writes the ranges a number pool allocates from."""
+
+    async def get_ranges(self, pool_id: str, at: Timestamp | None = None) -> list[CoreNumberPoolRange]: ...
+
+    async def create_range(
+        self,
+        pool: Node,
+        start: int,
+        end: int,
+        weight: int | None = None,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> CoreNumberPoolRange: ...
+
+    async def save_range(
+        self,
+        pool_range: CoreNumberPoolRange,
+        start: int,
+        end: int,
+        weight: int | None,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None: ...
+
+    async def delete_range(
+        self, pool_range: CoreNumberPoolRange, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None: ...
+
+
+class NumberPoolRangeStoreFactory(Protocol):
+    """Builds a range store writing through the given database."""
+
+    def __call__(self, db: InfrahubDatabase) -> NumberPoolRangeStore: ...
+
+
+class NumberPoolRepository(NumberPoolRangeStore):
     """Database access for number pools: the ranges they allocate from and the numbers they account for."""
 
     def __init__(self, db: InfrahubDatabase) -> None:
@@ -40,11 +76,17 @@ class NumberPoolRepository:
         return sorted(pool_ranges, key=lambda pool_range: int(pool_range.start.value))
 
     async def create_range(
-        self, pool: Node, start: int, end: int, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+        self,
+        pool: Node,
+        start: int,
+        end: int,
+        weight: int | None = None,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> CoreNumberPoolRange:
-        """Add a range without weight to the pool."""
+        """Add a range to the pool."""
         pool_range = await Node.init(db=self.db, schema=CoreNumberPoolRange)
-        await pool_range.new(db=self.db, start=start, end=end, pool=pool)
+        await pool_range.new(db=self.db, start=start, end=end, allocation_weight=weight, pool=pool)
         await pool_range.save(db=self.db, at=at, user_id=user_id)
         return pool_range
 
@@ -60,6 +102,27 @@ class NumberPoolRepository:
         pool_range.start.value = start
         pool_range.end.value = end
         await pool_range.save(db=self.db, at=at, user_id=user_id)
+
+    async def save_range(
+        self,
+        pool_range: CoreNumberPoolRange,
+        start: int,
+        end: int,
+        weight: int | None,
+        at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
+    ) -> None:
+        """Rewrite a range's bounds and weight in place, keeping its identity."""
+        pool_range.start.value = start
+        pool_range.end.value = end
+        pool_range.allocation_weight.value = weight
+        await pool_range.save(db=self.db, at=at, user_id=user_id)
+
+    async def delete_range(
+        self, pool_range: CoreNumberPoolRange, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
+    ) -> None:
+        """Remove a range from its pool."""
+        await pool_range.delete(db=self.db, at=at, user_id=user_id)
 
     async def get_used(self, pool: CoreNumberPool, branch: Branch) -> list[int]:
         """Return the numbers the pool currently accounts for."""

@@ -34,13 +34,14 @@ from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.query.rollback import RollbackScope
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
-from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters, NumberPoolRangeParameters
 from infrahub.core.schema.definitions.core.template import core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import count_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.database.validation import verify_graph
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.component.core.migrations.schema.metadata_helpers import (
     VertexMetadata,
     branch_edge_fingerprint,
@@ -617,6 +618,47 @@ async def test_migration_numberpool_attribute(
         source = await server.get_attribute("rack_unit").get_source(db=db)
         assert source is not None, "rack_unit should have a source set"
         assert source.id == number_pool.id, f"rack_unit source should be the pool {number_pool.id}"
+
+
+async def test_migration_numberpool_attribute_from_ranges_declaration(
+    db: InfrahubDatabase,
+    branch: Branch,
+    server_schema_with_numberpool: NodeSchema,
+    servers_in_db: list[Node],
+) -> None:
+    """A single-range declaration materialises the pool with its range and the existing nodes draw from it."""
+    current_schema = registry.schema.get_node_schema(name="TestServer", branch=branch)
+    new_schema = server_schema_with_numberpool.duplicate()
+    new_schema.get_attribute(name="rack_unit").parameters = NumberPoolParameters(
+        ranges=[NumberPoolRangeParameters(start=10, end=20)]
+    )
+
+    migration = NodeAttributeAddMigration(
+        previous_node_schema=current_schema,
+        new_node_schema=new_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestServer", field_name="rack_unit"),
+    )
+    registry.schema.set(name="TestServer", schema=new_schema, branch=branch.name)
+    registry.schema.process_schema_branch(name=branch.name)
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db, at=Timestamp()), branch=branch)
+    assert not execution_result.errors
+
+    pools = await NodeManager.query(
+        db=db,
+        schema="CoreNumberPool",
+        filters={"node__value": "TestServer", "node_attribute__value": "rack_unit"},
+        branch_agnostic=True,
+    )
+    assert len(pools) == 1
+    number_pool = pools[0]
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=number_pool.get_id())
+    assert [(item.start.value, item.end.value, item.allocation_weight.value) for item in ranges] == [(10, 20, None)]
+    assert (number_pool.get_attribute("start_range").value, number_pool.get_attribute("end_range").value) == (10, 20)
+
+    servers_map = await NodeManager.get_many(db=db, branch=branch, ids=[s.get_id() for s in servers_in_db])
+    rack_units = sorted(server.get_attribute("rack_unit").value for server in servers_map.values())
+    assert rack_units == [10, 11, 12]
 
 
 # -----------------------------------------------------------------------------

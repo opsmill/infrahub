@@ -2,7 +2,11 @@ from typing import Any
 
 from infrahub.core.constants import UpdateValidationErrorType
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.attribute_parameters import TextAttributeParameters
+from infrahub.core.schema.attribute_parameters import (
+    NumberPoolParameters,
+    NumberPoolRangeParameters,
+    TextAttributeParameters,
+)
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 WIDGET_GADGET_SCHEMA: dict[str, Any] = {
@@ -79,3 +83,43 @@ async def test_schema_diff_constraint_scoped_to_changed_attribute() -> None:
     assert "node.uniqueness_constraints.update" not in constraint_names
     # every emitted constraint is scoped to the single changed element
     assert all(c.path.schema_kind == "TestWidget" and c.path.field_name == "name" for c in result.constraints)
+
+
+async def test_number_pool_ranges_change_emits_a_supported_constraint() -> None:
+    """A change limited to the declared ranges of a NumberPool attribute is validated rather than refused."""
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            version="1.0",
+            nodes=[
+                {
+                    "name": "Widget",
+                    "namespace": "Test",
+                    "attributes": [
+                        {"name": "name", "kind": "Text", "unique": True},
+                        {
+                            "name": "number",
+                            "kind": "NumberPool",
+                            "read_only": True,
+                            "parameters": {"ranges": [{"start": 1, "end": 100}]},
+                        },
+                    ],
+                }
+            ],
+        )
+    )
+    schema.process()
+
+    candidate = schema.duplicate()
+    widget = candidate.get_node(name="TestWidget", duplicate=True)
+    parameters = widget.get_attribute(name="number").parameters
+    assert isinstance(parameters, NumberPoolParameters)
+    parameters.ranges = [NumberPoolRangeParameters(start=1, end=50), NumberPoolRangeParameters(start=80, end=100)]
+    candidate.set(name="TestWidget", schema=widget)
+
+    diff = schema.diff(other=candidate)
+    result = schema.validate_update(other=candidate, diff=diff)
+
+    assert result.errors == []
+    assert [c.constraint_name for c in result.constraints] == ["attribute.parameters.ranges.update"]
+    assert result.constraints[0].path.property_name == "parameters.ranges"

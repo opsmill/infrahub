@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-    from infrahub.pools.number_pool_repository import NumberPoolRepository
+    from infrahub.pools.number_pool_repository import NumberPoolRangeStore
 
 
 class NumberPoolShorthandMirror:
@@ -22,7 +22,7 @@ class NumberPoolShorthandMirror:
     range set is expected to sync afterwards.
     """
 
-    def __init__(self, db: InfrahubDatabase, repository: NumberPoolRepository) -> None:
+    def __init__(self, db: InfrahubDatabase, repository: NumberPoolRangeStore) -> None:
         self.db = db
         self.repository = repository
 

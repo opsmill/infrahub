@@ -1,3 +1,4 @@
+import sys
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -25,10 +26,12 @@ from infrahub.core.query.resource_manager import (
     PoolRecordProvenance,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -39,7 +42,14 @@ REQUEST = NodeSchema(
     label="Request",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=sys.maxsize),
+        ),
     ],
 )
 
@@ -49,7 +59,14 @@ INCIDENT = NodeSchema(
     label="Incident",
     attributes=[
         AttributeSchema(name="title", kind="Text", unique=False, optional=False),
-        AttributeSchema(name="number", kind="NumberPool", optional=False, read_only=True, unique=True),
+        AttributeSchema(
+            name="number",
+            kind="NumberPool",
+            optional=False,
+            read_only=True,
+            unique=True,
+            parameters=NumberPoolParameters(start_range=1, end_range=sys.maxsize),
+        ),
     ],
 )
 
@@ -70,11 +87,12 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
 
 @pytest.fixture
 async def run_number_pool_validation(db: InfrahubDatabase) -> None:
-    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
     snps = SchemaNumberPoolSynchronizer(
         db=db,
         schema_manager=registry.schema,
         upserter=upserter,
+        range_store_factory=NumberPoolRepository,
     )
     await snps.run()
 

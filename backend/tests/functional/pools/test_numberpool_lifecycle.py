@@ -14,6 +14,7 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.graphql.registry import registry as graphql_registry
+from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -84,8 +85,12 @@ number_pool_allocation_query = Query(
 
 class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
     async def _post_schema_load_updates(self, db: InfrahubDatabase) -> None:
-        upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
-        snps = SchemaNumberPoolSynchronizer(db=db, schema_manager=registry.schema, upserter=upserter)
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        snps = SchemaNumberPoolSynchronizer(
+            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        )
         await snps.run()
         graphql_registry.clear_cache()
 

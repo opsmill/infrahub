@@ -12,6 +12,7 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.models import HashableModel
 from infrahub.exceptions import SchemaNotFoundError
 
+from .attribute_parameters import NumberPoolParameters
 from .attribute_schema import AttributeSchema
 from .basenode_schema import AttributePathParsingError, BaseNodeSchema, SchemaAttributePath, SchemaAttributePathValue
 from .definitions.core import core_models
@@ -44,6 +45,11 @@ class NodeExtensionSchema(BaseNodeExtensionSchema):
 
 class SchemaExtension(HashableModel):
     nodes: list[NodeExtensionSchema] = Field(default_factory=list)
+
+
+NUMBER_POOL_SHORTHAND_DEPRECATION = (
+    "Use of 'start_range' and 'end_range' on NumberPool attributes is deprecated, use 'ranges' instead"
+)
 
 
 class SchemaWarningType(Enum):
@@ -163,7 +169,21 @@ class SchemaRoot(BaseModel):
                         )
                     )
 
+        warnings.extend(self._number_pool_shorthand_warnings())
         return warnings
+
+    def _number_pool_shorthand_warnings(self) -> list[SchemaWarning]:
+        models = self.nodes + self.generics + self.extensions.nodes
+        return [
+            SchemaWarning(
+                type=SchemaWarningType.DEPRECATION,
+                kinds=[SchemaWarningKind(kind=model.kind, field=attribute.name)],
+                message=NUMBER_POOL_SHORTHAND_DEPRECATION,
+            )
+            for model in models
+            for attribute in model.attributes
+            if isinstance(attribute.parameters, NumberPoolParameters) and attribute.parameters.has_shorthand
+        ]
 
     def generate_uuid(self) -> None:
         """Generate UUID for all nodes, attributes & relationships.

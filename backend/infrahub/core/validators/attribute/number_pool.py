@@ -28,8 +28,10 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
             raise ValueError("attribute parameters are not a NumberPoolParameters")
 
         self.params["attr_name"] = self.attribute_schema.name
-        self.params["start_range"] = self.attribute_schema.parameters.start_range
-        self.params["end_range"] = self.attribute_schema.parameters.end_range
+        # With no range declared, none() holds for every value, so every held value is reported.
+        self.params["ranges"] = [
+            [pool_range.start, pool_range.end] for pool_range in self.attribute_schema.parameters.effective_ranges()
+        ]
 
         query = """
         MATCH (n:%(node_kind)s)
@@ -45,10 +47,7 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         }
         WITH full_path, node, attribute_value, value_relationship
         WHERE all(r in relationships(full_path) WHERE r.status = "active")
-        AND (
-            (toInteger($start_range) IS NOT NULL AND attribute_value < toInteger($start_range))
-            OR (toInteger($end_range) IS NOT NULL AND attribute_value > toInteger($end_range))
-        )
+        AND none(pool_range IN $ranges WHERE attribute_value >= pool_range[0] AND attribute_value <= pool_range[1])
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
 
         self.add_to_query(query)
@@ -86,6 +85,7 @@ class AttributeNumberPoolChecker(ConstraintCheckerInterface):
         return request.constraint_name in (
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE.value,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE.value,
+            ConstraintIdentifier.ATTRIBUTE_PARAMETERS_RANGES_UPDATE.value,
         )
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
