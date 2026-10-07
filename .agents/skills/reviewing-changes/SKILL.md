@@ -5,7 +5,7 @@ description: >-
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.0.0
+  version: 3.1.0
   author: OpsMill
 ---
 
@@ -102,7 +102,10 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
 - **Claims.** Check the PR description against the diff: the open PR's
   (`gh pr view <n> --json body`) when one exists, otherwise the draft. Also check the changelog
   fragment and docs. No "all" where the code covers some, no deferred work described as done,
-  no counts or sources that differ from the code.
+  no counts or sources that differ from the code. For each statement about behaviour, read the
+  code that produces it, backend resolvers and GraphQL fields included. Test every qualifier
+  ("only", "until", "always", "every", "never") against each state that code can produce, and
+  check the statement against the other sections of the same page.
 - **Changelog and generated files.** A user-visible change has a `changelog/` fragment; a GraphQL
   schema change includes the regenerated SDK protocols and the frontend `gql.tada` cache.
 - **Base branch.** Docs-only and tooling-only changes target `stable`.
@@ -118,7 +121,10 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
    findings on paths outside the manifest to "Out of scope".
 3. **Verify each finding** by reading the code at the line and its callers. When the finding
    depends on how a library behaves, read the installed source (`frontend/node_modules/...`,
-   `.venv/lib/.../site-packages/...`) before deciding. Then classify it:
+   `.venv/lib/.../site-packages/...`) before deciding. When it depends on framework behaviour the
+   repository already handles (React Compiler memoization, generic schema kinds), check the rules
+   and `AGENTS.md` first; record such a cubic comment as "wrong because cubic lacks the rule" and
+   propose the matching `cubic.yaml` entry. Then classify it:
    **Fix** (real, part of this change), **Decline** (contradicts a "Not violations" list or does
    not survive the source; one-sentence reason) or **Defer** (real, outside this change).
    Corrections to an open PR's description are Defer, with the corrected sentence: they change
@@ -138,6 +144,11 @@ round never looked at, or fix a finding only partly.
 - **Bugs**: invoke `code-review` with the arguments `high <path> <path> ...` for those paths.
 - **Rules**: one reviewer per area, as in the rule check, given `git diff HEAD -- <paths>` as the
   change and asked to check the fixed lines and the code around them.
+- **Claims**: when a fix touches docs, a changelog, a guideline or the PR body, run the claims
+  check again on the fixed lines.
+- **Removed exceptions**: when a fix removes an exception from a rule or guideline, check that the
+  rule and its rationale still hold for shipped code. If not, narrow the rule or propose a cleanup
+  task instead of deleting the exception.
 
 Stop when no P1 or P2 remains other than declined or deferred ones, or after three rounds.
 
@@ -191,15 +202,18 @@ Run after cubic and reviewers have commented on the PR, to find what the local r
 2. Collect the PR's comments: inline ones with
    `gh api repos/{owner}/{repo}/pulls/<n>/comments --paginate`, and review bodies and
    conversation comments with `gh pr view <n> --json reviews,comments`. Skip replies, bot status
-   messages and comments on commits pushed after the report was saved.
+   messages and comments on lines changed after the report was saved.
 3. Classify each comment against the report, by file, line and issue:
    - **Caught**: the report has it under Fixed, Deferred or Advisory.
    - **Declined locally**: the report has it under Declined. Check whether the reason still holds.
    - **Missed**: the report does not have it. Read the code, and decide whether the comment is
-     right before counting it.
+     right before counting it. Count a miss on a line the review's own fix changed separately,
+     as "introduced by a fix".
 4. For each real miss, say which part of the review should have caught it (a rule, an article,
    the claims check, the bug review, cubic) and why it did not: the rule is missing, the article
-   was not loaded, the file was out of scope, or a reviewer had the rule and missed it.
+   was not loaded, the file was out of scope, a reviewer had the rule and missed it, the claims
+   check did not read the code that produces the claim (for example a backend resolver), or a
+   fix introduced it.
 5. Report the counts (caught, declined, missed, wrong comments), then propose fixes as in the
    next section. A miss that no rule or document change would prevent becomes a proposed change
    to this skill, for the user to decide.
