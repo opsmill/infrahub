@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
@@ -330,9 +330,11 @@ class NumberPoolGetReserved(Query):
 
         """
         result = self.get_result()
-        if result:
-            return result.get_as_optional_type("value", return_type=int)
-        return None
+        if result is None:
+            return None
+        if result.get("value") in (None, NULL_VALUE):
+            return None
+        return result.get_as_type("value", return_type=int)
 
     def get_data(self) -> list[NumberPoolIdentifierData]:
         """Return all reservations as typed dataclass instances.
