@@ -98,9 +98,9 @@ async def test_clearing_for_another_target_keeps_the_marker() -> None:
     assert await markers.is_retargeted(repository_id=REPOSITORY_ID, infrahub_branch_name="main", target=NEW_TARGET)
 
 
-async def test_a_marker_expires_after_one_hour() -> None:
+async def test_a_marker_expires_after_seven_days() -> None:
     cache = MemoryCache()
 
     await RetargetMarkers(cache=cache).mark(repository_id=REPOSITORY_ID, infrahub_branch_name="main", target=NEW_TARGET)
 
-    assert list(cache.expiries.values()) == [3600]
+    assert list(cache.expiries.values()) == [604800]

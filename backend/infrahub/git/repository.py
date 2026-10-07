@@ -418,7 +418,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             and retarget_markers is not None
             and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
         ):
-            # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite for its hour.
+            # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite until it expires.
             await retarget_markers.clear(
                 repository_id=str(self.id), infrahub_branch_name=registry.default_branch, target=self.default_branch
             )

@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
 
-RETARGET_MARKER_TTL_SECONDS = 3600
+# The sweep clears a marker once its re-point is reconciled; this only removes one that never is.
+RETARGET_MARKER_TTL_SECONDS = 7 * 24 * 60 * 60
 
 
 class RetargetMarkers:
@@ -19,7 +20,7 @@ class RetargetMarkers:
         self.cache = cache
 
     async def mark(self, repository_id: str, infrahub_branch_name: str, target: str) -> None:
-        """Mark the branch as re-pointed at the git branch ``target``, for one hour at most."""
+        """Mark the branch as re-pointed at the git branch ``target``, for seven days at most."""
         await self.cache.set(
             key=self._key(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name),
             value=target,

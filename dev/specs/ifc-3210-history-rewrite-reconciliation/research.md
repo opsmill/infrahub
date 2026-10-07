@@ -263,9 +263,13 @@ travels in band on the workflow model.
 - Scope: **read-write repositories only.** A read-only re-target is carried in band on the
   workflow model, because the mutation already computes the comparison. That removes the cache from
   the read-only path entirely: no expiry, no timing question, no lost marker.
-- Time to live: one hour. The widened candidate selection below puts a re-targeted trunk in the
-  classified set on the next cron cycle, so the marker is read within a minute. An hour is generous
-  and short enough that a stale marker cannot suppress an unrelated rewrite days later.
+- Time to live: seven days. The widened candidate selection below puts a re-targeted trunk in the
+  classified set on the next cron cycle, so the marker is usually read within a minute. The sweep,
+  not the time to live, bounds a marker: it is cleared once the trunk records the remote head of the
+  branch it names. A failed trunk, an inactive repository, or a default branch the remote does not
+  hold yet keeps it until a cycle gets there, and a short time to live would lose it first. A stale
+  marker cannot suppress an unrelated rewrite, because it applies only to a cycle that synchronises
+  the target it names.
 
 **What makes the read-write marker readable.** A `default_branch` edit moves no git ref, so
 `compare_local_remote` reports nothing for it, and there is no per-repository sync to submit:
@@ -280,7 +284,7 @@ case costs nothing extra.
 
 **Why the caller reads it and not the recorder.** The recorder writes nothing unless the
 classification is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker
-and never consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
+and never consume it. The marker would then survive until it expires and suppress the *next*, genuine, rewrite
 of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
 tests, and deleting after the commit write keeps a failed cycle retryable.
 

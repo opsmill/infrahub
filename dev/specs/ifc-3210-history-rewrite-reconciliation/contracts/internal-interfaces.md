@@ -671,7 +671,9 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
    a gap in which a cycle reads the new target, finds no marker and records a false rewrite. A
    rolled-back update leaves a marker that names a target the repository does not track, and rule 9
    makes such a marker inert.
-2. It expires after one hour.
+2. It expires after seven days. The sweep of rule 8 is what bounds a marker; the time to live only
+   removes one that no cycle ever reconciles. A long one is safe because of rule 9: a marker whose
+   target the repository no longer tracks does nothing.
 3. **Exactly one component touches the marker: the detector's caller in the sync path**,
    `collect_pending_imports`. It reads the marker, passes the result to `classify` as
    `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
@@ -695,8 +697,8 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 8. **A marker whose branch never becomes a candidate is still deleted at the end of the cycle.**
    A re-point can leave the graph commit and the worktree both equal to the remote head, for
    example when the remote default branch is renamed without moving and `default_branch` is edited
-   to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
-   its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
+   to match. The branch then enters no candidate set, nothing reads the marker, and until it expires
+   it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
    webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
    every marker to the first cycle that reconciles the re-point. The sweep deletes the marker only
    when the trunk records the remote head of the git branch the marker names. A trunk that failed,
@@ -712,7 +714,7 @@ different branch, tag **or commit**", and both of those reach the flow as an exp
 
 > The recorder must not be the reader. It writes nothing unless the classification is already
 > `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive
-> its full hour and suppress the next genuine rewrite of that branch.
+> until it expires and suppress the next genuine rewrite of that branch.
 
 ### How the read-write marker gets read
 
@@ -724,7 +726,7 @@ cancelled or re-run the whole fleet.
 The widened candidate selection is what makes the marker readable. The edit changes which remote
 branch feeds Infrahub's default branch, so the graph commit for that branch stops matching the
 remote head, and the next cron cycle picks it up. That is within a minute, well inside the marker's
-hour.
+time to live.
 
 ### Where the read-write writer compares
 

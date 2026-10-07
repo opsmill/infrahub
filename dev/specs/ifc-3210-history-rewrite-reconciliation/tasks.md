@@ -629,7 +629,7 @@ read-write repository's configured default branch. Neither writes a record.
 - [x] T081 [US6] Sweep any marker still held for a repository when the cycle finishes with it. A
       re-point can leave the graph commit and the worktree both equal to the remote head, so the
       branch enters no candidate set and nothing reads the marker. Left in place it would turn a
-      genuine trunk rewrite into a `RETARGET` for the rest of its hour: reset, no record, no trunk
+      genuine trunk rewrite into a `RETARGET` until it expires: reset, no record, no trunk
       webhook. The sweep bounds every marker to the first cycle that puts the trunk on the remote
       head of the branch the marker names.
 - [ ] T082 [US6] Read the marker at classification time, and delete it only after the commit write

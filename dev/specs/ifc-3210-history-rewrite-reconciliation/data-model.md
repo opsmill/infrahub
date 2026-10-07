@@ -253,7 +253,7 @@ chosen, and why the recorder must not be the reader.
 |---|---|
 | Key | Repository id plus Infrahub branch name, under a namespace of its own. |
 | Value | The new tracking target: the git branch that now feeds Infrahub's default branch. A marker applies only to a cycle that synchronises that same git branch, so a cycle that started before the edit neither uses it nor deletes it. |
-| Time to live | One hour. |
+| Time to live | Seven days. The sweep clears a marker once its re-point is reconciled; the time to live only removes one that no cycle ever reconciles. A stale marker does nothing, because a marker applies only to a cycle that synchronises the target it names. |
 | Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands inside the update transaction, before it commits, on the update and on every upsert path. A sync that reads the new `default_branch` therefore finds the marker too. A rolled-back update leaves a marker that names a target the repository does not track, so no cycle uses it. |
 | Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
 | Read when | Before every classification of Infrahub's default branch, not only before a `REWRITE`. No other branch can be re-pointed, so no other branch carries a marker. |
@@ -262,7 +262,7 @@ chosen, and why the recorder must not be the reader.
 
 **The recorder must not read this key.** It returns early on any classification other than
 `REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The
-marker would then survive its full hour and suppress the next genuine rewrite of that branch.
+marker would then survive until it expires and suppress the next genuine rewrite of that branch.
 
 ---
 
