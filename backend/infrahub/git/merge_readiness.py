@@ -4,7 +4,12 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryNotSynchronizedError
+from infrahub.exceptions import (
+    RepositoryCredentialsError,
+    RepositoryCredentialsRefusedError,
+    RepositoryError,
+    RepositoryNotSynchronizedError,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -93,7 +98,8 @@ class RemoteHeadsMergeCheck:
         holding the merge. Its source branch is still compared: a branch merges once and never syncs again.
 
         Raises:
-            RepositoryCredentialsError: When a remote refuses the credentials of a repository that needs a Git merge.
+            RepositoryCredentialsRefusedError: When a remote refuses the credentials of a repository that needs a Git
+                merge.
             RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
         """
@@ -103,13 +109,10 @@ class RemoteHeadsMergeCheck:
         )
         refused = [read for read in read_heads if isinstance(read, RepositoryCredentialsError)]
         if refused:
-            raise RepositoryCredentialsError(
-                identifier=refused[0].identifier,
-                message=(
-                    f"Unable to merge branch {source_branch}, because Infrahub cannot read the remote of a repository "
-                    f"with its credentials. {' '.join(error.message for error in refused)} The Git merge would fail "
-                    "the same way, after the merge in Infrahub. Fix the credentials, then merge again."
-                ),
+            raise RepositoryCredentialsRefusedError(
+                f"Unable to merge branch {source_branch}, because Infrahub cannot read the remote of a repository "
+                f"with its credentials. {' '.join(error.message for error in refused)} The Git merge would fail "
+                "the same way, after the merge in Infrahub. Fix the credentials, then merge again."
             ) from refused[0]
 
         unimported = [

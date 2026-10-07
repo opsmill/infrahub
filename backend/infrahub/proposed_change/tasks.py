@@ -76,7 +76,7 @@ from infrahub.exceptions import (
     MergeConflictsUnresolvedError,
     MergeConstraintsViolatedError,
     MergeFailedError,
-    RepositoryCredentialsError,
+    RepositoryCredentialsRefusedError,
     RepositoryNotSynchronizedError,
     SchemaNotFoundError,
     ValidationError,
@@ -214,7 +214,7 @@ async def _merge_branch_for_proposed_change(
             database=db, proposed_change_id=proposed_change_id, schema_conflicts=exc.schema_conflicts
         )
         return Failed(message="Unable to merge proposed change containing failing checks")
-    except (MergeConflictsUnresolvedError, RepositoryNotSynchronizedError, RepositoryCredentialsError) as exc:
+    except (MergeConflictsUnresolvedError, RepositoryNotSynchronizedError, RepositoryCredentialsRefusedError) as exc:
         # Each is a refusal before the graph merge that the user can clear, not a crash.
         return Failed(message=exc.message)
     except MergeFailedError as exc:

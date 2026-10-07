@@ -202,7 +202,7 @@ merge after a plain push and keeps the branch open:
   cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
   repository the branch changed, holds the merge too, not only a rewrite, until the next cycle imports
   the new head. A remote that cannot be reached, or does not answer in time, does not block the
-  merge. A remote that refuses the credentials does, with `RepositoryCredentialsError`, when the
+  merge. A remote that refuses the credentials does, with `RepositoryCredentialsRefusedError`, when the
   repository needs a Git merge: that Git merge would fail the same way after the graph merge. For a
   repository whose source branch records the commit its trunk records, the check reads the source
   branch only, and the dispatcher runs no Git merge for it: there is nothing to push.

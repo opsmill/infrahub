@@ -478,6 +478,10 @@ class RepositoryNotSynchronizedError(ValidationError):
     """Raised when a branch merge would build on a Git branch whose remote head Infrahub has not imported."""
 
 
+class RepositoryCredentialsRefusedError(ValidationError):
+    """Raised when a branch merge is refused because a remote refuses the credentials its Git merge needs."""
+
+
 class MergeFailedError(Error):
     HTTP_CODE: int = 500
 

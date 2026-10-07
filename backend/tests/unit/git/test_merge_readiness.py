@@ -9,7 +9,11 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from infrahub.exceptions import RepositoryCredentialsError, RepositoryNotSynchronizedError
+from infrahub.exceptions import (
+    RepositoryCredentialsError,
+    RepositoryCredentialsRefusedError,
+    RepositoryNotSynchronizedError,
+)
 from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
 from tests.adapters.remote_heads import (
     CountingRemoteHeadReader,
@@ -245,17 +249,22 @@ async def test_the_merge_check_reads_at_most_the_given_number_of_remotes_at_the_
 
 
 async def test_a_remote_that_refuses_the_credentials_refuses_the_merge() -> None:
-    """The Git merge would read the remote with the same credentials, and fail after the merge in Infrahub."""
+    """The Git merge would read the remote with the same credentials, and fail after the merge in Infrahub.
+
+    The refusal is one the user can fix, so it is a validation error that keeps the credentials error as its cause.
+    """
     message = (
         f"Unable to merge branch {SOURCE}, because Infrahub cannot read the remote of a repository with its "
         "credentials. Authentication failed for network-repo, please validate the credentials. The Git merge "
         "would fail the same way, after the merge in Infrahub. Fix the credentials, then merge again."
     )
 
-    with pytest.raises(RepositoryCredentialsError, match=rf"^{re.escape(message)}$"):
+    with pytest.raises(RepositoryCredentialsRefusedError, match=rf"^{re.escape(message)}$") as refusal:
         await check(reader=FailingRemoteHeadReader(error_class=RepositoryCredentialsError)).check(
             source_branch=SOURCE, targets=[target()]
         )
+
+    assert type(refusal.value.__cause__) is RepositoryCredentialsError
 
 
 async def test_a_credentials_error_on_a_repository_the_branch_did_not_change_lets_the_merge_go_on(
