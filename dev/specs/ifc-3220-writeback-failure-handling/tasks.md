@@ -154,9 +154,9 @@ Parts A and B of the plan.
 - [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
       table of [research.md](research.md) R5, and `scrub_credentials`.
 - [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
-      `enqueue`, `fetch` and `release` stages included, a killed fetch and a killed push, a message
-      that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and several
-      URLs in one text.
+      `enqueue`, `fetch` and `release` stages included, a fetch and a push past their time limit, a
+      message that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and
+      several URLs in one text.
 
 ### Schema and store (plan part B)
 
@@ -227,9 +227,10 @@ SC-002, SC-007.
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
-      Every Git command it runs is bounded, per
-      [research.md](research.md) R6: `FETCH_TIMEOUT_SECONDS` for the fetch, `PUSH_TIMEOUT_SECONDS`
-      for the push and `delete_remote_branch`, and `LOCAL_GIT_TIMEOUT_SECONDS` for each local
+      Every Git command it runs gets a time limit, per [research.md](research.md) R6 (the limit
+      does not stop a hung fetch or push; open point of R6): `FETCH_TIMEOUT_SECONDS` for the
+      fetch, `PUSH_TIMEOUT_SECONDS` for the push and `delete_remote_branch`, and
+      `LOCAL_GIT_TIMEOUT_SECONDS` for each local
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
       `index.lock` of the worktree, then raises `RepositoryError` with a message that names the
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
@@ -530,8 +531,9 @@ T081 to T084 are not.
 - [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
-      A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
-      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
+      A push to a local TCP server that accepts and never answers fails as `remote-unreachable`
+      within the bound: this case waits for the open point of R6, because `kill_after_timeout` does
+      not stop that push. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
       temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
       lowered for the test. It raises a `RepositoryError` that names the command, which the
       classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses

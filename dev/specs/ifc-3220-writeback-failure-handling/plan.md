@@ -21,7 +21,8 @@ replays the pending merges on the fresh remote head, pushes once, records the co
 import obligation, imports when the remote had moved, broadcasts, and then, outside the repository
 lock, releases the held regeneration. `merge_git_repository`, a new retry flow and a recovery check
 in the periodic synchronisation call the same service. A Prefect task retries transient failures three
-times, and every Git command of the adapter is bounded in time. While a delivery is pending, no
+times, and every Git command of the adapter gets a time limit, which does not yet stop a hung fetch
+or push (`research.md` R6, open point). While a delivery is pending, no
 other path imports the default branch. A regeneration barrier, consulted at every dispatch point of
 the merge follow-up, holds the definitions of a repository with a pending delivery as identifiers
 with hold sequences, keeps their narrowed selection in the cache for the length of the automatic
@@ -55,9 +56,10 @@ delivery succeeds within its automatic retry chain regenerates as precisely as t
 **Constraints**: the repository lock is the most contended lock of the Git subsystem. The new
 delivery-state lock is held for one read-modify-write, has a 30-second time to live, and is never
 held across Git work, so a branch merge never waits for a push. A delivery attempt holds no lock
-across a retry delay or a release. Every Git command that the delivery adapter runs is bounded in
-time, the local ones included. The import has no bound, and the Git commands inside it have none
-either. While the import holds the repository lock, the recovery check starts no second attempt
+across a retry delay or a release. Every Git command that the delivery adapter runs gets a time
+limit, the local ones included. The limit does not stop a hung fetch or push, and in the runtime
+image it stops no direct Git call (`research.md` R6, open point). The import has no bound, and the
+Git commands inside it have none either. While the import holds the repository lock, the recovery check starts no second attempt
 (`research.md` R6, R20).
 
 **Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
@@ -267,7 +269,7 @@ the attempt fails and keeps the queue (`research.md` R3). `InfrahubRepository.me
 | **The synchronisation skips the default branch while a delivery is pending.** | A commit pushed directly to the remote default branch is not imported until the queue clears. | The section says so. The delivery imports it. Documented in the user docs. |
 | **A branch forked during an outage.** | A later synchronisation import of that branch deletes the pending merges' objects there. | The reimport refuses on every branch. The synchronisation case is a known limitation, documented. |
 | **A push failure classification changes on a Git or server upgrade.** | A rejection moves to `unclassified`, which is never retried. | The safe direction. The reason comes from GitPython's flags, and the classifier's table test lists the known cases. |
-| **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), bounded Git commands. A persistent outage ends in `action-required` and frees the slot. |
+| **The automatic retry can hold a worker slot for up to about 45 minutes.** | Less worker capacity during a remote outage. | One chain per repository, three retries (four attempts), time limits on Git commands. A persistent outage ends in `action-required` and frees the slot. A hung fetch or push is not stopped by its limit and keeps the slot until the connection ends (`research.md` R6, open point). |
 | **Existing tests assert the push rejection message.** | Part A could break them. | The typed error keeps the message byte for byte. |
 | **The e2e stack has no Git server.** | The UI journeys cannot use Gogs. | The SDK `GitRepo` helper serves a bare repository, and a `pre-receive` hook in it rejects the push. `research.md` R15. |
 

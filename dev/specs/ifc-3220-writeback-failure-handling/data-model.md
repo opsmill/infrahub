@@ -236,7 +236,7 @@ Not persisted in the graph (FR-014). Written by the barrier at a hold, read by t
 |---|---|
 | Key | `repository-delivery:held:<repository id>:<hold_seq>:<identifier>` |
 | Value | The narrowed request model of the candidate, serialised: `RequestArtifactDefinitionGenerate`, `RequestGeneratorDefinitionRun`, or the coalesced Python submission. |
-| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). |
+| Time to live | `NARROWED_HOLD_TTL_SECONDS`, derived from the retry delays and the fetch and push timeouts: about 45 minutes (`research.md` R9). A chain with a hung fetch or push can outlast it, because the time limit does not stop those commands (`research.md` R6); the release then only widens. |
 | Size bound | 512 KiB. A larger value is not written, and the release then uses the identifier alone. |
 | Repeated hold | The new entry holds the union of the previous entry and the new request. When the previous entry is missing, expired or too large, no new entry is written. |
 | Miss | The release dispatches the identifier with no narrowing. A miss over-executes and never skips. |

@@ -169,13 +169,14 @@ says that the clone on this worker has no `origin`, with no path. The service cl
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-Every port method that runs Git bounds each of its Git commands with GitPython's
-`kill_after_timeout` (`research.md` R6):
+Every port method that runs Git passes a time limit to each of its Git commands, as GitPython's
+`kill_after_timeout` (`research.md` R6). The limit does not stop a hung fetch or push, and in the
+runtime image it stops no direct Git call (open point of R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. A timeout of `fetch` or `push` raises `RepositoryConnectionError`, because
-  `_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
-  (section 10).
+  `PUSH_TIMEOUT_SECONDS`. A `fetch` or a `push` past its limit raises `RepositoryConnectionError`
+  once Git ends, because `_raise_enriched_error_static` maps GitPython's "process killed because it
+  timed out" text to it (section 10).
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
   database. A timeout raises `RepositoryError`, with a message that names the command and the bound
