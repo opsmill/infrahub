@@ -17,8 +17,8 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 
 | Ticket | Pull request | Change sets | Delivers |
 |---|---|---|---|
-| [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | #10911 | documents | This spec directory and the GraphQL contract of the three number-pool queries; the bottom of the stack |
 | [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | #10917 | A | `allocation_scope` on the pool and in the attribute parameters |
+| [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | #10911 | documents | This spec directory, consistent with the tickets, and the GraphQL contract of the three number-pool queries; the bottom of the stack once #10917 has merged |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | #10932 | B | The three queries over a fixed dataset, so the frontend can build |
 | [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | new | D3 (validator) | A scope that cannot divide the pool is refused at save |
 | [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks a scoped field is refused |
@@ -44,25 +44,13 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 
 ---
 
-## IFC-3346: Publish the GraphQL contract of the three number-pool queries (#10911)
-
-**Delivers**: the documents of this directory, consistent with the tickets of the epic, and the
-written contract ([contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md)).
-No code. The bottom of the stack: every other pull request of the epic is based on it.
-
-**Depends on**: nothing. **Blocks**: IFC-3334 and, through it, every other ticket.
-
-No tasks: the pull request carries the documents.
-
----
-
 ## IFC-3334: Add allocation_scope to NumberPool and Parameters (#10917)
 
 **Delivers**: the attribute and the parameters field every generated type derives from (change set
 A). The pull request also carries its rebase onto `feature-number-pools-1.12` and the regeneration
 of the generated files after it.
 
-**Depends on**: IFC-3346. **Blocks**: IFC-3347, IFC-3352 and, through them, every other ticket.
+**Depends on**: nothing. **Blocks**: IFC-3346, IFC-3352 and, through them, every other ticket. Merged on its own into `feature-number-pools-1.12`, outside the stack.
 
 - [X] T005 Add `allocation_scope` (`kind="List"`, `optional=True`, description "Fields of the kind
       that divide the pool's space; allocation returns the lowest free number within the writer's
@@ -98,6 +86,18 @@ of the generated files after it.
 
 ---
 
+## IFC-3346: Align the Speckit documents of scoped number pools with the Jira tickets (#10911)
+
+**Delivers**: the documents of this directory, consistent with the tickets of the epic, and the
+written contract ([contracts/graphql-number-pool-surface.md](./contracts/graphql-number-pool-surface.md)).
+No code. Based on `feature-number-pools-1.12` once #10917 (IFC-3334) has merged; every later pull request of the epic is based on it.
+
+**Depends on**: IFC-3334 (merged). **Blocks**: IFC-3347 and, through it, every later ticket.
+
+No tasks: the pull request carries the documents.
+
+---
+
 ## IFC-3347: Serve the three number-pool queries from a fixed dataset so the frontend can build (#10932)
 
 **Delivers**: the three dedicated root fields over a fixed in-memory dataset (change set B), the
@@ -105,7 +105,7 @@ description notes on the generic queries, the regenerated schema and frontend ty
 snapshot that freezes the contract, and the test fixture every later ticket shares. The pull
 request also carries its rebase onto `feature-number-pools-1.12`.
 
-**Depends on**: IFC-3334. **Blocks**: IFC-3348, IFC-3329.
+**Depends on**: IFC-3346, IFC-3334. **Blocks**: IFC-3348, IFC-3329.
 
 **Note**: the queries read nothing from the database (contract section "Fixed dataset of the first
 delivery"): `backend/infrahub/pools/number_pool_mock.py` holds a pool scoped by `site` returned for
@@ -820,7 +820,7 @@ original request, to be scheduled only if the frontend needs them. Depends on IF
 ```mermaid
 flowchart TD
   T3334["IFC-3334 allocation_scope attribute (#10917)"]
-  T3346["IFC-3346 GraphQL contract (#10911)"]
+  T3346["IFC-3346 Speckit documents (#10911)"]
   T3347["IFC-3347 queries over a fixed dataset (#10932)"]
   T3348["IFC-3348 refuse a scope that cannot divide the pool"]
   T3352["IFC-3352 refuse a schema change that breaks a scoped field"]
@@ -834,7 +834,7 @@ flowchart TD
   T3356["IFC-3356 docs and changelog"]
   T3358["IFC-3358 follow-up: divisions list search, pagination, sort"]
 
-  T3346 --> T3334 --> T3347 --> T3348 --> T3349 --> T3329
+  T3334 --> T3346 --> T3347 --> T3348 --> T3349 --> T3329
   T3334 --> T3352 --> T3354
   T3347 --> T3329
   T3348 --> T3351
@@ -849,9 +849,9 @@ flowchart TD
 
 | Ticket | Blocked by | Blocks |
 |---|---|---|
-| IFC-3346 | none | IFC-3334 |
-| IFC-3334 | IFC-3346 | IFC-3347, IFC-3352 |
-| IFC-3347 | IFC-3334 | IFC-3348, IFC-3329 |
+| IFC-3334 | none | IFC-3346, IFC-3352 |
+| IFC-3346 | IFC-3334 | IFC-3347 |
+| IFC-3347 | IFC-3346 | IFC-3348, IFC-3329 |
 | IFC-3348 | IFC-3347 | IFC-3349, IFC-3351, IFC-3353 |
 | IFC-3352 | IFC-3334 | IFC-3354 |
 | IFC-3349 | IFC-3348 | IFC-3329, IFC-3351, IFC-3355, IFC-3357 |
@@ -864,8 +864,8 @@ flowchart TD
 | IFC-3356 | IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354, IFC-3355, IFC-3357 | the release merge |
 | IFC-3358 | IFC-3329 | none |
 
-- **IFC-3346 is the bottom of the stack**: the documents land first and every other pull request
-  is based on them.
+- **IFC-3334 merges first, on its own**; IFC-3346 (the documents) is then the bottom of the stack
+  and every later pull request is based on it.
 - **IFC-3334 blocks every code ticket**: every generated type derives from the attribute and the
   field.
 - **IFC-3347 unblocks the frontend and the SDK** and freezes the contract; T025 guards it. It needs
@@ -888,7 +888,7 @@ flowchart TD
 | Schema | IFC-3352 alone; IFC-3353 and IFC-3351 after IFC-3348 | IFC-3334 (IFC-3352); IFC-3348 (IFC-3353, IFC-3351); IFC-3349 (IFC-3351's allocation assertions) |
 | Acceptance and closing | IFC-3357, IFC-3354, IFC-3356 | IFC-3349 and IFC-3329 (IFC-3357); IFC-3329, IFC-3351, IFC-3352 (IFC-3354); everything (IFC-3356) |
 
-Recommended merge order into `feature-number-pools-1.12`: IFC-3346, IFC-3334, IFC-3347, IFC-3348,
+Recommended merge order into `feature-number-pools-1.12`: IFC-3334, IFC-3346, IFC-3347, IFC-3348,
 IFC-3352, IFC-3349, IFC-3353, IFC-3351, IFC-3329, IFC-3357, IFC-3355, IFC-3354, IFC-3356. IFC-3352
 and IFC-3353 can merge anywhere after their dependencies; the order keeps IFC-3349 and IFC-3329,
 which both change `resource_manager.py`, from colliding.
