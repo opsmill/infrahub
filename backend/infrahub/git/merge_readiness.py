@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from infrahub.exceptions import RepositoryError, RepositoryNotSynchronizedError
+from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryNotSynchronizedError
 from infrahub.git.constants import REMOTE_HEADS_PARALLEL_READS
 
 if TYPE_CHECKING:
@@ -57,12 +57,14 @@ class RemoteHeadReader(Protocol):
 
 
 class RemoteHeadsMergeCheck:
-    """Refuses a branch merge while Infrahub has not imported a remote head that its Git merge builds on.
+    """Refuses a branch merge while Infrahub has not recorded a remote head that its Git merge builds on.
 
     The refusal comes before the graph merge, so the branch stays open and the merge can run again once
-    the synchronization imports the head. A remote that cannot be read does not block the merge. The Git
-    merge then fetches from the same remote, and when that remote still cannot be read, the Git merge
-    fails after the graph merge.
+    Infrahub records the head. A remote that cannot be reached, or does not answer in time, does not block
+    the merge: the Git merge then fetches from the same remote, and when that remote still cannot be
+    reached, the Git merge fails after the graph merge. A remote that refuses the credentials blocks the
+    merge when the repository needs a Git merge, because that Git merge would read the remote with the
+    same credentials and fail after the graph merge.
     """
 
     def __init__(self, reader: RemoteHeadReader, log: Logger | LoggerAdapter[Logger]) -> None:
@@ -76,6 +78,7 @@ class RemoteHeadsMergeCheck:
         holding the merge. Its source branch is still compared: a branch merges once and never syncs again.
 
         Raises:
+            RepositoryCredentialsError: When a remote refuses the credentials of a repository that needs a Git merge.
             RepositoryNotSynchronizedError: When a remote head differs from the commit the graph records.
 
         """
@@ -87,6 +90,17 @@ class RemoteHeadsMergeCheck:
                 for target, expected in zip(targets, expected_heads, strict=True)
             )
         )
+        refused = [read for read in read_heads if isinstance(read, RepositoryCredentialsError)]
+        if refused:
+            raise RepositoryCredentialsError(
+                identifier=refused[0].identifier,
+                message=(
+                    f"Unable to merge branch {source_branch}, because Infrahub cannot read the remote of a repository "
+                    f"with its credentials. {' '.join(error.message for error in refused)} The Git merge would fail "
+                    "the same way, after the merge in Infrahub. Fix the credentials, then merge again."
+                ),
+            ) from refused[0]
+
         unimported = [
             UnimportedRemoteHead(
                 repository_name=target.name,
@@ -95,7 +109,7 @@ class RemoteHeadsMergeCheck:
                 graph_commit=graph_commit,
             )
             for target, expected, heads in zip(targets, expected_heads, read_heads, strict=True)
-            if heads is not None
+            if isinstance(heads, dict)
             for remote_branch, graph_commit in expected.items()
             if remote_branch in heads and heads[remote_branch] != graph_commit
         ]
@@ -118,13 +132,17 @@ class RemoteHeadsMergeCheck:
 
     async def _read_heads(
         self, source_branch: str, target: GitMergeTarget, branch_names: list[str], reads: asyncio.Semaphore
-    ) -> dict[str, str] | None:
+    ) -> dict[str, str] | RepositoryCredentialsError | None:
         try:
             async with reads:
                 return await self.reader.read_heads(
                     repository_name=target.name, location=target.location, branch_names=branch_names
                 )
         except RepositoryError as exc:
+            if isinstance(exc, RepositoryCredentialsError) and not nothing_to_merge_in_git(
+                source_commit=target.source_commit, destination_commit=target.destination_commit
+            ):
+                return exc
             self.log.warning(
                 f"Unable to read the remote heads of repository {target.name}, the merge of branch "
                 f"{source_branch} goes on without this check: {exc.message}"

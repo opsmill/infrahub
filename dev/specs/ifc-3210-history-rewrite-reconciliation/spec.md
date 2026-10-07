@@ -327,7 +327,9 @@ here. See "Out of Scope".
   the merge while one differs. A repository whose source branch records the commit that its trunk
   records has nothing to merge in Git: the system MUST NOT run its Git merge, and MUST compare only
   the remote head of its source branch. That refusal leaves the branch open, and the merge can run again after
-  the synchronisation imports the head. A remote that cannot be read MUST NOT block the merge. A
+  the synchronisation imports the head. A remote that cannot be reached, or does not answer in time,
+  MUST NOT block the merge. A remote that refuses the credentials of a repository that needs a Git
+  merge MUST block it, because that Git merge would fail the same way after the graph merge. A
   refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
   branch is merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes
   that merge in Git. The delivery queue of IFC-3220 does not recover it: its FR-020 and FR-022 only

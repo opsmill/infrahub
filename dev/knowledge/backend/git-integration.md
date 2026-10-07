@@ -278,9 +278,11 @@ plain push and keeps the branch open:
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
   cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
   repository the branch changed, holds the merge too, not only a rewrite, until the next cycle imports
-  the new head. A remote that cannot be read does not block the merge. For a repository whose source
-  branch records the commit its trunk records, the check reads the source branch only, and the
-  dispatcher runs no Git merge for it: there is nothing to push.
+  the new head. A remote that cannot be reached, or does not answer in time, does not block the
+  merge. A remote that refuses the credentials does, with `RepositoryCredentialsError`, when the
+  repository needs a Git merge: that Git merge would fail the same way after the graph merge. For a
+  repository whose source branch records the commit its trunk records, the check reads the source
+  branch only, and the dispatcher runs no Git merge for it: there is nothing to push.
 - In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches, then compares the local
   source ref and the local trunk worktree with their remote heads. The source graph commit comes in
   the merge model (`GitRepositoryMerge`), read when the merge was dispatched, because the source

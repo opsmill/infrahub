@@ -809,10 +809,14 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    above.
 3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
    and the merge can run again after the next cycle imports the head.
-4. A remote that cannot be read does not block the merge. The check logs a warning and compares
-   nothing for that repository. The guard of the Git merge fetches from the same remote, so it does
-   not compare the heads either: when the remote still cannot be read, its fetch fails, and the Git
-   merge fails after the graph merge.
+4. A remote that cannot be reached, or does not answer in time, does not block the merge. The check
+   logs a warning and compares nothing for that repository. The guard of the Git merge fetches from
+   the same remote, so it does not compare the heads either: when the remote still cannot be
+   reached, its fetch fails, and the Git merge fails after the graph merge.
+5. A remote that refuses the credentials blocks the merge with `RepositoryCredentialsError` when the
+   repository needs a Git merge: that Git merge would read the remote with the same credentials and
+   fail after the graph merge. For a repository the branch did not change, no Git merge runs, so the
+   check only logs the warning.
 
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
 refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as

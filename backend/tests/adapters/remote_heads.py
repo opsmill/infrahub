@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from infrahub.exceptions import RepositoryConnectionError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryError
 
 
 @dataclass(frozen=True)
@@ -28,10 +28,13 @@ class InMemoryRemoteHeadReader:
 
 
 class FailingRemoteHeadReader:
-    """RemoteHeadReader whose every read fails the way an unreachable remote fails."""
+    """RemoteHeadReader whose every read fails with the given error, an unreachable remote by default."""
+
+    def __init__(self, error_class: type[RepositoryError] = RepositoryConnectionError) -> None:
+        self.error_class = error_class
 
     async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
-        raise RepositoryConnectionError(identifier=repository_name)
+        raise self.error_class(identifier=repository_name)
 
 
 class TogetherRemoteHeadReader(InMemoryRemoteHeadReader):

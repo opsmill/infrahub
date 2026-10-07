@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from infrahub.exceptions import RepositoryNotSynchronizedError
+from infrahub.exceptions import RepositoryCredentialsError, RepositoryNotSynchronizedError
 from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
 from tests.adapters.remote_heads import (
     CountingRemoteHeadReader,
@@ -234,3 +234,33 @@ async def test_the_merge_check_reads_at_most_eight_remotes_at_the_same_time() ->
     await check(reader=reader).check(source_branch=SOURCE, targets=targets)
 
     assert (reader.most_in_flight, len(reader.reads)) == (8, 20)
+
+
+async def test_a_remote_that_refuses_the_credentials_refuses_the_merge() -> None:
+    """The Git merge would read the remote with the same credentials, and fail after the merge in Infrahub."""
+    message = (
+        f"Unable to merge branch {SOURCE}, because Infrahub cannot read the remote of a repository with its "
+        "credentials. Authentication failed for network-repo, please validate the credentials. The Git merge "
+        "would fail the same way, after the merge in Infrahub. Fix the credentials, then merge again."
+    )
+
+    with pytest.raises(RepositoryCredentialsError, match=rf"^{re.escape(message)}$"):
+        await check(reader=FailingRemoteHeadReader(error_class=RepositoryCredentialsError)).check(
+            source_branch=SOURCE, targets=[target()]
+        )
+
+
+async def test_a_credentials_error_on_a_repository_the_branch_did_not_change_lets_the_merge_go_on(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """That repository gets no Git merge, so nothing reads its remote after the merge in Infrahub."""
+    caplog.set_level(logging.WARNING, logger=LOGGER_NAME)
+
+    await check(reader=FailingRemoteHeadReader(error_class=RepositoryCredentialsError)).check(
+        source_branch=SOURCE, targets=[target(source_commit=TRUNK_HEAD)]
+    )
+
+    assert [record.getMessage() for record in caplog.records if record.name == LOGGER_NAME] == [
+        f"Unable to read the remote heads of repository network-repo, the merge of branch {SOURCE} goes on "
+        "without this check: Authentication failed for network-repo, please validate the credentials."
+    ]
