@@ -1,23 +1,18 @@
-"""Shared fixtures for the branch E2E tests.
-
-`broken_repository` adds a repository on a throwaway branch from a fixture repo without an
-`.infrahub.yml`, so its initial import (`git-repository-add-read-write`) fails deterministically
-and leaves it in Import Error on that branch.
-"""
-
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
 import pytest
+from broken_repository_factory import BrokenRepository
 from helpers import Deadline, generate_random_branch_name
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Awaitable, Callable
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
+    from broken_repository_factory import BrokenRepositoryFactory
     from helpers import BranchAPI
     from infrahub_sdk import InfrahubClient
 
@@ -51,7 +46,7 @@ async def _wait_for_import_error(client: InfrahubClient, branch: str, repository
 
 
 async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> str:
-    # sync_status flips before the flow run ends Failed; the band reads the run's error lines.
+    # The repository reaches Import Error before its import task is recorded as failed.
     deadline = Deadline(
         f"a failed import task for repository {repository_id} on {branch}", timeout=POLL_TIMEOUT_SECONDS
     )
@@ -74,12 +69,8 @@ async def broken_repository(
     infrahub_compose_dir: Path,
     infrahub_provisioned_externally: bool,
     tmp_path: Path,
-) -> AsyncGenerator[Callable[..., Awaitable[tuple[str, str, str]]], None]:
-    """Factory for branches holding one CoreRepository in Import Error.
-
-    Awaiting the factory with `sync_with_git=...` creates a branch and returns (branch, repository
-    name, failed import task id). Every branch and repository created is removed on teardown.
-    """
+) -> AsyncGenerator[BrokenRepositoryFactory, None]:
+    """Create branches that each hold one repository in Import Error, and remove them on teardown."""
     if infrahub_provisioned_externally:
         pytest.skip("Needs the compose /remote directory to host the fixture repository")
 
@@ -90,12 +81,13 @@ async def broken_repository(
     created_branches: list[str] = []
     created_repositories: list[str] = []
 
-    async def make(*, sync_with_git: bool) -> tuple[str, str, str]:
+    async def make(*, sync_with_git: bool) -> BrokenRepository:
         branch = generate_random_branch_name("repo-error-")
         repository_name = generate_random_branch_name("broken-repo-")
 
         source = tmp_path / repository_name
         source.mkdir()
+        # Without an .infrahub.yml the first import of the repository always fails.
         (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
         GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
 
@@ -119,7 +111,7 @@ async def broken_repository(
 
         repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
         task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
-        return branch, repository_name, task_id
+        return BrokenRepository(branch=branch, repository_name=repository_name, failed_task_id=task_id)
 
     try:
         yield make
