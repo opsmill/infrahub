@@ -33,7 +33,13 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
-from infrahub.exceptions import CheckError, CommitNotFoundError, RepositoryError
+from infrahub.exceptions import (
+    CheckError,
+    CommitNotFoundError,
+    RepositoryConnectionError,
+    RepositoryCredentialsError,
+    RepositoryError,
+)
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
@@ -73,8 +79,15 @@ from .models import (
     UserCheckData,
     UserCheckDefinitionData,
 )
-from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
-from .sync import RepositoryAdder, RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
+from .repository import InfrahubReadOnlyRepository, InfrahubRepository, PendingObjectImport, get_initialized_repo
+from .sync import (
+    RepositoryAdder,
+    RepositoryBranchesFailedError,
+    RepositoryFileImporter,
+    RepositorySyncer,
+    SyncReport,
+    import_branch,
+)
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
@@ -144,12 +157,27 @@ def evaluate_import_status(
     flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
 )
 async def add_git_repository(model: GitRepositoryAdd) -> None:
+    """Add a repository, synchronize its branches and notify the other workers.
+
+    A failed default-branch import does not stop the other branches from synchronizing. When they all
+    synchronize, the flow notifies the other workers and then fails with the default-branch error.
+
+    Raises:
+        RepositoryImportError: When the import of the default branch failed and every other branch
+            synchronized.
+        RepositoryBranchesFailedError: When at least one other branch failed to synchronize; the other
+            workers are not notified, and a failed default-branch import is reported only in the log.
+
+    """
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
     importer = RepositoryFileImporter()
-    repo = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=get_client()).add(model)
+    added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=get_client()).add(model)
+    repo = added.repository
 
     if model.internal_status != RepositoryInternalStatus.ACTIVE.value:
+        if added.import_error:
+            raise added.import_error
         return
 
     try:
@@ -177,6 +205,9 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
     )
     message_bus = await get_message_bus()
     await message_bus.send(message=notification)
+
+    if added.import_error:
+        raise added.import_error
 
 
 @flow(
@@ -351,11 +382,13 @@ async def bootstrap_local_repository(
     """Ensure this worker has a usable local clone and seed the graph for a freshly created repo.
 
     The repository lock covers the git working-copy mutations.
-    Returns None when the clone or the default-branch import fails and the repository should be
-    skipped.
+    Returns None when the repository should be skipped for this cycle: the clone fails, or the
+    default-branch import cannot reach the remote or its credentials are invalid. Any other failed
+    default-branch import is already logged and recorded on the branch, so the repository is still
+    returned and its other branches still synchronize.
     """
     log = get_run_logger()
-    pinned_import_commit: str | None = None
+    pending_import: PendingObjectImport | None = None
     async with lock.registry.get(name=repo_name, namespace="repository"):
         init_failed = False
         try:
@@ -388,18 +421,18 @@ async def bootstrap_local_repository(
         if default_import_git_branch is not None:
             # Pin the commit while the lock is held so the import below reads an immutable
             # worktree even though it is built after the lock is released.
-            pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
-
-    if default_import_git_branch is not None:
-        try:
-            plan = await repo.build_import_plan(
-                git_branch_name=default_import_git_branch,
+            pending_import = PendingObjectImport(
                 infrahub_branch_name=infrahub_branch,
-                commit=pinned_import_commit,
+                git_branch_name=default_import_git_branch,
+                commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
             )
-            async with lock.registry.get(name=repo_name, namespace="repository"):
-                await repo.apply_import_plan(plan)
-        except (RepositoryError, CommitNotFoundError) as exc:
+
+    if pending_import is not None:
+        try:
+            await import_branch(
+                lock_registry=lock.registry, importer=RepositoryFileImporter(), repo=repo, pending_import=pending_import
+            )
+        except (RepositoryConnectionError, RepositoryCredentialsError) as exc:
             log.info(exc.message)
             return None
 

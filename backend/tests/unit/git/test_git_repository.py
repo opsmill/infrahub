@@ -825,6 +825,27 @@ def test_raise_if_branches_failed_logs_structured_fields(
     assert attrs["repository"] == "test-repo"
 
 
+def test_raise_if_branches_failed_does_not_log_failed_imports_again(
+    stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
+) -> None:
+    failed_imports = [
+        FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
+        FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
+    ]
+    with (
+        caplog.at_level(logging.WARNING, logger="infrahub.tasks"),
+        pytest.raises(
+            RepositoryError,
+            match=r"^Unable to synchronize the following branches of repository test-repo: "
+            r"branch01 \(step=collection\): error 1; branch02 \(step=import\): error 2$",
+        ),
+    ):
+        stub_repo.raise_if_branches_failed(failed_imports)
+    assert [record.getMessage() for record in caplog.records] == [
+        "Failed to synchronize branch branch01 of repository test-repo at step collection: error 1"
+    ]
+
+
 TRUNK = "develop"
 
 

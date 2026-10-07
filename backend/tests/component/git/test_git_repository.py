@@ -54,6 +54,7 @@ from tests.adapters.event import MemoryInfrahubEvent
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.git import build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
@@ -672,7 +673,7 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
 
 async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> None:
     syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
-    await syncer.sync(repo, staging_branch=staging_branch)
+    await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
 
 
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
