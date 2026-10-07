@@ -209,7 +209,8 @@ head, the imported objects match the rewritten tree, and the repository reports 
       make the classifier fall through to its generic branch, which still yields `ERROR`, so the
       test would keep passing while no longer exercising the divergent-branches case at all.
       Instead, add an assertion that the resulting message does not contain the word "conflict"
-      (FR-003, SC-003).
+      (FR-003, SC-003). Later, the parameter went away with the classifier entry, which no path
+      reaches once `pull` stops calling `git pull` (research R9).
 - [x] T025 [US1] Test the reconciliation log line (FR-019): it names the repository, the
       branch, the discarded commit and the new commit. Until INFP-671 ships a view, this line is the
       only way an operator learns a reconciliation happened, so nothing else holds it.
@@ -370,7 +371,8 @@ emits no signal.
       that merges a branch through the mutation, not through a direct call of the Git merge flow.
 - [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
-      names the real cause and never says "conflict" (FR-003, FR-017).
+      names the real cause and never says "conflict" (FR-003, FR-017). The merge guard raises it
+      itself. The classifier entry was removed later, because no path runs `git pull` (research R9).
 - [x] T046 [P] [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker whose destination worktree
       holds a discarded history refuses the merge instead of merging onto it.

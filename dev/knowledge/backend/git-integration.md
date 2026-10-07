@@ -250,9 +250,10 @@ upstream silently reclassifies an error to the generic fallthrough.
 One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
 `push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-A diverged history gets a message of its own, never a conflict. The classifier maps git's "Need to
-specify how to reconcile divergent branches" to `RepositoryDivergentHistoryError`. Only "you have
-unmerged files", which is a conflict git observed, is reported as one.
+A diverged history gets a message of its own, never a conflict. The merge guard raises
+`RepositoryDivergentHistoryError` itself. The classifier has no entry for git's "Need to specify how
+to reconcile divergent branches", because only `git pull` writes that text and no path runs it. Only
+"you have unmerged files", which is a conflict git observed, is reported as one.
 
 No path runs `git pull`. Each path that moves a branch worktree from the remote compares it with the
 remote head by ancestry first, and resets a worktree that does not lead to that head:

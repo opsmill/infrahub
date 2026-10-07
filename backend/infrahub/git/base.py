@@ -23,7 +23,6 @@ from infrahub.exceptions import (
     FileOutOfRepositoryError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
-    RepositoryDivergentHistoryError,
     RepositoryError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -1191,7 +1190,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
-            RepositoryDivergentHistoryError: When the local history and the remote history have diverged.
             RepositoryError: For any other git failure, including the generic fallthrough.
 
         """
@@ -1241,12 +1239,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             ) from error
 
         target = f"the branch {branch_name} for repository {name}" if branch_name else f"repository {name}"
-        if "Need to specify how to reconcile" in error.stderr:
-            raise RepositoryDivergentHistoryError(
-                identifier=name,
-                message=f"Unable to pull {target}, its local history and the remote history have diverged.",
-            ) from error
-
         if "because you have unmerged files" in error.stderr:
             raise RepositoryError(
                 identifier=name,

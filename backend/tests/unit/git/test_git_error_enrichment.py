@@ -6,7 +6,6 @@ from git.exc import GitCommandError
 from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
-    RepositoryDivergentHistoryError,
     RepositoryError,
     RepositoryPermissionError,
 )
@@ -181,14 +180,6 @@ ENRICHMENT_CASES = [
         name="read_403_not_classified_as_permission",
         stderr="fatal: unable to access 'https://github.com/opsmill/repo.git/': The requested URL returned error: 403",
         expected=RepositoryError,
-    ),
-    EnrichmentCase(
-        name="pull_of_a_diverged_branch",
-        stderr="hint: You have divergent branches and need to specify how to reconcile them.\n"
-        "fatal: Need to specify how to reconcile divergent branches.",
-        expected=RepositoryDivergentHistoryError,
-        command=["git", "pull", "-v", "--", "origin", "branch01"],
-        message="Unable to pull repository net-repo, its local history and the remote history have diverged.",
     ),
     EnrichmentCase(
         name="pull_with_unmerged_files",

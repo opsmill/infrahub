@@ -491,6 +491,10 @@ place for the next one to find is how this defect arrived. FR-017 states the con
   divergent-branches case. Add an assertion on the message instead: it must not contain the word
   "conflict".
 
+**Later decision**: the classifier entry and that test parameter were removed. Once `pull` stopped
+calling `git pull`, no path could reach the entry, so it was dead code. The merge guard raises the
+typed error itself.
+
 **The status flap**: on a diverged branch, `operational_status` goes to `ERROR` on every cycle and
 `fetch()` sets it back to `ONLINE` on the next one, so it flaps once a minute. Removing the failure
 removes the flap. Nothing else about `operational_status` changes: it describes whether the remote
