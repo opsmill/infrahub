@@ -6,6 +6,11 @@ backend/tests/component/graphql/queries/test_number_pool_surface.py
   "git_ai_version": "1.7.5",
   "base_commit_sha": "ed1d7b841113a29ba4d37739a5918299352c34ab",
   "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  },
   "sessions": {
     "s_c37e68507bd16d": {
       "agent_id": {
