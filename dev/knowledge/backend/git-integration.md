@@ -337,10 +337,11 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   reconciles branches already imported under the old mapping. The commit recorded against Infrahub's
   default branch changes to the new trunk's history, and a previously imported branch of that name is
   left orphaned. `get_initialized_repo` is also cached for 30s, so an edit is served stale for up to
-  that long; this is consistent with the lack of reconciliation rather than a separate bug. The sync
-  is never told that the tracking target changed, so it never classifies a branch as re-targeted. When
-  the old trunk commit is not an ancestor of the new trunk, it classifies the edit as a rewrite and
-  logs the trunk as reconciled.
+  that long; this is consistent with the lack of reconciliation rather than a separate bug. The edit
+  itself is not recorded as a rewrite ([Git Sync](git-sync.md#the-re-target-marker)).
+- **An upsert does not re-point a read-only repository.** An upsert that changes `ref` or `commit`
+  does not go through the update mutation, so it submits no pull and no import of the last commit,
+  and it sets no `target_changed` flag.
 - **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
   a repository whose trunk is something else, is never created locally by the sync, so every sync
   usually skips it again and the process log repeats once a minute. The exception is a clone whose

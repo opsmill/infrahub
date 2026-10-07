@@ -106,10 +106,10 @@ as a worker-local ref updated after each comparison.
 apart, because they drive different outcomes:
 
 - **The commit the graph records against the remote head** says what happened to the branch:
-  unchanged, fast-forward, rewrite or gone from the remote (`git/divergence/`). The classifier also
-  knows a re-target, but the sync is never told that a tracking target changed, so it never produces
-  one ([Known limitations](git-integration.md#known-limitations)). The commits are read once per
-  cycle by `get_repositories_commit_per_branch` and passed down through the sync flows.
+  unchanged, fast-forward, rewrite, re-target or gone from the remote (`git/divergence/`). A
+  re-target is a deliberate change of the default branch, which a cache marker announces
+  ([The re-target marker](#the-re-target-marker)). The commits are read once per cycle by
+  `get_repositories_commit_per_branch` and passed down through the sync flows.
 - **This worker's worktree head against the remote head** says whether the clone moves. The sync
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
@@ -160,6 +160,26 @@ worktree records nothing.
   traceback is kept only for an error that is not recognised, such as a lost connection.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
+
+### The re-target marker
+
+A change of `default_branch` moves the git branch that feeds Infrahub's default branch, so the trunk
+commit in the graph is often not an ancestor of the new head. A marker in the cache
+(`git/divergence/suppression.py`) tells the sync that this break is deliberate, so it resets the
+trunk and records no rewrite.
+
+- **Written inside the update transaction.** `InfrahubRepositoryMutation.mutate_update_object` writes
+  it for the update and for every upsert of a read-write repository, before the commit. It names the
+  new git branch.
+- **Read only by `collect_pending_imports`**, once per cycle, for the trunk alone. A marker that names
+  another git branch than the one the cycle synchronises does not apply, and the cycle leaves it.
+- **Cleared only by the cycle that reconciles it.** After the collection, the sync clears a marker
+  it read once the trunk records the remote head of the branch the marker names. A failed trunk, an
+  inactive repository, or a default branch the remote does not hold yet keeps it.
+- **Expires after seven days**, which only removes a marker that no cycle reconciles.
+
+A read-only repository uses no marker. Its update mutation sets `target_changed` on the workflow
+models it submits.
 
 ## Cloning and the repository lock
 
