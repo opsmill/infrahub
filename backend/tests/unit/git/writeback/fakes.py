@@ -217,9 +217,11 @@ class InMemoryDeliveryGit:
     """
 
     def __init__(self, *, destination_git_branch: str, head: str) -> None:
-        """Start with the worktree at `head`, which is also the only commit in the clone."""
+        """Start with the worktree at `head`, which is also the only commit in the clone and the recorded commit."""
         self.destination_git_branch = destination_git_branch
         self.head = head
+        self.graph_commit: str | None = head
+        """The commit that Infrahub records, which `record` replaces."""
         self.parents: dict[str, tuple[str, ...]] = {head: ()}
         self.remote_heads: dict[str, str] = {}
         self.conflicting_commits: set[str] = set()
@@ -241,6 +243,10 @@ class InMemoryDeliveryGit:
     def remote_head(self, *, git_branch: str) -> str | None:
         self._record_call(method="remote_head")
         return self.remote_heads.get(git_branch)
+
+    async def recorded_commit(self) -> str | None:
+        self._record_call(method="recorded_commit")
+        return self.graph_commit
 
     def is_ancestor(self, *, ancestor: str, descendant: str) -> bool:
         self._record_call(method="is_ancestor")
@@ -278,6 +284,7 @@ class InMemoryDeliveryGit:
     async def record(self, *, commit: str) -> None:
         self._record_call(method="record")
         self.recorded.append(commit)
+        self.graph_commit = commit
 
     async def import_at(self, *, commit: str) -> None:
         self._record_call(method="import_at")
