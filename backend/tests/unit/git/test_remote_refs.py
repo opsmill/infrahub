@@ -126,8 +126,11 @@ async def test_list_remote_heads_reads_only_the_branches_named_exactly(tmp_path:
     source_dir = tmp_path / "source-repo"
     source = _init_source(source_dir, initial_branch="production")
     source.git.branch("feature")
-    source.git.branch("team/refs/heads/feature")
     head = source.head.commit.hexsha
+    (source_dir / "data.txt").write_text("other\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("other")
+    source.git.branch("team/refs/heads/feature")
 
     heads = await list_remote_heads(
         name="demo", url=f"file://{source_dir}", branch_names=["feature", "missing"], timeout_seconds=30
