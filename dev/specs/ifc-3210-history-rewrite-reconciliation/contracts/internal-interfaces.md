@@ -765,13 +765,18 @@ reaches it. This guard closes that.
    decides: move it when the graph commit equals the remote head, refuse otherwise.
 6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
    ref.
-7. The source graph commit comes in `GitRepositoryMerge` (`source_commit`), which
+7. When the merge does not use the remote head of the source, whether the source moved onto its
+   graph commit, back or forward, or stayed behind, the guard logs a warning. It names the commit the
+   merge uses and the remote head, and says that the commits after it stay on the source branch and
+   do not reach the trunk. A refusal cannot help there, because the branch is merged in Infrahub
+   already.
+8. The source graph commit comes in `GitRepositoryMerge` (`source_commit`), which
    `RepositoryMergeDispatcher` fills when it submits the Git merge. The branch merge submits the
    delete of the source branch without a wait for the Git merge, so a later read of that branch can
    fail. A read-only repository gets `source_ref` and `source_commit` the same way, and its merge
    copies them to the trunk. Only a merge that an older version queued carries neither, and reads
    the source branch.
-8. `merge_git_repository` reads the destination graph commit when the Git merge runs, under the
+9. `merge_git_repository` reads the destination graph commit when the Git merge runs, under the
    repository lock. The default branch is never deleted, and an earlier Git merge can move it after
    the dispatch: two merges in a row both see the old trunk commit at dispatch.
 

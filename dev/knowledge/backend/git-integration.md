@@ -224,7 +224,8 @@ merge after a plain push and keeps the branch open:
     lands between the two checks ends here.
   - A source on or behind its remote head, with a graph commit that differs: the source moves onto
     the graph commit when the remote history holds it, forward or back, so the merge holds what the
-    graph merged.
+    graph merged. The commits after it stay on the source branch and do not reach the trunk, and a
+    warning says so, because the branch is merged in Infrahub already and a refusal cannot help.
   - Known risk: a source whose graph commit is missing, or no longer in the remote history, is merged
     as it is, and can differ from what the graph merged.
 

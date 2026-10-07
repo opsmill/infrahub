@@ -925,7 +925,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         push onto an older trunk, and a merge onto a head the graph never imported hides that head from
         the next synchronization. A source that leads to its remote head is moved onto the graph commit
         when the remote history holds it, so the merge holds what the graph merged. It is left as it is
-        when the graph records no commit, or one the remote history no longer holds.
+        when the graph records no commit, or one the remote history no longer holds. When the merge does
+        not use the remote head of the source, a warning names the commits that stay out of the trunk.
 
         The source commit is the one read when the merge was dispatched, because the source branch can
         be deleted in Infrahub before this runs. The destination commit must be read under the
@@ -997,6 +998,23 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 local_head,
                 graph_commit,
                 extra={"repository": self.name, "branch": branch_name, "commit": graph_commit},
+            )
+
+        merged_source = next((commit for name, _, commit in moves if name == source_branch), local_heads[source_branch])
+        source_remote_head = remote_heads.get(self._get_mapped_remote_branch(branch_name=source_branch))
+        if merged_source is not None and source_remote_head is not None and merged_source != source_remote_head:
+            # The branch is merged in Infrahub already, so a refusal cannot help, and only this shows what stays out.
+            log.warning(
+                "The merge of branch %s of repository %s uses commit %s, not the remote head %s. The commits after %s "
+                "stay on %s and do not reach %s.",
+                source_branch,
+                self.name,
+                merged_source,
+                source_remote_head,
+                merged_source,
+                self._get_mapped_remote_branch(branch_name=source_branch),
+                self._get_mapped_remote_branch(branch_name=dest_branch),
+                extra={"repository": self.name, "branch": source_branch, "commit": merged_source},
             )
 
     async def _fetch_branch_heads(self, source_branch: str, dest_branch: str) -> None:

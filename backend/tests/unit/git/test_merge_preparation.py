@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import shutil
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 SOURCE = "feature"
 DESTINATION = "main"
 REPOSITORY_NAME = "merge-repo"
+GUARD_LOGGER = "infrahub.tasks"
 
 
 @dataclass(frozen=True)
@@ -363,6 +365,55 @@ async def test_a_source_behind_its_remote_head_with_no_commit_in_the_graph_is_me
     await merge_clone.prepare()
 
     assert merge_clone.heads() == merge_clone.local_heads
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RemoteChangeCase(
+            name="moved-back-from-the-remote-head", branch_name=SOURCE, graph_commit=MergeClone.advance_and_follow
+        ),
+        RemoteChangeCase(
+            name="moved-back-from-between", branch_name=SOURCE, graph_commit=MergeClone.follow_then_advance
+        ),
+        RemoteChangeCase(
+            name="moved-forward-short-of-the-remote-head",
+            branch_name=SOURCE,
+            graph_commit=MergeClone.import_then_advance,
+        ),
+        RemoteChangeCase(
+            name="left-behind-the-remote-head", branch_name=SOURCE, graph_commit=MergeClone.advance_without_import
+        ),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_source_merged_short_of_its_remote_head_logs_the_commits_left_out(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, case: RemoteChangeCase
+) -> None:
+    """The branch is merged in Infrahub, so the merge goes on, and only a warning can show what it leaves out."""
+    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
+    clone = await build_merge_clone(tmp_path=tmp_path, monkeypatch=monkeypatch, remote_trunk=DESTINATION)
+    merged = case.graph_commit(clone, SOURCE)
+    clone.commits[SOURCE] = merged
+    remote_head = str(clone.remote.repo.commit(SOURCE))
+
+    await clone.prepare()
+
+    assert [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER] == [
+        f"The merge of branch {SOURCE} of repository {REPOSITORY_NAME} uses commit {merged}, not the remote head "
+        f"{remote_head}. The commits after {merged} stay on {SOURCE} and do not reach {DESTINATION}."
+    ]
+
+
+async def test_a_source_merged_at_its_remote_head_logs_no_warning(
+    merge_clone: MergeClone, caplog: pytest.LogCaptureFixture
+) -> None:
+    caplog.set_level(logging.WARNING, logger=GUARD_LOGGER)
+    merge_clone.commits[SOURCE] = merge_clone.advance(SOURCE)
+
+    await merge_clone.prepare()
+
+    assert [record.getMessage() for record in caplog.records if record.name == GUARD_LOGGER] == []
 
 
 async def test_a_tag_moved_on_the_remote_does_not_stop_the_merge(merge_clone: MergeClone) -> None:
