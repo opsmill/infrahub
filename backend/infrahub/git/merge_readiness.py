@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from infrahub.exceptions import RepositoryError, RepositoryNotSynchronizedError
+from infrahub.git.constants import REMOTE_HEADS_PARALLEL_READS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -79,9 +80,10 @@ class RemoteHeadsMergeCheck:
 
         """
         expected_heads = [self._expected_heads(source_branch=source_branch, target=target) for target in targets]
+        reads = asyncio.Semaphore(REMOTE_HEADS_PARALLEL_READS)
         read_heads = await asyncio.gather(
             *(
-                self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected))
+                self._read_heads(source_branch=source_branch, target=target, branch_names=list(expected), reads=reads)
                 for target, expected in zip(targets, expected_heads, strict=True)
             )
         )
@@ -115,12 +117,13 @@ class RemoteHeadsMergeCheck:
         return {target.remote_source_branch: target.source_commit, target.remote_trunk: target.destination_commit}
 
     async def _read_heads(
-        self, source_branch: str, target: GitMergeTarget, branch_names: list[str]
+        self, source_branch: str, target: GitMergeTarget, branch_names: list[str], reads: asyncio.Semaphore
     ) -> dict[str, str] | None:
         try:
-            return await self.reader.read_heads(
-                repository_name=target.name, location=target.location, branch_names=branch_names
-            )
+            async with reads:
+                return await self.reader.read_heads(
+                    repository_name=target.name, location=target.location, branch_names=branch_names
+                )
         except RepositoryError as exc:
             self.log.warning(
                 f"Unable to read the remote heads of repository {target.name}, the merge of branch "

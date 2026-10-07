@@ -800,7 +800,8 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
 
 1. For each repository whose merge runs in Git, read the remote heads of the source branch and of the
    trunk with `git ls-remote`, with no clone and no lock, bounded by
-   `REMOTE_HEADS_TIMEOUT_SECONDS`. A repository whose source branch records the commit its trunk
+   `REMOTE_HEADS_TIMEOUT_SECONDS`, and at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes at once. A
+   repository whose source branch records the commit its trunk
    records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch only, and
    `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs again, so its
    source branch is still compared.

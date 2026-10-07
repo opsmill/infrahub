@@ -14,3 +14,6 @@ MERGE_CONFLICT_CHECK_KIND = "MergeConflictCheck"
 # A branch merge reads the remote heads before it takes the global merge lock, so a remote that does
 # not answer must stop delaying the merge after this time.
 REMOTE_HEADS_TIMEOUT_SECONDS = 30
+
+# Each remote head read runs a git process, so a merge over many repositories reads only this many at once.
+REMOTE_HEADS_PARALLEL_READS = 8

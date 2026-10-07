@@ -51,3 +51,24 @@ class TogetherRemoteHeadReader(InMemoryRemoteHeadReader):
             self.all_started.set()
         await self.all_started.wait()
         return heads
+
+
+class CountingRemoteHeadReader(InMemoryRemoteHeadReader):
+    """RemoteHeadReader that keeps the highest number of reads that were in flight at the same time."""
+
+    def __init__(self, heads: dict[str, dict[str, str]]) -> None:
+        super().__init__(heads=heads)
+        self.in_flight = 0
+        self.most_in_flight = 0
+
+    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
+        self.in_flight += 1
+        self.most_in_flight = max(self.most_in_flight, self.in_flight)
+        try:
+            # Every read that can start does start before this one ends.
+            await asyncio.sleep(0)
+            return await super().read_heads(
+                repository_name=repository_name, location=location, branch_names=branch_names
+            )
+        finally:
+            self.in_flight -= 1

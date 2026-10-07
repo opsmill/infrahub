@@ -12,6 +12,7 @@ import pytest
 from infrahub.exceptions import RepositoryNotSynchronizedError
 from infrahub.git.merge_readiness import GitMergeTarget, RemoteHeadsMergeCheck
 from tests.adapters.remote_heads import (
+    CountingRemoteHeadReader,
     FailingRemoteHeadReader,
     HeadRead,
     InMemoryRemoteHeadReader,
@@ -221,3 +222,15 @@ async def test_a_trunk_that_moved_does_not_hold_the_merge_of_a_repository_the_br
             branch_names=(SOURCE,),
         )
     ]
+
+
+async def test_the_merge_check_reads_at_most_eight_remotes_at_the_same_time() -> None:
+    """Each read starts a git process, so a merge over many repositories must not start them all at once."""
+    targets = [target(name=f"repo-{index}") for index in range(20)]
+    reader = CountingRemoteHeadReader(
+        heads={target.name: {SOURCE: SOURCE_HEAD, "main": TRUNK_HEAD} for target in targets}
+    )
+
+    await check(reader=reader).check(source_branch=SOURCE, targets=targets)
+
+    assert (reader.most_in_flight, len(reader.reads)) == (8, 20)
