@@ -339,9 +339,6 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   left orphaned. `get_initialized_repo` is also cached for 30s, so an edit is served stale for up to
   that long; this is consistent with the lack of reconciliation rather than a separate bug. The edit
   itself is not recorded as a rewrite ([Git Sync](git-sync.md#the-re-target-marker)).
-- **An upsert stores the new `ref` or `commit` but does not move a read-only repository to it.** It
-  does not go through the update mutation, so it submits no pull and no import of the last commit,
-  and it sets no `target_changed` flag.
 - **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
   a repository whose trunk is something else, is never created locally by the sync, so every sync
   usually skips it again and the process log repeats once a minute. The exception is a clone whose
