@@ -713,16 +713,19 @@ read-write repository's configured default branch. Neither writes a record.
       goes to the error status after a force push, and it can ship before the rest of the stack.
       Extend that fragment instead of adding a second one.
       IFC-3282 fixes a different outage a user can see: one failed branch no longer keeps the
-      others off the other workers, and one failed repository no longer stops the cycle. It adds no
-      fragment of its own, because a stacked series carries one fragment, on its top PR. IFC-3284
-      carries that entry as `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its
-      own `changelog/+repository-rewrite-record.added.md`.
+      others off the other workers, and one failed repository no longer stops the cycle. Its entry
+      ships on IFC-3284, the next PR of the stack, as
+      `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside the IFC-3284 entry
+      `changelog/+repository-rewrite-record.added.md`.
       IFC-3283, stacked on IFC-3284, adds `changelog/+merge-after-force-push.fixed.md`: a branch
       merge no longer puts commits removed by a force push back in the Git repository, and it is
       refused, with a message to merge again later, while Infrahub has not recorded the latest commit
       pushed to the branch or to the branch it merges into. A refusal at the Git stage leaves the
-      branch merged in Infrahub and not in Git, and the user finishes the merge in Git. A worker that missed the broadcast and now follows the new history on its own is
-      the fix `changelog/6299.fixed.md` describes, so it adds no entry.
+      branch merged in Infrahub and not in Git, and the user finishes the merge in Git. A worker that
+      missed the broadcast and now follows the new history on its own is the fix
+      `changelog/6299.fixed.md` describes, so it adds no entry.
+      So the stack carries one fragment for each change a user can see, on the PR that ships it,
+      not one fragment on its top PR.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
