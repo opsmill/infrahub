@@ -580,7 +580,7 @@ classification can tell them apart.
       takes that lock around `update_latest_commit`. Do not read it in the mutation and carry it on
       the model: that read is outside the lock, so two queued runs both carry the same old commit,
       both classify `REWRITE` and both record, and the count rises twice for one rewrite.
-- [ ] T076 [US5] Add a live-remote test in
+- [x] T076 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, which is where the Gogs harness and
       `readonly_sync_dataset` live: a **force-pushed branch** tracked by a read-only repository
       writes the record and performs no reset. Do not use a moved tag: the read-only fetch omits
@@ -662,11 +662,14 @@ read-write repository's configured default branch. Neither writes a record.
       The test asserts the record on every cycle. The trunk event part waits for IFC-3285, which adds
       the trunk signal, so the test cannot assert it yet. The recorder sends that signal, so no record
       already means no signal.
-- [ ] T086 [US6] Add a live-remote test in
+- [x] T086 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, beside the other live-remote tests:
       changing the tracked ref to a different branch records nothing.
       This test lands with T072. Before the read-only detection exists, nothing can record a
       rewrite on that path, so the test passes whatever the flag says.
+      The test runs the import of the last commit before the pull. The update submits both, and
+      either one can take the lock first. When the pull runs first, it writes the new commit, the
+      import finds the graph already on it, and the test passes whatever the flag says again.
 
 **Checkpoint**: SC-007 holds. Routine re-pointing produces no noise.
 

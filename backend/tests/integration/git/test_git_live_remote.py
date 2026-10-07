@@ -25,6 +25,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     RepositoryCredentialsError,
@@ -44,7 +45,8 @@ from infrahub.git.tasks import merge_git_repository, select_writable_branch_comm
 from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
-from tests.helpers.test_app import TestInfrahubApp
+from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_PULL_READ_ONLY
+from tests.helpers.test_app import TestInfrahubApp, TestInfrahubAppHoldingWorkflows
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
     TrackedBranchRepository,
@@ -68,10 +70,11 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
-    from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreGraphQLQuery, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import CollectedImports
     from tests.adapters.message_bus import BusSimulator
+    from tests.adapters.workflow import HoldingWorkflowExecution
     from tests.helpers.git import GogsServer
 
 SYNC_LOGGER = "infrahub.tasks"
@@ -1670,3 +1673,111 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
             db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
         assert trunk.commit.value == tracked.imported_commit
+
+
+READ_ONLY_IMPORT_LAST_COMMIT = """
+mutation ImportLastCommit($id: String!) {
+    InfrahubReadOnlyRepositoryImportLastCommit(data: { id: $id }) {
+        ok
+    }
+}
+"""
+
+
+async def _read_only_repository(db: InfrahubDatabase, repository_id: str) -> CoreReadOnlyRepository:
+    return await NodeManager.get_one(db=db, id=repository_id, kind=CoreReadOnlyRepository, raise_on_error=True)
+
+
+async def _read_only_query_names(db: InfrahubDatabase, repository_id: str) -> set[str]:
+    queries: list[CoreGraphQLQuery] = await NodeManager.query(
+        db=db, schema=InfrahubKind.GRAPHQLQUERY, filters={"repository__ids": [repository_id]}
+    )
+    return {query.name.value for query in queries}
+
+
+class TestReadOnlyRepositoryLineage(TestInfrahubAppHoldingWorkflows):
+    """A read-only repository whose tracked branch is force-pushed, or which moves to another branch."""
+
+    async def test_a_force_pushed_branch_is_imported_and_recorded_without_a_reset(
+        self, db: InfrahubDatabase, client: InfrahubClient, gogs_server: GogsServer, git_repos_dir_module_scope: Path
+    ) -> None:
+        """The local clone of the branch stays where the import of the repository left it."""
+        repo_name = "force-pushed-read-only-repo"
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        imported = commit_to_remote_branch(
+            gogs_server.container, repo_name, "release", files=tracked_branch_files(repo_name=repo_name, version=1)
+        )
+        repository = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY, name=repo_name, location=location, ref="release"
+        )
+        await repository.save()
+        assert (await _read_only_repository(db=db, repository_id=repository.id)).commit.value == imported
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            repo_name,
+            "release",
+            files=tracked_branch_files(repo_name=repo_name, version=2),
+            amend=True,
+        )
+
+        await client.execute_graphql(query=READ_ONLY_IMPORT_LAST_COMMIT, variables={"id": repository.id})
+
+        stored = await _read_only_repository(db=db, repository_id=repository.id)
+        assert (
+            stored.commit.value,
+            stored.last_rewrite_previous_commit.value,
+            stored.last_rewrite_commit.value,
+            stored.rewrite_count.value,
+        ) == (rewritten, imported, rewritten, 1)
+        assert await _read_only_query_names(db=db, repository_id=repository.id) == {"force_pushed_read_only_repo_v2"}
+        clone = await InfrahubReadOnlyRepository.init(
+            id=repository.id,
+            name=repo_name,
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+            ref="release",
+        )
+        assert clone.get_branches_from_local()["release"].commit == imported
+
+    async def test_a_read_only_repository_moved_to_another_branch_records_nothing(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        workflow_local: HoldingWorkflowExecution,
+        git_repos_dir_module_scope: Path,
+    ) -> None:
+        """The import of the last commit runs before the pull, so it finds the commit the old branch imported."""
+        repo_name = "retargeted-read-only-repo"
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        release_head = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch="release", files={"release.txt": "release v1\n"}
+        )
+        main_head = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch="main", files={"main.txt": "main v2\n"}
+        )
+        repository = await client.create(
+            kind=InfrahubKind.READONLYREPOSITORY, name=repo_name, location=location, ref="main"
+        )
+        await repository.save()
+        assert (await _read_only_repository(db=db, repository_id=repository.id)).commit.value == main_head
+
+        with workflow_local.hold() as held:
+            repository.ref.value = "release"
+            await repository.save()
+
+        assert [submitted.workflow.name for submitted in held] == [
+            GIT_REPOSITORIES_PULL_READ_ONLY.name,
+            GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT.name,
+        ]
+        for submitted in reversed(held):
+            await workflow_local.run(submitted)
+
+        moved = await _read_only_repository(db=db, repository_id=repository.id)
+        assert (
+            moved.commit.value,
+            moved.last_rewrite_previous_commit.value,
+            moved.last_rewrite_commit.value,
+            moved.last_rewrite_at.value,
+            moved.rewrite_count.value,
+        ) == (release_head, None, None, None, None)
