@@ -72,8 +72,8 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
 
     Raises:
         RepositoryConnectionError: When the remote does not answer within ``timeout_seconds``.
-        RepositoryError: When git cannot start, or for any other git failure, raised as its connection or
-            credentials subtype where the failure can be classified.
+        RepositoryError: When git cannot start or cannot take the location, or for any other git failure,
+            raised as its connection or credentials subtype where the failure can be classified.
 
     """
     refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
@@ -90,7 +90,8 @@ async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], ti
             # The error classifier matches the English text of git.
             env={**os.environ, "LANGUAGE": "C", "LC_ALL": "C"},
         )
-    except OSError as exc:
+    # A location with a NUL byte raises ValueError before git starts.
+    except (OSError, ValueError) as exc:
         raise RepositoryError(
             identifier=name, message=f"Unable to run git to read the remote of repository {name}: {exc}"
         ) from exc

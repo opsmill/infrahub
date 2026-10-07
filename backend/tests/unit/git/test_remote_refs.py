@@ -215,6 +215,12 @@ async def test_list_remote_heads_reports_text_that_is_not_utf8_as_a_repository_e
         await list_remote_heads(name="demo", url=url, branch_names=["main"], timeout_seconds=30)
 
 
+async def test_list_remote_heads_reports_a_location_git_cannot_take_as_a_repository_error() -> None:
+    """A location with a NUL byte cannot reach git at all, and the merge check must still read it as unreadable."""
+    with pytest.raises(RepositoryError, match=r"^Unable to run git to read the remote of repository demo: "):
+        await list_remote_heads(name="demo", url="file:///no\x00where", branch_names=["main"], timeout_seconds=30)
+
+
 async def test_list_remote_heads_reports_a_git_that_cannot_start(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
