@@ -146,24 +146,24 @@ examples.
    range, another inside a range but listed in the attribute's excluded values, **When**
    `InfrahubNumberPoolAllocations` is read, **Then** those two values are not listed, and each
    other row carries the value, the branch, the holder (id, hfid, kind, display label read on the
-   row's branch), the identifier, the provenance, the range holding it and the holder's division
-   (empty on an unscoped pool), ordered by value then branch then holder id and paginated with
-   `offset` and `limit`; **When** `branch`, `provenance` or `range_id` is given, **Then** only
-   matching rows are returned and `count` reports them before pagination.
+   row's branch), the identifier, the provenance and the range holding it, ordered by value then
+   branch then holder id and paginated with `offset` and `limit`; **When** `branch`, `provenance` or
+   `range_id` is given, **Then** only matching rows are returned and `count` reports them before
+   pagination.
 6. **Given** a scoped pool, **When** `InfrahubNumberPoolAllocations` is read with a `division`
    filter on a path in force, **Then** only rows whose holder carries the given values are
    returned; **When** `InfrahubNumberPoolUtilization` is read with a `division` giving a value for
-   every entry in force, **Then** the pool figures and every range row report that division; **When** that `division` omits an entry in force, **Then** the
-   utilization query is refused naming the missing entries; **When** the pool is unscoped, or the
-   path is not in force on the reading branch, or a path is given twice, **Then** either query is
-   refused naming the pool or the entry.
+   every entry in force, **Then** the pool figures and every range row report that division;
+   **When** that `division` omits an entry in force, **Then** the utilization query is refused
+   naming the missing entries; **When** the pool is unscoped, or the path is not in force on the
+   reading branch, or a path is given twice, **Then** either query is refused naming the pool or the
+   entry.
 7. **Given** `pool_id` naming an IP pool, an unknown node, or `range_id` naming a range of another
    pool, **When** any of the three queries is read, **Then** it is refused with the existing
    not-found or validation error naming the id.
 8. **Given** a scoped pool at contract time, **When** the three queries are read, **Then** the
-   divisions listed, the `division` on each row and the `division` filter agree: every row's
-   division is one of the listed divisions, and the `used` figure of a division equals the number
-   of distinct values among the rows returned when filtering on it. An unscoped pool returns no
+   divisions listed and the `division` filter agree: the `used` figure of a division equals the
+   number of distinct values among the rows returned when filtering on it. An unscoped pool returns no
    mock division.
 9. **Given** the exported GraphQL schema before and after the contract change set, **When** the
    two are diffed, **Then** the only change to `PoolUtilization`, `PoolAllocated`,
@@ -250,7 +250,7 @@ list against the records.
    label or, when the peer cannot be read, by its id.
 5. **Given** device D1 holding 5 in site A on the default branch and moved to site C on `b1`,
    **When** `InfrahubNumberPoolAllocations` is filtered on site A, **Then** D1's two rows are
-   returned (one per branch, the `b1` row's division naming C); **When** filtered on site C,
+   returned (one per branch, although D1 sits in C on `b1`); **When** filtered on site C,
    **Then** the same two rows are returned, so 5 counts in A and in C and the two divisions'
    `used` figures do not sum to the pool's.
 6. **Given** a scoped pool after this story lands, **When** the three queries are read, **Then** no
@@ -547,8 +547,8 @@ specification adds.
 - **FR-019**: Until the division reads exist, the three dedicated queries MAY report the divisions
   of a scoped pool from one deterministic mock partition: every row of the pool is put in one of
   three divisions named `mock-1`, `mock-2` and `mock-3` by a stable hash of its holder's id, the
-  entries carry the real scope paths in force, and the divisions list, the division on each row and
-  the division filter read the same partition so that lists, filters and counts agree. The mock
+  entries carry the real scope paths in force, and the divisions list and the division filter read
+  the same partition so that lists, filters and counts agree. The mock
   MUST NOT be observable on an unscoped pool. It MUST be removed before the slice ships, and a test
   MUST assert that no value or label beginning with `mock-` is returned by any of the three queries
   on a scoped pool. *(User Story 1, scenario 8; User Story 3, scenario 6)*
@@ -562,11 +562,11 @@ specification adds.
   `division` (FR-015). *(User Story 1, scenario 4; User Story 3, scenarios 1 and 4)*
 - **FR-023**: A query dedicated to number pools, `InfrahubNumberPoolAllocations`, MUST return for
   one pool a paginated list of rows, one per (record, branch-resolved value), each carrying the
-  value, the branch holding it, the holder (id, hfid, kind, display label read on the row's
-  branch), the identifier, the provenance (`ALLOCATED` or `PROVIDED`), the range holding the value
-  and the holder's division on the row's branch (empty on an unscoped pool). The list holds only
-  values of the pool's space (FR-028). Rows are ordered by value, then branch, then holder id,
-  and `count` reports the filtered rows before `offset` and `limit`. *(User Story 1, scenario 5)*
+  value, the branch holding it, the holder (id, hfid, kind, display label read on the row's branch),
+  the identifier, the provenance (`ALLOCATED` or `PROVIDED`) and the range holding the value. The
+  list holds only values of the pool's space (FR-028). Rows are ordered by value, then branch, then
+  holder id, and `count` reports the filtered rows before `offset` and `limit`. *(User Story 1,
+  scenario 5)*
 - **FR-024**: `InfrahubNumberPoolAllocations` MUST accept the filters `division`, `range_id`,
   `branch` and `provenance`, combined with "and". A `division` filter is a list of
   (path, value) entries; a partial tuple is allowed; a row matches when its holder carries the
@@ -639,7 +639,7 @@ specification adds.
   used, used on the default branch, used on other branches, and the three percentages), applied to
   the pool, each range and each division.
 - **Allocation row** *(new read shape)*: one tracked value as held on one branch: value, branch,
-  holder, identifier, provenance, range and division.
+  holder, identifier, provenance and range.
 - **Number-pool GraphQL surface** *(new)*: the three root query fields `InfrahubNumberPoolUtilization`,
   `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations` and their types, hand-written
   beside the generic resource-pool queries.
@@ -680,10 +680,9 @@ specification adds.
 - **SC-009**: The exported GraphQL schema diff of the contract change set shows no change to
   `PoolUtilization`, `PoolAllocated`, `PoolAllocatedNode`, `IPPrefixUtilizationEdge`,
   `IPPoolUtilizationResource` and the two generic root fields other than description text.
-- **SC-010**: From the contract change set on, a scoped pool's divisions list, the division on each
-  allocation row and the division-filtered lists agree: every row's division is a listed division,
-  and a division's `used` equals the number of distinct values among the rows returned when
-  filtering on it.
+- **SC-010**: From the contract change set on, a scoped pool's divisions list and the
+  division-filtered lists agree: a division's `used` equals the number of distinct values among the
+  rows returned when filtering on it.
 - **SC-011**: At the end of the slice no mock division is returned by any of the three dedicated
   queries, and the test asserting it passes.
 
@@ -693,7 +692,7 @@ specification adds.
 |-------|----------|
 | A number pool can declare `allocation_scope`; allocation and utilization are then per division. | Feature |
 | Number-pool attributes accept `parameters.allocation_scope`; the schema-created pool carries it and direct edits are refused. | Feature |
-| Three GraphQL queries dedicated to number pools report utilization with absolute figures per pool and per range, the divisions of a scoped pool, and the tracked numbers with holder, provenance, range and division. | Feature |
+| Three GraphQL queries dedicated to number pools report utilization with absolute figures per pool and per range, the divisions of a scoped pool, and the tracked numbers with holder, provenance and range. | Feature |
 | The generic `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` queries keep their shape; their descriptions direct number-pool consumers to the dedicated queries. | Changed description |
 | A pool save naming a scope entry that is optional, many, nested, duplicated, non-scalar or the pool's own attribute is refused. | New refusal |
 | A schema load that would make a scoped entry optional, absent or many while a pool depends on it is refused naming the pool. | New refusal |
