@@ -822,12 +822,11 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    above.
 3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
    and the merge can run again after the next cycle imports the head.
-4. Any failure to read a remote other than the one of rule 5, and a remote not read before
-   `REMOTE_HEADS_DEADLINE_SECONDS`, does not block the merge. The check logs a warning and compares
-   nothing for that repository. The guard of the Git merge fetches from
-   the same remote, so it does not compare the heads either: when the remote still cannot be
-   reached, its fetch fails, and the Git merge fails after the graph merge, with how to finish the
-   merge in Git.
+4. Any failure to read a remote other than a refusal of the credentials, and a remote not read
+   before `REMOTE_HEADS_DEADLINE_SECONDS`, does not block the merge. The check logs a warning and
+   compares nothing for that repository. The guard of the Git merge fetches from the same remote, so
+   it does not compare the heads either: when the remote still cannot be reached, its fetch fails,
+   and the Git merge fails after the graph merge, with how to finish the merge in Git.
 5. A remote that refuses the credentials blocks the merge with `RepositoryCredentialsRefusedError` when the
    repository needs a Git merge: that Git merge would read the remote with the same credentials and
    fail after the graph merge. For a repository whose branch records the commit of its trunk, no Git
