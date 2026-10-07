@@ -183,7 +183,7 @@ The brief uses these counts without defining them. [CLAUDE RECOMMENDED – based
 - The cost details are requested with a header, not a URL parameter, because `/api/query` turns every URL parameter except `branch`, `at`, `update_group` and `subscribers` into a query variable.
 - The first version changes no Infrahub integration. Whether the Python SDK needs a way to send the header is not known.
 - This feature adds no UI, so it has no pytest-playwright test. Component tests stay in `opsmill/infrahub`, and the customer-shaped data set lives in `infrahub-private-tests`.
-- The refresh interval is a setting. The brief does not say how old the statistics may be, so the default interval is not decided. The plan proposes one.
+- The brief does not say how old the statistics may be, so it does not set the refresh schedule. The plan proposes a daily run as the default (open question 1 stays open).
 
 ### Decided during planning
 
