@@ -24,7 +24,7 @@ class NumberPoolNumberReader(Protocol):
     async def get_free(self, pool: CoreNumberPool, branch: Branch, min_value: int, max_value: int) -> int | None: ...
 
 
-class NumberPoolAllocator:
+class NumberPoolNumberPicker:
     """Picks the next number a pool hands out for the attribute it feeds."""
 
     def __init__(self, number_reader: NumberPoolNumberReader) -> None:

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.core.query.resource_manager import PoolRecordProvenance
-from infrahub.pools.number_pool_allocator import NumberPoolAllocator
+from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 
 from .. import Node
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class CoreNumberPool(Node):
     """A pool hands out numbers through the resource pool contract every pool kind shares.
 
-    That contract delivers the database per call, so each call builds the repository and the allocator
+    That contract delivers the database per call, so each call builds the repository and the number picker
     before any work starts and runs the whole allocation on them.
     """
 
@@ -34,7 +34,7 @@ class CoreNumberPool(Node):
         at: Timestamp | None = None,
     ) -> int:
         repository = NumberPoolRepository(db=db)
-        allocator = NumberPoolAllocator(number_reader=repository)
+        picker = NumberPoolNumberPicker(number_reader=repository)
         async with lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE):
             # If the attribute already exists, try to get its pool reservation
             if attribute_id is not None:
@@ -45,7 +45,7 @@ class CoreNumberPool(Node):
                     return reservation
 
             # If we have not returned a value we need to find one if avaiable
-            number = await allocator.next_number(pool=self, branch=branch, attribute=attribute)
+            number = await picker.next_number(pool=self, branch=branch, attribute=attribute)
             if attribute_id is not None:
                 # Cannot reserve without an Attribute to link
                 await repository.reserve(

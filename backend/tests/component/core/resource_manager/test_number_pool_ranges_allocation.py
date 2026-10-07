@@ -12,7 +12,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
-from infrahub.pools.number_pool_allocator import NumberPoolAllocator
+from infrahub.pools.number_pool_number_picker import NumberPoolNumberPicker
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from tests.helpers.number_pool import (
@@ -71,8 +71,8 @@ async def _create_hand_set_ticket(db: InfrahubDatabase, kind: str, value: int) -
 async def _next_number(db: InfrahubDatabase, branch: Branch, pool: CoreNumberPool, kind: str = TICKET.kind) -> int:
     """Return the number the pool would hand out next, without reserving it."""
     attribute = registry.schema.get_node_schema(name=kind, branch=branch).get_attribute(name="ticket_id")
-    allocator = NumberPoolAllocator(number_reader=NumberPoolRepository(db=db))
-    return await allocator.next_number(pool=pool, branch=branch, attribute=attribute)
+    picker = NumberPoolNumberPicker(number_reader=NumberPoolRepository(db=db))
+    return await picker.next_number(pool=pool, branch=branch, attribute=attribute)
 
 
 @pytest.fixture
