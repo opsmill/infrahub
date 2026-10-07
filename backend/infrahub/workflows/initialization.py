@@ -13,6 +13,7 @@ from infrahub import config
 from infrahub.config import CacheSettings
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
+from infrahub.services.adapters.cache.connection import add_default_ca_bundle
 from infrahub.trigger.catalogue import builtin_triggers
 from infrahub.trigger.models import TriggerType
 from infrahub.trigger.setup import setup_triggers
@@ -52,17 +53,18 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
 
     The result-storage block understands the full redis://, rediss://, redis+sentinel:// and
     rediss+sentinel:// grammar, so a configured ``cache.url`` (single-node or Sentinel, with any TLS
-    query parameters) is passed through unchanged and follows master failover just like the cache and
-    lock connections. The URL belongs to the Redis driver alone, as ``CacheSettings`` documents, so
-    under any other driver it is ignored here too. When no URL applies the scalar connection settings
-    are assembled into a single-node redis://|rediss:// URL.
+    query parameters) is kept as written and follows master failover just like the cache and lock
+    connections. Like them, a TLS URL that names no CA bundle verifies against ``cache.tls_ca_file``.
+    The URL belongs to the Redis driver alone, as ``CacheSettings`` documents, so under any other
+    driver it is ignored here too. When no URL applies the scalar connection settings are assembled
+    into a single-node redis://|rediss:// URL.
 
     Raises:
         ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
 
     """
     if cache.url is not None and cache.driver == config.CacheDriver.Redis:
-        return cache.url.get_secret_value()
+        return add_default_ca_bundle(cache.url.get_secret_value(), cache.tls_ca_file)
 
     if cache.username and not cache.password:
         raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
