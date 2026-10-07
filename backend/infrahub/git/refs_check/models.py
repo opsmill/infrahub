@@ -21,12 +21,11 @@ class RefHeads:
 
 @dataclass(frozen=True)
 class RefMovement:
-    """A tracked ref whose remote head no longer matches the local view of it."""
+    """A tracked ref whose remote head differs from the one the last check listed and broadcast."""
 
     ref: str
 
-    previous_head: str | None
-    """What this worker's copy resolved the ref to, absent when it held no such ref."""
+    previous_head: str
 
     new_head: str
 

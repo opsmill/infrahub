@@ -29,7 +29,15 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     RepositoryPermissionError,
 )
-from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.bounded_command import run_git_with_deadline
+from infrahub.git.constants import (
+    BRANCHES_DIRECTORY_NAME,
+    COMMITS_DIRECTORY_NAME,
+    READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+    READ_ONLY_FETCH_TIMEOUT_SECONDS,
+    REMOTE_TRANSPORT_ENVIRONMENT,
+    TEMPORARY_DIRECTORY_NAME,
+)
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
@@ -847,15 +855,36 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         self.relocate_directory_root()
 
-        repo = self.get_git_repo_main()
         try:
-            repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            self.fetch_from_origin(git_repo=self.get_git_repo_main())
         except GitCommandError as exc:
             await self._raise_enriched_error(error=exc)
 
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
 
         return True
+
+    def fetch_from_origin(self, git_repo: Repo) -> None:
+        """Fetch every branch and tag from origin into the main clone.
+
+        Raises:
+            GitCommandError: When git cannot complete the fetch, or a read-only fetch runs out of time.
+
+        """
+        if not self.is_read_only:
+            git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True)
+            return
+
+        # A stalled remote must not hold the repository lock, which has no expiry, and GitPython <=3.2.0
+        # never stops `Remote.fetch(kill_after_timeout=...)` on a remote that sends nothing.
+        # git refuses to move an existing tag unless forced; the tag's old commit stays readable through its own worktree.
+        run_git_with_deadline(
+            ["fetch", "--prune", "--tags", "--prune-tags", "--force", "origin"],
+            working_directory=git_repo.working_dir,
+            environment=REMOTE_TRANSPORT_ENVIRONMENT,
+            timeout_seconds=READ_ONLY_FETCH_TIMEOUT_SECONDS,
+            stop_grace_seconds=READ_ONLY_FETCH_STOP_GRACE_SECONDS,
+        )
 
     async def get_filtered_remote_branches(self) -> dict[str, BranchInRemote]:
         branches = self.get_branches_from_remote()

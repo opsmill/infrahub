@@ -11,7 +11,6 @@ from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
 
 if TYPE_CHECKING:
-    from git import Repo
     from infrahub_sdk import InfrahubClient
 
     from infrahub.git.models import GitRepositoryWarmUp
@@ -68,7 +67,7 @@ class RepositoryWarmUp:
                 repository_kind=model.repository_kind,
                 infrahub_branch_name=model.infrahub_branch_name,
             )
-            await asyncio.to_thread(_fetch_forcing_tags, repo.get_git_repo_main())
+            await asyncio.to_thread(repo.fetch_from_origin, repo.get_git_repo_main())
 
             meta = Meta(initiator_id=self._worker_identity)
             if not imported_commit:
@@ -103,8 +102,3 @@ class RepositoryWarmUp:
                     commit=imported_commit,
                 )
             )
-
-
-def _fetch_forcing_tags(git_repo: Repo) -> None:
-    """Fetch from the remote, forcing tag updates, which git otherwise refuses for a tag moved upstream."""
-    git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, force=True)

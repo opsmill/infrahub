@@ -1,10 +1,13 @@
+import json
 import re
 import shutil
+from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import anyio
+import httpx
 import pytest
 from fast_depends import Provider
 from git import Repo  # type: ignore[attr-defined]
@@ -46,8 +49,10 @@ from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
-from infrahub.workers.dependencies import build_client, build_message_bus
+from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
+from tests.adapters.event import MemoryInfrahubEvent
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -1085,6 +1090,171 @@ async def test_render_artifact_python_without_payload(
     assert artifact_node_01.status.value == "Pending"
     assert artifact_node_01.checksum.value is None
     assert artifact_node_01.storage_id.value is None
+
+
+STORED_ARTIFACT_URL = "http://mock/api/storage/object/13c8914b-0ac0-4c8c-83ec-a79a1f8ad483"
+RENDERED_CHECKSUM = "e889b9fab24aab3b23ea01d5342b514a"
+RENDERED_CONTENT = '{\n  "KEY1": "value1",\n  "KEY2": "value2"\n}'
+
+
+@pytest.fixture
+def main_branch(monkeypatch: pytest.MonkeyPatch) -> Branch:
+    branch = Branch(name="main", uuid=uuid4())
+    monkeypatch.setitem(registry.branch, branch.name, branch)
+    return branch
+
+
+@pytest.fixture
+def event_recorder(dependency_provider: Provider) -> Generator[MemoryInfrahubEvent, None, None]:
+    recorder = MemoryInfrahubEvent()
+    with override_dependency(build_event_service, lambda: recorder, dependency_provider=dependency_provider):
+        yield recorder
+
+
+def render_again_request(repo: InfrahubRepository, branch: Branch, check_stored_file: bool) -> RequestArtifactGenerate:
+    """Request rendering the stored artifact again with the Transformation that produced its recorded checksum."""
+    return RequestArtifactGenerate(
+        artifact_name="artifact01",
+        artifact_definition="c4908d78-7b24-45e2-9252-96d0fb3e2c78",
+        artifact_definition_name="artifactdef01",
+        commit=repo.get_commit_value(branch_name=branch.name, remote=False),
+        content_type="application/json",
+        transform_type=InfrahubKind.TRANSFORMPYTHON,
+        transform_location="transform01.py::Transform01",
+        repository_id=str(repo.id),
+        repository_name=repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        branch_name=branch.name,
+        target_id="b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
+        target_kind="TestElectricCar",
+        target_name="bolt",
+        query="my_query",
+        query_id="47800bff-adf1-450d-8388-b04ef2ffb129",
+        timeout=10,
+        variables={"name": "bolt"},
+        context=InfrahubContext(branch=BranchContext(name=branch.name), account=AnonymousSession()),
+        check_stored_file=check_stored_file,
+    )
+
+
+@pytest.mark.parametrize("check_stored_file", [False, True], ids=["not-checked", "checked-and-intact"])
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_keeps_the_stored_file(
+    check_stored_file: bool,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    if check_stored_file:
+        httpx_mock.add_response(
+            method="GET",
+            url=STORED_ARTIFACT_URL,
+            text=RENDERED_CONTENT,
+            match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+        )
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_02,
+        artifact_created=False,
+        message=render_again_request(
+            repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=check_stored_file
+        ),
+    )
+
+    assert result == ArtifactGenerateResult(
+        changed=False,
+        checksum=RENDERED_CHECKSUM,
+        storage_id="13c8914b-0ac0-4c8c-83ec-a79a1f8ad483",
+        artifact_id=artifact_node_02.id,
+    )
+    assert len(httpx_mock.get_requests(method="GET", url=STORED_ARTIFACT_URL)) == int(check_stored_file)
+    assert event_recorder.events == []
+
+
+@pytest.mark.parametrize(
+    ("status_code", "body"),
+    [
+        (404, '{"data": null, "errors": [{"message": "Unable to find the node", "extensions": {"code": 404}}]}'),
+        (409, '{"data": null, "errors": [{"message": "does not match its checksum", "extensions": {"code": 409}}]}'),
+        (200, '{\n  "KEY1": "modified in the object storage"\n}'),
+    ],
+    ids=["missing", "refused", "modified-and-served"],
+)
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_stores_a_bad_stored_file_again_when_checked(
+    status_code: int,
+    body: str,
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    mock_upload_content: HTTPXMock,
+    mock_update_artifact: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=STORED_ARTIFACT_URL,
+        status_code=status_code,
+        text=body,
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+
+    result = await git_repo_transforms_w_client.render_artifact(
+        artifact=artifact_node_02,
+        artifact_created=False,
+        message=render_again_request(repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=True),
+    )
+
+    assert result == ArtifactGenerateResult(
+        changed=True,
+        checksum=RENDERED_CHECKSUM,
+        storage_id="ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a",
+        artifact_id=artifact_node_02.id,
+    )
+    updates = httpx_mock.get_requests(
+        method="POST", match_headers={"X-Infrahub-Tracker": "mutation-coreartifact-update"}
+    )
+    assert len(updates) == 1
+    assert re.search(
+        r'storage_id: \{\s+value: "ee04f134-a68c-4158-a3c8-3ba5e9cc0c9a"\s+\}', json.loads(updates[0].content)["query"]
+    )
+    assert len(event_recorder.events) == 1
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
+async def test_render_artifact_unchanged_fails_when_the_checked_stored_file_is_unreadable(
+    prefect_test_fixture: None,
+    git_repo_transforms_w_client: InfrahubRepository,
+    artifact_node_02: InfrahubNode,
+    mock_gql_query_03: HTTPXMock,
+    main_branch: Branch,
+    event_recorder: MemoryInfrahubEvent,
+    httpx_mock: HTTPXMock,
+) -> None:
+    httpx_mock.add_response(
+        method="GET",
+        url=STORED_ARTIFACT_URL,
+        status_code=500,
+        json={"data": None, "errors": [{"message": "storage unavailable", "extensions": {"code": 500}}]},
+        match_headers={"X-Infrahub-Tracker": "artifact-verify-content"},
+    )
+
+    with pytest.raises(httpx.HTTPStatusError, match="500 Internal Server Error"):
+        await git_repo_transforms_w_client.render_artifact(
+            artifact=artifact_node_02,
+            artifact_created=False,
+            message=render_again_request(repo=git_repo_transforms_w_client, branch=main_branch, check_stored_file=True),
+        )
+
+    assert artifact_node_02.storage_id.value == "13c8914b-0ac0-4c8c-83ec-a79a1f8ad483"
+    assert event_recorder.events == []
 
 
 async def test_execute_python_transform_file_missing(

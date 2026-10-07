@@ -266,7 +266,7 @@ build_repository_git_state_reader(...)           git/state/factory.py
 
 ## Cache keys (`service.cache`, `set(..., not_exists=True)`)
 
-Every key is built by `infrahub.git.state.cache_keys`, which owns the prefix and the four formats. The
+Every key is built by `infrahub.git.state.cache_keys`, which owns the prefix and the five formats. The
 API resolver and the worker flows write and read these keys from different processes, so nothing else
 makes them agree on the string. Prefix constant plus builder functions, after
 `infrahub.webhook.constants::CACHE_KEY_PREFIX` and `task_manager/flow_run/cache_key.py`. TTLs come
@@ -279,6 +279,7 @@ does (noted per row).
 | `git:refs_check:due:<repository_id>` | ISO timestamp | `read_only_refs_check_interval_mins * 60` | due check for the cron refs check (FR-015). Deleted on failure so the next tick retries; left to expire on success (FR-026) |
 | `git:refs_check:running:<repository_id>` | flow-run id of the running check | per-run ceiling: the per-repository timeout plus a margin, from one constant | one check per repository in flight, across the scheduled and on-demand paths; deleted in a `finally` (FR-025). The value is the flow-run id because the mutation has to report the in-flight run, and the ceiling must exceed the per-repository timeout or a slow check's key expires while it is still running and a second check starts. The worker identity is deliberately not the value: the mutation returns this to the caller, and worker identity stays out of payloads (Principle VI, the same reason `answered_by` was dropped) |
 | `git:refs_check:last:<repository_id>` | ISO timestamp | 30 days | when the remote was last checked, successfully or not. Written unconditionally at the end of every check, read by the resolver to fill `checked_at` (FR-007). Distinct from the due key, whose absence means "due" rather than "never checked". Bounded so a deleted repository's key does not linger; `checked_at` is therefore best-effort and reads null after a cache flush |
+| `git:refs_check:listed:<repository_id>:<ref>` | commit hash | 30 days, written again by every check | the remote head the last check listed for one tracked ref, so whether to broadcast does not depend on which worker ran the check (FR-017, SC-009). Written only by the refs check, under its per-repository claim, and only after every broadcast of that check has gone out, so a failed broadcast leaves the earlier value and the next check retries it. When absent, after a flush or on the first check after deployment, the ref is broadcast once and not reported as moved. Because every check writes it again, it lapses only for a ref no check has listed for 30 days, such as one of a deleted repository |
 
 An API resolver reading a key a worker flow wrote is an established pattern here, not a new one:
 `infrahub.core.merge.write_blocker` does exactly that through the same shared cache.
