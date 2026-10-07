@@ -1,3 +1,5 @@
+frontend/app/.betterer.results
+  s_331443ad360300::t_692f7a69810410 55,113,260,275,285,288
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -9,6 +11,14 @@
       "agent_id": {
         "tool": "claude",
         "id": "5e5b54bb-72c0-45ce-9655-bb63548c5cbf",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    },
+    "s_331443ad360300": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8fb17d7-e0a5-4f2c-b0b0-98da91f26efb",
         "model": "claude-fable-5-1"
       },
       "human_author": "Aaron McCarty <aaron@opsmill.com>"
