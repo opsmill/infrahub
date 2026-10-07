@@ -813,16 +813,17 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    trunk with `git ls-remote`, with no clone and no lock. One read stops after
    `REMOTE_HEADS_TIMEOUT_SECONDS`, at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes are read at once,
    and all the reads together stop at `REMOTE_HEADS_DEADLINE_SECONDS`: a repository not read by then
-   is treated as a remote that cannot be reached. A repository whose source branch records the commit its trunk
-   records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch only, and
-   `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs again, so its
-   source branch is still compared.
+   is treated as a remote that cannot be read. A repository whose source branch records the commit
+   its trunk records has nothing to merge in Git (`nothing_to_merge_in_git`): read its source branch
+   only, and `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs
+   again, so its source branch is still compared.
 2. Compare each head with the commit the graph records for that branch. The rule is equality, as
    above.
 3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
    and the merge can run again after the next cycle imports the head.
-4. A remote that cannot be reached, or does not answer in time, does not block the merge. The check
-   logs a warning and compares nothing for that repository. The guard of the Git merge fetches from
+4. Any failure to read a remote other than the one of rule 5, and a remote not read before
+   `REMOTE_HEADS_DEADLINE_SECONDS`, does not block the merge. The check logs a warning and compares
+   nothing for that repository. The guard of the Git merge fetches from
    the same remote, so it does not compare the heads either: when the remote still cannot be
    reached, its fetch fails, and the Git merge fails after the graph merge, with how to finish the
    merge in Git.

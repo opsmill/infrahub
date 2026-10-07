@@ -371,8 +371,9 @@ emits no signal.
       `backend/infrahub/core/branch/tasks.py::merge_branch` before the global merge lock. The Git
       merge runs after the graph merge, when the source branch never syncs again, so its own refusal
       cannot clear. Refuse with `RepositoryNotSynchronizedError` while a remote head differs from the
-      graph commit, and let the merge go on when the remote cannot be reached; a remote that refuses
-      the credentials of a repository that needs a Git merge refuses the merge. A repository whose
+      graph commit. A remote that refuses the credentials of a repository that needs a Git merge
+      refuses the merge; any other failure to read a remote, and a remote not read before the total
+      deadline, logs a warning and lets the merge go on. A repository whose
       source branch records the trunk commit has nothing to merge in Git: compare its source branch
       only, and submit no Git merge for it. Add a live-remote test
       that merges a branch through the mutation, not through a direct call of the Git merge flow.
