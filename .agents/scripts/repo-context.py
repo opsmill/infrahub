@@ -177,12 +177,12 @@ def load_rules(files: list[str]) -> list[Rule]:
 
 
 def nearest_maps(files: list[str]) -> dict[str, list[str]]:
-    maps = sorted(git("ls-files", "*AGENTS.md").splitlines(), key=len)
+    maps = sorted(git("ls-files", "*AGENTS.md").splitlines(), key=str.__len__)
     found: dict[str, list[str]] = {"AGENTS.md": list(files)}
     for path in files:
         owners = [m for m in maps if path.startswith(str(Path(m).parent) + "/")]
         if owners:
-            found.setdefault(max(owners, key=len), []).append(path)
+            found.setdefault(max(owners, key=str.__len__), []).append(path)
     return found
 
 
@@ -247,7 +247,7 @@ def check_index() -> int:
 
 def nearest_area_map(path: str, maps: list[str]) -> str | None:
     owners = [m for m in maps if m != "AGENTS.md" and path.startswith(str(Path(m).parent) + "/")]
-    return max(owners, key=len) if owners else None
+    return max(owners, key=str.__len__) if owners else None
 
 
 def tracked_files_under(path: str, limit: int = 200) -> list[str]:
