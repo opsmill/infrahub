@@ -8,6 +8,7 @@ backend/tests/component/core/resource_manager/test_number_pool_query.py
   s_e9f9432ba904ca::t_fc459fd79bc52a 616,618
   s_e9f9432ba904ca::t_06069ba28950bf 40
   s_e9f9432ba904ca::t_1997eabe1d60e8 638-639
+  s_e9f9432ba904ca::t_4a2d2aa1d22632 613-615,617
 backend/infrahub/pools/number_pool_repository.py
   s_e9f9432ba904ca::t_8650e42ecdee38 205-206,208-211,216
   s_e9f9432ba904ca::t_bd7352c7ec3e4f 18-19
@@ -15,10 +16,14 @@ backend/infrahub/pools/number_pool_repository.py
   s_e9f9432ba904ca::t_2e8b0b6266b7cb 5
   s_e9f9432ba904ca::t_55591d9f76389e 202
   s_e9f9432ba904ca::t_64e4cbeb9a8aa8 14
+  s_e9f9432ba904ca::t_823203a4272de6 204,207,212-214
+  s_e9f9432ba904ca::t_e104fd695b73c3 62-65
 backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
   s_e9f9432ba904ca::t_54f780f8e1bb92 298,300
   s_e9f9432ba904ca::t_eb1ec8bb2ec5b0 299,301
   s_e9f9432ba904ca::t_52ae1b41eb7de7 294-297
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_e9f9432ba904ca::t_d8b40b903fe6ec 95,97-98
 ---
 {
   "schema_version": "authorship/3.0.0",
