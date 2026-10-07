@@ -28,7 +28,7 @@ This happens for both attributes and relationships, in the order they appear in 
 ```yaml title="Example Schema with Default Weights"
 nodes:
   - name: Device
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: name          # Gets order_weight: 1000
         kind: Text
@@ -39,10 +39,10 @@ nodes:
         kind: Text
     relationships:
       - name: site          # Gets order_weight: 4000
-        peer: InfraSite
+        peer: LocationSite
         cardinality: one
       - name: interfaces    # Gets order_weight: 5000
-        peer: InfraInterface
+        peer: DcimInterface
         cardinality: many
 ```
 
@@ -65,7 +65,7 @@ When a node inherits from a generic, the order weight assignment follows this pa
 ```yaml title="Generic with Order Weights"
 generics:
   - name: BaseDevice
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: name          # Gets order_weight: 1000
         kind: Text
@@ -75,8 +75,8 @@ generics:
 
 nodes:
   - name: Router
-    namespace: Infra
-    inherit_from: ["InfraBaseDevice"]
+    namespace: Dcim
+    inherit_from: ["DcimBaseDevice"]
     attributes:
       - name: model         # Gets order_weight: 3000
         kind: Text
@@ -93,21 +93,21 @@ With multiple generics, order weight assignment prioritizes the **first generic*
 ```yaml title="Multiple Inheritance Example"
 generics:
   - name: NetworkDevice
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: ip_address    # Gets order_weight: 1000
         kind: IPHost
 
   - name: ManagedDevice
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: snmp_community # Gets order_weight: 1000 (but NetworkDevice takes precedence)
         kind: Text
 
 nodes:
   - name: Switch
-    namespace: Infra
-    inherit_from: ["InfraNetworkDevice", "InfraManagedDevice"]  # NetworkDevice first
+    namespace: Dcim
+    inherit_from: ["DcimNetworkDevice", "DcimManagedDevice"]  # NetworkDevice first
     attributes:
       - name: vlan_count    # Gets order_weight: 2000
         kind: Number
@@ -236,7 +236,7 @@ Relationships of kind "Attribute" follow the same order weight rules as regular 
 ```yaml title="Example with Attribute Relationships"
 nodes:
   - name: Device
-    namespace: Infra
+    namespace: Dcim
     attributes:
       - name: name              # Gets order_weight: 1000
         kind: Text
@@ -244,15 +244,15 @@ nodes:
         kind: Text
     relationships:
       - name: ip_address        # Gets order_weight: 3000
-        peer: InfraIPAddress
+        peer: IpamIPAddress
         kind: Attribute
         cardinality: one
       - name: asn               # Gets order_weight: 4000
-        peer: InfraAutonomousSystem
+        peer: RoutingAutonomousSystem
         kind: Attribute
         cardinality: one
       - name: location          # Gets order_weight: 5000
-        peer: InfraLocation
+        peer: LocationGeneric
         kind: Generic           # Regular relationship
         cardinality: one
 ```
@@ -270,7 +270,7 @@ Relationships of kind "Attribute" appear alongside regular attributes in forms a
 ```yaml title="IP Address Management"
 relationships:
   - name: primary_ip
-    peer: InfraIPAddress
+    peer: IpamIPAddress
     kind: Attribute
     cardinality: one
     order_weight: 1500  # Position between name and description
@@ -279,7 +279,7 @@ relationships:
 ```yaml title="Resource Pool Assignment"
 relationships:
   - name: vlan_id
-    peer: InfraVLAN
+    peer: IpamVLAN
     kind: Attribute
     cardinality: one
     optional: false
@@ -305,11 +305,11 @@ attributes:
 
 relationships:
   - name: primary_ip4      # Attribute relationship
-    peer: InfraIPAddress
+    peer: IpamIPAddress
     kind: Attribute
     order_weight: 1100
   - name: primary_ip6      # Attribute relationship
-    peer: InfraIPAddress
+    peer: IpamIPAddress
     kind: Attribute
     order_weight: 1200
 ```
