@@ -1602,7 +1602,11 @@ async def test_drift_reads_every_branch_in_one_worker_request(
     other_branch_names = [f"branch-{index:03d}" for index in range(DRIFT_BRANCH_COUNT - 1)]
     for branch_name in other_branch_names:
         await create_branch(branch_name=branch_name, db=db)
-    bus = PerBranchAnsweringBus(answers={}, default=(REMOTE_HEAD, RepositoryGitCondition.BEHIND))
+    behind_branch_names = {"branch-007", "branch-099", "branch-198"}
+    bus = PerBranchAnsweringBus(
+        answers=dict.fromkeys(behind_branch_names, (REMOTE_HEAD, RepositoryGitCondition.BEHIND)),
+        default=(MAIN_COMMIT, RepositoryGitCondition.IN_SYNC),
+    )
     service = await InfrahubServices.new(database=db, message_bus=bus, cache=MemoryCache())
 
     response = await graphql_query(
@@ -1622,8 +1626,12 @@ async def test_drift_reads_every_branch_in_one_worker_request(
             "branch_name": branch_name,
             "git_ref": READ_ONLY_REF,
             "tracked_commit": MAIN_COMMIT,
-            "remote_head": REMOTE_HEAD,
-            "condition": RepositoryGitCondition.BEHIND.name,
+            "remote_head": REMOTE_HEAD if branch_name in behind_branch_names else MAIN_COMMIT,
+            "condition": (
+                RepositoryGitCondition.BEHIND.name
+                if branch_name in behind_branch_names
+                else RepositoryGitCondition.IN_SYNC.name
+            ),
         }
         for branch_name in expected_branch_names
     }
