@@ -796,8 +796,10 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    above.
 3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
    and the merge can run again after the next cycle imports the head.
-4. A remote that cannot be read does not block the merge. The check logs a warning, and the guard
-   of the Git merge still compares the heads.
+4. A remote that cannot be read does not block the merge. The check logs a warning and compares
+   nothing for that repository. The guard of the Git merge fetches from the same remote, so it does
+   not compare the heads either: when the remote still cannot be read, its fetch fails, and the Git
+   merge fails after the graph merge.
 
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
 refusal leaves the branch merged in Infrahub and not in Git, and the delivery queue of IFC-3220 owns

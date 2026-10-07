@@ -51,8 +51,9 @@ class RemoteHeadsMergeCheck:
     """Refuses a branch merge while Infrahub has not imported a remote head that its Git merge builds on.
 
     The refusal comes before the graph merge, so the branch stays open and the merge can run again once
-    the synchronization imports the head. A remote that cannot be read does not block the merge: the
-    guard of the Git merge still compares the heads.
+    the synchronization imports the head. A remote that cannot be read does not block the merge. The Git
+    merge then fetches from the same remote, and when that remote still cannot be read, the Git merge
+    fails after the graph merge.
     """
 
     def __init__(self, reader: RemoteHeadReader, log: Logger | LoggerAdapter[Logger]) -> None:
