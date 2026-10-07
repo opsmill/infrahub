@@ -2,9 +2,10 @@ import asyncio
 import logging
 import re
 import shutil
-from collections.abc import Callable, Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -970,6 +971,79 @@ async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_l
         repository.create_commit_worktree(commit="abc", timeout_seconds=7)
 
     assert type(raised.value) is RepositoryError
+
+
+TIME_LIMIT_SECONDS = 7.0
+
+
+class _RecordingGit(Git):
+    """Runs every Git command for real and keeps its subcommand with the time limit it received."""
+
+    def __init__(self, working_dir: str | None, calls: list[tuple[str, float | None]]) -> None:
+        super().__init__(working_dir)
+        self.calls = calls
+
+    def execute(self, command: Any, *args: Any, **kwargs: Any) -> Any:
+        self.calls.append((command[1], kwargs.get("kill_after_timeout")))
+        return super().execute(command, *args, **kwargs)
+
+
+async def _check_for_a_worktree(repository: _GitWrappedRepository) -> None:
+    repository.has_worktree(identifier="feature", timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _list_the_worktrees(repository: _GitWrappedRepository) -> None:
+    repository.get_worktrees(timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _create_a_commit_worktree(repository: _GitWrappedRepository) -> None:
+    commit = Repo(repository.directory_default).commit("origin/feature").hexsha
+    repository.create_commit_worktree(commit=commit, timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _delete_the_remote_branch(repository: _GitWrappedRepository) -> None:
+    await repository.delete_remote_branch(branch_name="feature", timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _reset_the_main_clone(repository: _GitWrappedRepository) -> None:
+    clone = repository.get_git_repo_main()
+    repository._reset_to_pre_merge_commit(
+        repo=clone, dest_branch="main", commit_before=clone.head.commit.hexsha, timeout_seconds=TIME_LIMIT_SECONDS
+    )
+
+
+@dataclass
+class TimeLimitForwardingCase:
+    name: str
+    run: Callable[[_GitWrappedRepository], Awaitable[None]]
+    git_commands: list[str]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        TimeLimitForwardingCase(name="has_worktree", run=_check_for_a_worktree, git_commands=["worktree"]),
+        TimeLimitForwardingCase(name="get_worktrees", run=_list_the_worktrees, git_commands=["worktree"]),
+        TimeLimitForwardingCase(
+            name="create_commit_worktree", run=_create_a_commit_worktree, git_commands=["worktree", "worktree"]
+        ),
+        TimeLimitForwardingCase(name="delete_remote_branch", run=_delete_the_remote_branch, git_commands=["push"]),
+        TimeLimitForwardingCase(name="reset_to_pre_merge_commit", run=_reset_the_main_clone, git_commands=["reset"]),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_each_git_command_receives_the_time_limit_of_the_call(
+    case: TimeLimitForwardingCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, float | None]] = []
+    repository = await clone_with_git_wrapper(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=partial(_RecordingGit, calls=calls)
+    )
+    calls.clear()
+
+    await case.run(repository)
+
+    assert calls == [(command, TIME_LIMIT_SECONDS) for command in case.git_commands]
 
 
 class _BranchSyncRepository(InfrahubRepository):
