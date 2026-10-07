@@ -1651,7 +1651,8 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
     ) -> None:
         """The new default branch does not hold the trunk commit the graph records.
 
-        The marker covers one cycle only, so every later cycle must find the graph already on the new branch.
+        The first cycle clears the marker once the trunk records the new head, so every later cycle must find the
+        graph already on it.
         """
         tracked = await tracked_branch_repository("retargeted-repo", "retargeted-branch")
         await _advance_and_import_the_trunk(gogs_server.container, tracked)
