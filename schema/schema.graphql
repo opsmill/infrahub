@@ -11713,26 +11713,16 @@ One tracked number as held on one branch: one row per (record, branch-resolved v
 type NumberPoolAllocation {
   """The branch on which the holder's attribute holds this value."""
   branch: String!
-  """
-  The holder's division on the row's branch, in scope order. Empty when the pool is unscoped.
-  """
-  division: [NumberPoolDivisionEntry!]!
   """The node whose attribute holds the value, read on the row's branch."""
   holder: NumberPoolHolder!
   """The identifier given when the number was allocated, if any."""
   identifier: String
   """
-  Whether the value lies inside the pool's space and counts in its figures: inside a range, not
-  excluded by the attribute, within its min and max. False for an excluded or out-of-limits value
-  even when a range holds it.
-  """
-  in_space: Boolean!
-  """
   ALLOCATED when the pool picked the number, PROVIDED when a user gave it.
   """
   provenance: NumberPoolProvenance!
-  """The range whose bounds hold the value. Null when no range holds it."""
-  range: NumberPoolRangeRef
+  """The range whose bounds hold the value."""
+  range: NumberPoolRangeRef!
   """The number held."""
   value: BigInt!
 }
@@ -11858,12 +11848,6 @@ type NumberPoolUtilization {
   figures: NumberPoolUtilizationFigures!
   """The pool's id, as given in pool_id."""
   id: String!
-  """
-  Number of allocation rows whose value lies outside the pool's space (in_space false): one per
-  holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the
-  division given as division.
-  """
-  out_of_space_count: BigInt!
   """The pool's ranges ordered by start, each with its own figures."""
   ranges: [NumberPoolRangeUtilization!]!
 }
@@ -26215,7 +26199,7 @@ type Query {
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
   """The numbers one number pool tracks, filtered and paginated."""
-  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], in_space: Boolean, limit: Int, offset: Int, pool_id: String!, provenance: NumberPoolProvenance, range_id: String): NumberPoolAllocations!
+  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], limit: Int, offset: Int, pool_id: String!, provenance: NumberPoolProvenance, range_id: String): NumberPoolAllocations!
   """
   The divisions of one number pool that hold at least one value, with their figures over the whole
   pool. Complete list, no pagination.

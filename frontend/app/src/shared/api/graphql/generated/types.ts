@@ -23805,22 +23805,14 @@ export type NumberPoolAllocation = {
   __typename: 'NumberPoolAllocation';
   /** The branch on which the holder's attribute holds this value. */
   branch: Scalars['String']['output'];
-  /** The holder's division on the row's branch, in scope order. Empty when the pool is unscoped. */
-  division: Array<NumberPoolDivisionEntry>;
   /** The node whose attribute holds the value, read on the row's branch. */
   holder: NumberPoolHolder;
   /** The identifier given when the number was allocated, if any. */
   identifier: Maybe<Scalars['String']['output']>;
-  /**
-   * Whether the value lies inside the pool's space and counts in its figures: inside a range, not
-   * excluded by the attribute, within its min and max. False for an excluded or out-of-limits value
-   * even when a range holds it.
-   */
-  in_space: Scalars['Boolean']['output'];
   /** ALLOCATED when the pool picked the number, PROVIDED when a user gave it. */
   provenance: NumberPoolProvenance;
-  /** The range whose bounds hold the value. Null when no range holds it. */
-  range: Maybe<NumberPoolRangeRef>;
+  /** The range whose bounds hold the value. */
+  range: NumberPoolRangeRef;
   /** The number held. */
   value: Scalars['BigInt']['output'];
 };
@@ -23951,12 +23943,6 @@ export type NumberPoolUtilization = {
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */
   id: Scalars['String']['output'];
-  /**
-   * Number of allocation rows whose value lies outside the pool's space (in_space false): one per
-   * holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the
-   * division given as division.
-   */
-  out_of_space_count: Scalars['BigInt']['output'];
   /** The pool's ranges ordered by start, each with its own figures. */
   ranges: Array<NumberPoolRangeUtilization>;
 };
@@ -38320,7 +38306,6 @@ export type QueryInfrahubIpPrefixGetNextAvailableArgs = {
 export type QueryInfrahubNumberPoolAllocationsArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
-  in_space?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   pool_id: Scalars['String']['input'];

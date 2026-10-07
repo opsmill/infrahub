@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphene import BigInt, Boolean, Enum, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import BigInt, Enum, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 
 from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.pools.number_pool_mock import (
@@ -106,15 +106,6 @@ class NumberPoolUtilization(ObjectType):
         List(NonNull(NumberPoolRangeUtilization)),
         required=True,
         description="The pool's ranges ordered by start, each with its own figures.",
-    )
-    out_of_space_count = Field(
-        BigInt,
-        required=True,
-        description=(
-            "Number of allocation rows whose value lies outside the pool's space (in_space false): one per\n"
-            "holder and value, as InfrahubNumberPoolAllocations lists them. Restricted to the holders of the\n"
-            "division given as division."
-        ),
     )
 
     @staticmethod
@@ -251,21 +242,7 @@ class NumberPoolAllocation(ObjectType):
         required=True,
         description="ALLOCATED when the pool picked the number, PROVIDED when a user gave it.",
     )
-    in_space = Field(
-        Boolean,
-        required=True,
-        description=(
-            "Whether the value lies inside the pool's space and counts in its figures: inside a range, not\n"
-            "excluded by the attribute, within its min and max. False for an excluded or out-of-limits value\n"
-            "even when a range holds it."
-        ),
-    )
-    range = Field(NumberPoolRangeRef, description="The range whose bounds hold the value. Null when no range holds it.")
-    division = Field(
-        List(NonNull(NumberPoolDivisionEntry)),
-        required=True,
-        description="The holder's division on the row's branch, in scope order. Empty when the pool is unscoped.",
-    )
+    range = Field(NumberPoolRangeRef, required=True, description="The range whose bounds hold the value.")
 
 
 class NumberPoolAllocations(ObjectType):
@@ -286,7 +263,6 @@ class NumberPoolAllocations(ObjectType):
         pool_id: str,
         division: list[dict[str, str]] | None = None,
         range_id: str | None = None,
-        in_space: bool | None = None,
         branch: str | None = None,
         provenance: PoolRecordProvenance | None = None,
         offset: int | None = None,
@@ -298,7 +274,6 @@ class NumberPoolAllocations(ObjectType):
             request_branch=graphql_context.branch.name,
             division=_division_filter(division),
             range_id=range_id,
-            in_space=in_space,
             branch=branch,
             provenance=provenance,
             offset=offset,
@@ -334,7 +309,6 @@ InfrahubNumberPoolAllocations = Field(
     pool_id=String(required=True),
     division=List(NonNull(NumberPoolDivisionEntryInput), required=False),
     range_id=String(required=False),
-    in_space=Boolean(required=False),
     branch=String(required=False),
     provenance=NumberPoolProvenance(required=False),
     offset=Int(required=False),

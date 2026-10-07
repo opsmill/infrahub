@@ -63,9 +63,7 @@ class MockAllocation:
     holder: MockHolder
     identifier: str | None
     provenance: PoolRecordProvenance
-    in_space: bool
-    range: MockRangeRef | None
-    division: tuple[MockDivisionEntry, ...]
+    range: MockRangeRef
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,7 +94,6 @@ class MockUtilization:
     allocation_scope: tuple[str, ...]
     figures: MockFigures
     ranges: tuple[MockRangeUtilization, ...]
-    out_of_space_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,18 +144,21 @@ class MockPool:
     def __post_init__(self) -> None:
         if not self.divisions:
             raise ValueError(f"The mock pool {self.display_label} needs at least one division, even an empty one")
+        for row in self.rows:
+            if row.value in self.excluded_values or not self._in_a_range(row.value):
+                raise ValueError(f"The mock pool {self.display_label} holds {row.value}, a value it cannot allocate")
 
     @property
     def size(self) -> int:
         return sum(item.size for item in self.ranges) - len(
-            {value for value in self.excluded_values if self.range_of(value) is not None}
+            {value for value in self.excluded_values if self._in_a_range(value)}
         )
 
-    def range_of(self, value: int) -> MockRange | None:
-        return next((item for item in self.ranges if item.holds(value)), None)
+    def _in_a_range(self, value: int) -> bool:
+        return any(item.holds(value) for item in self.ranges)
 
-    def in_space(self, value: int) -> bool:
-        return self.range_of(value) is not None and value not in self.excluded_values
+    def range_of(self, value: int) -> MockRange:
+        return next(item for item in self.ranges if item.holds(value))
 
 
 def _holder(number: int, label: str) -> MockHolder:
@@ -214,15 +214,6 @@ def _build_scoped_pool() -> MockPool:
                 division=site_b,
             )
         )
-    rows.append(
-        _Row(
-            value=500,
-            branch=DEFAULT_BRANCH,
-            holder=_holder(130, "B30"),
-            provenance=PoolRecordProvenance.PROVIDED,
-            division=site_b,
-        )
-    )
 
     return MockPool(
         display_label="Device index",
@@ -244,19 +235,7 @@ def _build_unscoped_pool() -> MockPool:
         rows=(
             _Row(value=1, branch=DEFAULT_BRANCH, holder=_holder(201, "sw-access-01"), identifier="access-vlan"),
             _Row(value=7, branch=OTHER_BRANCH, holder=_holder(202, "sw-access-02")),
-            _Row(
-                value=40,
-                branch=DEFAULT_BRANCH,
-                holder=_holder(203, "sw-access-03"),
-                provenance=PoolRecordProvenance.PROVIDED,
-            ),
             _Row(value=51, branch=DEFAULT_BRANCH, holder=_holder(204, "sw-dist-01")),
-            _Row(
-                value=500,
-                branch=DEFAULT_BRANCH,
-                holder=_holder(205, "sw-core-01"),
-                provenance=PoolRecordProvenance.PROVIDED,
-            ),
         ),
     )
 
@@ -300,12 +279,10 @@ def _division_label(entries: tuple[MockDivisionEntry, ...]) -> str:
     return " / ".join(entry.display_label for entry in entries)
 
 
-def _counted_rows(pool: MockPool, rows: Iterable[_Row], space: MockRange | None) -> list[_Row]:
-    return [row for row in rows if pool.in_space(row.value) and (space is None or space.holds(row.value))]
-
-
 def _space_figures(pool: MockPool, rows: Iterable[_Row], space: MockRange | None) -> MockFigures:
-    return _figures(rows=_counted_rows(pool=pool, rows=rows, space=space), size=space.size if space else pool.size)
+    if space is None:
+        return _figures(rows=rows, size=pool.size)
+    return _figures(rows=(row for row in rows if space.holds(row.value)), size=space.size)
 
 
 def _as_filter(entries: tuple[MockDivisionEntry, ...]) -> list[DivisionFilterEntry]:
@@ -354,12 +331,10 @@ def get_utilization(
     pool_id: str, request_branch: str, division: Sequence[DivisionFilterEntry] | None = None
 ) -> MockUtilization:
     pool = get_mock_pool(pool_id)
-    listed_rows: Sequence[_Row] = pool.rows
     counted_rows: Sequence[_Row] = pool.rows
     if division:
         _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
         _validate_complete_division(pool=pool, division=division, request_branch=request_branch)
-        listed_rows = _division_rows(pool=pool, holder_divisions=_holder_divisions(pool), division=division)
         counted_rows = _own_rows(pool=pool, division=division)
     elif pool.allocation_scope:
         raise ValidationError(
@@ -389,7 +364,6 @@ def get_utilization(
         allocation_scope=pool.allocation_scope,
         figures=figures_of(None),
         ranges=ranges,
-        out_of_space_count=sum(1 for row in listed_rows if not pool.in_space(row.value)),
     )
 
 
@@ -471,9 +445,7 @@ def _to_allocation(pool: MockPool, row: _Row) -> MockAllocation:
         holder=row.holder,
         identifier=row.identifier,
         provenance=row.provenance,
-        in_space=pool.in_space(row.value),
-        range=MockRangeRef(id=held_by.id, display_label=held_by.display_label) if held_by else None,
-        division=row.division,
+        range=MockRangeRef(id=held_by.id, display_label=held_by.display_label),
     )
 
 
@@ -482,7 +454,6 @@ def get_allocations(
     request_branch: str,
     division: Sequence[DivisionFilterEntry] | None = None,
     range_id: str | None = None,
-    in_space: bool | None = None,
     branch: str | None = None,
     provenance: PoolRecordProvenance | None = None,
     offset: int | None = None,
@@ -499,7 +470,6 @@ def get_allocations(
         row
         for row in candidates
         if (space is None or space.holds(row.value))
-        and (in_space is None or pool.in_space(row.value) == in_space)
         and (branch is None or row.branch == branch)
         and (provenance is None or row.provenance == provenance)
     ]
