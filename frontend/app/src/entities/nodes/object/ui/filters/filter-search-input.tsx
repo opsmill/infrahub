@@ -25,6 +25,9 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
 
   // Update URL when debounced value changes
   useEffect(() => {
+    // Skips a value replaced by a URL change during the delay (ex: quick back then forward).
+    if (debouncedInputValue !== inputValue) return;
+
     const nextSearch = debouncedInputValue.trim();
     if (nextSearch === search) return;
 
