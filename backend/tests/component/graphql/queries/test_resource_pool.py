@@ -12,15 +12,14 @@ from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
-from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from tests.helpers.graphql import graphql
-from tests.helpers.number_pool import add_pool_range
+from tests.helpers.number_pool import add_pool_range, create_range_only_pool, ticket_schema_with_parameters
 from tests.helpers.schema import TICKET, load_schema
 
 
@@ -944,33 +943,12 @@ async def test_number_pool_utilization(
     assert sorted(numbers) == ["1", "3"]
 
 
-def _ticket_schema_with_parameters(parameters: NumberAttributeParameters) -> NodeSchema:
-    return NodeSchema(
-        name="Ticket",
-        namespace="Testing",
-        include_in_menu=True,
-        label="Ticket",
-        human_friendly_id=["title__value", "ticket_id__value"],
-        attributes=[
-            AttributeSchema(name="title", kind="Text", optional=False),
-            NumberAttributeSchema(name="ticket_id", kind="Number", optional=True, unique=True, parameters=parameters),
-        ],
-    )
-
-
 async def _ticket_graphql_params(db: InfrahubDatabase, default_branch: Branch, schema: NodeSchema) -> GraphqlParams:
     await load_schema(db=db, schema=SchemaRoot(nodes=[schema]))
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
     await initialization(db=db)
     return gql_params
-
-
-async def _create_range_only_pool(db: InfrahubDatabase, kind: str) -> CoreNumberPool:
-    pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
-    await pool.new(db=db, name="ranged", node=kind, node_attribute="ticket_id")
-    await pool.save(db=db)
-    return pool
 
 
 async def _create_ticket(db: InfrahubDatabase, kind: str, pool: CoreNumberPool, title: str) -> Node:
@@ -997,7 +975,7 @@ async def test_number_pool_allocation_of_a_pool_without_range_is_empty(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
-    pool = await _create_range_only_pool(db=db, kind=TICKET.kind)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
 
     assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()) == {"count": 0, "edges": []}
 
@@ -1006,9 +984,9 @@ async def test_number_pool_allocation_is_empty_once_the_attribute_bounds_clip_ev
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Numbers the pool handed out from a range it no longer holds are not listed when nothing is allocatable."""
-    schema = _ticket_schema_with_parameters(NumberAttributeParameters(min_value=15, max_value=50))
+    schema = ticket_schema_with_parameters(NumberAttributeParameters(min_value=15, max_value=50))
     gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=schema)
-    pool = await _create_range_only_pool(db=db, kind=schema.kind)
+    pool = await create_range_only_pool(db=db, kind=schema.kind)
     within_bounds = await add_pool_range(db=db, pool=pool, start=20, end=30)
     for title in ("first", "second"):
         await _create_ticket(db=db, kind=schema.kind, pool=pool, title=title)
@@ -1025,7 +1003,7 @@ async def test_number_pool_allocation_lists_only_the_numbers_inside_the_current_
 ) -> None:
     """Numbers handed out from a range the pool no longer holds drop out of the count and the edges alike."""
     gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
-    pool = await _create_range_only_pool(db=db, kind=TICKET.kind)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
     initial = await add_pool_range(db=db, pool=pool, start=1, end=10)
     first, _, _, fourth = [
         await _create_ticket(db=db, kind=TICKET.kind, pool=pool, title=title)
