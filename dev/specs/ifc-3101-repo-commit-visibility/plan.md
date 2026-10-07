@@ -31,8 +31,9 @@ worker read and the refs check.
 `Repo.iter_commits`, `git.rev_list`), Prefect via `infrahub.workflows` (existing), the RabbitMQ
 message bus (existing; the NATS adapter is edited for signature parity only and is not a supported
 driver, see research.md), TanStack Query v5 and gql.tada (existing)
-**Storage**: none new. Four short-lived cache keys in the existing `service.cache`: warm-up
-collapsing, the refs-check due marker, the in-flight guard, and the last-checked timestamp
+**Storage**: none new. Five cache keys in the existing `service.cache`: warm-up collapsing, the
+refs-check due marker, the in-flight guard, the last-checked timestamp, and the remote head the
+last check listed per tracked ref
 **Testing**: pytest unit (`backend/tests/unit/`), component with testcontainers
 (`backend/tests/component/`), integration with a Gogs remote (`backend/tests/integration/git/`),
 Vitest browser mode, pytest-playwright e2e (`tests/e2e/`)
@@ -125,7 +126,7 @@ backend/infrahub/
 ├── git/state/factory.py                          # NEW   build_repository_git_state_reader, the only wiring point
 ├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
-├── git/state/cache_keys.py                       # NEW   prefix + the four key builders, shared by resolver and flows
+├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
 ├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
 ├── git/models.py                                 # EDIT  GitRepositoryWarmUp, GitReadOnlyRepositoryCheckRefs
@@ -295,6 +296,17 @@ determinism logic, no test and no documentation entry.
   reaching the command line, and the network call runs with git's low-speed abort configured
   (`GIT_HTTP_LOW_SPEED_LIMIT` / `GIT_HTTP_LOW_SPEED_TIME` in the subprocess environment) so an
   unresponsive remote fails instead of hanging for the life of the tick.
+- **Movement decision (FR-017, SC-009).** The listing answers two separate questions. Whether this
+  worker fetches is decided against its own `origin/<ref>`. Whether the pool is told is decided per
+  tracked ref against `git:refs_check:listed:<id>:<ref>`, the remote head the last check listed and
+  broadcast. Deciding the broadcast against local disk made one arbitrary worker's copy answer for
+  the pool: a worker that was already current saw nothing to announce and left the others behind.
+  The check is the only writer, and it holds the per-repository claim while it writes, so no two
+  writers race. It writes every listed head only after every broadcast of that check has gone out, so
+  a failed broadcast is retried by the next check rather than lost. A ref with no recorded listing,
+  after a cache flush or on the first check after deployment, is broadcast once and not reported as
+  moved. Every check writes the value again, so it lapses only for a ref no check has listed for 30
+  days. Recorded as T065h.
 - **Non-accumulation (FR-025).** Before doing any remote work, the shared body claims the repository
   with `cache.set(key=<running key>, value=<this flow's run id>, expires=<per-run ceiling>,
   not_exists=True)` and returns the recorded run id without contacting the remote when the claim
@@ -324,9 +336,11 @@ determinism logic, no test and no documentation entry.
   user-visible flow run per repository per tick. The burst is bounded because the due check already
   spreads repositories across ticks: with the default interval and the every-minute cron, roughly a
   fifteenth of read-only repositories come due on any given tick.
-- **Observability (FR-027).** One structured record per tick carrying checked, moved, failed and
-  duration, and one per detected movement carrying repository, ref, previous head and new head.
-  Failures carry repository and reason. No metrics stack is introduced for this.
+- **Observability (FR-027).** One record per tick carrying checked, moved, failed and duration, and
+  one per detected movement naming repository, ref, previous head and new head. Failures carry
+  repository and reason. The check logs plain text through the task logger, so these reach the flow
+  run's logs; the fields are carried structurally in the check's result, not in the log record. No
+  metrics stack is introduced for this.
 - **Check time (FR-007).** Every check writes `git:refs_check:last:<id>` with the current timestamp,
   on success and on failure alike, so `checked_at` reflects the last attempt rather than the last
   success. The resolver reads it; nothing on the worker records it, because a refs listing writes no

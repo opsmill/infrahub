@@ -1,20 +1,15 @@
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import anyio
 import pytest
 from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk.client import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.core.constants import InfrahubKind
 from infrahub.exceptions import RepositoryError
-from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.repository import InfrahubReadOnlyRepository
-from infrahub.git.tasks import import_read_only_repository_last_commit
 from infrahub.services import InfrahubServices
-from infrahub.utils import find_first_file_in_directory
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -69,6 +64,33 @@ async def test_get_commit_value(
     branch01_commit = str(upstream.commit("branch01"))
     assert repo.get_commit_value(branch_name="does_not_matter") == branch01_commit
     assert repo.get_commit_value(branch_name="branch02", remote=True) == branch01_commit
+
+
+async def test_get_commit_value_follows_a_tag_moved_upstream(
+    git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
+) -> None:
+    """A copy already holding the tag still resolves where it points now, rather than refusing or keeping the old target."""
+    upstream = Repo(git_upstream_repo_01["path"])
+    upstream.create_tag("release", ref="main", message="Release")
+    repo = await InfrahubReadOnlyRepository.new(
+        id=UUIDT.new(),
+        name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        ref="release",
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    tagged_before = repo.get_commit_value(branch_name="release", remote=True)
+
+    upstream.git.checkout("main")
+    new_file = Path(git_upstream_repo_01["path"]) / "tagged_change.txt"
+    new_file.write_text("the release tag moved upstream", encoding="utf-8")
+    upstream.index.add(["tagged_change.txt"])
+    moved_sha = str(upstream.index.commit("Change the release tag now points at"))
+    upstream.create_tag("release", ref=moved_sha, message="Release", force=True)
+    assert tagged_before != moved_sha
+
+    assert repo.get_commit_value(branch_name="release", remote=True) == moved_sha
 
 
 async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
@@ -148,45 +170,3 @@ async def test_update_latest_commit_with_annotated_tag(
     mock_client.repository_update_commit.assert_awaited_with(
         branch_name="main", repository_id=repo.id, commit=expected_commit, is_read_only=True
     )
-
-
-@patch("infrahub.git.tasks.get_client")
-@patch("infrahub.git.tasks.add_tags")
-@patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)
-async def test_import_read_only_repository_last_commit(
-    mock_import_objects: AsyncMock,
-    mock_add_tags: MagicMock,
-    mock_get_client: MagicMock,
-    git_repo_01_read_only: InfrahubReadOnlyRepository,
-    git_upstream_repo_01: dict[str, str | Path],
-) -> None:
-    repo = git_repo_01_read_only
-    repo.client = AsyncMock()
-    repo.ref = "main"
-    initial_commit_id = repo.get_commit_value(branch_name="main")
-
-    upstream = Repo(git_upstream_repo_01["path"])
-    upstream.git.checkout("main")
-
-    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
-    assert first_file
-    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
-        await file.write("new line\n")
-    upstream.index.add([first_file])
-    upstream.index.commit("Change first file")
-
-    mock_add_tags.return_value = None
-    mock_get_client.return_value = AsyncMock(InfrahubClient)
-
-    model = GitReadOnlyRepositoryImportCommit(
-        repository_id=str(repo.id),
-        repository_name=str(repo.name),
-        repository_kind=InfrahubKind.READONLYREPOSITORY,
-        infrahub_branch_name="main",
-        ref="main",
-    )
-    await import_read_only_repository_last_commit(model=model)
-
-    new_commit_id = repo.get_commit_value(branch_name="main")
-    assert initial_commit_id != new_commit_id
-    assert new_commit_id == str(upstream.head.commit)

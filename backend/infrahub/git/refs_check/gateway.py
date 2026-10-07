@@ -17,8 +17,8 @@ from git.exc import BadName, GitError
 
 from infrahub.exceptions import RepositoryError
 
+from ..constants import REMOTE_TRANSPORT_ENVIRONMENT
 from ..repository import InfrahubReadOnlyRepository
-from .constants import REMOTE_TRANSPORT_ENVIRONMENT
 from .models import RefHeads
 
 if TYPE_CHECKING:
@@ -115,18 +115,6 @@ def _resolve_local_head(git_repo: Repo, ref: str) -> str | None:
     return None
 
 
-def _fetch_moved_refs(git_repo: Repo, *, kill_after_seconds: float) -> None:
-    """Bring the moved refs in, forcing tag updates rather than refusing them.
-
-    git refuses to update an existing tag without being forced. The commits a moved tag used to
-    point at stay readable because each imported commit has a worktree of its own holding it.
-    """
-    with git_repo.git.custom_environment(**REMOTE_TRANSPORT_ENVIRONMENT):
-        git_repo.remotes.origin.fetch(
-            prune=True, tags=True, prune_tags=True, force=True, kill_after_timeout=kill_after_seconds
-        )
-
-
 def _ref_patterns(ref: str) -> tuple[str, str, str]:
     # The third is the peeled line an annotated tag also publishes. Without it the listing returns
     # the tag object while the local read returns the commit, and the two can never agree.
@@ -165,12 +153,9 @@ class GitRepositoryRefsGateway:
     The local copy is opened without initialization, so a refs check never clones and never pulls.
     """
 
-    def __init__(
-        self, client: InfrahubClient, *, list_kill_after_seconds: float, fetch_kill_after_seconds: float
-    ) -> None:
+    def __init__(self, client: InfrahubClient, *, list_kill_after_seconds: float) -> None:
         self._client = client
         self._list_kill_after_seconds = list_kill_after_seconds
-        self._fetch_kill_after_seconds = fetch_kill_after_seconds
 
     def _open(self, model: GitReadOnlyRepositoryCheckRefs) -> InfrahubReadOnlyRepository:
         repo = InfrahubReadOnlyRepository(
@@ -196,7 +181,7 @@ class GitRepositoryRefsGateway:
                 identifier=model.repository_name,
                 message=f"The local copy of {model.repository_name} has no remote to fetch the moved refs from.",
             )
-        _fetch_moved_refs(repo.get_git_repo_main(), kill_after_seconds=self._fetch_kill_after_seconds)
+        repo.fetch_from_origin(git_repo=repo.get_git_repo_main())
 
     async def read_heads(self, model: GitReadOnlyRepositoryCheckRefs, refs: tuple[str, ...]) -> tuple[RefHeads, ...]:
         with _as_repository_error(model.repository_name):

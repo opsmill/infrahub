@@ -911,6 +911,7 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
             infrahub_branch_name=model.infrahub_branch_name,
             ref=model.ref,
         )
+        # The commit update this writes submits a pull that broadcasts the new commit to the pool.
         await repo.update_latest_commit()
 
 
