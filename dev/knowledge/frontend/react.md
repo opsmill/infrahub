@@ -60,7 +60,7 @@ The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a
 
 ## `useQueries` `combine` output is structurally shared by position
 
-TanStack Query runs `replaceEqualDeep` on what `combine` returns. It pairs arrays by index and objects by key, so if `combine` returns a flat array and one upstream result grows (a pending entry becomes N rows), every entry after it shifts and is copied as a new object. Downstream row identity is lost. Return a record keyed by a stable id and flatten it outside `combine`. A module-level cache doesn't help: mismatched array entries are still copied.
+TanStack Query runs `replaceEqualDeep` on what `combine` returns. It pairs arrays by index and objects by key, so if `combine` returns a flat array and one upstream result grows (a pending entry becomes N rows), every entry after it shifts and is copied as a new object, so the identity of every later entry is lost. Return a record keyed by a stable id and flatten it outside `combine`. A module-level cache doesn't help: mismatched array entries are still copied.
 
-In-repo example: `entities/branches/ui/queries/get-branch-repository-summaries.query.ts::useGetBranchRepositorySummaries`, whose `combine` returns a record keyed by branch name.
+In-repo example: `entities/branches/ui/queries/get-branch-repository-summaries.query.ts::useGetBranchRepositorySummaries`, whose `combine` returns a record keyed by branch name, so an unchanged branch keeps the same summary object.
 
