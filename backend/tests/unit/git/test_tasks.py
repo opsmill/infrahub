@@ -1,3 +1,6 @@
+import ast
+import inspect
+import textwrap
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -13,7 +16,23 @@ from infrahub.git.tasks import (
     format_check_log_entry,
     resolve_initial_import_branch,
     select_writable_branch_commits,
+    warm_up_git_repository,
 )
+
+
+def test_the_warm_up_flow_does_not_tag_its_run_with_the_namespace() -> None:
+    """A read starts the warm-up, and the namespace tag is what puts a run in the task list."""
+    flow_source = textwrap.dedent(inspect.getsource(warm_up_git_repository.fn))
+    add_tags_calls = [
+        node
+        for node in ast.walk(ast.parse(flow_source))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "add_tags"
+    ]
+
+    assert [
+        {keyword.arg: ast.literal_eval(keyword.value) for keyword in call.keywords if keyword.arg == "namespace"}
+        for call in add_tags_calls
+    ] == [{"namespace": False}]
 
 
 @dataclass

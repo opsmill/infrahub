@@ -44,7 +44,8 @@ drift for 200 branches in one worker request (SC-005); an idle read-only reposit
 `ls-remote` per interval (FR-018)
 **Constraints**: no synchronous clone inside a read (FR-013); worker wait bounded by
 `broker.rpc_timeout` with a catalogued error (FR-012); no write to `commit` or `ref` anywhere in this
-feature (FR-016); no graph schema change; `schema/schema.graphql` must stay environment-independent
+feature (FR-016); one graph schema change only, a new `sync_status` choice written by the read-only
+check (FR-030, lands with T108); `schema/schema.graphql` must stay environment-independent
 **Scale/Scope**: 3 GraphQL operations, 1 Cypher query class, 2 RPC message pairs, 3 workflow
 definitions, 2 settings, 1 catalogue error, 1 frontend tab plus one query chain; one shared-path
 change to `InfrahubMessageBus.rpc`
@@ -58,7 +59,7 @@ remains.
 
 | Principle | Status | Notes |
 | --- | --- | --- |
-| I. Schema-Driven Integrity | PASS | No node, attribute or migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
+| I. Schema-Driven Integrity | PASS | No node, attribute or migration. One added choice on the existing `sync_status` dropdown (T108), which needs no migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
 | II. Branch-Safe by Default | PASS | Every answer is computed for `graphql_context.branch`: the imported commit is the branch-local or branch-aware `commit`, the read-only `ref` is branch-aware, and the remote branch is mapped through `_get_mapped_remote_branch`. Nothing is written, so merge behaviour is unchanged (SC-011). |
 | III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.state.models`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol returning those dataclasses, never a wire model; frontend uses gql.tada-derived types. |
 | IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, handlers; a unit test for the RPC timeout, whose never-replying doubles open no connection; integration tests for behind, rewritten, tag move, lock serialisation, and the broadcast binding that makes convergence per-worker; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. FR-017 is covered as three deterministic links rather than a multi-worker fixture, per `checklists/requirements.md`. |
@@ -126,6 +127,8 @@ backend/infrahub/
 ├── git/state/factory.py                          # NEW   build_repository_git_state_reader, the only wiring point
 ├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
+├── git/state/commit_log_wire.py                  # NEW   both-way conversion between the commit-log messages and the dataclasses
+├── git/state/warm_up.py                          # NEW   RepositoryWarmUp: clone, fetch, broadcast pinned to the commit read under the lock
 ├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
 ├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
@@ -135,6 +138,8 @@ backend/infrahub/
 ├── workflows/catalogue.py                        # EDIT  three WorkflowDefinition constants
 ├── message_bus/messages/git_commit_log_get.py    # NEW
 ├── message_bus/messages/git_branch_heads_get.py  # NEW
+├── message_bus/messages/refresh_git_clone.py     # NEW   clone-only broadcast, sent by the warm-up when nothing is imported
+├── message_bus/operations/git/repository.py      # EDIT  clone handler: create a missing copy, change nothing else
 ├── message_bus/messages/__init__.py              # EDIT  MESSAGE_MAP, RESPONSE_MAP, PRIORITY_MAP
 ├── message_bus/operations/git/commit_log.py      # NEW   shallow handler: unpack, delegate to log_reader, reply
 ├── message_bus/operations/git/branch_heads.py    # NEW   shallow handler, same shape
@@ -146,6 +151,8 @@ backend/tests/
 ├── helpers/repository_git_state.py                               # NEW  Recording and Failing reader doubles
 ├── unit/git/state/test_classification.py                         # NEW  parametrised, no fixtures
 ├── unit/git/state/test_bus_reader.py                             # NEW  routing key, timeout, reply mapping
+├── unit/git/state/test_commit_log_wire.py                        # NEW  both round trips, field-set parity
+├── integration/git/test_repository_warm_up.py                    # NEW  clone, pin read under the lock, no broadcast without a pin
 ├── unit/git/                                                     # NEW  ref-format validation, including a "-" prefixed ref
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions

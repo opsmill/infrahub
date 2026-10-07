@@ -44,6 +44,11 @@ def test_the_two_agreeing_shapes_are_accepted() -> None:
     assert answered.unavailable_reason is None
 
 
+def test_a_pending_count_belongs_to_a_branch_that_is_behind() -> None:
+    with pytest.raises(ValueError, match=r"^A pending count is only reported under BEHIND, not REWRITTEN$"):
+        CommitLogResult(condition=RepositoryGitCondition.REWRITTEN, pending_count=3)
+
+
 def test_a_warm_up_belongs_to_the_not_cloned_reason() -> None:
     with pytest.raises(ValueError, match=r"^A warm-up is only started for NOT_CLONED, not TIMEOUT$"):
         CommitLogResult(
@@ -83,30 +88,29 @@ def test_ancestry_needs_a_resolved_commit_and_a_head() -> None:
     with pytest.raises(
         ValueError, match=r"^Ancestry is only measured for an imported commit the clone resolved, against a head$"
     ):
-        GitStateFacts(head=None, imported=IMPORTED, imported_resolvable=True, imported_is_ancestor_of_head=True)
+        GitStateFacts(
+            head=None,
+            imported=IMPORTED,
+            imported_resolvable=True,
+            imported_is_ancestor_of_head=True,
+            ref_is_configured=False,
+        )
 
     with pytest.raises(
         ValueError, match=r"^Ancestry is only measured for an imported commit the clone resolved, against a head$"
-    ):
-        GitStateFacts(head=HEAD, imported=IMPORTED, imported_resolvable=False, imported_is_ancestor_of_head=True)
-
-    with pytest.raises(
-        ValueError, match=r"^Ancestry is only measured for an imported commit the clone resolved, against a head$"
-    ):
-        GitStateFacts(head=HEAD, imported=IMPORTED, imported_is_ancestor_of_head=True)
-
-
-def test_a_pending_count_needs_the_imported_commit_to_be_an_ancestor() -> None:
-    with pytest.raises(
-        ValueError, match=r"^A pending count is only measured when the imported commit is an ancestor of the head$"
     ):
         GitStateFacts(
             head=HEAD,
             imported=IMPORTED,
-            imported_resolvable=True,
-            imported_is_ancestor_of_head=False,
-            pending_count=2,
+            imported_resolvable=False,
+            imported_is_ancestor_of_head=True,
+            ref_is_configured=False,
         )
+
+    with pytest.raises(
+        ValueError, match=r"^Ancestry is only measured for an imported commit the clone resolved, against a head$"
+    ):
+        GitStateFacts(head=HEAD, imported=IMPORTED, imported_is_ancestor_of_head=True, ref_is_configured=False)
 
 
 def test_the_measurable_fact_shapes_are_accepted() -> None:
@@ -115,18 +119,14 @@ def test_the_measurable_fact_shapes_are_accepted() -> None:
         imported=IMPORTED,
         imported_resolvable=True,
         imported_is_ancestor_of_head=True,
-        pending_count=2,
+        ref_is_configured=False,
     )
-    orphaned = GitStateFacts(head=HEAD, imported=IMPORTED, imported_resolvable=False)
-    no_remote = GitStateFacts(head=None, imported=IMPORTED, imported_resolvable=True)
-    behind_uncounted = GitStateFacts(
-        head=HEAD, imported=IMPORTED, imported_resolvable=True, imported_is_ancestor_of_head=True
-    )
+    orphaned = GitStateFacts(head=HEAD, imported=IMPORTED, imported_resolvable=False, ref_is_configured=False)
+    no_remote = GitStateFacts(head=None, imported=IMPORTED, imported_resolvable=True, ref_is_configured=False)
 
-    assert behind.pending_count == 2
+    assert behind.imported_is_ancestor_of_head is True
     assert orphaned.imported_is_ancestor_of_head is None
     assert no_remote.imported_is_ancestor_of_head is None
-    assert behind_uncounted.pending_count is None
 
 
 def test_a_commit_summary_is_the_first_line_whatever_the_line_ending() -> None:

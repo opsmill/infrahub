@@ -2,10 +2,11 @@
 
 **Feature**: IFC-3101 | **Branch**: `pog-repo-commit-visibility-ifc-3101`
 
-No graph schema change. No new node kind, attribute, relationship or migration. Everything below is
-an in-memory value object, a wire message, a cache key, an enum or a configuration setting.
+One graph schema change, landing with T108: a new choice on the existing `sync_status` dropdown (see "`sync_status`
+addition" below). No new node kind, attribute or relationship. Everything else below is an in-memory
+value object, a wire message, a cache key, an enum or a configuration setting.
 
-## Existing graph data this feature reads (never writes)
+## Existing graph data this feature reads (never writes, except `sync_status` below)
 
 | Kind | Attribute | Branch support | Role |
 | --- | --- | --- | --- |
@@ -52,7 +53,8 @@ card's row set so the drift column lines up with its rows.
 | `BEHIND` | `behind` | imported commit is an ancestor of the head; `pending_count` is set |
 | `REWRITTEN` | `rewritten` | imported commit is not an ancestor of the head (rebase, force-push, moved tag); no pending count |
 | `ORPHANED` | `orphaned` | the imported commit's object is not present at all, so it cannot be placed in any history. A stronger form of `REWRITTEN`: there, the commit exists and has been left behind; here, the clone cannot resolve the hash. Decided before any ancestry call, because `Repo.is_ancestor` on an unresolvable hash raises rather than returning `False`. No pending count, and the imported marker has nowhere to sit |
-| `NO_REMOTE` | `no_remote` | the branch or ref has no counterpart on the remote |
+| `REF_MISSING` | `ref_missing` | a read-only repository's tracked ref resolves as neither `origin/<ref>` nor `refs/tags/<ref>` on the answering worker: it was named explicitly and is gone, so it is an error, not a neutral state (FR-029). Decided after `ORPHANED` and before `NOT_TRACKED`. No pending count; when a commit is imported, the log lists it and its ancestors, since that is what Infrahub still runs, and when none is the page is empty. Seen once the answering worker's copy has fetched the deletion |
+| `NO_REMOTE` | `no_remote` | a branch Infrahub maps onto a remote branch has no counterpart there, which is legitimate for a branch created before the repository was added |
 | `NOT_TRACKED` | `not_tracked` | nothing imported on this Infrahub branch, and nothing inherited from its origin. Read-write branches not synchronised with Git are excluded from the row set instead of carrying this condition |
 | `UNAVAILABLE` | `unavailable` | no git-derived answer; see `RepositoryGitUnavailable` |
 
@@ -138,11 +140,17 @@ GitStateFacts                  what the worker measured on the clone
                                      Measured BEFORE any ancestry call, because is_ancestor on an
                                      unresolvable hash raises rather than returning False
   imported_is_ancestor_of_head: bool | None
-  pending_count: int | None
-  tracked: bool                False when nothing is imported or inherited on this branch
+  ref_is_configured: bool      required, keyword-only. True for a read-only repository, whose ref is
+                               named explicitly, so a missing head is REF_MISSING rather than
+                               NO_REMOTE. Nothing imported is read from `imported` being None
+
+The pending count is not a fact: the reader takes it from the length of the one `imported..head`
+walk and puts it straight on the result.
 
 classify(facts: GitStateFacts) -> RepositoryGitCondition
-classify_commit(hash, is_ancestor_of_imported: bool | None, facts, condition) -> RepositoryCommitState
+classify_commit(hash, is_pending: bool, facts, condition) -> RepositoryCommitState
+  is_pending: the commit is reachable from the head but not from the imported commit, which is
+  membership of that same walk; everything else listed under BEHIND, IN_SYNC or REF_MISSING is HISTORY
 ```
 
 ### `infrahub.message_bus.messages.git_commit_log_get`
@@ -168,9 +176,14 @@ GitCommitLogGetResponseData
   fetched_at: datetime | None
   unavailable_reason: RepositoryGitUnavailableReason | None
   warm_up_task_id: str | None
-  commits: list[CommitEntry]
+  commits: list[GitCommitLogEntry]            the CommitEntry fields, as a Pydantic model
   error_message: str | None
-  http_code: int | None                       same convention as GitFileGetResponseData
+
+Every field is defaulted so an RPC error reply, which carries `data: {}`, still parses before its
+status is checked. `infrahub.git.state.commit_log_wire` converts both directions between these and the
+domain dataclasses, in one module, and turns a reply with no condition or contradictory fields into an
+`RPCError`. The message module stays free of `infrahub.git` imports, which would pull the worker stack
+into `infrahub.message_bus.messages` and cycle.
 
 GitCommitLogGetResponse(InfrahubResponse)     routing key git.commit_log.get
 ```
@@ -201,7 +214,21 @@ GitBranchHeadsGetResponse(InfrahubResponse)   routing key git.branch_heads.get
 
 ```text
 GitRepositoryWarmUp
-  repository_id, repository_name, repository_kind, location, infrahub_branch_name, imported_commit
+  repository_id, repository_name, repository_kind, location, infrahub_branch_name
+  No imported commit: the warm-up reads it through the client once it holds the repository lock, so a
+  sync that finished while the warm-up waited cannot be rolled back by a commit read before it.
+  It runs on whichever worker the workflow engine picks, so it broadcasts: RefreshGitFetch pinned to
+  that commit when there is one, after resetting its own fresh copy to it; RefreshGitClone for a
+  read-only branch with none; nothing for a read-write repository with none, which it does not
+  clone either, since that repository's sync creates the copy along with its first import
+
+### `infrahub.message_bus.messages.refresh_git_clone`
+
+RefreshGitClone(InfrahubMessage)              routing key refresh.git.clone, broadcast to every worker
+  repository_id, repository_name, repository_kind, infrahub_branch_name (whose ref a new copy checks out)
+  Handler infrahub.message_bus.operations.git.repository::clone creates the local copy when it is
+  missing and leaves an existing one untouched: no fetch, pull, reset or graph write. The sender
+  ignores its own broadcast, as it does for RefreshGitFetch
 
 GitReadOnlyRepositoryCheckRefs
   repository_id, repository_name, location
@@ -265,6 +292,16 @@ through the worker, because a refs listing touches no file the worker could stam
 read-write repositories, where the every-minute sync fetches and `fetched_at` already means what a
 user would read it to mean, and null for a read-only repository whose remote has never been checked.
 
+## `sync_status` addition (the one graph write, lands with T108)
+
+| Kind | Attribute | Branch support | New choice | Written by |
+| --- | --- | --- | --- | --- |
+| `CoreGenericRepository` | `sync_status` (Dropdown) | LOCAL | `error-ref-missing`, label "Tracked Ref Missing" | the read-only refs check only (FR-030) |
+
+Set on every Infrahub branch whose `ref` the check finds absent from the remote, cleared when a later
+check finds it. The import pipeline writes `syncing`, `in-sync` and `error-import` and must not move a
+branch off `error-ref-missing` while its ref is still missing. Never touches `commit` or `ref`.
+
 ## Error catalogue addition
 
 | Code | HTTP | Exception | Payload |
@@ -292,7 +329,7 @@ Stability `evolving`. Registered in `infrahub.errors.catalogue::CATALOGUE`, buil
 ## State transitions of `condition` for one repository branch
 
 ```text
-UNAVAILABLE(NOT_CLONED) --warm-up completes, next read--> IN_SYNC | BEHIND | REWRITTEN | ORPHANED | NO_REMOTE | NOT_TRACKED
+UNAVAILABLE(NOT_CLONED) --warm-up completes, next read--> IN_SYNC | BEHIND | REWRITTEN | ORPHANED | REF_MISSING | NO_REMOTE | NOT_TRACKED
 IN_SYNC   --push to remote, fetch seen-->  BEHIND
 BEHIND    --import runs-->                 IN_SYNC
 BEHIND    --force-push / rebase-->         REWRITTEN
@@ -300,6 +337,9 @@ REWRITTEN --import of the new head-->      IN_SYNC
 REWRITTEN --old commit collected upstream and locally--> ORPHANED
 ORPHANED  --import of the new head-->      IN_SYNC
 NOT_TRACKED --first import-->              IN_SYNC
+any read-only state --tracked ref deleted upstream, fetch seen--> REF_MISSING
+REF_MISSING --ref restored upstream, fetch seen--> the state the restored ref implies
+REF_MISSING --ref edited to one that exists, import--> IN_SYNC
 ```
 
 The read-only refs check never writes the tracked commit (FR-016), so it can never move a branch to

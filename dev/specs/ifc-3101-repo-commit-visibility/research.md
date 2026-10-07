@@ -140,20 +140,25 @@ another's); holding the repository lock in the handler and cloning (rejected by 
 `imported_commit` and `git_ref` to the worker. The worker computes everything else on the main
 clone (`get_git_repo_main()`), read-only and with no fetch:
 
-- head: `origin/<branch>` for read-write; `origin/<ref>` then `<ref>` for read-only (the same
-  fallback order as `InfrahubReadOnlyRepository.update_latest_commit`, without its fetch).
+- head: `origin/<branch>` for read-write; `origin/<ref>` then `refs/tags/<ref>` for read-only, and
+  then the ref as a commit hash only when the resolved commit's hash starts with it.
+  Revised on 2026-09-30: the first design used a bare `<ref>` as the fallback, matching
+  `InfrahubReadOnlyRepository.update_latest_commit`, but a bare name also resolves the local branch
+  the clone checked out, which survives the remote branch being deleted and would keep reporting it
+  in sync. With no head, the read-only kind reports `REF_MISSING` (FR-029).
 - resolvability, first: does the clone hold an object for `imported_commit`? If not, the condition is
   `ORPHANED` and no ancestry test is attempted. This ordering is required, not stylistic:
   `Repo.is_ancestor` raises `GitCommandError` on an unresolvable rev rather than returning `False`,
   so testing ancestry first would turn the PRD's "imported commit no longer reachable at all" edge
   case into an exception instead of a reported state.
 - relationship: `Repo.is_ancestor(imported, head)`; `False` means `REWRITTEN`.
-- pending count: `git rev-list --count <imported>..<head>`, only when `BEHIND` and selected.
+- pending range: under `BEHIND` only, one `git rev-list <imported>..<head>`. Its membership places
+  every listed commit and its length is the pending count when selected.
 - page: `Repo.iter_commits(head, max_count=limit, skip=offset)`. No total: FR-024 drops it from the
   contract, so no counting pass over the whole history exists in the read path at all.
 - per-commit state: `IMPORTED` if hash equals imported, else `HEAD` if hash equals head, else
-  `PENDING` when the commit is not an ancestor of imported (`Repo.is_ancestor(commit, imported)` is
-  false) and the condition is `BEHIND`, else `HISTORY`; under `REWRITTEN` and `ORPHANED` every
+  `PENDING` when the commit is in the pending range and the condition is `BEHIND`, else `HISTORY`;
+  under `REWRITTEN` and `ORPHANED` every
   non-head commit is `UNRELATED`, and under `ORPHANED` the imported commit does not appear in the
   page at all, only in the top-level `imported_commit`. When head equals imported, that commit is `IMPORTED` and the top-level `condition`
   is `IN_SYNC`; the two hashes at the top level let the UI draw both markers.
@@ -164,13 +169,19 @@ unit-tested without a repository.
 
 **Rationale**: No commit listing or ancestry code exists in `backend/infrahub/` today
 (`iter_commits` appears only in one integration test). GitPython 3.1.61 provides `is_ancestor`,
-`merge_base` and `iter_commits`; per-page ancestry is at most `limit` cheap `merge-base` calls,
-which stays constant as history grows. Non-linear history is why state is computed rather than
-inferred from list position (FR-005).
+`merge_base` and `iter_commits`. Non-linear history is why state is computed rather than inferred
+from list position (FR-005).
 
-**Alternatives considered**: materialising `rev-list imported..head` as a set for membership
-(rejected: unbounded for a long-neglected repository); `git log --format` parsing (rejected: GitPython
-already exposes typed commits).
+Revised during the PR 5 review: the first design placed each listed commit with its own
+`Repo.is_ancestor(commit, imported)`, up to `limit` `merge-base` subprocesses per page, and counted
+the range in a separate `rev-list --count`. One `rev-list imported..head` answers both, so it
+replaced them. Its cost grows with the range not yet imported rather than with the page, which is
+what a long-neglected read-only repository makes large; a walk bounded to the page can mislabel
+commits whose dates tie, so a bounded form is deferred to T106.
+
+**Alternatives considered**: a `merge-base` per listed commit plus a separate count (the first
+design, replaced as above); `git log --format` parsing (rejected: GitPython already exposes typed
+commits).
 
 ## Freshness
 
@@ -217,7 +228,8 @@ query, then sends a single `GitBranchHeadsGet` carrying `[{branch_name, git_ref,
 The row set is decided entirely on the API side, so `sync_with_git` does not travel. The worker
 answers from `InfrahubRepositoryBase.get_branches_from_remote()` (the
 local mirror of `origin/*`, no fetch) and tag refs, and classifies each row: `NOT_TRACKED` when there
-is no tracked commit, `NO_REMOTE` when the ref has no remote counterpart, else `IN_SYNC` / `BEHIND` /
+is no tracked commit, `REF_MISSING` when a read-only row's configured ref has no remote counterpart,
+`NO_REMOTE` when a mapped read-write branch has none, else `IN_SYNC` / `BEHIND` /
 `REWRITTEN` by the same rule as above, without a pending count. The row set is branches synchronised
 with Git for the read-write kind and every branch for the read-only kind, excluding merged and
 deleting branches and the global branch, so the column lines up with the sibling card's rows.
@@ -385,7 +397,8 @@ auto-gc runs during fetch, and it respects worktree roots. Today's fetch flags
 (`prune=True, tags=True, prune_tags=True`) already force-update tags, so the check adds no new
 object-deletion risk. Residual risks to pin with an integration test against a fixture remote whose
 tag is moved: the old commit stays readable through its worktree on every worker, and a deleted
-upstream tag makes the check report `NO_REMOTE` rather than raise
+upstream tag makes the commit view report `REF_MISSING` (FR-029) and the check mark the pinning
+branches' `sync_status` (FR-030) rather than raise
 (`update_latest_commit` raises `ValueError("Ref ... not found")` in that case and must not be
 reused).
 

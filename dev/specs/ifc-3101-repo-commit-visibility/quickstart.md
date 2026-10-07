@@ -163,8 +163,12 @@ uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log
 
 4. Tag move: pin a read-only repository to a tag, move the tag upstream, run the check, then read a
    file at the imported commit through `GET /api/file/{repository_id}/...`. Expected: content still
-   served (FR-020). Delete the tag upstream and run the check again. Expected:
-   `condition: NO_REMOTE`, no exception.
+   served (FR-020). Delete the tag upstream and run the check again. Expected: no exception, and
+   the tracked commit unchanged. Once a pruning fetch has removed the worker's stale tag ref, the
+   commit view reports `condition: REF_MISSING` with the imported commit and its history still
+   listed. With T108 landed the check performs that fetch itself, `sync_status` reads
+   `error-ref-missing` on the branches pinning the tag, and restoring the tag and checking again
+   clears it; until then neither happens on the check alone.
 
 5. Serialisation: trigger the check and an import for the same repository together; the
    `RecordingLockRegistry` timeline (`backend/tests/adapters/lock/`) shows no overlap under
