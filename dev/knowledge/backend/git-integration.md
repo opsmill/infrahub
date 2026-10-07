@@ -269,28 +269,37 @@ remote head by ancestry first, and resets a worktree that does not lead to that 
   its own.
 
 A merge goes through neither path: it builds on the local destination and merges the local source
-ref. Two checks keep it on the commits the graph imported. Both compare for equality, so a plain push
-to the source branch, or to the trunk of a repository the branch changed, holds the merge too, not
-only a rewrite, until the next cycle imports the new head:
+ref. Two checks keep it on the commits the graph imported. Only the first one holds a merge after a
+plain push and keeps the branch open:
 
 - Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the trunk
   with `git ls-remote` and compares them with the commits the graph records
   (`git/merge_readiness.py::RemoteHeadsMergeCheck`). While one differs, it refuses the merge with
   `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the next
-  cycle. A remote that cannot be read does not block the merge. For a repository whose source branch
-  records the commit its trunk records, the check reads the source branch only, and the dispatcher
-  runs no Git merge for it: there is nothing to push.
-- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches and compares both
-  branches again. The source graph commit comes in the merge model (`GitRepositoryMerge`), read when
-  the merge was dispatched, because the source branch can be deleted before the Git merge runs.
-  `merge_git_repository` reads the destination graph commit under the repository lock, because an
-  earlier Git merge can move the trunk after the dispatch. A branch whose clone is behind or diverged
-  is moved onto the remote head when the graph commit equals that head. A source behind the graph
-  commit, when the remote history holds that commit, is moved onto the graph commit. A diverged
-  branch whose graph commit differs, and a destination behind a head the graph does not record,
-  refuse the merge with `RepositoryDivergentHistoryError`. That refusal comes after the graph merge: the branch is merged
-  in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user to
-  finish the merge in Git.
+  cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
+  repository the branch changed, holds the merge too, not only a rewrite, until the next cycle imports
+  the new head. A remote that cannot be read does not block the merge. For a repository whose source
+  branch records the commit its trunk records, the check reads the source branch only, and the
+  dispatcher runs no Git merge for it: there is nothing to push.
+- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches, then compares the local
+  source ref and the local trunk worktree with their remote heads. The source graph commit comes in
+  the merge model (`GitRepositoryMerge`), read when the merge was dispatched, because the source
+  branch can be deleted before the Git merge runs. `merge_git_repository` reads the destination graph
+  commit under the repository lock, because an earlier Git merge can move the trunk after the
+  dispatch. A branch on its remote head is not compared. For any other branch:
+  - Behind, ahead (the remote was rewound) or diverged, with a graph commit equal to the remote
+    head: the branch moves onto that head, because only this clone is stale.
+  - Ahead or diverged, with a graph commit that differs: the merge is refused, because the rewrite is
+    not recorded yet.
+  - A trunk behind, with a graph commit that differs: the merge is refused, because the remote would
+    reject the push. A plain push to the trunk that lands between the two checks ends here.
+  - A source behind, with a graph commit that differs: the source moves onto the graph commit when the
+    remote history holds that commit past the clone. Otherwise the merge uses the source as it is,
+    which is the commit the graph merged or an older one.
+
+  A refusal raises `RepositoryDivergentHistoryError`. It comes after the graph merge: the branch is
+  merged in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user
+  to finish the merge in Git.
 
 > **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
 > the guard refused: the user finishes it in Git. The delivery queue specified in
