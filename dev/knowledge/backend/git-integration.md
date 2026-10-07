@@ -287,8 +287,9 @@ ref. Two checks keep it off a rewritten history:
   finish the merge in Git.
 
 > **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
-> the guard refused. The delivery queue specified in `dev/specs/ifc-3220-writeback-failure-handling/`
-> owns that recovery. Update this section when either lands.
+> the guard refused: the user finishes it in Git. The delivery queue specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/` does not recover it either: its FR-020 and FR-022
+> only mark such a delivery unreplayable. Update this section when either lands.
 
 ## Known limitations
 

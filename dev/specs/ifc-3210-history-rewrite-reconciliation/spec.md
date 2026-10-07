@@ -304,9 +304,9 @@ here. See "Out of Scope".
   the merge while one differs. That refusal leaves the branch open, and the merge can run again after
   the synchronisation imports the head. A remote that cannot be read MUST NOT block the merge. A
   refusal of the Git merge itself, after a remote moved between the two checks, MUST say that the
-  branch is merged in Infrahub and not in Git, and how to finish the merge in Git. Its recovery
-  belongs to the delivery queue of IFC-3220: FR-020 there covers a source commit no longer on the
-  remote, and FR-022 a rewritten destination history.
+  branch is merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes
+  that merge in Git. The delivery queue of IFC-3220 does not recover it: its FR-020 and FR-022 only
+  mark such a delivery unreplayable, with a named cause.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the

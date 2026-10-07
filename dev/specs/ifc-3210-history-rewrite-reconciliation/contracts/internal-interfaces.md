@@ -378,8 +378,9 @@ repository kinds. A test substitutes an in-memory one. The recorder itself impor
 
 Changed. `backend/infrahub/git/base.py`.
 
-Before it pulls, it compares the branch worktree head and the remote head by ancestry. It
-hard-resets onto the remote head whenever the worktree does not lead to it.
+It fetches the branch, then compares the branch worktree head and the fetched remote head by
+ancestry. It hard-resets onto the remote head whenever the worktree does not lead to it, and
+otherwise fast-forwards with `git merge --ff-only` onto that head. No path runs `git pull`.
 
 ### Contract
 
@@ -387,14 +388,15 @@ hard-resets onto the remote head whenever the worktree does not lead to it.
 |---|---|
 | No origin | Returns `False`, unchanged. |
 | Worktree head equals remote head | Returns `True`, unchanged. |
-| Worktree head is an ancestor of remote head | Pulls, unchanged. |
+| Worktree head is an ancestor of remote head | Fast-forwards with `git merge --ff-only` onto the fetched head. |
 | **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree in this clone only. It does not push the new branch. |
+| The remote carries no such ref | The fetch fails, and `pull` raises `RepositoryError`. Nothing moves. |
 
 **The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
-is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
-its remote resets like any other, because nothing leaves a commit there that exists nowhere else.
+is the remote head or is an ancestor of it. A worktree ahead of its remote resets like any other,
+because nothing leaves a commit there that exists nowhere else.
 
 The pull path answers this without any classification context: both ancestry questions are the
 same gateway call the detector makes. What the pull path cannot do is tell a rewrite from a
@@ -403,12 +405,10 @@ and neither records.
 
 ### Rules
 
-- The reset honours `update_commit_value` the same way the pull does, and forces no value of its
-  own. The broadcast handler passes `update_commit_value=False`, so a reset driven by a broadcast
-  writes nothing. A worker that heard **no** broadcast reaches the reset through `pull` or through
-  `collect_pending_imports`, and both default to `True`, so that worker does write the commit. The
-  write is idempotent: the reconciling worker already stored the same value. Do not read the
-  broadcast handler's flag as a property of self-healing.
+- The reset honours `update_commit_value` the same way the fast-forward does, and forces no value
+  of its own. Both production callers of `pull`, in `git/convergence.py`, pass
+  `update_commit_value=False`, so a reset in `pull` writes nothing. The commit is written by the
+  cycle that reconciles the branch, in `collect_pending_imports`.
 - The reset writes no rewrite record and emits no event, whatever the caller (FR-007).
 - No message raised from this path calls a divergent history a conflict (FR-003, FR-017).
 - **The unconditional reset is safe because of the merge ordering.** `InfrahubRepository.merge`
@@ -807,9 +807,9 @@ therefore cannot clear by a retry. The branch merge runs a check before the grap
    merge fails after the graph merge.
 
 The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
-refusal leaves the branch merged in Infrahub and not in Git, and the delivery queue of IFC-3220 owns
-the recovery: FR-020 there covers a source commit no longer on the remote, and FR-022 a rewritten
-destination history.
+refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as
+the message says, and the next cycle imports the result. The delivery queue of IFC-3220 does not
+recover this case: its FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause.
 
 ### Accepted residual risk
 

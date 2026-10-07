@@ -158,9 +158,10 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 ## R3. Where the self-healing reset runs
 
-**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call.
-Hard-reset onto the remote head unless the worktree head already is it, is an ancestor of it, or
-the remote carries no such ref.
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, after it fetches the branch.
+Hard-reset onto the remote head unless the worktree head already is it or is an ancestor of it, and
+fast-forward with `git merge --ff-only` otherwise. When the remote carries no such ref, the fetch
+fails and `pull` raises.
 
 A worktree ahead of its remote resets too. The state that argued against it, a commit left behind
 by a rejected push, no longer arises: `merge` pushes before it records and resets the destination
@@ -208,7 +209,9 @@ merge a second time. A refusal there cannot clear. FR-005d therefore moves the n
 the graph merge: the branch merge compares the remote heads with the graph commits through
 `git ls-remote`, and refuses while one differs. The branch stays open, the next cycle imports the
 head, and the user merges again. The refusal of the Git merge itself is left for a remote that moves
-between the two checks, and the delivery queue of IFC-3220 owns its recovery.
+between the two checks. The user finishes that merge in Git, as the refusal message says. The
+delivery queue of IFC-3220 does not recover it: its FR-020 and FR-022 only mark such a delivery
+unreplayable, with a named cause.
 
 **Accepted residual risk**: the remote can be rewritten between the guard's fetch and the push that
 follows. The guard narrows that window, it does not close it. FR-005b is a best-effort property,
@@ -219,10 +222,10 @@ and creating it is not a merge of anything.
 
 **What the pull-side reset must not do** (FR-007): it must not write the rewrite record, and must not
 emit the signal. It writes the commit only when its caller asks for it, through
-`update_commit_value`. The broadcast handler passes `update_commit_value=False`, so a reset it drives
-writes nothing. A worker that heard no broadcast writes the remote head, which is the value the
-reconciling worker already stored. The record and the signal are written by the recorder in the sync
-path, never here.
+`update_commit_value`. Both production callers of `pull`, in `git/convergence.py`, pass
+`update_commit_value=False`, so a reset in `pull` writes nothing. The cycle that reconciles the branch
+writes the commit. The record and the signal are written by the recorder in the sync path, never
+here.
 
 **Why an unconditional reset is safe.** `InfrahubRepository.merge` pushes the merge commit first,
 records it second, and resets the destination worktree to its pre-merge commit when either step

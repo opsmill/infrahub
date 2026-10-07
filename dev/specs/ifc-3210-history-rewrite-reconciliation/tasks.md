@@ -329,9 +329,9 @@ emits no signal.
 > is gone. Read `pull` as it stands before changing it.
 
 - [x] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
-      before the `origin.pull` call, per
+      after the fetch of the branch, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 3. The reset
-      honours `update_commit_value` the same way the pull does.
+      honours `update_commit_value` the same way the fast-forward does.
 - [x] T042 [US2] Update the component test T023 rewrote, in
       `backend/tests/component/git/test_git_repository.py`. T023 leaves it asserting the corrected
       message on a diverged pull, which is right while `pull` still raises. This task makes `pull`
