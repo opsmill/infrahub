@@ -1,0 +1,1 @@
+Fixed searches returning no results when the search text starts or ends with a space, for example after pasting it from another application. This affects the list view search, the relationship fields on create and edit forms, and the relationship filter in the list view.
