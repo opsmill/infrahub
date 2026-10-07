@@ -380,6 +380,14 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
 
 
+@pytest.fixture
+def without_cache_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Unset every INFRAHUB_CACHE_* variable, so the shell running the tests cannot change what is loaded."""
+    for name in [name for name in os.environ if name.startswith("INFRAHUB_CACHE_")]:
+        monkeypatch.delenv(name)
+
+
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_supersedes_scalar_connection_fields() -> None:
     """A URL alongside scalar settings is accepted; the URL wins and the override is reported.
 
@@ -395,6 +403,7 @@ def test_cache_url_supersedes_scalar_connection_fields() -> None:
     assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_loads_under_the_compose_environment() -> None:
     """The shipped docker-compose.yml sets every scalar cache variable, most at their default.
 
@@ -419,6 +428,7 @@ def test_cache_url_loads_under_the_compose_environment() -> None:
     assert mock_log.warning.call_args.kwargs["superseded_settings"] == ["INFRAHUB_CACHE_ADDRESS"]
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_does_not_report_defaulted_scalars() -> None:
     """Scalars explicitly set to their own default value are not reported as superseded."""
     with (
@@ -431,12 +441,14 @@ def test_cache_url_does_not_report_defaulted_scalars() -> None:
     mock_log.warning.assert_not_called()
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_coexists_with_redis_driver() -> None:
     settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
     assert settings.driver is CacheDriver.Redis
     assert settings.url is not None
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_ignored_for_non_redis_driver() -> None:
     # The URL is only consulted by the Redis driver, so a non-Redis driver neither enforces
     # exclusivity with the scalar fields nor parses the URL as a Redis URL: this combines a scalar
@@ -446,17 +458,20 @@ def test_cache_url_ignored_for_non_redis_driver() -> None:
     assert settings.url is not None
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_rejects_invalid_url() -> None:
     with pytest.raises(ValidationError, match="requires a service name"):
         CacheSettings(url=SecretStr("redis+sentinel://sentinel-a:26379"))
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_validation_error_redacts_secret() -> None:
     with pytest.raises(ValidationError) as exc_info:
         CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
     assert "topsecret" not in str(exc_info.value)
 
 
+@pytest.mark.usefixtures("without_cache_environment")
 def test_cache_url_environment_variable() -> None:
     url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
     with patch.dict(os.environ, {"INFRAHUB_CACHE_URL": url}):
