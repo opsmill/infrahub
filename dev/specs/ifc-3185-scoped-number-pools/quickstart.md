@@ -83,7 +83,7 @@ nothing from the database, so any `pool_id` returns the scoped dataset: `allocat
 ["site"]`, a utilization refused without `division` and reporting 40 of 100 for Site A, the
 divisions Site A (40), Site B (30) and Site C (1), and 41 rows when filtered on Site A. The reserved
 `pool_id` `mock-unscoped` returns the unscoped dataset: `allocation_scope` is `[]`, the divisions
-list holds one division with no entry, and the `division` filter is refused. Once the real reads
+list is empty with `count` 0, and the `division` filter is refused. Once the real reads
 land, the same requests return the created pool's own data.
 
 ## Scenario 2 — one pool, every site (User Story 2, FR-001 to FR-007, SC-001, SC-002, SC-004)

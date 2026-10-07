@@ -260,8 +260,8 @@ keeps holder id, branch, value and record identifier and the generic resolver ke
 filter on; the move onto the shared fragment is pinned by regression tests on that query's count,
 offset and limit and on the generic utilization figures.
 
-On an unscoped pool the getter returns one division with no entry and the figures it computes
-today (FR-022).
+On an unscoped pool the getter's report holds a single entry with an empty key and the figures it
+computes today; the divisions query lists no division for it (FR-022).
 
 **Rationale**: one read for the figures keeps the headline, the range rows and the divisions
 consistent by construction. The enumeration is the one place the pool reads the kind's data, as

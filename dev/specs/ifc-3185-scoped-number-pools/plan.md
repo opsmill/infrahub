@@ -310,7 +310,7 @@ IFC-3348, before the real reads).
 | Root field | Reads | Builds |
 |---|---|---|
 | `InfrahubNumberPoolUtilization` | the rows of `NumberPoolGetAllocated` over every range, kept to one division when `division` is given, the ranges from `NumberPoolRepository.get_ranges`, the attribute's `excluded_values`, `min_value` and `max_value` | `figures` for the pool and each range from the reporter, with `size` as the count of values of the pool's space; `allocation_scope` from the entries in force |
-| `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the fixed dataset), ordered by `utilization` descending then `display_label`; one division with no entry when the scope in force is empty |
+| `InfrahubNumberPoolDivisions` | the same rows, the pool's space as the measured space | one `NumberPoolDivision` per division holding at least one row, from the reporter (set B: from the fixed dataset), ordered by `utilization` descending then `display_label`; no division and `count` 0 when the scope in force is empty |
 | `InfrahubNumberPoolAllocations` | `NumberPoolGetAllocated` with the pool's space (or the part of it in the range of `range_id`), `branch` and `provenance` pushed into the query; `offset` and `limit` | rows with `holder` (one `NodeManager.get_many` per distinct row branch for display label and hfid), `range` from the pool's ranges (set B: every column comes from the fixed dataset) |
 
 None of the three resolvers reads the deprecated `start_range` / `end_range` pair: the shorthand
@@ -361,7 +361,8 @@ The utilization resolver computes the pool's block from `of(key)` and each range
 `NodeManager.get_many(..., branch_agnostic=True)` over the distinct peer ids of relationship
 entries; a peer that still cannot be read is labelled by its identifier, and a holder holding
 nothing for an entry carries an empty value, so the non-null fields never void the list. Unscoped:
-`divisions` is one entry with an empty key, and the pool's block equals today's figures. Regression
+`divisions` is one entry with an empty key, the pool's block equals today's figures, and the
+divisions resolver lists no division. Regression
 tests pin `InfrahubResourcePoolAllocated`'s count, offset and limit and the generic utilization
 figures across the move onto the shared fragment.
 
@@ -424,7 +425,7 @@ diffing `schema/schema.graphql` for those types.
   ordering, pagination, the refusals),
   `ScopedPoolDependencyChecker` with a `node_schema` lacking the field, and the SDL snapshot of
   every type of the dedicated surface plus `allocation_scope` on the three pool inputs.
-- **Component**: the three dedicated queries on an unscoped pool (figures, ranges, one division,
+- **Component**: the three dedicated queries on an unscoped pool (figures, ranges, no division,
   rows with provenance and range, a value no range holds and an excluded value absent from the
   rows and the figures, every filter, pagination, a pool holding two ranges with
   a null shorthand), on the fixed scoped dataset of set B (divisions, rows and filters agree, SC-010) and after D2

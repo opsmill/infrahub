@@ -115,15 +115,14 @@ type NumberPoolDivisions {
   allocation_scope: [String!]!
   """
   Every division whose holders hold at least one value the pool tracks on any live branch, ordered
-  by utilization descending then by display_label. An unscoped pool lists one division with no
-  entry.
+  by utilization descending then by display_label. Empty when the scope in force is empty.
   """
   divisions: [NumberPoolDivision!]!
 }
 
 """One division: a tuple of values of the scope in force."""
 type NumberPoolDivision {
-  """The entries' display labels joined with " / ". Empty for the division of an unscoped pool."""
+  """The entries' display labels joined with " / "."""
   display_label: String!
   """One entry per scope entry in force, in scope order."""
   entries: [NumberPoolDivisionEntry!]!
@@ -319,12 +318,15 @@ percentages keep the names and meaning of `PoolUtilization`.
 
 | Pool state | `allocation_scope` on results | `NumberPoolUtilization.figures` | `ranges[].figures` | `NumberPoolDivisions.divisions` | `division` argument |
 |---|---|---|---|---|---|
-| unscoped | `[]` | pool-wide | per range | one row: `entries: []`, `display_label: ""`, figures equal to the pool's | refused |
+| unscoped | `[]` | pool-wide | per range | none: `count` 0, `divisions` empty, no error | refused |
 | scoped | the entries in force | the division given as `division`; refused without it (FR-011) | the division given as `division` (FR-017) | one row per division holding at least one tracked value on any live branch | accepted for paths in force; complete on the utilization query |
 | scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | refused |
-| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above, with `size` 0 | per the rows above |
+| no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above; each division listed has `size` 0 | per the rows above |
 
 On a pool with no range, the allocations list is empty.
+
+The divisions query lists only divisions of a scope in force. A pool whose scope in force is
+empty has no division to list; its figures are read from `InfrahubNumberPoolUtilization`.
 
 On a scoped pool the utilization query reports one division at a time: the headline and every
 range row report the division given as `division`, including a range in which it holds no value
@@ -377,7 +379,7 @@ The unscoped dataset, pool `VLANs`:
 | Allocation scope | `[]` |
 | Ranges | `1 - 50` with weight 10, `51 - 100` with weight 0 |
 | Excluded values | 40 |
-| Divisions | one division with `entries: []` and `display_label: ""` |
+| Divisions | none |
 | Rows | 1 and 51 on `main`; 7 on `branch1` only; every row has provenance `ALLOCATED` |
 
 Holders are of kind `InfraDevice`, with a fixed id, `hfid` equal to `[display_label]`, and the
@@ -394,7 +396,7 @@ The results this gives:
 | Read | Scoped dataset | Unscoped dataset |
 |---|---|---|
 | `NumberPoolUtilization` without `division` | refused | `size` 99, `used` 3, `used_default_branch` 2, `used_branches` 1; `1 - 50`: 2 of 50; `51 - 100`: 1 of 50 |
-| `NumberPoolDivisions` | A (40), B (30), C (1), each of `size` 100; no row for site D | one division with the pool's figures |
+| `NumberPoolDivisions` | A (40), B (30), C (1), each of `size` 100; no row for site D | `count` 0, no division |
 | `NumberPoolUtilization` with the division of site A | 40 of 100; `1 - 50`: 40 of 50; `51 - 100`: 0 of 50 | refused |
 | `NumberPoolUtilization` with the division of site B | 30 of 100 (27 on `main`, 3 on other branches); `1 - 50`: 0 of 50; `51 - 100`: 30 of 50 | refused |
 | `NumberPoolAllocations` filtered on site A | `count` 41: the 40 rows on `main` and `D1`'s row on `branch1` | refused |
@@ -491,9 +493,9 @@ query { InfrahubNumberPoolDivisions(pool_id: "17f3c0a2-…") { count allocation_
 ```json
 {
   "InfrahubNumberPoolDivisions": {
-    "count": 1,
+    "count": 0,
     "allocation_scope": [],
-    "divisions": [ { "display_label": "", "entries": [], "figures": { "size": 100, "used": 3 } } ]
+    "divisions": []
   }
 }
 ```

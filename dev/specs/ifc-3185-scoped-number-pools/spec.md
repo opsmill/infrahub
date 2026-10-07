@@ -165,7 +165,7 @@ examples.
    pool and the branch; read on a branch that defines none of them, **Then** `allocation_scope` is
    empty and the figures are pool-wide.
 4. **Given** an unscoped pool, **When** `InfrahubNumberPoolDivisions` is read, **Then** it lists
-   exactly one division with no entry, an empty display label and figures equal to the pool's;
+   no division: `count` is 0 and `allocation_scope` and `divisions` are empty, without an error;
    **Given** a scoped pool, **Then** it lists every division holding at least one value, with its
    entries (path, value, display label, peer kind), a display label joining the entries' labels,
    and figures over the whole pool, ordered by utilization descending then display label.
@@ -483,6 +483,8 @@ spec directory.
 - A `division` filter names a path in force with a value no holder carries: an empty list and
   `count` 0, not a refusal. A `division` filter on an unscoped pool, or on a pool none of whose
   entries the reading branch defines: refused naming the pool and the branch.
+- `InfrahubNumberPoolDivisions` on an unscoped pool, or on a pool none of whose entries the reading
+  branch defines: `count` 0 and an empty list, not a refusal.
 - `range_id` names a range of another pool: refused naming the pool and the range.
 - A `division` filter with a partial tuple on a two-entry scope (`[{path: "site", value: A}]`):
   accepted by the allocations query, which returns every row held in site A across tenants;
@@ -608,8 +610,9 @@ specification adds.
 - **FR-022**: A query dedicated to number pools, `InfrahubNumberPoolDivisions`, MUST return for one
   pool the scope in force, the count of divisions and the complete list of divisions, each with its
   entries, display label and figures, ordered by utilization descending then display label, without
-  pagination. On an unscoped pool, or on a branch where no entry is in force, the list MUST hold
-  exactly one division with no entry, an empty display label and figures equal to the pool's. On a
+  pagination. On an unscoped pool, or on a branch where no entry is in force, the list MUST be
+  empty and `count` 0, without an error; the pool's figures are read from
+  `InfrahubNumberPoolUtilization`. On a
   scoped pool the list holds the divisions FR-011 lists, each with figures over the pool's whole
   space. A division's figures per range are read from `InfrahubNumberPoolUtilization` with
   `division` (FR-015). *(User Story 1, scenario 4; User Story 3, scenarios 1 and 4)*
