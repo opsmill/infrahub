@@ -19,8 +19,8 @@ import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-t
 
 const columnHelper = createColumnHelper<BranchTableRow>();
 
-export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow, string> {
-  return columnHelper.accessor("name", {
+export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow> {
+  return columnHelper.display({
     id: "id",
     header: ({ table }) => (
       <BranchIdentifierHeader
@@ -41,11 +41,11 @@ export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow, string> {
 
 export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
   return [
-    columnHelper.accessor("status", {
+    columnHelper.display({
       id: "status",
       header: () => <BranchStatusHeader />,
-      cell: ({ cell }) => <BranchStatusCell status={cell.getValue()} />,
-    }) as ColumnDef<BranchTableRow>,
+      cell: ({ row }) => <BranchStatusCell status={row.original.status} />,
+    }),
     columnHelper.display({
       id: "proposed_changes",
       size: 250,
@@ -65,32 +65,32 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
       header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.git_state} />,
       cell: ({ row }) => <BranchGitStateCell summary={row.original.repositorySummary} />,
     }),
-    columnHelper.accessor("branched_from", {
+    columnHelper.display({
       id: "branched_from",
       header: () => <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.branched_from} />,
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchTableRow>,
-    columnHelper.accessor("updated_at", {
+      cell: ({ row }) => <BranchDateCell date={row.original.branched_from} />,
+    }),
+    columnHelper.display({
       id: "updated_at",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__updated_at} />
       ),
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchTableRow>,
-    columnHelper.accessor("created_at", {
+      cell: ({ row }) => <BranchDateCell date={row.original.updated_at} />,
+    }),
+    columnHelper.display({
       id: "created_at",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_at} />
       ),
-      cell: ({ cell }) => <BranchDateCell date={cell.getValue()} />,
-    }) as ColumnDef<BranchTableRow>,
-    columnHelper.accessor("created_by", {
+      cell: ({ row }) => <BranchDateCell date={row.original.created_at} />,
+    }),
+    columnHelper.display({
       id: "created_by",
       header: () => (
         <TableColumnHeader columnSchema={BRANCH_FIELD_SCHEMAS.node_metadata__created_by} />
       ),
-      cell: ({ cell }) => <BranchCreatedByCell createdBy={cell.getValue()} />,
-    }) as ColumnDef<BranchTableRow>,
+      cell: ({ row }) => <BranchCreatedByCell createdBy={row.original.created_by} />,
+    }),
   ];
 }
 
@@ -103,9 +103,5 @@ export function getBranchActionsColumn(): ColumnDef<BranchTableRow> {
 }
 
 export function getBranchTableColumns(): Array<ColumnDef<BranchTableRow>> {
-  return [
-    getBranchIdentifierColumn() as ColumnDef<BranchTableRow>,
-    ...getBranchFieldsColumns(),
-    getBranchActionsColumn(),
-  ];
+  return [getBranchIdentifierColumn(), ...getBranchFieldsColumns(), getBranchActionsColumn()];
 }

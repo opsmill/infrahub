@@ -30,7 +30,7 @@ export interface SyncStatusCount {
   count: number;
 }
 
-// `repositories` is ordered worst first: repositories[0] drives the pill, the Git state and "+N more".
+// `repositories` is ordered worst first.
 export type BranchRepositorySummary =
   | { status: "pending" }
   | { status: "denied" }

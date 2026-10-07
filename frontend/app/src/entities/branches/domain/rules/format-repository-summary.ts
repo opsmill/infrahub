@@ -18,3 +18,10 @@ export function formatRepositoryState({ repository, commit, syncStatus }: Branch
 export function formatSyncStatusCounts(counts: readonly SyncStatusCount[]): string {
   return counts.map(({ label, count }) => `${label}: ${count}`).join(" · ");
 }
+
+export function countRepositoriesInState(
+  counts: readonly SyncStatusCount[],
+  { syncStatus }: BranchRepositoryState
+): number {
+  return counts.find(({ value }) => value === (syncStatus.value ?? null))?.count ?? 0;
+}

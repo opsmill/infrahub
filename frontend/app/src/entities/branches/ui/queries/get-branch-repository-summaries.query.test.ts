@@ -200,6 +200,24 @@ describe("useGetBranchRepositorySummaries", () => {
       .toEqual({ status: "error", message: "Repository index unavailable" });
   });
 
+  test("reports an error on every branch when the branch list has no default branch", async () => {
+    // GIVEN
+    vi.mocked(useGetBranches).mockReturnValue({
+      data: [feature],
+    } as unknown as ReturnType<typeof useGetBranches>);
+
+    // WHEN
+    const { result } = await renderSummaries();
+
+    // THEN
+    await expect.poll(() => result.current.feature?.status).toBe("error");
+    expect(result.current.primary).toMatchObject({
+      status: "error",
+      message: expect.stringContaining("No default branch found"),
+    });
+    expect(getBranchRepositories).not.toHaveBeenCalled();
+  });
+
   test("reports an error on every branch when the repository list itself was cut short", async () => {
     // GIVEN
     vi.mocked(getBranchRepositories).mockResolvedValue({

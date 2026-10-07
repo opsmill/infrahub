@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { BranchRepositoryState } from "@/entities/branches/domain/model/branch-repository-summary";
 
-import { formatRepositoryState, formatSyncStatusCounts } from "./format-repository-summary";
+import {
+  countRepositoriesInState,
+  formatRepositoryState,
+  formatSyncStatusCounts,
+} from "./format-repository-summary";
 
 const state = (overrides: Partial<BranchRepositoryState> = {}): BranchRepositoryState => ({
   repository: { id: "repo-1", name: "repo-one", kind: "CoreRepository", isReadOnly: false },
@@ -57,5 +61,32 @@ describe("formatSyncStatusCounts", () => {
     ]);
 
     expect(text).toBe("Import Error: 1 · In Sync: 2");
+  });
+});
+
+describe("countRepositoriesInState", () => {
+  const counts = [
+    { value: "error-import", label: "Import Error", count: 2 },
+    { value: null, label: "Unknown", count: 1 },
+  ];
+
+  it("returns the count of the state's value", () => {
+    expect(countRepositoriesInState(counts, state())).toBe(2);
+  });
+
+  it("matches a state with no value to the null count", () => {
+    const noValue = state({
+      syncStatus: { value: null, label: null, color: null, description: null },
+    });
+
+    expect(countRepositoriesInState(counts, noValue)).toBe(1);
+  });
+
+  it("returns 0 when no count matches the state", () => {
+    const inSync = state({
+      syncStatus: { value: "in-sync", label: "In Sync", color: null, description: null },
+    });
+
+    expect(countRepositoriesInState(counts, inSync)).toBe(0);
   });
 });

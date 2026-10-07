@@ -16,16 +16,15 @@ import {
   type BranchRepositoryPage,
 } from "@/entities/repository/domain/model/branch-repository";
 import {
-  REPOSITORY_BRANCH_STATUS_LIMIT,
-  REPOSITORY_FETCH_LIMIT,
-} from "@/entities/repository/domain/model/repository";
-import {
   RepositoryBranchStatusError,
   type RepositoryBranchStatusPage,
 } from "@/entities/repository/domain/model/repository-branch-status";
 import { compareSyncStatusSeverity } from "@/entities/repository/domain/rules/sync-status-severity";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/repository/ui/queries/get-repository-branch-status.query";
+
+const REPOSITORY_FETCH_LIMIT = 500;
+const REPOSITORY_BRANCH_STATUS_LIMIT = 500;
 
 function toFailedFetch(error: Error): RepositoryStatusFetch {
   const isDenied =
@@ -48,6 +47,22 @@ function toRepositoryListFetch(
   }
   if (!list.error) return { status: "pending" };
   return toFailedFetch(list.error);
+}
+
+function getListFetch(
+  allBranches: BranchListItem[] | undefined,
+  branchesError: Error | null,
+  defaultBranch: BranchListItem | null,
+  repositoryList: UseQueryResult<BranchRepositoryPage>
+): RepositoryStatusFetch | null {
+  if (branchesError && !allBranches) return { status: "error", message: branchesError.message };
+  if (allBranches && !defaultBranch) {
+    return {
+      status: "error",
+      message: "No default branch found, so repositories could not be read.",
+    };
+  }
+  return toRepositoryListFetch(repositoryList);
 }
 
 // Data first: a failed background refetch keeps the rows that were already loaded.
@@ -81,10 +96,7 @@ export function useGetBranchRepositorySummaries(
     // Only the ids are read here; each repository's status query polls while it syncs.
     refetchInterval: false,
   });
-  const listFetch: RepositoryStatusFetch | null =
-    branchesError && !allBranches
-      ? { status: "error", message: branchesError.message }
-      : toRepositoryListFetch(repositoryList);
+  const listFetch = getListFetch(allBranches, branchesError, defaultBranch, repositoryList);
   const repositories: BranchRepositoryRef[] =
     listFetch === null && repositoryList.data
       ? repositoryList.data.repositories.map(({ id, name, kind, isReadOnly }) => ({

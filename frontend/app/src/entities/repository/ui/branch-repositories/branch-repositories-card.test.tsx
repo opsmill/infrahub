@@ -445,15 +445,15 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-    for (let sample = 0; sample < 5; sample += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect(
+    // A toast is emitted before the request rejects, so it would already be rendered by the time the card shows the error.
+    await expect
+      .poll(() =>
         page
           .getByRole("alert")
           .elements()
           .map((alert) => alert.textContent)
-      ).toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
-    }
+      )
+      .toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
     await expect
       .element(component.getByText("Repository index unavailable", { exact: true }))
       .toBeVisible();
