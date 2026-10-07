@@ -10915,6 +10915,8 @@ export type CoreNodeUpdateInput = {
 /** A pool of number resources */
 export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreNumberPool';
+  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  allocation_scope: Maybe<ListAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /**
@@ -11045,6 +11047,8 @@ export type CoreNumberPoolCreate = {
 };
 
 export type CoreNumberPoolCreateInput = {
+  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  allocation_scope?: InputMaybe<ListAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /**
    * The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -11234,6 +11238,8 @@ export type CoreNumberPoolUpdate = {
 };
 
 export type CoreNumberPoolUpdateInput = {
+  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
    * The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -11265,6 +11271,8 @@ export type CoreNumberPoolUpsert = {
 };
 
 export type CoreNumberPoolUpsertInput = {
+  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
    * The end of the pool's single range. Null unless the pool holds exactly one range.
@@ -33500,6 +33508,12 @@ export type QueryCoreNodeTriggerRuleArgs = {
 
 
 export type QueryCoreNumberPoolArgs = {
+  allocation_scope__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_scope__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  allocation_scope__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_scope__source__id?: InputMaybe<Scalars['ID']['input']>;
+  allocation_scope__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  allocation_scope__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   any__owner__id?: InputMaybe<Scalars['ID']['input']>;
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33664,6 +33678,11 @@ export type QueryCoreNumberPoolRangeArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__allocation_scope__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  pool__allocation_scope__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__allocation_scope__source__id?: InputMaybe<Scalars['ID']['input']>;
+  pool__allocation_scope__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  pool__allocation_scope__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
   pool__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   pool__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   pool__description__source__id?: InputMaybe<Scalars['ID']['input']>;
