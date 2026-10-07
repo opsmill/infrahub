@@ -10,6 +10,7 @@ from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipC
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -523,6 +524,7 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
             end_range=100,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=1, end=100)
         return pool
 
     @pytest.fixture(scope="class")
@@ -870,6 +872,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
             end_range=999,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=100, end=999)
         return pool
 
     @pytest.fixture(scope="class")
@@ -885,6 +888,7 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
             end_range=48,
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=1, end=48)
         return pool
 
     @pytest.fixture(scope="class")

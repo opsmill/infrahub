@@ -5,6 +5,7 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch, initialize_registry
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.registry import registry
@@ -16,12 +17,21 @@ from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import PoolExhaustedError
 from infrahub.graphql.queries.resource_manager import resolve_number_pool_utilization
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
 from tests.helpers.agnostic_edges import pool_reservation_edges
-from tests.helpers.number_pool import add_pool_range, shorthand_mirror
+from tests.helpers.number_pool import (
+    add_pool_range,
+    create_range_only_pool,
+    create_ticket,
+    pool_lowest_free_number,
+    pool_used_numbers,
+    schema_domains,
+    ticket_schema_with_parameters,
+)
 from tests.helpers.schema import TICKET, load_schema
 
 
@@ -34,6 +44,7 @@ async def test_allocate_from_number_pool(
     np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
+    await add_pool_range(db=db, pool=np1, start=1, end=10)
 
     ticket1 = await Node.init(db=db, schema=TICKET.kind)
     await ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
@@ -50,7 +61,7 @@ async def test_allocate_from_number_pool(
     await ticket1.delete(db=db)
 
     # Check pool status
-    assert await NumberPoolRepository(db=db).get_free(pool=np1, branch=default_branch) == 1
+    assert await pool_lowest_free_number(db=db, pool=np1, branch=default_branch) == 1
 
     recreated_ticket1 = await Node.init(db=db, schema=TICKET.kind)
     await recreated_ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
@@ -58,9 +69,9 @@ async def test_allocate_from_number_pool(
     assert recreated_ticket1.ticket_id.value == 1
 
     # Validate methods at the pool level
-    assert await NumberPoolRepository(db=db).get_used(pool=np1, branch=default_branch) == [1, 2]
+    assert await pool_used_numbers(db=db, pool=np1, branch=default_branch) == [1, 2]
 
-    assert await NumberPoolRepository(db=db).get_free(pool=np1, branch=default_branch) == 3
+    assert await pool_lowest_free_number(db=db, pool=np1, branch=default_branch) == 3
 
 
 async def test_allocation_records_reservation_whether_pool_is_named_or_identified(
@@ -73,6 +84,7 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
     pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
 
     created_by_id = await Node.init(db=db, schema=TICKET.kind)
     await created_by_id.new(db=db, title="by-id", ticket_id={"from_pool": {"id": pool.get_id()}})
@@ -97,7 +109,7 @@ async def test_allocation_records_reservation_whether_pool_is_named_or_identifie
         records = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
         assert [record.is_open for record in records] == [True], f"no reservation record for the ticket {label}"
 
-    assert await NumberPoolRepository(db=db).get_used(pool=pool, branch=default_branch) == [1, 2, 3]
+    assert await pool_used_numbers(db=db, pool=pool, branch=default_branch) == [1, 2, 3]
 
 
 async def test_allocate_reuses_value_when_attribute_not_globally_unique(
@@ -112,6 +124,7 @@ async def test_allocate_reuses_value_when_attribute_not_globally_unique(
     np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
+    await add_pool_range(db=db, pool=np1, start=1, end=10)
 
     # Created by hand inside the pool range, without going through the pool.
     manual_ticket = await Node.init(db=db, schema=TICKET.kind)
@@ -142,6 +155,7 @@ class TestNumberPoolAllocation:
             db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10
         )
         await pool.save(db=db)
+        await add_pool_range(db=db, pool=pool, start=1, end=10)
         return pool
 
     @pytest.fixture(scope="class")
@@ -163,7 +177,9 @@ class TestNumberPoolAllocation:
         await origin_ticket.new(db=db, title="origin", ticket_id=5)
         await origin_ticket.save(db=db)
 
-        assert await NumberPoolRepository(db=db).get_taken(pool=pool, branch=branch, min_value=1, max_value=10) == {5}
+        repository = NumberPoolRepository(db=db)
+        space = EffectiveSpace(ranges=await repository.get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain())
+        assert await repository.get_taken(pool=pool, branch=branch, space=space) == {5}
 
     async def test_allocate_skips_value_already_present_on_target(
         self, db: InfrahubDatabase, pool: CoreNumberPool, present_ticket: Node
@@ -226,7 +242,9 @@ async def test_resource_utilization(
         await ticket.new(db=db, title=f"ticket{index}_np2", ticket_id={"from_pool": {"id": np2.id}})
         await ticket.save(db=db)
 
-    utilization_np1 = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization_np1 = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
 
     assert utilization_np1 == {
         "count": 1,
@@ -248,7 +266,9 @@ async def test_resource_utilization(
         ],
     }
 
-    utilization_np2 = await resolve_number_pool_utilization(db=db, pool=np2, at=Timestamp(), branch=default_branch)
+    utilization_np2 = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np2, at=Timestamp(), branch=default_branch
+    )
 
     assert utilization_np2 == {
         "count": 2,
@@ -280,6 +300,101 @@ async def test_resource_utilization(
             },
         ],
     }
+
+
+async def test_each_range_reports_the_numbers_its_branches_hold(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A number held on the default branch counts there only, even when a branch records it as well."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db)
+    single = await add_pool_range(db=db, pool=pool, start=5, end=5, weight=10)
+    upper = await add_pool_range(db=db, pool=pool, start=20, end=29)
+
+    main_ticket = await Node.init(db=db, schema=TICKET.kind)
+    await main_ticket.new(db=db, title="on main", ticket_id={"from_pool": {"id": pool.id}})
+    await main_ticket.save(db=db)
+    branch = await create_branch(db=db, branch_name="feat")
+    branch_ticket = await Node.init(db=db, schema=TICKET.kind, branch=branch)
+    await branch_ticket.new(db=db, title="on branch", ticket_id={"from_pool": {"id": pool.id}})
+    await branch_ticket.save(db=db)
+    assert (main_ticket.ticket_id.value, branch_ticket.ticket_id.value) == (5, 20)
+
+    # Editing the number on the branch and restoring it leaves the branch its own record of 5.
+    edited = await NodeManager.get_one(db=db, id=main_ticket.get_id(), branch=branch, raise_on_error=True)
+    edited.ticket_id.value = 25
+    await edited.save(db=db)
+    edited.ticket_id.value = 5
+    await edited.save(db=db)
+
+    space = EffectiveSpace(
+        ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()), domain=NumberDomain()
+    )
+    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
+    await getter.load_data()
+    assert {(used.number, used.branch) for used in getter.used} == {(5, "main"), (5, "feat"), (20, "feat")}
+
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch
+    )
+    assert utilization == {
+        "count": 2,
+        "utilization": 2 / 11 * 100,
+        "utilization_default_branch": 1 / 11 * 100,
+        "utilization_branches": 1 / 11 * 100,
+        "edges": [
+            {
+                "node": {
+                    "id": single.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "5 - 5",
+                    "weight": 10,
+                    "utilization": 100.0,
+                    "utilization_default_branch": 100.0,
+                    "utilization_branches": 0.0,
+                }
+            },
+            {
+                "node": {
+                    "id": upper.get_id(),
+                    "kind": InfrahubKind.NUMBERPOOLRANGE,
+                    "display_label": "20 - 29",
+                    "weight": 0,
+                    "utilization": 10.0,
+                    "utilization_default_branch": 0.0,
+                    "utilization_branches": 10.0,
+                }
+            },
+        ],
+    }
+
+
+async def test_utilization_measures_the_space_the_branch_schema_leaves(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """A branch whose schema narrows the attribute reports the pool against the smaller space."""
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)
+    pool = await create_range_only_pool(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    assert await create_ticket(db=db, kind=TICKET.kind, pool=pool) == 1
+
+    branch = await create_branch(db=db, branch_name="narrow")
+    narrowed = ticket_schema_with_parameters(NumberAttributeParameters(max_value=5))
+    registry.schema.register_schema(schema=SchemaRoot(nodes=[narrowed]), branch=branch.name)
+
+    on_main = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=pool, at=Timestamp(), branch=default_branch
+    )
+    on_branch = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=branch), pool=pool, at=Timestamp(), branch=branch
+    )
+
+    assert on_main["utilization"] == 10.0
+    assert on_branch["utilization"] == 20.0
+    assert [edge["node"]["utilization"] for edge in on_main["edges"]] == [10.0]
+    assert [edge["node"]["utilization"] for edge in on_branch["edges"]] == [20.0]
 
 
 async def test_allocate_from_number_pool_for_generic(
@@ -318,6 +433,7 @@ async def test_allocate_from_number_pool_for_generic(
     np1 = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await np1.new(db=db, name="pool1", node=ticket.kind, node_attribute="ticket_id", start_range=1, end_range=10)
     await np1.save(db=db)
+    await add_pool_range(db=db, pool=np1, start=1, end=10)
 
     ticket1 = await Node.init(db=db, schema=speeding_ticket.kind)
     await ticket1.new(db=db, title="ticket1", ticket_id={"from_pool": {"id": np1.id}})
@@ -337,7 +453,9 @@ async def test_allocate_from_number_pool_for_generic(
     await recreated_ticket2.save(db=db)
     assert recreated_ticket2.ticket_id.value == 2
 
-    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
     assert utilization["utilization"] == 20.0
 
 
@@ -371,6 +489,7 @@ async def test_allocate_from_number_pool_with_excluded_values(
         db=db, name="pool1", node=speeding_ticket.kind, node_attribute="ticket_id", start_range=10, end_range=30
     )
     await np1.save(db=db)
+    await add_pool_range(db=db, pool=np1, start=10, end=30)
 
     tickets = []
     for _ in range(5):
@@ -397,7 +516,9 @@ async def test_allocate_from_number_pool_with_excluded_values(
     await ticket.save(db=db)
     assert ticket.get_attribute(name="ticket_id").value == 10
 
-    utilization = await resolve_number_pool_utilization(db=db, pool=np1, at=Timestamp(), branch=default_branch)
+    utilization = await resolve_number_pool_utilization(
+        db=db, domains=schema_domains(db=db, branch=default_branch), pool=np1, at=Timestamp(), branch=default_branch
+    )
 
     nb_values_used_in_pool = 1
     nb_excluded_values = 4
@@ -406,16 +527,11 @@ async def test_allocate_from_number_pool_with_excluded_values(
 
 
 @pytest.fixture
-async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-
-@pytest.fixture
 async def ticket_pool(db: InfrahubDatabase, ticket_schema: None) -> CoreNumberPool:
     pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
     await pool.new(db=db, name="pool1", node=TICKET.kind, node_attribute="ticket_id", start_range=1, end_range=10)
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
     return pool
 
 
@@ -449,7 +565,7 @@ class TestNumberPoolGetResource:
         )
 
         assert again == 1, "asking again for an attribute the pool already accounts for must not draw a second number"
-        assert await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch) == [1]
+        assert await pool_used_numbers(db=db, pool=ticket_pool, branch=default_branch) == [1]
 
     async def test_an_attribute_with_no_vertex_yet_draws_a_number(
         self, db: InfrahubDatabase, default_branch: Branch, ticket_pool: CoreNumberPool, ticket: Node
@@ -464,7 +580,7 @@ class TestNumberPoolGetResource:
         )
 
         assert drawn == 2, "with no attribute to anchor on the pool draws the next number rather than reusing one"
-        assert await NumberPoolRepository(db=db).get_used(pool=ticket_pool, branch=default_branch) == [1], (
+        assert await pool_used_numbers(db=db, pool=ticket_pool, branch=default_branch) == [1], (
             "and records nothing, because the caller writing the attribute writes the record"
         )
 
@@ -481,6 +597,7 @@ class TestNumberPoolGetResource:
             db=db, name="pool2", node=TICKET.kind, node_attribute="ticket_id", start_range=100, end_range=110
         )
         await second_pool.save(db=db)
+        await add_pool_range(db=db, pool=second_pool, start=100, end=110)
 
         attribute_id = ticket.get_attribute("ticket_id").id
         drawn = await second_pool.get_resource(
@@ -501,44 +618,3 @@ class TestNumberPoolGetResource:
         assert [record.is_open for record in handed_over] == [False], (
             "the pool that held the attribute before must no longer account for it"
         )
-
-
-@pytest.mark.xfail(
-    strict=True, reason="allocation still reads the shorthand bounds; walking the range set lands with IFC-3065 phase 3"
-)
-async def test_allocation_from_a_pool_holding_several_ranges_starts_at_the_lowest_range(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    """A pool whose shorthand is null because it holds several ranges allocates from those ranges."""
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="pool1", node="TestingTicket", node_attribute="ticket_id", start_range=1, end_range=10)
-    await pool.save(db=db)
-    await add_pool_range(db=db, pool=pool, start=100, end=200)
-    await add_pool_range(db=db, pool=pool, start=300, end=400)
-    await shorthand_mirror(db=db).sync(pool=pool)
-    assert (pool.start_range.value, pool.end_range.value) == (None, None)
-
-    attribute = registry.schema.get_node_schema(name=TICKET.kind).get_attribute(name="ticket_id")
-    assert await pool.get_next(db=db, branch=default_branch, attribute=attribute) == 100
-
-
-async def test_allocation_from_a_pool_without_range_names_the_single_range_it_needs(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
-) -> None:
-    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
-    await initialize_registry(db=db)
-
-    pool = await CoreNumberPool.init(db=db, schema="CoreNumberPool")
-    await pool.new(db=db, name="empty-pool", node="TestingTicket", node_attribute="ticket_id")
-    await pool.save(db=db)
-
-    attribute = registry.schema.get_node_schema(name=TICKET.kind).get_attribute(name="ticket_id")
-    with pytest.raises(PoolExhaustedError) as exc_info:
-        await pool.get_next(db=db, branch=default_branch, attribute=attribute)
-
-    assert exc_info.value.message == (
-        "There are no values available in this pool: allocation draws from a pool holding exactly one range."
-    )

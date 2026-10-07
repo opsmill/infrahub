@@ -18,6 +18,7 @@ from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.schema import AttributeSchema, RelationshipSchema
 from infrahub.exceptions import NodeNotFoundError, PoolExhaustedError, ValidationError
 from tests.constants import TestKind
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import DEVICE_SCHEMA
 
 if TYPE_CHECKING:
@@ -306,6 +307,7 @@ async def number_pool(
         db=db, name="rack-unit-pool", node=TestKind.DEVICE, node_attribute="rack_unit", start_range=1, end_range=48
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=1, end=48)
     return pool
 
 
@@ -449,6 +451,7 @@ async def test_object_from_template_raises_error_when_number_pool_exhausted(
         db=db, name="small-rack-unit-pool", node=TestKind.DEVICE, node_attribute="rack_unit", start_range=1, end_range=2
     )
     await small_pool.save(db=db)
+    await add_pool_range(db=db, pool=small_pool, start=1, end=2)
 
     template_schema = registry.schema.get_template_schema(name=f"Template{TestKind.DEVICE}", branch=default_branch)
     node_schema = registry.schema.get_node_schema(name=TestKind.DEVICE, branch=default_branch)

@@ -20,6 +20,8 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
 from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_space import attribute_domain
+from infrahub.pools.number_ranges import EffectiveSpace
 from tests.component.core.migrations.graph.m081_reanchor_number_pool_reservations.conftest import (
     POOL_END,
     POOL_START,
@@ -165,7 +167,7 @@ async def legacy_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Bra
     # pre-change reader returned.
     used_default = {value for row_branch, value in allocated if row_branch == registry.default_branch}
     used_branches = {value for row_branch, value in allocated if row_branch != registry.default_branch} - used_default
-    total = POOL_END - POOL_START + 1 - pool.get_attribute_nb_excluded_values()
+    total = await pool_space_size(db=db, pool=pool)
 
     return PoolFigures(
         utilization=((len(used_branches) + len(used_default)) / total) * 100,
@@ -176,17 +178,31 @@ async def legacy_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Bra
     )
 
 
+async def pool_space(db: InfrahubDatabase, pool: CoreNumberPool) -> EffectiveSpace:
+    """The numbers the pool hands out: its ranges within the tracked attribute's domain."""
+    ranges = await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id())
+    return EffectiveSpace(
+        ranges=ranges, domain=attribute_domain(attribute=TICKET.get_attribute(TRACKED_ATTRIBUTE_NAME))
+    )
+
+
+async def pool_space_size(db: InfrahubDatabase, pool: CoreNumberPool) -> int:
+    return (await pool_space(db=db, pool=pool)).size
+
+
 async def current_figures(db: InfrahubDatabase, pool: CoreNumberPool, branch: Branch) -> PoolFigures:
     """What the pool reports now, through the readers that target the attribute."""
-    getter = NumberUtilizationGetter(db=db, pool=pool, branch=branch)
+    space = await pool_space(db=db, pool=pool)
+    getter = NumberUtilizationGetter(db=db, pool=pool, space=space, branch=branch)
     await getter.load_data()
+    figures = getter.figures
 
     return PoolFigures(
-        utilization=getter.utilization,
-        utilization_default_branch=getter.utilization_default_branch,
-        utilization_branches=getter.utilization_branches,
+        utilization=figures.utilization,
+        utilization_default_branch=figures.utilization_default_branch,
+        utilization_branches=figures.utilization_branches,
         allocated=tuple(sorted((entry.branch, entry.number) for entry in getter.used)),
-        in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch))),
+        in_use=tuple(sorted(await NumberPoolRepository(db=db).get_used(pool=pool, branch=branch, space=space))),
     )
 
 

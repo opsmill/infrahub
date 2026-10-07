@@ -197,16 +197,17 @@ class NumberPoolGetAllocated(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
+        ranges: list[list[int]],
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
+        self.ranges = ranges
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["node_attribute"] = self.pool.node_attribute.value
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
+        self.params["ranges"] = self.ranges
         self.params["pool_id"] = self.pool.get_id()
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -218,7 +219,7 @@ class NumberPoolGetAllocated(Query):
         MATCH (pool:Node:%(number_pool_kind)s { uuid: $pool_id })-[ir:IS_RESERVED]->(a:Attribute {name: $node_attribute})
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]->(a)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
         WHERE
-            av.value >= $start_range and av.value <= $end_range
+            any(r IN $ranges WHERE av.value >= r[0] AND av.value <= r[1])
             AND all(r in [ha, hv, ir] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
@@ -666,15 +667,16 @@ class NumberPoolGetUsed(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
+        ranges: list[list[int]],
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
+        self.ranges = ranges
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        self.params["start_range"] = self.pool.start_range.value
-        self.params["end_range"] = self.pool.end_range.value
+        self.params["ranges"] = self.ranges
 
         reserved_values, reserved_values_params = reserved_values_query(
             pool_id=self.pool.get_id(),
@@ -686,7 +688,7 @@ class NumberPoolGetUsed(Query):
 
         query = """
         %(reserved_values)s
-        WHERE toInteger(value) >= $start_range and toInteger(value) <= $end_range
+        WHERE any(r IN $ranges WHERE toInteger(value) >= r[0] AND toInteger(value) <= r[1])
         """ % {
             "reserved_values": reserved_values,
         }
@@ -722,8 +724,8 @@ class NumberPoolGetFree(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
-        min_value: int | None = None,
-        max_value: int | None = None,
+        min_value: int,
+        max_value: int,
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
@@ -733,9 +735,8 @@ class NumberPoolGetFree(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        # Use min_value/max_value if provided, otherwise use pool's start_range/end_range
-        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
-        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
+        self.params["start_range"] = self.min_value
+        self.params["end_range"] = self.max_value
         self.limit = 1  # Query only works at returning a single, free entry
 
         reserved_values, reserved_values_params = reserved_values_query(
@@ -809,19 +810,16 @@ class NumberPoolGetTaken(Query):
     def __init__(
         self,
         pool: CoreNumberPool,
-        min_value: int | None = None,
-        max_value: int | None = None,
+        ranges: list[list[int]],
         **kwargs: Unpack[QueryInitKwargs],
     ) -> None:
         self.pool = pool
-        self.min_value = min_value
-        self.max_value = max_value
+        self.ranges = ranges
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        self.params["start_range"] = self.min_value if self.min_value is not None else self.pool.start_range.value
-        self.params["end_range"] = self.max_value if self.max_value is not None else self.pool.end_range.value
+        self.params["ranges"] = self.ranges
 
         # is_isolated=False mirrors the uniqueness validator: a value added to the origin branch after
         # this branch point still collides here.
@@ -832,9 +830,12 @@ class NumberPoolGetTaken(Query):
         self.params.update(branch_params)
         self.params["attribute_name"] = self.pool.node_attribute.value
 
+        # One plain range predicate per range lets the planner seek the value index; an any() over the
+        # ranges cannot, and scans every attribute of that name instead.
         query = """
+        UNWIND $ranges AS range_bounds
         MATCH (n:%(node)s)-[:HAS_ATTRIBUTE]->(attr:Attribute { name: $attribute_name })-[:HAS_VALUE]->(av:AttributeValueIndexed)
-        WHERE av.value >= $start_range and av.value <= $end_range
+        WHERE av.value >= range_bounds[0] AND av.value <= range_bounds[1]
         WITH DISTINCT n, attr
         CALL (n, attr) {
             MATCH (n)-[ha:HAS_ATTRIBUTE]->(attr)-[hv:HAS_VALUE]->(av:AttributeValueIndexed)
@@ -846,7 +847,7 @@ class NumberPoolGetTaken(Query):
             LIMIT 1
         }
         WITH value, is_active
-        WHERE is_active = True AND value >= $start_range AND value <= $end_range
+        WHERE is_active = True AND any(r IN $ranges WHERE value >= r[0] AND value <= r[1])
         WITH DISTINCT value
         """ % {
             "branch_filter": branch_filter,

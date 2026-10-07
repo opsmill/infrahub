@@ -223,7 +223,7 @@ class AttributePoolApplier:
         try:
             attribute.value = await self.number_allocator.allocate(pool=pool, node=node, attribute=attribute)
         except PoolExhaustedError as exc:
-            raise ValidationError({f"{attribute.name}.from_pool": f"The pool {pool.node.value} is exhausted."}) from exc
+            raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc
         attribute.is_default = False
 
     async def _find_pool(self, attribute: BaseAttribute, pool_ref: str) -> CoreNumberPool:

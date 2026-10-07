@@ -106,15 +106,18 @@ Module `backend/infrahub/pools/number_ranges.py`.
 
 | Type | Fields |
 |------|--------|
-| `PoolRange` (frozen) | `id: str \| None`, `start: int`, `end: int`, `weight: int` (already defaulted to 0) |
-| `EffectiveSegment` (frozen) | `start: int`, `end: int`, `range_id: str \| None`, `size` property |
-| `EffectiveSpace` | built from `ranges: Sequence[PoolRange]` and the attribute's `NumberAttributeParameters \| None` |
+| `NumberSpan` (frozen) | `start: int`, `end: int` (inclusive), `size` property; refuses an `end` lower than `start` at construction |
+| `PoolRange` (frozen) | a `NumberSpan` with `weight: int` (already defaulted to 0) and `id: str` |
+| `EffectiveSegment` (frozen) | a `NumberSpan` with `range_id: str` |
+| `NumberDomain` (frozen) | `lower: int \| None`, `upper: int \| None`, `exclusions: tuple[NumberSpan, ...]` (may overlap); built by `attribute_domain` in `backend/infrahub/pools/number_pool_space.py` from the attribute's `NumberAttributeParameters \| None` |
+| `PoolRange.segments_in(domain)` | the parts of the range the domain accepts, in ascending order |
+| `EffectiveSpace` | holds `ranges: Sequence[PoolRange]`, which must not overlap one another, and a `NumberDomain`; its constructor only stores them, and segments, size and the lookup index are derived on first use |
 
-Construction:
+Segments:
 
-1. Clip each range to `[min_value, max_value]` when the attribute declares them; a range clipped to nothing yields no segment.
-2. Subtract excluded single values and excluded ranges from each clipped range, splitting it into segments.
-3. Order segments by their range's `(-weight, start)`, then by segment start inside a range.
+1. Clip each range to `[lower, upper]` when the domain declares them; a range clipped to nothing yields no segment.
+2. Subtract the domain's exclusions from each clipped range, splitting it into segments.
+3. Order segments by their range's `(-weight, start, end)`, then by segment start inside a range.
 
 Operations:
 
@@ -125,6 +128,8 @@ Operations:
 | `as_query_ranges()` | `list[list[int]]` of `[start, end]` for `$ranges` |
 | `contains(value)` | whether any segment holds the value |
 | `range_for(value)` | the `range_id` of the segment holding the value, or `None` |
+| `segments_of(range_id)` | the segments carved out of one range, in allocation order |
+| `size_of(range_id)` | sum of the sizes of that range's segments; `0` for a range the space does not hold |
 | `is_empty` | `size == 0` |
 
 ## Allocation (state machine)

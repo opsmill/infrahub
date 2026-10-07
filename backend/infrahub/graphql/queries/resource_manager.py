@@ -10,7 +10,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.protocols import CoreNumberPoolRange
 from infrahub.core.query.ipam import IPPrefixUtilization
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetIdentifiers,
@@ -19,16 +18,21 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
-from infrahub.pools.number import NumberUtilizationGetter
+from infrahub.pools.number import NumberUtilizationGetter, UtilizationFigures
+from infrahub.pools.number_pool_repository import NumberPoolRepository
+from infrahub.pools.number_pool_space import SchemaAttributeDomains, to_pool_ranges
+from infrahub.pools.number_ranges import EffectiveSpace
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreNumberPoolRange
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from infrahub.graphql.initialization import GraphqlContext
+    from infrahub.pools.number_ranges import NumberDomain
 
 
 class IPPoolUtilizationResource(ObjectType):
@@ -96,6 +100,7 @@ class PoolAllocated(ObjectType):
                 return await resolve_number_pool_allocation(
                     db=graphql_context.db,
                     graphql_context=graphql_context,
+                    domains=SchemaAttributeDomains(schema=graphql_context.db.schema, branch=graphql_context.branch),
                     pool=pool,
                     fields=fields,
                     offset=offset,
@@ -196,7 +201,11 @@ class PoolUtilization(ObjectType):
         pool = _validate_pool_type(pool_id=pool_id, pool=pool)
         if pool.get_kind() == "CoreNumberPool":
             return await resolve_number_pool_utilization(
-                db=db, at=graphql_context.at, pool=pool, branch=graphql_context.branch
+                db=db,
+                domains=SchemaAttributeDomains(schema=db.schema, branch=graphql_context.branch),
+                at=graphql_context.at,
+                pool=pool,
+                branch=graphql_context.branch,
             )
 
         resources_map: dict[str, Node] = {}
@@ -281,12 +290,41 @@ class PoolUtilization(ObjectType):
         return response
 
 
+def _pool_domain(domains: SchemaAttributeDomains, pool: Node) -> NumberDomain:
+    return domains.domain_of(
+        kind=str(pool.get_attribute("node").value), attribute_name=str(pool.get_attribute("node_attribute").value)
+    )
+
+
 async def resolve_number_pool_allocation(
-    db: InfrahubDatabase, graphql_context: GraphqlContext, pool: Node, fields: dict, offset: int, limit: int
+    db: InfrahubDatabase,
+    graphql_context: GraphqlContext,
+    domains: SchemaAttributeDomains,
+    pool: Node,
+    fields: dict,
+    offset: int,
+    limit: int,
 ) -> dict:
     response: dict[str, Any] = {}
+    space = EffectiveSpace(
+        ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()),
+        domain=_pool_domain(domains=domains, pool=pool),
+    )
+    if space.is_empty:
+        if "count" in fields:
+            response["count"] = 0
+        if "edges" in fields:
+            response["edges"] = []
+        return response
+
     query = await NumberPoolGetAllocated.init(
-        db=db, pool=pool, offset=offset, limit=limit, branch=graphql_context.branch, branch_agnostic=True
+        db=db,
+        pool=pool,
+        ranges=space.as_query_ranges(),
+        offset=offset,
+        limit=limit,
+        branch=graphql_context.branch,
+        branch_agnostic=True,
     )
 
     if "count" in fields:
@@ -311,74 +349,45 @@ async def resolve_number_pool_allocation(
     return response
 
 
-def _percentage(count: int, size: int) -> float:
-    if size <= 0:
-        return 0.0
-    return (count / size) * 100
-
-
-async def _range_edge(
-    db: InfrahubDatabase, range_node: CoreNumberPoolRange, used_default_branch: set[int], used_branches: set[int]
-) -> dict:
-    start = range_node.start.value
-    end = range_node.end.value
-    size = end - start + 1
-    in_default_branch = len({value for value in used_default_branch if start <= value <= end})
-    in_branches = len({value for value in used_branches if start <= value <= end})
-    weight = range_node.allocation_weight.value
-
+async def _range_edge(db: InfrahubDatabase, range_node: CoreNumberPoolRange, figures: UtilizationFigures) -> dict:
     return {
         "node": {
             "id": range_node.get_id(),
             "kind": InfrahubKind.NUMBERPOOLRANGE,
             "display_label": await range_node.get_display_label(db=db),
-            "weight": weight or 0,
-            "utilization": _percentage(in_default_branch + in_branches, size),
-            "utilization_default_branch": _percentage(in_default_branch, size),
-            "utilization_branches": _percentage(in_branches, size),
+            "weight": range_node.allocation_weight.value or 0,
+            "utilization": figures.utilization,
+            "utilization_default_branch": figures.utilization_default_branch,
+            "utilization_branches": figures.utilization_branches,
         }
     }
 
 
 async def resolve_number_pool_utilization(
-    db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
+    db: InfrahubDatabase, domains: SchemaAttributeDomains, pool: Node, at: Timestamp | str | None, branch: Branch
 ) -> dict:
     """Returns a mapping containing utilization info of a number pool.
 
-    Pool totals are the percentage of the pool's values that are in use. Each range the pool holds
-    reports its own figures underneath, so a range about to run out is visible on its own.
-
-    The two denominators differ. A range counts every value between its bounds, while the pool
-    total subtracts the excluded values declared on the target attribute. Neither applies the
-    attribute's min and max. A range spanning the whole pool therefore reports a percentage of its
-    own, and the range figures are indicative rather than exact until size, utilization, allocation
-    order and fullness are all derived from one effective-space calculation.
+    Every figure is a percentage of the effective space: the pool's ranges clipped to the target
+    attribute's min and max, minus its excluded values. Pool totals measure the whole space and each
+    range reports its own share of it underneath, so a range about to run out is visible on its own.
     """
     core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind=CoreNumberPool)
-    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
+    ranges = await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id(), at=at)
+    # The range nodes serve the edges too, so the space is built from the ones already read.
+    space = EffectiveSpace(ranges=to_pool_ranges(ranges=ranges), domain=_pool_domain(domains=domains, pool=pool))
+    number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, space=space, at=at, branch=branch)
     await number_pool.load_data()
 
-    ranges = await registry.manager.query(
-        db=db,
-        schema=CoreNumberPoolRange,
-        filters={"pool__ids": [pool.get_id()]},
-        branch=branch,
-        at=at,
-        branch_agnostic=True,
-    )
-    ranges.sort(key=lambda range_node: range_node.start.value)
-
+    figures = number_pool.figures
     return {
         "count": len(ranges),
-        "utilization": number_pool.utilization,
-        "utilization_default_branch": number_pool.utilization_default_branch,
-        "utilization_branches": number_pool.utilization_branches,
+        "utilization": figures.utilization,
+        "utilization_default_branch": figures.utilization_default_branch,
+        "utilization_branches": figures.utilization_branches,
         "edges": [
             await _range_edge(
-                db=db,
-                range_node=range_node,
-                used_default_branch=number_pool.used_default_branch,
-                used_branches=number_pool.used_branches,
+                db=db, range_node=range_node, figures=number_pool.range_figures(range_id=range_node.get_id())
             )
             for range_node in ranges
         ],

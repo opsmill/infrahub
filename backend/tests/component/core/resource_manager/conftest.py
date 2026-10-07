@@ -8,14 +8,17 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
+from infrahub.core.schema import SchemaRoot
 from tests.helpers.agnostic_edges import TEST_ACTOR_ID, IsReservedEdge, is_reserved_edge_on
+from tests.helpers.number_pool import add_pool_range
+from tests.helpers.schema import TICKET, load_schema
 from tests.helpers.schema.agnostic_retirement import AGNOSTIC_RETIREMENT_SCHEMA, WIDGET_KIND
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.schema import SchemaRoot
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -48,6 +51,7 @@ async def serial_pool(
         end_range=SERIAL_POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=SERIAL_POOL_START, end=SERIAL_POOL_END)
     return pool
 
 
@@ -82,3 +86,9 @@ async def pooled_widget(
 async def delete_branch(db: InfrahubDatabase, branch: Branch) -> None:
     result = await BranchDataDeleter(db=db, batch_size=5).delete(branch=branch, user_id=TEST_ACTOR_ID)
     assert result.branch_deleted
+
+
+@pytest.fixture
+async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: SchemaBranch) -> None:
+    await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+    await initialize_registry(db=db)

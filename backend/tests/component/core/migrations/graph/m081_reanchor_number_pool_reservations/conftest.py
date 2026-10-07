@@ -31,6 +31,7 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
 
 if TYPE_CHECKING:
@@ -107,6 +108,7 @@ async def create_pool(db: InfrahubDatabase, name: str) -> CoreNumberPool:
         end_range=POOL_END,
     )
     await pool.save(db=db)
+    await add_pool_range(db=db, pool=pool, start=POOL_START, end=POOL_END)
     return pool
 
 

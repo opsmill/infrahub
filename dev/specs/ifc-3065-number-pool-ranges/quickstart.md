@@ -17,7 +17,7 @@ Component tests start Neo4j through testcontainers and need Docker.
 uv run pytest backend/tests/unit/pools/test_number_ranges.py backend/tests/unit/core/schema/test_number_pool_parameters.py
 ```
 
-Expected: segment order `(-weight, start)`, size excludes clipped and excluded values, zero ranges gives size 0; parameters refuse both spellings and overlap, resolve a single bound, and produce no warning without the shorthand.
+Expected: segment order `(-weight, start, end)`, size excludes clipped and excluded values, zero ranges gives size 0; parameters refuse both spellings and overlap, resolve a single bound, and produce no warning without the shorthand.
 
 ## User Story 1: allocation across weighted ranges
 
