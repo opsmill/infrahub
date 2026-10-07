@@ -341,14 +341,14 @@ SC-002, SC-007.
 
 ### No other import of the pending destination
 
-- [ ] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
+- [X] T039 [US1] Change `InfrahubRepository.collect_pending_imports` in
       `backend/infrahub/git/repository.py`: in the active loop, skip the default branch, and every new
       or updated remote branch that a pending entry names, while the state is not `none`. Leave
       `_collect_staging_imports` unchanged. Pass the state port in from the sync flow in
       `backend/infrahub/git/tasks.py` and `backend/infrahub/git/sync.py`.
-- [ ] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
+- [X] T040 [US1] Change `bootstrap_local_repository` in `backend/infrahub/git/tasks.py`: skip the seed
       import of the default branch while the state is not `none`, and log it.
-- [ ] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
+- [X] T041 [US1] Change `ProcessRepository.mutate` in `backend/infrahub/graphql/mutations/repository.py`:
       refuse on every branch while the state is not `none`, with the message of the GraphQL
       contract section 3.
 
@@ -375,7 +375,7 @@ SC-002, SC-007.
       nothing, and logs at error level the repository, the source branch and the source commit; a
       flow whose `enqueue` refuses the id holds no marker; a merge with no content submits no merge
       workflow; and a run with no `pending_merge` and no content queues nothing.
-- [ ] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
+- [X] T046 [P] [US1] Write `backend/tests/component/git/writeback/test_import_deferral.py`: the sync skips
       the default branch and a named source branch, as new and as updated, while pending; the seed
       import skips the default branch; and `ProcessRepository` refuses on two branches.
 
