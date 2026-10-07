@@ -724,8 +724,6 @@ read-write repository's configured default branch. Neither writes a record.
       branch merged in Infrahub and not in Git, and the user finishes the merge in Git. A worker that
       missed the broadcast and now follows the new history on its own is the fix
       `changelog/6299.fixed.md` describes, so it adds no entry.
-      So the stack carries one fragment for each change a user can see, on the PR that ships it,
-      not one fragment on its top PR.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
