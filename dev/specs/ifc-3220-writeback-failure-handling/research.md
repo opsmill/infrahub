@@ -541,9 +541,10 @@ GitPython does not stop the command at the limit, so this classification comes o
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
-complete" (`git/cmd.py::Git.execute`), which names the command with its arguments. The adapter
-raises a `RepositoryError` whose message names the command and the bound, but not the arguments,
-which can name worker paths. At the replay, and in the checks before it, that error is
+complete" (`git/cmd.py::Git.execute`), which names the command with its arguments.
+`_raise_enriched_error_static` turns that text into a `RepositoryError` whose message names the Git
+command and the limit, but not the arguments, which can name worker paths (`GIT_CALL_TIME_LIMIT`).
+`create_commit_worktree` raises that error for its `worktree list` and its `worktree add`. At the replay, and in the checks before it, that error is
 `unclassified`: the status becomes `action-required`, and the user retries. At the record, the
 `record` row applies: the remote already has the content, so the failure is `record-failed` and is
 retried.

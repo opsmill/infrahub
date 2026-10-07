@@ -72,6 +72,11 @@ GIT_TLS_VERIFICATION_ERRORS = (
 # any other "not found" text from matching.
 GIT_HTTP_REPOSITORY_NOT_FOUND = re.compile(r"repository '[^']+' not found")
 
+# GitPython's text when its watchdog stops a direct Git call; the quoted command can name worker paths.
+GIT_CALL_TIME_LIMIT = re.compile(
+    r'Timeout: the command "\S*git (?P<command>\S+)[^"]*" did not complete in (?P<seconds>\S+) secs'
+)
+
 
 def operational_status_for_error(error: RepositoryError) -> RepositoryOperationalStatus:
     """Return the operational status that a repository records for a failed Git operation."""
@@ -792,25 +797,24 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Raises:
             CommitNotFoundError: When the commit does not exist in the local clone.
-            RepositoryError: When the worktree cannot be created for any other reason.
+            RepositoryError: When Git cannot list the worktrees or create this one, past its time limit
+                included.
 
         """
-        # Check of the worktree already exist
-        if self.has_worktree(identifier=commit, timeout_seconds=timeout_seconds):
-            return False
-
         directory = self.directory_commits / commit
         worktree = Worktree(identifier=commit, directory=str(directory), commit=commit)
 
         repo = self.get_git_repo_main()
         try:
+            if self.has_worktree(identifier=commit, timeout_seconds=timeout_seconds):
+                return False
             repo.git.worktree("add", directory, commit, kill_after_timeout=timeout_seconds)
-            log.debug(f"Commit worktree created {commit}", repository=self.name)
-            return worktree
         except GitCommandError as exc:
             if "invalid reference" in exc.stderr:
                 raise CommitNotFoundError(identifier=self.name, commit=commit) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
+        log.debug(f"Commit worktree created {commit}", repository=self.name)
+        return worktree
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch.
@@ -1195,7 +1199,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
-            lines of a fetch or a push when Git ran past its ``kill_after_timeout``.
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
+            Git call stopped at its limit, "Timeout: the command ... did not complete"
+            (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
+            arguments, which can name worker paths.
           - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
             line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
             For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
@@ -1248,6 +1255,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 message=(
                     f"The Git command for repository {name} did not complete within its time limit, "
                     "please check that the remote is reachable."
+                ),
+            ) from error
+
+        if time_limit := GIT_CALL_TIME_LIMIT.search(error.stderr):
+            raise RepositoryError(
+                identifier=name,
+                message=(
+                    f"The command git {time_limit['command']} for repository {name} did not complete "
+                    f"within {time_limit['seconds']} seconds."
                 ),
             ) from error
 

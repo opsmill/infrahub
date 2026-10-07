@@ -13,7 +13,7 @@ from uuid import UUID
 
 import pydantic
 import pytest
-from git import PushInfo, Remote, RemoteProgress, Repo
+from git import Git, PushInfo, Remote, RemoteProgress, Repo
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
@@ -901,6 +901,75 @@ async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
     assert await repository.push("main", **case.push_kwargs) is True
 
     assert origin.kill_after_timeouts == [case.kill_after_timeout]
+
+
+class _GitWrappedRepository(InfrahubRepository):
+    """An InfrahubRepository whose main clone runs every Git command through the wrapper that the test sets."""
+
+    git_wrapper: Callable[[str], Git]
+
+    def get_git_repo_main(self) -> Repo:
+        repo = super().get_git_repo_main()
+        repo.git = self.git_wrapper(str(repo.working_dir))
+        return repo
+
+
+async def clone_with_git_wrapper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, git_wrapper: Callable[[str], Git]
+) -> _GitWrappedRepository:
+    """Clone a local remote that has a `feature` branch, then open the clone with the given Git wrapper."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    source = Repo(source_directory)
+    source.git.checkout("-b", "feature")
+    (source_directory / "feature.txt").write_text("feature\n", encoding="utf-8")
+    source.index.add(["feature.txt"])
+    source.index.commit("feature commit")
+    source.git.checkout("main")
+    remote_directory = tmp_path / "remote.git"
+    source.clone(str(remote_directory), bare=True)
+    clone = await clone_repository(
+        id=UUIDT.new(),
+        name="local-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    return _GitWrappedRepository(
+        id=clone.id,
+        name=clone.name,
+        location=clone.location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+        client=clone.client,
+        git_wrapper=git_wrapper,
+    )
+
+
+class _TimeLimitGit(Git):
+    """Fails every Git command as GitPython does when its watchdog stops a command at its time limit."""
+
+    def execute(self, command: Any, *args: Any, **kwargs: Any) -> Any:
+        quoted = " ".join(str(part) for part in command)
+        raise GitCommandError(
+            command, -9, f'Timeout: the command "{quoted}" did not complete in {kwargs["kill_after_timeout"]:g} secs.'
+        )
+
+
+async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree list` past its time limit raises a RepositoryError that names no argument or worker path."""
+    repository = await clone_with_git_wrapper(tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=_TimeLimitGit)
+
+    with pytest.raises(
+        RepositoryError,
+        match=r"^The command git worktree for repository local-repo did not complete within 7 seconds\.$",
+    ) as raised:
+        repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+
+    assert type(raised.value) is RepositoryError
 
 
 class _BranchSyncRepository(InfrahubRepository):

@@ -127,11 +127,13 @@ ENRICHMENT_CASES = [
         message=TIME_LIMIT_HINT,
     ),
     EnrichmentCase(
-        # GitPython's text when its watchdog kills a direct Git call at kill_after_timeout, local or remote.
+        # GitPython's text when its watchdog kills a direct Git call; the arguments can name worker paths.
         name="direct_git_call_past_its_time_limit",
-        stderr='Timeout: the command "git reset --hard abc" did not complete in 120 secs.',
+        stderr='Timeout: the command "git worktree add /opt/infrahub/git/repo/commits/abc abc" did not complete '
+        "in 120 secs.",
         expected=RepositoryError,
-        command=["git", "reset", "--hard", "abc"],
+        command=["git", "worktree", "add", "/opt/infrahub/git/repo/commits/abc", "abc"],
+        message="The command git worktree for repository net-repo did not complete within 120 seconds.",
     ),
     # One case per wording libcurl emits for an unverifiable certificate: the test host's own git covers
     # only the wording of the TLS backend it happens to be linked against, so they are asserted as text.
