@@ -41,6 +41,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         default_factory=list,
         description="Member node ids to generate artifacts for; when populated, only these members are processed.",
     )
+    repository_id: str | None = Field(
+        default=None,
+        description="The ID of the repository that owns the transformation of the Artifact Definition",
+    )
 
     @property
     def evaluates_every_member(self) -> bool:

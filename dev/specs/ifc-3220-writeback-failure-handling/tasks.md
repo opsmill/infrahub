@@ -418,7 +418,7 @@ X once after the delivery.
 **Maps to**: FR-013 to FR-017, SC-004, SC-005, SC-008. **T061 to T069 and T074 to T076 are in the
 deployment rule.** T070 to T073 are not.
 
-- [ ] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
+- [X] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
       `backend/infrahub/git/models.py`, and fill it in `ArtifactSelector._build_request` in
       `backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py`.
 - [ ] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
