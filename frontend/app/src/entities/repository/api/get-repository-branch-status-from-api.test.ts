@@ -5,8 +5,8 @@ import { graphqlClient } from "@/shared/api/graphql/client";
 
 import { getRepositoryBranchStatusFromApi } from "./get-repository-branch-status-from-api";
 
-// `client` also re-exports gql.tada's `graphql` tag, which the module under test uses to build
-// the query. Keep that real and stub only the transport.
+// The module under test builds its query with the tag this module re-exports, so only the transport
+// is stubbed.
 vi.mock("@/shared/api/graphql/client", async () => ({
   graphql: (await import("gql.tada")).graphql,
   graphqlClient: { query: vi.fn() },
@@ -22,8 +22,8 @@ const sentRequest = () => {
 
 const sentQuery = () => print(sentRequest().query as never);
 
-// The card narrows on a branch's own fields only. These three reach the repository's attributes
-// instead, and the resolver applies them, so declaring one would quietly change the rows returned.
+// These three narrow on the repository's attributes rather than the branch's, so declaring one
+// would quietly change which rows come back.
 const UNDECLARED_ARGUMENTS = ["sync_status__value", "internal_status__value", "own_values_only"];
 
 describe("getRepositoryBranchStatusFromApi", () => {

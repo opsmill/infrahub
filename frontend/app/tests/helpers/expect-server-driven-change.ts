@@ -22,8 +22,8 @@ export async function expectServerDrivenChange<TVariables extends object, TPaylo
     expect(apiMock.mock.calls.at(callIndex)?.[0]).toMatchObject(variables);
   });
 
-  // `results` is indexed by invocation, unlike `settledResults`, which fills in settlement order and
-  // would pair the variables of one call with the answer of another whenever two are in flight.
+  // Indexed by invocation, so two requests in flight cannot pair one call's variables with another's
+  // answer.
   const result = apiMock.mock.results.at(callIndex);
 
   expect(result?.type).toBe("return");

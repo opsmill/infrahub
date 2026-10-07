@@ -6,9 +6,11 @@ import { FilterPicker } from "@/entities/nodes/object/ui/filters/filter-picker";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { SortPicker } from "@/entities/nodes/sort/ui/sort-picker";
 import {
+  BRANCH_NAME_FILTER,
   BRANCH_ROW_FILTER_CONDITIONS,
   BRANCH_ROW_FILTER_DEFINITIONS,
   BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME,
+  BRANCH_ROW_MAX_SORTS,
   BRANCH_ROW_SORT_SCHEMA,
 } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import { SEARCH_BRANCHES_LABEL } from "@/entities/repository/ui/repository-branches-card/messages";
@@ -19,9 +21,13 @@ export function RepositoryBranchesToolbar() {
   return (
     <Col className="shrink-0 gap-0">
       <Row className="p-2">
-        <FilterSearchInput aria-label={SEARCH_BRANCHES_LABEL} placeholder={SEARCH_BRANCHES_LABEL} />
+        <FilterSearchInput
+          aria-label={SEARCH_BRANCHES_LABEL}
+          filterName={BRANCH_NAME_FILTER}
+          placeholder={SEARCH_BRANCHES_LABEL}
+        />
 
-        <SortPicker schema={BRANCH_ROW_SORT_SCHEMA} />
+        <SortPicker schema={BRANCH_ROW_SORT_SCHEMA} maxSorts={BRANCH_ROW_MAX_SORTS} />
 
         <FilterPicker
           filterDefinitions={BRANCH_ROW_FILTER_DEFINITIONS}

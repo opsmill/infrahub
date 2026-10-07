@@ -396,9 +396,13 @@ describe("RepositoryBranchesCard", () => {
     // WHEN
     const component = await renderCard();
 
-    // THEN the paging controls stay, and the card does not claim the repository has no branch
+    // THEN the paging controls stay, the body says why it is empty, and the card does not claim
+    // the repository has no branch
     await expect.element(component.getByRole("navigation", { name: "Pagination" })).toBeVisible();
     await expect.element(component.getByRole("button", { name: "Previous page" })).toBeEnabled();
+    await expect
+      .element(component.getByText("This page is past the end of the list", { exact: true }))
+      .toBeVisible();
     expect(
       component
         .getByText("No branch of this repository synchronises with Git", { exact: true })
@@ -932,6 +936,25 @@ describe("RepositoryBranchesCard", () => {
       payload: toApiResult(matched),
       rowVisibleAfter: "release-2-0",
     });
+  });
+
+  it("offers no second sort key, which the request could not carry", async () => {
+    // GIVEN a card already ordered by one timestamp
+    apiMock.mockResolvedValue(
+      toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
+    );
+    const component = await renderCard();
+    await expect.element(component.getByText("feature-auth", { exact: true })).toBeVisible();
+    await applySort(component, "Created at", "Ascending");
+
+    // WHEN the sort editor is reopened (its trigger now carries a count badge)
+    await component.getByRole("button", { name: /^Sort/ }).click();
+
+    // THEN it shows the one key, with no way to add the other
+    await expect.element(component.getByRole("button", { name: "Remove sort" })).toBeVisible();
+    expect(
+      component.getByRole("button", { name: "Add sort", exact: true }).elements()
+    ).toHaveLength(0);
   });
 
   it("offers only the two timestamps the contract is able to order by", async () => {

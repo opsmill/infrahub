@@ -27,11 +27,8 @@ export interface FilterScopeProviderProps {
 }
 
 /**
- * Gives one surface its own filter, order and page url keys.
- *
- * A surface that shares the global keys reads filters set by any other table and has its own
- * overwritten in turn, and it cannot tell its own changes from theirs. Scoping is what lets a
- * surface narrow the conditions it offers and trust that nothing it cannot honour arrives.
+ * Gives one surface its own filter, order and page url keys, so that it can narrow the conditions
+ * it offers and trust that nothing it cannot honour arrives on them.
  */
 export function FilterScopeProvider({ urlKey, children }: FilterScopeProviderProps) {
   const scope: FilterScope = {

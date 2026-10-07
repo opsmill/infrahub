@@ -165,15 +165,16 @@ page, and that moving to page 2 returns different rows.
 
 - [x] T022 [P] [US1] Implement `CommitHash` in
       `frontend/app/src/shared/components/display/commit-hash.tsx` — monospace, truncating, short-form
-      (7 characters, git's own default abbreviation and what the design uses), with a `copyable` prop
-      that **composes `CopyToClipboardButton`** rather than reimplementing copying. The full hash goes
+      (7 characters, the default abbreviation and what the design uses). The full hash goes
       on `title`, **not** `aria-label`: ARIA forbids naming a role-less element and Biome's
-      `a11y/useAriaPropsSupportedByRole` rejects it. Copy affordances appear only on full hashes in the
-      details card, never in table cells.
+      `a11y/useAriaPropsSupportedByRole` rejects it. A `copyable` prop composing
+      `CopyToClipboardButton` was built and then removed: the design puts copy affordances only on
+      full hashes in the details card, which renders through `ObjectDataDisplay` and never reaches
+      this component, so nothing ever passed it.
 - [x] T023 [P] [US1] Component-test `CommitHash` in `commit-hash.test.tsx`: truncation, a hash shorter
       than the short form left untouched, the full value reachable through `title` (`getByTitle`, not
-      an accessible-name query — T022 keeps it off `aria-label`), and `copyable` on/off, the copy
-      button naming the full hash.
+      an accessible-name query — T022 keeps it off `aria-label`), and that no copy affordance is
+      rendered.
 - [x] T024 [US1] Implement the branch-name cell in
       `frontend/app/src/entities/repository/ui/repository-branches-card/cells/branch-name-cell.tsx`.
       **Compose `Tooltip` + `LinkButton href={getBranchDetailsUrl(name)}`; do not reuse
@@ -681,7 +682,7 @@ pagination is the first thing built.
 | FR-013 | T059, T061, T081 | | | |
 | FR-014 | T080, T062, T084 | | | |
 
-**85 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
+**90 tasks.** Setup 1 (T001) · foundational 5 (T002–T006) · US1 33 (T008–T039, T034a) · US2 16
 (T040–T055) · US3 14 (T056–T064, T080–T084) · polish and gates 13 (T065–T077) · follow-ups 3 (T078,
 T079, T085). The numbering skips T007; nothing is renumbered, so every other task keeps the id it was
 assigned, including the three the 5b rework supersedes (T056–T058, struck through rather than deleted

@@ -109,18 +109,13 @@ function RepositoryBranchesBody({
           columns={columns}
           data={data.rows}
           gridTemplateColumns={branchesGridTemplateColumns}
-          // A total above zero with no rows means the url asked for a page past the end, which is
-          // not the same as there being nothing to show.
-          renderEmpty={
-            data.count === 0
-              ? () => (
-                  <RepositoryBranchesEmpty
-                    hasFilters={hasFilters}
-                    listsEveryBranch={isOfKind(READONLY_REPOSITORY_KIND, schema)}
-                  />
-                )
-              : undefined
-          }
+          renderEmpty={() => (
+            <RepositoryBranchesEmpty
+              hasFilters={hasFilters}
+              isPagePastTheEnd={data.count > 0}
+              listsEveryBranch={isOfKind(READONLY_REPOSITORY_KIND, schema)}
+            />
+          )}
           semanticTable
         />
       </div>
@@ -162,10 +157,8 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
     ...queryArguments,
   });
 
-  // The server's own total is the only thing that can say which page is the last real one, so a url
-  // asking for a page past the end is answered once and then written back to the last real page,
-  // which re-keys the one request rather than leaving the out-of-range one observed beside it.
-  // A placeholder count belongs to the row set before this one, so it cannot judge this page.
+  // Only a count answering the current request can say which page is the last real one, so a url
+  // asking past the end is corrected once the server replies rather than guessed at.
   const canClamp = data !== undefined && !isPlaceholderData;
   const currentPage = canClamp ? clampPage(page, getTotalPages(data.count, pageSize)) : page;
 

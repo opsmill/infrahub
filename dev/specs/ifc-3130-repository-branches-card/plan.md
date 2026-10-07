@@ -6,7 +6,7 @@
 IFC-3126 is already merged into it, so the schema and the regenerated frontend types are present
 and codegen regenerates to zero drift.
 
-**Input**: [spec.md](spec.md) (33 requirement statements),
+**Input**: [spec.md](spec.md) (34 requirement statements),
 [plan-synthesis.md](plan-synthesis.md) (the merged output of three parallel plan framings —
 minimal-change, refactor-friendly, test-first), [design.md](design.md), [research.md](research.md).
 
@@ -33,7 +33,7 @@ means the file exists on this branch.
 | 6 The branches card + its ErrorBoundary | Delivered |
 | 7 The details split | Delivered |
 | 8 E2E | **Outstanding** |
-| 9 Knowledge note, `shared-components.md`, changelog fragment | **Outstanding** |
+| 9 Knowledge note, `shared-components.md` | **Outstanding** — the changelog fragment shipped |
 
 ---
 
@@ -79,13 +79,14 @@ transferred bounded by the fixed page size (10), not by branch count
 narrowing of any kind (FR-015). The card must not blank the rest of the page on failure (FR-024).
 
 **Scale/Scope**: Repositories with up to ~200 branches; 2 repository kinds (`CoreRepository`,
-`CoreReadOnlyRepository`); 33 requirement statements; 9 work units.
+`CoreReadOnlyRepository`); 34 requirement statements; 9 work units.
 
-### The IFC-3127 preview window
+### The IFC-3127 preview window — closed
 
-IFC-3126 ships the query with **real** rows, paging, ordering and permission denials, but the four
-attribute values are **fabricated from the branch name**. They are stable across reloads and every
-dropdown value appears, so the card is fully buildable and screenshottable against them.
+IFC-3126 shipped the query with **real** rows, paging, ordering and permission denials, and the
+four attribute values were **fabricated from the branch name** until IFC-3127 landed on the same
+epic branch. Both are now on the base, so every value the card shows is read from the graph and
+the window below is history, kept because it explains why SC-008 is written as it is.
 
 Two consequences this plan must honour:
 
@@ -104,17 +105,12 @@ Two consequences this plan must honour:
 - Nothing in this feature may depend on the values being real (SC-008). When IFC-3127 merges, the
   values become real **with no contract change and no code change here**.
 
-### Who sees the fabricated values
+### Who saw the fabricated values
 
-This branch targets **`cross-branch-repo-status-infp-671`**, the epic branch, and IFC-3127 lands on
-that same branch. So the fabricated values reach a user only if the epic branch merges to `develop`
-while IFC-3127 is still outstanding — which is the epic owner's release decision, not this card's.
-
-That is the honest position, and it is why this feature carries **no preview banner**: adding one
-would be chrome that must then be removed, for a window that by construction has no users in it.
-**If the epic branch is ever released without IFC-3127, this decision must be revisited** — plausible
-fake commit hashes with nothing marking them are worse than showing nothing. Recorded as an open
-question for the epic owner rather than settled here.
+Nobody. This branch targets **`cross-branch-repo-status-infp-671`**, the epic branch, and IFC-3127
+landed on that same branch before this card merged, so the values were never fabricated for any
+user. That is why the feature carries **no preview banner**: it would have been chrome built for a
+window that by construction had no users in it, and then removed.
 
 ## Constitution Check
 
@@ -281,7 +277,7 @@ detail only on `.cause`. Two independently testable levels result: a use-case un
 
 ```text
 dev/specs/ifc-3130-repository-branches-card/
-├── spec.md                       # 33 requirement statements, 3 user stories, success criteria
+├── spec.md                       # 34 requirement statements, 3 user stories, success criteria
 ├── research.md                   # Phase 0 — codebase and toolchain facts (superseded planning input)
 ├── plan-synthesis.md             # Merged output of three parallel plan framings (superseded planning input)
 ├── design.md                     # Verbatim transcription of the design canvas
@@ -381,7 +377,7 @@ boundary — that is where every gql.tada document in this codebase lives. `ui/q
 react-query `queryOptions` layer and holds none; putting the document there would force an
 `api/ → ui/` import, which `dev/knowledge/frontend/entities-structure.md` prohibits.
 
-**Seventeen pre-existing frontend files are edited, all of them on the branch** — the sixteen source
+**Twenty-three pre-existing frontend files are edited, all of them on the branch** — the source
 files below plus `filters/get-filter-picker-count.test.ts`, which follows its subject's signature:
 
 | File | Edit | Risk |
@@ -431,7 +427,7 @@ each assumed more had to be built than actually does.
 | Error state | `ErrorScreen` — `{className?, message?, icon?, hideIcon?}` (`shared/components/errors/error-screen.tsx`) | **USE WITH PROPS** — same override |
 | Loading state | `ObjectTableSkeleton` — `{headerCount, rowCount?, showSelection?}` (`entities/nodes/object/ui/object-table/object-table-skeleton.tsx`) | **EXTENDED** — it previously hardcoded 20 rows and a disabled `Checkbox` in column 0 of every row. This card has no selection column and holds 10 rows a page, so as-is it shipped a phantom checkbox **and** a guaranteed layout jump — precisely what FR-023's loading clause forbids. `rowCount` (default 20) and `showSelection` (default `true`) are additive; the card reaches them through `DataTable`'s `skeletonRowCount` / `skeletonShowSelection` |
 | Info icon beside a value | `Tooltip` from `@infrahub/ui` with `nonInteractiveTrigger` + `InfoIcon`, per `entities/branches/ui/branch-details/branch-attributes.tsx` | **USE AS-IS** |
-| Copy affordance on a full hash | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`), already wrapped in a `Copied!`/`Copy` Tooltip | **USE AS-IS** |
+| Copy affordance on a full hash | `CopyToClipboardButton` — `{data, …AriaButtonProps}` (`shared/components/buttons/copy-to-clipboard-button.tsx`) | **NOT USED** — the only full hashes sit in the details cards, which render through `ObjectDataDisplay` and never reach `CommitHash` |
 
 **`UnauthorizedScreen` existing is what makes FR-023's denied-vs-empty distinction cheap** — the two
 states differ by *component*, not by a hand-written string.
@@ -442,10 +438,11 @@ Nothing in the app renders a monospace, truncating, short-form hash. The only `f
 `entities/path-traversal/ui/infra-node.tsx`, and there is no short-hash helper anywhere.
 `src/shared/components/display/commit-hash.tsx` is justified.
 
-It **composes** `CopyToClipboardButton` rather than reimplementing copying, and takes `copyable` as a
-prop: the design places copy affordances **only** on full hashes, never in table cells. The details
-cards render their attribute values through `ObjectDataDisplay`, which knows nothing of this
-primitive, so the card's table cells are its only call site here — see
+It renders the short form and nothing else. A `copyable` prop composing `CopyToClipboardButton` was
+built first, because the design places copy affordances on full hashes; it was removed once it was
+clear nothing could pass it. The details cards render their attribute values through
+`ObjectDataDisplay`, which knows nothing of this primitive, so the card's table cells are its only
+call site — and the design puts no copy affordance there. See
 [Complexity Tracking](#complexity-tracking).
 
 ### State ownership — which URL key owns what
@@ -618,8 +615,9 @@ Parallel groups separated by `───`. Units within a group share no file. Th
 sequential dependencies except where the Dependencies paragraph below names one — unit 7 needs unit
 6's partition rule, so the two are listed together but not startable together.
 
-> The spec carries **33** requirement statements — FR-001…FR-028 **plus** FR-003a, FR-010a, FR-011a,
-> FR-011b and FR-018a. Enumerate them individually; a range like "002–006" silently omits FR-003a.
+> The spec carries **34** requirement statements — FR-001…FR-028 **plus** FR-003a, FR-010a, FR-011a,
+> FR-011b, FR-012a and FR-018a. Enumerate them individually; a range like "002–006"
+> silently omits FR-003a.
 
 | # | Unit | Key files | FRs | Status |
 |---|---|---|---|---|
@@ -649,7 +647,7 @@ container") is listed against unit 6 rather than unit 1: the component is unit 1
 requirement can only be *verified* once there is a card to put it in.
 
 **FR-013** is exercised in both unit 2 (the wire-value mapping) and unit 5 (the filter control). Unit
-2 owns the test that the hyphenated wire value is sent.
+2 owns the branch-status wire-value test.
 
 ## Risks, ranked by likelihood of actually biting
 
@@ -715,7 +713,7 @@ Each argued and then cut by the refactor-friendly framing:
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | **A second pagination mechanism** alongside the legacy `Pagination` / `usePagination` | The legacy component is hard-wired to a single global `QSP.PAGINATION` key, so two paginated tables on one route move together — which this card would immediately break (FR-011). It also assumes the table is the page-level scroll area, which is false inside a card (FR-011a). | Generalising the legacy component in place would put this feature's regression risk on **three unrelated pages that have no tests at all**. The duplication is temporary and signposted: FR-028's knowledge note names the new component as the intended successor, and migrating the three call sites is tracked as follow-on work. |
-| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. | Inlining the mono/truncate/short-form logic would put the hash-shortening rule at the call site, which is the thing that drifts once a second caller appears. It composes `CopyToClipboardButton` rather than reimplementing copying. **Stated honestly**: Principle VII's "two existing callers" bar is **not** met — the card's table cells are the only call site, and the `copyable` branch exists for the full-hash presentation the design places in the details card, which renders through `ObjectDataDisplay` and does not reach this primitive. Accepted as a small, self-contained primitive whose alternative is the rule inlined in a cell renderer. |
+| **A new shared primitive `CommitHash`** | Nothing in the app renders a monospace, truncating, short-form hash; the only `font-mono` usage is unrelated and there is no short-hash helper. | Inlining the mono/truncate/short-form logic would put the hash-shortening rule at the call site, which is the thing that drifts once a second caller appears. **Stated honestly**: Principle VII's "two existing callers" bar is **not** met — the card's table cells are the only call site. A `copyable` branch composing `CopyToClipboardButton` was built for the full-hash presentation the design places in the details card, then removed: that card renders through `ObjectDataDisplay` and does not reach this primitive. Accepted as a small, self-contained primitive whose alternative is the rule inlined in a cell renderer. |
 | **Two `ObjectDataDisplay` instances** mounting two metadata `Sheet`s, through `ObjectDetailsCard` (D1) | The alternative edits a file every object-detail page depends on. `ObjectDetailsCard` itself cannot be reused — it hardcodes its title and test id. | See D1 — the refactor framing's own risk register ranked that edit as its highest-blast-radius item. A duplicated closed dialog in the tree is not a behaviour change, and the local wrapper is ~15 lines of `Card` + `CardHeader` around the genuinely reusable `ObjectDataDisplay`. |
 | **A card-scoped `ErrorBoundary`** around the branches card | FR-024 as written holds only for **query** failures: the use case's throw lands in react-query's `isError` and renders in place. A **render-time** failure — a mapper crash on an unexpected preview-window shape, or the chip cell handed a null — propagates to `error-boundary-router` and blanks the whole route. The app has no card-scoped boundary, and the nullable-field risk is the one expected to bite during the preview window. | Relying on the mapper's guards alone makes FR-024 true only for the failure kind that was anticipated. ~15 lines makes it true for all of them. |
 | **No E2E for `CoreReadOnlyRepository`** (FR-027) | The e2e data set contains no `CoreReadOnlyRepository`; the fixture is shared with IFC-3153 and is not budgeted here. The kind differs from the read-write one only by title, row set and one column — all presentation over the same query, with the row-set rule enforced server-side. | Adding the fixture here duplicates work IFC-3153 owns. Component tests cover the three differences. Recorded rather than silent, and flagged to IFC-3153 so the fixture owner inherits the gap. |
@@ -764,7 +762,7 @@ not the implementer.
 | # | Question | Owner | Current working assumption |
 |---|---|---|---|
 | Q1 | The divergence register above, D-a in particular — two cards where the canvas ruled for one | Designer, via T094 on IFC-3101 | Build two cards per the 2026-09-10 clarification. Raise before work unit 1 starts |
-| Q2 | If the epic branch is released before IFC-3127 lands, users see fabricated commit hashes and sync statuses with nothing marking them as placeholders. Gate the card, add a preview banner, or accept? | Epic owner (IFC-3104 / INFP-671) | No banner — the fabricated values reach no user while this lives on the epic branch alongside IFC-3127 |
+| Q2 | **Resolved by IFC-3127 landing.** Asked whether a release before IFC-3127 needed a preview banner over the fabricated values | Epic owner (IFC-3104 / INFP-671) | No banner, and now no question: IFC-3127 is on the base, so the values are read from the graph |
 | Q3 | IFC-3131 is this card's stated manual-validation gate, but its instructions are written by IFC-3132, which has not landed. Is the gate real? | Epic owner | [quickstart.md](quickstart.md)'s validation scenarios serve as the acceptance checklist. They are near-verbatim what IFC-3131 needs, so they can be lifted into it |
 | Q4 | Four user-facing state strings (loading, empty, denied, failed) are unpinned, including the "all branches have Git sync disabled" case. The canvas draws none of them | Product + designer | Strings are pinned in the [UI contract](contracts/repository-branch-status-ui.md) §4 so copy can be reviewed without reading code |
 | Q5 | Dropping `Last import` makes `Syncing` indistinguishable from stuck, and with no `import_error` and no task-log link a user reaches "branch X is in error" and stops | Epic IFC-3101 | Accepted for this slice. The dead-end is real and closes when the drift column and import-error surface land |

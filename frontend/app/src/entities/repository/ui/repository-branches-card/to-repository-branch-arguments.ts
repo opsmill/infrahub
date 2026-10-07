@@ -1,20 +1,22 @@
 import type { InfrahubNodeMetadataOrder } from "@/shared/api/graphql/generated/types";
 
-import { type Filter, SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
+import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import {
   type NodeMetadataSortField,
   SORT_DIRECTION,
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
 import type { GetRepositoryBranchStatusFromApiParams } from "@/entities/repository/api/get-repository-branch-status-from-api";
-import { isFilterableBranchStatus } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
+import {
+  BRANCH_NAME_FILTER,
+  isFilterableBranchStatus,
+} from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 
 export type RepositoryBranchArguments = Pick<
   GetRepositoryBranchStatusFromApiParams,
   "name__value" | "partial_match" | "status__value" | "order"
 >;
 
-const NAME_FILTER = "name__value";
 const STATUS_FILTER = "status__value";
 const CREATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__created_at";
 const UPDATED_AT_SORT_FIELD: NodeMetadataSortField = "node_metadata__updated_at";
@@ -27,12 +29,9 @@ function toStringValue(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
-// The contract narrows names through `name__value`, so the toolbar's free-text search reaches it
-// too; an explicit name filter is the more specific of the two and wins.
+// The search box and the name filter write the same key, so there is only ever one name to send.
 function toNameArguments(filters: Filter[]): RepositoryBranchArguments {
-  const fragment =
-    toStringValue(findFilterValue(filters, NAME_FILTER)) ??
-    toStringValue(findFilterValue(filters, SEARCH_ANY_FILTER));
+  const fragment = toStringValue(findFilterValue(filters, BRANCH_NAME_FILTER));
 
   if (fragment === undefined) return {};
 

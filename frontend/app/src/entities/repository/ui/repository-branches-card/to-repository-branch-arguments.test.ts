@@ -6,7 +6,10 @@ import {
   SORT_DIRECTION,
   type Sort,
 } from "@/entities/nodes/sort/domain/model/sort";
-import { BRANCH_ROW_FILTER_CONDITIONS } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
+import {
+  BRANCH_NAME_FILTER,
+  BRANCH_ROW_FILTER_CONDITIONS,
+} from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import {
   hasRepositoryBranchFilters,
   toRepositoryBranchArguments,
@@ -15,29 +18,27 @@ import {
 const [CREATED_AT, UPDATED_AT] = NODE_METADATA_SORT_FIELDS;
 
 describe("toRepositoryBranchArguments", () => {
-  it("narrows on the name for free text typed into the search field", () => {
-    // GIVEN the toolbar's search writes the any-field filter
+  it("narrows on the name the search box and the filter form share", () => {
+    // GIVEN the one key both controls write
+    const filters: Filter[] = [{ name: BRANCH_NAME_FILTER, value: "release" }];
+
+    // WHEN
+    const result = toRepositoryBranchArguments(filters, []);
+
+    // THEN
+    expect(result).toEqual({ name__value: "release", partial_match: true });
+  });
+
+  it("ignores an any-field filter, which no control on this card writes", () => {
+    // GIVEN a filter left on the url by hand or by another table
     const filters: Filter[] = [{ name: SEARCH_ANY_FILTER, value: "release" }];
 
     // WHEN
     const result = toRepositoryBranchArguments(filters, []);
 
-    // THEN the contract narrows names only, so searching means searching the name
-    expect(result).toEqual({ name__value: "release", partial_match: true });
-  });
-
-  it("prefers an explicit name filter over the search field", () => {
-    // GIVEN both are set
-    const filters: Filter[] = [
-      { name: SEARCH_ANY_FILTER, value: "typed-into-search" },
-      { name: "name__value", value: "chosen-in-the-filter" },
-    ];
-
-    // WHEN
-    const result = toRepositoryBranchArguments(filters, []);
-
-    // THEN the more specific of the two wins
-    expect(result).toEqual({ name__value: "chosen-in-the-filter", partial_match: true });
+    // THEN nothing is sent for it, so no tag can claim a narrowing that did not happen
+    expect(result).toEqual({});
+    expect(hasRepositoryBranchFilters(filters)).toBe(false);
   });
 
   it("orders by the first timestamp alone when both are sorted on", () => {

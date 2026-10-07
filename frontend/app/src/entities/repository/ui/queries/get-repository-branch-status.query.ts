@@ -13,10 +13,8 @@ function getRepositoryBranchStatusQueryOption(params: GetRepositoryBranchStatusP
   return queryOptions({
     queryKey: repositoryQueryKeys.branchStatus(params),
     queryFn: () => getRepositoryBranchStatus(params),
-    // Keeping the previous page rendered while the next one loads is what stops the pagination bar
-    // and the row area from collapsing on every page change. Held only within one repository and
-    // branch: across either, the rows belong to a different object and would be shown under its
-    // header as if they were its own.
+    // Held within one repository and branch only: it keeps the card from collapsing between pages,
+    // while across either the rows would belong to a different object.
     placeholderData: (previousData, previousQuery) => {
       const previousParams = previousQuery?.queryKey.at(-1) as
         | GetRepositoryBranchStatusParams

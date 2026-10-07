@@ -211,6 +211,11 @@ PageWindow
 whole of the collision guarantee, and it is what keeps this independent of the legacy global
 `QSP.PAGINATION`.
 
+**A page past the end**: only a count answering the current request can say which page is the
+last real one, so the card asks for the page the url names, then writes the page back to the last
+real one once the server has answered. A placeholder count describes the previous row set and is
+not used for this.
+
 **Reset rule (FR-014)**: changing *any* filter **or the order** resets the window to page 1. Filters,
 order and page live under three independent URL keys, so the reset is a manual call — made inside
 `useFilters`'s and `useSort`'s own setters, in the same write as the change, never at each call site

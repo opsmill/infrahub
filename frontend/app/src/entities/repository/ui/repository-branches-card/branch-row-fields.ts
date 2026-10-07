@@ -21,6 +21,13 @@ export const FILTERABLE_BRANCH_STATUSES = [
 
 export type FilterableBranchStatus = (typeof FILTERABLE_BRANCH_STATUSES)[number];
 
+/** The one key the search box, the filter form and the column menu all write. */
+export const BRANCH_NAME_FILTER = "name__value";
+
+// The resolver refuses an order naming both timestamps, so offering a second key would promise an
+// ordering the request cannot carry.
+export const BRANCH_ROW_MAX_SORTS = 1;
+
 export function isFilterableBranchStatus(value: unknown): value is FilterableBranchStatus {
   return FILTERABLE_BRANCH_STATUSES.some((status) => status === value);
 }

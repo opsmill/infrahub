@@ -6,6 +6,7 @@ export const NO_BRANCH_MATCHES_FILTERS = "No branch matches these filters";
 // branches at all rather than none synchronising.
 export const NO_BRANCH_IN_SCOPE = "No branch of this repository synchronises with Git";
 export const NO_BRANCH_AT_ALL = "This repository has no branches";
+export const PAGE_PAST_THE_END = "This page is past the end of the list";
 export const BRANCHES_PERMISSION_DENIED =
   "You do not have permission to view this repository's branches";
 export const BRANCHES_LOAD_FAILED = "The branches could not be loaded";
