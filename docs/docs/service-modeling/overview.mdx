@@ -1,0 +1,257 @@
+---
+title: Model a service
+---
+
+# Model a service
+
+A service-modeling pattern separates **what was requested** from **how the network implements it**.
+
+The service request contains the product-level values that describe what should be delivered, such as location, customer, bandwidth, and address package. The network implementation contains the VLANs, prefixes, interfaces, addresses, and other network objects required to deliver that request.
+
+In Infrahub, the schema defines the service model, and each request is stored as a service object. You write a Generator that reads the service object and creates or updates the network objects that implement the service. When the implementation requires prefixes, IP addresses, VLAN IDs, ASNs, or other allocated values, the Generator requests them from Resource Manager.
+
+Because the request and the network implementation are separate, you can change how a service is delivered without changing what was requested, and apply the same service model and generation logic every time somebody requests that service.
+
+This pattern is useful for services that are provisioned repeatedly, such as dedicated internet access, virtual private networks, site builds, or other standardized network services.
+
+To implement this pattern, you define and configure:
+
+- **A service model** that defines the attributes and relationships for the request.
+- **A Generator definition** that identifies the target service objects, the GraphQL query that collects their data, and the Python class containing the generation logic.
+- **Resource Manager pools** for prefixes, IP addresses, VLAN IDs, ASNs, and other allocated values.
+- **A Proposed Change** to review generated changes before merge, or **an event rule** to trigger the Generator automatically after a matching data change.
+
+If you have not built a Generator before, follow [Build your first Generator](../learn/tutorials/generators/build-your-first-generator) first.
+
+## Start with the request
+
+Define which values belong in the service request and which values should be derived or allocated when the service is implemented.
+
+For example, a dedicated internet request might include:
+
+- **Location:** Paris
+- **Bandwidth:** 1 Gbit/s
+- **Address package** (`ip_package`): /29
+
+Write the Generator to derive the interface settings from the requested bandwidth and the prefix length from the selected address package. Then request the VLAN ID, service prefix, and addresses from Resource Manager, and create or update the VLAN, prefix, interface, gateway, and related objects.
+
+The service object stores the requested location, bandwidth, address package, and other product-level values. The VLAN, prefix, interface, gateway, and related objects contain the network state used to deliver that request.
+
+Because the request and network implementation are modeled separately, you can change how interfaces are selected, how addressing is allocated, or which network objects are created without changing the bandwidth or address package that was requested.
+
+## Design the service model
+
+Define the service object around the values that identify the service and describe what was requested.
+
+For a dedicated internet service, that might include:
+
+- a service identifier,
+- an account or customer reference,
+- a location,
+- bandwidth,
+- an address package,
+- and status.
+
+Model VLANs, prefixes, gateway addresses, interface assignments, and similar network state as part of the network implementation rather than as attributes that describe the request. Use Resource Manager for prefixes, addresses, VLAN IDs, and other values that need to be allocated.
+
+The service object remains the record of what was requested, while the related network objects and allocations record how that request is implemented.
+
+### Share common service data with a Generic
+
+If several service types share attributes or relationships, define them on a `Generic` and inherit from that Generic in each product-specific node.
+
+For example, several products might share a service identifier and account reference, while a dedicated internet product adds bandwidth, an address package, and a location.
+
+```yaml title="Adapted from opsmill/infrahub-demo-service-catalog: schemas/service/service.yml"
+generics:
+  - name: Generic
+    namespace: Service
+    attributes:
+      - name: service_identifier
+        kind: Text
+        unique: true
+        optional: false
+        branch: agnostic
+      - name: account_reference
+        kind: Text
+        optional: false
+        branch: agnostic
+
+nodes:
+  - name: DedicatedInternet
+    namespace: Service
+    inherit_from:
+      - ServiceGeneric
+    branch: agnostic
+    attributes:
+      - name: status
+        kind: Dropdown
+        branch: aware
+        choices:
+          - name: draft
+          - name: active
+          - name: decommissioned
+      - name: bandwidth
+        kind: Dropdown
+        branch: aware
+        choices:
+          - name: "1000"
+          - name: "10000"
+      - name: ip_package
+        kind: Dropdown
+        branch: aware
+        choices:
+          - name: small
+          - name: large
+```
+
+The Generic is declared with `name: Generic` and `namespace: Service`. Infrahub joins those two into the kind `ServiceGeneric`, which `DedicatedInternet` inherits from.
+
+`DedicatedInternet` declares `branch: agnostic` itself. A node does not inherit `branch` from its generic, so set it on each service product that needs it.
+
+Using a shared Generic also provides a common relationship target. An IP prefix, site, or other object can relate to `ServiceGeneric` instead of defining separate relationships for each service product.
+
+See [Generics and inheritance](../schema/generics-and-inheritance) for the complete schema behavior.
+
+### Choose branch behavior for service data
+
+Branch awareness is configured independently for nodes, attributes, and relationships. Configure each schema element according to whether its value should be shared across branches or remain isolated until merge.
+
+In the example above:
+
+- `service_identifier` is branch-agnostic, so the same value is available from every branch.
+- `DedicatedInternet` is branch-agnostic, so you can reference the same service object from several branches.
+- `status`, `bandwidth`, and `ip_package` are branch-aware, so changes to those attributes remain local to the branch until merge.
+
+With this schema, the identity of the service is consistent across branches while changes to service parameters such as bandwidth or status can go through the normal branch and review workflow.
+
+See [Branch awareness](../schema/branch-awareness) before defining branch behavior in your service schema.
+
+:::note Branch awareness and resource allocation are separate mechanisms
+
+A branch-agnostic `service_identifier` is shared across branches.
+
+Resource Manager reserves each allocation across branches independently of the service schema. Two separate allocations from one pool never receive the same resource, whichever branches they are made on. Two requests carrying the same allocation identifier are one allocation, so they receive the same resource.
+
+:::
+
+## Generate the network implementation
+
+The Generator definition identifies the target group, the GraphQL query that collects the data each run reads, and the Python class that contains the generation logic. For a service workflow, the target group contains the service objects for which the Generator should create or update network objects.
+
+For a dedicated internet service, write the Generator to:
+
+1. Read the requested bandwidth and address package.
+2. Derive the required interface settings and prefix length.
+3. Request the VLAN ID, prefix, and addresses from Resource Manager.
+4. Create or update the VLAN, prefix, interface, gateway, and related objects.
+5. Relate those objects back to the service object.
+
+Configure the Generator definition to target that group. When Infrahub runs the Generator, it creates an independent run for each service object in the group.
+
+See [Generators](../generators/overview) for Generator definitions, target groups, queries, per-target execution, and the `execute_in_proposed_change` and `execute_after_merge` flags that control when a run happens.
+
+### Account for repeated Generator runs
+
+The same service may be processed more than once. Someone may change its bandwidth or address package, Infrahub may run the Generator during a Proposed Change and again on the target branch once that branch merges, or an event rule may trigger another run later in the service lifecycle.
+
+Write the Generator so each run produces the network implementation for the current service request. A later run may leave existing objects unchanged, update them, create additional objects, or remove objects that are no longer required.
+
+Idempotent behavior depends on how you implement the Generator. Infrahub does not make arbitrary Python idempotent.
+
+See [Generators](../generators/overview) for object tracking and repeated execution. If the service implementation spans several independent layers, see [Modular generators](../generators/modular) for splitting the logic across multiple Generator definitions.
+
+## Allocate prefixes, addresses, and identifiers
+
+Use Resource Manager for values that should be allocated from predefined pools.
+
+Resource Manager supports:
+
+- IP prefix pools,
+- IP address pools,
+- and number pools for values such as VLAN IDs, ASNs, or circuit identifiers.
+
+Allocations are branch-agnostic. After Resource Manager allocates a resource on one branch, that resource is reserved across all branches and cannot be allocated again on another branch.
+
+When the Generator may run more than once for the same service, include an allocation identifier with the resource request. Resource Manager returns the same allocation when a later request uses the same identifier.
+
+Using `service_identifier` as the allocation identifier associates the resource with the service. For example, if Resource Manager allocates a prefix using a dedicated internet service's `service_identifier`, a later Generator run can request the prefix with that same identifier and receive the existing allocation instead of consuming another prefix from the pool.
+
+As a result, repeated Generator runs reuse the prefix, address, or numeric value already allocated to the service.
+
+You can also store a value that was assigned outside Resource Manager. If the Generator requests a resource from a pool with no available capacity, Resource Manager rejects the allocation request. The Generator run then fails.
+
+See [Resource Manager](../resource-manager/overview) for pool types, allocation methods, branch-agnostic allocation, and identifiers.
+
+## Decide how service requests are created
+
+A service object can be created from the Infrahub UI or by another system through an API or integration. Choose the interface based on who submits the request and where the service-ordering workflow already exists.
+
+| Request source | How the service object is created |
+| --- | --- |
+| Infrahub web interface | An engineer creates the service object directly |
+| API or Python SDK | An ordering system, CRM, ticketing system, or internal portal creates the object |
+| Dedicated form | A requester supplies product-level values and the form creates the service object |
+| Infrahub Sync | Service data maintained in another system is synchronized into Infrahub |
+
+A dedicated service-catalog interface can expose only the product-level fields required for the request and create the corresponding service object through the API or SDK.
+
+The [Demo Service Catalog](https://docs.infrahub.app/demo-service-catalog) shows this pattern with a Streamlit ordering interface.
+
+## Decide when the Generator runs
+
+Creating a service object does not run the Generator automatically. You can run the Generator yourself, Infrahub runs it during a Proposed Change, an event rule can trigger it after a matching data change, and Infrahub runs it again on the target branch after a branch merges unless `execute_after_merge` is `false`.
+
+| Requirement | Execution method |
+| --- | --- |
+| Run and test the Generator during development | `infrahubctl generator` or the **Run** action in the UI |
+| Review generated changes before they reach `main` | Proposed Change |
+| Run automatically after a matching data change | Event rule |
+| Run again on the target branch after a merge | On by default; set `execute_after_merge: false` to turn it off |
+
+### Review generated changes in a Proposed Change
+
+When a Proposed Change includes a change to an object in the Generator's target group, Infrahub runs the Generator as part of the pipeline. The reviewer reads the generated objects on the **Data** tab and the check results on the **Checks** tab before merging.
+
+See [Proposed Changes](../proposed-changes/overview) for the review workflow.
+
+### Run from an event rule
+
+An event rule can trigger the Generator after a matching data change.
+
+For example, configure a rule to run the Generator when a service object is added to its target group. Choose an event rule when creating or updating the service object should start generation without a separate manual action.
+
+See [Events](../events/overview) for event rules and Generator actions.
+
+## What happens when a service is requested
+
+For a dedicated internet service, the end-to-end flow is:
+
+1. A person or external system creates a service object with the requested location, bandwidth, address package, and other service parameters.
+2. You run the Generator yourself, Infrahub runs it during a Proposed Change, or an event rule triggers it after a matching data change. After that branch merges, Infrahub runs the affected Generators again on the target branch.
+3. Infrahub executes the Generator for the service object. The Generator reads the requested values and applies the generation logic you defined for that service type.
+4. The Generator requests any required prefixes, addresses, VLAN IDs, or other pooled values from Resource Manager.
+5. Resource Manager returns the allocations associated with the service.
+6. The Generator creates or updates the VLAN, prefix, interface, gateway, and related objects and relates them back to the service object.
+7. If the Generator runs during a Proposed Change, a reviewer can inspect the resulting data before merge.
+8. If device-specific output is required, define a Transformation to render it from the resulting data and an artifact definition pairing that Transformation with a group of target objects. Infrahub stores each rendered file as an artifact.
+
+The execution path differs depending on whether you run the Generator manually, during a Proposed Change, or from an event rule. In each case, the service object is the input and the generated network objects are the result.
+
+## From service modeling to a service catalog
+
+When several service products use the same pattern and are exposed through a consistent ordering interface, they form the basis of a service catalog.
+
+For each service type, define the request schema and the generation logic for that product. Each request becomes a service object, Resource Manager supplies allocated values where required, and you choose whether the generated changes are reviewed in a Proposed Change or the Generator runs automatically from an event rule.
+
+The [Demo Service Catalog](https://docs.infrahub.app/demo-service-catalog) shows a complete implementation with an ordering interface. [Demo SP](https://docs.infrahub.app/infrahub-demo-sp) shows the same pattern in a broader service-provider reference environment.
+
+## Where to go next
+
+- [Build your first Generator](../learn/tutorials/generators/build-your-first-generator) if you have not built a Generator yet.
+- [Generators](../generators/overview) for Generator definitions, target groups, queries, and execution.
+- [Modular generators](../generators/modular) for service implementations split across several Generator definitions.
+- [Resource Manager](../resource-manager/overview) for pool types and allocation behavior.
+- [Branch awareness](../schema/branch-awareness) for branch-aware and branch-agnostic schema behavior.
+- [Proposed Changes](../proposed-changes/overview) for review before merge.
+- [Events](../events/overview) for event-driven Generator execution.

@@ -296,6 +296,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'automation-and-outputs' },
       items: [
+        { type: 'doc', id: 'service-modeling/overview', label: 'Model a service' },
         {
           type: 'category',
           label: 'Generators',
