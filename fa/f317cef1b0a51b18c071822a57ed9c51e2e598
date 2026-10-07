@@ -1,0 +1,21 @@
+backend/tests/unit/core/changelog/test_peer_labels.py
+  s_d9e4ea96a53151::t_5724eb675ce5dd 48,91,103-104
+backend/infrahub/core/changelog/peer_labels.py
+  s_d9e4ea96a53151::t_5724eb675ce5dd 22,59,61,64,66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "faf317cef1b0a51b18c071822a57ed9c51e2e598",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+backend/tests/component/pools/test_schema_number_pool_synchronizer.py
+  s_c29bc2a8dbf032::t_77a91e067e71e4 176-178,180-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50022bfe2aedc479edb452c7cdd5ca4478725091",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

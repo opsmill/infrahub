@@ -1,0 +1,33 @@
+backend/tests/component/core/changelog/test_enrichment.py
+  s_d9e4ea96a53151::t_8d82a6e140d469 174-176,257-259,309-311
+backend/infrahub/core/changelog/builder.py
+  s_d9e4ea96a53151::t_16e7c2c9c52ffb 48-54
+backend/tests/component/graphql/test_mutation_relationship_enrichment.py
+  s_d9e4ea96a53151::t_8d82a6e140d469 5,72-76,98-102,128-132,154-158,183-187
+backend/infrahub/core/changelog/enrichment.py
+  s_d9e4ea96a53151::t_97eccdff7e5d4a 244-249,253-255,259-262,266-279,281-282,284-298,300,304,307-313
+backend/infrahub/graphql/mutations/relationship.py
+  s_d9e4ea96a53151::t_741d8b33dee131 45,78,146-148,168-172,188,267-268,276,286,369-370,378,433
+backend/tests/component/core/changelog/test_models.py
+  s_d9e4ea96a53151::t_8d82a6e140d469 5,178-180,321-323,431-433,516-518,592-594,650-652,770-772,873-875
+backend/infrahub/events/generator.py
+  s_d9e4ea96a53151::t_16e7c2c9c52ffb 6,52-54
+backend/tests/unit/core/changelog/test_enrichment.py
+  s_d9e4ea96a53151::t_edff42e0c7c8ed 99-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26bb3cc9fa40e597b8fc161f9d107ae41fe03444",
+  "prompts": {},
+  "sessions": {
+    "s_d9e4ea96a53151": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92c4c7dc-848d-45d9-bb7c-4c7e6fa1833a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

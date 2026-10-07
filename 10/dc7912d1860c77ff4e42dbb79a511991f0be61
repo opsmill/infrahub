@@ -1,0 +1,26 @@
+backend/infrahub/core/query/branch_agnostic_retirement.py
+  h_7ec9b28dd2a5ab 58
+  s_ca3caa5d4ac088::t_944c251d39c8e7 74,83-89,134,136-137
+  s_ca3caa5d4ac088::t_2ec9d19197b884 39-40,55-57,60-70,95-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10dc7912d1860c77ff4e42dbb79a511991f0be61",
+  "prompts": {},
+  "humans": {
+    "h_7ec9b28dd2a5ab": {
+      "author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  },
+  "sessions": {
+    "s_ca3caa5d4ac088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8f006e6-9ffe-4d11-a02b-f8376d1d09c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

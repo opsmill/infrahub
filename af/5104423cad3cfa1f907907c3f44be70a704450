@@ -1,0 +1,24 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_c47d1ff1b9fc75::t_e332c3c5cd25d4 319-337
+  s_c47d1ff1b9fc75::t_930736847834ad 18-19
+  s_c47d1ff1b9fc75::t_d9360508664072 410,412
+  s_c47d1ff1b9fc75::t_2dcf71ce094462 340-409,411,413-437
+  s_c47d1ff1b9fc75::t_5639810ee21a76 3
+  s_c47d1ff1b9fc75::t_ea0f8e2265fc60 15,338-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af5104423cad3cfa1f907907c3f44be70a704450",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

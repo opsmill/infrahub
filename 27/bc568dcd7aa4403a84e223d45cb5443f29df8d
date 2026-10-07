@@ -1,0 +1,30 @@
+backend/infrahub/core/diff/coordinator.py
+  s_242be49454ebad::t_ea6284726372b1 349,357,371,817-821,832
+backend/infrahub/core/merge/selective_regen/generator_diff_capturer.py
+  s_242be49454ebad::t_ea6284726372b1 60-64
+backend/infrahub/core/diff/calculator.py
+  s_242be49454ebad::t_ea6284726372b1 39,108-109,150-154,189,195,221
+backend/tests/unit/core/merge/selective_regen/test_generator_diff_capturer.py
+  s_242be49454ebad::t_0e1c0455d7b7ae 4,51
+  s_242be49454ebad::t_b1903ff0ecf285 46,59,64-68
+backend/tests/component/core/diff/test_coordinator.py
+  s_242be49454ebad::t_42869e4b776311 622-625
+  s_242be49454ebad::t_73923e11c287bf 599-605
+  s_242be49454ebad::t_d19342ea86c697 483
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27bc568dcd7aa4403a84e223d45cb5443f29df8d",
+  "prompts": {},
+  "sessions": {
+    "s_242be49454ebad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b88083fe-7289-4395-bd5d-1751d0ceb749",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

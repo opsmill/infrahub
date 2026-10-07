@@ -1,0 +1,23 @@
+backend/infrahub/pools/number_ranges.py
+  s_42b74b2708abe7::t_c062248db0bc8f 1-120
+backend/tests/unit/pools/test_number_ranges.py
+  s_42b74b2708abe7::t_33e098c4325a21 1-183
+dev/specs/ifc-3065-number-pool-ranges/tasks.md
+  s_42b74b2708abe7::t_48a6bb3c3d417c 88,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4eb3994784ea9580600b6401d9a92fd46bd46d8",
+  "prompts": {},
+  "sessions": {
+    "s_42b74b2708abe7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc83edeb-4a31-4a75-aa76-de0ccd8856b9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
