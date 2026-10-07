@@ -127,25 +127,29 @@ changes only.
       with the three percentages, two ranges ordered by start with id, display label, start, end,
       weight (10 and 0) and figures `{50, 2, 1, 1}` and `{50, 1, 1, 0}`, `out_of_space_count: 2`;
       `InfrahubNumberPoolDivisions` returns one division with `entries: []`, `display_label: ""`
-      and the pool's figures, with and without `range_id`; `InfrahubNumberPoolAllocations` returns
+      and the pool's figures; `InfrahubNumberPoolAllocations` returns
       five rows ordered by value then branch then holder id, each with `holder {id hfid kind
       display_label}` read on the row's branch, `identifier`, `provenance` (`PROVIDED` for 40 and
       500, `ALLOCATED` otherwise), `in_space` (false for 40 and 500), `range` (`1 - 50` for 40,
       `null` for 500) and `division: []`; the filters `in_space: false`, `branch: "b1"`,
       `provenance: PROVIDED`, `range_id` of `51 - 100` each return the expected rows with `count`
       before pagination; `offset` and `limit` page the ordered list; `division` on this pool is
-      refused with the contract's message. A second case with the attribute's `max_value` below a
-      range's end checks `in_space: false` with `range` set for a value above the limit.
+      refused with the contract's message, and so is `division` on `InfrahubNumberPoolUtilization`.
+      A second case with the attribute's `max_value` below a range's end checks `in_space: false`
+      with `range` set for a value above the limit.
 - [ ] T013 [P] [US1] Component tests in the same file on a pool scoped by `["site"]` at contract
       time: `allocation_scope: ["site"]` on utilization and divisions; the divisions list holds
-      `mock-1`, `mock-2`, `mock-3` ordered by utilization descending then label, each entry with
-      `path: "site"`; every row's `division` is one of the three; filtering on `[{path: "site",
-      value: "mock-2"}]` returns rows whose `division` is `mock-2`, and the number of distinct values
+      the mock divisions holding at least one row, ordered by utilization descending then label,
+      each entry with `path: "site"`; the utilization query with `[{path: "site", value:
+      "mock-2"}]` reports `mock-2` over the pool and over each range, and its `out_of_space_count`
+      equals the `count` of the allocation list filtered on `mock-2` with `in_space: false`; every
+      row's `division` is one of the listed divisions; filtering on `[{path: "site", value:
+      "mock-2"}]` returns rows whose `division` is `mock-2`, and the number of distinct values
       among them equals `mock-2`'s `used` (SC-010); `[{path: "site", value: "nope"}]` returns an
       empty list with `count: 0`; `[{path: "role", value: "x"}]` (not in the scope) and
       `[{path: "site", value: "a"}, {path: "site", value: "b"}]` are refused naming the entry; read
       on a branch whose schema lacks `site`, `allocation_scope` is `[]` and the division filter is
-      refused; the pool's `figures` are pool-wide.
+      refused; without `division` the pool's `figures` are pool-wide.
 - [ ] T014 [P] [US1] Component tests in the same file for refusals: an IP prefix pool as
       `pool_id` and a random uuid both raise `NodeNotFoundError` naming the id; `range_id` of
       another pool's range raises `ValidationError` naming the pool and the range; an unknown
@@ -210,15 +214,16 @@ changes only.
       shorthand); pool `figures` with `size` from `effective_space.space_size` over the range set;
       each range's figures from the values within its bounds and `end - start + 1`;
       `out_of_space_count` from `NumberPoolGetAllocated(in_space=False).count`; `allocation_scope`
-      from `_scope_in_force`; `id` and `display_label` from the pool. Pool-wide figures on a scoped
-      pool at this phase.
-- [ ] T020 [US1] Add `resolve_number_pool_divisions`: validate `range_id` against `_ranges`; with
-      an empty scope in force return one division `{display_label: "", entries: [], figures:
-      <pool or range figures>}`; otherwise partition the rows with `division_mock.division_of_row`,
-      list `division_mock.divisions(entries)`, compute each division's figures over the pool's
-      space or the range's, build `entries` with `value` and `display_label` from the key and
-      `peer_kind` None, join labels with `" / "`, order by `utilization` descending then
-      `display_label`, set `count`.
+      from `_scope_in_force`; `id` and `display_label` from the pool. Validate `division` as T021
+      does and also refuse one that omits a path in force, naming the missing paths; with it, keep
+      the rows of that mock division before computing every figure and the count. Pool-wide
+      figures on a scoped pool read without `division` at this phase.
+- [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return one
+      division `{display_label: "", entries: [], figures: <pool figures>}`; otherwise partition the
+      rows with `division_mock.division_of_row`, list the mock divisions holding at least one row,
+      compute each division's figures over the pool's space, build `entries` with `value` and
+      `display_label` from the key and `peer_kind` None, join labels with `" / "`, order by
+      `utilization` descending then `display_label`, set `count`.
 - [ ] T021 [US1] Add `resolve_number_pool_allocations`: validate `range_id`; translate it to the
       one range's bounds, otherwise pass no bounds (every tracked value); validate `division`
       (non-empty scope in force, every path in force, no duplicate; messages of the contract); run
@@ -407,16 +412,16 @@ division rows, the range rows and the filtered allocation list against the recor
 - [ ] T047 [P] [US3] Extend `backend/tests/component/graphql/queries/test_number_pool_surface.py`
       with the real-division cases, replacing the T013 mock assertions: the spec's User Story 3
       scenario 1 (A 50 records, B two nodes no records, C no nodes → headline A's 50 of 100 with
-      `used: 50`, A 50/100, B 0/100, no division for C); scenario 2 (branch split over the fullest
+      `used: 50`, A 50/100, no division for B or C); scenario 2 (branch split over the fullest
       division); scenario 3 (range rows: `1 - 50` reports A's 40 of 50, `51 - 100` B's 30 of 50,
-      headline A's 40 of 100; the divisions query with the id of `1 - 50` reports A 40 of 50, B 0 of
-      50); scenario 4 (a division keyed by a site that exists only on `b1`, read from the default
-      branch, is listed with `display_label` falling back to the id and `peer_kind` null);
-      scenario 5 (D1 holding 5 in A on the default branch and moved to C on `b1`: the allocation
-      list filtered on A returns D1's two rows, the `b1` row's `division` naming C; filtered on C,
-      the same two rows; SC-010 holds for both); a partial two-entry filter on a `["site", "role"]`
-      pool; `InfrahubResourcePoolAllocated` count, offset and limit unchanged across the fragment
-      move.
+      headline A's 40 of 100; the utilization query with the division of B reports 30 of 100,
+      `1 - 50` 0 of 50 and `51 - 100` 30 of 50); scenario 4 (a division keyed by a site that exists
+      only on `b1`, read from the default branch, is listed with `display_label` falling back to the
+      id and `peer_kind` null); scenario 5 (D1 holding 5 in A on the default branch and moved to C
+      on `b1`: the allocation list filtered on A returns D1's two rows, the `b1` row's `division`
+      naming C; filtered on C, the same two rows; SC-010 holds for both); a partial two-entry filter
+      on a `["site", "role"]` pool; `InfrahubResourcePoolAllocated` count, offset and limit
+      unchanged across the fragment move.
 - [ ] T048 [US3] Add `NumberPoolDivisions` to `backend/infrahub/core/query/resource_manager.py`:
       over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` with the visibility constant on the
       `IS_PART_OF` edge and one `CALL` per entry (same shape as T042), return the distinct tuple of
