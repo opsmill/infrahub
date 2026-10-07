@@ -57,7 +57,7 @@ Rows are evaluated in order. The first match wins.
 | `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
 | `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
-| Either identifier is malformed | propagates as `RepositoryError`; the branch joins `failed_imports` |
+| Either identifier is malformed | propagates as `RepositoryError`. The collector reads a malformed graph commit as no recorded commit before it classifies, so the sync does not reach this row |
 | **The imported commit is absent and the remote head is absent too** | propagates as `RepositoryError` |
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
@@ -127,6 +127,20 @@ The collector therefore takes the union of two sets:
 
 Both are needed. Neither is a subset of the other.
 
+**Only branches that can still record a commit enter the second set.** The API refuses a commit on
+a branch that needs a rebase, is being merged, failed a merge or is merged, a branch being deleted
+loses its nodes, and a branch Infrahub no longer lists has nowhere to record one. The graph
+comparison would select any of them again on every cycle and keep the early return from firing.
+`git/branch_status.py::accepts_commit_write` holds the rule, and the collector's filter of the
+branches it advances uses it too. A refusal the listing did not predict, such as a merge that starts
+during the cycle, fails that branch alone. The periodic sync leaves them
+out of the graph commits it passes down, using the branch listing it already reads once per cycle.
+
+**A branch new to this worker is classified too.** The periodic sync runs on whichever worker picks
+it up, and that worker may never have held the branch. The graph can still record a commit another
+worker imported and the remote has since discarded. Skipping the classification there would leave
+the rewrite unrecorded whenever the cycle lands on such a worker.
+
 ### Where the graph commit comes from
 
 `collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not
@@ -147,6 +161,12 @@ rather than a read-then-write.
 
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
+
+**The collector reads an empty graph commit, and one that is not a full commit id, as no recorded
+commit.** The API stores any text as the commit, and git cannot classify a malformed one. Failing
+the branch would repeat on every cycle, because the worktree and the graph commit would never move.
+Read as none, the branch classifies `FAST_FORWARD`, resets onto the remote head and records a real
+commit. Only a failure to read the object store still fails the branch.
 
 **A read must tell a written commit from an inherited one.** `git_branch_create` creates and
 pushes the branch but never calls `update_commit_value`, and `commit` is `LOCAL`, so the branch
@@ -194,7 +214,7 @@ Reset, from this worker's worktree against the remote, decided independently:
 |---|---|---|
 | Equal | equals the remote head | nothing |
 | Equal | **differs from the remote head** | **write the commit, queue the import, and record if the classification is `REWRITE`** |
-| Worktree is an ancestor of the remote head | any | pull, as today |
+| Worktree is an ancestor of the remote head | any | reset onto the remote head, which fast-forwards it. Not a pull: a pull fetches again and can import a newer commit than the one classified |
 | Remote head is an ancestor of the worktree | any | reset onto the remote head. The remote was rewound |
 | Neither is an ancestor | any | reset onto the remote head |
 | The remote carries no such ref | any | nothing |
@@ -299,8 +319,8 @@ Returns whether a record was written.
 
 `RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
 once per branch around `apply_branch_import`. The reconciled commit is written inside the **first**
-one: `collect_pending_imports` calls `pull`, which defaults `update_commit_value=True`, and the
-reset path of the sync task writes the commit the same way.
+one: `collect_pending_imports` moves every branch with `reset_to_commit`, which defaults
+`update_commit_value=True`.
 
 **The recorder runs there, beside that write.** Both properties the placement needs hold:
 
@@ -394,15 +414,22 @@ and neither records.
 
 Changed. `backend/infrahub/git/sync.py`.
 
-It returns the branches the cycle advanced instead of returning nothing, and it raises for failed
-branches only after its caller has had the chance to broadcast.
+Today it returns a `SyncReport` of the skipped, imported and advanced branches, and it raises
+`RepositoryBranchesFailedError`, carrying the same report, when a branch failed. Phase 4 (T031) makes
+it return the branches the cycle advanced, and leaves the raise for failed branches to its caller,
+after the broadcast.
 
 ```text
-sync(repo, staging_branch) -> SyncOutcome
+sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # today
+sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # after T031
 ```
 
+`graph_commits` holds the commit the graph records for each Infrahub branch that can still record
+one, read once per cycle (section 1). The add flow passes none, so its first sync classifies nothing.
+
 `SyncOutcome` carries `reconciled: tuple[ReconciledBranch, ...]` and
-`failed: tuple[FailedImport, ...]`.
+`failed: tuple[FailedImport, ...]`. It must also keep what `SyncReport` reports today, because
+`git/tasks.py::report_sync_run` logs the skipped branches and links the run from it.
 
 ### Contract
 
@@ -439,6 +466,7 @@ repository.
 | One message, for `staging_branch or registry.default_branch` only | One message, carrying every branch the cycle advanced |
 | Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is re-raised |
 | Commit read from `repo.default_branch` | Commit taken per branch from `ReconciledBranch` |
+| A staging sync names the staging branch | A staging sync names the branch its trunk maps onto, as `ReconciledBranch` does, so other workers move their trunk worktree |
 
 ### Rules
 

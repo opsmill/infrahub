@@ -18,21 +18,30 @@ from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
 from infrahub.core.branch import Branch
-from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
+    BranchNotFoundError,
     CommitNotFoundError,
     RepositoryError,
 )
 from infrahub.git.branch_mapping import get_mapped_remote_branch
+from infrahub.git.branch_status import accepts_commit_write
+from infrahub.git.divergence.detector import RemoteDivergenceDetector
+from infrahub.git.divergence.gateway import COMMIT_SHA_PATTERN, GitAncestryGateway
+from infrahub.git.divergence.models import ReconciledBranch, RefClassification
 from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from git import Repo
+    from infrahub_sdk.branch import BranchData
     from infrahub_sdk.client import InfrahubClient
+
+    from infrahub.git.divergence.models import RefDivergence
 
 log = get_run_logger()
 
@@ -58,6 +67,12 @@ class PendingObjectImport:
     infrahub_branch_name: str
     commit: str
     git_branch_name: str | None = None
+    reconciled: ReconciledBranch | None = None
+    """The branch a sync advanced to produce this import, None for an import no sync collected.
+
+    It names the branch whose commit the sync wrote, which differs from ``infrahub_branch_name`` when
+    the objects of a staging repository's trunk go to the staging branch.
+    """
 
 
 class ImportStep(StrEnum):
@@ -91,6 +106,11 @@ class CollectedImports:
     failed_imports: list[FailedImport] = field(default_factory=list)
     skipped_branches: list[str] = field(default_factory=list)
     advanced_skipped_branches: list[str] = field(default_factory=list)
+
+    @property
+    def reconciled(self) -> list[ReconciledBranch]:
+        """The branch each collected import advanced, and the commit it advanced to."""
+        return [pending_import.reconciled for pending_import in self.imports if pending_import.reconciled is not None]
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -315,13 +335,25 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             message=f"Unable to synchronize the following branches of repository {self.name}: {branch_summaries}",
         )
 
-    async def collect_pending_imports(self, staging_branch: str | None = None) -> CollectedImports:
+    async def collect_pending_imports(
+        self, staging_branch: str | None = None, graph_commits: Mapping[str, str | None] | None = None
+    ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
         Brings the local clone in line with the remote and records the affected branches and their
         commits in the database, pinning a per-commit worktree for each. Returns one entry per branch
         whose objects still need importing into the graph, alongside the branches whose git setup
         failed and the reason each one failed.
+
+        A branch worktree that moves is hard-reset onto the remote head, whatever the graph records, and
+        a worktree that does not lead to that head loses the commits it held. Each branch is also
+        classified against the commit the graph records for it, which is what tells a rewritten history
+        apart from a fast-forward.
+
+        Args:
+            graph_commits: The commit the graph records for this repository, per Infrahub branch that
+                can still record one. Without it no branch is classified, and a branch whose worktree
+                already matches the remote is left alone even when the graph records another commit.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -343,85 +375,348 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         skipped_branches, advanced_skipped_branches = self._find_skipped_branches(
             colliding_branch=colliding_branch, head_before_fetch=head_before_fetch
         )
+        collected = CollectedImports(
+            skipped_branches=skipped_branches, advanced_skipped_branches=advanced_skipped_branches
+        )
         new_branches, updated_branches = await self.compare_local_remote()
+        if graph_commits is not None:
+            graph_commits = self._read_graph_commits(graph_commits=graph_commits)
+            behind_in_graph = await self._find_branches_behind_in_graph(graph_commits=graph_commits)
+            updated_branches = sorted({*updated_branches, *behind_in_graph})
 
         if not new_branches and not updated_branches:
-            return CollectedImports(
-                skipped_branches=skipped_branches, advanced_skipped_branches=advanced_skipped_branches
-            )
+            return collected
 
         log.debug("New Branches %s, Updated Branches %s for %s", new_branches, updated_branches, self.name)
 
-        imports: list[PendingObjectImport] = []
-        failed_imports: list[FailedImport] = []
+        # Listing the branches costs a query, which a repository with nothing to import would pay every cycle.
+        stages_trunk = (
+            self.internal_status == RepositoryInternalStatus.STAGING
+            and bool(staging_branch)
+            and self.default_branch in updated_branches
+        )
+        if self.internal_status != RepositoryInternalStatus.ACTIVE and not stages_trunk:
+            return collected
+
+        remote_heads = {name: branch.commit for name, branch in self.get_branches_from_remote().items()}
+        graph_branches = await self.sdk.branch.all()
 
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE:
             # A branch that has been merged (or is being deleted) is read-only: recording its commit
             # would be rejected by the graph and abort the whole sync, so drop those branches here.
-            new_branches, updated_branches = await self._exclude_read_only_branches(new_branches, updated_branches)
+            new_branches, updated_branches = self._exclude_read_only_branches(
+                new_branches=new_branches, updated_branches=updated_branches, graph_branches=graph_branches
+            )
 
             for branch_name in new_branches:
-                if not self.validate_remote_branch(branch_name=branch_name):
-                    continue
-
-                infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-                try:
-                    try:
-                        branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
-                    except GraphQLError as exc:
-                        if "already exist" not in exc.errors[0]["message"]:
-                            raise
-                        branch = await self.sdk.branch.get(branch_name=infrahub_branch)
-
-                    await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
-
-                    commit = self.get_commit_value(branch_name=branch_name, remote=False)
-                    self.create_commit_worktree(commit=commit)
-                    await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-                except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so the other branches are still collected;
-                    # graph errors are left to propagate.
-                    failed_imports.append(
-                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+                if self.validate_remote_branch(branch_name=branch_name):
+                    await self._collect_new_branch(
+                        collected=collected,
+                        branch_name=branch_name,
+                        remote_head=remote_heads.get(branch_name),
+                        graph_commits=graph_commits,
                     )
-                    continue
-
-                imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
-                if not self.validate_remote_branch(branch_name=branch_name):
-                    continue
-
-                infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-
-                try:
-                    commit_after = await self.pull(branch_name=branch_name)
-                except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
-                    # Isolate per-branch git failures so the other branches are still collected;
-                    # graph errors are left to propagate.
-                    failed_imports.append(
-                        FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
-                    )
-                    continue
-
-                if isinstance(commit_after, str):
-                    imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after))
-
-                elif commit_after is True:
-                    log.warning(
-                        "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
-                        commit_after,
-                        branch_name,
-                        self.name,
+                if self.validate_remote_branch(branch_name=branch_name):
+                    await self._collect_updated_branch(
+                        collected=collected,
+                        branch_name=branch_name,
+                        remote_heads=remote_heads,
+                        graph_commits=graph_commits,
+                        graph_branches=graph_branches,
                     )
 
-        return CollectedImports(
-            imports=imports
-            + await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches),
-            failed_imports=failed_imports,
-            skipped_branches=skipped_branches,
-            advanced_skipped_branches=advanced_skipped_branches,
+        elif staging_branch:
+            await self._collect_updated_branch(
+                collected=collected,
+                branch_name=self.default_branch,
+                remote_heads=remote_heads,
+                graph_commits=graph_commits,
+                graph_branches=graph_branches,
+                import_branch=staging_branch,
+                git_branch_name=self.default_branch,
+            )
+
+        return collected
+
+    def _read_graph_commits(self, graph_commits: Mapping[str, str | None]) -> dict[str, str | None]:
+        """Read a graph commit that is empty or not a full commit id as no commit recorded.
+
+        The API stores any text as the commit, and git cannot classify a malformed one, so it would
+        fail its branch on every cycle without ever being replaced.
+        """
+        commits: dict[str, str | None] = {}
+        for branch_name, commit in graph_commits.items():
+            readable = commit if commit and COMMIT_SHA_PATTERN.fullmatch(commit) else None
+            if commit and readable is None:
+                log.debug(
+                    "Reading the commit %r of branch %s of repository %s as none: it is not a commit id",
+                    commit,
+                    branch_name,
+                    self.name,
+                )
+            commits[branch_name] = readable
+        return commits
+
+    async def _collect_new_branch(
+        self,
+        collected: CollectedImports,
+        branch_name: str,
+        remote_head: str | None,
+        graph_commits: Mapping[str, str | None] | None,
+    ) -> None:
+        """Create a branch this worker does not hold yet and queue its import.
+
+        Git failures are recorded against the branch so the other branches are still collected.
+
+        Raises:
+            GraphQLError: When the graph rejects the branch or its commit for a reason other than the
+                branch existing already.
+
+        """
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        try:
+            # Another worker may have imported a history the remote has since discarded.
+            divergence = self._classify_against_graph(
+                branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+            )
+        except RepositoryError as exc:
+            # The classification only names a discarded history, so it must not keep the branch from being created.
+            log.warning(
+                "Unable to classify the new branch %s of repository %s against the graph: %s",
+                branch_name,
+                self.name,
+                exc.message,
+            )
+            divergence = None
+
+        try:
+            try:
+                branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
+            except GraphQLError as exc:
+                if "already exist" not in exc.errors[0]["message"]:
+                    raise
+                branch = await self.sdk.branch.get(branch_name=infrahub_branch)
+
+            await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
+
+            commit = self.get_commit_value(branch_name=branch_name, remote=False)
+            self.create_commit_worktree(commit=commit)
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+        except (RepositoryError, CommitNotFoundError, GitCommandError, ValueError) as exc:
+            collected.failed_imports.append(
+                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+            )
+            return
+
+        if divergence is not None and divergence.discarded_commit is not None:
+            self._log_reconciliation(
+                branch_name=branch_name, discarded_commit=divergence.discarded_commit, commit=commit
+            )
+        collected.imports.append(
+            PendingObjectImport(
+                infrahub_branch_name=infrahub_branch,
+                commit=commit,
+                reconciled=ReconciledBranch(
+                    infrahub_branch_name=infrahub_branch,
+                    infrahub_branch_id=branch.id,
+                    commit=commit,
+                    divergence=divergence,
+                ),
+            )
+        )
+
+    async def _collect_updated_branch(
+        self,
+        collected: CollectedImports,
+        branch_name: str,
+        remote_heads: dict[str, str],
+        graph_commits: Mapping[str, str | None] | None,
+        graph_branches: dict[str, BranchData],
+        import_branch: str | None = None,
+        git_branch_name: str | None = None,
+    ) -> None:
+        """Bring a branch this worker already holds onto the remote head and queue its import.
+
+        Git failures, and a commit the graph refuses to record, are recorded against the branch so the
+        other branches, and the other repositories of the cycle, are still collected.
+
+        Args:
+            import_branch: The Infrahub branch the objects go to, the branch the remote branch maps
+                onto when not given.
+
+        """
+        try:
+            await self._queue_advanced_branch(
+                collected=collected,
+                branch_name=branch_name,
+                import_branch=import_branch or self._get_mapped_target_branch(branch_name=branch_name),
+                remote_heads=remote_heads,
+                graph_commits=graph_commits,
+                graph_branches=graph_branches,
+                git_branch_name=git_branch_name,
+            )
+        # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
+        except (
+            RepositoryError,
+            BranchNotFoundError,
+            CommitNotFoundError,
+            GitCommandError,
+            ValueError,
+            GraphQLError,
+        ) as exc:
+            collected.failed_imports.append(
+                FailedImport(branch_name=branch_name, step=ImportStep.COLLECTION, reason=str(exc))
+            )
+
+    async def _queue_advanced_branch(
+        self,
+        collected: CollectedImports,
+        branch_name: str,
+        import_branch: str,
+        remote_heads: dict[str, str],
+        graph_commits: Mapping[str, str | None] | None,
+        graph_branches: dict[str, BranchData],
+        git_branch_name: str | None = None,
+    ) -> None:
+        """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
+
+        The branch is classified first, so a branch that git cannot classify keeps its worktree.
+
+        Raises:
+            RepositoryError: When git cannot classify the branch or move its worktree.
+            BranchNotFoundError: When the graph has no Infrahub branch for the branch.
+            ValueError: When the branch has no worktree here.
+
+        """
+        advanced_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        branch_id = self._get_branch_id(infrahub_branch=advanced_branch, graph_branches=graph_branches)
+        remote_head = remote_heads.get(branch_name)
+        divergence = self._classify_against_graph(
+            branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+        )
+        commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
+        if commit is not None:
+            collected.imports.append(
+                PendingObjectImport(
+                    infrahub_branch_name=import_branch,
+                    commit=commit,
+                    git_branch_name=git_branch_name,
+                    reconciled=ReconciledBranch(
+                        infrahub_branch_name=advanced_branch,
+                        infrahub_branch_id=branch_id,
+                        commit=commit,
+                        divergence=divergence,
+                    ),
+                )
+            )
+
+    async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
+        """Return the local branches whose commit in the graph is not the remote head.
+
+        The local heads cannot show these: a worktree already on the remote head can still have its
+        commit missing from the graph, and a changed default branch moves no ref at all.
+        """
+        if not self.has_origin:
+            return []
+
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        behind: list[str] = []
+        for branch_name, remote_branch in (await self.get_filtered_remote_branches()).items():
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+            if (
+                branch_name not in local_branches
+                or infrahub_branch not in graph_commits
+                or self._collides_with_infrahub_default_branch(branch_name=branch_name)
+            ):
+                continue
+            if graph_commits[infrahub_branch] != remote_branch.commit:
+                behind.append(branch_name)
+        return behind
+
+    def _get_ancestry_gateway(self) -> GitAncestryGateway:
+        return GitAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
+
+    def _classify_against_graph(
+        self, branch_name: str, remote_head: str | None, graph_commits: Mapping[str, str | None] | None
+    ) -> RefDivergence | None:
+        if graph_commits is None:
+            return None
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        return RemoteDivergenceDetector(gateway=self._get_ancestry_gateway()).classify(
+            branch_name=branch_name,
+            infrahub_branch_name=infrahub_branch,
+            imported_commit=graph_commits.get(infrahub_branch),
+            remote_head=remote_head,
+            target_changed=False,
+        )
+
+    def _get_branch_id(self, infrahub_branch: str, graph_branches: dict[str, BranchData]) -> str:
+        """Return the UUID of an Infrahub branch.
+
+        Raises:
+            BranchNotFoundError: When the graph has no such branch, so no commit can be recorded for it.
+
+        """
+        if infrahub_branch not in graph_branches:
+            raise BranchNotFoundError(
+                identifier=infrahub_branch,
+                message=f"Infrahub has no branch {infrahub_branch} to record the commit of repository {self.name}",
+            )
+        return graph_branches[infrahub_branch].id
+
+    async def _advance_branch(
+        self, branch_name: str, remote_head: str | None, divergence: RefDivergence | None
+    ) -> str | None:
+        """Hard-reset this worker's worktree of a branch onto the remote head and return the commit to import.
+
+        The classification decides one case only: a worktree already on the remote head is left alone
+        unless the graph records another commit. Returns None when there is nothing to import.
+
+        Raises:
+            ValueError: When the branch has no worktree on this worker.
+
+        """
+        if remote_head is None:
+            return None
+
+        worktree = self._get_branch_worktree(branch_name)
+        worktree_head = str(worktree.head.commit) if worktree is not None else None
+        if worktree_head == remote_head and (
+            divergence is None or divergence.classification is RefClassification.UNCHANGED
+        ):
+            return None
+
+        discarded_commit = divergence.discarded_commit if divergence is not None else None
+        if (
+            worktree_head is not None
+            and worktree_head != remote_head
+            and not self._get_ancestry_gateway().is_ancestor(
+                ancestor_commit=worktree_head, descendant_commit=remote_head
+            )
+        ):
+            discarded_commit = discarded_commit or worktree_head
+
+        await self.reset_to_commit(branch_name=branch_name, commit=remote_head)
+        if discarded_commit is not None:
+            self._log_reconciliation(branch_name=branch_name, discarded_commit=discarded_commit, commit=remote_head)
+        return remote_head
+
+    def _log_reconciliation(self, branch_name: str, discarded_commit: str, commit: str) -> None:
+        log.info(
+            "Reconciled branch %s of repository %s with the remote history: %s was discarded and replaced by %s",
+            branch_name,
+            self.name,
+            discarded_commit,
+            commit,
+            extra={
+                "repository": self.name,
+                "branch": branch_name,
+                "discarded_commit": discarded_commit,
+                "commit": commit,
+            },
         )
 
     def _get_colliding_branch_name(self) -> str | None:
@@ -458,48 +753,30 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         advanced = [colliding_branch] if head_after_fetch != head_before_fetch else []
         return [colliding_branch], advanced
 
-    async def _exclude_read_only_branches(
-        self, new_branches: list[str], updated_branches: list[str]
+    def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
-        """Drop branches whose Infrahub branch is in a terminal status (merged or being deleted).
+        """Drop the branches whose commit the graph cannot record.
 
-        Such branches are read-only, so recording their commit is rejected by the graph. The default
-        branch is never terminal, so filtering here does not affect the staging-import path.
+        A branch whose status rejects a commit, such as one that needs a rebase or is merged, would
+        fail again on every cycle. An updated branch whose Infrahub branch is gone has nowhere to record
+        it, and its worktree would never move. A new branch is kept, because collecting it creates its
+        Infrahub branch. The staging-import path does not go through this filter.
         """
-        terminal_status_values = {status.value for status in TERMINAL_BRANCH_STATUSES}
-        graph_branches = await self.sdk.branch.all()
-        read_only = {name for name, branch in graph_branches.items() if branch.status.value in terminal_status_values}
+        read_only = {name for name, branch in graph_branches.items() if not accepts_commit_write(branch)}
+        orphaned = [
+            name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in graph_branches
+        ]
+        if orphaned:
+            log.debug("Ignoring branches %s of repository %s, which have no Infrahub branch", orphaned, self.name)
         return (
             [name for name in new_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
-            [name for name in updated_branches if self._get_mapped_target_branch(branch_name=name) not in read_only],
+            [
+                name
+                for name in updated_branches
+                if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in read_only
+            ],
         )
-
-    async def _collect_staging_imports(
-        self, staging_branch: str | None, updated_branches: list[str]
-    ) -> list[PendingObjectImport]:
-        if not (
-            self.internal_status == RepositoryInternalStatus.STAGING
-            and staging_branch
-            and self.default_branch in updated_branches
-        ):
-            return []
-
-        commit_after = await self.pull(branch_name=self.default_branch)
-        if isinstance(commit_after, str):
-            return [
-                PendingObjectImport(
-                    infrahub_branch_name=staging_branch, git_branch_name=self.default_branch, commit=commit_after
-                )
-            ]
-
-        if commit_after is True:
-            log.warning(
-                "An update was detected but the commit remained the same after pull() (%s) for branch %s of repository %s.",
-                commit_after,
-                self.default_branch,
-                self.name,
-            )
-        return []
 
     async def push(self, branch_name: str) -> bool:
         """Push a given branch to the remote Origin repository.
@@ -553,7 +830,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         received the merge is not always knowable, since a push can be accepted just before the
         connection drops, so the reset leaves the destination either at the pre-merge state, where a
         later merge attempt re-derives the merge, or trailing the remote, which the periodic
-        synchronization repairs by pulling the pushed merge commit and recording it.
+        synchronization repairs by resetting onto the pushed merge commit and recording it.
 
         Raises:
             RepositoryError: When no worktree exists for the destination branch, when the
@@ -597,9 +874,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             recorded = True
         finally:
             if not recorded:
-                # Trailing the remote is a state the periodic synchronization repairs by pulling
-                # and recording the missing commit; a worktree left on a merge commit that is
-                # recorded nowhere is never revisited.
+                # Trailing the remote is a state the periodic synchronization repairs by resetting
+                # onto the missing commit and recording it.
                 self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
 
         return str(commit_after)
