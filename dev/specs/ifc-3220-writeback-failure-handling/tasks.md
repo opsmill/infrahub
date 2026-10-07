@@ -421,7 +421,7 @@ deployment rule.** T070 to T073 are not.
 - [X] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
       `backend/infrahub/git/models.py`, and fill it in `ArtifactSelector._build_request` in
       `backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py`.
-- [ ] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
+- [X] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
       `generate_artifact_definition` in `backend/infrahub/git/tasks.py` and to
       `run_generator_definition` in `backend/infrahub/generators/tasks.py`.
 - [X] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and

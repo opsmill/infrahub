@@ -13,6 +13,7 @@ from prefect.states import Completed, Failed
 from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.regeneration.members import map_subscriber_ids_by_member
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
@@ -149,7 +150,11 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
 
 @flow(name="generator-definition-run", flow_run_name="Run all generators")
 async def run_generator_definition(
-    branch: str, context: InfrahubContext, source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN
+    branch: str,
+    context: InfrahubContext,
+    source: GeneratorDefinitionRunSource = GeneratorDefinitionRunSource.UNKNOWN,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
 ) -> None:
     await add_tags(branches=[branch])
 
@@ -163,8 +168,14 @@ async def run_generator_definition(
 
     for generator in generators:
         if (
-            source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value
-        ) or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value):
+            (source == GeneratorDefinitionRunSource.PROPOSED_CHANGE and not generator.execute_in_proposed_change.value)
+            or (source == GeneratorDefinitionRunSource.MERGE and not generator.execute_after_merge.value)
+            or not selects_repository(
+                repository_id=generator.repository.peer.id,
+                exclude_repository_ids=exclude_repository_ids,
+                include_repository_ids=include_repository_ids,
+            )
+        ):
             continue
 
         generator_definitions.append(

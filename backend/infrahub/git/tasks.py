@@ -37,6 +37,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
@@ -772,14 +773,25 @@ async def git_branch_delete(
 
 
 @flow(name="artifact-definition-generate", flow_run_name="Generate all artifacts")
-async def generate_artifact_definition(branch: str, context: InfrahubContext) -> None:
+async def generate_artifact_definition(
+    branch: str,
+    context: InfrahubContext,
+    exclude_repository_ids: list[str] | None = None,
+    include_repository_ids: list[str] | None = None,
+) -> None:
     await add_branch_tag(branch_name=branch)
 
     client = get_client()
     client.request_context = context.to_request_context()
-    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["id"])
+    artifact_definitions = await client.all(kind=CoreArtifactDefinition, branch=branch, include=["transformation"])
 
     for artifact_definition in artifact_definitions:
+        if not selects_repository(
+            repository_id=artifact_definition.transformation.peer.repository.id,
+            exclude_repository_ids=exclude_repository_ids,
+            include_repository_ids=include_repository_ids,
+        ):
+            continue
         model = RequestArtifactDefinitionGenerate(
             branch=branch,
             artifact_definition_id=artifact_definition.id,
