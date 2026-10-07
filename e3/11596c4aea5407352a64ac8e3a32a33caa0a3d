@@ -1,0 +1,14 @@
+dev/specs/ifc-3185-scoped-number-pools/opsmill-implement-report.md
+  h_bd00275aefc321 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e311596c4aea5407352a64ac8e3a32a33caa0a3d",
+  "prompts": {},
+  "humans": {
+    "h_bd00275aefc321": {
+      "author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
