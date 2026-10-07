@@ -971,6 +971,17 @@ async def _advance_and_import_the_trunk(container: DockerContainer, tracked: Tra
     return advanced
 
 
+def _rewrite_the_branch(container: DockerContainer, tracked: TrackedBranchRepository) -> str:
+    """Replace the commit the tracked branch was imported at with a second version of its query."""
+    return commit_to_remote_branch(
+        container,
+        tracked.name,
+        branch=tracked.branch_name,
+        files=tracked_branch_files(repo_name=tracked.name, version=2),
+        amend=True,
+    )
+
+
 def _rewrite_the_trunk(container: DockerContainer, tracked: TrackedBranchRepository) -> str:
     """Replace the last commit of the trunk, which the tracked branch does not hold, so the two still merge."""
     return commit_to_remote_branch(
@@ -1056,12 +1067,15 @@ async def _collect_one_repository(
         )
 
 
-async def _clone_on_another_worker(client: InfrahubClient, tracked: TrackedBranchRepository, directory: Path) -> None:
-    """Clone the repository and its tracked branch, as they stand now, into the directory of another worker."""
+async def _clone_on_another_worker(client: InfrahubClient, tracked: TrackedBranchRepository, tmp_path: Path) -> Path:
+    """Clone the repository and its tracked branch, as they stand now, and return the directory of that worker."""
+    directory = tmp_path / "second-worker-repositories"
+    directory.mkdir()
     branch = await client.branch.get(branch_name=tracked.branch_name)
     with repositories_directory(directory):
         clone = await _open_clone(client=client, tracked=tracked)
         await clone.create_branch_in_git(branch_name=tracked.branch_name, branch_id=branch.id, push_origin=False)
+    return directory
 
 
 def _tracked_reconciliation_messages(caplog: pytest.LogCaptureFixture, tracked: TrackedBranchRepository) -> list[str]:
@@ -1320,35 +1334,6 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             )
             assert converged.get_commit_value(branch_name=tracked.branch_name, remote=False) == advanced
 
-    async def test_a_merge_onto_a_trunk_rewritten_since_the_last_cycle_is_refused(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
-    ) -> None:
-        """Merging onto the discarded trunk would push it again, so nothing moves anywhere."""
-        tracked = await tracked_branch_repository("refused-trunk-merge-repo", "refused-trunk-merge-branch")
-        imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
-        rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
-        trunk = await client.branch.get(branch_name=registry.default_branch)
-
-        with pytest.raises(
-            RepositoryDivergentHistoryError,
-            match=_refused_merge_message(
-                tracked=tracked, branch_name="main", local_commit=imported, graph_commit=imported, remote_head=rewritten
-            ),
-        ):
-            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
-
-        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
-        clone = await _open_clone(client=client, tracked=tracked)
-        assert str(clone.get_git_repo_worktree(identifier="main").head.commit) == imported
-        on_trunk: CoreRepository = await NodeManager.get_one(
-            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
-        )
-        assert on_trunk.commit.value == imported
-
     async def test_a_merge_from_a_branch_rewritten_since_the_last_cycle_is_refused(
         self,
         db: InfrahubDatabase,
@@ -1358,13 +1343,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     ) -> None:
         """Merging the discarded branch would put the commits the rewrite removed back on the remote trunk."""
         tracked = await tracked_branch_repository("refused-source-merge-repo", "refused-source-merge-branch")
-        rewritten = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-            amend=True,
-        )
+        rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         trunk = await client.branch.get(branch_name=registry.default_branch)
 
         with pytest.raises(
@@ -1384,14 +1363,14 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         clone = await _open_clone(client=client, tracked=tracked)
         assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == tracked.imported_commit
 
-    async def test_a_refused_merge_leaves_the_trunk_rewrite_to_the_next_cycle(
+    async def test_a_merge_onto_a_trunk_rewritten_since_the_last_cycle_waits_for_the_next_cycle(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
     ) -> None:
-        """The cycle still finds the rewrite to record, and the merge goes through once it has run."""
+        """Merging onto the discarded trunk would push it again, so nothing moves until the cycle records the rewrite."""
         tracked = await tracked_branch_repository("deferred-trunk-merge-repo", "deferred-trunk-merge-branch")
         imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
         rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
@@ -1404,6 +1383,14 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
             ),
         ):
             await merge_git_repository(model=model)
+
+        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
+        clone = await _open_clone(client=client, tracked=tracked)
+        assert str(clone.get_git_repo_worktree(identifier="main").head.commit) == imported
+        on_trunk: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert on_trunk.commit.value == imported
 
         await sync_remote_repositories()
 
@@ -1429,9 +1416,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         """The graph already records the rewrite, so only the clone of the worker that merges is behind."""
         tracked = await tracked_branch_repository("stale-trunk-merge-repo", "stale-trunk-merge-branch")
         imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
-        second_worker = tmp_path / "second-worker-repositories"
-        second_worker.mkdir()
-        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        second_worker = await _clone_on_another_worker(client=client, tracked=tracked, tmp_path=tmp_path)
         rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
         await sync_remote_repositories()
         trunk = await client.branch.get(branch_name=registry.default_branch)
@@ -1443,33 +1428,6 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
         assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
 
-    async def test_a_merge_on_a_worker_behind_an_imported_source_merges_the_imported_head(
-        self,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-        tmp_path: Path,
-        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
-    ) -> None:
-        """A plain push the cycle imported, which the worker that merges never heard about."""
-        tracked = await tracked_branch_repository("behind-source-merge-repo", "behind-source-merge-branch")
-        second_worker = tmp_path / "second-worker-repositories"
-        second_worker.mkdir()
-        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
-        advanced = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-        )
-        await sync_remote_repositories()
-        trunk = await client.branch.get(branch_name=registry.default_branch)
-
-        with repositories_directory(second_worker):
-            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
-
-        assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == advanced
-
     async def test_a_merge_that_runs_after_the_source_branch_is_deleted_merges_the_imported_head(
         self,
         db: InfrahubDatabase,
@@ -1478,11 +1436,12 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         tmp_path: Path,
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
     ) -> None:
-        """A branch merge submits the delete of the source branch without a wait for the Git merge."""
+        """A plain push the cycle imported, which the worker that merges never heard about.
+
+        A branch merge submits the delete of the source branch without a wait for the Git merge.
+        """
         tracked = await tracked_branch_repository("deleted-source-merge-repo", "deleted-source-merge-branch")
-        second_worker = tmp_path / "second-worker-repositories"
-        second_worker.mkdir()
-        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
+        second_worker = await _clone_on_another_worker(client=client, tracked=tracked, tmp_path=tmp_path)
         advanced = commit_to_remote_branch(
             gogs_server.container,
             tracked.name,
@@ -1509,16 +1468,8 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     ) -> None:
         """The graph already holds the remote head, so only the clone of the second worker tells it to move."""
         tracked = await tracked_branch_repository("missed-broadcast-repo", "missed-broadcast-branch")
-        second_worker = tmp_path / "second-worker-repositories"
-        second_worker.mkdir()
-        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
-        rewritten = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-            amend=True,
-        )
+        second_worker = await _clone_on_another_worker(client=client, tracked=tracked, tmp_path=tmp_path)
+        rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         await sync_remote_repositories()
         record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
         assert (record[0], record[1], record[3]) == (tracked.imported_commit, rewritten, 1)
@@ -1543,16 +1494,8 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     ) -> None:
         """The second worker does not fetch first, so the pull alone has to find the rewrite."""
         tracked = await tracked_branch_repository("first-pull-repo", "first-pull-branch")
-        second_worker = tmp_path / "second-worker-repositories"
-        second_worker.mkdir()
-        await _clone_on_another_worker(client=client, tracked=tracked, directory=second_worker)
-        rewritten = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-            amend=True,
-        )
+        second_worker = await _clone_on_another_worker(client=client, tracked=tracked, tmp_path=tmp_path)
+        rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         await sync_remote_repositories()
         record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
         sent_before = len(bus_simulator.messages)
@@ -1576,13 +1519,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     ) -> None:
         """The discarded commit never reaches the new clone, so the clone has nothing to reset."""
         tracked = await tracked_branch_repository("new-worker-repo", "new-worker-branch")
-        rewritten = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-            amend=True,
-        )
+        rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         await sync_remote_repositories()
         record = await _rewrite_record(db=db, tracked=tracked, branch_name=tracked.branch_name)
         branch = await client.branch.get(branch_name=tracked.branch_name)
@@ -1607,13 +1544,7 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
     ) -> None:
         """The refusal comes before the graph merge, so the branch stays open and merges once the cycle ran."""
         tracked = await tracked_branch_repository("waiting-branch-merge-repo", "waiting-branch-merge-branch")
-        rewritten = commit_to_remote_branch(
-            gogs_server.container,
-            tracked.name,
-            branch=tracked.branch_name,
-            files=tracked_branch_files(repo_name=tracked.name, version=2),
-            amend=True,
-        )
+        rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         refusal = (
             f"Unable to merge branch {tracked.branch_name}, because Infrahub has not imported the latest commit "
             f"of branch {tracked.branch_name} of repository {tracked.name} ({rewritten} on the remote, "

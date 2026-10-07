@@ -375,7 +375,8 @@ emits no signal.
       itself. The classifier entry was removed later, because no path runs `git pull` (research R9).
 - [x] T046 [P] [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker whose destination worktree
-      holds a discarded history refuses the merge instead of merging onto it.
+      holds a discarded history refuses the merge instead of merging onto it. One test covers T046
+      and T048: it checks that nothing moved after the refusal, then runs the cycle.
 - [x] T047 [US2] Add a live-remote test for the source side, in the same file: a worker holding a
       stale **source** branch refuses the merge, and the discarded commits do not reappear on the
       remote. This is the security-relevant half of FR-005a.
