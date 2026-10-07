@@ -41,6 +41,10 @@ TIME_LIMIT_HINT = (
     "The Git command for repository net-repo did not complete within its time limit, "
     "please check that the remote is reachable."
 )
+PERMISSION_HINT = (
+    "Write access to repository net-repo was denied. The credentials can read but not push; "
+    "grant the token write access to the repository."
+)
 TLS_STDERR = (
     "fatal: unable to access 'https://git.example.com/demo.git/': "
     "SSL certificate problem: unable to get local issuer certificate"
@@ -134,6 +138,15 @@ ENRICHMENT_CASES = [
         expected=RepositoryError,
         command=["git", "worktree", "add", "/opt/infrahub/git/repo/commits/abc", "abc"],
         message="The command git worktree for repository net-repo did not complete within 120 seconds.",
+    ),
+    EnrichmentCase(
+        # A write operation is a push to the remote, so past its limit it fails as a push does.
+        name="write_operation_past_its_time_limit",
+        stderr='Timeout: the command "git push origin --delete feature" did not complete in 300 secs.',
+        expected=RepositoryConnectionError,
+        command=["git", "push", "origin", "--delete", "feature"],
+        is_write_operation=True,
+        message=TIME_LIMIT_HINT,
     ),
     # One case per wording libcurl emits for an unverifiable certificate: the test host's own git covers
     # only the wording of the TLS backend it happens to be linked against, so they are asserted as text.
@@ -369,6 +382,23 @@ class StatusRecordingClient(InfrahubClient):
         return {}
 
 
+def build_failing_remote_repository(location: str) -> tuple[InfrahubRepository, StatusRecordingClient]:
+    """Return a repository whose clone has `location` as its origin, and the client that records its status writes."""
+    repository = InfrahubRepository(
+        id=UUID(str(UUIDT.new())),
+        name="net-repo",
+        location=location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+    )
+    Repo.init(repository.directory_default).create_remote(name="origin", url=location, allow_unsafe_protocols=True)
+    recorder = StatusRecordingClient()
+    repository.client = recorder
+    return repository, recorder
+
+
 @dataclass
 class FetchConnectionFailureCase:
     name: str
@@ -405,18 +435,7 @@ async def test_fetch_failure_to_connect_records_the_connection_status(
     location = failing_remote_location(
         tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
     )
-    repository = InfrahubRepository(
-        id=UUID(str(UUIDT.new())),
-        name="net-repo",
-        location=location,
-        default_branch="main",
-        has_origin=True,
-        internal_status=RepositoryInternalStatus.ACTIVE,
-        infrahub_branch_name="main",
-    )
-    Repo.init(repository.directory_default).create_remote(name="origin", url=location, allow_unsafe_protocols=True)
-    recorder = StatusRecordingClient()
-    repository.client = recorder
+    repository, recorder = build_failing_remote_repository(location=location)
 
     with pytest.raises(case.expected) as raised:
         await repository.fetch(timeout_seconds=case.timeout_seconds)
@@ -424,6 +443,56 @@ async def test_fetch_failure_to_connect_records_the_connection_status(
     assert type(raised.value) is case.expected
     assert raised.value.message == case.message
     assert recorder.recorded_statuses == [RepositoryOperationalStatus.ERROR_CONNECTION.value]
+
+
+@dataclass
+class BranchDeletionFailureCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryError]
+    message: str
+    delay_seconds: int = 0
+    """How long the remote waits before it fails."""
+    timeout_seconds: float | None = None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        BranchDeletionFailureCase(
+            # Only a write operation reads a 403 as missing write access.
+            name="write_access_denied",
+            stderr="fatal: unable to access 'https://git.example.com/net/repo.git/': "
+            "The requested URL returned error: 403",
+            expected=RepositoryPermissionError,
+            message=PERMISSION_HINT,
+        ),
+        BranchDeletionFailureCase(
+            name="past_its_time_limit",
+            stderr="",
+            expected=RepositoryConnectionError,
+            message=TIME_LIMIT_HINT,
+            delay_seconds=1,
+            timeout_seconds=0.3,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+@pytest.mark.usefixtures("git_repos_dir")
+async def test_branch_deletion_types_its_failure_as_a_push_does(
+    case: BranchDeletionFailureCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    location = failing_remote_location(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
+    )
+    repository, recorder = build_failing_remote_repository(location=location)
+
+    with pytest.raises(case.expected) as raised:
+        await repository.delete_remote_branch(branch_name="feature", timeout_seconds=case.timeout_seconds)
+
+    assert type(raised.value) is case.expected
+    assert raised.value.message == case.message
+    assert recorder.recorded_statuses == []
 
 
 class ReplyRecordingBus(BusRecorder):

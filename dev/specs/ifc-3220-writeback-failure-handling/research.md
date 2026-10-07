@@ -613,7 +613,8 @@ the runtime image. Until it ships, FR-004 holds for these commands only when Git
 
 A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
 killed local command raises a `RepositoryError` that names the command and the limit, and R5
-classifies it. `reset` never raises: a killed reset is logged like any failed reset, and the failure
+classifies it. The deletion of a source branch is a push, so `delete_remote_branch` types its errors
+as `push` does, and past its limit it raises `RepositoryConnectionError`. `reset` never raises: a killed reset is logged like any failed reset, and the failure
 of the attempt still propagates. The limits live in `git/writeback/constants.py`.
 
 **A killed local command can leave a lock file.** GitPython kills with `SIGKILL`, so a killed

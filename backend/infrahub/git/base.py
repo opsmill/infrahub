@@ -622,16 +622,28 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return branch_name in self.get_branches_from_remote()
 
     async def delete_remote_branch(self, branch_name: str, timeout_seconds: float | None = None) -> None:
-        """Delete branch_name from origin.
+        """Delete branch_name from origin; a failure is typed as for a push and never writes the operational status.
 
         Args:
             timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+
+        Raises:
+            RepositoryConnectionError: When the remote is unreachable, or the deletion did not complete within
+                ``timeout_seconds``.
+            RepositoryCredentialsError: When authentication fails.
+            RepositoryPermissionError: When the credentials authenticate but lack write access.
+            RepositoryError: For any other failure of the deletion.
 
         """
         if not self.has_origin:
             return
         repo = self.get_git_repo_main()
-        repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+        try:
+            repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+        except GitCommandError as exc:
+            self._raise_enriched_error_static(
+                error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
+            )
 
     async def delete_local_branch(self, branch_name: str) -> None:
         """Remove any worktrees and the local tracking ref for branch_name."""
@@ -1202,7 +1214,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
             Git call stopped at its limit, "Timeout: the command ... did not complete"
             (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
-            arguments, which can name worker paths.
+            arguments, which can name worker paths. A write operation is a push to the remote, so past
+            its limit it gets the connection error of a push.
           - not found: "Repository not found", which a host sends in a ``remote:`` line, and Git's own
             line for an HTTP 404, "repository '<url>' not found" (``GIT_HTTP_REPOSITORY_NOT_FOUND``).
             For a fetch or a push, GitPython keeps only the lines that start with ``error:`` or
@@ -1225,7 +1238,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             RepositoryNotFoundError: When the remote reports the repository as not found.
             RepositoryTLSError: When the certificate of the remote is not accepted.
             RepositoryConnectionError: When the remote is unreachable, a gateway/proxy in
-                front of it returns a 5xx, or a fetch or a push ran past its time limit.
+                front of it returns a 5xx, or a fetch, a push or another write operation ran past its
+                time limit.
             RepositoryCredentialsError: When authentication fails or credentials cannot be resolved.
             RepositoryPermissionError: When the credentials authenticate but lack write access.
             RepositoryInvalidBranchError: When the requested branch or pathspec does not exist.
@@ -1249,7 +1263,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         ):
             raise RepositoryConnectionError(identifier=name) from error
 
-        if "process killed because it timed out" in error.stderr:
+        time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
+        if "process killed because it timed out" in error.stderr or (time_limit and is_write_operation):
             raise RepositoryConnectionError(
                 identifier=name,
                 message=(
@@ -1258,7 +1273,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 ),
             ) from error
 
-        if time_limit := GIT_CALL_TIME_LIMIT.search(error.stderr):
+        if time_limit:
             raise RepositoryError(
                 identifier=name,
                 message=(
