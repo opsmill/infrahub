@@ -101,10 +101,6 @@ function toGraphQLResult<TData>(
   return { data: data as TData };
 }
 
-function toOperationContext(context?: GraphQLRequestContext) {
-  return context?.keepLargeIntegersExact ? { fetch: fetchKeepingLargeIntegersExact } : undefined;
-}
-
 interface QueryArgs<TData, TVars extends AnyVariables> {
   query: DocumentInput<TData, TVars>;
   variables?: TVars;
@@ -124,7 +120,11 @@ export const graphqlClient = {
     args: QueryArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
     const result = await createGraphqlClient(args.context?.branch, args.context?.date)
-      .query<TData, TVars>(args.query, args.variables as TVars, toOperationContext(args.context))
+      .query<TData, TVars>(
+        args.query,
+        args.variables as TVars,
+        args.context?.keepLargeIntegersExact ? { fetch: fetchKeepingLargeIntegersExact } : undefined
+      )
       .toPromise();
     return toGraphQLResult(result.data, result.error, args.context);
   },
@@ -133,11 +133,7 @@ export const graphqlClient = {
     args: MutateArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
     const result = await createGraphqlClient(args.context?.branch, args.context?.date)
-      .mutation<TData, TVars>(
-        args.mutation,
-        args.variables as TVars,
-        toOperationContext(args.context)
-      )
+      .mutation<TData, TVars>(args.mutation, args.variables as TVars)
       .toPromise();
     return toGraphQLResult(result.data, result.error, args.context);
   },
