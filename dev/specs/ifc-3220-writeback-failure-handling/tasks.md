@@ -571,12 +571,12 @@ rule.** T094 is not.
       keeps the items held.
 - [X] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
-- [ ] T090 [US5] Add `test_conflict_then_abandon` to
+- [X] T090 [US5] Add `test_conflict_then_abandon` to
       `backend/tests/integration/git/test_git_live_remote.py`: cause `replay-conflict`, nothing
       pushed; after the abandonment, the record, the account on the edge, one release, an unchanged
       remote.
-- [ ] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
-- [ ] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
+- [X] T091 [US5] Add `test_conflict_resolved_on_remote` to the same module (US5 #2).
+- [X] T092 [US5] Add `test_late_first_attempt_does_not_resurrect` to the same module (FR-005b):
       abandon while a run of `merge_git_repository` with `pending_merge_enqueued` set to `True`
       waits, then let it run. The entry does not come back and the remote is unchanged. A second
       case: a run with the flag `False`, whose entry was never queued, enqueues the entry and
