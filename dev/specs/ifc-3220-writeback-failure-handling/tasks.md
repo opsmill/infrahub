@@ -461,16 +461,16 @@ deployment rule.** T070 to T073 are not.
       release all three: the artifact trigger, the generator request and the Python submission.
 - [X] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
-- [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
+- [X] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
       `backend/infrahub/core/merge/python_target_sources.py`.
-- [ ] T071 [US3] Consult the barrier in `_resolve_python_targets` in
+- [X] T071 [US3] Consult the barrier in `_resolve_python_targets` in
       `backend/infrahub/core/merge/recompute_coalescing.py`, for `MergeRecomputeCoordinator` and
       `RecomputeChainSubmitter`, which gain a required `barrier` parameter. Wire it in
       `backend/infrahub/core/merge/builder.py`, `backend/infrahub/core/recompute/dispatch.py` and the
       rebase builder in `backend/infrahub/core/branch/tasks.py`. Coordinate with IFC-3002.
-- [ ] T072 [US3] Consult the barrier in `computed_attribute_setup_python` in
+- [X] T072 [US3] Consult the barrier in `computed_attribute_setup_python` in
       `backend/infrahub/computed_attribute/tasks.py`, on the default branch.
-- [ ] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
+- [X] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
       a resolved target and a widened target are both filtered, and a rebase admits everything.
 - [X] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
       one release for X after the delivery, against the delivered commit; a deleted held definition

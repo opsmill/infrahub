@@ -17,7 +17,14 @@ from infrahub.core.constants import FullRegenerationReason
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.merge.python_target_sources import DeclaredAttribute
-from infrahub.core.merge.recompute_coalescing import CoalescedRecomputeSubmitter
+from infrahub.core.merge.recompute_coalescing import (
+    PYTHON_COMPUTED_ATTRIBUTE,
+    SELF_FILTER,
+    AffectedTarget,
+    CoalescedRecomputeSubmitter,
+    PythonTargetRequest,
+    ReaderLookup,
+)
 from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.regeneration_release import HeldRegenerationReleaser
@@ -34,6 +41,7 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.git.writeback.models import HeldItem, HeldPythonAttribute, HeldRegeneration, HeldWiden, PendingMerge
 from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -405,6 +413,79 @@ async def test_a_held_definition_is_released_with_the_narrowing_kept_at_its_hold
     ]
     assert renew.after_calls == [0, 0, 1, 2]
     assert records == []
+
+
+@dataclass
+class PythonNarrowingTestCase:
+    name: str
+    kept: PythonTargetRequest | None
+    expected_calls: list[tuple[str, WorkflowDefinition, dict[str, Any]]]
+
+
+PYTHON_NARROWING_TEST_CASES: list[PythonNarrowingTestCase] = [
+    PythonNarrowingTestCase(
+        name="a_kept_target_submits_the_nodes_of_its_hold",
+        kept=PythonTargetRequest(
+            target=AffectedTarget(
+                family=PYTHON_COMPUTED_ATTRIBUTE,
+                target_kind="TestCar",
+                attribute_name="description",
+                reads_across_relationship=False,
+                reader_lookups=frozenset(
+                    {ReaderLookup(source_kind="TestCar", filter_key=SELF_FILTER, source_node_ids=frozenset({"car-1"}))}
+                ),
+            )
+        ),
+        expected_calls=[
+            (
+                "submit",
+                COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                {
+                    "branch_name": DEFAULT_BRANCH,
+                    "node_kind": "TestCar",
+                    "object_ids": ["car-1"],
+                    "context": CONTEXT.to_event_context(),
+                    "computed_attribute_name": "description",
+                    "computed_attribute_kind": "TestCar",
+                    "coalesced": True,
+                    "recompute_depth": 0,
+                },
+            )
+        ],
+    ),
+    PythonNarrowingTestCase(
+        name="a_missing_target_submits_the_whole_kind",
+        kept=None,
+        expected_calls=[_python_recompute(CAR_DESCRIPTION)],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PYTHON_NARROWING_TEST_CASES])
+async def test_a_held_python_attribute_is_released_with_the_target_kept_at_its_hold(
+    test_case: PythonNarrowingTestCase,
+) -> None:
+    recorder = WorkflowRecorder()
+    renew = RecordedRenewals(recorder=recorder)
+    narrowed = _narrowed()
+    if test_case.kept is not None:
+        await narrowed.put(
+            repository_id=REPOSITORY_X, hold_seq=5, identifier="TestCar.description", request=test_case.kept
+        )
+    releaser = _releaser(
+        recorder=recorder, definitions=FakeHeldDefinitions(), state=await _delivery_state(), narrowed=narrowed
+    )
+
+    await releaser.release(
+        repository_id=REPOSITORY_X,
+        held=HeldRegeneration(
+            python_attributes=(HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=5),)
+        ),
+        renew=renew,
+    )
+
+    assert _calls(recorder) == test_case.expected_calls
+    assert renew.after_calls == [0, 1]
 
 
 @dataclass
