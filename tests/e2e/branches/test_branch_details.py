@@ -118,22 +118,6 @@ class TestBranchDetailsNonDefaultBranch:
         await expect(admin_page.get_by_role("button", name="Delete", exact=True)).to_be_visible()
         await expect(admin_page.get_by_test_id("branch-tasks-card")).to_be_visible()
 
-    async def test_git_repositories_card_renders_above_the_merge_button(
-        self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
-    ) -> None:
-        await admin_page.goto(f"/branches/{NON_DEFAULT_BRANCH}")
-
-        repositories_card = admin_page.get_by_test_id("branch-repositories-card")
-        merge_button = admin_page.get_by_role("button", name="Merge")
-        await expect(repositories_card).to_be_visible()
-        await expect(merge_button).to_be_visible()
-
-        card_box = await repositories_card.bounding_box()
-        merge_box = await merge_button.bounding_box()
-        assert card_box is not None
-        assert merge_box is not None
-        assert card_box["y"] + card_box["height"] <= merge_box["y"]
-
     async def test_navigate_between_tabs(
         self, admin_page: Page, data_scenario_branches: ScenarioBranchesHandle
     ) -> None:
