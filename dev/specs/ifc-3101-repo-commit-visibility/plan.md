@@ -411,8 +411,8 @@ determinism logic, no test and no documentation entry.
   `InfrahubReadOnlyRepositoryCheckRefs`. The mutation tags the run with the repository when it
   submits it, and the commit view asks the task manager for an on-demand check of that repository
   in an ongoing state: every 2 seconds while one runs, every 10 seconds otherwise. While one runs,
-  from this tab or anywhere else, the button is disabled and links that task in the repository's
-  Tasks tab; when it ends, the commit log is refetched. Without it the on-demand half of User Story
+  from this tab or anywhere else, the button is disabled and a "View task" link beside it opens that
+  task in the repository's Tasks tab; when it ends, the commit log is refetched. Without it the on-demand half of User Story
   2 has no entry point outside the API, which matters because the interval stays at 15 minutes. Its
   placement on the design canvas is still open (T094).
 - Departure from FR-025 in the interface, recorded rather than fixed here: a scheduled check runs

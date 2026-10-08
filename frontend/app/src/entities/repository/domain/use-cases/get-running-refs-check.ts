@@ -6,7 +6,12 @@ export interface GetRunningRefsCheckParams {
   repositoryId: string;
 }
 
-export type GetRunningRefsCheck = (params: GetRunningRefsCheckParams) => Promise<string | null>;
+/** The id of the running check's task, or null when none runs. */
+export type GetRunningRefsCheckResult = string | null;
+
+export type GetRunningRefsCheck = (
+  params: GetRunningRefsCheckParams
+) => Promise<GetRunningRefsCheckResult>;
 
 // Only on-demand checks run as a task of their own; a scheduled check runs inside the fleet-wide
 // task and is not found here.

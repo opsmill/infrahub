@@ -213,6 +213,7 @@ Tests:
 ```bash
 uv run pytest backend/tests/component/git/test_check_refs.py backend/tests/integration/git/test_readonly_refs_check.py
 cd frontend/app && pnpm exec vitest run src/entities/repository/ui/repository-check-remote-button.test.tsx && cd ../..
+# needs a local image: uv run invoke dev.build
 INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_check_remote.py
 ```
 

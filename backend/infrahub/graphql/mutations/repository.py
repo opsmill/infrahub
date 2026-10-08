@@ -343,8 +343,8 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                 ),
             ),
         )
-        # Tagged at submission, not only once the flow starts, so a check still waiting for a worker
-        # is already found by its repository.
+        # Tagged at submission, not only once the flow starts, so a check still waiting for a worker is
+        # already listed under its repository's tasks.
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
             context=graphql_context.get_context(),

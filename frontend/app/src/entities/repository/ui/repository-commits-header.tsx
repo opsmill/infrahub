@@ -22,7 +22,8 @@ export interface RepositoryCommitsRefreshButtonProps {
   repositoryId: string;
 }
 
-export interface RepositoryCommitsToolbarProps extends RepositoryCommitsRefreshButtonProps {
+export interface RepositoryCommitsToolbarProps {
+  repositoryId: string;
   /** Null where the repository has no remote check: a read-write repository. */
   remoteCheck: RepositoryRemoteCheck | null;
   children?: React.ReactNode;

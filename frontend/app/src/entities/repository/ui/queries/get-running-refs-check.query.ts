@@ -4,8 +4,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getRunningRefsCheck } from "@/entities/repository/domain/use-cases/get-running-refs-check";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
-export const RUNNING_REFS_CHECK_POLL_INTERVAL_MS = 2000;
-export const IDLE_REFS_CHECK_POLL_INTERVAL_MS = 10_000;
+const RUNNING_REFS_CHECK_POLL_INTERVAL_MS = 2000;
+const IDLE_REFS_CHECK_POLL_INTERVAL_MS = 10_000;
 
 export interface UseGetRunningRefsCheckParams {
   repositoryId: string;
@@ -20,9 +20,10 @@ export function useGetRunningRefsCheck({ repositoryId }: UseGetRunningRefsCheckP
     queryKey,
     queryFn: async () => {
       const taskId = await getRunningRefsCheck({ repositoryId });
-      // Refetch the commit log once, when a check seen running is first seen ended.
+      // Refetch the commit log once, when a check seen running is first seen ended; not awaited, so the
+      // button is available again without waiting for a worker to answer the commit log.
       if (taskId === null && queryClient.getQueryData(queryKey)) {
-        await queryClient.invalidateQueries({
+        queryClient.invalidateQueries({
           queryKey: repositoriesQueryKeys.repository({
             repositoryId,
             branchName: currentBranch.name,

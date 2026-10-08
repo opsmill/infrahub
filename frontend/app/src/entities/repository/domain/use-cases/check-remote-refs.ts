@@ -5,7 +5,10 @@ import {
 
 export type CheckRemoteRefsParams = CheckRemoteRefsFromApiParams;
 
-export type CheckRemoteRefs = (params: CheckRemoteRefsParams) => Promise<string>;
+/** The id of the task that runs the check. */
+export type CheckRemoteRefsResult = string;
+
+export type CheckRemoteRefs = (params: CheckRemoteRefsParams) => Promise<CheckRemoteRefsResult>;
 
 export const checkRemoteRefs: CheckRemoteRefs = async (params) => {
   const { data } = await checkRemoteRefsFromApi(params);

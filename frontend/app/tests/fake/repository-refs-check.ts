@@ -4,6 +4,9 @@ import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-
 
 import { generatePermission } from "./permission";
 
+/** A check time earlier than the one the read-only commit log fixture reports. */
+export const EARLIER_CHECKED_AT = "2025-03-10T18:00:00Z";
+
 export const generateRemoteCheck = (
   overrides: Partial<RepositoryRemoteCheck> = {}
 ): RepositoryRemoteCheck => ({
@@ -21,5 +24,5 @@ export const generateCheckRemoteRefsApiResult = (
 export const generateRunningRefsCheckApiResult = (
   taskId: string | null
 ): Awaited<ReturnType<typeof getRunningRefsCheckFromApi>> => ({
-  data: { InfrahubTask: { edges: taskId ? [{ node: { id: taskId } }] : [] } },
+  data: { InfrahubTask: { edges: taskId !== null ? [{ node: { id: taskId } }] : [] } },
 });

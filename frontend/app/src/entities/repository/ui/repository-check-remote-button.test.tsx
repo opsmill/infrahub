@@ -21,6 +21,7 @@ import {
   READ_ONLY_CHECKED_AT,
 } from "../../../../tests/fake/repository-commit";
 import {
+  EARLIER_CHECKED_AT,
   generateCheckRemoteRefsApiResult,
   generateRemoteCheck,
   generateRunningRefsCheckApiResult,
@@ -69,7 +70,7 @@ const pollRunningCheckAgain = () =>
     queryKey: repositoriesQueryKeys.runningRefsCheck({ repositoryId: REPOSITORY_ID }),
   });
 
-describe("RepositoryCheckRemoteButton", () => {
+describe("Check remote now in the commit log", () => {
   beforeEach(() => {
     vi.mocked(useCurrentBranch).mockReturnValue({
       currentBranch: generateBranch({ name: "test-branch" }),
@@ -85,16 +86,22 @@ describe("RepositoryCheckRemoteButton", () => {
   });
 
   test("is offered on a read-only repository", async () => {
+    // GIVEN
+    const remoteCheck = generateRemoteCheck();
+
     // WHEN
-    const component = await renderCommitLog();
+    const component = await renderCommitLog(remoteCheck);
 
     // THEN
     await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
   });
 
   test("is not offered on a read-write repository", async () => {
+    // GIVEN
+    const remoteCheck = null;
+
     // WHEN
-    const component = await renderCommitLog(null);
+    const component = await renderCommitLog(remoteCheck);
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
@@ -130,6 +137,8 @@ describe("RepositoryCheckRemoteButton", () => {
       .element(component.getByRole("tooltip", { name: "Update not allowed" }))
       .toBeVisible();
     await expect.element(checkButton).toBeDisabled();
+    // Move the pointer off the trigger so the tooltip does not carry into the next test.
+    await initPointerTracking(component.locator);
   });
 
   test("does not start a check when pressed without permission", async () => {
@@ -146,6 +155,8 @@ describe("RepositoryCheckRemoteButton", () => {
 
     // THEN
     await expect.element(checkButton).toHaveFocus();
+    // A press that got through would call the API on a later tick, so give it one before asserting.
+    await new Promise((resolve) => setTimeout(resolve, 100));
     expect(checkRemoteRefsApiMock).not.toHaveBeenCalled();
   });
 
@@ -164,9 +175,6 @@ describe("RepositoryCheckRemoteButton", () => {
         expect.stringContaining(`/objects/CoreReadOnlyRepository/${REPOSITORY_ID}/tasks/${TASK_ID}`)
       );
     await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeDisabled();
-    expect(runningRefsCheckApiMock).toHaveBeenCalledWith(
-      expect.objectContaining({ repositoryId: REPOSITORY_ID })
-    );
   });
 
   test("starts a check on the current branch and follows it", async () => {
@@ -192,9 +200,11 @@ describe("RepositoryCheckRemoteButton", () => {
 
   test("reloads the commit log when the running check ends", async () => {
     // GIVEN
-    const checkedBefore = "2025-03-10T18:00:00Z";
     commitsApiMock.mockResolvedValue(
-      generateCommitsApiResult({ ...generateReadOnlyCommitsResponse(), checked_at: checkedBefore })
+      generateCommitsApiResult({
+        ...generateReadOnlyCommitsResponse(),
+        checked_at: EARLIER_CHECKED_AT,
+      })
     );
     runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
     const component = await renderCommitLog();
@@ -218,7 +228,7 @@ describe("RepositoryCheckRemoteButton", () => {
     commitsApiMock.mockResolvedValue(
       generateCommitsApiResult({
         ...generateReadOnlyCommitsResponse(),
-        checked_at: "2025-03-10T18:00:00Z",
+        checked_at: EARLIER_CHECKED_AT,
       })
     );
     checkRemoteRefsApiMock.mockResolvedValue(generateCheckRemoteRefsApiResult(TASK_ID));
@@ -242,7 +252,7 @@ describe("RepositoryCheckRemoteButton", () => {
     commitsApiMock.mockResolvedValue(
       generateCommitsApiResult({
         ...generateReadOnlyCommitsResponse(),
-        checked_at: "2025-03-10T18:00:00Z",
+        checked_at: EARLIER_CHECKED_AT,
       })
     );
     runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));

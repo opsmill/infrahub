@@ -10,7 +10,6 @@ import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
-import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
 import {
   type CommitLogEmptyState,
   canLoadOlderCommits,
@@ -24,12 +23,11 @@ import {
 import {
   RepositoryCommitsHeader,
   RepositoryCommitsToolbar,
+  type RepositoryCommitsToolbarProps,
 } from "@/entities/repository/ui/repository-commits-header";
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
-interface RepositoryCheckRemoteProps {
-  remoteCheck: RepositoryRemoteCheck | null;
-}
+type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteCheck">;
 
 export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;

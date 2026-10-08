@@ -17,12 +17,13 @@ export function useCheckRemoteRefsMutation() {
     mutationFn: (params: Omit<CheckRemoteRefsParams, keyof BranchContextParams>) => {
       return checkRemoteRefs({ branchName: currentBranch.name, ...params });
     },
-    // Seeding the started task means the poll sees it end even if it finishes before the next poll,
-    // which is when the poll refetches the commit log.
-    onSuccess: (taskId, { repositoryId }) => {
+    // Seeding rather than refetching: the poll then sees the task end even if it finishes before the
+    // next poll, and an early refetch that does not list the task yet cannot read as ended.
+    onSuccess: async (taskId, { repositoryId }) => {
       const queryKey = repositoriesQueryKeys.runningRefsCheck({ repositoryId });
+      // A poll already in flight answered before the task existed; it must not replace the seed.
+      await queryClient.cancelQueries({ queryKey });
       queryClient.setQueryData(queryKey, taskId);
-      return queryClient.invalidateQueries({ queryKey });
     },
   });
 }
