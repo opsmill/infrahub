@@ -1,14 +1,14 @@
 # Implementation Plan: Number pool allocation scopes
 
-**Branch**: `number-pool-scopes-ifc-3185` | **Date**: 2026-10-08 | **Spec**: [spec.md](spec.md)
+**Branch**: `pmi-number-pool-scopes-spec-ifc-3185` (from `feature-number-pools-1.12`) | **Date**: 2026-10-08 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `dev/specs/ifc-3185-number-pool-scopes/spec.md`
 
 ## Summary
 
-A number pool gains an optional, immutable allocation scope: an ordered list of elements, each stored as the schema element id and the readable name of one required attribute or one required cardinality-one relationship of the pool's kind, resolved against the schema of the default branch. With a scope, the pool allocates the lowest free number within the division of the node being written, the lock is keyed per pool and division, and three dedicated GraphQL queries report the divisions, their figures and the tracked numbers. The scope can be declared in the parameters of a number-pool attribute, and a schema change that would break a scoped element is refused.
+A number pool's existing `allocation_scope` attribute changes from a list of element names to an immutable, ordered list of `{id, name}` objects, each referencing one required attribute or one required cardinality-one relationship of the pool's kind, resolved against the schema of the default branch. With a scope, the pool allocates the lowest free number within the division of the node being written, read on the branch of the request; the lock is keyed per pool and division; and the three dedicated GraphQL queries of PR #10932, served today from a fixed dataset, read the divisions, their figures and the tracked numbers from the database. The scope declared in the parameters of a number-pool attribute is compared to the stored scope by id on every schema load, and a schema change that would break a scoped element is refused by a constraint checker on every branch.
 
-The approach keeps the existing record model (one `IS_RESERVED` edge from the pool to the holder's attribute, on the global branch) and derives the division of each record from its holder node at read time, in the database. The scope is a `List` attribute on `CoreNumberPool`; the element validation, the division resolution and the division key live in one new package module, `backend/infrahub/pools/scope.py`, so that scoped behaviour is one branch in one place in the allocator and in the queries.
+The approach keeps the existing record model (one `IS_RESERVED` edge from the pool to the holder's attribute, on the global branch) and derives the division of each record from its holder node at read time, in the database. The element validation, the division resolution and the division key live in one new package module, `backend/infrahub/pools/scope.py`, so that scoped behaviour is one branch in one place in the allocation chain and in the queries. Every other change is an extension of a module that exists on `feature-number-pools-1.12`.
 
 ## Technical Context
 
@@ -16,9 +16,9 @@ The approach keeps the existing record model (one `IS_RESERVED` edge from the po
 
 **Primary Dependencies**: FastAPI, graphene (GraphQL), Pydantic 2, Neo4j driver 6 (existing; no new dependency)
 
-**Storage**: Neo4j. The scope is stored on the pool node as a `List` attribute; divisions are not stored, they are derived from the holder nodes.
+**Storage**: Neo4j. The scope is stored on the pool node in the existing `allocation_scope` `List` attribute; divisions are not stored, they are derived from the holder nodes.
 
-**Testing**: pytest unit (`backend/tests/unit/pools/`), component with TestContainers (`backend/tests/component/core/resource_manager/`, `backend/tests/component/graphql/resource_manager/`), integration schema lifecycle (`backend/tests/integration/schema_lifecycle/`), live-stack measurements recorded in `quickstart.md`.
+**Testing**: pytest unit (`backend/tests/unit/pools/`, `backend/tests/unit/core/validators/`, `backend/tests/unit/graphql/`), component with TestContainers (`backend/tests/component/core/resource_manager/`, `backend/tests/component/graphql/resource_manager/number_pools/`, `backend/tests/component/graphql/queries/`, `backend/tests/component/core/constraint_validators/`, `backend/tests/component/pools/`), functional through GraphQL (`backend/tests/functional/pools/`), integration schema lifecycle (`backend/tests/integration/schema_lifecycle/`), live-stack measurements recorded in `quickstart.md`.
 
 **Target Platform**: Infrahub server and task worker (Linux containers)
 
@@ -26,7 +26,7 @@ The approach keeps the existing record model (one `IS_RESERVED` edge from the po
 
 **Performance Goals**: One allocation holds a bounded amount of memory whatever the number of tracked values (PRD FR-013). A scoped allocation runs one free-number query with the division filter in the database, no per-candidate round trip. The divisions list is one grouped query plus one batched peer lookup.
 
-**Constraints**: No change to what a pool records. Unscoped pools render the same Cypher as today. The GraphQL contract of PR #10932 is kept, except `allocation_scope` becoming a list of `{id, name}` objects and division entries gaining `id`. The core schema change (new attribute on `CoreNumberPool`, new parameter on the number-pool attribute kind) regenerates protocols, the GraphQL schema, the frontend types and the schema reference docs.
+**Constraints**: No change to what a pool records. Unscoped pools render the same Cypher as today. The GraphQL contract of PR #10932 is kept, except `allocation_scope` becoming a list of `{id, name}` objects, division entries gaining `id`, and the wording about a scope "in force on the request's branch" going away. The core schema does not change shape (the attribute and the parameter exist); their descriptions and the parameter's update marker change, which regenerates `schema/schema.graphql`, `schema/openapi.json`, the frontend types, `backend/infrahub/core/schema/generated/` and the schema reference docs.
 
 **Scale/Scope**: A scope of one to three elements over pools holding up to tens of thousands of tracked values; the live-stack measurement of the quickstart reports the figures.
 
@@ -36,13 +36,13 @@ The approach keeps the existing record model (one `IS_RESERVED` edge from the po
 
 | Principle | Gate | Status |
 |-----------|------|--------|
-| I. Schema-driven integrity | The scope attribute and the parameter are declared in the core schema definitions; generated files are regenerated, not edited; adding an optional attribute to a core node needs no graph migration | Pass |
-| II. Branch-safe by default | The pool and its scope are branch-agnostic; a division is read on the branch that holds the value; the schema guard runs on every branch; merge behaviour is covered by the existing branch tests of number pools plus the two-branch scenarios of the quickstart | Pass |
+| I. Schema-driven integrity | The attribute and the parameter already exist in the core schema definitions; generated files are regenerated, not edited; no graph migration, because no released version stores a scope | Pass |
+| II. Branch-safe by default | The pool and its scope are branch-agnostic; a division is read on the branch of the request; the schema checker runs on every branch; the known limitation of decision 7 is asserted by a test and documented | Pass |
 | III. Type safety and explicit contracts | The GraphQL contract is written in `contracts/` before implementation; query results are frozen dataclasses; the scope and the division are frozen dataclasses | Pass |
-| IV. Test discipline | Unit tests for the pure resolver and division key; component tests for queries, allocation and mutations; integration schema-lifecycle tests for the declared scope and the guard; the E2E pool test stays green; frontend E2E travels with IFC-3363 | Pass |
+| IV. Test discipline | Unit tests for the pure resolver, the division key and the checker's decision table; component tests for queries, allocation, mutations and the checker; functional tests for the two-branch cases; integration schema-lifecycle tests for the declared scope; the E2E pool test stays green; frontend E2E travels with IFC-3363 | Pass |
 | V. Query performance | Division filtering and grouping run in Cypher with parameters; the holder and peer lookups are batched; `EXPLAIN` of the scoped free query is part of the quickstart measurement | Pass |
 | VI. Security and input boundaries | Scope entries, division filters and pagination arguments are validated at the GraphQL boundary; element names and ids are bound as parameters, never interpolated | Pass |
-| VII. Simplicity | One new module for the scope; no new kind, no new migration, no new dependency; the dedicated queries reuse the existing allocated-rows query and utilization getter | Pass |
+| VII. Simplicity | One new module for the scope, one new checker; no new kind, no new migration, no new dependency; the dedicated queries reuse the existing allocated-rows query and utilization getter | Pass |
 
 Post-design re-check: no violation introduced. The one deviation from the simplest storage (storing the name beside the id) is justified in `research.md`.
 
@@ -61,80 +61,113 @@ dev/specs/ifc-3185-number-pool-scopes/
 │   ├── pool-allocation-scope.md        # Scope input, storage and refusals on the pool mutations
 │   ├── number-pool-parameters.md       # allocation_scope parameter of the number-pool attribute kind
 │   └── graphql-number-pool-queries.md  # The three dedicated queries, with the changes to PR #10932
+├── alignment-check.md   # Phase 5: the spec against the sources
 └── tasks.md             # Phase 2 (/speckit-tasks)
 ```
 
 ### Source Code (repository root)
 
+Files marked `existing` are on `feature-number-pools-1.12`; files marked `PR #10932` land with the rebased mock pull request; `NEW` files are created here.
+
 ```text
 backend/infrahub/
 ├── core/
-│   ├── schema/definitions/core/resource_pool.py      # allocation_scope attribute on CoreNumberPool
-│   ├── schema/attribute_parameters.py                # NumberPoolParameters.allocation_scope
-│   ├── schema/schema_branch.py                       # declared-scope validation against the default branch
-│   ├── node/__init__.py                              # scoped allocation deferred until the node's fields are processed
-│   ├── node/lock_utils.py                            # lock name per pool and division
-│   ├── node/resource_manager/number_pool.py          # division passed to the free and used queries, lock per division
-│   └── query/resource_manager.py                     # division fragment, divisions query, extended allocated-rows query
+│   ├── schema/definitions/core/resource_pool.py      # existing: allocation_scope attribute description
+│   ├── schema/attribute_parameters.py                # existing: NumberPoolParameters.allocation_scope update marker
+│   ├── schema/definitions/internal.py                # existing: relationship name update support
+│   ├── schema/schema_branch.py                       # existing: _validate_number_pool_parameters
+│   ├── node/__init__.py                              # existing: _process_fields_attributes, from_graphql
+│   ├── node/lock_utils.py                            # existing: apply_payload_for_lock_names, get_lock_names_on_object_mutation
+│   ├── node/resource_manager/number_pool.py          # existing: CoreNumberPool.get_resource
+│   ├── attribute.py                                  # existing: BaseAttribute.from_graphql
+│   ├── query/resource_manager.py                     # existing: reserved_values_query, NumberPoolGetFree, NumberPoolGetUsed, NumberPoolGetAllocated
+│   └── validators/
+│       ├── __init__.py                               # existing: CONSTRAINT_VALIDATOR_MAP
+│       ├── enum.py                                   # existing: ConstraintIdentifier
+│       └── pool/scope.py                             # NEW: NumberPoolScopeChecker
+├── dependencies/builder/constraint/schema/
+│   ├── aggregated.py                                 # existing: checker list
+│   └── number_pool_scope.py                          # NEW: dependency builder of the checker
 ├── pools/
-│   ├── scope.py                                      # NEW: scope elements, resolver, division, division key
-│   ├── scope_guard.py                                # NEW: refuse schema changes that break a scoped element
-│   ├── number.py                                     # utilization per division
-│   ├── schema_number_pool_upserter.py                # create schema pools with their declared scope
-│   └── schema_number_pool_synchronizer.py            # refresh stored element names after a rename
+│   ├── scope.py                                      # NEW: ScopeElement, AllocationScope, AllocationScopeResolver, Division
+│   ├── attribute_pool_applier.py                     # existing: AttributePoolApplier (division passed to the allocator)
+│   ├── number_pool_attribute_allocator.py            # existing: NumberPoolAttributeAllocator.allocate
+│   ├── number_pool_number_picker.py                  # existing: NumberPoolNumberPicker.next_number
+│   ├── number_pool_repository.py                     # existing: NumberPoolRepository.get_free, get_used, get_divisions
+│   ├── number.py                                     # existing: NumberUtilizationGetter
+│   ├── schema_number_pool_upserter.py                # existing: upsert_number_pool
+│   ├── schema_number_pool_synchronizer.py            # existing: run, _update_pool_from_schema
+│   └── number_pool_mock.py                           # PR #10932: fixed dataset, deleted when the resolvers read the database
 ├── graphql/
-│   ├── mutations/resource_manager.py                 # scope on create, immutability on update
-│   ├── queries/number_pool.py                        # NEW: the three dedicated queries
-│   ├── queries/resource_manager.py                   # descriptions of the generic pool queries
-│   └── schema.py                                     # root fields registration
-└── api/schema.py                                     # scope guard called on schema load and check
+│   ├── mutations/resource_manager/number_pools/
+│   │   ├── pool.py                                   # existing: InfrahubNumberPoolMutation
+│   │   └── common.py                                 # existing: refusal constants
+│   ├── queries/number_pool.py                        # PR #10932: the three dedicated queries
+│   ├── queries/resource_manager.py                   # existing: generic pool queries (descriptions from PR #10932)
+│   └── schema.py                                     # PR #10932: root fields registration
+└── api/schema.py                                     # existing, unchanged: load and check endpoints run the checkers
 
 backend/tests/
-├── unit/pools/test_scope.py                          # resolver rules, division values, division key
-├── component/core/resource_manager/test_number_pool_scope.py        # scoped free, used, divisions, allocated queries
-├── component/core/resource_manager/test_number_pool_scope_allocation.py  # allocation per division, locks, identifier
-├── component/graphql/resource_manager/test_number_pool_scope_mutation.py # scope on create, refusals, immutability
-├── component/graphql/resource_manager/test_number_pool_queries.py   # the three dedicated queries and their refusals
-├── component/pools/test_schema_number_pool_scope.py  # declared scope on schema-created pools
-└── integration/schema_lifecycle/test_number_pool_scope_guard.py     # guard, rename, branch load
+├── unit/pools/test_scope.py                          # NEW: resolver rules, division values, division key
+├── unit/pools/test_number_pool_mock.py               # PR #10932: updated to the contract, deleted with the mock
+├── unit/core/validators/test_number_pool_scope_checker.py   # NEW: the checker's decision table
+├── unit/core/test_resource_manager_query.py          # NEW: unscoped rendering of the shared fragment
+├── unit/graphql/test_number_pool_surface_contract.py # PR #10932: SDL snapshot
+├── unit/graphql/snapshots/number_pool_surface.graphql       # PR #10932: updated to the contract
+├── helpers/number_pool.py                            # PR #10932: SCOPED_POOL_SCHEMA, extended here
+├── component/core/resource_manager/conftest.py       # existing: scoped pool fixture added
+├── component/core/resource_manager/test_number_pool_scope.py        # NEW: scoped free, used, divisions, allocated queries
+├── component/core/resource_manager/test_number_pool_scope_allocation.py  # NEW: allocation per division, locks, identifier
+├── component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py  # existing: rewritten to the {id, name} shape and the refusals
+├── component/graphql/queries/test_number_pool_surface.py    # PR #10932: real-data cases replace the fixed dataset
+├── component/core/constraint_validators/test_number_pool_scope.py   # NEW: the checker against a database
+├── component/pools/test_schema_number_pool_scope.py  # NEW: declared scope on schema-created pools
+├── functional/pools/test_numberpool_scoped_branch.py # NEW: two-branch scenarios, the known limitation
+└── integration/schema_lifecycle/test_number_pool_scope_schema.py    # NEW: declared scope, rename, refusals through the API
 
 docs/docs/resource-manager/
-├── overview.mdx                                      # number pools: allocation scope paragraph
-└── scoped-number-pools.mdx                           # NEW guide: scope a pool, read it, replace per-site pools
+├── overview.mdx                                      # existing: number pools, allocation scope paragraph
+├── allocate-number.mdx                               # existing: "Scope a pool" section
+└── scoped-number-pools.mdx                           # NEW guide: read a scoped pool, replace per-site pools
 ```
 
-**Structure Decision**: Backend-only change in the existing layout. The scope logic goes in `backend/infrahub/pools/`, next to the schema pool synchronizer and the utilization getter, because that package already owns number-pool behaviour that is not a node method. The dedicated queries get their own module under `backend/infrahub/graphql/queries/` because the generic resource-pool module serves three pool kinds and the new queries serve one.
+**Structure Decision**: Backend-only change in the existing layout. The scope logic goes in `backend/infrahub/pools/`, next to the applier, the picker and the repository, because that package already owns number-pool behaviour that is not a node method. The checker goes under `backend/infrahub/core/validators/` with the other schema constraint checkers, because the schema load and check endpoints already run that list on every branch.
 
 ## Design overview
 
 ### Storage and resolution of the scope
 
-- `CoreNumberPool` gains `allocation_scope`, kind `List`, optional, branch-agnostic like the pool. Each element is `{"id": "<schema element id>", "name": "<element name>"}`. The attribute is absent or an empty list on an unscoped pool.
-- `backend/infrahub/pools/scope.py` holds `ScopeElement` (id, name), `AllocationScope` (ordered elements, `from_stored`, `to_stored`), `AllocationScopeResolver` (turns input entries into a scope against a schema branch, applying every refusal of spec FR-003 to FR-006) and `Division` (ordered values, `key` for lock names, `from_node` to read the division of an in-memory node, `from_entries` to read a division filter).
-- Every resolution uses the schema branch of the default branch (`registry.default_branch`), whatever branch the request runs on. On the default branch itself, a schema load validates against the candidate schema, since the candidate becomes the default.
-- Names are refreshed by `SchemaNumberPoolSynchronizer` on each schema update of the default branch, by looking each stored id up in the default schema.
+- `CoreNumberPool.allocation_scope` keeps its kind (`List`, optional, branch-agnostic like the pool). Each element becomes `{"id": "<schema element id>", "name": "<element name>"}`. The attribute is absent or an empty list on an unscoped pool. Its description in `backend/infrahub/core/schema/definitions/core/resource_pool.py` says so.
+- `backend/infrahub/pools/scope.py` holds `ScopeElement` (id, name), `AllocationScope` (ordered elements, `from_stored`, `to_stored`), `AllocationScopeResolver` (turns input entries into a scope against a schema branch, applying every refusal of spec FR-003 to FR-006; `refresh_names` for R2) and `Division` (ordered values, `key` for lock names, `from_node` to read the division of an in-memory node, `from_entries` to read a division filter).
+- Every resolution uses the schema branch of the default branch (`registry.schema.get_schema_branch(name=registry.default_branch)`), whatever branch the request runs on. On the default branch itself, a schema load validates against the candidate schema, since the candidate becomes the default.
+- `InfrahubNumberPoolMutation.mutate_create` (`backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py`) resolves `allocation_scope` from the payload and writes the stored form back before the node is created; `mutate_update` refuses a payload whose scope differs from the stored one, `null` included, with the message of `contracts/pool-allocation-scope.md`. The existing test `test_update_with_null_clears_the_scope` of `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py` is replaced by the refusal.
+- Names are refreshed by `SchemaNumberPoolSynchronizer.run` on each schema update of the default branch, by looking each stored id up in the default schema.
 
 ### Allocation within a division
 
-- `CoreNumberPool.get_resource` takes an optional division. The lock name is `<pool id>` for an unscoped pool and `<pool id>.<division key>` for a scoped one.
-- The mutation-level lock uses the same name. `lock_utils.get_lock_names_on_object_mutation` is synchronous and cannot read the pool, so `lock_utils.apply_payload_for_lock_names` (asynchronous, with `db`) resolves each pooled attribute's pool through `Node.handle_pool` with `allocate_resources=False`, which already normalises `from_pool` to the pool id, and stores the division key next to the id on the attribute (`from_pool = {"id": ..., "division": ...}`) when the pool is scoped. The synchronous function then builds the per-division name from what the attribute carries.
-- `NumberPoolGetFree`, `NumberPoolGetUsed` and `NumberPoolGetAllocated` take one optional `division` argument that defaults to None. When given, the shared `reserved_values_query()` fragment is extended with a division subquery that, for each tracked attribute, reads the holder node and its scope values on the branch holding the value, and keeps only the values whose scope tuple equals the parameter. With no division the fragment renders byte for byte the Cypher of today, which a unit test asserts. The in-progress range-aware allocator (IFC-3065) and the attach paths (IFC-3184) pass the same argument through, so the scoped behaviour stays one optional argument on each query and on `get_resource`.
-- `Node._process_fields` keeps resolving each pooled attribute's pool inside the attribute loop (normalising `from_pool`) and moves the allocation itself, for every pooled attribute whether the pool is scoped or not, to a second pass that runs after all attributes and relationships are processed, so that the division is read from the node as it will be saved. The validation of a pooled attribute's value runs after that pass. `Node.from_graphql` applies every key of the payload first and allocates afterwards. One order for every pool; the full number-pool suites prove unscoped pools keep today's behaviour.
+- The allocation chain on the branch is `AttributePoolApplier.apply` (`backend/infrahub/pools/attribute_pool_applier.py`) → `NumberPoolAttributeAllocator.allocate` → `CoreNumberPool.get_resource` → `NumberPoolNumberPicker.next_number` → `NumberPoolRepository.get_free` / `get_taken` → `NumberPoolGetFree`. Each link gains one optional `division` argument, default `None`; the applier computes it with `Division.from_node` when the resolved pool carries a scope. `get_taken` / `NumberPoolGetTaken` keep their global scan: a scope is refused on a `unique: true` attribute, so the two never meet.
+- `CoreNumberPool.get_resource` locks on `<pool id>.<division key>` when a division is given, on `<pool id>` otherwise, and passes the division to the reservation lookup and the picker.
+- `NumberPoolGetFree`, `NumberPoolGetUsed` and `NumberPoolGetAllocated` take one optional `division` argument that defaults to `None`. When given, `reserved_values_query()` is extended with a division subquery that, for each tracked attribute, reads the holder node and its scope values on the branch of the request (the query's `branch` and `Branch.get_query_filter_path`, as `NumberPoolGetAllocated` already does for the value edges), and keeps only the values whose scope tuple equals the parameter. With no division the fragment renders byte for byte the Cypher of today, which a unit test asserts.
+- The writer's division is read after every field of the node is processed (research R6): `Node._process_fields_attributes` keeps resolving the pool inside the attribute loop (the applier with `allocate=False`) and moves the allocation itself, for every pooled attribute whether the pool is scoped or not, to a second pass after the loop; `Node.from_graphql` applies every key of the payload with the pool handling deferred, then runs the applier for the attributes whose payload carried `from_pool`. The validation of a pooled attribute's value runs after that pass. One order for every pool; the full number-pool suites prove unscoped pools keep today's behaviour.
+- The mutation-level lock keeps covering the allocation and the save. `lock_utils.apply_payload_for_lock_names` and `create_node`'s preview already resolve each pooled attribute's pool with `allocate=False`; when that pool carries a scope, the step reads the writer's division from the preview node (an attribute from the node, a peer the payload set from the relationship manager, a peer the payload did not set with one relationship read) and stores the key beside the pool id on the attribute (`from_pool = {"id": ..., "division": ...}`). `lock_utils.get_lock_names_on_object_mutation` then builds `resource_pool.<pool id>.<division key>` from it, and `resource_pool.<pool id>` otherwise.
+- When the schema of the request's branch does not define a scope element on the pool's kind, `Division.from_node` raises a `ValidationError` naming the element and the branch, and the request allocates nothing (spec FR-016).
+- The attach path of IFC-3184 (`AttributePoolApplier._attach`, `NumberPoolAttributeAllocator.attach`) records the provided number unchanged; the division of that record is derived from its holder like any other, so spec FR-014 needs no write-path change beyond the lock key.
 
 ### Reading a scoped pool
 
-- `NumberPoolGetDivisions` (new query) groups the tracked values by division tuple and returns, per division, the distinct values on any live branch, on the default branch, and on other branches only. The resolver turns relationship values into display labels with one batched node lookup.
-- `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance, and returns the provenance. The resolver resolves holders in batches per branch.
+- PR #10932 is rebased onto `feature-number-pools-1.12` and updated to the contract first: `backend/infrahub/graphql/queries/number_pool.py` gains the `NumberPoolScopeElement` type and the `id` field of `NumberPoolDivisionEntry`; `backend/infrahub/pools/number_pool_mock.py` carries `{id, name}` scope elements and reads each holder's division on the request branch; the snapshot `backend/tests/unit/graphql/snapshots/number_pool_surface.graphql` and the mock's tests follow. The frontend team builds on that shape.
+- `NumberPoolGetDivisions` (new query in `backend/infrahub/core/query/resource_manager.py`) groups the tracked values by division tuple on the request branch and returns, per division, the distinct values on any live branch, on the default branch, and on other branches only. `NumberPoolRepository.get_divisions` runs it. The resolver turns relationship values into display labels with one batched node lookup.
+- `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance, projects `coalesce(ir.provenance, "allocated")`, and keeps its default rendering for the existing callers (`NumberUtilizationGetter`, `resolve_number_pool_allocation`). The resolver resolves holders in batches per branch.
 - The component tests of the divisions and allocations resolvers assert the number of database queries with `backend/tests/helpers/db_query_counter.py`, so that a per-row lookup cannot slip in.
-- `NumberUtilizationGetter` takes an optional division and reuses the extended allocated-rows query; the per-range figures come from the pool's `CoreNumberPoolRange` nodes as today.
-- `backend/infrahub/graphql/queries/number_pool.py` exposes `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations` per `contracts/graphql-number-pool-queries.md`.
+- `NumberUtilizationGetter` (`backend/infrahub/pools/number.py`) takes an optional division and keeps measuring the `EffectiveSpace` of `backend/infrahub/pools/number_ranges.py`; the per-range figures come from `range_figures` as today.
+- The three resolvers of `backend/infrahub/graphql/queries/number_pool.py` read the database per `contracts/graphql-number-pool-queries.md`, and `backend/infrahub/pools/number_pool_mock.py` with `backend/tests/unit/pools/test_number_pool_mock.py` are deleted.
 
-### Declared scope and schema guard
+### Declared scope and schema checker
 
-- `NumberPoolParameters.allocation_scope: list[str] | None`, `update: not_supported`, so a later change of the declaration is refused by the existing schema update validation.
-- `SchemaBranch._validate_number_pool_parameters` resolves the declared names with `AllocationScopeResolver` against the default branch's schema and refuses the load with the element named.
-- `SchemaNumberPoolUpserter.upsert_number_pool` creates the pool with the resolved scope.
-- `backend/infrahub/pools/scope_guard.py` loads the scoped pools once, indexes them by element id, and refuses a candidate schema whose diff makes a scoped element optional, changes its cardinality, removes it, or sets `unique: true` on the tracked attribute. It is called from the schema load and schema check endpoints in `backend/infrahub/api/schema.py`, on every branch, before migrations are computed.
+- `NumberPoolParameters.allocation_scope` moves from `UpdateSupport.NOT_SUPPORTED` to `UpdateSupport.VALIDATE_CONSTRAINT`; `ConstraintIdentifier` gains `ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE = "attribute.parameters.allocation_scope.update"`.
+- `SchemaBranch._validate_number_pool_parameters` applies the structural rules of research R3 to the declaration against the candidate schema; for an attribute whose pool does not exist yet, every declared name must resolve.
+- `SchemaNumberPoolUpserter.upsert_number_pool` creates the pool with the resolved scope in its stored form; `SchemaNumberPoolSynchronizer._update_pool_from_schema` leaves the scope untouched.
+- `backend/infrahub/core/validators/pool/scope.py::NumberPoolScopeChecker`, registered in `CONSTRAINT_VALIDATOR_MAP` under the nine names of research R8 and added to the aggregated checker's list, loads the scoped pools of the kind once, indexes element ids to pools, and returns one violation per dependent pool when the diff makes an element optional, changes a relationship's cardinality, removes an element or sets `unique: true` on the tracked attribute. For `attribute.name.update`, `relationship.name.update` and `attribute.parameters.allocation_scope.update` on a kind with a schema-created pool, it compares the declaration to the stored scope by id (research R9) and names a rename. The relationship `name` field of `backend/infrahub/core/schema/definitions/internal.py` moves to `UpdateSupport.VALIDATE_CONSTRAINT` so that a relationship rename reaches the checker; `backend/infrahub/core/schema/generated/relationship_schema.py` is regenerated.
 
 ## Complexity Tracking
 

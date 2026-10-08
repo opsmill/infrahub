@@ -1,6 +1,6 @@
 # Contract: the allocation scope on the number pool mutations
 
-The generic node mutations `CoreNumberPoolCreate`, `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert` (overridden by `backend/infrahub/graphql/mutations/resource_manager.py::InfrahubNumberPoolMutation`) carry the scope in the `allocation_scope` attribute.
+The generic node mutations `CoreNumberPoolCreate`, `CoreNumberPoolUpdate` and `CoreNumberPoolUpsert` (overridden by `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation`) carry the scope in the existing `allocation_scope` attribute.
 
 ## Input on create
 
@@ -34,7 +34,7 @@ An absent field, `null` or an empty list creates an unscoped pool.
 ]
 ```
 
-Order is the input order. The value is returned as stored by every read of the node (generic node query, REST object read) and by the dedicated number-pool queries.
+Order is the input order. The value is returned as stored by every read of the node (generic node query, REST object read) and by the dedicated number-pool queries. Today the attribute returns the names it was given (`["site", "role"]`); this is the change of decisions 3 and 4.
 
 ## Refusals on create
 
@@ -51,13 +51,21 @@ Each refusal is a `ValidationError` on the `allocation_scope` field, naming the 
 | Pool's kind is a generic and the entry is declared on an implementing node only | `allocation_scope: "<entry>" is not declared on the generic <kind>` |
 | Tracked attribute is `unique: true` | `allocation_scope: <kind>.<node_attribute> is unique; a globally unique number cannot be allocated per division` |
 
+An attribute of kind `List` or `JSON` is accepted (decision 10).
+
 ## Refusal on update
 
 | Case | Message |
 |------|---------|
-| `allocation_scope` in the payload differs from the stored list (ids or order) | `allocation_scope can't be changed after the pool is created` |
+| `allocation_scope` in the payload differs from the stored list (ids or order), or is `null` | `allocation_scope can't be changed after the pool is created` |
 
-The same list, in any accepted input form, is not a change. The refusal applies to user-created and schema-created pools alike.
+The same list, in any accepted input form, is not a change. The refusal applies to user-created and schema-created pools alike. Today's behaviour, where `null` on update clears the scope, goes away with its test.
+
+## Refusal on allocation and attach
+
+| Case | Message |
+|------|---------|
+| The schema of the request's branch does not define a scope element on the pool's kind | `<attribute>.from_pool: the scope element "<name>" of pool <pool name> does not exist on <kind> on branch <branch>` |
 
 ## Interaction with the rest of the pool
 
