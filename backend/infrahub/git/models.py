@@ -41,6 +41,10 @@ class RequestArtifactDefinitionGenerate(BaseModel):
         default_factory=list,
         description="Member node ids to generate artifacts for; when populated, only these members are processed.",
     )
+    repository_id: str | None = Field(
+        default=None,
+        description="The ID of the repository that owns the transformation of the Artifact Definition",
+    )
 
     @property
     def evaluates_every_member(self) -> bool:
@@ -153,6 +157,16 @@ class GitRepositoryMerge(BaseModel):
     )
     pending_merge_enqueued: bool = Field(
         default=False, description="The branch merge wrote the queue entry, so the merge flow does not write it again."
+    )
+
+
+class GitRepositoryDeliveryRetry(BaseModel):
+    """Push every pending merge of a repository to its remote."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    manual: bool = Field(
+        default=True, description="A user asked for the retry. False when the recovery check submitted it."
     )
 
 

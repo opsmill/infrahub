@@ -1,33 +1,46 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any, Self, cast
 
 import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
-from infrahub import config
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
+from infrahub import config, lock
+from infrahub.core.constants import (
+    GlobalPermissions,
+    InfrahubKind,
+    MetadataOptions,
+    PermissionAction,
+    RepositoryInternalStatus,
+)
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreReadOnlyRepository
+from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import NothingPendingError, ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
+    GitRepositoryDeliveryRetry,
     GitRepositoryImportObjects,
     GitRepositoryPullReadOnly,
 )
+from infrahub.git.writeback.runs import delivery_run_tags
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.graphql.types.common import IdentifierInput
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import GitRepositoryConnectivityResponse
+from infrahub.permissions.globals import define_global_permission_from_branch
 from infrahub.permissions.types import define_object_permission_from_branch
 from infrahub.repositories.create_repository import RepositoryFinalizer
 from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
+    GIT_REPOSITORY_DELIVERY_RETRY,
 )
 
 from ...core.node.create import create_node
@@ -273,6 +286,73 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)
+
+
+class RepositoryDeliveryRetryInput(InputObjectType):
+    id = String(required=True, description="The id of the CoreRepository")
+
+
+class RepositoryDeliveryRetry(Mutation):
+    class Arguments:
+        data = RepositoryDeliveryRetryInput(required=True)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: RepositoryDeliveryRetryInput,
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
+        branch = graphql_context.branch
+        # The default-branch permission checker acts only on requests that name the default branch.
+        if branch.name != registry.default_branch:
+            raise ValidationError(
+                f"Send this request on the default branch {registry.default_branch}; the pending pushes live there."
+            )
+
+        schema = registry.get_node_schema(name=InfrahubKind.REPOSITORY, branch=branch.name, duplicate=False)
+        for permission in (
+            define_object_permission_from_branch(
+                schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name
+            ),
+            define_global_permission_from_branch(
+                permission=GlobalPermissions.MANAGE_REPOSITORIES, branch_name=branch.name
+            ),
+            define_global_permission_from_branch(
+                permission=GlobalPermissions.EDIT_DEFAULT_BRANCH, branch_name=branch.name
+            ),
+        ):
+            graphql_context.active_permissions.raise_for_permission(permission=permission)
+
+        repo = await NodeManager.get_one_by_id_or_default_filter(
+            db=graphql_context.db, kind=CoreGenericRepository, id=str(data.id), branch=branch
+        )
+        repository_name = repo.name.value
+        if repo.get_kind() != InfrahubKind.REPOSITORY:
+            raise ValidationError(f"Repository {repository_name} is read-only and never pushes to its remote.")
+        if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
+            raise ValidationError(
+                f"Repository {repository_name} is staging; its changes are pushed when its proposed change merges."
+            )
+
+        store = WritebackIntentStore(
+            db=graphql_context.db, lock_registry=lock.registry, default_branch=branch, clock=partial(datetime.now, UTC)
+        )
+        intent = await store.read(repository_id=repo.id)
+        if not intent.queue.entries:
+            raise NothingPendingError(repository_name=repository_name)
+
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_DELIVERY_RETRY,
+            context=graphql_context.get_context(),
+            parameters={"model": GitRepositoryDeliveryRetry(repository_id=repo.id, repository_name=repository_name)},
+            tags=delivery_run_tags(repository_id=repo.id),
+        )
+        return cls(ok=True, task={"id": workflow.id})
 
 
 class ValidateRepositoryConnectivity(Mutation):

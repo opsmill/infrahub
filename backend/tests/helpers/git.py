@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -107,8 +108,8 @@ def build_repository_client(
     """Return a client that answers the one repository read a read-write construction performs.
 
     Every other request is answered as an empty success, matching what tests relied on before
-    construction started reading the graph. Use this where the code under test builds the repository
-    object itself, so the real resolution path runs. The schema comes from the live registry, so it
+    construction started reading the graph: a list read finds no node. Use this where the code under
+    test builds the repository object itself, so the real resolution path runs. The schema comes from the live registry, so it
     cannot drift; the caller must have the core schema registered.
 
     Args:
@@ -141,6 +142,10 @@ def build_repository_client(
         # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:
             data = {InfrahubKind.REPOSITORY: {"count": 1, "edges": [{"node": node}]}}
+            return httpx.Response(status_code=200, json={"data": data}, request=request)
+        list_read = re.match(r"\s*query\b[^{]*\{\s*(\w+)\(", query)
+        if list_read is not None:
+            data = {list_read.group(1): {"count": 0, "edges": []}}
             return httpx.Response(status_code=200, json={"data": data}, request=request)
         return httpx.Response(status_code=200, json={"data": {}}, request=request)
 

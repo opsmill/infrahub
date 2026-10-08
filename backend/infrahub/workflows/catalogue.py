@@ -231,6 +231,14 @@ GIT_REPOSITORIES_MERGE = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_DELIVERY_RETRY = WorkflowDefinition(
+    name="git-repository-delivery-retry",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="retry_repository_delivery",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_REBASE = WorkflowDefinition(
     name="branch-rebase",
     type=WorkflowType.CORE,
@@ -730,6 +738,7 @@ WORKFLOWS = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_DELIVERY_RETRY,
     GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_MERGE_CONFLICTS_CHECKS_RUN,

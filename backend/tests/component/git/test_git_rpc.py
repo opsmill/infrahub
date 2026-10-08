@@ -39,6 +39,7 @@ from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.message_bus import BusSimulator
+from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import build_repository_client
 from tests.helpers.workflow_override import override_workflow
@@ -181,7 +182,7 @@ async def test_git_rpc_merge(
     with (
         override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
         override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
-        override_workflow(workflow, dependency_provider=dependency_provider),
+        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
     ):
         context = InfrahubContext(
             branch=BranchContext(name=branch01.name, id=branch01.id),

@@ -13,6 +13,7 @@ from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
+from infrahub.core.regeneration.impact import FieldLevelImpactResolver
 from infrahub.core.registry import registry
 from infrahub.core.rollback import GraphRollbacker
 from infrahub.core.schema.update_coordinator import SchemaUpdateCoordinator
@@ -20,24 +21,37 @@ from infrahub.core.validators.constraint_merge import build_constraint_info_merg
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.git.writeback.store import WritebackIntentStore
-from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
+from infrahub.workers.dependencies import get_cache, get_client, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
 from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
 from .python_target_sources import build_python_target_resolver
+from .recompute_coalescing import CoalescedRecomputeSubmitter
+from .regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
+from .regeneration_dispatcher import PostMergeRegenerationDispatcher
+from .regeneration_release import HeldDefinitionResolver, HeldRegenerationReleaser
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
 from .rollback_handler import MergeRollbackHandler
 from .schema_analyzer import MergeSchemaAnalyzer
+from .selective_regen.definition_selector.artifact_selector import ArtifactSelector
+from .selective_regen.definition_selector.generator_selector import GeneratorSelector
+from .selective_regen.gate import DefinitionGate
+from .selective_regen.generator_output import GeneratorCascadeOutput, GeneratorTrackingGroupDiffCapturer
+from .selective_regen.orchestrator import build_merge_selective_regeneration
 from .write_blocker import MergeWriteBlocker
 
 if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
+    from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.writeback.ports import DeliveryStatePort
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 async def build_branch_merge_orchestrator(
@@ -145,4 +159,80 @@ async def build_branch_merge_orchestrator(
             cache=cache, serializer=diff_summary_serializer, key_namespace="branch_merge"
         ),
         logger=logger,
+    )
+
+
+async def build_regeneration_barrier(*, state: DeliveryStatePort, default_branch_name: str) -> RegenerationBarrier:
+    return RegenerationBarrier(
+        state=state,
+        narrowed=NarrowedHoldCache(
+            cache=await get_cache(), ttl_seconds=NARROWED_HOLD_TTL_SECONDS, max_bytes=NARROWED_HOLD_MAX_BYTES
+        ),
+        default_branch_name=default_branch_name,
+        sleep=asyncio.sleep,
+    )
+
+
+async def build_post_merge_regeneration_dispatcher(
+    *,
+    db: InfrahubDatabase,
+    branch: Branch,
+    barrier: RegenerationBarrier,
+    workflow: InfrahubWorkflow,
+    log: Logger | LoggerAdapter[Logger],
+) -> PostMergeRegenerationDispatcher:
+    component_registry = get_component_registry()
+    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
+    output_capturer = GeneratorTrackingGroupDiffCapturer(
+        diff_coordinator=diff_coordinator,
+        diff_repository=diff_repository,
+        serializer=DiffSummarySerializer(),
+        client=get_client(),
+        branch=branch,
+    )
+    generator_output = GeneratorCascadeOutput(capturer=output_capturer)
+    return PostMergeRegenerationDispatcher(
+        workflow=workflow,
+        planner=build_merge_selective_regeneration(
+            db=db, client=get_client(), log=log, generator_output=generator_output
+        ),
+        summary_cache=DiffSummaryCache(
+            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
+        ),
+        barrier=barrier,
+        log=log,
+    )
+
+
+async def build_held_regeneration_releaser(
+    *,
+    db: InfrahubDatabase,
+    state: DeliveryStatePort,
+    default_branch: Branch,
+    context: InfrahubContext,
+    log: Logger | LoggerAdapter[Logger],
+) -> HeldRegenerationReleaser:
+    """Wire the release of the regeneration held for a repository, which dispatches on the default branch only."""
+    client = get_client()
+    workflow = get_workflow()
+    barrier = await build_regeneration_barrier(state=state, default_branch_name=default_branch.name)
+    gate = DefinitionGate(log=log)
+    impacted_resolver = FieldLevelImpactResolver(db=db, client=client)
+    return HeldRegenerationReleaser(
+        dispatcher=await build_post_merge_regeneration_dispatcher(
+            db=db, branch=default_branch, barrier=barrier, workflow=workflow, log=log
+        ),
+        python_submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        definitions=HeldDefinitionResolver(
+            artifact_selector=ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
+            generator_selector=GeneratorSelector(
+                client=client, gate=gate, impacted_resolver=impacted_resolver, log=log
+            ),
+            client=client,
+            schema_manager=registry.schema,
+        ),
+        narrowed=barrier.narrowed,
+        default_branch_name=default_branch.name,
+        context=context,
     )

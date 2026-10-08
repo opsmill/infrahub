@@ -370,20 +370,20 @@ SC-002, SC-007.
 
 **Maps to**: FR-007, FR-012, FR-023 (obligation), SC-003.
 
-- [ ] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
-- [ ] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
+- [X] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
+- [X] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
       catalogue entry `GIT_REPOSITORY_DELIVERY_RETRY` in `backend/infrahub/workflows/catalogue.py`.
       It calls `deliver_pending_merges` with `entry=None` and `manual=True`, or `False` when the
       recovery check submitted it, and re-checks nothing itself: `deliver` step 1 decides.
-- [ ] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
+- [X] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`: refuse off the default branch, check the three
       permissions explicitly, refuse when nothing is pending, submit with
       `tags=delivery_run_tags(repository_id)` (R20), return the task. A running
       attempt or a waiting automatic retry does not refuse it. **Gate: GraphQL and
       authorization sign-off.**
-- [ ] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
-- [ ] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
+- [X] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
+- [X] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
 - [ ] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
@@ -418,40 +418,40 @@ X once after the delivery.
 **Maps to**: FR-013 to FR-017, SC-004, SC-005, SC-008. **T061 to T069 and T074 to T076 are in the
 deployment rule.** T070 to T073 are not.
 
-- [ ] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
+- [X] T061 [P] [US3] Add `RequestArtifactDefinitionGenerate.repository_id: str | None = None` to
       `backend/infrahub/git/models.py`, and fill it in `ArtifactSelector._build_request` in
       `backend/infrahub/core/merge/selective_regen/definition_selector/artifact_selector.py`.
-- [ ] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
+- [X] T062 [P] [US3] Add `exclude_repository_ids` and `include_repository_ids` to
       `generate_artifact_definition` in `backend/infrahub/git/tasks.py` and to
       `run_generator_definition` in `backend/infrahub/generators/tasks.py`.
-- [ ] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
+- [X] T063 [P] [US3] Add `FullRegenerationReason.HELD_SET_UNRESOLVED` and
       `FullRegenerationReason.TERMINAL_SELECTION_FAILED` to
       `backend/infrahub/core/constants/__init__.py`, where T018 moved the enum.
-- [ ] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
+- [X] T064 [US3] Write `OwnedRegeneration`, `NarrowedHoldCache` (with `merge_put`) and
       `RegenerationBarrier` in `backend/infrahub/core/merge/regeneration_barrier.py`, per contracts
       section 8, rules 1 to 7. A refreshed item's cache entry is the union of the previous entry and
       the new request, or nothing when the previous entry is missing.
-- [ ] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
+- [X] T065 [US3] Write `backend/tests/unit/core/merge/test_regeneration_barrier.py`: non-default branch, the
       empty fast path, the partition, a hold that returns `None` admits, an unknown owner held under
       every pending repository, `releasing`, a cache write failure, one `hold` call per repository,
       and two holds of one artifact definition with different members whose release covers both
       members. For a state error and for a lock timeout: an error that clears within the retries
       holds as usual, and one that persists admits after the last retry. Pass a `sleep` that records
       the delays and returns at once.
-- [ ] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
+- [X] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
       `backend/infrahub/core/merge/regeneration_dispatcher.py`: on the built plan, in `_submit` after
       the cascade, in `_full_regeneration` (marker scope `all`, with the reason it receives) and in
       `_submit_full_terminal_regeneration` (marker scope `terminals`, with the reason
       `TERMINAL_SELECTION_FAILED`). Add the `releasing` parameter to `dispatch` and `_dispatch_plan`.
       Wire the flag-off path, which holds scope `all` with the reason `FEATURE_DISABLED`, and the
       builder in `backend/infrahub/core/branch/tasks.py`.
-- [ ] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
+- [X] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
       `backend/infrahub/core/merge/regeneration_release.py`, per contracts section 9, with the renew
       callback after each awaited step and both `widen` scopes. A `widen` release logs the reason
       that its marker carries, and `HELD_SET_UNRESOLVED` only for an identifier that does not
       resolve. After the artifact trigger of a `terminals` marker, the release continues with the
       generator items and Python items of the window.
-- [ ] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
+- [X] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
       dispatches the narrowed request, a miss dispatches the identifier, an unresolvable identifier
       widens with `include_repository_ids` and logs `HELD_SET_UNRESOLVED`, a marker of scope `all`
       logs its own reason, for example `UNHELD_FOLLOW_UP`, and never `HELD_SET_UNRESOLVED`, a
@@ -459,7 +459,7 @@ deployment rule.** T070 to T073 are not.
       `releasing` reaches every dispatch, the lease is renewed, and a dispatch failure raises. A
       `terminals` marker, a held generator definition and a held Python attribute in one window
       release all three: the artifact trigger, the generator request and the Python submission.
-- [ ] T069 [US3] Wire the releaser into `build_writeback_service` in
+- [X] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
 - [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
       `backend/infrahub/core/merge/python_target_sources.py`.
@@ -472,14 +472,14 @@ deployment rule.** T070 to T073 are not.
       `backend/infrahub/computed_attribute/tasks.py`, on the default branch.
 - [ ] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
       a resolved target and a widened target are both filtered, and a rebase admits everything.
-- [ ] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
+- [X] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
       one release for X after the delivery, against the delivered commit; a deleted held definition
       widens to X only; and, after an enqueue of X whose every try raised, the follow-ups dispatch
       the work of X at once, and the release after the delivery regenerates every definition of X
       against the delivered commit (R3).
-- [ ] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
+- [X] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
       release survives the clear and is released again.
-- [ ] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
+- [X] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
       inside the window dispatches the same targets, members and node ids as the same merge with no
       barrier.
 
