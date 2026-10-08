@@ -754,6 +754,7 @@ async def computed_attribute_setup_python(
             # field the query reads.
             read_sets: dict[tuple[str, str, str], TransformReadSet] = {}
             read_sets_by_transform: dict[tuple[str, str], TransformReadSet] = {}
+            owners: dict[tuple[str, str, str], str] = {}
             for trigger in triggers_python:
                 definition = trigger.computed_attribute.computed_attribute
                 transform_key = (trigger.branch, trigger.computed_attribute.name)
@@ -765,6 +766,9 @@ async def computed_attribute_setup_python(
                 read_sets[trigger.branch, definition.kind, definition.attribute.name] = read_sets_by_transform[
                     transform_key
                 ]
+                owners[trigger.branch, definition.kind, definition.attribute.name] = (
+                    trigger.computed_attribute.repository_id
+                )
 
             # Since we can have multiple trigger per NodeKind
             # we need to extract the list of unique node that should be processed
@@ -803,32 +807,22 @@ async def computed_attribute_setup_python(
                     f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
                 )
 
-            owners = {
-                (
-                    trigger.computed_attribute.computed_attribute.kind,
-                    trigger.computed_attribute.computed_attribute.attribute.name,
-                ): trigger.computed_attribute.repository_id
-                for trigger in triggers_python
-                if trigger.branch == branch_name
-            }
             candidates = [
                 owned_python_target(
                     target=whole_kind_python_target(kind=ref.kind, attribute_name=ref.attribute_name),
-                    repository_id=owners.get((ref.kind, ref.attribute_name)),
+                    repository_id=owners.get((ref.branch, ref.kind, ref.attribute_name)),
                 )
                 for ref in report.selected
             ]
-            admitted = await barrier.admit(branch=branch_name, candidates=candidates, releasing=None)
-            for ref, candidate in zip(report.selected, candidates, strict=True):
-                if candidate not in admitted:
-                    continue
+            for candidate in await barrier.admit(branch=branch_name, candidates=candidates, releasing=None):
+                target = candidate.request.target
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,
                     parameters={
                         "branch_name": branch_name,
-                        "computed_attribute_name": ref.attribute_name,
-                        "computed_attribute_kind": ref.kind,
+                        "computed_attribute_name": target.attribute_name,
+                        "computed_attribute_kind": target.target_kind,
                     },
                 )
         finally:
