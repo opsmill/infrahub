@@ -521,13 +521,13 @@ T081 to T084 are not.
       no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
       fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
       `PENDING`, with `limit=1`.
-- [ ] T081 [US4] Add `test_transient_fault_heals` to
+- [X] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
       attempt, open it, short delays through `with_options`.
-- [ ] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
+- [X] T082 [US4] Add `test_lost_attempt_recovers` to the same module: kill the flow after the snapshot,
       free the repository lock in the test, as the deadlock cleanup does for a dead worker (R20),
       age the state past the stale bound, run one sync cycle, and assert the delivery.
-- [ ] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
+- [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
 - [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
       A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
