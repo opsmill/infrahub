@@ -25,7 +25,7 @@ function getDeliveryStateQueryOptions(params: GetDeliveryStateParams) {
   });
 }
 
-// Only the default branch holds the live state; any other branch holds a stale copy from its fork.
+// Only the default branch holds the live state; another branch holds an old copy.
 export function useGetDeliveryState(
   params: Omit<GetDeliveryStateParams, keyof BranchContextParams>
 ) {

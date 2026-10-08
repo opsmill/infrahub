@@ -14,18 +14,21 @@ vi.mock("@/entities/repository/domain/use-cases/get-delivery-state");
 const IMPORTS_PAUSED =
   "Imports from the remote default branch are paused until the pending pushes clear.";
 
+const FIRST_COMMIT = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
+
 const refusedPush: DeliveryState = {
   status: "action-required",
   statusLabel: "Action required",
   statusColor: "#f87171",
   cause: "permission",
   causeLabel: "Push refused by the remote",
-  error: "remote: error: GH006: Protected branch update failed for refs/heads/main.",
+  error:
+    "remote: error: GH006: Protected branch update failed for refs/heads/main.\n ! [remote rejected] HEAD -> main",
   pendingMerges: [
     {
       entry_id: "entry-1",
       source_branch: "feature-a",
-      source_commit: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+      source_commit: FIRST_COMMIT,
       merged_at: "2026-10-02T09:14:03.120000+00:00",
     },
     {
@@ -41,7 +44,7 @@ describe("RepositoryDeliverySection", () => {
   beforeEach(() => {
     vi.resetAllMocks();
 
-    // The selected branch of the render helper is not the default branch.
+    // The selected branch, "test-branch", is not the default branch.
     vi.mocked(useGetBranches).mockReturnValue({
       data: [
         generateBranch({ name: "test-branch" }),
@@ -81,19 +84,16 @@ describe("RepositoryDeliverySection", () => {
       )
       .toBeVisible();
     await expect.element(component.getByText(IMPORTS_PAUSED)).toBeVisible();
-    await expect
-      .element(
-        component.getByText(
-          "remote: error: GH006: Protected branch update failed for refs/heads/main."
-        )
-      )
-      .toBeVisible();
+    const message = component.getByText(/^remote: error: GH006/);
+    await expect.element(message).toBeVisible();
+    expect(message.element().textContent).toBe(refusedPush.error);
     await expect
       .element(component.getByRole("listitem").first())
       .toHaveTextContent(/^feature-a4b825dc/);
     await expect
       .element(component.getByRole("listitem").last())
       .toHaveTextContent(/^feature-b9daeafb/);
+    await expect.element(component.baseElement).not.toHaveTextContent(FIRST_COMMIT);
   });
 
   test("shows the paused imports and no cause while the first attempt runs", async () => {
@@ -121,7 +121,7 @@ describe("RepositoryDeliverySection", () => {
     // GIVEN
     vi.mocked(getDeliveryState).mockResolvedValue({
       status: "none",
-      statusLabel: null,
+      statusLabel: "none",
       statusColor: null,
       cause: null,
       causeLabel: null,
@@ -135,5 +135,20 @@ describe("RepositoryDeliverySection", () => {
     // THEN
     await expect.element(component.getByText("Nothing pending")).toBeVisible();
     await expect.element(component.baseElement).not.toHaveTextContent(IMPORTS_PAUSED);
+  });
+
+  test("shows why the push state cannot be read", async () => {
+    // GIVEN
+    vi.mocked(getDeliveryState).mockRejectedValue(
+      new Error("Cannot read the pending pushes of this repository.")
+    );
+
+    // WHEN
+    const component = await render(<RepositoryDeliverySection repositoryId="repo-1" />);
+
+    // THEN
+    await expect
+      .element(component.getByText("Cannot read the pending pushes of this repository."))
+      .toBeVisible();
   });
 });

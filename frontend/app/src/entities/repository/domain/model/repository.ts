@@ -1,4 +1,5 @@
 import {
+  type CoreRepository,
   type RepositoryCommit as GeneratedRepositoryCommit,
   RepositoryCommitState as GeneratedRepositoryCommitState,
   type RepositoryCommits as GeneratedRepositoryCommits,
@@ -99,4 +100,4 @@ export const REPOSITORY_DELIVERY_ATTRIBUTE_NAMES: readonly string[] = [
   "delivery_last_delivered_commit",
   "delivery_reverted",
   "delivery_progress",
-];
+] satisfies readonly (keyof CoreRepository)[];

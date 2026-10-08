@@ -1,6 +1,6 @@
 import type { DeliveryFailureCause } from "@/entities/repository/domain/model/delivery-state";
 
-// The wording of the push state is provisional, so every text of the section lives in this file.
+// The fixed texts of the push section live here, so a change of wording touches one file.
 export const DELIVERY_TEXTS = {
   title: "Push to remote",
   status: "Status",

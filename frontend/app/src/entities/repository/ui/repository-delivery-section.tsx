@@ -45,12 +45,12 @@ function RepositoryDeliveryState({ repositoryId }: RepositoryDeliverySectionProp
   return (
     <div className="divide-y">
       <DetailRow label={DELIVERY_TEXTS.status}>
-        <ColorDisplay value={state.statusLabel} color={state.statusColor} />
+        <div>
+          <ColorDisplay value={state.statusLabel} color={state.statusColor} />
+        </div>
       </DetailRow>
 
-      {state.cause && (
-        <DetailRow label={DELIVERY_TEXTS.cause}>{state.causeLabel ?? state.cause}</DetailRow>
-      )}
+      {state.cause && <DetailRow label={DELIVERY_TEXTS.cause}>{state.causeLabel}</DetailRow>}
 
       <DetailRow label={DELIVERY_TEXTS.requiredAction}>
         {state.cause && <p>{REQUIRED_ACTION_BY_CAUSE[state.cause]}</p>}
