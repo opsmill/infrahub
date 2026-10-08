@@ -37,17 +37,39 @@ async def read_pending_merges(
     recorded = await _read_commits(db=db, branch=default_branch, repository_ids=repository_ids, at=None)
     merged_at = datetime.now(UTC)
     return {
-        repository_id: PendingMerge(
-            entry_id=str(uuid4()),
-            source_branch=source_branch.name,
-            # Only the default branch maps to a remote branch of another name, and a merge never comes from it.
-            source_git_branch=source_branch.name,
-            source_commit=commit,
-            merged_at=merged_at,
+        repository_id: _new_pending_merge(
+            source_branch_name=source_branch.name, source_commit=commit, merged_at=merged_at
         )
         for repository_id, commit in source.items()
         if commit not in {forked.get(repository_id), recorded.get(repository_id)}
     }
+
+
+async def read_pending_merge_of_commit(
+    *, db: InfrahubDatabase, source_branch_name: str, source_commit: str, default_branch: Branch, repository_id: str
+) -> PendingMerge | None:
+    """Return a new queue entry for a source commit whose branch is gone, or None when the default branch records it.
+
+    The commit that the default branch held at the fork of a deleted branch is unknown, so only the commit recorded
+    now can show that the merge changes no content.
+    """
+    recorded = await _read_commits(db=db, branch=default_branch, repository_ids=[repository_id], at=None)
+    if recorded.get(repository_id) == source_commit:
+        return None
+    return _new_pending_merge(
+        source_branch_name=source_branch_name, source_commit=source_commit, merged_at=datetime.now(UTC)
+    )
+
+
+def _new_pending_merge(*, source_branch_name: str, source_commit: str, merged_at: datetime) -> PendingMerge:
+    return PendingMerge(
+        entry_id=str(uuid4()),
+        source_branch=source_branch_name,
+        # Only the default branch maps to a remote branch of another name, and a merge never comes from it.
+        source_git_branch=source_branch_name,
+        source_commit=source_commit,
+        merged_at=merged_at,
+    )
 
 
 async def _read_commits(

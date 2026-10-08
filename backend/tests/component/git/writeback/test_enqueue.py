@@ -640,6 +640,48 @@ async def test_a_merge_flow_with_no_entry_queues_the_entry_it_builds_with_a_full
     assert writes[QUEUE].updated_at == writes[HELD_REGENERATION].updated_at
 
 
+async def test_a_merge_flow_whose_source_branch_is_gone_queues_the_commit_of_its_submission(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    cloned_repository: ClonedRepository,
+) -> None:
+    repository = cloned_repository
+    repository.remove_origin()
+    model = repository.merge_model(entry=None, enqueued=False).model_copy(
+        update={"source_branch": "deleted-branch", "source_commit": SOURCE_COMMIT}
+    )
+
+    await run_merge_flow(dependency_provider=dependency_provider, client=repository.client, model=model)
+
+    intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
+    assert [(entry.source_branch, entry.source_git_branch, entry.source_commit) for entry in intent.queue.entries] == [
+        ("deleted-branch", "deleted-branch", SOURCE_COMMIT)
+    ]
+    assert intent.held.widen == HeldWiden(scope="all", reason=FullRegenerationReason.UNHELD_FOLLOW_UP, hold_seq=1)
+
+
+async def test_a_merge_flow_whose_source_branch_is_gone_queues_nothing_for_the_recorded_commit(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    cloned_repository: ClonedRepository,
+) -> None:
+    repository = cloned_repository
+    model = repository.merge_model(entry=None, enqueued=False).model_copy(
+        update={"source_branch": "deleted-branch", "source_commit": repository.trunk_commit}
+    )
+
+    state = await run_merge_flow(dependency_provider=dependency_provider, client=repository.client, model=model)
+
+    assert state.is_completed()
+    intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
+    assert intent.queue == DeliveryQueue()
+    assert intent.held == HeldRegeneration()
+
+
 async def test_a_merge_flow_with_no_entry_and_no_content_queues_nothing(
     db: InfrahubDatabase,
     default_branch: Branch,
