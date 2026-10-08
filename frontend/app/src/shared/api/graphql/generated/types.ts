@@ -23880,6 +23880,150 @@ export type NumberAttributeUpdate = {
   value?: InputMaybe<Scalars['BigInt']['input']>;
 };
 
+/** One tracked number as held on one branch: one row per (record, branch-resolved value). */
+export type NumberPoolAllocation = {
+  __typename: 'NumberPoolAllocation';
+  /** The branch on which the holder's attribute holds this value. */
+  branch: Scalars['String']['output'];
+  /** The node whose attribute holds the value, read on the row's branch. */
+  holder: NumberPoolHolder;
+  /** The identifier given when the number was allocated, if any. */
+  identifier: Maybe<Scalars['String']['output']>;
+  /** ALLOCATED when the pool picked the number, PROVIDED when a user gave it. */
+  provenance: NumberPoolProvenance;
+  /** The range whose bounds hold the value. */
+  range: NumberPoolRangeRef;
+  /** The number held. */
+  value: Scalars['BigInt']['output'];
+};
+
+/** A page of the numbers a pool tracks. */
+export type NumberPoolAllocations = {
+  __typename: 'NumberPoolAllocations';
+  /** The page, ordered by value, then branch, then holder id. */
+  allocations: Array<NumberPoolAllocation>;
+  /** Number of rows matching the filters, before offset and limit. */
+  count: Scalars['BigInt']['output'];
+};
+
+/** One division: a tuple of values of the scope in force. */
+export type NumberPoolDivision = {
+  __typename: 'NumberPoolDivision';
+  /** The entries' display labels joined with " / ". */
+  display_label: Scalars['String']['output'];
+  /** One entry per scope entry in force, in scope order. */
+  entries: Array<NumberPoolDivisionEntry>;
+  /** Figures for this division, over all the values the pool can allocate. */
+  figures: NumberPoolUtilizationFigures;
+};
+
+/** The value one scope entry takes in a division. */
+export type NumberPoolDivisionEntry = {
+  __typename: 'NumberPoolDivisionEntry';
+  /** Relationship entry: the peer's display label, read on any branch, falling back to the peer's id when the peer cannot be read. Attribute entry: the value as text. */
+  display_label: Scalars['String']['output'];
+  /** The scope entry, as stored on the pool ("site", "role"). */
+  path: Scalars['String']['output'];
+  /** Relationship entry: the peer's kind when the peer can be read. Otherwise null. */
+  peer_kind: Maybe<Scalars['String']['output']>;
+  /** Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing for the entry: an empty string. */
+  value: Scalars['String']['output'];
+};
+
+/** One entry of a division filter. Mirrors NumberPoolDivisionEntry. */
+export type NumberPoolDivisionEntryInput = {
+  /** A scope entry in force on the request's branch. */
+  path: Scalars['String']['input'];
+  /** Relationship entry: the peer's id. Attribute entry: the value as text. */
+  value: Scalars['String']['input'];
+};
+
+/** The divisions of one number pool, each with its figures. */
+export type NumberPoolDivisions = {
+  __typename: 'NumberPoolDivisions';
+  /** Scope entries in force on the request's branch, in scope order. */
+  allocation_scope: Array<Scalars['String']['output']>;
+  /** Number of divisions listed. */
+  count: Scalars['Int']['output'];
+  /** Every division whose holders hold at least one value the pool tracks on any branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty. */
+  divisions: Array<NumberPoolDivision>;
+};
+
+/** The node holding a tracked number. */
+export type NumberPoolHolder = {
+  __typename: 'NumberPoolHolder';
+  display_label: Scalars['String']['output'];
+  /** The holder's human-friendly id. Null when its kind declares none. */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+};
+
+/** How the number a tracked attribute currently holds got there. */
+export const NumberPoolProvenance = {
+  ALLOCATED: 'ALLOCATED',
+  PROVIDED: 'PROVIDED'
+} as const;
+
+export type NumberPoolProvenance = typeof NumberPoolProvenance[keyof typeof NumberPoolProvenance];
+/** A reference to one range of the pool. */
+export type NumberPoolRangeRef = {
+  __typename: 'NumberPoolRangeRef';
+  display_label: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+};
+
+/** One range of a number pool with its own figures. */
+export type NumberPoolRangeUtilization = {
+  __typename: 'NumberPoolRangeUtilization';
+  /** The range node's display label. */
+  display_label: Scalars['String']['output'];
+  /** Last value of the range, included. */
+  end: Scalars['BigInt']['output'];
+  /** Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument. */
+  figures: NumberPoolUtilizationFigures;
+  /** The range node's id. */
+  id: Scalars['String']['output'];
+  /** First value of the range, included. */
+  start: Scalars['BigInt']['output'];
+  /** The range's allocation weight. 0 when the range declares none. */
+  weight: Scalars['BigInt']['output'];
+};
+
+/** Utilization of one number pool and of each of its ranges, with the allocation scope in force on the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization. */
+export type NumberPoolUtilization = {
+  __typename: 'NumberPoolUtilization';
+  /** Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry. */
+  allocation_scope: Array<Scalars['String']['output']>;
+  /** The pool's display label. */
+  display_label: Scalars['String']['output'];
+  /** Figures over all the values the pool can allocate. On a scoped pool, only the values held in the division passed in the division argument, which is required. */
+  figures: NumberPoolUtilizationFigures;
+  /** The pool's id, as given in pool_id. */
+  id: Scalars['String']['output'];
+  /** The pool's ranges ordered by start, each with its own figures. */
+  ranges: Array<NumberPoolRangeUtilization>;
+};
+
+/** Absolute and relative utilization of a pool, a range or a division. */
+export type NumberPoolUtilizationFigures = {
+  __typename: 'NumberPoolUtilizationFigures';
+  /** Number of values the pool, range or division can allocate. 0 when the pool has no range. */
+  size: Scalars['BigInt']['output'];
+  /** Number of these values in use on any branch. A value used on several branches counts once. */
+  used: Scalars['BigInt']['output'];
+  /** Number of these values in use only on other branches, not on the default branch. */
+  used_branches: Scalars['BigInt']['output'];
+  /** Number of these values in use on the default branch. */
+  used_default_branch: Scalars['BigInt']['output'];
+  /** used as a percentage of size. 0 when size is 0. */
+  utilization: Scalars['Float']['output'];
+  /** used_branches as a percentage of size. 0 when size is 0. */
+  utilization_branches: Scalars['Float']['output'];
+  /** used_default_branch as a percentage of size. 0 when size is 0. */
+  utilization_default_branch: Scalars['Float']['output'];
+};
+
 export type ObjectPermission = {
   __typename: 'ObjectPermission';
   /** Indicates the permission level for the create action. */
@@ -24823,7 +24967,7 @@ export type PoolAllocatedNode = {
   provenance: Maybe<PoolRecordProvenance>;
 };
 
-/** What a number pool's record says about one value the attribute holds: the pool allocated it or a user provided it. */
+/** Whether the pool allocated a value or a user provided it. */
 export const PoolRecordProvenance = {
   ALLOCATED: 'ALLOCATED',
   PROVIDED: 'PROVIDED'
@@ -26065,12 +26209,20 @@ export type Query = {
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
+  /** The numbers one number pool tracks, filtered and paginated. */
+  InfrahubNumberPoolAllocations: NumberPoolAllocations;
+  /** The divisions of one number pool that hold at least one value, with their figures over the whole pool. Complete list, no pagination. */
+  InfrahubNumberPoolDivisions: NumberPoolDivisions;
+  /** Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division. */
+  InfrahubNumberPoolUtilization: NumberPoolUtilization;
   /** Find all shortest paths between two nodes in the graph */
   InfrahubPathTraversal: PathTraversalResultType;
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
+  /** For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead. */
   InfrahubResourcePoolAllocated: PoolAllocated;
+  /** For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */
@@ -38478,6 +38630,28 @@ export type QueryInfrahubIpAddressGetNextAvailableArgs = {
 export type QueryInfrahubIpPrefixGetNextAvailableArgs = {
   prefix_id: Scalars['String']['input'];
   prefix_length?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryInfrahubNumberPoolAllocationsArgs = {
+  branch?: InputMaybe<Scalars['String']['input']>;
+  division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  pool_id: Scalars['String']['input'];
+  provenance?: InputMaybe<NumberPoolProvenance>;
+  range_id?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryInfrahubNumberPoolDivisionsArgs = {
+  pool_id: Scalars['String']['input'];
+};
+
+
+export type QueryInfrahubNumberPoolUtilizationArgs = {
+  division?: InputMaybe<Array<NumberPoolDivisionEntryInput>>;
+  pool_id: Scalars['String']['input'];
 };
 
 
