@@ -4,12 +4,22 @@ from collections.abc import Sequence
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
+from prefect.client.schemas.filters import (
+    FlowRunFilter,
+    FlowRunFilterState,
+    FlowRunFilterStateType,
+    FlowRunFilterTags,
+)
+from prefect.client.schemas.objects import StateType
+
 from infrahub.git.writeback.service import RetryableDeliveryError
 from infrahub.workflows.constants import WorkflowTag
 
 if TYPE_CHECKING:
     from prefect import Task
     from prefect.client.schemas.objects import State, TaskRun
+
+    from infrahub.task_manager.flow_run.prefect_client import FlowRunQuerying
 
 
 def delivery_run_tags(repository_id: str) -> list[str]:
@@ -44,3 +54,22 @@ def next_retry_delay(
     if isinstance(retry_delay_seconds, Sequence):
         return timedelta(seconds=retry_delay_seconds[min(run_count - 1, len(retry_delay_seconds) - 1)])
     return timedelta(seconds=retry_delay_seconds)
+
+
+class PrefectDeliveryRunQuery:
+    """Answer from Prefect whether a delivery run of a repository waits to start."""
+
+    def __init__(self, client: FlowRunQuerying) -> None:
+        self.client = client
+
+    async def has_queued_run(self, *, repository_id: str) -> bool:
+        # A running run is left out, because its worker can be dead and the lock and the progress time judge it.
+        queued = FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING])
+        runs = await self.client.read_flow_runs(
+            flow_run_filter=FlowRunFilter(
+                tags=FlowRunFilterTags(all_=delivery_run_tags(repository_id)),
+                state=FlowRunFilterState(type=queued),
+            ),
+            limit=1,
+        )
+        return bool(runs)
