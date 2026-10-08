@@ -17,6 +17,8 @@ import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub import config, lock
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryDeliveryFailureCause,
@@ -1051,7 +1053,12 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
         )
         async with db.start_session() as session:
-            service = await build_writeback_service(db=session, repository=repo)
+            service = await build_writeback_service(
+                db=session,
+                repository=repo,
+                context=InfrahubContext(branch=BranchContext(name=registry.default_branch), account=AnonymousSession()),
+                log=logging.getLogger(__name__),
+            )
             return await service.deliver(final_attempt=True, manual=True, entry=None)
 
     async def test_delivery_visible(
