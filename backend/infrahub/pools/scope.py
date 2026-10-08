@@ -26,15 +26,25 @@ class AllocationScope:
     elements: tuple[ScopeElement, ...] = ()
 
     @classmethod
-    def from_stored(cls, value: list[Any] | None, pool: str) -> AllocationScope:
+    def from_stored(cls, value: object, pool: str) -> AllocationScope:
         """Read the scope stored on `pool`, absent or empty meaning unscoped.
 
         Raises:
-            ValidationError: an entry is not an object holding a text `id` and a text `name`.
+            ValidationError: the value is not a list, or an entry is not an object holding a text `id` and a
+                text `name`.
 
         """
+        if value is None:
+            entries: list[Any] = []
+        elif isinstance(value, list):
+            entries = value
+        else:
+            raise ValidationError(
+                f"allocation_scope of pool {pool}: the stored value {json.dumps(value, default=repr)} is not a list "
+                "of elements; recreate the pool to set its scope"
+            )
         elements: list[ScopeElement] = []
-        for entry in value or []:
+        for entry in entries:
             if not (
                 isinstance(entry, dict) and isinstance(entry.get("id"), str) and isinstance(entry.get("name"), str)
             ):
@@ -57,11 +67,12 @@ class AllocationScope:
         return tuple(element.name for element in self.elements)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class Division:
     """The values a holder has for the scope elements, in scope order; one division is one space of the pool.
 
-    Values are compared as stored, so a list or a document only matches the same list or document.
+    Two divisions are equal when their values have the same JSON form, so a list or a document only matches
+    the same list or document, and 1, 1.0 and true are three different values.
     """
 
     values: tuple[Any, ...]
@@ -69,6 +80,15 @@ class Division:
     @property
     def key(self) -> str:
         """Return a hash of the values that stays the same across processes, used to name the division's lock."""
-        # Sorted keys make the hash follow dictionary equality, which ignores key order.
+        # Sorted keys make the hash ignore the key order of a document, as its equality does.
         encoded = json.dumps(list(self.values), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+    # Equality and hashing follow the lock key, so equal divisions share one lock and list values stay hashable.
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Division):
+            return NotImplemented
+        return self.key == other.key
+
+    def __hash__(self) -> int:
+        return hash(self.key)

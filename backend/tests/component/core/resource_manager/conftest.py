@@ -102,7 +102,7 @@ async def ticket_schema(db: InfrahubDatabase, register_core_models_schema: Schem
 async def scoped_schema(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """The scoped device kind, its peers and the scoped holder generic, registered on the default branch."""
+    """The scoped pool test schema, registered on the default branch."""
     registry.schema.register_schema(schema=SCOPED_POOL_SCHEMA, branch=default_branch.name)
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 

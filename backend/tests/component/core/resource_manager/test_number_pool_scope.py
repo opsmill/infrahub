@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub.core.manager import NodeManager
+
 from .conftest import SCOPED_POOL_START, scoped_device, scoped_site
 
 if TYPE_CHECKING:
@@ -52,5 +54,6 @@ async def test_device_takes_the_first_number_of_a_new_pool(
 
     device = await scoped_device(db=db, branch=default_branch, pool=pool, name="device-a1", site=site)
 
-    assert pool.get_attribute("allocation_scope").value == case.stored_scope
+    stored_pool = await NodeManager.get_one(db=db, branch=default_branch, id=pool.id, raise_on_error=True)
+    assert stored_pool.get_attribute("allocation_scope").value == case.stored_scope
     assert device.get_attribute("vlan_id").value == SCOPED_POOL_START

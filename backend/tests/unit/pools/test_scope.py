@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -38,6 +39,7 @@ REFUSED_ENTRY_CASES = [
     RefusedEntryCase(name="missing-name", entry={"id": SITE.id}, shown=f'{{"id": "{SITE.id}"}}'),
     RefusedEntryCase(name="missing-id", entry={"name": "site"}, shown='{"name": "site"}'),
     RefusedEntryCase(name="id-not-text", entry={"id": 7, "name": "site"}, shown='{"id": 7, "name": "site"}'),
+    RefusedEntryCase(name="name-not-text", entry={"id": SITE.id, "name": 3}, shown=f'{{"id": "{SITE.id}", "name": 3}}'),
 ]
 
 DIVISION_VALUES_CASES = [
@@ -55,6 +57,8 @@ DISTINCT_DIVISIONS_CASES = [
     DistinctDivisionsCase(name="list-against-scalar", first=(["red"],), second=("red",)),
     DistinctDivisionsCase(name="json-value-type", first=({"pod": 1},), second=({"pod": "1"},)),
     DistinctDivisionsCase(name="no-value-against-value", first=("",), second=("site-a-id",)),
+    DistinctDivisionsCase(name="integer-against-boolean", first=(1,), second=(True,)),
+    DistinctDivisionsCase(name="integer-against-float", first=({"pod": 1},), second=({"pod": 1.0},)),
 ]
 
 
@@ -92,15 +96,25 @@ class TestAllocationScopeStoredForm:
         with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
             AllocationScope.from_stored(value=[{"id": ROLE.id, "name": "role"}, case.entry], pool="vlan-per-site")
 
+    def test_stored_value_that_is_not_a_list_is_refused_naming_the_pool(self) -> None:
+        expected = (
+            'allocation_scope of pool vlan-per-site: the stored value "site" is not a list of elements; '
+            "recreate the pool to set its scope"
+        )
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            AllocationScope.from_stored(value="site", pool="vlan-per-site")
+
 
 class TestDivisionKey:
     @pytest.mark.parametrize("case", DIVISION_VALUES_CASES, ids=[case.name for case in DIVISION_VALUES_CASES])
     def test_equal_divisions_share_a_key(self, case: DivisionValuesCase) -> None:
         first = Division(values=case.values)
-        second = Division(values=tuple(case.values))
+        second = Division(values=copy.deepcopy(case.values))
 
         assert first == second
         assert first.key == second.key
+        assert {first, second} == {first}
 
     def test_key_does_not_depend_on_the_key_order_of_a_document(self) -> None:
         assert Division(values=({"pod": 1, "row": "b"},)).key == Division(values=({"row": "b", "pod": 1},)).key
