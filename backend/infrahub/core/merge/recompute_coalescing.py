@@ -652,8 +652,6 @@ async def _resolve_python_targets(
             "Widening every Python computed attribute on branch %s to its whole kind: the resolution failed", branch
         )
         targets = _every_python_attribute_widened(schema_branch)
-    if not targets:
-        return []
 
     candidates = [
         owned_python_target(

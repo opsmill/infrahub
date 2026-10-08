@@ -125,7 +125,7 @@ class RegenerationBarrier:
             releasing: The repository whose held regeneration is being released, so its candidates are admitted.
 
         """
-        if branch != self.default_branch_name:
+        if branch != self.default_branch_name or not candidates:
             return list(candidates)
         return await self._with_retries(
             attempt=lambda: self._partition(candidates=candidates, releasing=releasing),

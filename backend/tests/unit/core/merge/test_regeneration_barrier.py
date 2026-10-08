@@ -204,6 +204,17 @@ async def test_admit_on_another_branch_returns_every_candidate_without_a_read() 
     assert cache.storage == {}
 
 
+async def test_admit_of_no_candidate_on_the_default_branch_reads_nothing() -> None:
+    state = await _state(queued=(REPOSITORY_X,))
+
+    admitted = await _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep()).admit(
+        branch=DEFAULT_BRANCH, candidates=[], releasing=None
+    )
+
+    assert admitted == []
+    assert state.calls == []
+
+
 @dataclass
 class PartitionTestCase:
     name: str
