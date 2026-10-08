@@ -248,14 +248,15 @@ class RepositoryDeliveryGitAdapter:
 
     @contextmanager
     def _bounded(self, *, worktree: Repo | None = None) -> Iterator[None]:
-        """Replace a local Git command that ran past its time bound with an error that names no path.
+        """Replace the error of a local Git command that GitPython stopped at its time bound with one that names no path.
 
         Args:
             worktree: The worktree that the commands write to, whose index lock a killed command leaves.
 
         Raises:
-            RepositoryError: Git stopped a command at its time bound.
-            GitCommandError: A Git command failed for another reason, which passes unchanged.
+            RepositoryError: GitPython stopped a command at its time bound.
+            GitCommandError: A Git command failed for another reason, which passes unchanged, as does any other
+                RepositoryError.
 
         """
         try:
@@ -282,7 +283,7 @@ class RepositoryDeliveryGitAdapter:
 
 
 def _killed_command(*, error: GitCommandError | RepositoryError) -> str | None:
-    """Return the Git command, without its arguments, that GitPython stopped at its time bound."""
+    """Return the Git command, without its arguments, that GitPython stopped at its time bound, or None when it did not."""
     cause = error if isinstance(error, GitCommandError) else error.__cause__
     if isinstance(cause, GitCommandError) and KILLED_COMMAND_TEXT in str(cause.stderr):
         return f"git {cause.command[1]}"

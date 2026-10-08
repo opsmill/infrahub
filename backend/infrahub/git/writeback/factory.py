@@ -30,7 +30,7 @@ class NoRegenerationReleaser(RegenerationReleasePort):
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
     ) -> None:
-        # No barrier holds regeneration back yet, so the merge follow-ups already dispatched it.
+        # No barrier holds regeneration back, so the merge follow-ups already dispatched it.
         return
 
 
