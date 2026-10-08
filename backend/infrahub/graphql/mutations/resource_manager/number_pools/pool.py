@@ -165,7 +165,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         sent_fields = [
             ScopeValidator.field_name(entry=entry) for entry in ScopeValidator.parse(value=scope_input["value"])
         ]
-        if sent_fields != list(stored_scope or []):
+        if sent_fields != ScopeValidator.parse(value=stored_scope):
             message = SCHEMA_POOL_SCOPE_REFUSED if is_schema_pool(pool=pool) else SCOPE_UPDATE_REFUSED
             raise ValidationError(input_value=message)
         scope_input["value"] = stored_scope
