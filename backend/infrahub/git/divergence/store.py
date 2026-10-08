@@ -17,6 +17,25 @@ if TYPE_CHECKING:
     from infrahub.git.divergence.models import RewriteRecord
 
 
+async def _get_repository[RepositoryT: CoreGenericRepository](
+    client: InfrahubClient,
+    kind: type[RepositoryT],
+    repository_id: str,
+    infrahub_branch_name: str,
+    failure: Callable[[SdkError], RepositoryError],
+) -> RepositoryT:
+    """Return the repository node as the branch reads it.
+
+    Raises:
+        RepositoryError: Built by ``failure``, when the API cannot answer or holds no such repository on the branch.
+
+    """
+    try:
+        return await client.get(kind=kind, id=repository_id, branch=infrahub_branch_name)
+    except SdkError as exc:
+        raise failure(exc) from exc
+
+
 class SdkTrackedTargetReader:
     """Reads what a read-only repository records on one Infrahub branch, through the SDK node API."""
 
@@ -30,15 +49,16 @@ class SdkTrackedTargetReader:
             RepositoryError: When the API cannot answer, or holds no such repository on the branch.
 
         """
-        try:
-            repository = await self.client.get(
-                kind=CoreReadOnlyRepository, id=repository_id, branch=infrahub_branch_name
-            )
-        except SdkError as exc:
-            raise RepositoryError(
+        repository = await _get_repository(
+            client=self.client,
+            kind=CoreReadOnlyRepository,
+            repository_id=repository_id,
+            infrahub_branch_name=infrahub_branch_name,
+            failure=lambda exc: RepositoryError(
                 identifier=repository_id,
                 message=f"Unable to read repository {repository_id} on branch {infrahub_branch_name}: {exc}",
-            ) from exc
+            ),
+        )
         return TrackedTarget(ref=repository.ref.value, commit=readable_commit(repository.commit.value))
 
 
@@ -58,7 +78,15 @@ class SdkRepositoryRecordStore:
                 the write.
 
         """
-        repository = await self._get_repository(repository_id=repository_id, infrahub_branch_name=infrahub_branch_name)
+        repository = await _get_repository(
+            client=self.client,
+            kind=CoreGenericRepository,
+            repository_id=repository_id,
+            infrahub_branch_name=infrahub_branch_name,
+            failure=lambda exc: self._access_failed(
+                repository_id=repository_id, infrahub_branch_name=infrahub_branch_name, exc=exc
+            ),
+        )
         record = build_record(repository.rewrite_count.value)
         repository.last_rewrite_previous_commit.value = record.previous_commit
         repository.last_rewrite_commit.value = record.commit
@@ -66,14 +94,6 @@ class SdkRepositoryRecordStore:
         repository.rewrite_count.value = record.rewrite_count
         try:
             await repository.save()
-        except SdkError as exc:
-            raise self._access_failed(
-                repository_id=repository_id, infrahub_branch_name=infrahub_branch_name, exc=exc
-            ) from exc
-
-    async def _get_repository(self, repository_id: str, infrahub_branch_name: str) -> CoreGenericRepository:
-        try:
-            return await self.client.get(kind=CoreGenericRepository, id=repository_id, branch=infrahub_branch_name)
         except SdkError as exc:
             raise self._access_failed(
                 repository_id=repository_id, infrahub_branch_name=infrahub_branch_name, exc=exc
