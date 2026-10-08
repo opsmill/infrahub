@@ -28,6 +28,7 @@ query GET_BRANCH_GIT_REPOSITORIES($limit: Int!, $offset: Int!) {
 | Query key | `branchGitStatusQueryKeys.repositories(params)`, that is `["branch-git-status", "repositories", { limit, offset }]` |
 | Mapping | `toBranchGitRepositoryPage`: `kind` from `__typename`, `isReadOnly` for `CoreReadOnlyRepository` |
 | Cut list | `count > repositories.length`: every row reads "Could not load repositories" |
+| Freshness | `staleTime: 60_000`; no `refetchInterval` |
 | Retry | none: the app query client turns retries off |
 
 ## 2. Status, once per repository
@@ -59,7 +60,7 @@ query GET_REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int!) {
 | Retry | none |
 | Requests | 1 + R per page load (R = number of repositories), none when more branches load on scroll |
 
-Branch creation, deletion, merge, rebase and the list's reload button invalidate `branchGitStatusQueryKeys.all`.
+Branch creation, deletion, merge, rebase and the list's reload button invalidate `branchGitStatusQueryKeys.all`. Merge and rebase run with `wait_until_completion: false`, so their mutation invalidates the status when the task is queued. The branch details page then checks the queued task every 5 s (`InfrahubTask(ids: [$taskId], state: [COMPLETED, FAILED, CANCELLED, CRASHED]) { count }`) and invalidates `branchGitStatusQueryKeys.all` once more when the task reaches a final state. If the user leaves the page first, the check stops and the next read follows the normal stale time.
 
 ## Errors
 

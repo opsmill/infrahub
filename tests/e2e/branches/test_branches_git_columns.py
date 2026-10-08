@@ -68,3 +68,13 @@ class TestBranchesGitColumns:
         # Other tests can leave read-only repositories, and a branch without Git sync still lists them.
         names_pattern = "|".join(re.escape(name) for name in read_only_names)
         await expect(repositories_cell.get_by_role("link").first).to_have_text(re.compile(rf"^(?:{names_pattern})$"))
+
+        # A read-write repository listed on this branch would raise the count of other repositories.
+        other_count = len(read_only_names) - 1
+        await expect(repositories_cell.get_by_text(re.compile(r"^Loading "))).to_have_count(0)
+        more_links = repositories_cell.get_by_role("link", name=re.compile(r"^\+\d+ more "))
+        if other_count == 0:
+            await expect(more_links).to_have_count(0)
+            return
+        noun = "repository" if other_count == 1 else "repositories"
+        await expect(more_links).to_have_accessible_name(f"+{other_count} more {noun} on {branch_without_git_sync}")

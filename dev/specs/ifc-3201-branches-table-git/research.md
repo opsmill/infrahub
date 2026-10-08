@@ -30,7 +30,7 @@ Each line names the decision and what replaced it. The full reasoning is in the 
 
 ## R9 — Polling
 
-**Decision**: each repository's status query refreshes every 10 s while one of its rows has `sync_status = syncing`, and stops when no row is syncing (`entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusRefetchInterval`). Status queries have a 60 s stale time.
+**Decision**: each repository's status query refreshes every 10 s while one of its rows has `sync_status = syncing`, and stops when no row is syncing (`entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusRefetchInterval`). The repository-list query and the status queries have a 60 s stale time.
 
 **Rationale**: FR-014 asks for the cadence the branch details page already uses (`REPOSITORY_SYNC_REFETCH_INTERVAL_MS`). Only a repository that is syncing polls. A failed read polls every minute (`REPOSITORY_ERROR_REFETCH_INTERVAL_MS`) and a permission denial stops polling, as on the branch details page. Queries do not retry: the app query client turns retries off.
 
@@ -120,6 +120,14 @@ Each line names the decision and what replaced it. The full reasoning is in the 
 **Decision** (2026-10-08, PR review): this feature does not lift PR #10658's `InfrahubRepositoryBranchStatus` files (API, model, mappers, use case) into `entities/repository/`. The entity of R16 has its own smaller status document and mapper.
 
 **Why**: the lifted files carried hand-written wire types in `domain/model`, fields nothing in the list reads (`id`, `__typename`, `isDefault`, `ref`) and query variables nobody passes, and their only consumer here was the list. Keeping them byte-identical to #10658 blocked fixing their layers. Without the lift, #10658 merges into `entities/repository/` without a conflict with this feature.
+
+## R20 — Merge and rebase stay asynchronous; the status refreshes when the task ends
+
+**Decision** (owner, 2026-10-08, PR review): the branch details page keeps sending `BranchMerge` and `BranchRebase` with `wait_until_completion: false`, as on the base branch. A long merge or rebase can last longer than a reverse proxy's request timeout, so waiting for the task inside the request is rejected.
+
+The mutations invalidate `branchGitStatusQueryKeys.all` when the task is queued. The merge and rebase buttons then pass the returned task ID to `entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end.ts::useRefreshBranchGitStatusOnTaskEnd`, which checks the task every 5 s through the tasks entity (`entities/tasks/ui/queries/is-task-finished.query.ts::isTaskFinishedQueryOptions`, a count of the task in `TASK_FINAL_STATES`: COMPLETED, FAILED, CANCELLED, CRASHED). When the task reaches a final state, the hook invalidates `branchGitStatusQueryKeys.all` once and the check stops. The check shows no error toast, and it stops after 360 checks (30 minutes) so a task the server never lists does not poll forever.
+
+**Limit**: the check runs only while the page that started it is open. A merge that deletes the branch navigates to the branches list and passes the merge task id in the router navigation state, so the branches list runs the same check and reads the status lists again when the task ends. When the user leaves the branch details page or the branches list before the task ends, the next read follows the 60 s stale time (R9).
 
 ## Risks
 

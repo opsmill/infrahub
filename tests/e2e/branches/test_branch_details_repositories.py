@@ -18,9 +18,25 @@ if TYPE_CHECKING:
 
 BAND_TIMEOUT_MS = 30_000
 
+# The workflows the band reads a failed import from; a failed task of another workflow must not pass.
+IMPORT_WORKFLOWS = (
+    "git-repository-add-read-write",
+    "git-repository-add-read-only",
+    "git-repository-import-object",
+    "git-read-only-repository-import-last-commit",
+    "git-repository-pull-read-only",
+    "sync-git-repo-with-origin",
+)
+
 FAILED_REPOSITORY_TASK_QUERY = """
-query FailedRepositoryTask($taskId: String!, $branch: String!, $repositoryId: String!) {
-  InfrahubTask(ids: [$taskId], branch: $branch, related_node__ids: [$repositoryId], state: [FAILED, CRASHED]) {
+query FailedRepositoryTask($taskId: String!, $branch: String!, $repositoryId: String!, $workflows: [String]!) {
+  InfrahubTask(
+    ids: [$taskId]
+    branch: $branch
+    related_node__ids: [$repositoryId]
+    workflow: $workflows
+    state: [FAILED, CRASHED]
+  ) {
     edges { node { id } }
   }
 }
@@ -60,6 +76,7 @@ class TestBranchDetailsRepositoryImportError:
                 "taskId": match[1],
                 "branch": broken_repository.branch,
                 "repositoryId": broken_repository.repository_id,
+                "workflows": list(IMPORT_WORKFLOWS),
             },
             tracker="query-failed-repository-task",
         )

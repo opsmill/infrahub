@@ -281,8 +281,11 @@ Reusing another entity's query as it is, through its hook or its `queryOptions`,
 feature or a new screen needs data that an existing query does not return as it is, give it its own
 entity, or its own `api/`, `domain/` and `ui/queries/` files, with its own query. Do not add flags to
 an existing query that change or switch off its behaviour, such as its polling, the kind it selects
-or its paging: the query keeps changing for its first caller, and each change can break the second
-one.
+or its paging. Both callers then depend on one query function, key and result shape, so a change
+made for the first caller (a field, the kind it selects, its page size) changes what the second one
+receives. An override such as `refetchInterval: false` applies only to the observer that passes it.
+Where the keys match, both callers share one cache entry, and the polling of one refreshes the data
+the other displays.
 
 The dependency goes one way. The new feature's entity imports the entities it reads (their
 `domain/` types and `ui/` hooks); those entities do not import it back. Pass it plain values, such
@@ -294,7 +297,8 @@ useQuery(getBranchGitRepositoriesQueryOptions({ limit: REPOSITORY_LIST_LIMIT, of
 // …and the table passes the branch names, not its branch objects
 const gitStatuses = useGetBranchGitStatuses(branches.map((branch) => branch.name));
 
-// ❌ The branch details card's query, with flags that select the kind and stop its polling
+// ❌ The branch details card's query, with a flag that selects the kind, and polling switched off
+// for this caller only
 useQuery({
   ...getBranchRepositoriesQueryOptions({
     branchName, syncWithGit: true, isSyncing: false, limit, offset: 0,

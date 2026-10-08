@@ -105,12 +105,12 @@ src/entities/branch-git-status/                    # NEW entity: the branches li
 │   ├── get-branch-git-repositories-from-api.ts    # GET_BRANCH_GIT_REPOSITORIES: CoreGenericRepository id, name, __typename, count
 │   ├── get-repository-branch-status-from-api.ts   # GET_REPOSITORY_BRANCH_STATUS($id, $limit)
 │   ├── branch-git-repository.mappers.ts (+ test)  # wire → BranchGitRepositoryPage
-│   └── repository-branch-status.mappers.ts (+ test) # wire → RepositoryBranchStatusPage
+│   └── repository-branch-status.mappers.ts (+ test) # wire → RepositoryBranchGitStatusPage
 ├── domain/
 │   ├── model/
 │   │   ├── branch-git-repository.ts               # BranchGitRepository, BranchGitRepositoryPage
 │   │   ├── branch-git-status.ts                   # BranchGitStatus, BranchRepositoryState, SyncStatusCount, FailedRepository, UnloadedRepository, BranchGitStatusError
-│   │   └── repository-branch-status.ts            # RepositoryBranchStatus, RepositoryBranchStatusPage
+│   │   └── repository-branch-git-status.ts        # RepositoryBranchGitStatus, RepositoryBranchGitStatusPage
 │   ├── rules/
 │   │   ├── summarize-branch-git-statuses.ts (+ test) # summarizeBranchGitStatuses, RepositoryListFetch, RepositoryStatusFetch
 │   │   ├── sync-status-severity.ts (+ test)       # compareWorstSyncStatusFirst
@@ -124,7 +124,7 @@ src/entities/branch-git-status/                    # NEW entity: the branches li
     ├── hooks/use-get-branch-git-statuses.ts (+ test) # useGetBranchGitStatuses(branchNames)
     └── queries/
         ├── branch-git-status.query-keys.ts        # branchGitStatusQueryKeys: all, repositories, repositoryBranchStatus
-        ├── get-branch-git-repositories.query.ts   # getBranchGitRepositoriesQueryOptions
+        ├── get-branch-git-repositories.query.ts   # getBranchGitRepositoriesQueryOptions (60 s stale)
         └── get-repository-branch-status.query.ts (+ test) # getRepositoryBranchStatusQueryOptions (60 s stale, 10 s poll while syncing)
 
 src/entities/repository/domain/model/repository.ts # CHANGED + REPOSITORY_SYNC_STATUS_IN_SYNC, REPOSITORY_SYNC_STATUS_UNKNOWN

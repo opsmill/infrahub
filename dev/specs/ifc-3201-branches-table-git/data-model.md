@@ -22,22 +22,22 @@ export interface BranchGitRepositoryPage {
 
 `toBranchGitRepositoryPage` (`entities/branch-git-status/api/branch-git-repository.mappers.ts`) builds the page from the `CoreGenericRepository` connection: `kind` is the node's `__typename`, `isReadOnly` is true for `CoreReadOnlyRepository`, `name` falls back to the id, and a node without an id is dropped. `count > repositories.length` means the list was cut at the 500-row limit.
 
-## Status rows: `RepositoryBranchStatus` (`entities/branch-git-status/domain/model/repository-branch-status.ts`)
+## Status rows: `RepositoryBranchGitStatus` (`entities/branch-git-status/domain/model/repository-branch-git-status.ts`)
 
 ```ts
-export interface RepositoryBranchStatus {
+export interface RepositoryBranchGitStatus {
   branchName: string;
   commit: string | null;
-  syncStatus: BranchRepositorySyncStatus | null;
+  syncStatus: BranchGitSyncStatus | null;
 }
 
-export interface RepositoryBranchStatusPage {
-  rows: RepositoryBranchStatus[];
+export interface RepositoryBranchGitStatusPage {
+  rows: RepositoryBranchGitStatus[];
   count: number;
 }
 ```
 
-One row per branch of one repository's status page. `BranchRepositorySyncStatus` (`value`, `label`, `color`, `description`) is the repository entity's type (`entities/repository/domain/model/branch-repository.ts`). `toRepositoryBranchStatusPage` (`entities/branch-git-status/api/repository-branch-status.mappers.ts`) maps a `sync_status` without a value to `null`.
+One row per branch of one repository's status page. `BranchGitSyncStatus` (`value`, `label`, `color`, `description`) is the entity's own type (`entities/branch-git-status/domain/model/branch-git-status.ts`), the shape `GitStatePill` takes. `toRepositoryBranchGitStatusPage` (`entities/branch-git-status/api/repository-branch-status.mappers.ts`) maps a `sync_status` without a value to `null`.
 
 The row set is the backend's: read/write repositories list only branches with Sync with Git on, read-only repositories list every branch; merged, deleting and global branches are excluded.
 
@@ -47,7 +47,7 @@ The row set is the backend's: read/write repositories list only branches with Sy
 export interface BranchRepositoryState {
   repository: BranchGitRepository;
   commit: string | null;
-  syncStatus: BranchRepositorySyncStatus;
+  syncStatus: BranchGitSyncStatus;
 }
 
 export interface SyncStatusCount { value: string | null; label: string; count: number }
@@ -77,7 +77,7 @@ export type BranchGitStatus =
 
 ```ts
 export type RepositoryStatusFetch =
-  | { status: "ok"; repository: BranchGitRepository; rows: RepositoryBranchStatus[]; count: number }
+  | { status: "ok"; repository: BranchGitRepository; rows: RepositoryBranchGitStatus[]; count: number }
   | UnloadedRepository;
 
 export type RepositoryListFetch =
@@ -95,7 +95,7 @@ export type RepositoryListFetch =
 
 ## `summarizeBranchGitStatuses(branchNames, repositoryList, unknownSyncStatus)` invariants
 
-`summarizeBranchGitStatuses(branchNames: readonly string[], repositoryList: RepositoryListFetch, unknownSyncStatus: BranchRepositorySyncStatus): Record<string, BranchGitStatus>` is pure. The record is keyed by branch name.
+`summarizeBranchGitStatuses(branchNames: readonly string[], repositoryList: RepositoryListFetch, unknownSyncStatus: BranchGitSyncStatus): Record<string, BranchGitStatus>` is pure. The record is keyed by branch name.
 
 1. The repository list is not `ok` → every branch gets the list's status (`pending`, `denied`, or `error` with its message).
 2. At least one status read and every status read `denied` → every branch is `denied`.
@@ -120,4 +120,4 @@ Header-only schemas for `TableColumnHeaderSimple`, built by `buildDisplayColumnS
 
 ## Test fakes
 
-Outside `src/`: `frontend/app/tests/fake/branch.ts::generateBranch` (reused) and `frontend/app/tests/fake/branch-git-status.ts` (`generateBranchGitRepository`, `generateRepositoryBranchStatus`, `generateRepositoryBranchStatusPage`, `generateRepositoryBranchStatusWire`).
+Outside `src/`: `frontend/app/tests/fake/branch.ts::generateBranch` (reused) and `frontend/app/tests/fake/branch-git-status.ts` (`generateBranchGitRepository`, `generateRepositoryBranchGitStatus`, `generateRepositoryBranchGitStatusPage`, `generateRepositoryBranchGitStatusWire`).

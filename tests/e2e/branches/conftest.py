@@ -91,7 +91,6 @@ async def broken_repository(
 
     # A branch without Git sync lists only read-only repositories, so it would hide this one.
     await branch_api.create(branch, sync_with_git=True)
-    repository_created = False
     try:
         mutation = Mutation(
             mutation="CoreRepositoryCreate",
@@ -106,7 +105,6 @@ async def broken_repository(
         await infrahub_client.execute_graphql(
             query=mutation.render(), branch_name=branch, tracker="mutation-repository-create"
         )
-        repository_created = True
 
         repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
         await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
@@ -116,9 +114,8 @@ async def broken_repository(
             await branch_api.delete(branch)
         except Exception:
             logger.warning("Teardown could not delete branch %s", branch, exc_info=True)
-        if repository_created:
-            # Repositories are branch-agnostic, so the node outlives its branch.
-            try:
-                await _delete_repository(infrahub_client, repository_name)
-            except Exception:
-                logger.warning("Teardown could not delete repository %s", repository_name, exc_info=True)
+        # Repositories are branch-agnostic, so the node outlives its branch; the create may have landed even if it raised.
+        try:
+            await _delete_repository(infrahub_client, repository_name)
+        except Exception:
+            logger.warning("Teardown could not delete repository %s", repository_name, exc_info=True)
