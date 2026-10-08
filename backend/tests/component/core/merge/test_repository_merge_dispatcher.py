@@ -223,7 +223,7 @@ async def test_the_git_merge_of_a_read_only_repository_carries_the_ref_and_commi
 
     await build_dispatcher(
         db=db, source_branch=feature, default_branch=default_branch, workflow=workflow
-    ).merge_core_read_only_repositories()
+    ).merge_core_read_only_repositories(context=build_context(default_branch))
 
     assert [call["parameters"] for call in workflow.get_submit_calls_for(GIT_REPOSITORIES_MERGE)] == [
         {
