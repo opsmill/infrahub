@@ -5,7 +5,7 @@ description: >-
 argument-hint: <empty for the current branch, or a base branch (develop); add `report` to review without fixing; `compare <PR number>` after the PR review>
 compatibility: A Claude Code session started at the repository root, with `origin` fetched. The `gh` CLI finds the PR base and description. The cubic CLI is optional (`curl -fsSL https://cubic.dev/install | bash`, `cubic auth login`, and a seat on OpsMill's subscription).
 metadata:
-  version: 3.1.0
+  version: 3.2.0
   author: OpsMill
 ---
 
@@ -128,7 +128,8 @@ Also flag added comments in `git diff -U0 origin/<base>...HEAD` that contain a t
    **Fix** (real, part of this change), **Decline** (contradicts a "Not violations" list or does
    not survive the source; one-sentence reason) or **Defer** (real, outside this change).
    Corrections to an open PR's description are Defer, with the corrected sentence: they change
-   GitHub, not the code.
+   GitHub, not the code. A cubic finding that contradicts a rule's "Not violations" list is
+   Declined, citing that line as `path:line`.
 
 ## Phase 6 — Fix and review the fixes
 
