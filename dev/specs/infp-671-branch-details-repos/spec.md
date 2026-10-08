@@ -4,11 +4,11 @@
 
 **Created**: 2026-09-29
 
-**Status**: Draft
+**Status**: Implemented
 
 **Jira**: [INFP-671](https://opsmill.atlassian.net/browse/INFP-671) (Git repository sync visibility)
 
-**Source design (PRD)**: `design/05-handoff.md` (proposal, decisions, open questions, system gaps, lift sheet, queries), with `00-brief.md`, `03-decisions.md` and `04-review.md` on the design branch (`.design/branch-details-repos/`). Published page: https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX. Prototype: `ple-design-branch-details-repos`, `frontend/app/src/pages/_proto/branch-details/revs/rev-06/` (Object layout, rev 6).
+**Source design (PRD)**: `design/05-handoff.md` (proposal, decisions, open questions, system gaps, lift sheet, queries), with `00-brief.md`, `03-decisions.md` and `04-review.md` on the design branch (`.design/branch-details-repos/`). Published page: <https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX>. Prototype: `ple-design-branch-details-repos`, `frontend/app/src/pages/_proto/branch-details/revs/rev-06/` (Object layout, rev 6).
 
 **Builds on**: `dev/specs/infp-671-cross-branch-repo-status/` (the `InfrahubRepositoryBranchStatus` query, IFC-3127/3128/3129). That query reads one repository across every branch; this page needs every repository on one branch, so it is not reused as a data source, but its rules carry over: Git state comes from `sync_status` with the schema's own label and colour, attribute `updated_at` is never shown as a "last import" time, and a caller without repository permission is denied rather than shown a trimmed list.
 

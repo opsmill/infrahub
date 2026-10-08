@@ -72,7 +72,7 @@ dev/specs/infp-671-branch-details-repos/
 
 ### Source Code (repository root)
 
-_(2026-10-02: updated for the restructure.)_
+_(2026-10-02: updated for the restructure. For the hooks that poll, retry and keep the page in range, see the code in `entities/repository/ui/queries`.)_
 
 ```text
 frontend/app/src/
@@ -81,7 +81,6 @@ frontend/app/src/
 │   ├── components/table/style.tsx                      # + CELL_HEIGHT_PX (IFC-3130 verbatim)
 │   ├── utils/table-pagination.ts (+ test)               # IFC-3130 verbatim: PAGE_SIZE, getOffset, …
 │   ├── hooks/use-table-pagination.ts (+ test)           # IFC-3130 verbatim: ${urlKey}_page, duplicate-key guard
-│   ├── hooks/use-count-clamped-query.ts (+ test)        # NEW clamp a page against the server's count
 │   └── api/graphql/error-handling.ts                    # + hasOnlyThrownCatalogueCode, isThrownShed
 ├── entities/repository/
 │   ├── api/get-branch-repositories-from-api.ts (+ test) # Q1 one page, ordered by name
@@ -93,7 +92,7 @@ frontend/app/src/
 │   ├── domain/model/branch-repository.ts                # BranchRepository, Page, Health, error, import error
 │   ├── domain/rules/get-repository-list-kind.ts         # Sync with Git → list kind
 │   ├── domain/rules/repository-failures.ts (+ test)     # hasImportError, unreachable, failing, band kind
-│   ├── domain/rules/is-any-repository-syncing.ts        # the polling decision
+│   ├── domain/rules/is-any-repository-syncing.ts        # any repository syncing
 │   ├── domain/rules/is-repository-syncing.ts (+ test)   # one row's sync status
 │   ├── domain/rules/get-last-error-line.ts (+ test)     # Prefect wrapper stopgap
 │   ├── domain/use-cases/get-branch-repositories.ts (+ test)       # page + denied; also tests health
@@ -140,7 +139,7 @@ dev/knowledge/frontend/shared-components.md              # + TablePagination row
 
 ### Page and URL ownership
 
-Each card owns its page through IFC-3130's `useTablePagination({ urlKey })`: `repositories_page` and `tasks_page`. The data hook clamps it: `useCountClampedQuery` asks for the requested page and, once the server's count says it is past the end, for the last real page; the URL keeps the out-of-range number until the next page change. No effect writes the URL back. _(2026-10-02: replaces the Details tab page owning `repos_page`/`tasks_page` and `usePageInRange` writing the clamped page back from an effect. This departs from page-architecture § "Pages own URL sync" the same way IFC-3130's card does: a table that pages on its own owns its own key.)_
+Each card owns its page through IFC-3130's `useTablePagination({ urlKey })`: `repositories_page` and `tasks_page`. This departs from page-architecture § "Pages own URL sync" the same way IFC-3130's card does: a table that pages on its own owns its own key. For how a page past the end is handled, see the code in `entities/repository/ui/queries`.
 
 ### Repositories card render tree
 
@@ -151,7 +150,7 @@ Each card owns its page through IFC-3130's `useTablePagination({ urlKey })`: `re
 `count === 0` → "Not synchronised with Git" (Sync off) or "No Git repositories" ·
 otherwise → `BranchRepositoriesTable` (one server page in name order; min-height when `count > PAGE_SIZE`) + `TablePagination` → `RepositoryErrorBands` from the health query (first 3 or all; summary line + Show all/Collapse).
 
-Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the import-task lookup (a running import first, then the newest failed one; see Freshness for when it polls) and the log fetch (keyed on the task id, fetched once). _(2026-10-05: while no failed task is found, the lookup is also repeated on the sync interval, at most `MAX_IMPORT_TASK_LOOKUPS` times, because the repository can show `error-import` before its import run has ended as failed. A failed lookup reads as "details not found".)_
+Each `ImportErrorBand` calls `useGetRepositoryImportError` itself, so collapsed bands never fetch (lazy by construction; no effect needed). The hook chains the import-task lookup (a running import first, then the newest failed one) and the log fetch (keyed on the task id). For when the lookup repeats, see the code in `entities/repository/ui/queries`.
 
 ### Tasks card render tree
 
@@ -171,21 +170,7 @@ The page shows `/branches/:branchName`'s data while the branch selector may be o
 
 ### Freshness (critique P4, E6)
 
-Tasks page 1 and the failed count poll every 10s; later pages don't. The repositories page, the health query and the import-task lookups poll every 10s while the server counts a syncing repository (`isAnyRepositorySyncing`, computed once in the card from the health query). Each query also has its own reasons to poll:
-
-- the repositories page polls while any of its own rows still shows a sync.
-- the health query polls while its last fetch failed.
-- the import-task lookup polls while an import is running, while its last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while it finds no import task.
-
-A task's log is never polled. Otherwise Refresh and window refocus. See research R4.
-
-_(2026-10-05, failures.)_ The interval constants are in `entities/repository/ui/queries/repository-polling.ts`. Every background query of the two cards (repositories page, health, import task, import log, repository names, tasks page, failed count) follows `shared/api/background-query.ts`:
-
-- its fetcher passes `processErrorMessage`, as the base's sync-count fetcher does, so a failed poll doesn't show the global error toast; the card shows its own error state.
-- it retries twice with the default backoff, but never a permission denial (`hasOnlyThrownCatalogueCode` in `shared/api/graphql/error-handling.ts`) or a request the transport already retried after a shed.
-- once a fetch has failed through its retries, a query that is still polling slows down to one fetch every 60s (`pollWhileHealthy`), so a card that kept its last data catches up when the backend recovers. A permission denial stops polling until Refresh, a remount or window refocus. A failed health check doesn't drive the other queries' polling.
-
-A failed page past the first shows "Go to first page" in the card's failed state, because the count, and so the pager, comes with the page. The header's Refresh button shows as busy only for the refresh the user started, not for background polls under its keys.
+The cards refresh with the header's Refresh button, on window refocus and in the background. For polling, retry and error handling, see the code in `entities/repository/ui/queries`. The header's Refresh button shows as busy only for the refresh the user started, not for background fetches under its keys.
 
 ### Copy
 
@@ -196,7 +181,7 @@ All strings from `03-decisions.md` (design branch) and rev-06 are kept verbatim 
 | Risk | Mitigation |
 |---|---|
 | Import task not findable for some flows (research R2) | Band never depends on the task; `not-found` fallback; verification task; backend follow-up ticket. |
-| IFC-3130 lands `table-pagination.tsx` at the same path | The shared files are IFC-3130's, verbatim, except `TablePagination`'s `aria-label` prop and focus ring, which must also land in IFC-3130 (pr-notes.md). |
+| IFC-3130 lands `table-pagination.tsx` at the same path | The shared files are IFC-3130's, verbatim, except `TablePagination`'s `aria-label` prop and focus ring, which must also land in IFC-3130 (`tasks.md` Follow-ups). |
 | IFC-3200 plans files at the same paths (`get-branch-repositories-from-api.ts`, `branch-repository.ts`, `get-branch-repositories.ts`, `get-branch-repositories.query.ts`) and a `clampToCount` in `use-table-pagination.ts` | Recorded for the owner (tasks.md § Restructure, "Open decisions"). |
 | IFC-3200 builds its own card in parallel | Card lives in `entities/repository/ui/branch-repositories/` with a branch-agnostic props contract; flag in the PR for IFC-3200. |
 | Links opening the selector's branch instead of the page's | Link rule (Design notes "Links"); component tests assert `branch=<page branch>` on each outgoing link. |

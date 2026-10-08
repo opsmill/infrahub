@@ -59,15 +59,15 @@ type RepositoryImportError =
 - `getFailingRepositories(health)` — the band list: `importErrors`, then `unreachable` minus any already listed as an import error (one band per repository, import error wins: spec US2 scenario 5). Server order (name) within each group.
 - `countUnlistedFailures(health)` — failing repositories past the list limits (`importErrorCount + unreachableCount` minus the listed rows); the bands summary adds them as "and N more". _(2026-10-05: a listed repository that also fails the other way, and isn't listed there, is taken out of that list's remainder. One past both limits is still counted twice, because it can't be recognised from the capped lists.)_
 - `getBandKind(repo): "import-error" | "unreachable"`.
-- `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. The shared polling condition for the page query, the health query and the band lookups. Each query adds its own: the page query polls while its rows show a sync (`isRepositorySyncing`), the health query while its last fetch failed, and the import-task lookup while an import runs, while its last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while it finds nothing. `pollWhileHealthy` (`shared/api/background-query.ts`) slows any of these polls to 60s after a failed fetch and stops it on a permission denial.
-- `isRepositorySyncing(repo)` (`is-repository-syncing.ts`) — `syncStatus.value === "syncing"`. Keeps the page query polling while its own rows still show a sync that the health query says has ended. _(Added 2026-10-05.)_
-- `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; follow-ups.md).
+- `isAnyRepositorySyncing(health)` (`is-any-repository-syncing.ts`) — `syncingCount > 0`. For how the queries use it to poll, see the code in `entities/repository/ui/queries`.
+- `isRepositorySyncing(repo)` (`is-repository-syncing.ts`) — `syncStatus.value === "syncing"`. _(Added 2026-10-05.)_
+- `getLastErrorLine(logs): string | null` (`get-last-error-line.ts`) — last log with `severity` `error` or `critical`, verbatim, except Prefect's final-state wrapper `Finished in state <State>('…'[, type=<TYPE>])`, which is unwrapped to the exception it carries. A stopgap until `TaskError` is filled for git imports (IFC-3034; `tasks.md` Follow-ups).
 
 ### Use cases (`entities/repository/domain/use-cases/`)
 
 - `getBranchRepositories({ branchName, syncWithGit, limit, offset }) → BranchRepositoryPage`. Rejects with `BranchRepositoriesError("PERMISSION_DENIED")` when the GraphQL error carries that catalogue code (read with `hasOnlyThrownCatalogueCode`, so every GraphQL error must carry it), else `"UNKNOWN"`.
 - `getBranchRepositoryHealth({ branchName, syncWithGit }) → BranchRepositoryHealth`.
-- `getRepositoryImportTask({ branchName, repositoryId }) → RepositoryImportTaskLookup` — two requests. `{ status: "running" }` while an import of the repository is RUNNING (the second request isn't sent; the caller keeps polling and doesn't look at older failed runs); `{ status: "failed", taskId }` for the newest FAILED or CRASHED import; `{ status: "not-found" }` otherwise. Only consecutive `not-found` results count against `MAX_IMPORT_TASK_LOOKUPS`. A failed request rejects, so the query retries it on the slowed poll.
+- `getRepositoryImportTask({ branchName, repositoryId }) → RepositoryImportTaskLookup` — two requests. `{ status: "running" }` while an import of the repository is RUNNING (the second request isn't sent, and older failed runs aren't read); `{ status: "failed", taskId }` for the newest FAILED or CRASHED import; `{ status: "not-found" }` otherwise. A failed request rejects. For how the query repeats or retries the lookup, see the code in `entities/repository/ui/queries`.
 - `getImportTaskErrorMessage(taskId) → string | null` — `getLastErrorLine` over that task's log.
 - `getRepositoryNames({ branchName, ids }) → Record<string, string>` — for the Tasks card's Related column; ids that aren't repositories are absent.
 
@@ -103,7 +103,7 @@ Shared with IFC-3130 (`shared/utils/table-pagination.ts`, `shared/hooks/use-tabl
 
 - `PAGE_SIZE = 10`; `getOffset(page, pageSize)`; `getTotalPages`; `clampPage`; `getPageItems`; `formatPageWindow`; `getPageUrlKey(urlKey) = "${urlKey}_page"`.
 - `useTablePagination({ urlKey }) → { page, pageSize, offset, setPage }`; dev-only warning when two mounted tables share a `urlKey`.
-- `useCountClampedQuery({ page, pageSize }, getQueryOptions)` (`shared/hooks/use-count-clamped-query.ts`, this PR) — asks for the requested page and, when the server's count puts it past the end, for the last real page. The clamp happens in the data hook; the URL isn't written back.
+- A page past the end: see the code in `entities/repository/ui/queries`.
 - Fixed height: when `count > PAGE_SIZE`, the table container's min-height is `(PAGE_SIZE + 1) × CELL_HEIGHT_PX` (header + 10 rows). `CELL_HEIGHT_PX = 40` lives in `shared/components/table/style.tsx` (IFC-3130).
 
 URL: `repositories_page`, `tasks_page` (`useTablePagination` with `urlKey` `repositories` and `tasks`), owned by each card. _(2026-10-02: was `repos_page` / `tasks_page`, owned by the Details tab page.)_

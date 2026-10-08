@@ -1,6 +1,6 @@
 # Branch details: repositories and tasks — design handoff
 
-Published page: https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX (private until shared from its Share menu)
+Published page: <https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX> (private until shared from its Share menu)
 
 Design branch (backup, no PR): `ple-design-branch-details-repos`. Live prototype on that branch:
 `/_proto/branch-details?dj.variant=object&dj.rev=6`.

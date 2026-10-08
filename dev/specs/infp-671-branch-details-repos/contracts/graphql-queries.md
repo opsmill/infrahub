@@ -36,7 +36,7 @@ query GET_BRANCH_REPOSITORIES($limit: Int!, $offset: Int!) {
 - Context: `{ branch: branchName }`. Variables: `{ limit: PAGE_SIZE, offset: getOffset(page, PAGE_SIZE) }`.
 - `order` is `OrderInput { by: [OrderByItem { field, direction }] }` (checked in `schema/schema.graphql`).
 - Errors: a `PERMISSION_DENIED` catalogue code → `BranchRepositoriesError("PERMISSION_DENIED")` (the no-access state); anything else → `"UNKNOWN"` (the failed state).
-- Query key: `repositoryQueryKeys.branchRepositories({ branchName, syncWithGit, limit, offset })`. `refetchInterval`: 10s while `isAnyRepositorySyncing(health)` (Q1b) or while any row of the page shows a sync (`isRepositorySyncing`), else off. After a failed fetch the interval is 60s; a permission denial stops it. `placeholderData`: the previous page while the same branch and list load the next one.
+- Query key: `repositoryQueryKeys.branchRepositories({ branchName, syncWithGit, limit, offset })`. For polling, retry and placeholder data, see the code in `entities/repository/ui/queries`.
 
 ## Q1b — Failing and syncing repositories on the branch
 
@@ -64,8 +64,8 @@ query GET_BRANCH_REPOSITORY_HEALTH(
 
 - Same two-kind split as Q1. Variables: `{ importErrorStatuses: ["error-import"], unreachableStatuses: REPOSITORY_OPERATIONAL_ERRORS, syncingStatuses: ["syncing"] }`. `__values` is an exact-match list filter (checked on a live stack).
 - `limit: REPOSITORY_HEALTH_LIST_LIMIT` (50) on each list, with its `count`. Failures past the limit have no band; the summary line counts them from the server's `count` ("and N more"), without double-counting a repository that fails both ways.
-- Independent of the table page: feeds the bands and decides polling for Q1, Q1b and Q2.
-- Query key: `repositoryQueryKeys.branchHealth({ branchName, syncWithGit })`. `refetchInterval`: 10s while `syncing.count > 0` or while the last fetch failed. After a failed fetch the interval is 60s; a permission denial stops it.
+- Independent of the table page: feeds the bands.
+- Query key: `repositoryQueryKeys.branchHealth({ branchName, syncWithGit })`. For polling, retry and placeholder data, see the code in `entities/repository/ui/queries`.
 
 ## Q2 — The newest failed import of one repository
 
@@ -94,8 +94,8 @@ query GET_REPOSITORY_FAILED_IMPORT_TASK(
   1. with `{ branch, repositoryId, workflows: IMPORT_WORKFLOWS, states: ["RUNNING"] }`. If it returns a task, the result is `running` and the second request isn't sent, because an older failed run isn't the one that set the repository's status.
   2. with `states: ["FAILED", "CRASHED"]`. The task manager returns runs newest first, so this is the newest *failed* import, not the newest import. The result is `failed` with its task id, or `not-found`.
 - Issued only for rendered bands (≤ 3 until "Show all": hidden bands aren't mounted).
-- Query key: `repositoryQueryKeys.importTask({ branchName, repositoryId })`. `refetchInterval`: 10s while any repository is syncing (Q1b), while the result is `running`, while the last fetch failed, and up to `MAX_IMPORT_TASK_LOOKUPS` (6) consecutive times while the result is `not-found`. After a failed fetch the interval is 60s; a permission denial stops it.
-- Known gaps (follow-ups.md): a failure before the run is tagged with the repository, and the worker-bootstrap import, aren't findable. A miss yields `not-found`, never an error state.
+- Query key: `repositoryQueryKeys.importTask({ branchName, repositoryId })`. For polling, retry and placeholder data, see the code in `entities/repository/ui/queries`.
+- Known gaps (`tasks.md` Follow-ups): a failure before the run is tagged with the repository, and the worker-bootstrap import, aren't findable. A miss yields `not-found`, never an error state.
 
 ## Q2b — That task's log
 
@@ -110,7 +110,7 @@ query GET_IMPORT_TASK_LOGS($taskId: String!, $logLimit: Int!) {
 ```
 
 - Variables: `{ taskId, logLimit: IMPORT_LOG_LIMIT }`. Logs come back oldest first with no tail option, so the limit stays at the backend cap.
-- Query key: `repositoryQueryKeys.importLog(taskId)`, `staleTime: Infinity`, no `refetchInterval`, enabled only once Q2 found a task. A finished task's log doesn't change: it is fetched once per task, and again only when Q2 returns another task id.
+- Query key: `repositoryQueryKeys.importLog(taskId)`, enabled only once Q2 found a task. A finished task's log doesn't change, so it is fetched once per task id.
 
 ## Q3 — Tasks page on a branch
 
@@ -118,14 +118,14 @@ Reuses `frontend/app/src/entities/tasks/api/get-task-list-from-api.ts::GET_TASK_
 
 - Variables: `{ branchName, offset: getOffset(page, PAGE_SIZE), limit: PAGE_SIZE }`.
 - Use case `getBranchTasks` returns `{ tasks, count }` from `InfrahubTask.count` and `edges`.
-- Query key: `tasksQueryKeys.branchList({ branchName, offset, limit })`. `refetchInterval: offset === 0 ? 10_000 : false` (later pages don't shift under the reader); `placeholderData`: the previous page within the same branch.
+- Query key: `tasksQueryKeys.branchList({ branchName, offset, limit })`. For polling, retry and placeholder data, see the code in `entities/repository/ui/queries` and `entities/tasks/ui/queries`.
 
 ## Q4 — Failed tasks on a branch
 
 Reuses `frontend/app/src/entities/tasks/api/get-task-count-from-api.ts::TASK_COUNT` via `getTaskCount`:
 
 - Variables: `{ branchName, state: ["FAILED"] }`. FAILED only: the Tasks page filters on a single state, so the count matches what its link opens.
-- Query key: `tasksQueryKeys.count({ branchName, state })`. `refetchInterval: 10_000`.
+- Query key: `tasksQueryKeys.count({ branchName, state })`. For polling, retry and placeholder data, see the code in `entities/repository/ui/queries` and `entities/tasks/ui/queries`.
 
 ## Q5 — Names of the repositories on the tasks page shown
 

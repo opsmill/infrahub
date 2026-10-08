@@ -66,7 +66,7 @@ interface TasksTableProps {
 ```
 
 - A plain table with the columns Title (link to `/tasks/<id>`), State, Workflow (`getWorkflowLabel`), Related (`getTaskRelatedLabel`), Updated. Failed and crashed rows are tinted.
-- _(2026-10-02: the `columns` / `ALL_TASK_COLUMNS` configuration API is gone: it had one caller. The pager moved to the card. IFC-3245 generalises this table; see `follow-up-tasks-table.md`.)_
+- _(2026-10-02: the `columns` / `ALL_TASK_COLUMNS` configuration API is gone: it had one caller. The pager moved to the card. IFC-3245 generalises this table.)_
 
 ## `BranchDetailsHeader` — `entities/branches/ui/branch-details/branch-details-header.tsx`
 

@@ -53,7 +53,7 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 **Rationale**:
 - The task manager returns flow runs newest first (`task_manager/flow_run/reader.py::…read_flow_runs`, `FlowRunSort.START_TIME_DESC`), so `limit: 1` is the latest.
 - `log_limit` applies to the **whole request**, across every returned flow run, in ascending time order (`…read_logs`). With one task id per request the budget is that one task's; asking for several repositories in one request would let one noisy task starve the others. Hence one request per rendered band, lazily: at most 3 on first render.
-- Logs come back oldest first, with no ordering or "last N" option, and the `logs.count` field is the number returned, not the total, so there's no way to read only the tail. The error line that ends an import is near the end, so the limit is the backend cap: a lower one (the first draft used 500) would cut that line off a long log and show an earlier error, or none. The backend reads logs in batches of 200 and stops at the last one, so a short log still costs one call. A log past 10,000 lines can still lose its tail; see follow-ups.md.
+- Logs come back oldest first, with no ordering or "last N" option, and the `logs.count` field is the number returned, not the total, so there's no way to read only the tail. The error line that ends an import is near the end, so the limit is the backend cap: a lower one (the first draft used 500) would cut that line off a long log and show an earlier error, or none. The backend reads logs in batches of 200 and stops at the last one, so a short log still costs one call. A log past 10,000 lines can still lose its tail; see `tasks.md` Follow-ups.
 
 **Riskiest assumption (brief: "that the frontend can reliably tie a task to a repository")** — verified in code, and it is only partly true:
 
@@ -91,10 +91,10 @@ The band's text is the **last** log whose `severity` is `error` or `critical` (t
 
 ## R5 — Table pagination
 
-> **Superseded 2026-10-02** by § "Restructure (2026-10-02)" D4: IFC-3130's `table-pagination.tsx`, `table-pagination.ts`, `use-table-pagination.ts` and `CELL_HEIGHT_PX` are taken verbatim; `TABLE_PAGE_SIZE`, `TABLE_ROW_HEIGHT_PX` and the lucide chevrons are gone.
+> **Superseded 2026-10-02** by § "Restructure (2026-10-02)" D4: IFC-3130's `table-pagination.tsx`, `table-pagination.ts`, `use-table-pagination.ts` and `CELL_HEIGHT_PX` are taken verbatim: the page size is `PAGE_SIZE` and the row height is `CELL_HEIGHT_PX` (`shared/components/table/style.tsx`). The lucide chevrons are gone.
 
 
-**Decision**: Add `shared/components/table/table-pagination.tsx` (`TablePagination`) and `shared/utils/table-pagination.ts` (`TABLE_PAGE_SIZE = 10`, `TABLE_ROW_HEIGHT_PX = 40`, `getTotalPages`, `clampPage`, `getPageItems`, `formatPageWindow`), from the prototype's copy of IFC-3130's component, with the prototype's neutral classes replaced by theme tokens and `lucide` chevrons kept (the shared `Icon` token set isn't needed). Unit tests for the utils.
+**Decision**: Add `shared/components/table/table-pagination.tsx` (`TablePagination`) and `shared/utils/table-pagination.ts` (`PAGE_SIZE = 10`, `getTotalPages`, `clampPage`, `getPageItems`, `formatPageWindow`), from the prototype's copy of IFC-3130's component, with the prototype's neutral classes replaced by theme tokens and `lucide` chevrons kept (the shared `Icon` token set isn't needed). Unit tests for the utils.
 
 **Rationale**: The existing `shared/components/ui/pagination.tsx::Pagination` is bound to the single `pagination` query-string parameter (`usePagination`) and `react-paginate`; two tables on one page can't each own one. IFC-3130 will land the same file path, so the later merge is a same-path conflict to resolve in favour of IFC-3130, not a second component. The page has two callers (repositories, tasks), satisfying the constitution's "two callers before extracting" rule.
 
@@ -179,7 +179,7 @@ It's presentation copy, not a filter, so it doesn't break "backend is authoritat
 
 ## R2 verification results
 
-> **Correction 2026-10-05**: the seeded stack (`scenarios/`) contradicts the periodic-sync row below. A failed `sync-git-repo-with-origin` run was tagged with the default branch only, so `InfrahubTask(branch: <other branch>, related_node__ids: [<repo>])` found nothing and the band showed its fallback. The cause is not traced (follow-ups.md). The same stack found the "Import current commit" task on a non-default branch. The other rows are still verified by code reading only (tasks.md T001).
+> **Correction 2026-10-05**: the seeded stack (`utilities/branch_details_scenarios/`) contradicts the periodic-sync row below. A failed `sync-git-repo-with-origin` run was tagged with the default branch only, so `InfrahubTask(branch: <other branch>, related_node__ids: [<repo>])` found nothing and the band showed its fallback. The cause is not traced (`tasks.md` Follow-ups). The same stack found the "Import current commit" task on a non-default branch. The other rows are still verified by code reading only (tasks.md T001).
 
 **Method**: code reading of this worktree's backend, not a live reproduction. The only running stack belongs to another branch and is read-only, so no repository could be put in Import Error. One read-only `InfrahubTask(state: [FAILED, CRASHED])` query against it confirmed the log shape of a failed flow (see "Last error line" below).
 
@@ -201,7 +201,7 @@ Read-only repositories are not synced periodically: `git_repositories_sync` only
 
 **Decision (US2)**: `getLastErrorLine` still picks the last `error`/`critical` line, but when it is Prefect's `Finished in state <State>(<repr>)` wrapper the UI unwraps it (Python repr unescaped, `Flow run encountered an exception: ` prefix dropped) and shows `<Type>: <message>`; a wrapper that unwraps to nothing, or any other line, is shown as is.
 
-**Remaining gap**: the worker-bootstrap import (default branch only, after a worker re-clones) is not findable. The band's FR-022 fallback covers it. Backend ask in `follow-ups.md`.
+**Remaining gap**: the worker-bootstrap import (default branch only, after a worker re-clones) is not findable. The band's FR-022 fallback covers it. Backend ask in `tasks.md` Follow-ups.
 
 **T058 seeding**: use the initial add (`git-repository-add-read-write`). On a test branch, create a `CoreRepository` (`CoreRepositoryCreate`, as `tests/e2e/conftest.py` does for `demo-edge`) pointing at a local fixture repo whose default branch has an invalid `.infrahub.yml`. The flow is tagged at its start, fails deterministically and sets `error-import` on that branch. "Import current commit" (`RepositoryProcess` on the branch) is an equally resolvable second option. Avoid periodic sync: its timing isn't deterministic and its message lists every failing branch.
 
@@ -218,11 +218,11 @@ An architecture review of PR #10779, accepted by the owner, changed the data des
 Tasks that fail **before the run is tagged with the repository** stay unfindable. Checked in the backend:
 
 - `git-repository-import-object` (`import_objects_from_git_repository`) tags only the branch at start; the repository tag comes from `InfrahubRepositoryIntegrator.build_import_plan`, after `get_initialized_repo`. A failure in between leaves a run with no repository tag.
-- `sync-git-repo-with-origin` adds the repository tag on failure only when the repository was `online` before the sync; `build_import_plan` adds it otherwise, but the seeded stack showed periodic-sync failures tagged with `main` only (follow-ups.md).
+- `sync-git-repo-with-origin` adds the repository tag on failure only when the repository was `online` before the sync; `build_import_plan` adds it otherwise, but the seeded stack showed periodic-sync failures tagged with `main` only (`tasks.md` Follow-ups).
 
-The frontend could match `parameters.model.repository_id` on untagged runs, since `TaskNode.parameters` is exposed. Rejected as in R2: it reads an untyped `GenericScalar`, couples the UI to each flow's parameter shape (`model.repository_id` for import-object, a top-level `repository_id` for the sync) and pages through unrelated failed tasks on the client. The "details couldn't be found" fallback stays, and follow-ups.md asks the backend to tag the repository at the start of every repository flow.
+The frontend could match `parameters.model.repository_id` on untagged runs, since `TaskNode.parameters` is exposed. Rejected as in R2: it reads an untyped `GenericScalar`, couples the UI to each flow's parameter shape (`model.repository_id` for import-object, a top-level `repository_id` for the sync) and pages through unrelated failed tasks on the client. The "details couldn't be found" fallback stays, and `tasks.md` Follow-ups asks the backend to tag the repository at the start of every repository flow.
 
-**D4 — IFC-3130's shared pieces, verbatim.** `shared/utils/table-pagination.ts` (+ test), `shared/hooks/use-table-pagination.ts` (+ test), `shared/components/table/style.tsx` (`CELL_HEIGHT_PX`), `shared/api/graphql/error-handling.ts` (`hasThrownCatalogueCode`) and `shared/components/table/table-pagination.tsx` (+ test) come from `ple-branches-card-ifc-3130`. Two additive differences in `TablePagination`, which must also land in IFC-3130: the `aria-label` prop and `focusVisibleStyle` on its buttons (plus one test). `TABLE_ROW_HEIGHT_PX` is IFC-3130's `CELL_HEIGHT_PX`, same value.
+**D4 — IFC-3130's shared pieces, verbatim.** `shared/utils/table-pagination.ts` (+ test), `shared/hooks/use-table-pagination.ts` (+ test), `shared/components/table/style.tsx` (`CELL_HEIGHT_PX`), `shared/api/graphql/error-handling.ts` (`hasThrownCatalogueCode`) and `shared/components/table/table-pagination.tsx` (+ test) come from `ple-branches-card-ifc-3130`. Two additive differences in `TablePagination`, which must also land in IFC-3130: the `aria-label` prop and `focusVisibleStyle` on its buttons (plus one test).
 
 **D5 — Clamping without an effect.** IFC-3130's `useTablePagination` doesn't clamp; its card writes the clamped page back from an effect, and IFC-3200 plans a `clampToCount` on the hook. This PR adds `shared/hooks/use-count-clamped-query.ts`: the data hook asks for the requested page, and when the server's count says it is past the end, asks for the last real page with a second observer. Both cards use it. The URL keeps the out-of-range number until the next page change, which the review accepted (react.md: no effect-driven redirects).
 
