@@ -31,7 +31,7 @@ def delivery_run_tags(repository_id: str) -> list[str]:
 
 
 def is_retryable_delivery_failure(task: Task[..., Any], task_run: TaskRun, state: State[Any]) -> bool:  # noqa: ARG001
-    """Retry a delivery attempt only when it failed in a way that a later attempt can fix."""
+    """Whether the attempt failed in a way that a later attempt can fix."""
     return isinstance(state.data, RetryableDeliveryError)
 
 
