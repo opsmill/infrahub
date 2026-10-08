@@ -322,12 +322,16 @@ describe("BranchTasksCard", () => {
     );
   });
 
-  test("shows the last page for a page past the end, once the server's count is known", async () => {
+  test("says a page past the end doesn't exist, and goes to the last page on request", async () => {
     // GIVEN
     serve(generateTasks(12));
+    const component = await renderCard("&tasks_page=99");
+    await expect.element(component.getByText("Page 99 doesn't exist.")).toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(0);
+    expect(requestedOffsets()).toEqual([980]);
 
     // WHEN
-    const component = await renderCard("&tasks_page=99");
+    await component.getByRole("button", { name: "Go to last page" }).click();
 
     // THEN
     await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
@@ -335,7 +339,7 @@ describe("BranchTasksCard", () => {
     await expect
       .element(component.getByRole("button", { name: "Page 2" }))
       .toHaveAttribute("aria-current", "page");
-    expect(requestedOffsets()).toEqual([980, 10]);
+    expect(new URL(window.location.href).searchParams.get("tasks_page")).toBe("2");
   });
 
   test("shows page 1 for a page below 1", async () => {

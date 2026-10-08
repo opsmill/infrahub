@@ -1,6 +1,6 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
+import { getOffset } from "@/shared/utils/table-pagination";
 
 import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
 import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
@@ -64,7 +64,11 @@ export function useGetBranchRepositories({
   pageSize,
   ...params
 }: UseGetBranchRepositoriesParams) {
-  return useCountClampedQuery({ page, pageSize }, (offset) =>
-    getBranchRepositoriesQueryOptions({ ...params, limit: pageSize, offset })
+  return useQuery(
+    getBranchRepositoriesQueryOptions({
+      ...params,
+      limit: pageSize,
+      offset: getOffset(page, pageSize),
+    })
   );
 }

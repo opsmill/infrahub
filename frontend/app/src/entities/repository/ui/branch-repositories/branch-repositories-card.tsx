@@ -1,10 +1,11 @@
 import { Card, CardHeader } from "@infrahub/ui";
 
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
+import { TablePageOutOfRange } from "@/shared/components/table/table-page-out-of-range";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
-import { PAGE_SIZE } from "@/shared/utils/table-pagination";
+import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import {
   BranchRepositoriesError,
@@ -42,7 +43,7 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
     syncWithGit,
   });
   const isSyncing = isAnyRepositorySyncing(health);
-  const { page: currentPage, query } = useGetBranchRepositories({
+  const query = useGetBranchRepositories({
     branchName,
     syncWithGit,
     isSyncing,
@@ -65,9 +66,10 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
         data={query.data}
         error={query.error}
         isPending={query.isPending}
+        isPlaceholderData={query.isPlaceholderData}
         syncWithGit={syncWithGit}
         branchName={branchName}
-        page={currentPage}
+        page={page}
         onPageChange={setPage}
       />
 
@@ -92,6 +94,7 @@ interface BranchRepositoriesBodyProps {
   data: BranchRepositoryPage | undefined;
   error: Error | null;
   isPending: boolean;
+  isPlaceholderData: boolean;
   syncWithGit: boolean;
   branchName: string;
   page: number;
@@ -102,6 +105,7 @@ function BranchRepositoriesBody({
   data,
   error,
   isPending,
+  isPlaceholderData,
   syncWithGit,
   branchName,
   page,
@@ -118,6 +122,12 @@ function BranchRepositoriesBody({
   if (isPending || !data) return <BranchRepositoriesLoading />;
   if (data.count === 0) {
     return syncWithGit ? <BranchRepositoriesNone /> : <BranchRepositoriesNotSynced />;
+  }
+
+  const lastPage = getTotalPages(data.count, PAGE_SIZE);
+  // Placeholder rows carry the previous page's count, which can't tell whether this page exists.
+  if (page > lastPage && !isPlaceholderData) {
+    return <TablePageOutOfRange page={page} lastPage={lastPage} onPageChange={onPageChange} />;
   }
 
   // A short last page would otherwise shrink the card and move everything below it.

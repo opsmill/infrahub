@@ -3,11 +3,12 @@ import { ExternalLinkIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
+import { TablePageOutOfRange } from "@/shared/components/table/table-page-out-of-range";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
-import { PAGE_SIZE } from "@/shared/utils/table-pagination";
+import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { useGetRepositoryNames } from "@/entities/repository/ui/queries/get-repository-names.query";
@@ -43,7 +44,7 @@ function getTasksPageUrl(branchName: string, filters: { name: string; value: str
 
 export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
   const { page, setPage, pageSize } = useTablePagination({ urlKey: TASKS_URL_KEY });
-  const { page: currentPage, query } = useGetBranchTasks({ branchName, page, pageSize });
+  const query = useGetBranchTasks({ branchName, page, pageSize });
   const { data: failedCount } = useGetBranchFailedTaskCount({ branchName });
 
   return (
@@ -82,8 +83,9 @@ export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
       <BranchTasksBody
         data={query.data}
         isPending={query.isPending}
+        isPlaceholderData={query.isPlaceholderData}
         branchName={branchName}
-        page={currentPage}
+        page={page}
         onPageChange={setPage}
       />
     </Card>
@@ -93,6 +95,7 @@ export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
 interface BranchTasksBodyProps {
   data: TaskListPage | undefined;
   isPending: boolean;
+  isPlaceholderData: boolean;
   branchName: string;
   page: number;
   onPageChange: (page: number) => void;
@@ -101,6 +104,7 @@ interface BranchTasksBodyProps {
 function BranchTasksBody({
   data,
   isPending,
+  isPlaceholderData,
   branchName,
   page,
   onPageChange,
@@ -111,6 +115,12 @@ function BranchTasksBody({
     return <BranchTasksFailed onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined} />;
   }
   if (data.count === 0) return <BranchTasksNone />;
+
+  const lastPage = getTotalPages(data.count, PAGE_SIZE);
+  // Placeholder rows carry the previous page's count, which can't tell whether this page exists.
+  if (page > lastPage && !isPlaceholderData) {
+    return <TablePageOutOfRange page={page} lastPage={lastPage} onPageChange={onPageChange} />;
+  }
 
   // A short last page would otherwise shrink the card and move everything below it.
   const hasMultiplePages = data.count > PAGE_SIZE;

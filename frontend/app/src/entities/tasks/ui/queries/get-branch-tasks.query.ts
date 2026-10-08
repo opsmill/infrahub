@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
+import { getOffset } from "@/shared/utils/table-pagination";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
 import {
@@ -31,8 +31,8 @@ export interface UseGetBranchTasksParams {
 }
 
 export function useGetBranchTasks({ branchName, page, pageSize }: UseGetBranchTasksParams) {
-  return useCountClampedQuery({ page, pageSize }, (offset) =>
-    getBranchTasksQueryOptions({ branchName, offset, limit: pageSize })
+  return useQuery(
+    getBranchTasksQueryOptions({ branchName, offset: getOffset(page, pageSize), limit: pageSize })
   );
 }
 
