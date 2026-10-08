@@ -186,6 +186,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     workflow = get_workflow()
     database = await get_database()
     merge_write_blocker = MergeWriteBlocker(cache=await get_cache())
+    # The recompute pass opens this session after the rebase, so the barrier reads through it then.
+    recompute_db = database.start_session()
+    barrier = await build_default_branch_barrier(db=recompute_db)
 
     medium_context = context.model_copy(update={"priority": WorkflowPriority.MEDIUM})
     low_context = context.model_copy(update={"priority": WorkflowPriority.LOW})
@@ -439,7 +442,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
         await event_service.send(event)
 
     # The rebase session closed further up, and this pass runs queries of its own.
-    async with database.start_session() as recompute_db:
+    async with recompute_db:
         python_resolver: PythonTargetResolver
         try:
             python_resolver = await build_python_target_resolver(db=recompute_db, refresh_updated_nodes=True)
@@ -460,7 +463,7 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
                 builder=CoalescedRecomputeBuilder(schema_branch=schema_branch, refresh_updated_nodes=True),
                 submitter=CoalescedRecomputeSubmitter(workflow=get_workflow()),
                 python_resolver=python_resolver,
-                barrier=await build_default_branch_barrier(db=recompute_db),
+                barrier=barrier,
             )
             await coordinator.run(changes=changes, branch=user_branch.name, context=event_context)
 

@@ -729,6 +729,7 @@ async def computed_attribute_setup_python(
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
+        barrier = await build_default_branch_barrier(db=db)
 
         # Reconciling the automations deletes every one its gather did not return, so the registry
         # is refreshed first: a gather off a stale one would delete automations that nothing else
@@ -817,7 +818,6 @@ async def computed_attribute_setup_python(
                 )
                 for ref in report.selected
             ]
-            barrier = await build_default_branch_barrier(db=db)
             admitted = await barrier.admit(branch=branch_name, candidates=candidates, releasing=None)
             for ref, candidate in zip(report.selected, candidates, strict=True):
                 if candidate not in admitted:
