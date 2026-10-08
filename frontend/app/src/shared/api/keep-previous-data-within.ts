@@ -1,8 +1,6 @@
 import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
 
-// Rows from another list, such as another branch, would show under the wrong heading while loading.
-// A page without rows, such as one past the end, is not kept either: it would show as an empty
-// table until the page the user went to arrives.
+// Rows from another list or an empty page past the end would show under the wrong heading while loading.
 export function keepPreviousDataWithin<TPage>(
   listKey: QueryKey,
   hasRows?: (page: TPage) => boolean

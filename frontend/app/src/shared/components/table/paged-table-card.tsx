@@ -89,8 +89,10 @@ function PagedTableBody<TPage extends { count: number }>({
   renderTable,
   tableTestId,
 }: PagedTableBodyProps<TPage>) {
-  if (error && !data) {
-    if (isDenied?.(error)) {
+  if (!data && !error) return <PagedTableLoading label={`Loading ${itemName.other}`} />;
+
+  if (!data) {
+    if (error && isDenied?.(error)) {
       return <UnauthorizedScreen className="flex-none p-6" defaultOpen message={deniedMessage} />;
     }
 
@@ -106,8 +108,6 @@ function PagedTableBody<TPage extends { count: number }>({
       />
     );
   }
-
-  if (!data) return <PagedTableLoading label={`Loading ${itemName.other}`} />;
 
   if (data.count === 0) return <NoDataFound title={emptyTitle} message={emptyMessage} />;
 
