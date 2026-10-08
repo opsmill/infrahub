@@ -5,7 +5,6 @@ import os
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-import prefect.context
 import pytest
 from prefect.settings import get_current_settings
 
@@ -17,45 +16,23 @@ from infrahub.prefect_server.retention import (
     VACUUM_ENABLED,
     VACUUM_RETENTION_PERIOD,
 )
+from tests.helpers.task_manager_retention import (
+    LEGACY_EVENTS_RETENTION_PERIOD,
+    PREFECT_RETENTION_VARIABLES,
+    unloaded_task_manager_retention,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
 
 APP_LOGGER = "infrahub.prefect_server.app"
-LEGACY_EVENTS_RETENTION_PERIOD = "PREFECT_EVENTS_RETENTION_PERIOD"
-PREFECT_RETENTION_VARIABLES = (
-    VACUUM_ENABLED,
-    VACUUM_RETENTION_PERIOD,
-    EVENTS_RETENTION_PERIOD,
-    LEGACY_EVENTS_RETENTION_PERIOD,
-    EVENT_RETENTION_OVERRIDES,
-)
 
 
 @pytest.fixture
 def task_manager_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[None, None, None]:
-    """Start from an unloaded configuration and no retention variable, and put the process state back afterwards."""
-    monkeypatch.setattr(config.SETTINGS, "settings", None)
-    monkeypatch.setattr(prefect.context, "GLOBAL_SETTINGS_CONTEXT", prefect.context.GLOBAL_SETTINGS_CONTEXT)
-    monkeypatch.setenv("INFRAHUB_CONFIG", str(tmp_path / "absent.toml"))
-    for name in (
-        "INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY",
-        "INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG",
-        "INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS",
-        "PREFECT_API_BLOCKS_REGISTER_ON_START",
-        "PREFECT_API_DATABASE_MIGRATE_ON_START",
-    ):
-        monkeypatch.delenv(name, raising=False)
-    saved = {name: os.environ.pop(name, None) for name in PREFECT_RETENTION_VARIABLES}
-
-    yield
-
-    for name, value in saved.items():
-        if value is None:
-            os.environ.pop(name, None)
-        else:
-            os.environ[name] = value
+    with unloaded_task_manager_retention(monkeypatch=monkeypatch, config_file=tmp_path / "absent.toml"):
+        yield
 
 
 def _app_messages(caplog: pytest.LogCaptureFixture, level: int) -> list[str]:

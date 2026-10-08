@@ -147,8 +147,8 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 **Independent Test**: Start the task manager and the separate background services with valid and invalid values (quickstart Part 1 steps 1, 2, 8 and Part 3 step 2).
 
 - [X] T047 [P] [US4] Unit test: `create_infrahub_prefect` refuses to start on a retention under 1 day, logs a warning when own events are capped, and logs a warning per pre-set `PREFECT_*` variable, in `backend/tests/unit/prefect_server/test_app_retention.py`
-- [ ] T048 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: load the configuration, apply `apply_prefect_retention_env`, then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
-- [ ] T049 [P] [US4] Switch `task-manager-background-svc` to `command: infrahub tasks background-services` in `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
+- [X] T048 [US4] Add `infrahub tasks background-services [CONFIG_FILE]`: load the configuration, apply `apply_prefect_retention_env`, then start Prefect's background services in the foreground as `prefect server services start` does, in `backend/infrahub/cli/tasks.py`
+- [X] T049 [P] [US4] Switch `task-manager-background-svc` to `command: infrahub tasks background-services` in `python_testcontainers/infrahub_testcontainers/docker-compose.test.yml` and `python_testcontainers/infrahub_testcontainers/docker-compose-cluster.test.yml`
 - [ ] T050 [US4] Open the opsmill/infrahub-helm PR for the same release: background-services deployment runs `infrahub tasks background-services`, the upgrade hook passes `--no-task-history-cleanup`, retention values exposed in values.yaml (outside this repository)
 
 ---
