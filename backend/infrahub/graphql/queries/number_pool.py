@@ -65,6 +65,18 @@ class NumberPoolUtilizationFigures(ObjectType):
     )
 
 
+class NumberPoolScopeElement(ObjectType):
+    class Meta:
+        description = "One element of a pool's allocation scope."
+
+    id = Field(
+        String,
+        required=True,
+        description="The schema element id of the attribute or relationship, on the default branch.",
+    )
+    name = Field(String, required=True, description="The element's name, as currently declared on the default branch.")
+
+
 class NumberPoolRangeUtilization(ObjectType):
     class Meta:
         description = "One range of a number pool with its own figures."
@@ -87,19 +99,16 @@ class NumberPoolRangeUtilization(ObjectType):
 class NumberPoolUtilization(ObjectType):
     class Meta:
         description = (
-            "Utilization of one number pool and of each of its ranges, with the allocation scope in force on "
-            "the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization."
+            "Utilization of one number pool and of each of its ranges. For a number pool, prefer this over "
+            "InfrahubResourcePoolUtilization."
         )
 
     id = Field(String, required=True, description="The pool's id, as given in pool_id.")
     display_label = Field(String, required=True, description="The pool's display label.")
     allocation_scope = Field(
-        List(NonNull(String)),
+        List(NonNull(NumberPoolScopeElement)),
         required=True,
-        description=(
-            "Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, "
-            "and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry."
-        ),
+        description="The pool's allocation scope, in scope order. Empty for an unscoped pool.",
     )
     figures = Field(
         NumberPoolUtilizationFigures,
@@ -130,29 +139,30 @@ class NumberPoolUtilization(ObjectType):
 
 class NumberPoolDivisionEntry(ObjectType):
     class Meta:
-        description = "The value one scope entry takes in a division."
+        description = "The value one scope element takes in a division."
 
-    path = Field(String, required=True, description='The scope entry, as stored on the pool ("site", "role").')
+    id = Field(String, required=True, description="The schema element id of the scope element.")
+    path = Field(String, required=True, description='The scope element\'s name ("site", "role").')
     value = Field(
         String,
         required=True,
         description=(
-            "Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing "
-            "for the entry: an empty string."
+            "Relationship element: the peer's id. Attribute element: the value as text. A holder holding nothing "
+            "for the element: an empty string."
         ),
     )
     display_label = Field(
         String,
         required=True,
         description=(
-            "Relationship entry: the peer's display label, read on any branch, falling back to the peer's id "
-            "when the peer cannot be read. Attribute entry: the value as text."
+            "Relationship element: the peer's display label, read on any branch, falling back to the peer's id "
+            "when the peer cannot be read. Attribute element: the value as text."
         ),
     )
     peer_kind = Field(
         String,
         required=False,
-        description="Relationship entry: the peer's kind when the peer can be read. Otherwise null.",
+        description="Relationship element: the peer's kind when the peer can be read. Otherwise null.",
     )
 
 
@@ -160,13 +170,15 @@ class NumberPoolDivisionEntryInput(InputObjectType):
     class Meta:
         description = "One entry of a division filter. Mirrors NumberPoolDivisionEntry."
 
-    path = String(required=True, description="A scope entry in force on the request's branch.")
-    value = String(required=True, description="Relationship entry: the peer's id. Attribute entry: the value as text.")
+    path = String(required=True, description="A scope element's name.")
+    value = String(
+        required=True, description="Relationship element: the peer's id. Attribute element: the value as text."
+    )
 
 
 class NumberPoolDivision(ObjectType):
     class Meta:
-        description = "One division: a tuple of values of the scope in force."
+        description = "One division: a tuple of values of the scope."
 
     display_label = Field(
         String,
@@ -176,7 +188,7 @@ class NumberPoolDivision(ObjectType):
     entries = Field(
         List(NonNull(NumberPoolDivisionEntry)),
         required=True,
-        description="One entry per scope entry in force, in scope order.",
+        description="One entry per scope element, in scope order.",
     )
     figures = Field(
         NumberPoolUtilizationFigures,
@@ -191,26 +203,28 @@ class NumberPoolDivisions(ObjectType):
 
     count = Field(Int, required=True, description="Number of divisions listed.")
     allocation_scope = Field(
-        List(NonNull(String)),
+        List(NonNull(NumberPoolScopeElement)),
         required=True,
-        description="Scope entries in force on the request's branch, in scope order.",
+        description="The pool's allocation scope, in scope order.",
     )
     divisions = Field(
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division whose holders hold at least one value the pool tracks on any branch, ordered "
-            "by utilization descending then by display_label. Empty when the scope in force is empty."
+            "Every division holding at least one value the pool tracks on any live branch, the division of each "
+            "holder read on the request's branch, ordered by utilization descending then by display_label. "
+            "Empty for an unscoped pool."
         ),
     )
 
     @staticmethod
     async def resolve(
         root: dict,  # noqa: ARG004
-        info: GraphQLResolveInfo,  # noqa: ARG004
+        info: GraphQLResolveInfo,
         pool_id: str,
     ) -> MockDivisions:
-        return get_divisions(pool_id=pool_id)
+        graphql_context: GraphqlContext = info.context
+        return get_divisions(pool_id=pool_id, request_branch=graphql_context.branch.name)
 
 
 class NumberPoolHolder(ObjectType):

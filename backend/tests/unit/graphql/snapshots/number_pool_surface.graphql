@@ -26,50 +26,54 @@ type NumberPoolAllocations {
   count: BigInt!
 }
 
-"""One division: a tuple of values of the scope in force."""
+"""One division: a tuple of values of the scope."""
 type NumberPoolDivision {
   """The entries' display labels joined with " / "."""
   display_label: String!
-  """One entry per scope entry in force, in scope order."""
+  """One entry per scope element, in scope order."""
   entries: [NumberPoolDivisionEntry!]!
   """Figures for this division, over all the values the pool can allocate."""
   figures: NumberPoolUtilizationFigures!
 }
 
-"""The value one scope entry takes in a division."""
+"""The value one scope element takes in a division."""
 type NumberPoolDivisionEntry {
   """
-  Relationship entry: the peer's display label, read on any branch, falling back to the peer's id when the peer cannot be read. Attribute entry: the value as text.
+  Relationship element: the peer's display label, read on any branch, falling back to the peer's id when the peer cannot be read. Attribute element: the value as text.
   """
   display_label: String!
-  """The scope entry, as stored on the pool ("site", "role")."""
+  """The schema element id of the scope element."""
+  id: String!
+  """The scope element's name ("site", "role")."""
   path: String!
   """
-  Relationship entry: the peer's kind when the peer can be read. Otherwise null.
+  Relationship element: the peer's kind when the peer can be read. Otherwise null.
   """
   peer_kind: String
   """
-  Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing for the entry: an empty string.
+  Relationship element: the peer's id. Attribute element: the value as text. A holder holding nothing for the element: an empty string.
   """
   value: String!
 }
 
 """One entry of a division filter. Mirrors NumberPoolDivisionEntry."""
 input NumberPoolDivisionEntryInput {
-  """A scope entry in force on the request's branch."""
+  """A scope element's name."""
   path: String!
-  """Relationship entry: the peer's id. Attribute entry: the value as text."""
+  """
+  Relationship element: the peer's id. Attribute element: the value as text.
+  """
   value: String!
 }
 
 """The divisions of one number pool, each with its figures."""
 type NumberPoolDivisions {
-  """Scope entries in force on the request's branch, in scope order."""
-  allocation_scope: [String!]!
+  """The pool's allocation scope, in scope order."""
+  allocation_scope: [NumberPoolScopeElement!]!
   """Number of divisions listed."""
   count: Int!
   """
-  Every division whose holders hold at least one value the pool tracks on any branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty.
+  Every division holding at least one value the pool tracks on any live branch, the division of each holder read on the request's branch, ordered by utilization descending then by display_label. Empty for an unscoped pool.
   """
   divisions: [NumberPoolDivision!]!
 }
@@ -113,14 +117,24 @@ type NumberPoolRangeUtilization {
   weight: BigInt!
 }
 
+"""One element of a pool's allocation scope."""
+type NumberPoolScopeElement {
+  """
+  The schema element id of the attribute or relationship, on the default branch.
+  """
+  id: String!
+  """The element's name, as currently declared on the default branch."""
+  name: String!
+}
+
 """
-Utilization of one number pool and of each of its ranges, with the allocation scope in force on the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization.
+Utilization of one number pool and of each of its ranges. For a number pool, prefer this over InfrahubResourcePoolUtilization.
 """
 type NumberPoolUtilization {
   """
-  Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
+  The pool's allocation scope, in scope order. Empty for an unscoped pool.
   """
-  allocation_scope: [String!]!
+  allocation_scope: [NumberPoolScopeElement!]!
   """The pool's display label."""
   display_label: String!
   """

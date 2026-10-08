@@ -31,6 +31,7 @@ SURFACE_TYPES = (
     "NumberPoolProvenance",
     "NumberPoolRangeRef",
     "NumberPoolRangeUtilization",
+    "NumberPoolScopeElement",
     "NumberPoolUtilization",
     "NumberPoolUtilizationFigures",
 )
