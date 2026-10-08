@@ -1,5 +1,7 @@
 import re
+from dataclasses import dataclass
 
+from infrahub.message_bus.types import KVTTL
 from infrahub.services.adapters.cache import InfrahubCache
 
 
@@ -60,6 +62,28 @@ class ClaimAwareCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None: ...
+
+
+@dataclass(frozen=True)
+class CacheSetCall:
+    key: str
+    value: str
+    expires: KVTTL | int | None
+    not_exists: bool
+
+
+class RecordingCache(ClaimAwareCache):
+    """Records every write in order, on top of honouring ``not_exists``."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.set_calls: list[CacheSetCall] = []
+
+    async def set(
+        self, key: str, value: str, expires: KVTTL | int | None = None, not_exists: bool = False
+    ) -> bool | None:
+        self.set_calls.append(CacheSetCall(key=key, value=value, expires=expires, not_exists=not_exists))
+        return await super().set(key=key, value=value, expires=expires, not_exists=not_exists)
 
 
 class UnreachableCache(InfrahubCache):

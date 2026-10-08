@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, cast
 
 from graphene import Field, Int, String
@@ -18,13 +19,15 @@ from infrahub.core.protocols import CoreGenericRepository
 from infrahub.core.query.repository import BranchScope, RepositoryBranchValuesQuery
 from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import NodeNotFoundError, ValidationError
+from infrahub.exceptions import NodeNotFoundError, ValidationError, WorkerTimeoutError
 from infrahub.git.branch_mapping import get_mapped_remote_branch, remote_branch_is_imported
+from infrahub.git.state.cache_keys import refs_check_last_key
 from infrahub.git.state.factory import build_repository_git_state_reader
-from infrahub.git.state.models import CommitLogRequest
+from infrahub.git.state.models import BranchHeadsRequest, BranchRef, CommitLogRequest
 from infrahub.git.state.reader import NOT_IMPLEMENTED_MESSAGE
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.repository import RepositoryBranchDrifts, RepositoryCommits
+from infrahub.log import get_logger
 from infrahub.permissions.types import define_object_permission_from_branch
 
 if TYPE_CHECKING:
@@ -34,8 +37,10 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
-    from infrahub.git.state.models import CommitLogResult
+    from infrahub.git.state.models import BranchDriftResult, CommitLogResult
     from infrahub.graphql.initialization import GraphqlContext
+
+log = get_logger()
 
 DEFAULT_LIMIT = 10
 DEFAULT_OFFSET = 0
@@ -44,6 +49,12 @@ MAX_LIMIT = 100
 
 COMMIT_GIT_FIELDS = frozenset({"condition", "remote_head", "pending_count", "fetched_at", "unavailable", "edges"})
 """Selecting none of these means no worker request is made at all."""
+
+DRIFT_GIT_FIELDS = frozenset({"fetched_at", "unavailable"})
+"""Selecting none of these, and none of the row fields below, means no worker request is made at all."""
+
+DRIFT_ROW_GIT_FIELDS = frozenset({"remote_head", "condition"})
+"""The git-derived fields of a drift row, selected under ``edges.node``."""
 
 GENERIC_UNAVAILABLE_MESSAGE = "No git-derived answer could be produced for this repository."
 
@@ -126,7 +137,9 @@ async def load_repository_for_view(graphql_context: GraphqlContext, repository_i
     raise NodeNotFoundError(branch_name=branch.name, node_type=InfrahubKind.GENERICREPOSITORY, identifier=repository_id)
 
 
-def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUnavailableReason) -> dict[str, Any]:
+def _unavailable_payload(
+    result: CommitLogResult | BranchDriftResult | None, reason: RepositoryGitUnavailableReason
+) -> dict[str, Any]:
     return {
         "reason": reason,
         "message": (
@@ -135,6 +148,34 @@ def _unavailable_payload(result: CommitLogResult | None, reason: RepositoryGitUn
             else UNAVAILABLE_MESSAGES.get(reason, GENERIC_UNAVAILABLE_MESSAGE)
         ),
     }
+
+
+async def _resolve_checked_at(graphql_context: GraphqlContext, repository: CoreGenericRepository) -> datetime | None:
+    """Return when the remote of a read-only repository was last checked for movement.
+
+    A read-write repository returns None: its sync fetches the remote, so its fetch time already
+    answers this. Best-effort: an unreachable cache, a flushed one or an unreadable value all read
+    as never checked rather than failing the query.
+    """
+    if repository.get_kind() != InfrahubKind.READONLYREPOSITORY:
+        return None
+
+    key = refs_check_last_key(repository_id=repository.get_id())
+    cache = graphql_context.active_service.cache
+    try:
+        value = await cache.get(key=key)
+    # A best-effort field must not fail the query around it, whichever cache backend raised.
+    except Exception:
+        log.warning("Could not read the refs check time", repository_id=repository.get_id(), exc_info=True)
+        return None
+    if value is None:
+        return None
+
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        log.warning("Ignoring an unreadable refs check time", repository_id=repository.get_id(), value=value)
+        return None
 
 
 def _resolve_paging(limit: int | None, offset: int | None) -> tuple[int, int]:
@@ -318,6 +359,11 @@ async def _resolve_drift_rows(
     return rows
 
 
+def _selects_drift_git_field(fields: dict[str, Any]) -> bool:
+    row_fields = (fields.get("edges") or {}).get("node") or {}
+    return bool(DRIFT_GIT_FIELDS & set(fields) or DRIFT_ROW_GIT_FIELDS & set(row_fields))
+
+
 class RepositoryCommitsResolver:
     @staticmethod
     async def resolve(
@@ -349,6 +395,11 @@ class RepositoryCommitsResolver:
         }
 
         fields = extract_graphql_fields(info=info)
+        checked_at = None
+        if "checked_at" in fields:
+            checked_at = await _resolve_checked_at(graphql_context=graphql_context, repository=repository)
+        payload["checked_at"] = checked_at
+
         if git_ref is None:
             payload["condition"] = RepositoryGitCondition.NOT_TRACKED
             return payload
@@ -423,11 +474,54 @@ class RepositoryBranchDriftResolver:
             ),
         )
 
-        return {
+        fields = extract_graphql_fields(info=info)
+        checked_at = None
+        if "checked_at" in fields:
+            checked_at = await _resolve_checked_at(graphql_context=graphql_context, repository=repository)
+
+        payload: dict[str, Any] = {
             "repository_id": repository.get_id(),
+            "checked_at": checked_at,
+            "fetched_at": None,
+            "unavailable": None,
             "edges": [{"node": row} for row in rows],
-            "unavailable": _unavailable_payload(result=None, reason=RepositoryGitUnavailableReason.NOT_IMPLEMENTED),
         }
+
+        tracked = tuple(
+            BranchRef(branch_name=row["branch_name"], git_ref=row["git_ref"], tracked_commit=row["tracked_commit"])
+            for row in rows
+            if row["git_ref"] is not None
+        )
+        if not tracked or not _selects_drift_git_field(fields=fields):
+            return payload
+
+        reader = build_repository_git_state_reader(message_bus=graphql_context.active_service.message_bus)
+        try:
+            result = await reader.branch_heads(
+                request=BranchHeadsRequest(
+                    repository_id=repository.get_id(),
+                    repository_name=str(repository.name.value),
+                    repository_kind=repository.get_kind(),
+                    location=str(repository.location.value),
+                    branches=tracked,
+                )
+            )
+        # The rows come from the graph, so a worker that never answered leaves them listed without a remote head.
+        except WorkerTimeoutError:
+            payload["unavailable"] = _unavailable_payload(result=None, reason=RepositoryGitUnavailableReason.TIMEOUT)
+            return payload
+
+        answered = {row.branch_name: row for row in result.branches}
+        for row in rows:
+            answer = answered.get(row["branch_name"])
+            if answer is not None:
+                row["remote_head"] = answer.remote_head
+                row["condition"] = answer.condition
+        payload["fetched_at"] = result.fetched_at
+        if result.unavailable_reason is not None:
+            payload["unavailable"] = _unavailable_payload(result=result, reason=result.unavailable_reason)
+
+        return payload
 
 
 InfrahubRepositoryCommits = Field(

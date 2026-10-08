@@ -189,6 +189,16 @@ class GitReadOnlyRepositoryCheckRefs(BaseModel):
     )
 
 
+class GitRepositoryWarmUp(BaseModel):
+    """Create a repository's local copy on every worker, after a read found a worker without one."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    repository_kind: str = Field(..., description="The kind of the repository")
+    location: str = Field(..., min_length=1, description="The external URL of the repository")
+    infrahub_branch_name: str = Field(..., description="Infrahub branch the read was made for")
+
+
 class GitDiffNamesOnly(BaseModel):
     """Request a list of modified files between two commits."""
 
@@ -268,6 +278,24 @@ class TriggerRepositoryInternalChecks(BaseModel):
     repository: str = Field(..., description="The unique ID of the Repository")
     source_branch: str = Field(..., description="The source branch")
     target_branch: str = Field(..., description="The target branch")
+    check_merge_conflicts: bool = Field(
+        default=True, description="Indicates if the merge conflict check applies to this repository"
+    )
+
+
+class CheckRepositoryImportStatus(BaseModel):
+    """Runs a check to validate that the objects of a repository were imported on the source branch."""
+
+    validator_id: str = Field(..., description="The id of the validator associated with this check")
+    validator_execution_id: str = Field(..., description="The id of current execution of the associated validator")
+    check_execution_id: str = Field(..., description="The unique ID for the current execution of this check")
+    proposed_change: str = Field(..., description="The unique ID of the Proposed Change")
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the Repository")
+    repository_internal_status: str = Field(
+        ..., description="The internal status of the Repository on the source branch"
+    )
+    source_branch: str = Field(..., description="The source branch")
 
 
 class CheckRepositoryMergeConflicts(BaseModel):

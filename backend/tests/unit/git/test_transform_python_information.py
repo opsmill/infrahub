@@ -1,4 +1,3 @@
-import logging
 import types
 from dataclasses import dataclass
 from pathlib import Path
@@ -157,22 +156,17 @@ DECLARED_PATH_CASES = [
 
 class TestGetPythonTransforms:
     @pytest.mark.parametrize("case", DECLARED_PATH_CASES, ids=lambda case: case.name)
-    async def test_file_path_comes_from_the_manifest(
-        self, monkeypatch: pytest.MonkeyPatch, case: DeclaredPathCase
-    ) -> None:
+    async def test_file_path_comes_from_the_manifest(self, case: DeclaredPathCase) -> None:
         """The built information carries the manifest-declared path, always repo-relative.
 
         The dependency closure and the fingerprint are both keyed on the manifest path. A path
         derived from the filesystem instead is resolved against the worktree and falls back to
         an absolute one when that resolution fails, so the two sides would silently disagree.
         """
-        monkeypatch.setattr("infrahub.git.integrator.get_run_logger", lambda: logging.getLogger("test"))
-
         module = types.ModuleType("transforms.test")
         module.TestTransform = _StubTransform  # type: ignore[attr-defined]
 
-        transforms = await InfrahubRepositoryIntegrator.get_python_transforms.fn(
-            _make_repository(),
+        transforms = await _make_repository().get_python_transforms(
             module=module,
             transform=InfrahubPythonTransformConfig(
                 name="test", file_path=Path(case.declared), class_name="TestTransform"

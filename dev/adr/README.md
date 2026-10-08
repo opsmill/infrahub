@@ -25,6 +25,7 @@ We document significant architectural decisions using ADRs.
 | [0017](0017-coalesced-merge-rebase-recompute.md) | Coalesced Deduplicated Recompute Pass on Merge and Rebase | Accepted | 2026-07-31 |
 | [0018](0018-static-transform-lifecycle-triggers.md) | Static Kind-Scoped Lifecycle Triggers for Python-Transform Recompute | Accepted | 2026-07-31 |
 | [0019](0019-transform-lifecycle-owns-node-input-reconciliation.md) | Transform Lifecycle Flow Owns Node-Input Automation Reconciliation | Accepted | 2026-07-31 |
+| [0020](0020-python-transform-recompute-targets.md) | Python Transform Targets from Analyzed Queries and Query-Group Subscribers | Accepted | 2026-09-28 |
 
 ## Creating a New ADR
 

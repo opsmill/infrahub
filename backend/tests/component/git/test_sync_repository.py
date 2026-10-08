@@ -14,7 +14,12 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State
 
 from infrahub import config, lock
-from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
+from infrahub.core.constants import (
+    InfrahubKind,
+    RepositoryInternalStatus,
+    RepositoryOperationalStatus,
+    RepositorySyncStatus,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
@@ -31,8 +36,10 @@ from tests.conftest import TestHelper
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
+    INVALID_YAML_CONFIG,
     create_repository_node,
     flow_run_tags,
+    invalid_yaml_config_message,
     is_linked_to_node,
     run_add_flow,
     run_sync_flow,
@@ -539,12 +546,25 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         tmp_path: Path,
         git_repos_dir: Path,
     ) -> None:
-        """The warning does not depend on the repository being online, and no branch loses its tag."""
+        """The warning does not depend on the repository being online, and no branch loses its tag.
+
+        One branch fails with an expected error and another with an unrecognised one, and neither
+        stops the import of the trunk.
+        """
         name = f"partly-failing-cycle-repo-{operational_status}"
         failing_branch = f"broken-on-cycle-{operational_status}"
+        unexpected_branch = f"unexpected-on-cycle-{operational_status}"
         remote, node, _ = await self._connect(db=db, tmp_path=tmp_path, name=name, branches=["main"])
         await create_branch(branch_name=failing_branch, db=db)
-        remote.commit(branch_name=failing_branch, files={".infrahub.yml": "schemas: [unclosed\n"})
+        await create_branch(branch_name=unexpected_branch, db=db)
+        remote.commit(branch_name=failing_branch, files={".infrahub.yml": INVALID_YAML_CONFIG})
+        remote.commit(
+            branch_name=unexpected_branch,
+            files={
+                ".infrahub.yml": "python_transforms:\n  - name: broken\n    file_path: transform.py\n    class_name: Broken\n",
+                "transform.py": 'raise RuntimeError("transform module failed to load")\n',
+            },
+        )
         remote.commit(branch_name=TRUNK, files={"data.txt": "trunk v2\n"})
 
         state = await run_sync_flow(
@@ -558,17 +578,30 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert error.report == SyncReport(
-            skipped_branches=("main",),
-            imported_branches=("main",),
-            failed_import_branches=(failing_branch,),
-            advanced_skipped_branches=(),
+        assert error.report.skipped_branches == ("main",)
+        assert error.report.imported_branches == ("main",)
+        assert sorted(error.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
+        assert error.report.advanced_skipped_branches == ()
+        assert error.message == (
+            f"Unable to synchronize the following branches of repository {name}: "
+            f"{failing_branch} (step=import): {invalid_yaml_config_message(name)}; "
+            f"{unexpected_branch} (step=import): Python transform 'broken' (transform.py): "
+            "RuntimeError: transform module failed to load"
         )
+        sync_statuses = {
+            branch_name: (await client.get(kind=CoreRepository, id=node.id, branch=branch_name)).sync_status.value
+            for branch_name in ("main", failing_branch, unexpected_branch)
+        }
+        assert sync_statuses == {
+            "main": RepositorySyncStatus.IN_SYNC.value,
+            failing_branch: RepositorySyncStatus.ERROR_IMPORT.value,
+            unexpected_branch: RepositorySyncStatus.ERROR_IMPORT.value,
+        }
         assert skipped_branch_warnings(caplog, state) == [
             skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
         ]
         assert await flow_run_tags(prefect_client, state) == run_tags(
-            branches=["main", failing_branch], node_id=node.id
+            branches=["main", failing_branch, unexpected_branch], node_id=node.id
         )
 
     async def test_failed_cycle_where_nothing_else_moved_does_not_report_the_skipped_branch(

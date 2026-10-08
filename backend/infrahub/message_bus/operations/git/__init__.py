@@ -1,3 +1,3 @@
-from . import file, repository
+from . import branch_heads, commit_log, file, repository
 
-__all__ = ["file", "repository"]
+__all__ = ["branch_heads", "commit_log", "file", "repository"]

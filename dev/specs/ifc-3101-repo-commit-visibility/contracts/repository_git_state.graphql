@@ -11,6 +11,7 @@ enum RepositoryGitCondition {
   BEHIND
   REWRITTEN
   ORPHANED
+  REF_MISSING
   NO_REMOTE
   NOT_TRACKED
   UNAVAILABLE
@@ -90,7 +91,7 @@ type RepositoryBranchDrift {
   "Remote branch or tracked ref compared for this branch. Null when the branch is not tracked."
   git_ref: String
   tracked_commit: String
-  "Latest remote commit. Null when there is no remote counterpart or the branch is not tracked."
+  "Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE."
   remote_head: String
   condition: RepositoryGitCondition!
 }

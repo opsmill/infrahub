@@ -26683,7 +26683,7 @@ type RepositoryBranchDrift {
   """
   git_ref: String
   """
-  Latest remote commit. Null when there is no remote counterpart or the branch is not tracked.
+  Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE.
   """
   remote_head: String
   tracked_commit: String
@@ -26789,6 +26789,7 @@ enum RepositoryGitCondition {
   NOT_TRACKED
   NO_REMOTE
   ORPHANED
+  REF_MISSING
   REWRITTEN
   UNAVAILABLE
 }

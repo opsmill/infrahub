@@ -57,27 +57,50 @@ Rows are evaluated in order. The first match wins.
 | `remote_head` is `None`, `imported_commit` is `None` | `UNCHANGED` |
 | `imported_commit` is `None` | `FAST_FORWARD` |
 | `remote_head == imported_commit` | `UNCHANGED` |
+| Either identifier is malformed | propagates as `RepositoryError`. The collector reads a malformed graph commit as no recorded commit before it classifies, so the sync does not reach this row |
+| **The imported commit is absent and the remote head is absent too** | propagates as `RepositoryError` |
 | **The imported commit is absent from the local object database, `target_changed` is false** | **`REWRITE`** (see below) |
 | **The imported commit is absent, `target_changed` is true** | **`RETARGET`** |
 | `imported_commit` is an ancestor of `remote_head` | `FAST_FORWARD` |
-| `remote_head` is an ancestor of `imported_commit` | `LOCAL_AHEAD` |
-| Neither is an ancestor, `target_changed` is false | `REWRITE` |
-| Neither is an ancestor, `target_changed` is true | `RETARGET` |
+| The remote head does not contain the imported commit, `target_changed` is false | `REWRITE` |
+| The remote head does not contain the imported commit, `target_changed` is true | `RETARGET` |
 | Any other git failure | propagates as `RepositoryError`; the branch joins `failed_imports` |
 
-The absent-object rows come **before** the three ancestry rows because those rows cannot be
+The absent-object rows come **before** the ancestry rows because those rows cannot be
 evaluated at all when the object is gone: the ancestry call raises instead of answering. They also
 honour `target_changed`, so a deliberate re-target whose old commit has been garbage-collected is
 still a re-target rather than a recorded rewrite.
 
-**`LOCAL_AHEAD` narrows the exposure to PR #10465. It does not remove it.** A branch left ahead of
-its remote after a rejected push is a state the product reaches today. Without that row it falls
-into "neither is an ancestor", classifies `REWRITE`, and the reset discards the unpushed commit.
-With it, that branch resets nothing and keeps today's behaviour.
+**The two commits are not required in the same way.** An absent imported commit is a
+classification, because a force push followed by a prune loses it in the ordinary way. An absent
+remote head is a fault, because the fetch that ran before the classification brought that object
+in. The absent-object rows therefore require the remote head to be present before they classify.
+Without that check a remote head naming an object the repository does not hold reads as `REWRITE`,
+so the recorder writes a record and the trunk signal fires over a broken clone. The ancestry rows
+need no such check: the ancestry call raises on its own when either object is missing.
 
-What is left is the branch that is **both** ahead locally and rewritten remotely. Neither commit is
-an ancestor of the other, so it classifies `REWRITE` and the reset discards the unpushed merge
-commit. Every step that resets a worktree therefore stays gated on #10465.
+**A remote head behind the graph commit means the remote was rewound.** Every write of the graph
+commit records a commit the remote already carries. `create_locally` records straight after a
+clone. `pull` records a commit the fetch brought in. `reset_to_commit` records the SHA it pinned.
+The synchronisation's new-branch path pushes first, and a rejected push raises into
+`failed_imports` before the record is reached. `merge` pushes before it records and resets the
+worktree when either step fails. The read-only paths record what they read from the remote. `merge`
+skips the push when its caller passes `push_remote=False`, and records all the same. Only a test
+passes it today, and `rebase` forwards it, so the audit holds for the product while that parameter
+has no production caller. No
+path leaves the graph holding a commit the remote never had, so a remote head that is an ancestor
+of the imported commit means a force push, or a ref moved backwards. That discards content exactly
+as a rewrite does, so it is reconciled and recorded.
+
+**The worktree comparison reaches the same conclusion.** It used to leave a worktree ahead of its
+remote alone, to protect a commit a rejected push had left behind. That state no longer arises:
+`InfrahubRepository.merge` pushes before it records and resets the destination when either step
+fails, `rebase` delegates to `merge`, and a branch whose creation push failed leaves the remote
+with no such ref at all, which is a different row. So a worktree ahead of its remote also means a
+rewind, and it resets.
+
+Graph against remote still decides the record. Worktree against remote still decides the reset.
+Keeping them apart is what lets one worker record while every other worker converges.
 
 `REMOTE_ABSENT` likewise keeps current behaviour: a tracked ref that disappeared from the remote is
 not a lineage break. `spec.md` names it as an edge case.
@@ -104,6 +127,20 @@ The collector therefore takes the union of two sets:
 
 Both are needed. Neither is a subset of the other.
 
+**Only branches that can still record a commit enter the second set.** The API refuses a commit on
+a branch that needs a rebase, is being merged, failed a merge or is merged, a branch being deleted
+loses its nodes, and a branch Infrahub no longer lists has nowhere to record one. The graph
+comparison would select any of them again on every cycle and keep the early return from firing.
+`git/branch_status.py::accepts_commit_write` holds the rule, and the collector's filter of the
+branches it advances uses it too. A refusal the listing did not predict, such as a merge that starts
+during the cycle, fails that branch alone. The periodic sync leaves them
+out of the graph commits it passes down, using the branch listing it already reads once per cycle.
+
+**A branch new to this worker is classified too.** The periodic sync runs on whichever worker picks
+it up, and that worker may never have held the branch. The graph can still record a commit another
+worker imported and the remote has since discarded. Skipping the classification there would leave
+the rewrite unrecorded whenever the cycle lands on such a worker.
+
 ### Where the graph commit comes from
 
 `collect_pending_imports` has no graph read of its own, and `get_commit_value` reads **git**, not
@@ -125,12 +162,23 @@ rather than a read-then-write.
 A branch with no recorded commit has never been imported. It cannot be a rewrite, so it classifies
 `FAST_FORWARD` and takes the ordinary import path.
 
-**That rule is close to dead code until branch creation writes a commit.** `git_branch_create`
-creates and pushes the branch but never calls `update_commit_value`, and `commit` is LOCAL, so the
-branch inherits the trunk's value as of its fork point. A read therefore almost always returns
-something, and the classifier compares a branch's remote head against a trunk commit that has
-nothing to do with it. That can classify a healthy branch `REWRITE`. Branch creation must write the
-commit.
+**The collector reads an empty graph commit, and one that is not a full commit id, as no recorded
+commit.** The API stores any text as the commit, and git cannot classify a malformed one. Failing
+the branch would repeat on every cycle, because the worktree and the graph commit would never move.
+Read as none, the branch classifies `FAST_FORWARD`, resets onto the remote head and records a real
+commit. Only a failure to read the object store still fails the branch.
+
+**A read must tell a written commit from an inherited one.** `git_branch_create` creates and
+pushes the branch but never calls `update_commit_value`, and `commit` is `LOCAL`, so the branch
+reads the trunk's value as of its fork point. A plain read therefore almost always returns
+something, and the classifier would compare a branch's remote head against a trunk commit that has
+nothing to do with it. That classifies a healthy branch `REWRITE`.
+
+Branch creation must write the commit, and the per-branch read must report a value the branch
+never had as absent. `get_repositories_commit_per_branch` returns `commit.value`, which the
+`LOCAL` fallback fills in, so the read needs to know which branch the value was written on. With
+that, a branch created before the write lands classifies `FAST_FORWARD` and takes the ordinary
+import path, and the rule above is live rather than unreachable.
 
 ### Rules
 
@@ -144,7 +192,7 @@ commit.
   the detector nor the recorder reads the cache. See section 8.
 - **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
   describe a branch whose local history no longer leads to the remote's, and both must end with
-  the worktree on the remote head. Only `REWRITE` records. `LOCAL_AHEAD`, `REMOTE_ABSENT` and
+  the worktree on the remote head. Only `REWRITE` records. `FAST_FORWARD`, `REMOTE_ABSENT` and
   `UNCHANGED` do neither.
 
 **The classification decides the record. It does not decide the reset.** They read different
@@ -156,7 +204,6 @@ Record and signal, from the classification (graph against remote):
 |---|---|---|
 | `UNCHANGED` | no | no |
 | `FAST_FORWARD` | no | no |
-| `LOCAL_AHEAD` | no | no |
 | `REWRITE` | yes | trunk only |
 | `RETARGET` | no | no |
 | `REMOTE_ABSENT` | no | no |
@@ -167,8 +214,8 @@ Reset, from this worker's worktree against the remote, decided independently:
 |---|---|---|
 | Equal | equals the remote head | nothing |
 | Equal | **differs from the remote head** | **write the commit, queue the import, and record if the classification is `REWRITE`** |
-| Worktree is an ancestor of the remote head | any | pull, as today |
-| Remote head is an ancestor of the worktree | any | nothing. The worktree is ahead, not diverged |
+| Worktree is an ancestor of the remote head | any | reset onto the remote head, which fast-forwards it. Not a pull: a pull fetches again and can import a newer commit than the one classified |
+| Remote head is an ancestor of the worktree | any | reset onto the remote head. The remote was rewound |
 | Neither is an ancestor | any | reset onto the remote head |
 | The remote carries no such ref | any | nothing |
 
@@ -195,23 +242,42 @@ reported": reconciled is the reset, not reported is the missing record.
 
 ### Ancestry gateway
 
+The gateway is bound to one repository when it is built, so no call takes a repository:
+
 ```text
-is_ancestor(repository, ancestor_commit, descendant_commit) -> bool
+is_ancestor(ancestor_commit, descendant_commit) -> bool
 ```
 
 ```text
-has_commit(repository, commit) -> bool
+has_commit(commit) -> bool
 ```
 
-`is_ancestor` wraps `git merge-base --is-ancestor` through GitPython's `Repo.is_ancestor`. Every
-git failure leaves it as a `RepositoryError`, so the detector handles one exception type and
-imports no git library.
+```text
+require_commit(commit) -> None
+```
+
+```text
+require_present_commit(commit) -> None
+```
+
+`is_ancestor` runs `git merge-base --is-ancestor` as a plain git command through GitPython, and
+reads exit status 1 as "not an ancestor" rather than as a failure. Every git failure leaves it as
+a `RepositoryError`, so the detector handles one exception type and imports no git library.
 
 `has_commit` answers whether the object is present, and it is what makes the absent-object rows
 reachable. Without it "the object is gone" and "git could not be asked" arrive as the same
 `RepositoryError`, so a commit that was garbage-collected raises on every cycle and the branch
 never classifies at all. It is a separate call precisely so a missing object is a fact the detector
 can act on rather than a failure it has to swallow.
+
+`require_commit` checks the shape of an identifier alone: it raises unless the string is a full
+object name, and a well formed identifier whose object is absent passes. The detector calls it on
+both commits before any comparison, so a malformed identifier cannot read as a rewrite.
+
+`require_present_commit` raises unless the object database holds that commit. It is the strict
+form the absent-object rows need for the remote head. It raises rather than returning a boolean
+because the error carries the repository name, which the gateway holds and the detector does not.
+Returning a boolean would make the detector compose a git error message of its own.
 
 ---
 
@@ -232,7 +298,10 @@ Returns whether a record was written.
 
 1. Writes nothing unless `divergence.classification` is `REWRITE`. `RETARGET` arrives already
    classified, so the recorder needs no precondition of its own and never reads the cache.
-2. Rejects a divergence whose `imported_commit` equals its `remote_head`. That is a classifier bug.
+2. Needs no precondition about the two commits matching. `RefDivergence` rejects at construction
+   any classification other than `UNCHANGED` whose commits are equal, so every `REWRITE` that
+   reaches the write path already carries two different commits. An `UNCHANGED` divergence does
+   reach `record()` with matching commits, and rule 1 above stops it before anything is written.
 3. Reads the current `rewrite_count` on that branch, writes `count + 1`, treating an absent value
    as zero.
 4. Writes all four attributes in one mutation, on the Infrahub branch named.
@@ -250,8 +319,8 @@ Returns whether a record was written.
 
 `RepositorySyncer.sync` takes the repository lock twice: once around `collect_pending_imports`, and
 once per branch around `apply_branch_import`. The reconciled commit is written inside the **first**
-one: `collect_pending_imports` calls `pull`, which defaults `update_commit_value=True`, and the
-reset path of the sync task writes the commit the same way.
+one: `collect_pending_imports` moves every branch with `reset_to_commit`, which defaults
+`update_commit_value=True`.
 
 **The recorder runs there, beside that write.** Both properties the placement needs hold:
 
@@ -303,7 +372,7 @@ in-memory one. The recorder itself imports neither the SDK nor the event service
 Changed. `backend/infrahub/git/base.py`.
 
 Before it pulls, it compares the branch worktree head and the remote head by ancestry. It
-hard-resets onto the remote head only when **neither** is an ancestor of the other.
+hard-resets onto the remote head whenever the worktree does not lead to it.
 
 ### Contract
 
@@ -312,19 +381,18 @@ hard-resets onto the remote head only when **neither** is an ancestor of the oth
 | No origin | Returns `False`, unchanged. |
 | Worktree head equals remote head | Returns `True`, unchanged. |
 | Worktree head is an ancestor of remote head | Pulls, unchanged. |
-| **Remote head is an ancestor of worktree head** | **Returns `True`. Resets nothing.** The worktree holds commits the remote does not. |
+| **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
 
-**The locally-ahead row is mandatory here, not only in the detector.** FR-001a forbids resetting
-such a branch. A rule keyed on "not an ancestor" would catch it, because a branch that is ahead of
-its remote is also not an ancestor of it, and the reset would discard the unpushed commit this
-whole feature is careful about.
+**The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
+is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
+its remote resets like any other, because nothing leaves a commit there that exists nowhere else.
 
-The pull path answers this without any classification context: "is the remote head an ancestor of
-the worktree head" is a pure ancestry question, the same gateway call the detector makes. What the
-pull path cannot do is tell a rewrite from a deliberate re-target, because that needs the
-suppression marker. It does not need to: both reset, and neither records.
+The pull path answers this without any classification context: both ancestry questions are the
+same gateway call the detector makes. What the pull path cannot do is tell a rewrite from a
+deliberate re-target, because that needs the suppression marker. It does not need to: both reset,
+and neither records.
 
 ### Rules
 
@@ -336,8 +404,9 @@ suppression marker. It does not need to: both reset, and neither records.
   broadcast handler's flag as a property of self-healing.
 - The reset writes no rewrite record and emits no event, whatever the caller (FR-007).
 - No message raised from this path calls a divergent history a conflict (FR-003, FR-017).
-- **This change cannot be implemented before PR #10465 lands.** Without the push-before-graph-write
-  ordering, an unconditional reset can discard a merge commit that exists on one worker only.
+- **The unconditional reset is safe because of the merge ordering.** `InfrahubRepository.merge`
+  pushes before it records and resets the destination worktree on failure, so no merge commit is
+  left on one worker alone for this reset to discard.
 
 ---
 
@@ -345,15 +414,22 @@ suppression marker. It does not need to: both reset, and neither records.
 
 Changed. `backend/infrahub/git/sync.py`.
 
-It returns the branches the cycle advanced instead of returning nothing, and it raises for failed
-branches only after its caller has had the chance to broadcast.
+Today it returns a `SyncReport` of the skipped, imported and advanced branches, and it raises
+`RepositoryBranchesFailedError`, carrying the same report, when a branch failed. Phase 4 (T031) makes
+it return the branches the cycle advanced, and leaves the raise for failed branches to its caller,
+after the broadcast.
 
 ```text
-sync(repo, staging_branch) -> SyncOutcome
+sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # today
+sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # after T031
 ```
 
+`graph_commits` holds the commit the graph records for each Infrahub branch that can still record
+one, read once per cycle (section 1). The add flow passes none, so its first sync classifies nothing.
+
 `SyncOutcome` carries `reconciled: tuple[ReconciledBranch, ...]` and
-`failed: tuple[FailedImport, ...]`.
+`failed: tuple[FailedImport, ...]`. It must also keep what `SyncReport` reports today, because
+`git/tasks.py::report_sync_run` logs the skipped branches and links the run from it.
 
 ### Contract
 
@@ -390,6 +466,7 @@ repository.
 | One message, for `staging_branch or registry.default_branch` only | One message, carrying every branch the cycle advanced |
 | Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is re-raised |
 | Commit read from `repo.default_branch` | Commit taken per branch from `ReconciledBranch` |
+| A staging sync names the staging branch | A staging sync names the branch its trunk maps onto, as `ReconciledBranch` does, so other workers move their trunk worktree |
 
 ### Rules
 
@@ -398,9 +475,9 @@ repository.
 - When the cycle advanced no branch, no message is sent. **This removes a heal that exists today.**
   `sync_repository_from_origin` currently sends the pinned trunk commit every cycle even when
   nothing changed, which brings a worker that missed an earlier broadcast back within a minute. The
-  pull-path self-heal of FR-005 replaces it, and that is gated on PR #10465. Until it lands, keep
-  sending the trunk message unconditionally: the "no branch advanced, no message" rule ships with
-  the pull-path reset, not before it.
+  pull-path self-heal of FR-005 replaces it. **Order the two:** keep sending the trunk message
+  unconditionally until the pull-path reset ships, then drop it. Shipping the "no branch advanced,
+  no message" rule first leaves a stale worker with no heal on either side.
 - When every branch failed, the coalesced message carries no pairs. The unconditional trunk
   message above still goes, because it is what heals a stale worker and nothing in this phase
   replaces it.
@@ -437,11 +514,10 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
 3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
-6. **It resets with `reset_to_commit` and runs no ancestry check**, so it does not honour
-   `LOCAL_AHEAD`: a pinned SHA moves the worktree whether or not it holds commits the remote does
-   not. That is deliberate, because the broadcast carries a SHA the sending worker already resolved
-   and the receiving worker is meant to converge on exactly it. It is also why widening the
-   broadcast is gated on #10465 along with every other reset.
+6. **It resets with `reset_to_commit` and runs no ancestry check.** It moves the worktree onto
+   the pinned SHA without asking how the two commits relate, which is what the pull path asks.
+   That is deliberate, because the broadcast carries a SHA the sending worker already resolved
+   and the receiving worker is meant to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
    and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
@@ -628,15 +704,15 @@ reaches it. This guard closes that.
    "conflict" (FR-003, FR-017).
 4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
    case where the merge commit would hide the rewrite.
-5. A locally-ahead branch is not diverged. It merges as it does today.
+5. A worktree ahead of its remote has been rewound. It is reset before the merge, like any other.
 
 ### Why it refuses instead of reconciling
 
-`InfrahubRepository.merge` calls `update_commit_value` on the destination **before** it pushes. So
-a reset-then-merge writes the merge commit to the graph, the next cycle finds the graph and the
-remote in agreement, and the branch classifies `UNCHANGED`. The rewrite is then never recorded,
-the trunk signal never fires, and the rewritten content is never re-imported. Resetting the source
-is worse: it merges objects the graph never imported.
+`InfrahubRepository.merge` pushes the merge commit **before** it records it on the destination. So
+a reset-then-merge puts the merge commit on the remote and in the graph, the next cycle finds the
+graph and the remote in agreement, and the branch classifies `UNCHANGED`. The rewrite is then never
+recorded, the trunk signal never fires, and the rewritten content is never re-imported. Resetting
+the source is worse: it merges objects the graph never imported.
 
 Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
 under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry

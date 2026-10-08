@@ -44,7 +44,8 @@ drift for 200 branches in one worker request (SC-005); an idle read-only reposit
 `ls-remote` per interval (FR-018)
 **Constraints**: no synchronous clone inside a read (FR-013); worker wait bounded by
 `broker.rpc_timeout` with a catalogued error (FR-012); no write to `commit` or `ref` anywhere in this
-feature (FR-016); no graph schema change; `schema/schema.graphql` must stay environment-independent
+feature (FR-016); one graph schema change only, a new `sync_status` choice written by the read-only
+check (FR-030, lands with T108); `schema/schema.graphql` must stay environment-independent
 **Scale/Scope**: 3 GraphQL operations, 1 Cypher query class, 2 RPC message pairs, 3 workflow
 definitions, 2 settings, 1 catalogue error, 1 frontend tab plus one query chain; one shared-path
 change to `InfrahubMessageBus.rpc`
@@ -58,11 +59,11 @@ remains.
 
 | Principle | Status | Notes |
 | --- | --- | --- |
-| I. Schema-Driven Integrity | PASS | No node, attribute or migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
+| I. Schema-Driven Integrity | PASS | No node, attribute or migration. One added choice on the existing `sync_status` dropdown (T108), which needs no migration. Generated files are regenerated, never edited: `schema/schema.graphql`, frontend GraphQL types, error-catalogue artefacts, configuration reference. |
 | II. Branch-Safe by Default | PASS | Every answer is computed for `graphql_context.branch`: the imported commit is the branch-local or branch-aware `commit`, the read-only `ref` is branch-aware, and the remote branch is mapped through `_get_mapped_remote_branch`. Nothing is written, so merge behaviour is unchanged (SC-011). |
 | III. Type Safety & Explicit Contracts | PASS | SDL defined before implementation (`contracts/`); frozen dataclasses in `infrahub.git.state.models`; Pydantic message models at the bus boundary; `RepositoryGitStateReader` protocol returning those dataclasses, never a wire model; frontend uses gql.tada-derived types. |
 | IV. Test Discipline | PASS | Unit tests for classification; component tests for the per-branch query, resolvers, permission denial, laziness, handlers; a unit test for the RPC timeout, whose never-replying doubles open no connection; integration tests for behind, rewritten, tag move, lock serialisation, and the broadcast binding that makes convergence per-worker; e2e for the Commits tab. Test adapters (`BusRecorder`, `WorkflowRecorder`, `RecordingLockRegistry`) instead of mocks. FR-017 is covered as three deterministic links rather than a multi-worker fixture, per `checklists/requirements.md`. |
-| V. Query Performance & Efficiency | PASS | Worker cost per page is constant in history length (`iter_commits` with skip and at most `limit` ancestry checks). Graph side: the drift list reads every branch's tracked values in one parameterised query (`core/query/repository.py`), so the query count is independent of branch count, asserted by instrumentation at 5 and 200 branches. The existing per-branch sync helper is left untouched; IFC-3104 refactors it onto the same query. |
+| V. Query Performance & Efficiency | PASS | Worker cost per page is constant in history length (`iter_commits` with skip and at most `limit` ancestry checks). Graph side: the drift list reads every branch's tracked values in one parameterised query (`core/query/repository.py`), so the query count is independent of branch count, asserted by instrumentation at 5 and 20 branches under a lowered `query_size_limit`, which a query that lost its own bound would fail and 200 branches at the default limit would not. The existing per-branch sync helper is left untouched; IFC-3104 refactors it onto the same query. |
 | VI. Security & Input Boundaries | PASS | `limit` bounded to 1..100 and `offset` non-negative in the resolver; repository view permission enforced imperatively (the analyzer cannot see custom queries); timeout error message names the operation only, never the worker or paths; credentials for `ls-remote` come from the worker's existing git config, never from the message. |
 | VII. Simplicity & Maintainability | PASS | Reuses `GitFileGet`, `RefreshGitFetch`, `WorkflowDefinition` cron with `CANCEL_NEW`, cache `not_exists`, `define_object_permission_from_branch`, and `get_repositories_commit_per_branch` for the refs-check flow's repository list. The reader protocol earns its place by keeping the message-bus dependency out of the resolver, and its second and third implementations are the test doubles. The one new abstraction, `RepositoryBranchValuesQuery`, is required by Principle V rather than anticipated: it follows the existing Query-class pattern, has a caller in this feature, and a second in IFC-3104. No sample-data path, no throwaway setting. No new dependency. |
 
@@ -126,6 +127,9 @@ backend/infrahub/
 ├── git/state/factory.py                          # NEW   build_repository_git_state_reader, the only wiring point
 ├── git/state/bus_reader.py                       # NEW   BusRepositoryGitStateReader, the only module knowing a routing key
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
+├── git/state/commit_log_wire.py                  # NEW   both-way conversion between the commit-log messages and the dataclasses
+├── git/state/branch_heads_wire.py                # NEW   both-way conversion between the branch-heads messages and the dataclasses
+├── git/state/warm_up.py                          # NEW   RepositoryWarmUp: clone, fetch, broadcast pinned to the commit read under the lock
 ├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
 ├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
@@ -135,6 +139,8 @@ backend/infrahub/
 ├── workflows/catalogue.py                        # EDIT  three WorkflowDefinition constants
 ├── message_bus/messages/git_commit_log_get.py    # NEW
 ├── message_bus/messages/git_branch_heads_get.py  # NEW
+├── message_bus/messages/refresh_git_clone.py     # NEW   clone-only broadcast, sent by the warm-up when nothing is imported
+├── message_bus/operations/git/repository.py      # EDIT  clone handler: create a missing copy, change nothing else
 ├── message_bus/messages/__init__.py              # EDIT  MESSAGE_MAP, RESPONSE_MAP, PRIORITY_MAP
 ├── message_bus/operations/git/commit_log.py      # NEW   shallow handler: unpack, delegate to log_reader, reply
 ├── message_bus/operations/git/branch_heads.py    # NEW   shallow handler, same shape
@@ -146,11 +152,13 @@ backend/tests/
 ├── helpers/repository_git_state.py                               # NEW  Recording and Failing reader doubles
 ├── unit/git/state/test_classification.py                         # NEW  parametrised, no fixtures
 ├── unit/git/state/test_bus_reader.py                             # NEW  routing key, timeout, reply mapping
+├── unit/git/state/test_commit_log_wire.py                        # NEW  both round trips, field-set parity
+├── integration/git/test_repository_warm_up.py                    # NEW  clone, pin read under the lock, no broadcast without a pin
 ├── unit/git/                                                     # NEW  ref-format validation, including a "-" prefixed ref
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions
 ├── component/git/                                                # NEW  FR-002 stored-node delta independent of history length
-├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 200 branches
+├── component/core/query/test_repository_branch_values.py         # NEW  per-branch resolution, inheritance, query count at 5 vs 20 branches
 ├── component/graphql/queries/test_repository_git_state.py        # NEW  resolvers, permission, laziness
 ├── component/graphql/mutations/test_repository.py                # EDIT  check-refs mutation with WorkflowRecorder
 ├── unit/services/adapters/message_bus/test_rpc_timeout.py        # NEW  no broker: the doubles open no connection

@@ -38667,7 +38667,7 @@ export type RepositoryBranchDrift = {
   condition: RepositoryGitCondition;
   /** Remote branch or tracked ref compared for this branch. Null when the branch is not tracked. */
   git_ref: Maybe<Scalars['String']['output']>;
-  /** Latest remote commit. Null when there is no remote counterpart or the branch is not tracked. */
+  /** Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE. */
   remote_head: Maybe<Scalars['String']['output']>;
   tracked_commit: Maybe<Scalars['String']['output']>;
 };
@@ -38752,6 +38752,7 @@ export const RepositoryGitCondition = {
   NOT_TRACKED: 'NOT_TRACKED',
   NO_REMOTE: 'NO_REMOTE',
   ORPHANED: 'ORPHANED',
+  REF_MISSING: 'REF_MISSING',
   REWRITTEN: 'REWRITTEN',
   UNAVAILABLE: 'UNAVAILABLE'
 } as const;

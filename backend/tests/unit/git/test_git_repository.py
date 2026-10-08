@@ -29,6 +29,8 @@ from infrahub.exceptions import (
     RepositoryInvalidBranchError,
 )
 from infrahub.git import InfrahubRepository
+from infrahub.git.base import BranchInRemote
+from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
 from tests.helpers.file_repo import MultipleStagesFileRepo
@@ -668,8 +670,11 @@ class _BranchSyncRepository(InfrahubRepository):
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         return (["branch01", "branch02"], [])
 
-    async def _exclude_read_only_branches(
-        self, new_branches: list[str], updated_branches: list[str]
+    def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
+        return {}
+
+    def _exclude_read_only_branches(
+        self, new_branches: list[str], updated_branches: list[str], graph_branches: dict[str, BranchData]
     ) -> tuple[list[str], list[str]]:
         return (new_branches, updated_branches)
 
@@ -681,7 +686,7 @@ class _BranchSyncRepository(InfrahubRepository):
 
     async def create_branch_in_graph(self, branch_name: str) -> BranchData:
         return BranchData(
-            id=str(UUIDT.new()),
+            id=f"{branch_name}-id",
             name=branch_name,
             description=None,
             sync_with_git=True,
@@ -710,11 +715,6 @@ class _BranchSyncRepository(InfrahubRepository):
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         return True
 
-    async def _collect_staging_imports(
-        self, staging_branch: str | None, updated_branches: list[str]
-    ) -> list[PendingObjectImport]:
-        return []
-
 
 async def test_collect_pending_imports_isolates_per_branch_push_failure() -> None:
     """A connection failure while pushing one new branch is recorded, not raised over the others."""
@@ -729,13 +729,21 @@ async def test_collect_pending_imports_isolates_per_branch_push_failure() -> Non
         internal_status=RepositoryInternalStatus.ACTIVE,
         reinitialized=False,
         infrahub_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        client=BranchListingClient(),
         connection_error_branch="branch01",
     )
 
     collected = await repository.collect_pending_imports()
 
-    assert collected.imports == [PendingObjectImport(infrahub_branch_name="branch02", commit="commit-branch02")]
+    assert collected.imports == [
+        PendingObjectImport(
+            infrahub_branch_name="branch02",
+            commit="commit-branch02",
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="branch02", infrahub_branch_id="branch02-id", commit="commit-branch02"
+            ),
+        )
+    ]
     assert collected.failed_imports == [
         FailedImport(
             branch_name="branch01",
@@ -823,6 +831,27 @@ def test_raise_if_branches_failed_logs_structured_fields(
     assert attrs["step"] == "collection"
     assert attrs["reason"] == "schema validation failed"
     assert attrs["repository"] == "test-repo"
+
+
+def test_raise_if_branches_failed_does_not_log_failed_imports_again(
+    stub_repo: InfrahubRepository, caplog: pytest.LogCaptureFixture
+) -> None:
+    failed_imports = [
+        FailedImport(branch_name="branch01", step=ImportStep.COLLECTION, reason="error 1"),
+        FailedImport(branch_name="branch02", step=ImportStep.IMPORT, reason="error 2"),
+    ]
+    with (
+        caplog.at_level(logging.WARNING, logger="infrahub.tasks"),
+        pytest.raises(
+            RepositoryError,
+            match=r"^Unable to synchronize the following branches of repository test-repo: "
+            r"branch01 \(step=collection\): error 1; branch02 \(step=import\): error 2$",
+        ),
+    ):
+        stub_repo.raise_if_branches_failed(failed_imports)
+    assert [record.getMessage() for record in caplog.records] == [
+        "Failed to synchronize branch branch01 of repository test-repo at step collection: error 1"
+    ]
 
 
 TRUNK = "develop"

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from infrahub.core.constants import RepositoryGitCondition, RepositoryGitUnavailableReason
@@ -60,8 +60,13 @@ class GitStateFacts:
 
     imported_is_ancestor_of_head: bool | None = None
 
-    pending_count: int | None = None
-    """Left None when the count was not requested, as well as when no count applies."""
+    ref_is_configured: bool = field(kw_only=True)
+    """Whether the ref was named explicitly by the repository, so a missing head means it was removed.
+
+    Part of the repository's configuration rather than a measurement, and required so no caller can
+    leave a removed ref reading as a neutral state. A remote branch Infrahub maps a branch onto may
+    legitimately never have existed.
+    """
 
     def __post_init__(self) -> None:
         """Reject a measurement the worker could not have taken.
@@ -76,8 +81,6 @@ class GitStateFacts:
             self.imported_resolvable is not True or self.head is None
         ):
             raise ValueError("Ancestry is only measured for an imported commit the clone resolved, against a head")
-        if self.pending_count is not None and self.imported_is_ancestor_of_head is not True:
-            raise ValueError("A pending count is only measured when the imported commit is an ancestor of the head")
 
 
 @dataclass(frozen=True)
@@ -148,10 +151,11 @@ class CommitLogResult:
     """Display-safe explanation, set whenever no git-derived answer was produced."""
 
     def __post_init__(self) -> None:
-        """Reject a result whose condition and unavailable reason disagree.
+        """Reject a result whose fields contradict its condition.
 
         Raises:
-            ValueError: When only one of the two is set.
+            ValueError: When only one of the condition and the unavailable reason is set, or a
+                pending count accompanies a condition other than BEHIND.
 
         """
         is_unavailable = self.condition is RepositoryGitCondition.UNAVAILABLE
@@ -161,6 +165,8 @@ class CommitLogResult:
             raise ValueError(
                 f"A result carrying an unavailable_reason must have condition UNAVAILABLE, not {self.condition.name}"
             )
+        if self.pending_count is not None and self.condition is not RepositoryGitCondition.BEHIND:
+            raise ValueError(f"A pending count is only reported under BEHIND, not {self.condition.name}")
         _raise_unless_unavailable_fields_agree(
             unavailable_reason=self.unavailable_reason,
             warm_up_task_id=self.warm_up_task_id,
@@ -171,7 +177,7 @@ class CommitLogResult:
 @dataclass(frozen=True)
 class BranchDriftRow:
     branch_name: str
-    git_ref: str | None
+    git_ref: str
     tracked_commit: str | None
     remote_head: str | None
     condition: RepositoryGitCondition
@@ -188,9 +194,6 @@ class BranchDriftResult:
 
     def __post_init__(self) -> None:
         """Reject a result whose unavailable fields contradict the reason it carries.
-
-        The rows are graph-resolved, so this result carries them alongside an unavailable column
-        rather than instead of it.
 
         Raises:
             ValueError: When a field belonging to the unavailable path is set without it.
