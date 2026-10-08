@@ -16,8 +16,8 @@ the code of `feature-number-pools-1.12`, and the plan is built on the facts in t
 |---|---|---|
 | "P1 (several weighted ranges) has landed: allocation walks a range set" | Holds. The `CoreNumberPoolRange` kind, its mutations (`graphql/mutations/resource_manager/number_pools/pool_range.py`, overlap validation in `pools/number_pool_range_validation.py`), the pool mutations accepting `ranges` and the deprecated shorthand (`number_pools/pool.py`), the migration `m080_number_pool_ranges` giving every existing pool one range, `pools/number_pool_shorthand.py::NumberPoolShorthandMirror` keeping `start_range` / `end_range` equal to the single range's bounds (null for none or several), `pools/number_ranges.py::EffectiveSpace` (the ranges clipped to the attribute's domain, with `size`, `size_of`, `contains`, `range_for`, `as_query_ranges`) and `pools/number_pool_number_picker.py::NumberPoolNumberPicker.next_number`, which drains the space's segments heaviest first through `pools/number_pool_repository.py::NumberPoolRepository.get_free` | The division filter is added inside the shared records fragment, which the range walk calls once per segment; the dedicated surface computes `size`, `used` and the values it lists from `EffectiveSpace`, so allocation and the surface use one definition of the pool's space |
 | "The records lookup already resolves each record to its owning object" | `core/query/resource_manager.py::reserved_values_query` matches `(pool)-[:IS_RESERVED]->(attr:Attribute {name})` and reads `HAS_VALUE` forward; it never touches the holder. Only `NumberPoolGetAllocated` resolves the holder, and that one lacks the deleting-branch and fork-window logic the used/free fragment has | The scoped fragment adds the `(n)-[:HAS_ATTRIBUTE]->(attr)` hop and the per-entry division reads; the allocated query is brought onto the same fragment so utilization and allocation read the same liveness |
-| "Relationships are processed before attributes when a node is written" | True on create: `core/node/__init__.py::Node._process_fields` runs relationships before attributes. False on update: `Node.from_graphql` applies the payload in dict order and `core/attribute.py::BaseAttribute.from_graphql` calls `handle_pool` inline | On update, pool handling is deferred until every field in the payload has been applied (D4) |
-| "P2 attach is in flight" | Holds in part. The ledger re-anchoring and the retirement of dead records are merged: the global `(pool)-[:IS_RESERVED {identifier, provenance}]->(:Attribute)` edge, migrated by `m081_reanchor_number_pool_reservations` (re-anchor, delete legacy pool source edges, collapse shared-attribute records, delete legacy records), the forward liveness read, closure through the branch-agnostic retirement queries on delete, rename, merge, rebase and branch delete, and `core/query/resource_manager.py::PoolRecordProvenance`. The attach of a provided number is merged: a `<Kind>Update` sending `value` and `from_pool` attaches the number through `pools/number_pool_attribute_allocator.py::NumberPoolAttributeAllocator.attach`; a write sending `from_pool` without `value` on an untracked number is refused. Detach (`from_pool: null`) is accepted by the GraphQL schema and does nothing yet | User Story 7 uses the attach, one node per update; no bulk attach mutation is added. Everything else in this slice reads the ledger as it is today; `provenance` is real data from the first change set |
+| "Relationships are processed before attributes when a node is written" | True on create: `core/node/__init__.py::Node._process_fields` runs relationships before attributes. False on update: `Node.from_graphql` applies the payload in dict order and `core/attribute.py::BaseAttribute.from_graphql` calls `pools/attribute_pool_applier.py::AttributePoolApplier.apply(allocate=True)` inline. `Node.from_graphql` and `_process_fields` already take `process_pools`, and `core/node/lock_utils.py::apply_payload_for_lock_names` already applies the payload with `process_pools=False` so that `apply(allocate=False)` resolves the pool for the lock names without allocating | On update, pool handling is deferred until every field in the payload has been applied (D4) |
+| "P2 attach is in flight" | Holds in part. The ledger re-anchoring and the retirement of dead records are merged: the global `(pool)-[:IS_RESERVED {identifier, provenance}]->(:Attribute)` edge, migrated by `m081_reanchor_number_pool_reservations` (re-anchor, delete legacy pool source edges, collapse shared-attribute records, delete legacy records), the forward liveness read, closure through the branch-agnostic retirement queries on delete, rename, merge, rebase and branch delete, and `core/query/resource_manager.py::PoolRecordProvenance`. The attach of a provided number is merged: a `<Kind>Update` sending `value` and `from_pool` attaches the number through `pools/number_pool_attribute_allocator.py::NumberPoolAttributeAllocator.attach`; a write sending `from_pool` without `value` on an untracked number is refused. Detach (`from_pool: null`) is accepted by the GraphQL schema and does nothing yet | User Story 7 uses the attach, one node per update; no bulk attach mutation is added. Everything else in this slice reads the ledger as it is today; `provenance` is read from the ledger once the real reads land (IFC-3329), the first delivery returning the fixed dataset's provenance |
 
 Facts about the generic pool queries, which the frontend needs of 2026-10-06 turned into
 requirements:
@@ -62,15 +62,15 @@ node in hand. A template-created node therefore has no division to read at that 
 | Pool kind | `core/schema/definitions/core/resource_pool.py::core_number_pool` (branch-agnostic, `node`, `node_attribute`, deprecated `start_range`/`end_range`, `pool_type`, `ranges` relationship) |
 | Attribute parameters | `core/schema/attribute_parameters.py::NumberPoolParameters`; validated at load by `core/schema/schema_branch.py::SchemaBranch._validate_number_pool_parameters` |
 | Schema-created pool provisioning | `pools/schema_number_pool_upserter.py::SchemaNumberPoolUpserter`, `pools/schema_number_pool_synchronizer.py::SchemaNumberPoolSynchronizer._update_pool_from_schema` (copies bounds from the default-branch schema only) |
-| Allocation | `core/node/__init__.py::Node.handle_pool` → `pools/number_pool_attribute_allocator.py::NumberPoolAttributeAllocator.allocate` → `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` (lock `resource_pool.<pool id>`) → `pools/number_pool_number_picker.py::NumberPoolNumberPicker.next_number` → `pools/number_pool_repository.py::NumberPoolRepository.get_free` → `NumberPoolGetFree` |
+| Allocation | `core/attribute.py::BaseAttribute.from_graphql` (update) and `core/node/__init__.py::Node._process_fields_attributes` (create) → `pools/attribute_pool_applier.py::AttributePoolApplier.apply` (resolves the pool; `allocate=False` resolves it for the lock names only) → `pools/number_pool_attribute_allocator.py::NumberPoolAttributeAllocator.allocate` → `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` (lock `resource_pool.<pool id>`) → `pools/number_pool_number_picker.py::NumberPoolNumberPicker.next_number` → `pools/number_pool_repository.py::NumberPoolRepository.get_free` → `NumberPoolGetFree` |
 | Effective space | `pools/number_ranges.py::EffectiveSpace`, built from the pool's ranges and the attribute's domain by `pools/number_pool_space.py::to_pool_ranges` and `attribute_domain` |
 | Records fragment | `core/query/resource_manager.py::reserved_values_query`, consumed by `NumberPoolGetUsed` and `NumberPoolGetFree` |
 | Allocated rows | `core/query/resource_manager.py::NumberPoolGetAllocated` (holder id, branch, value, identifier; filter on the space's segments) |
 | Utilization | `graphql/queries/resource_manager.py::resolve_number_pool_utilization` over `pools/number.py::NumberUtilizationGetter`, which runs `NumberPoolGetAllocated` |
 | Generic pool queries | `graphql/queries/resource_manager.py::InfrahubResourcePoolAllocated`, `InfrahubResourcePoolUtilization`, registered in `graphql/schema.py::InfrahubBaseQuery` |
-| Pool mutation | `graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation` (shorthand parsing, `ranges` handling, the schema-pool refusal of a shorthand write in `_refuse_shorthand_conflicts`, the shorthand mirror sync); range mutations in `number_pools/pool_range.py`; shared lock and sync helpers in `number_pools/common.py` |
+| Pool mutation | `graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation` (shorthand parsing, `ranges` handling, the schema-pool refusal of a shorthand or `ranges` write in `_refuse_unsupported_writes`, the shorthand mirror sync); range mutations in `number_pools/pool_range.py`; shared lock and sync helpers and the refusal messages (`SCHEMA_POOL_EDIT_HINT`, `SCHEMA_POOL_SHORTHAND_REFUSED`, `SCHEMA_POOL_RANGES_REFUSED`) in `number_pools/common.py` |
 | Range persistence | `pools/number_pool_repository.py::NumberPoolRepository` (`get_ranges` ordered by start, `create_range`, `save_range_bounds`, reservations) |
-| Schema-path parsing and validation | `core/schema/basenode_schema.py::parse_schema_path`, `SchemaAttributePath`; `core/schema/schema_branch.py::SchemaBranch.validate_schema_path` with `core/constants/schema.py::SchemaElementPathType` |
+| Schema-path parsing and validation | `core/schema/basenode_schema.py::BaseNodeSchema.parse_schema_path`, `SchemaAttributePath`; `core/schema/schema_branch.py::SchemaBranch.validate_schema_path` with `core/constants/schema.py::SchemaElementPathType` |
 | Runtime path values | `core/node/constraints/grouped_uniqueness.py::_get_unique_valued_paths` (peer id through `RelationshipManager.get_peer_id`, attribute through `.value`, enum unwrapped, `None` → `NULL_VALUE`) |
 | Schema-change checkers | `core/validators/__init__.py::CONSTRAINT_VALIDATOR_MAP`; constraints and migrations derived in `core/models.py::SchemaUpdateValidationResult.process_diff` (field removal is a migration, not a constraint) |
 | Schema pools per field | `pools/registration.py::get_branches_with_schema_number_pool` (schema side only; no pool-side lookup exists) |
@@ -184,8 +184,9 @@ stored division key (rejected by the PRD; the derived read is its repair path).
 `entries_in_force(scope, schema_branch, kind)` (pure: drops entries the branch's schema does not
 define, FR-008) and `async division_of(db, node, entries) -> DivisionKey` (peer id through the
 relationship manager, which may read the database for a peer given by id or human-friendly id;
-attribute `.value`, enum unwrapped). `Node.handle_pool` calls it and passes the key to
-`CoreNumberPool.get_resource`, whose signature gains `division: DivisionKey | None`.
+attribute `.value`, enum unwrapped). `AttributePoolApplier.apply` calls it and passes the key
+through `NumberPoolAttributeAllocator.allocate` to `CoreNumberPool.get_resource`, whose signature
+gains `division: DivisionKey | None`.
 
 Three write paths reach allocation:
 
@@ -194,10 +195,11 @@ Three write paths reach allocation:
 - **Create through a template**: the applier allocates before any relationship exists and without a
   node. It stops allocating: `_handle_pool_relationship` records the pool id and marks the attribute
   pending (the `TemplatePoolFields.pending` mechanism exists and the mandatory-attribute check
-  already tolerates it), and `_process_fields_attributes` runs `handle_pool` for it after the
-  relationships are applied, as it does for a user `from_pool`.
-- **Update**: `Node.from_graphql` applies every attribute with `process_pools=False`, then runs
-  `handle_pool` for each attribute whose payload carried `from_pool`. `from_pool` itself is still
+  already tolerates it), and `_process_fields_attributes` runs `AttributePoolApplier.apply` for it
+  after the relationships are applied, as it does for a user `from_pool`.
+- **Update**: `Node.from_graphql` applies every attribute with `process_pools=False` (the flag
+  exists; the lock-name preview already uses it), then runs `AttributePoolApplier.apply(...,
+  allocate=True)` for each attribute whose payload carried `from_pool`. `from_pool` itself is still
   assigned inline by `BaseAttribute.from_graphql`; only the allocation is deferred, and with it
   the lock per pool and division, which `get_resource` takes once the division is resolved (D5).
 
@@ -220,11 +222,12 @@ keep the applier allocating from the raw field dict (no node, so no division).
 writer's entry values in scope order; on an unscoped pool it keeps `resource_pool.<pool id>`. The
 lock is taken inside `get_resource`, after the division is resolved, so on the update path after
 every field of the payload is applied (D4). Every write that takes the pool lock for a tracked
-attribute uses the same key. Whether the mutation-level pool lock that
-`core/node/lock_utils.py::get_lock_names_on_object_mutation` derives from `from_pool` before the
-node is saved is removed in favour of the lock inside `get_resource`, or kept as a pool-level
-guard, is settled by IFC-3349 with a functional test: two writers in different divisions must
-allocate in parallel and two writers in one division must serialise.
+attribute uses the same key. On a scoped pool the lock on pool and division replaces the
+mutation-level pool lock that `core/node/lock_utils.py::get_lock_names_on_object_mutation` derives
+from `from_pool` before the node is saved: that lock is not taken for a scoped pool, because held
+for the whole mutation it would serialise every division. An unscoped pool keeps the pool-level
+lock. A functional test pins it: two writers in different divisions allocate in parallel and two
+writers in one division serialise.
 
 **Rationale**: the Notion PRD's Mechanism table ("Lock": `pool_id` → `pool_id + scope_key`) and
 FR-031 ask for it: without it one scoped pool serialises every division that a pool per site ran in
@@ -246,14 +249,18 @@ expands each row into the divisions it occupies, counts distinct values per divi
 split, and orders the divisions by utilization. The reporter answers every
 `NumberPoolUtilizationFigures` block: each division's over the pool, and one given division's over
 the pool and over each range (FR-011, FR-015, FR-017, FR-022); on an unscoped pool, the pool's and
-each range's. The divisions listed are those the rows occupy, so a
-division whose nodes hold no value is not listed (FR-011). A new `NumberPoolDivisions` query
+each range's. A division's figures count the rows whose holder occupies the division on any live
+branch, the same union the `division` filter applies (D3), so one value can count in several
+divisions; `used_default_branch` is the division's values held on the default branch and
+`used_branches` those held on other branches only. The divisions listed are those the rows occupy,
+so a division whose nodes hold no value is not listed (FR-011). For the divisions list,
+relationship peers are resolved to display labels by one `NodeManager.get_many(...,
+branch_agnostic=True)` over the distinct peer ids, and a peer that still cannot be read (a
+division keyed by a node that exists only on a branch the reader cannot see) is labelled by its
+identifier so the non-null field never voids the list. A new `NumberPoolDivisions` query
 enumerates the distinct division tuples over `(n:Node:<kind>)-[:IS_PART_OF]->(:Root)` on any live
-branch, with the node count of each, for the sizing check on a scoped attribute add; relationship
-peers are resolved to display labels by one `NodeManager.get_many(..., branch_agnostic=True)` over
-the distinct peer ids, and a peer that still cannot be read (a division keyed by a node that exists
-only on a branch the reader cannot see) is labelled by its identifier so the non-null field never
-voids the list.
+branch, with the node count of each, for the sizing check on a scoped attribute add (D9); the
+divisions list does not use it.
 
 The generic `InfrahubResourcePoolAllocated` query shares `NumberPoolGetAllocated`, so the row shape
 keeps holder id, branch, value and record identifier and the generic resolver keeps the bounds
@@ -302,7 +309,7 @@ computes divisions.
 
 **Alternatives**: `divisions` on `PoolUtilization` and a `division` argument on
 `InfrahubResourcePoolAllocated` (always empty or ignored for IP pools, and the range rows stay IP
-types); one root object `InfrahubNumberPool` (kept as the open point); `edges { node }` wrapping on
+types); one root object `InfrahubNumberPool` (form B, not built; decided on 2026-10-07); `edges { node }` wrapping on
 the dedicated lists (rejected for uniformity with `ranges` and `divisions`, which the frontend
 consumes as plain lists).
 
@@ -310,7 +317,8 @@ consumes as plain lists).
 
 **Decision**: a `ScopedPoolDependencyChecker` in `core/validators/pool/scope.py` registered in
 `CONSTRAINT_VALIDATOR_MAP` for `attribute.optional.update`, `relationship.optional.update`,
-`relationship.cardinality.update`, `node.attribute.remove` and `node.relationship.remove`. Nothing
+`relationship.cardinality.update`, `attribute.unique.update` (the pool's own attribute made unique
+while the pool carries a scope), `node.attribute.remove` and `node.relationship.remove`. Nothing
 in `core/models.py` changes: `SchemaUpdateValidationResult.add_validator_for_migration` already
 appends a constraint for every migration whose name is in the map, which is how `node.attribute.add`
 reaches its checker today. The checker reads only `request.schema_path.schema_kind` and
@@ -325,8 +333,20 @@ existed" clause).
 on the branch being loaded. Pools per kind are few, so a Python filter beats a `CONTAINS` over a
 list attribute's stored value.
 
+A rename is not refused: the rename's schema migration (`attribute.name.update`, existing;
+`relationship.name.update`, added for this, since the relationship's `name` is `update: allowed`
+and has no migration today) uses the same lookup and rewrites the entry in `allocation_scope` of
+every pool that names the field, user-created or schema-created, as a data write of the migration
+(FR-032). A schema-declared scope carries the new name in the same load; the schema-update
+validation accepts that one change to a `NOT_SUPPORTED` field when it matches a rename in the same
+diff. The pool is branch-agnostic, so the write runs when the renaming branch merges into the
+default branch; until then the branch's reads ignore the stored entry (FR-008). Proposed rule,
+listed in the spec's deviations for confirmation.
+
 **Alternatives**: a pure schema-branch check (cannot see pools, which are data); a Cypher filter on
-the list value (format-dependent).
+the list value (format-dependent); refusing a rename while a pool names the field (forces the
+operator to clear and re-set the scope around every rename, with a window in which the pool
+allocates coarser).
 
 ### D9 — The attribute-add size check compares against the largest division
 
@@ -336,15 +356,23 @@ from `NumberPoolDivisions` rather than the kind's total count.
 
 **Rationale**: a scoped pool legitimately serves more nodes than its size.
 
-### D10 — Schema-declared scope is reconciled from the default branch, like the bounds
+### D10 — Schema-declared scope is written at pool creation and fixed afterwards
 
 **Decision**: `NumberPoolParameters.allocation_scope: list[str] | None = None`, with `update`
-support `ALLOWED` (changing it moves no data, FR-006); FR-009's entry rules run in
-`_validate_number_pool_parameters` on the branch being loaded. `SchemaNumberPoolUpserter` writes it
-at creation; `SchemaNumberPoolSynchronizer._update_pool_from_schema` copies it from the
-default-branch schema as it copies the bounds.
-`InfrahubNumberPoolMutation.mutate_update` refuses a scope change on a `pool_type == Schema` pool
-with the existing default-branch message (FR-013).
+support `NOT_SUPPORTED`, as #10917 shipped it: a schema load that sets, changes or clears the
+field on an existing attribute is refused by the schema-update validation, on every branch, so a
+declared scope is fixed when the attribute is declared (FR-012; the rename of a field it names is
+the one accepted change, D8). FR-009's entry rules run in `_validate_number_pool_parameters` on the
+branch being loaded. `SchemaNumberPoolUpserter` writes the scope at pool creation;
+`SchemaNumberPoolSynchronizer._update_pool_from_schema` does not copy it, since the declaration
+cannot change. `InfrahubNumberPoolMutation.mutate_update` refuses a scope change on a
+`pool_type == Schema` pool with the existing default-branch message (FR-013). The Notion PRD's
+FR-018 amendment ("set, change and clear are one attribute update") holds for user-created pools
+only; the spec lists the departure for confirmation.
+
+**Alternatives**: `update: ALLOWED` with the synchronizer copying the scope from the default-branch
+schema as it copies the bounds (the behaviour the PRD implies; not what shipped, and a change to
+the published parameters contract).
 
 The SDK, OpenAPI and frontend REST models are not introspected from the Pydantic class:
 `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` lists the parameter fields by
@@ -392,15 +420,17 @@ A  schema attribute + parameters field + SDK generator entry       (one PR, smal
 B  dedicated GraphQL surface: three root fields over a fixed        (depends on A; unblocks frontend + SDK)
    in-memory dataset (no database read),
    description notes on the generic queries, regen, SDL snapshot
-C  seams: DivisionKey, get_resource(division) on all three write    (depends on A; parallel with B)
-   paths, NumberUtilizationGetter → DivisionReporter
-D1 DivisionResolver + scoped records fragment + allocation          (depends on C)       ┐
-D2 NumberPoolDivisions + scoped allocated rows + real reads        (depends on B, C)    ├ parallel
-   in the three queries
-D3 scope write path: ScopeValidator in the mutation, schema-pool    (depends on A)       │
-   refusal, upserter/synchronizer, schema-load validation,
-   attribute-add size check
-D4 ScopedPoolDependencyChecker + PoolsReferencingField              (depends on A)       ┘
+C  seams: get_resource(division) on all three write paths,          (depends on A and on D3's
+   NumberUtilizationGetter → DivisionReporter                        DivisionKey; parallel with B)
+D1 DivisionResolver.division_of + scoped records fragment +         (depends on C)       ┐
+   allocation
+D2 NumberPoolDivisions + scoped allocated rows + real reads        (depends on B, C,    ├ parallel
+   in the three queries                                              D3's entries_in_force)
+D3 scope write path: ScopeEntry, DivisionKey, entries_in_force,     (depends on A)       │
+   ScopeValidator in the mutation, schema-pool refusal, the
+   upserter write, schema-load validation, attribute-add size check
+D4 ScopedPoolDependencyChecker + PoolsReferencingField + the        (depends on A)       ┘
+   rename rewrite
 E  mock removal: delete number_pool_mock.py, real-data test         (depends on D2)
 F  measurement, docs, changelog                                     (depends on D1, E)
 ```
@@ -422,9 +452,9 @@ SDK models of both parts merge into `infrahub-develop` before the release merge 
 - **Test fixtures**: the shared snow schema's pooled attribute is `unique`, so a scoped test on it
   is masked by the global taken-values scan. Scoped tests use a non-unique pooled attribute on a
   kind with a required cardinality-one relationship and a required scalar attribute.
-- **Update-path deferral of `handle_pool`** changes the order in which validation errors surface for
-  a payload that both fails a relationship update and allocates. The functional lifecycle suite
-  pins the observable order.
+- **Update-path deferral of the pool allocation** (`AttributePoolApplier.apply` run after the loop)
+  changes the order in which validation errors surface for a payload that both fails a
+  relationship update and allocates. The functional lifecycle suite pins the observable order.
 - **P2's intent resolver** will also sit on `from_graphql`; D4 keeps the deferral in one place so the
   resolver slots in after it.
 - **`NumberPoolGetAllocated` on the shared fragment** changes which records the allocation lists

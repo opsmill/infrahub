@@ -19,8 +19,8 @@
 - [x] Success criteria are technology-agnostic (no implementation details)
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
-- [x] Scope is clearly bounded (P3 only; frontend, SDK helpers, search, new mutations, stored key, per-division lock, record moves, any change to the generic queries listed as out of scope)
-- [x] Dependencies and assumptions identified (P1 landed in part, P2 foundational work landed, attach in flight gating only User Story 7, mocks accepted on the feature branch)
+- [x] Scope is clearly bounded (P3 only; frontend, SDK helpers, search and sort orders of the allocation list, new mutations, stored key, record moves, any change to the generic queries listed as out of scope; the lock per pool and division is in scope, FR-031)
+- [x] Dependencies and assumptions identified (P1 landed; P2 attach landed and used by User Story 7, detach not yet; mocks accepted on the feature branch)
 
 ## Feature Readiness
 
@@ -31,6 +31,6 @@
 
 ## Notes
 
-- Source: `SCOPED-POOLS-PRD.md` (precedence 1), the Confluence revised PRD (2), the base PRD INFP-308 (3). Epic IFC-3185. Plus the frontend needs supplied on 2026-10-06 and the grilling decisions of the same day, which define the GraphQL surface.
+- Source: `SCOPED-POOLS-PRD.md` (precedence 1), the Notion revised PRD (2), the base PRD INFP-308 (3). Epic IFC-3185. Plus the frontend needs supplied on 2026-10-06 and the grilling decisions of the same day, which define the GraphQL surface.
 - The user's delivery constraint (contract first, then seams, then internals, then mock removal) is recorded as a Delivery order section, User Story 1, FR-018, FR-019, SC-007, SC-010 and SC-011 so the plan and tasks phases inherit it and the alignment check can see it.
-- Decisions taken autonomously and flagged in Assumptions: per-range rows on a scoped pool are computed over the fullest division within the range (FR-017); a schema-declared scope reconciles onto the pool from the default branch only, as P1 does for ranges; list and JSON attribute kinds are refused as scope entries; the dedicated surface uses flat lists rather than `edges { node }` wrapping; the allocations query lists only values of the pool's space, so a value excluded by the attribute, outside its `min_value` / `max_value` or held by no range is not listed and counts in no figure.
+- Decisions taken autonomously and flagged in Assumptions: utilization on a scoped pool is read for one division at a time, and the headline and the range rows report the division given as `division` (FR-015, FR-017); a schema-declared scope is written at pool creation and fixed afterwards, since the parameters field ships with `update: NOT_SUPPORTED` (FR-012); list and JSON attribute kinds are refused as scope entries; the dedicated surface uses flat lists rather than `edges { node }` wrapping; the allocations query lists only values of the pool's space, so a value excluded by the attribute, outside its `min_value` / `max_value` or held by no range is not listed and counts in no figure. Proposed rules listed in the deviations table for confirmation: the rename rewrite (FR-032) and the fixed schema declaration (FR-012).

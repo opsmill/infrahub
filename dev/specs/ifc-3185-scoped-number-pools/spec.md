@@ -1,6 +1,6 @@
 # Feature Specification: Scoped number pools — one pool serves every scope
 
-**Feature Branch**: `feature-number-pools-1.12` (no slice branch created; the user asked for nothing to be committed)
+**Feature Branch**: `feature-number-pools-1.12`, delivered through the stack of pull requests listed under Jira tickets
 
 **Created**: 2026-10-02
 
@@ -111,20 +111,20 @@ publishes.
 
 | Ticket | Delivers | User stories and requirements |
 |---|---|---|
-| [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917), merged on its own | User Story 1 scenario 1; FR-014, FR-018, FR-021 |
+| [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917), merged on its own | User Story 1 scenarios 1 and 10 (the pool and parameter types); FR-014, FR-018, FR-021 |
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | This spec directory and the written contract of the three queries; the bottom of the stack (#10911) | User Story 1; FR-015, FR-016, FR-022 to FR-030 |
-| [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | The three queries over a fixed dataset, so the frontend can build (#10932) | User Story 1 scenarios 2 to 9; FR-019, FR-029; SC-007, SC-009, SC-010 |
+| [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | The three queries over a fixed dataset, so the frontend can build (#10932) | User Story 1 scenarios 2, 4 to 6, 8, 9 and 10 (the surface types) on the fixed dataset; scenarios 3 and 7 land with IFC-3329; FR-019, FR-029; SC-007, SC-009, SC-010 |
 | [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | A scope that cannot divide the pool is refused when the pool is saved, against the default branch's schema | User Story 5 scenario 1; User Story 6 scenarios 1 and 6; FR-009, FR-013, FR-020 |
-| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | A schema change that breaks a scoped field, or makes the pool's attribute unique, is refused naming the pool | User Story 5 scenarios 2 and 3; FR-010 |
+| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | A schema change that breaks a scoped field, or makes the pool's attribute unique, is refused naming the pool; a rename of a scoped field rewrites the scope entry of every pool that names it | User Story 5 scenarios 2 to 4; FR-010, FR-032 |
 | [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | Allocation returns the lowest free number within the writer's division, under a lock per pool and division | User Story 2; FR-001 to FR-008, FR-031; SC-001 to SC-004 |
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | Adding a scoped attribute is refused only when a division outgrows the pool | research decision D9 |
 | [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | The scope declared on a number-pool attribute reaches the schema-created pool | User Story 4; FR-012, FR-013 |
-| [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329) | The three queries read real pools; the fixed dataset is deleted | User Story 3, User Story 1 scenarios 2 to 7; FR-011, FR-015 to FR-017, FR-022 to FR-030; SC-010, SC-011 |
+| [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329) | The three queries read real pools; the fixed dataset is deleted | User Story 3, User Story 1 scenarios 2 to 7 on real data (replacing the fixed dataset); FR-011, FR-015 to FR-017, FR-022 to FR-030; SC-010, SC-011 |
 | [IFC-3357](https://opsmill.atlassian.net/browse/IFC-3357) | Per-site pools consolidated into one scoped pool through attach | User Story 7; SC-001 |
 | [IFC-3355](https://opsmill.atlassian.net/browse/IFC-3355) | Latency and throughput measured; one anchor order kept | User Story 8; SC-005, SC-006 |
 | [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | The branch seam verified with two branches in every scenario | User Story 6; FR-007, FR-008, FR-021 |
 | [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | User docs, changelog fragments, knowledge entry, SDK pointer | Behaviour changes for the changelog; Open points |
-| [IFC-3358](https://opsmill.atlassian.net/browse/IFC-3358) | Follow-up, outside the definition of done: search, pagination and sort orders of the divisions list | Out of scope (search); FR-022 |
+| [IFC-3358](https://opsmill.atlassian.net/browse/IFC-3358) | Follow-up, outside the definition of done: search, pagination and sort orders of the divisions list; search and sort orders of the allocation list | Out of scope (search, sort orders); FR-022, FR-023 |
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -191,7 +191,8 @@ examples.
 8. **Given** the fixed scoped dataset of the first delivery, **When** the three queries are read,
    **Then** the divisions listed and the `division` filter agree: filtering on a listed division
    returns every row its figures count, and the `used` figure of a division equals the number of
-   distinct values held while the holder sits in that division on the row's branch. The reserved
+   distinct values those rows hold, the holder sitting in the division on any live branch (FR-007
+   union); its `used_default_branch` counts those of them held on the default branch. The reserved
    `pool_id` `mock-unscoped` returns the fixed unscoped dataset.
 9. **Given** the exported GraphQL schema before and after the contract change set, **When** the
    two are diffed, **Then** the only change to `PoolUtilization`, `PoolAllocated`,
@@ -244,6 +245,13 @@ through the ordinary allocation path, and check which numbers come back, on one 
    (A, T1), (A, T2) and (B, T1) allocate, **Then** each receives 1.
 9. **Given** a scope naming a required attribute rather than a relationship, **When** devices with
    different values of that attribute allocate, **Then** each value is its own division.
+10. **Given** a pool scoped by site and a composite uniqueness constraint on site plus the pooled
+    attribute, **When** a device in site A is saved with a number already held in site A, **Then**
+    the constraint refuses it; **When** that number is held only in site C, **Then** the save is
+    accepted. The pool refuses nothing in either case.
+11. **Given** a pool whose records already hold the same number twice within site A, **When** the
+    scope `["site"]` is set, **Then** the save is accepted, and the next allocation in A skips that
+    number once and returns the lowest number no record in A holds.
 
 ---
 
@@ -290,22 +298,25 @@ list against the records.
 ### User Story 4 - Scope declared in the schema (Priority: P2)
 
 A schema author declares `allocation_scope` on a number-pool attribute and every node gets a
-per-site number from a pool nobody created by hand. Changing the declaration on the default branch
-updates the pool; editing the scope directly on the pool is refused.
+per-site number from a pool nobody created by hand. The declaration is fixed with the attribute: a
+schema load that sets, changes or clears it on an existing attribute is refused, and editing the
+scope directly on the pool is refused.
 
 **Why this priority**: Schema-created pools are the second kind of pool and must gain the same
 capability; they build on User Story 2's allocation and User Story 1's parameter contract.
 
 **Independent Test**: Load a schema declaring a scoped number-pool attribute, allocate from two
-sites, change the declaration on the default branch, reload, and attempt a direct edit on the pool.
+sites, attempt a reload that changes the declaration, and attempt a direct edit on the pool.
 
 **Acceptance Scenarios**:
 
 1. **Given** a Device kind whose `vlan_id` is a number-pool attribute with ranges 100–200 and scope
    `["site"]`, **When** the schema loads, **Then** the pool it creates reads back that scope;
    **When** devices in two sites allocate, **Then** both receive 100.
-2. **Given** that schema, **When** the scope is cleared on the default branch and the schema
-   reloaded, **Then** the next allocation returns 102.
+2. **Given** that schema, **When** a schema load changes or clears the declared scope, on the
+   default branch or on any other branch, **Then** the load is refused by the schema-update
+   validation as an unsupported update of `allocation_scope`, the pool keeps its scope, and the
+   next allocation in a site holding 100 returns 101.
 3. **Given** a schema-created pool, **When** its scope is edited directly through the pool's update,
    **Then** the edit is refused and the error points at the schema in the default branch.
 4. **Given** a number-pool attribute whose declared scope names an optional field, a many
@@ -334,9 +345,14 @@ entry a pool depends on; check every refusal names what it must.
 2. **Given** a pool scoped by `site`, **When** a schema is loaded that makes `site` optional,
    removes it, or makes it cardinality many, **Then** each load is refused and the error names the
    pool.
-3. **Given** a pool scoped by `["site", "pod"]` saved from a branch whose schema has `pod`, **When**
-   a schema is loaded on the default branch, where `pod` has never existed, **Then** the absence of
-   `pod` there is not a violation.
+3. **Given** a pool scoped by `["site", "pod"]` saved once `pod` reached the default branch's
+   schema, **When** a schema is loaded on a branch forked before `pod` reached the default branch,
+   where `pod` has never existed, **Then** the absence of `pod` there is not a violation.
+4. **Given** a user-created pool scoped by `["site"]` and a schema-created pool whose attribute
+   declares `allocation_scope: ["site"]`, **When** a schema load on the default branch renames
+   `site` to `location`, carrying `allocation_scope: ["location"]` on the declaration, **Then** the
+   load is accepted, both pools read back `["location"]`, and allocation keeps dividing per
+   location with no number moved (FR-032).
 
 ---
 
@@ -460,6 +476,13 @@ spec directory.
   within its own division over its own ranges; nothing pool-side arbitrates.
 - A scope is widened on a pool holding records: numbers taken under the finer division become free.
   Narrowed: more numbers appear taken. No number already handed out changes.
+- A field a scope names is renamed: the entry is rewritten in the `allocation_scope` of every pool
+  that names it, user-created or schema-created, by a data write during the schema migration of
+  the rename, and a declared `parameters.allocation_scope` carries the new name in the same schema
+  load (FR-032). The pool is branch-agnostic, so a rename made on a branch rewrites the pools when
+  the branch merges into the default branch; until then that branch's schema does not define the
+  stored entry and the reads there ignore it (FR-008). Proposed rule, listed for confirmation
+  under Open points.
 - A pool's last range is removed: the dedicated utilization query lists no range, every figure
   reports `size` 0, and the allocations list is empty. Allocation raises
   the existing pool-exhausted error, as P1 defines.
@@ -538,8 +561,8 @@ specification adds.
   schema. A scope on a pool whose target attribute is `unique: true` MUST be refused naming the
   attribute. When the pool's attribute is inherited from a generic, every entry MUST be a required
   cardinality-one field declared on the generic itself; an entry only some implementing kinds
-  declare MUST be refused naming the generic. *(PRD FR-009, FR-015 generic case, FR-017 carve-out,
-  open question 2; User Story 5, scenario 1; User Story 6, scenarios 1 and 6)*
+  declare MUST be refused naming the generic. *(PRD FR-009; Notion PRD FR-015 generic case, FR-017
+  carve-out, Notion PRD open question 2; User Story 5, scenario 1; User Story 6, scenarios 1 and 6)*
 - **FR-010**: A schema load MUST be refused when it would make a scope entry that exists in that
   branch's schema optional, absent, or cardinality many while a pool depends on it, or make the
   pool's target attribute `unique: true` while the pool carries a scope, and the error MUST name
@@ -558,12 +581,15 @@ specification adds.
 #### Pools the schema creates
 
 - **FR-012**: A number-pool attribute MUST accept an optional `allocation_scope` in its parameters,
-  in the same notation as on the pool. The pool the schema creates MUST carry it, and a later
-  default-branch schema load that changes it MUST update the pool. FR-009's rules apply to the
-  schema being loaded, on the branch it is loaded on, because the declaration and the fields it
-  names travel in the same schema; a declared scope on a `unique: true` attribute, or naming a
-  field not declared on the generic the attribute is inherited from, is refused at load. *(PRD
-  FR-012; User Story 4)*
+  in the same notation as on the pool. The pool the schema creates MUST carry it. The declaration
+  is fixed with the attribute: the parameters field ships with `update: NOT_SUPPORTED` (#10917), so
+  a later schema load that sets, changes or clears it on an existing attribute is refused by the
+  schema-update validation, on every branch; the one exception is the rename of a field the
+  declaration names (FR-032). FR-009's rules apply to the schema being loaded, on the branch it is
+  loaded on, because the declaration and the fields it names travel in the same schema; a declared
+  scope on a `unique: true` attribute, or naming a field not declared on the generic the attribute
+  is inherited from, is refused at load. *(PRD FR-012, changed: no reload updates a declared scope;
+  User Story 4)*
 - **FR-013**: Setting `allocation_scope` directly on a schema-created pool MUST be refused with the
   existing error pointing at the schema in the default branch. *(PRD FR-013; User Story 4,
   scenario 3)*
@@ -595,10 +621,12 @@ specification adds.
 - **FR-017**: On a scoped pool, every range row MUST report the division given as `division`: that
   division's count of the range's values against the range's size, with its branch split, and
   `used` 0 for a range in which the division holds no value. *(User Story 3, scenario 3)*
-- **FR-018**: The generated artefacts (GraphQL schema export, OpenAPI schema, SDK and frontend
-  types, attribute-parameter documentation) MUST carry the new fields and MUST be regenerated, never
-  edited. The contract published by User Story 1 MUST NOT be renamed, retyped or removed by any
-  later story in this slice. *(User Story 1, scenario 10)*
+- **FR-018**: The generated artefacts (GraphQL schema export, OpenAPI schema, the write JSON
+  schema, SDK and frontend types) MUST carry the new fields and MUST be regenerated, never edited.
+  The generated attribute-parameter snippet lists only parameters with `update: validate_constraint`
+  and so does not carry `allocation_scope`; the user documentation describes the field by hand. The
+  contract published by User Story 1 MUST NOT be renamed, retyped or removed by any later story in
+  this slice. *(User Story 1, scenario 10)*
 - **FR-019**: Until the real reads exist, the three dedicated queries MAY return a fixed in-memory
   dataset and read nothing from the database: a scoped dataset for any `pool_id`, and an unscoped
   dataset for the reserved `pool_id` `mock-unscoped` (contract section "Fixed dataset of the first
@@ -631,8 +659,8 @@ specification adds.
   MUST be refused on a pool whose scope in force is empty, and an entry whose path is not in force
   or is given twice MUST be refused naming the entry. A `range_id` that is not a range of the pool
   MUST be refused naming the pool and the range. A `pool_id` that is not a number pool MUST be
-  refused with the existing not-found error. *(User Story 1, scenarios 6 and 7; User Story 3,
-  scenario 5)*
+  refused with the existing not-found error. A negative `offset` or `limit` MUST be refused naming
+  the argument. *(User Story 1, scenarios 6 and 7; User Story 3, scenario 5)*
 - **FR-025**: Because a holder's division is a union over live branches (FR-007), one value MAY
   appear in two divisions of the divisions list and under two division filters. Consumers MUST NOT
   sum per-division `used` figures; the pool's `used` is the distinct count over the whole space.
@@ -641,8 +669,12 @@ specification adds.
   absolute `size`, `used`, `used_default_branch` and `used_branches` and the three percentages
   `utilization`, `utilization_default_branch` and `utilization_branches`, applied alike to the
   pool, each range and each division. `used` counts distinct values of the measured space, never
-  rows; `used_branches` counts values held on another branch and not on the default branch. The
-  percentages keep the names and meaning of `PoolUtilization`. *(User Story 1, scenario 2)*
+  rows; `used_branches` counts values held on another branch and not on the default branch. A
+  division's figures count the values held by the holders that occupy the division on any live
+  branch (FR-007 union), the same rows a `division` filter returns: `used_default_branch` is the
+  division's values held on the default branch and `used_branches` those held on other branches
+  only. The percentages keep the names and meaning of `PoolUtilization`. *(User Story 1, scenario
+  2)*
 - **FR-027**: The three dedicated queries MUST report the scope in force on the reading branch
   (`allocation_scope` on the utilization and divisions results, the paths accepted in a division
   filter), empty for an unscoped pool and for a scoped pool none of whose entries the branch
@@ -678,9 +710,22 @@ specification adds.
   (`resource_pool.<pool id>.<division key>`), so that two writers in different divisions allocate in
   parallel and two writers in one division serialise; an unscoped pool keeps today's key,
   `resource_pool.<pool id>`. The lock MUST be taken after the writer's division is resolved, so on
-  update after every field of the payload is applied (FR-002). Every write that takes the pool lock
-  for a tracked attribute uses the same key. *(PRD Mechanism "Lock", FR-031; User Story 2, scenario
+  update after every field of the payload is applied (FR-002); on a scoped pool it replaces the
+  pool-level lock the mutation takes before the node is saved, which an unscoped pool keeps. Every
+  write that takes the pool lock for a tracked attribute uses the same key. *(PRD Mechanism "Lock", FR-031; User Story 2, scenario
   6; User Story 8, scenario 1)*
+
+#### Renaming a scoped field
+
+- **FR-032**: Renaming an attribute or relationship that a scope names MUST rewrite the entry in the
+  `allocation_scope` of every pool that names it, user-created and schema-created alike, as a data
+  write during the schema migration of the rename; for a schema-created pool the declared
+  `parameters.allocation_scope` carries the new name in the same schema load, and that change is
+  the one update of a declared scope the schema-update validation accepts (FR-012). No record
+  moves. Proposed rule, to confirm: the pool is branch-agnostic, so a rename made on a branch
+  rewrites the pools when the branch merges into the default branch; until then the renamed
+  branch's schema does not define the stored entry and reads there ignore it (FR-008). *(Notion
+  PRD Mechanism "Shared lookup", which names rename as a caller; User Story 5, scenario 4)*
 
 ### Key Entities *(include if feature involves data)*
 
@@ -697,7 +742,7 @@ specification adds.
   taken from a record's holder, computed at read time from the holder's own fields, over every live
   branch. Published as a list of division entries (path, value, display label, peer kind).
 - **Division enumeration** *(new read)*: the distinct divisions over nodes of the kind on
-  any live branch, with record counts. The one place the pool reads the kind's data rather than its
+  any live branch, with node counts. The one place the pool reads the kind's data rather than its
   own records, by decision.
 - **Utilization figures** *(new read shape)*: one block of absolute and relative figures (size,
   used, used on the default branch, used on other branches, and the three percentages), applied to
@@ -708,8 +753,7 @@ specification adds.
   `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations` and their types, hand-written
   beside the generic resource-pool queries.
 - **Pools-referencing-field lookup** *(new, shared)*: which pools name a given kind and field. Used
-  by the schema-load check, the pool mutation, and the existing kind and attribute rename and
-  removal paths.
+  by the schema-load dependency checker (FR-010) and by the rename rewrite (FR-032).
 
 ## Success Criteria *(mandatory)*
 
@@ -747,8 +791,9 @@ specification adds.
   `IPPoolUtilizationResource` and the two generic root fields other than description text.
 - **SC-010**: From the contract change set on, a scoped pool's divisions list and the
   division-filtered lists agree: filtering on a listed division returns every row its figures
-  count, and a division's `used` equals the number of distinct values those rows hold while the
-  holder sits in that division on the row's branch.
+  count, and a division's `used` equals the number of distinct values those rows hold, the holder
+  sitting in that division on any live branch (FR-007 union); `used_default_branch` counts those
+  of them held on the default branch.
 - **SC-011**: At the end of the slice no row of the fixed dataset is returned by any of the three
   dedicated queries, and the test asserting it passes.
 
@@ -756,12 +801,14 @@ specification adds.
 
 | Entry | Category |
 |-------|----------|
-| A number pool can declare `allocation_scope`; allocation and utilization are then per division. | Feature |
-| Number-pool attributes accept `parameters.allocation_scope`; the schema-created pool carries it and direct edits are refused. | Feature |
+| A number pool can declare `allocation_scope`; allocation and utilization are then per division, and the allocation lock is taken per pool and division. | Feature |
+| Number-pool attributes accept `parameters.allocation_scope`; the schema-created pool carries it, a schema load cannot change it on an existing attribute, and direct edits are refused. | Feature |
 | Three GraphQL queries dedicated to number pools report utilization with absolute figures per pool and per range, the divisions of a scoped pool, and the tracked numbers with holder, provenance and range. | Feature |
 | The generic `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` queries keep their shape; their descriptions direct number-pool consumers to the dedicated queries. | Changed description |
-| A pool save naming a scope entry that is optional, many, nested, duplicated, non-scalar or the pool's own attribute is refused. | New refusal |
-| A schema load that would make a scoped entry optional, absent or many while a pool depends on it is refused naming the pool. | New refusal |
+| A pool save naming a scope entry that is optional, many, nested, duplicated, non-scalar or the pool's own attribute, a scope on a `unique: true` attribute, or an entry the generic does not declare, is refused. | New refusal |
+| A schema load that would make a scoped entry optional, absent or many while a pool depends on it, or make a scoped pool's attribute `unique: true`, is refused naming the pool. | New refusal |
+| Renaming a field a scope names rewrites the entry in every pool that names it. | Changed behaviour |
+| The allocation lists no longer show a deleting branch's values. | Changed behaviour |
 
 ## Approvals needed
 
@@ -812,13 +859,15 @@ Using the repository's "ask first" list.
   rather than the `edges { node }` wrapping of the generic queries, so the dedicated surface is
   uniform; the frontend's existing hooks are not reused for it.
 - A scope entry may name any required attribute whose value is a single comparable scalar,
-  dropdown and enum attributes included (PRD open question 3, resolved to its stated default, with
-  list and JSON kinds excluded because they cannot define one division per node).
+  dropdown and enum attributes included (P3 PRD open question 3, resolved to its stated default,
+  with list and JSON kinds excluded because they cannot define one division per node).
 - The occupancy at which derived scope becomes too slow is answered by SC-006's report, not here
-  (PRD open question 2).
-- A schema-declared scope is reconciled onto the schema-created pool from the default-branch
-  schema only, as P1 does for ranges; a branch's declaration takes effect on the pool when it
-  merges. FR-009 validation of the declaration still runs on the branch being loaded.
+  (P3 PRD open question 2).
+- A schema-declared scope is written onto the schema-created pool when the pool is created and
+  cannot be changed by a later schema load: the parameters field ships with `update: NOT_SUPPORTED`
+  (#10917), so the schema-update validation refuses a load that sets, changes or clears it on an
+  existing attribute (FR-012). A rename of a field the declaration names is the one accepted
+  change (FR-032). FR-009 validation of the declaration runs on the branch being loaded.
 - Utilization on a scoped pool is read for one division at a time (FR-011, FR-015, FR-017).
   Reporting the fullest division by default, as the PRD's FR-011 asked, was rejected by the user on
   2026-10-07: those figures describe a division the user did not choose. The fullest division is
@@ -828,8 +877,8 @@ Using the repository's "ask first" list.
 - Allocation locks on the pool and the writer's division on a scoped pool, and on the pool alone on
   an unscoped pool (FR-031). The division key is the normalised tuple of the writer's entry values;
   the key is taken once the division is resolved.
-- A scope is validated against the default branch's schema at pool save (PRD open question 2,
-  resolved to its suggested default): the pool is branch-agnostic and the schema is branch-aware,
+- A scope is validated against the default branch's schema at pool save (Notion PRD open question
+  2, resolved to its suggested default): the pool is branch-agnostic and the schema is branch-aware,
   so the one schema every branch descends from is the reference. At schema load the declaration is
   validated against the schema being loaded, since it travels with the fields it names.
 - Data mocks are acceptable on the feature branch: the contract change set ships the three
@@ -844,7 +893,8 @@ Using the repository's "ask first" list.
   and the migration of the existing pool and allocated-values pages to the dedicated queries (own
   ticket).
 - The SDK helpers `get_pool_allocated_resources` and `get_pool_resources_utilization` (own ticket).
-- Search on the allocation list.
+- Search on the allocation list, and sort orders of the allocation list other than value, branch,
+  holder id (follow-up IFC-3358, with the divisions list's search, pagination and sort orders).
 - New mutations: bulk attach and detach, identifier-only reservation. A "next free value in a
   division" query.
 - Any change to the generic resource-pool queries' shape or meaning.
@@ -872,21 +922,29 @@ None. Decided:
   FR-031). Decided on 2026-10-07.
 - A scope on a pool serving a generic names only fields declared on the generic (PRD FR-015).
   Decided on 2026-10-07.
-- A scope is validated against the default branch's schema at pool save (PRD open question 2).
-  Decided on 2026-10-07.
+- A scope is validated against the default branch's schema at pool save (Notion PRD open question
+  2). Decided on 2026-10-07.
 
-### Deviations from the Notion PRD to confirm with product
+Proposed rules awaiting confirmation are listed in the deviations table below: the rename rule of
+FR-032 and the fixed schema declaration of FR-012.
 
-Each row names what the [Notion PRD](https://app.notion.com/p/opsmill/Number-Pools-PRD-simple-as-possible-cf5228b83025824f804c016b4f2194f6)
-says and what this specification does instead. None is resolved here.
+### Deviations from the PRDs to confirm with product
 
-| PRD reference | PRD | This specification |
-|---|---|---|
-| FR-020 amendment; Mechanism "Scope enumeration" | The divisions list holds every division with at least one node of the kind; a division with nodes and no allocation reports 0; `NumberPoolGetScopes` enumerates distinct tuples over the kind's nodes, left-joined to the counts | `InfrahubNumberPoolDivisions` lists only the divisions whose holders hold at least one tracked value (FR-011, FR-022); the enumeration over nodes exists only for the attribute-add size check (D9). Kept by the user on 2026-10-07 |
-| Mechanism "Per-scope utilization (FR-020)" | One read, the traversal grouped by scope, returns every scope's utilization | Utilization is read for one division at a time and `division` is required on a scoped pool (FR-011, FR-015, FR-017); the fullest division is the first row of the divisions list. Specified with the GraphQL surface (#10911) |
-| Open question 1 (provenance in the pool query) | Asks whether the generic pool query carries provenance in v1 | Provenance is carried by the dedicated `InfrahubNumberPoolAllocations`; a value outside the pool's space is not listed and counts in no figure; the generic queries are frozen (FR-028, FR-029) |
-| Validation at pool save (Mechanism) | Refuses optional fields, many relationships, paths into a related node, a scope on a `unique` attribute and an entry not satisfied by the generic | Also refuses a list or JSON attribute, a duplicate entry and the pool's own number-pool attribute (FR-020). Additions, each a refusal |
-| FR-010 | A schema load that makes a scoped entry optional, absent or many is refused | Also refuses a schema load that makes the pool's attribute `unique: true` while the pool carries a scope (FR-010). Addition that follows from the FR-017 carve-out |
+Each row names the document, what it says and what this specification does instead. None is
+resolved here. Documents: the [Notion PRD](https://app.notion.com/p/opsmill/Number-Pools-PRD-simple-as-possible-cf5228b83025824f804c016b4f2194f6)
+(precedence 2) and the base PRD (precedence 3).
+
+| Document | PRD reference | PRD | This specification |
+|---|---|---|---|
+| Notion PRD | FR-020 amendment; Mechanism "Scope enumeration" | The divisions list holds every division with at least one node of the kind; a division with nodes and no allocation reports 0; `NumberPoolGetScopes` enumerates distinct tuples over the kind's nodes, left-joined to the counts | `InfrahubNumberPoolDivisions` lists only the divisions whose holders hold at least one tracked value (FR-011, FR-022); the enumeration over nodes exists only for the attribute-add size check (D9). Kept by the user on 2026-10-07 |
+| Notion PRD | Mechanism "Per-scope utilization (FR-020)" | One read, the traversal grouped by scope, returns every scope's utilization | Utilization is read for one division at a time and `division` is required on a scoped pool (FR-011, FR-015, FR-017); the fullest division is the first row of the divisions list. Specified with the GraphQL surface (#10911) |
+| Base PRD | FR-011 (headline) | The utilization headline of a scoped pool reports the fullest division | No figure reports the fullest division by default: utilization is read for one division at a time, and the fullest division is the first row of the divisions list (FR-011). Changed by the user on 2026-10-07 |
+| Notion PRD | Open question 1 (provenance in the pool query) | Asks whether the generic pool query carries provenance in v1 | Provenance is carried by the dedicated `InfrahubNumberPoolAllocations`; a value outside the pool's space is not listed and counts in no figure; the generic queries are frozen (FR-028, FR-029) |
+| Notion PRD | Validation at pool save (Mechanism) | Refuses optional fields, many relationships, paths into a related node, a scope on a `unique` attribute and an entry not satisfied by the generic | Also refuses a list or JSON attribute, a duplicate entry and the pool's own number-pool attribute (FR-020). Additions, each a refusal |
+| Base PRD | FR-010 | A schema load that makes a scoped entry optional, absent or many is refused | Also refuses a schema load that makes the pool's attribute `unique: true` while the pool carries a scope (FR-010). Addition that follows from the Notion PRD's FR-017 carve-out |
+| Notion PRD | FR-018 amendment ("set, change and clear are one attribute update"); Mechanism "Set/change/clear" | Setting, changing and clearing the scope is one attribute update, on the pool and in the schema declaration alike | On a user-created pool, yes (FR-006, FR-014). On a schema-declared scope, no: `NumberPoolParameters.allocation_scope` ships with `update: NOT_SUPPORTED` (#10917), so a schema load that sets, changes or clears a declared scope on an existing attribute is refused, and a schema-created pool's scope is fixed when the attribute is declared (FR-012). Proposed, to confirm |
+| Notion PRD | Mechanism "Shared lookup" (callers: the schema-load check, pool-save validation, kind or attribute rename or removal) | The lookup serves the rename path; what a rename does to a scope is not stated | A rename of a field a scope names rewrites the entry in every pool that names it, during the rename's schema migration; a rename on a branch rewrites the pools when the branch merges into the default branch (FR-032). Proposed, to confirm |
+| Notion PRD | "Slicing and shipping": P3 is independent of P1 and P2 | P3 needs nothing from P1 or P2 once FR-016 is narrowed to allocation | P3 depends on P1 (the range kind, `EffectiveSpace`, range rows on the surface) and on P2 (attach for User Story 7, provenance on the allocation rows, FR-028); the surface does not ship without them |
 
 ## Traceability to the PRD
 
@@ -899,9 +957,11 @@ says and what this specification does instead. None is resolved here.
 | User stories 7, 14 | User Stories 3 and 8 |
 | User stories 8, 10, 11, 12 | User Stories 5 and 6 |
 | SC-001 to SC-006 | SC-001 to SC-006, same numbers |
-| Open question 1 (utilization shape) | FR-015, FR-016, FR-022, FR-026; Assumptions; the contract |
-| Open question 2 (occupancy threshold) | SC-006; Assumptions |
-| Open question 3 (enum or dropdown entries) | FR-020; Assumptions |
+| P3 PRD open question 1 (utilization shape) | FR-015, FR-016, FR-022, FR-026; Assumptions; the contract |
+| P3 PRD open question 2 (occupancy threshold) | SC-006; Assumptions |
+| P3 PRD open question 3 (enum or dropdown entries) | FR-020; Assumptions |
+| Notion PRD open question 1 (provenance in the pool query) | FR-028, FR-029; Deviations table |
+| Notion PRD open question 2 (which branch's schema validates scope paths) | FR-009; Assumptions; Open points |
 | Key entities | Key Entities, plus the division, the utilization figures, the allocation row and the dedicated surface |
 | Implementation Decisions, Testing Decisions | Carried verbatim into the plan phase; not reopened here |
 | User's delivery constraint | Delivery order, User Story 1, FR-018, FR-019, SC-007, SC-010, SC-011 |

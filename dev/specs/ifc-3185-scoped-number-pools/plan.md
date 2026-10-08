@@ -23,8 +23,8 @@ query it issues today.
 
 Every read a number pool screen needs is published on three GraphQL root fields dedicated to
 number pools: utilization with absolute figures per pool and per range, the divisions list, and the
-allocation list with holder, provenance, range and division. The generic resource-pool queries are
-frozen for number pools and gain a description note.
+allocation list with holder, provenance and range, filterable by division. The generic
+resource-pool queries are frozen for number pools and gain a description note.
 
 The work is sequenced so the frontend and the SDK are unblocked first: the schema attribute and the
 parameters field land, the dedicated surface is published and frozen over a fixed in-memory
@@ -44,7 +44,8 @@ internals in parallel, then the real reads replace the fixed dataset.
 **Testing**: pytest 9.0. `tests/unit/` for the resolver, validator, reporter and the SDL snapshot;
 `tests/component/` for queries, mutations, checkers and the three dedicated GraphQL queries;
 `tests/functional/` for the lifecycle and branch suites; `tests/integration_docker/` for the
-schema-load refusal; `tests/query_benchmark/` for SC-005 and SC-006.
+schema-load refusal; `tests/query_benchmark/` for SC-006; SC-005 as a timed functional scenario
+under `tests/functional/pools/`.
 
 **Target Platform**: Linux server (containerised backend)
 
@@ -83,7 +84,7 @@ temporary mock module, 1 new checker, 1 new repository, 3 GraphQL root fields wi
 | **II. Branch-Safe by Default** | ⚠️ gated, this is the principle under test | The cross-branch read is the design: records are `-global-`, nodes are branch-aware, the division is a union over live branches with the visibility rule the value read already uses. Merge needs no new validator (the scope does not merge; the values it reads do). Every branch case in the spec's edge list gets a two-branch component test. |
 | **III. Type Safety & Explicit Contracts** | ✅ passes | Three contracts agreed before implementation (`contracts/`). Query results come back as frozen dataclasses; the division key is a frozen dataclass; GraphQL types are explicit and pinned by an SDL snapshot test. |
 | **IV. Test Discipline** | ✅ passes | Unit for `entries_in_force`, `ScopeValidator`, `DivisionReporter` and the SDL snapshot; component for `division_of`, every query, mutation and checker, and the three dedicated GraphQL queries on an unscoped pool, a scoped pool and an IP pool; functional for the journeys and the concurrent case; one integration-docker test for the schema-load refusal; no E2E because no screen ships. The shared snow fixture's pooled attribute is `unique`, which the global taken-values scan masks, so scoped tests use a non-unique pooled attribute on a kind with a required cardinality-one relationship and a required scalar attribute (extending `tests/helpers/number_pool.py` with such a schema). |
-| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-005 and SC-006 are benchmarks under `tests/query_benchmark/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes the pool's space, `range_id`, `branch` and `provenance` into Cypher; the first delivery filters its fixed dataset in memory and runs no query. |
+| **V. Query Performance & Efficiency** | ⚠️ gated | The division hop adds one two-leg subquery per entry per record, bounded by pool occupancy. `EXPLAIN` on the scoped free query is recorded in `measurements.md`; SC-006 is a benchmark under `tests/query_benchmark/` and SC-005 a timed functional scenario under `tests/functional/pools/`. All parameters bound; only needed properties returned. The dedicated allocation query pushes the pool's space, `range_id`, `branch` and `provenance` into Cypher; the first delivery filters its fixed dataset in memory and runs no query. |
 | **VI. Security & Input Boundaries** | ✅ passes | Scope entries validated at the mutation and the schema-load boundary before any query uses them; entry names are bound as parameters, never interpolated (the relationship identifier and attribute name are looked up from the schema and bound). The `division` filter's paths are checked against the scope in force before any read. Errors name the entry, the pool or the range, never internals. |
 | **VII. Simplicity** | ✅ passes with two justifications | Derived scope: no hook, no migration, no batch, no new kind. One shared Cypher visibility constant is extracted because it reaches three consumers (the bar the query guideline sets). The repository and the three pure modules each serve two callers at introduction; the dedicated surface is a new module rather than fields on the generic queries (see Complexity Tracking). |
 
@@ -125,17 +126,23 @@ backend/infrahub/
 │   │                                            # constant, NumberPoolGetAllocated on the fragment with
 │   │                                            # provenance and a range-set filter, NumberPoolDivisions (new)
 │   ├── node/
-│   │   ├── __init__.py                          # handle_pool passes the division; from_graphql defers pools
+│   │   ├── __init__.py                          # from_graphql and _process_fields_attributes defer the pool applier
 │   │   ├── create.py                            # template allocation passes the division
-│   │   └── resource_manager/number_pool.py      # get_resource(division=…) hands the division to the picker
-│   ├── migrations/schema/node_attribute_add.py  # backfill loads the scoped fields and passes each node's division
+│   │   ├── lock_utils.py                        # the mutation-level pool lock is not derived for a scoped pool
+│   │   └── resource_manager/number_pool.py      # get_resource(division=…) locks per pool and division, hands the division to the picker
+│   ├── migrations/schema/
+│   │   ├── node_attribute_add.py                # backfill loads the scoped fields and passes each node's division
+│   │   └── attribute_name_update.py             # the rename rewrites the scope entry of every pool naming the field (FR-032)
 │   └── validators/
 │       ├── __init__.py                          # map the new checker
+│       ├── composite.py                         # CompositeConstraintChecker (new)
 │       ├── pool/scope.py                        # ScopedPoolDependencyChecker (new)
 │       └── node/attribute.py                    # size check against the largest division
 ├── templates/node_applier.py                    # pool allocation deferred until relationships are applied
 ├── pools/
 │   ├── number_ranges.py                         # EffectiveSpace: the pool's space, size, contains, range_for (existing, consumed)
+│   ├── number_pool_space.py                     # builds the EffectiveSpace from the ranges and the attribute's domain (existing, consumed)
+│   ├── attribute_pool_applier.py                # AttributePoolApplier.apply resolves the division and passes it to the allocator
 │   ├── number_pool_attribute_allocator.py       # allocate(division=…) (existing)
 │   ├── number_pool_number_picker.py             # next_number(division=…) drains the ranges heaviest first (existing)
 │   ├── number_pool_repository.py                # get_free / get_used take the division; get_taken keeps the global scan (existing)
@@ -145,8 +152,7 @@ backend/infrahub/
 │   ├── number_pool_mock.py                      # fixed in-memory dataset (new in B, deleted in E)
 │   ├── referencing.py                           # PoolsReferencingField (new repository)
 │   ├── number.py                                # NumberUtilizationGetter → seam over DivisionReporter
-│   ├── schema_number_pool_upserter.py           # writes allocation_scope at creation
-│   └── schema_number_pool_synchronizer.py       # copies allocation_scope from the default branch
+│   └── schema_number_pool_upserter.py           # writes allocation_scope at creation (the synchronizer is unchanged: the declaration cannot change)
 └── graphql/
     ├── schema.py                                # registers the three dedicated root fields
     ├── queries/number_pool.py                   # the dedicated surface: types, input, enum, resolvers (new)
@@ -154,18 +160,20 @@ backend/infrahub/
     └── mutations/resource_manager/number_pools/pool.py   # ScopeValidator on create/update/upsert; schema-pool refusal
 
 backend/tests/
-├── unit/pools/                                  # test_scope.py, test_division_report.py (new)
+├── unit/pools/                                  # test_scope.py, test_division_report.py (new); test_number_pool_mock.py (set B, deleted in E)
 ├── unit/graphql/                                # test_number_pool_surface_contract.py (SDL snapshot, new)
-├── component/core/resource_manager/             # test_number_pool_scoped_query.py (new), fragment snapshot
-├── component/graphql/resource_manager/number_pools/   # test_pool_scope.py (new), beside test_pool_create.py and test_pool_update.py
+├── unit/core/validators/                        # test_scoped_pool_dependency.py, test_composite_checker.py (new)
+├── component/core/resource_manager/             # test_number_pool_scoped_query.py, test_division_resolver.py, test_number_pool_divisions_query.py (new), fragment snapshot
+├── component/graphql/resource_manager/number_pools/   # test_pool_allocation_scope.py (#10917, extended), beside test_pool_create.py and test_pool_update.py
 ├── component/graphql/queries/                   # test_number_pool_surface.py (new), test_resource_pool.py (regression)
-├── component/core/constraint_validators/        # test_scoped_pool_dependency.py (new), attribute-add case
-├── component/pools/                             # test_schema_number_pool_scope.py (new)
-├── functional/pools/                            # test_numberpool_scoped_allocation.py, test_numberpool_scoped_branch.py (new)
+├── component/core/constraint_validators/        # test_scoped_pool_dependency.py, test_scoped_field_rename.py (new), attribute-add case
+├── component/pools/                             # test_schema_number_pool_scope.py, test_pools_referencing_field.py (new)
+├── functional/pools/                            # test_numberpool_scoped_allocation.py, test_numberpool_scoped_branch.py, test_numberpool_scoped_throughput.py (new)
 ├── integration_docker/                          # test_number_pool_scope_schema_load.py (new)
 ├── query_benchmark/                             # test_number_pool_scoped_allocation.py (new, SC-006)
-└── helpers/number_pool.py, helpers/schema/      # a non-unique pooled attribute on a kind with a required
-                                                 # cardinality-one relationship and a required scalar attribute
+└── helpers/number_pool.py                       # SCOPED_POOL_SCHEMA (set B): a non-unique pooled attribute on a kind with a required
+                                                 # cardinality-one relationship and a required scalar attribute; the fixture and the
+                                                 # site, node and two-range pool factories land with IFC-3349
 
 tasks/backend.py                                 # SdkSchemaGenerator.number_pool_parameters_fields gains the List field
 python_sdk/                                      # regenerated models (separate PR, pointer bump after)
@@ -173,7 +181,7 @@ schema/schema.graphql                            # regenerated
 frontend/app/src/shared/api/graphql/generated/   # regenerated by pnpm codegen
 docs/docs/schema/number-pool.mdx, docs/docs/resource-manager/allocate-number.mdx   # new section each
 dev/knowledge/backend/database-schema.md         # the division read beside the reservation read
-changelog/                                       # 6 towncrier fragments
+changelog/                                       # 8 towncrier fragments
 ```
 
 **Structure decision**: the feature slots into the existing layout. Pure logic goes in
@@ -193,11 +201,11 @@ module, so the generic file changes in description strings only. The checker goe
 |---|---|---|---|
 | **A. Schema** | `allocation_scope` on the pool kind; `NumberPoolParameters.allocation_scope`; the hand-maintained SDK generator entry in `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields`; regenerate protocols, GraphQL schema, OpenAPI, SDK models, docs snippet | — | everything |
 | **B. Surface** | `graphql/queries/number_pool.py` with the three root fields and every type of the contract, answering from the fixed in-memory dataset of `pools/number_pool_mock.py` (no database read); description notes on the generic queries and types; regenerate `schema/schema.graphql` and the frontend types; SDL snapshot test | A | frontend, SDK |
-| **C. Seams** | `DivisionKey`; the division threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `handle_pool` deferred in `from_graphql`) and from the attribute-add backfill, along `NumberPoolAttributeAllocator.allocate` → `CoreNumberPool.get_resource` → `NumberPoolNumberPicker.next_number` → `NumberPoolRepository.get_free` / `get_used`; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division | A | D1, D2 |
-| **D1. Scoped allocation** | `DivisionResolver`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the division applied inside the fragment `NumberPoolGetFree` and `NumberPoolGetUsed` share; the unscoped snapshot test | C | F |
-| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the pool, its ranges, its rows and the reporter instead of the fixed dataset (with `NumberPoolGetAllocated` projecting provenance and filtering on the pool's space, the bounds, branch and provenance); peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1 (`DivisionResolver.entries_in_force`) | E |
-| **D3. Scope write path** | `ScopeValidator`; the mutation validation against the mutation branch, invoked only when the scope changes; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back; `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
-| **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the three update constraints and the two removal migrations; integration-docker test | A | — |
+| **C. Seams** | the division threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `AttributePoolApplier.apply` deferred in `from_graphql`) and from the attribute-add backfill, along `AttributePoolApplier.apply` → `NumberPoolAttributeAllocator.allocate` → `CoreNumberPool.get_resource` → `NumberPoolNumberPicker.next_number` → `NumberPoolRepository.get_free` / `get_used`; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division. `DivisionKey` and `entries_in_force` come from D3's validator ticket (IFC-3348) | A, D3 (`DivisionKey`) | D1, D2 |
+| **D1. Scoped allocation** | `DivisionResolver.division_of`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the division applied inside the fragment `NumberPoolGetFree` and `NumberPoolGetUsed` share; the lock per pool and division replacing the mutation-level pool lock on a scoped pool; the unscoped snapshot test | C | F |
+| **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the pool, its ranges, its rows and the reporter instead of the fixed dataset (with `NumberPoolGetAllocated` projecting provenance and filtering on the pool's space, the bounds, branch and provenance); peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1, and IFC-3348 (`DivisionResolver.entries_in_force`) | E |
+| **D3. Scope write path** | `ScopeEntry`, `DivisionKey`, `entries_in_force`; `ScopeValidator`; the mutation validation against the default branch's schema, whatever branch the mutation runs on, on every save that carries `allocation_scope`; the schema-pool refusal; the upserter write so a schema-declared scope reads back (the synchronizer is unchanged: a declared scope cannot change, `update: NOT_SUPPORTED`); `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
+| **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the four update constraints and the two removal migrations; the rename rewrite of scope entries in the rename migrations (FR-032); integration-docker test | A | — |
 | **E. Mock removal** | delete `pools/number_pool_mock.py` and its call sites; the test that the three queries return the requested pool's own data and refuse an unknown `pool_id`; the SDL snapshot unchanged | D2 | F |
 | **F. Close** | SC-006 benchmark, SC-005 timed scenario, `measurements.md`; the consolidation journey through attach; user docs; knowledge entry; changelog fragments; the record of the surface decision (form A) | D1, E | ship |
 
@@ -269,8 +277,10 @@ class DivisionResolver:
 the database to resolve a peer given by id or human-friendly id, so it takes `db` and is
 component-tested.
 
-`handle_pool` resolves the entries against `registry.schema.get_schema_branch(self._branch.name)`
-and the division from `self`, then calls `NumberPoolAttributeAllocator.allocate(..., division=key)`,
+`pools/attribute_pool_applier.py::AttributePoolApplier.apply(node, attribute, allocate)`, the
+allocation entry point `BaseAttribute.from_graphql` and `Node._process_fields_attributes` call,
+resolves the entries against `registry.schema.get_schema_branch(node._branch.name)` and the
+division from the node, then calls `NumberPoolAttributeAllocator.allocate(..., division=key)`,
 which passes it to `CoreNumberPool.get_resource`, then to `NumberPoolNumberPicker.next_number`,
 which passes it to `NumberPoolRepository.get_free` on every segment of its range walk; `get_used`
 takes it for the same reason. `get_taken` keeps its global scan over the attribute: on a `unique`
@@ -281,20 +291,21 @@ Three write paths reach allocation, and each reads the division after the scoped
 
 | Path | Today | Change |
 |---|---|---|
-| Create, ordinary | `Node._process_fields` applies relationships, then attributes, where `handle_pool` runs | none |
-| Create through a template | `Node._process_fields` calls the template applier first; `templates/node_applier.py::NodeTemplateApplier._handle_pool_relationship` allocates through `pools/default_allocator.py::DefaultPoolAllocator` from the raw field dict, before any relationship exists and with no node | the applier records the pool id and marks the attribute pending (`TemplatePoolFields.pending` exists and the mandatory check tolerates it); `_process_fields_attributes` runs `handle_pool` for it after the relationships are applied |
-| Update | `Node.from_graphql` applies the payload in dict order and `BaseAttribute.from_graphql` calls `handle_pool` inline | `from_graphql` applies every attribute with `process_pools=False`, then calls `handle_pool` for each attribute whose payload carried `from_pool` |
+| Create, ordinary | `Node._process_fields` applies relationships, then attributes, where `_process_fields_attributes` calls `AttributePoolApplier.apply` | none |
+| Create through a template | `Node._process_fields` calls the template applier first; `templates/node_applier.py::NodeTemplateApplier._handle_pool_relationship` allocates through `pools/default_allocator.py::DefaultPoolAllocator` from the raw field dict, before any relationship exists and with no node | the applier records the pool id and marks the attribute pending (`TemplatePoolFields.pending` exists and the mandatory check tolerates it); `_process_fields_attributes` runs `AttributePoolApplier.apply` for it after the relationships are applied |
+| Update | `Node.from_graphql` applies the payload in dict order and `BaseAttribute.from_graphql` calls `AttributePoolApplier.apply(allocate=True)` inline when `process_pools` is set | `from_graphql` applies every attribute with `process_pools=False` (the flag and the `allocate=False` pass exist: `lock_utils.apply_payload_for_lock_names` uses them to resolve the pool for the lock names), then calls `AttributePoolApplier.apply(..., allocate=True)` for each attribute whose payload carried `from_pool` |
 
 Invariant on the update path: `from_pool` is still assigned inline by `BaseAttribute.from_graphql`;
-only the allocation is deferred, and `Node.from_graphql` has exactly two callers. The allocation
-lock is keyed by pool and division on a scoped pool (`resource_pool.<pool id>.<division key>`) and
-by pool alone on an unscoped pool; `get_resource` takes it after the division is resolved, which
-on update is after every field of the payload is applied. The mutation-level pool lock that
-`core/node/lock_utils.py::get_lock_names_on_object_mutation` derives from `from_pool` before the
-node is saved would serialise every division of a scoped pool; D1 either removes it for `from_pool`
-allocations or keeps it as a pool-level guard, and a functional test pins the outcome: two writers
-in different divisions allocate in parallel, two writers in one division serialise, and the
-deferral holds.
+only the allocation is deferred, and `Node.from_graphql` has exactly two callers
+(`lock_utils.apply_payload_for_lock_names`, `graphql/mutations/main.py`). The allocation lock is
+keyed by pool and division on a scoped pool (`resource_pool.<pool id>.<division key>`) and by pool
+alone on an unscoped pool; `get_resource` takes it after the division is resolved, which on update
+is after every field of the payload is applied. On a scoped pool that lock replaces the
+mutation-level pool lock that `core/node/lock_utils.py::get_lock_names_on_object_mutation` derives
+from `from_pool` before the node is saved: held for the whole mutation it would serialise every
+division, so it is not derived for a scoped pool. An unscoped pool keeps it. A functional test
+pins the outcome: two writers in different divisions allocate in parallel, two writers in one
+division serialise, and the deferral holds.
 
 ### 4. The dedicated surface (B, D2, E)
 
@@ -318,7 +329,8 @@ mirror leaves it null on a pool holding several ranges. The pool's space comes f
 `pools/number_ranges.py::EffectiveSpace`, built from the pool's ranges and the attribute's domain
 (`min_value` / `max_value` minus `excluded_values`) by `pools/number_pool_space.py`: `size` and
 `size_of(range_id)` give the figures' denominators, `contains` decides whether a row is listed, `range_for`
-gives a row's `range`, `as_query_ranges` gives the bounds the rows query filters on. Allocation
+gives the id of the row's range (its `display_label` comes from the range node loaded by `_ranges`),
+`as_query_ranges` gives the bounds the rows query filters on. Allocation
 draws from the same `EffectiveSpace`, so the surface and the picker use one definition of the
 pool's space.
 
@@ -385,18 +397,25 @@ diffing `schema/schema.graphql` for those types.
 - `ScopeValidator(schema_branch).validate(kind, attribute_name, scope)` → normalised entries or
   `ValidationError` naming the entry (rules in `data-model.md` §1; the required check covers
   relationships locally because `validate_schema_path` exempts `ip_namespace` on IP kinds). Called
-  by the mutation (branch of the request) only when the normalised submitted scope differs from the
-  stored one, and by `_validate_number_pool_parameters` (branch being loaded).
+  by the mutation against `registry.schema.get_schema_branch(name=registry.default_branch)` on
+  every create, update or upsert that carries `allocation_scope`, whatever branch the mutation runs
+  on, and by `_validate_number_pool_parameters` (branch being loaded).
 - `ScopedPoolDependencyChecker.check(request)` → for the changed field, `PoolsReferencingField.get`
   and a `ValueError` naming each pool that names the field. Registered in `CONSTRAINT_VALIDATOR_MAP`
-  for the five names in `contracts/number-pool-parameters.md`;
+  for the six names in `contracts/number-pool-parameters.md`;
   `SchemaUpdateValidationResult.add_validator_for_migration` already turns the two removal
   migrations into constraints, so `core/models.py` is untouched. The map holds one checker class
-  per name, so the three update names that already have a checker get a small
+  per name, so the four update names that already have a checker get a small
   `CompositeConstraintChecker` (`core/validators/composite.py`) that runs both and concatenates
   their results; the two removal names, unmapped today, map to the new checker directly. The checker
   reads the kind and field from `request.schema_path` only, never from `request.node_schema`, which
   is the candidate schema the removed field is already gone from.
+- The rename rewrite (FR-032): `AttributeNameUpdateMigration` (`attribute.name.update`) and a new
+  `relationship.name.update` migration entry call `PoolsReferencingField.get` for the renamed field
+  and write the new name into `allocation_scope` of every pool returned, a data write of the
+  migration; the schema-update validation accepts the matching change to a declared
+  `parameters.allocation_scope` when the same diff renames the field. On a branch the migration
+  runs at merge into the default branch, as the pool is branch-agnostic.
 - `NodeAttributeAddChecker`: for a scoped declaration, size against the largest division's node
   count from `NumberPoolDivisions`.
 - The three dedicated resolvers: `range_id` must be one of the pool's ranges; a `division` filter
@@ -435,8 +454,9 @@ diffing `schema/schema.graphql` for those types.
   case and the fork-window case on the hop; the unknown-entry drop; the enumeration including empty
   divisions and branch-only nodes, read from the default branch with the identifier fallback; the
   mutation refusals and the unchanged-scope round trip from a branch that lacks the entry; the
-  dependency checker's three refusals and the never-existed acceptance; the schema-created pool
-  with a scope, its reconciliation and its direct-edit refusal; the attribute-add size check per
+  dependency checker's refusals, the never-existed acceptance and the rename rewrite on a
+  user-created and a schema-created pool; the schema-created pool with a scope, the refusal of a
+  reload that changes the declaration and its direct-edit refusal; the attribute-add size check per
   division; `InfrahubResourcePoolAllocated` count, offset and limit and `InfrahubResourcePoolUtilization`
   figures across the fragment move; a snapshot of the unscoped fragment text.
 - **Functional**: the User Story 2 journey through GraphQL including fifty concurrent creates per
@@ -458,7 +478,7 @@ diffing `schema/schema.graphql` for those types.
 | Risk | Mitigation |
 |---|---|
 | The hop's fork-window leg makes the scoped free query slow at high occupancy | SC-006 measures; the stored key is the documented next lever |
-| Deferring `handle_pool` on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
+| Deferring the pool applier on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
 | This slice and part 1 share `NumberPoolParameters`, the picker's range walk, `EffectiveSpace` and the SDK generator | The fragment change is parameter-only and sits inside the range walk; `size`, `used` and the values listed on the dedicated surface come from `EffectiveSpace`, so allocation and the surface use one definition of the pool's space; the SDK models of both parts merge into `infrahub-develop` before the release merge (IFC-3356) |
 | The generic queries and today's getter read the deprecated shorthand, null on a pool holding several ranges | The dedicated surface never reads the shorthand; the generic queries stay as they are (frozen), and their behaviour on a multi-range pool is P1's to fix |
 | The record-side anchor runs the entry subqueries once per record at full occupancy | Both anchor orders rendered and profiled before one is kept |
@@ -473,8 +493,8 @@ diffing `schema/schema.graphql` for those types.
 | Addition | Why needed | Simpler alternative rejected because |
 |---|---|---|
 | Shared `VISIBLE` Cypher constant | three consumers (value, peer, attribute) of a two-leg predicate | duplicating it three times inside one fragment makes the query unreadable, the opposite of the guideline's intent |
-| `PoolsReferencingField` repository | two callers at introduction (the dependency checker, the attribute-add checker's scoped branch) and the rename path later | inlining `NodeManager.query` plus a Python filter in each checker |
-| Three pure modules in `pools/` | each has two callers (mutation + schema load; allocation + utilization; utilization + the attribute-add check) and none needs a database | keeping the logic in `handle_pool`, the mutation and the getter spreads the branch and schema subtleties across four files |
+| `PoolsReferencingField` repository | two callers at introduction (the dependency checker, the rename rewrite) | inlining `NodeManager.query` plus a Python filter in each checker |
+| Three pure modules in `pools/` | each has two callers (`scope.py`: mutation + schema load; `division_report.py`: the utilization resolver + the divisions resolver; the fixed dataset: the three resolvers) and none needs a database | keeping the logic in the pool applier, the mutation and the getter spreads the branch and schema subtleties across four files |
 | A dedicated GraphQL module with three root fields | the frontend needs ranges, divisions, holders, provenance and absolute figures that the generic queries cannot carry for IP pools; `resource_id` is already required and ignored for number pools | `divisions` on `PoolUtilization` and a `division` argument on `InfrahubResourcePoolAllocated`: empty or ignored for IP pools, range rows stay IP types, no holder label |
 | A temporary module holding a fixed dataset | the frontend builds every screen against plausible data before the reads exist | a single empty-key division (nothing to build a division view against); waiting for D2 (blocks the frontend) |
 
@@ -490,7 +510,8 @@ diffing `schema/schema.graphql` for those types.
 - [x] Phase 3 — dual-lens critique ([critiques/critique-20261002.md](./critiques/critique-20261002.md));
       5 must-address findings applied (E1, E13, E2, E4, P5), 13 recommendations applied, 3 questions
       resolved or escalated (see the critique's Resolution footer). The critique predates the
-      dedicated surface; its findings on the utilization shape are superseded by D7.
+      dedicated surface; its findings on the utilization shape are superseded by D7, and its
+      Erratum lists the outcomes the decisions of 2026-10-07 and 2026-10-08 reversed.
 - [x] Phase 2 — `tasks.md` (phases follow change sets A, B, C, D1–D4, E, F)
 - [x] Tickets — `tasks.md` regrouped by Jira ticket (IFC-3334, IFC-3346 to IFC-3358, IFC-3329), one
       pull request per ticket; the surface keeps form A and User Story 7 is in scope (decisions of

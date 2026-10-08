@@ -81,7 +81,9 @@ fixed in-memory dataset of the
 [contract](./contracts/graphql-number-pool-surface.md#fixed-dataset-of-the-first-delivery) and reads
 nothing from the database, so any `pool_id` returns the scoped dataset: `allocation_scope:
 ["site"]`, a utilization refused without `division` and reporting 40 of 100 for Site A, the
-divisions Site A (40), Site B (30) and Site C (1), and 41 rows when filtered on Site A. The reserved
+divisions Site A (40), Site B (30) and Site C (1, held on `main`: the holder sits in A on `main`
+and in C on `branch1`, so the value counts in both and the divisions' `used` do not sum to the
+pool's 70), 41 rows when filtered on Site A and 2 when filtered on Site C. The reserved
 `pool_id` `mock-unscoped` returns the unscoped dataset: `allocation_scope` is `[]`, the divisions
 list is empty with `count` 0, and the `division` filter is refused. Once the real reads
 land, the same requests return the created pool's own data.
@@ -106,17 +108,20 @@ is returned, and an unknown `pool_id` is refused.
 ## Scenario 4 — scope in the schema (User Story 4, FR-012, FR-013)
 
 `backend/tests/component/pools/test_schema_number_pool_scope.py`: `vlan_id` with ranges 100–200 and
-`allocation_scope: ["site"]`; two sites both receive 100; clearing the scope on the default branch
-and reloading makes the next allocation 102; a direct update of the pool's scope is refused with the
-default-branch message.
+`allocation_scope: ["site"]`; two sites both receive 100; a reload that changes or clears the
+declaration is refused by the schema-update validation (`update: NOT_SUPPORTED`) and the pool keeps
+its scope; a direct update of the pool's scope is refused with the default-branch message.
 
-## Scenario 5 — refusals (User Story 5, FR-009, FR-010, FR-024, SC-008)
+## Scenario 5 — refusals and the rename rewrite (User Story 5, FR-009, FR-010, FR-024, FR-032, SC-008)
 
-`backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py` (seven refused
-entries, each naming the entry),
+`backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
+(the refused entries, each naming the entry; the `unique: true` attribute and the generic case),
 `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py` (optional,
-removed, cardinality many → refused naming the pool; a field that never existed on the branch →
-accepted) and `backend/tests/component/graphql/queries/test_number_pool_surface.py` (an IP pool as
+removed, cardinality many, the pool's attribute made unique → refused naming the pool; a field that
+never existed on the branch → accepted),
+`backend/tests/component/core/constraint_validators/test_scoped_field_rename.py` (a renamed
+scoped field rewrites the entry of the user-created and the schema-created pool; on a branch, at
+merge) and `backend/tests/component/graphql/queries/test_number_pool_surface.py` (an IP pool as
 `pool_id`, a range of another pool, a division filter on an unscoped pool, a path not in force, a
 duplicate path). `backend/tests/integration_docker/test_number_pool_scope_schema_load.py` runs the
 removal case through the schema-load API.

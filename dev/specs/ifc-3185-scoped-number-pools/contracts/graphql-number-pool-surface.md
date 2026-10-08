@@ -236,7 +236,7 @@ type Query {
 |---|---|---|
 | `pool_id` | all three | The number pool. Required. |
 | `range_id` | allocations | Rows whose value the range holds. |
-| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held while the holder sits in the division on the row's branch. A filter that omits an entry in force is refused (section "Refusals"). |
+| `division` | utilization | One division: a value for every scope entry in force on the request's branch. Required on a pool whose scope in force is not empty, refused on one whose scope in force is empty. `figures` and `ranges[].figures` count the values held by the holders that sit in the division on any live branch (FR-007 union), the same rows the allocations query returns for that division. A filter that omits an entry in force is refused (section "Refusals"). |
 | `division` | allocations | Rows whose holder carries, for every given entry, the given value on at least one live branch (FR-007 union). A partial filter is allowed: on a `["site", "tenant"]` pool, `[{path: "site", value: "<A>"}]` returns every row held in site A across tenants. |
 | `branch` | allocations | Rows whose value is held on that branch. Omitted: rows from every live branch. |
 | `provenance` | allocations | Rows with that provenance. |
@@ -288,7 +288,6 @@ one-row-per-(record, branch-resolved value) rule.
 | `range_id` is not a range of the pool | `ValidationError` | `The selected pool_id=<pool_id> doesn't contain the requested range_id=<range_id>` |
 | `division` given on a pool whose scope in force is empty (unscoped, or every entry unknown on the request's branch) | `ValidationError` | `The pool <pool_id> has no allocation scope in force on branch <branch>; the division filter cannot be applied` |
 | utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
-| utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
 | utilization only: `division` omits an entry in force on the request's branch | `ValidationError` | `The division filter must give a value for every allocation scope entry in force on branch <branch>; missing: <paths>`, where `<paths>` lists the missing entries in scope order, joined with ", " |
 | a `division` entry's `path` is not in the scope in force | `ValidationError` | `The division entry '<path>' is not in the allocation scope in force on branch <branch>` |
 | the same `path` twice in `division` | `ValidationError` | `The division entry '<path>' is given twice` |
@@ -297,7 +296,8 @@ one-row-per-(record, branch-resolved value) rule.
 
 A `division` entry whose `path` is in force but whose `value` matches no holder is not refused; the
 allocations list is empty and `count` is 0, and the utilization query reports every `used` figure
-as 0. A `provenance` filter matching nothing behaves the same way.
+as 0. A `provenance` filter matching nothing behaves the same way. An empty `division` list is
+treated as an omitted `division` by both queries.
 
 ## Figures
 
@@ -311,8 +311,11 @@ percentages keep the names and meaning of `PoolUtilization`.
 |---|---|---|
 | pool | the number of values of the pool's space: over every range, the values not excluded by the attribute and within its `min_value` / `max_value`. Computed from the range set, never from the deprecated `start_range` / `end_range` pair, which is null on a pool holding several ranges | distinct values of the pool's space held |
 | range | `end - start + 1` | distinct values between `start` and `end` held |
-| division, whole pool | the pool's `size` | distinct values of the pool's space held by holders in the division |
-| division, one range (`ranges[].figures` with `division`) | the range's `size` | distinct values of the range held by holders in the division |
+| division, whole pool | the pool's `size` | distinct values of the pool's space held by the holders that sit in the division on any live branch |
+| division, one range (`ranges[].figures` with `division`) | the range's `size` | distinct values of the range held by the holders that sit in the division on any live branch |
+
+A division's `used_default_branch` counts the division's values held on the default branch and its
+`used_branches` those held on other branches only, the division being the union above.
 
 ## Semantics per pool state
 
@@ -338,8 +341,9 @@ outside `min_value` / `max_value`, or held by no range) is not listed and counts
 
 Because a holder's division is resolved as a union over live branches, one value can appear in
 two divisions: a holder in site A on the default branch and moved to site C on branch `b1` puts
-its value in A and in C. Per-division `used` figures therefore must not be summed; the pool's
-`used` is the distinct count over the whole space.
+its value in A and in C, in the divisions list, in the division figures and under the `division`
+filter alike. Per-division `used` figures therefore must not be summed; the pool's `used` is the
+distinct count over the whole space.
 
 A scoped pool's division list includes a division keyed by a peer that exists only on another
 branch; its entry's `display_label` falls back to the peer's id and `peer_kind` is null. A division
@@ -368,7 +372,7 @@ The scoped dataset, pool `Device index`:
 | Excluded values | none |
 | Divisions | Site A, Site B, Site C and Site D; each entry has path `site`, the site's id as `value` and `peer_kind` `LocationSite` |
 | Site A | devices `D0` to `D39` hold 40 values in `1 - 50` on `main`: `D0` holds 1, `D1` holds 5, `D2` to `D39` hold 6 to 43 |
-| Site C | no value of its own; `D1` sits in site C on branch `branch1` and holds 5 there, so value 5 counts in site A and in site C |
+| Site C | no value of its own; `D1` sits in site C on branch `branch1` and holds 5 there, so value 5 counts in site A and in site C; because `D1` holds 5 on `main`, site C's `used_default_branch` is 1 and its `used_branches` 0 |
 | Site B | devices `B0` to `B29` hold 51 to 80; 78, 79 and 80 are held on `branch1` only; `B0`'s 51 has provenance `PROVIDED` |
 | Site D | no value on any branch, so it is not listed |
 
@@ -396,10 +400,12 @@ The results this gives:
 | Read | Scoped dataset | Unscoped dataset |
 |---|---|---|
 | `NumberPoolUtilization` without `division` | refused | `size` 99, `used` 3, `used_default_branch` 2, `used_branches` 1; `1 - 50`: 2 of 50; `51 - 100`: 1 of 50 |
-| `NumberPoolDivisions` | A (40), B (30), C (1), each of `size` 100; no row for site D | `count` 0, no division |
+| `NumberPoolDivisions` | A (40), B (30: 27 on `main`, 3 on other branches), C (1: 1 on `main`, 0 on other branches), each of `size` 100; no row for site D. The pool's `used` is 70: value 5 counts in A and in C | `count` 0, no division |
 | `NumberPoolUtilization` with the division of site A | 40 of 100; `1 - 50`: 40 of 50; `51 - 100`: 0 of 50 | refused |
 | `NumberPoolUtilization` with the division of site B | 30 of 100 (27 on `main`, 3 on other branches); `1 - 50`: 0 of 50; `51 - 100`: 30 of 50 | refused |
+| `NumberPoolUtilization` with the division of site C | 1 of 100 (1 on `main`, 0 on other branches); `1 - 50`: 1 of 50; `51 - 100`: 0 of 50 | refused |
 | `NumberPoolAllocations` filtered on site A | `count` 41: the 40 rows on `main` and `D1`'s row on `branch1` | refused |
+| `NumberPoolAllocations` filtered on site C | `count` 2: `D1`'s rows on `main` and on `branch1` | refused |
 | `NumberPoolAllocations` without filter | `count` 71 | `count` 3 |
 | `NumberPoolAllocations` filtered on provenance `PROVIDED` | `count` 1: `B0`'s 51 | `count` 0 |
 
@@ -427,7 +433,7 @@ Behaviour of the arguments on the dataset:
 keep their shape and meaning. For a number pool they report pool-wide figures and the whole pool's
 values, scope or not. GraphQL cannot deprecate a field for one pool kind, so no `@deprecated` is
 added; their descriptions gain a note. The exported schema diff for them is description text only
-(SC-B).
+(SC-009).
 
 | Where | Note appended to the description |
 |---|---|
@@ -441,7 +447,10 @@ working unchanged; their migration to the dedicated queries is its own ticket.
 
 The pool `VLANs` in the first three examples has no allocation scope and two ranges, `1 - 50`
 weighted 10 and `51 - 100` with no weight. It tracks three values: 1 and 51 held on the default
-branch `main`, and 7 held on branch `b1` only.
+branch `main`, and 7 held on branch `b1` only. It has no excluded value. The examples in this
+section show the final behaviour; the fixed dataset of the first delivery reproduces them with the
+branch named `branch1`, and its unscoped dataset excludes 40, so it reports `size` 99 (section
+"Fixed dataset of the first delivery").
 
 ### Utilization of an unscoped pool
 
@@ -538,9 +547,8 @@ query {
 The pool `Device index` in the next three examples is scoped by `["site"]`, with ranges `1 - 50`
 and `51 - 100`. Site A's devices hold forty values in `1 - 50`, site B's devices hold thirty in
 `51 - 100`, and site C has devices but no value. Device `D1` of site A holds 5 on `main` and was
-moved to site C on branch `b1`. The responses show the final behaviour. The scoped dataset of the
-first delivery reproduces these holdings, with the branch named `branch1` (section "Fixed dataset
-of the first delivery").
+moved to site C on branch `b1`. The scoped dataset of the first delivery reproduces these holdings
+with the branch named `branch1`.
 
 ### Divisions of a scoped pool
 
@@ -577,15 +585,16 @@ query {
       {
         "display_label": "Site C",
         "entries": [ { "path": "site", "value": "c3…", "display_label": "Site C", "peer_kind": "LocationSite" } ],
-        "figures": { "size": 100, "used": 1, "used_default_branch": 0, "used_branches": 1, "utilization": 1.0 }
+        "figures": { "size": 100, "used": 1, "used_default_branch": 1, "used_branches": 0, "utilization": 1.0 }
       }
     ]
   }
 }
 ```
 
-Site C is listed because `D1` holds 5 there through `b1`. Site D is not listed: its devices hold no
-value.
+Site C is listed because `D1` sits in site C on `b1`: its value 5 counts in A and in C, and because
+`D1` holds 5 on `main`, site C's `used_default_branch` is 1. The pool's own `used` is 70, not 71.
+Site D is not listed: its devices hold no value.
 
 ### Utilization of one division
 
@@ -653,8 +662,9 @@ query {
 `count` is 41: the forty values of site A's devices on `main`, plus `D1`'s value 5 as held on
 `b1`, because `D1` carries site A on `main` (the FR-007 union keeps every row of a holder that
 sits in the division on any live branch), even though `D1` sits in site C on `b1`. Filtering on
-site C also lists `D1`'s two rows, so value 5 is counted in A and in C; the two divisions' `used`
-figures (40 and 1) must not be summed.
+site C lists `D1`'s two rows (`count` 2), so value 5 is counted in A and in C; the two divisions'
+`used` figures (40 and 1) must not be summed. With `[{ path: "site", value: "c3…" }]` the
+utilization query reports 1 of 100, `1 - 50` 1 of 50 and `51 - 100` 0 of 50.
 
 ## Generated artefacts touched
 

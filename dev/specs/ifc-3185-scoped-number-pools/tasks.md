@@ -6,7 +6,7 @@
 [data-model.md](./data-model.md), [contracts/](./contracts/),
 [critiques/critique-20261002.md](./critiques/critique-20261002.md)
 
-**Tests**: required. Constitution IV and the spec's Testing Decisions mandate them, and every branch
+**Tests**: required. Constitution IV and the PRD's Testing Decisions, carried into plan.md, mandate them, and every branch
 case is written with two branches because a single-branch test cannot tell a union from an
 allocating-branch read.
 
@@ -21,7 +21,7 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | #10911 | documents | This spec directory, consistent with the tickets, and the GraphQL contract of the three number-pool queries; the bottom of the stack once #10917 has merged |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | #10932 | B | The three queries over a fixed dataset, so the frontend can build |
 | [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | new | D3 (validator) | A scope that cannot divide the pool is refused at save |
-| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks a scoped field is refused |
+| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks a scoped field is refused; a rename of a scoped field rewrites the scope entry |
 | [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | new | C, D1 | Allocation within the writer's division |
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | new | D3 (size check) | The attribute-add size check compares against the largest division |
 | [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | new | D3 (schema) | The scope declared on a number-pool attribute in the schema |
@@ -58,9 +58,11 @@ of the generated files after it.
       `backend/infrahub/core/schema/definitions/core/resource_pool.py::core_number_pool`. No branch
       support override: the pool is agnostic.
 - [X] T006 [P] Add `allocation_scope: list[str] | None = Field(default=None, …,
-      json_schema_extra={"update": UpdateSupport.ALLOWED.value})` to
+      json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value})` to
       `backend/infrahub/core/schema/attribute_parameters.py::NumberPoolParameters` with the same
-      description as T005 and "same notation as uniqueness constraints".
+      description as T005 and "same notation as uniqueness constraints". A declared scope is fixed
+      with the attribute: a schema load that sets, changes or clears it on an existing attribute
+      is refused by the schema-update validation (FR-012).
 - [X] T007 [P] Add the `List` field to the hand-maintained
       `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` (the generated SDK,
       OpenAPI and REST models are not introspected from the Pydantic class).
@@ -69,16 +71,18 @@ of the generated files after it.
       docs.generate`. Confirm `schema/schema.graphql` carries `allocation_scope: ListAttribute` on
       `CoreNumberPool` and `ListAttributeCreate` / `ListAttributeUpdate` on its three inputs, and
       `schema/openapi.json` carries it on `NumberPoolParametersWrite` / `Read`. Run `uv run pytest
-      backend/tests/unit/core/schema/test_write_json_schema.py`.
+      backend/tests/unit/core/schema/test_write_json_schema.py`. `docs.generate` changes nothing
+      for the field: `docs/docs/snippets/attribute-kind-params.mdx` lists only parameters with
+      `update: validate_constraint`.
 - [X] T009 Component test in `backend/tests/component/core/schema/test_attribute_parameters.py`:
       a `NumberPool` attribute declaring `parameters.allocation_scope: ["site"]` loads and the
       parameters round-trip through the schema API; absent and `[]` both read back as unscoped.
 - [X] T010 Component test in
-      `backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py` (new,
-      using that folder's `helpers.py`): create a pool with `allocation_scope: {value: ["site"]}`
-      and read it back; create without it and read `null`; update with `{value: null}` clears it.
-      (Validation is not wired yet; this pins the round trip and the empty/null equivalence, User
-      Story 1 scenario 1.)
+      `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
+      (`TestNumberPoolAllocationScope`, on the ticket schema of that folder's `helpers.py`): create
+      a pool with `allocation_scope: {value: ["site"]}` and read it back; create without it and
+      read `null`; update with `{value: null}` clears it. (Validation is not wired yet; this pins
+      the round trip and the empty/null equivalence, User Story 1 scenario 1.)
 
 **Checkpoint**: A merges. The SDK models come from
 [infrahub-sdk-python#1402](https://github.com/opsmill/infrahub-sdk-python/pull/1402); the
@@ -105,7 +109,7 @@ description notes on the generic queries, the regenerated schema and frontend ty
 snapshot that freezes the contract, and the test fixture every later ticket shares. The pull
 request also carries its rebase onto `feature-number-pools-1.12`.
 
-**Depends on**: IFC-3346, IFC-3334. **Blocks**: IFC-3348, IFC-3329.
+**Depends on**: IFC-3346. **Blocks**: IFC-3348, IFC-3329.
 
 **Note**: the queries read nothing from the database (contract section "Fixed dataset of the first
 delivery"): `backend/infrahub/pools/number_pool_mock.py` holds a pool scoped by `site` returned for
@@ -129,15 +133,14 @@ read real pools are listed under IFC-3329.
       `start_range` / `end_range` is null on a pool holding several ranges) and
       `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py` (where the scope
       validation of IFC-3348 goes).
-- [X] T003 [P] Add a scoped-pool test schema to `backend/tests/helpers/number_pool.py`: a kind with
-      a **non-unique** `Number` attribute to pool, a required cardinality-one relationship (`site`
+- [X] T003 [P] Add a scoped-pool test schema to `backend/tests/helpers/number_pool.py`
+      (`SCOPED_SITE`, `SCOPED_TAG`, `SCOPED_DEVICE`, `SCOPED_POOL_SCHEMA`): a kind with a
+      **non-unique** `Number` attribute to pool, a required cardinality-one relationship (`site`
       → a site kind), a required scalar attribute (`role`, Dropdown), an optional attribute, a many
       relationship and a self-referencing cardinality-one relationship (for the direction case).
       Do not reuse `tests/helpers/schema/snow.py::SNOW_TASK`: its pooled attribute is `unique`, and
-      the global taken-values scan masks scoped behaviour. Add a `scoped_pool_schema` fixture, a
-      helper that creates N sites and M nodes per site, and a helper that creates a pool with two
-      ranges (`1 - 50` weighted 10, `51 - 100` unweighted) so the contract examples can be
-      reproduced.
+      the global taken-values scan masks scoped behaviour. The fixture and the site, node and
+      two-range pool factories land with their first consumer, IFC-3349 (T096).
 - [X] T004 [P] Create `backend/tests/unit/pools/__init__.py` if absent and
       `backend/tests/component/core/constraint_validators/__init__.py` if absent, so the new test
       modules are collected.
@@ -202,6 +205,22 @@ read real pools are listed under IFC-3329.
       field of the three `CoreNumberPool` inputs, so a later ticket cannot rename, retype or remove
       what this ticket published (FR-018).
 
+### Alignment with the contract
+
+- [ ] T093 [US1] Compute the division figures of the fixed dataset with the FR-007 union: in
+      `backend/infrahub/pools/number_pool_mock.py`, the rows a division's figures count are the rows
+      whose holder sits in the division on any live branch (the rows the allocations `division`
+      filter returns), not the rows whose own division on the row's branch matches;
+      `used_default_branch` counts those values held on `main` and `used_branches` those held on
+      other branches only. Update `backend/tests/unit/pools/test_number_pool_mock.py` and
+      `backend/tests/component/graphql/queries/test_number_pool_surface.py` to the contract's
+      figures: site C `(100, 1, 1, 0)` with `1 - 50` `(50, 1, 1, 0)` and `51 - 100` `(50, 0, 0, 0)`,
+      the allocations filtered on site C `count` 2, sites A and B unchanged, and the pool's `used`
+      70 against divisions summing to 71.
+- [ ] T097 [US1] Delete `backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py`:
+      its three tests repeat T010's `test_pool_allocation_scope.py` on `SCOPED_POOL_SCHEMA`, and
+      IFC-3348 extends T010's file (T054).
+
 **Checkpoint**: B merges. Frontend and SDK start from the exported schema. Everything below changes
 no published field; the only later visible change is the fixed dataset giving way to real reads.
 
@@ -214,7 +233,7 @@ FR-009, FR-013, FR-020), plus the pure parts of `pools/scope.py` that every late
 It lands before scoped allocation so that the division resolver only meets scopes the validator
 accepted.
 
-**Depends on**: IFC-3334, IFC-3347. **Blocks**: IFC-3349, IFC-3351, IFC-3353.
+**Depends on**: IFC-3347. **Blocks**: IFC-3349, IFC-3351, IFC-3353.
 
 - [ ] T027 [US2] Create `backend/infrahub/pools/scope.py` with `ScopeEntry`, `DivisionKey` (frozen
       dataclass: the entries and the writer's value per entry) and
@@ -236,8 +255,8 @@ accepted.
       attribute and a required `site`, implemented by two kinds of which one declares an extra
       required `pod`.
 - [ ] T054 [P] [US5] Component tests in
-      `backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py` (extend
-      T010's file): each refused entry through `CoreNumberPoolCreate` and `CoreNumberPoolUpdate`; a
+      `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
+      (extend T010's file): each refused entry through `CoreNumberPoolCreate` and `CoreNumberPoolUpdate`; a
       valid scope through create, update and upsert; a scope naming a field that exists only on
       branch `b1` is refused on `b1` and on the default branch naming the entry; the same scope
       saves from any branch once the field is merged into the default branch; a pool re-sent whole
@@ -264,7 +283,9 @@ accepted.
       against the default branch's schema,
       `registry.schema.get_schema_branch(name=registry.default_branch)`, whatever branch the
       mutation runs on; `mutate_update` refuses any change on a `pool_type == Schema` pool with the
-      scope contract's message, beside `_refuse_shorthand_conflicts`.
+      scope contract's message, inside `_refuse_unsupported_writes`, adding a
+      `SCHEMA_POOL_SCOPE_REFUSED` constant built on `SCHEMA_POOL_EDIT_HINT` beside the two existing
+      ones in `number_pools/common.py`.
 
 **Checkpoint**: every pool-save refusal of User Story 5 scenario 1 ships.
 
@@ -275,8 +296,9 @@ accepted.
 **Delivers**: the dependency checker over existing pools (User Story 5 scenarios 2 and 3, FR-010;
 change set D4): a schema load that makes a scoped entry optional, absent or cardinality many, or
 that makes the pool's own attribute `unique: true` while the pool carries a scope, is refused
-naming the pool. It needs nothing from allocation or reads and runs in parallel with IFC-3348 and
-IFC-3349.
+naming the pool. Also the rename rewrite (User Story 5 scenario 4, FR-032): renaming a field a
+scope names rewrites the entry in every pool that names it, during the rename's schema migration.
+It needs nothing from allocation or reads and runs in parallel with IFC-3348 and IFC-3349.
 
 **Depends on**: IFC-3334. **Blocks**: IFC-3354.
 
@@ -312,8 +334,9 @@ IFC-3349.
       the existing constraint name for `attribute.unique` changes (verify the name in the map). Do not
       touch `core/models.py`: `add_validator_for_migration` already turns the removal migrations
       into constraints. The map holds one checker class per name and
-      `core/validators/determiner.py` instantiates it by name, so for the three update names that
-      already map to a checker add a `CompositeConstraintChecker` in
+      `core/validators/determiner.py` instantiates it by name, so for the four update names that
+      already map to a checker (`attribute.unique.update` maps to `AttributeUniquenessChecker`
+      today) add a `CompositeConstraintChecker` in
       `backend/infrahub/core/validators/composite.py` that takes the checker classes in its
       constructor, instantiates each with the same `db` and `branch`, `supports` when any does, and
       concatenates their `check` results (a raised `ValueError` propagates as it does today); map the
@@ -322,8 +345,35 @@ IFC-3349.
 - [ ] T068 [US5] Integration-docker test
       `backend/tests/integration_docker/test_number_pool_scope_schema_load.py` (shard marker as the
       other tests in that folder): the removal refusal through the schema-load API names the pool.
+- [ ] T094 [P] [US5] Component tests in
+      `backend/tests/component/core/constraint_validators/test_scoped_field_rename.py`: a
+      user-created pool scoped by `["site", "role"]` and a schema-created pool declaring
+      `allocation_scope: ["site"]`; a load on the default branch renaming the attribute `role` to
+      `function` rewrites the user-created pool's scope to `["site", "function"]`; a load renaming
+      the relationship `site` to `location`, carrying `allocation_scope: ["location"]` on the
+      declaration, is accepted and both pools read back `location` in place of `site`; the pools'
+      records are unchanged and the next allocation per location continues the per-site sequence;
+      a load that changes the declared scope without a rename is refused by the schema-update
+      validation; the rename made on branch `b1` leaves the pools unchanged until `b1` merges, and
+      on `b1` the reads ignore the stored entry (FR-008); a pool on an unrelated kind is not
+      rewritten.
+- [ ] T095 [US5] Rewrite scope entries on rename (FR-032): in
+      `backend/infrahub/core/migrations/schema/attribute_name_update.py::AttributeNameUpdateMigration`
+      (`attribute.name.update`), after the rename queries, load the pools with
+      `PoolsReferencingField.get(kind, previous_name, branch)` and write the new name into each
+      pool's `allocation_scope` at the entry's position (a data write of the migration, on the
+      branch the migration runs on; the pool is branch-agnostic, so the write made at merge into
+      the default branch is the one that lands). Add a `relationship.name.update` migration entry
+      in `backend/infrahub/core/migrations/__init__.py::MIGRATION_MAP` doing the same for a renamed
+      relationship, since the relationship's `name` is `update: allowed` and has no migration
+      today; the relationship rename moves no data. In
+      `backend/infrahub/core/models.py::SchemaUpdateValidationResult`, accept a change to
+      `parameters.allocation_scope` (`update: NOT_SUPPORTED`) when the same diff renames a field
+      the previous value names and the new value is the previous value with that entry renamed;
+      every other change to the field stays refused.
 
-**Checkpoint**: every schema-load refusal of User Story 5 ships and names the pool.
+**Checkpoint**: every schema-load refusal of User Story 5 ships and names the pool; a rename
+rewrites the scope entries.
 
 ---
 
@@ -335,10 +385,18 @@ pool handling deferred on update and on template create until every field is app
 the allocation lock keyed by pool and division (FR-031). Unscoped pools issue the same query and
 take the same lock as today.
 
-**Depends on**: IFC-3334, IFC-3347, IFC-3348. **Blocks**: IFC-3329, IFC-3351, IFC-3355, IFC-3357.
+**Depends on**: IFC-3348. **Blocks**: IFC-3329, IFC-3351, IFC-3355, IFC-3357.
 
 **Independent Test**: the scoped pool fixture; devices in several sites through the ordinary
 allocation path, on one branch and on two.
+
+### Setup
+
+- [ ] T096 [P] Add to `backend/tests/helpers/number_pool.py`, over T003's `SCOPED_POOL_SCHEMA`: a
+      `scoped_pool_schema` fixture, a helper that creates N sites and M nodes per site, and a
+      helper that creates a pool with two ranges (`1 - 50` weighted 10, `51 - 100` unweighted) so
+      the contract examples can be reproduced. First consumers: T032, T037 to T039; IFC-3329 reuses
+      them (T012, T047).
 
 ### The seams
 
@@ -353,32 +411,39 @@ allocation path, on one branch and on two.
       the spec). The queries ignore the division in this task; the unscoped text is unchanged.
 - [ ] T030 [US2] Defer pool handling on update in `Node.from_graphql`
       (`backend/infrahub/core/node/__init__.py`): apply every attribute with
-      `process_pools=False`, collect the attributes whose payload carried `from_pool`, then call
-      `handle_pool` for each after the loop. `BaseAttribute.from_graphql` keeps assigning
-      `from_pool` inline (the mutation lock names are read from it). Assert `Node.from_graphql` still
-      has exactly its two callers.
+      `process_pools=False` (the flag exists; `core/node/lock_utils.py::apply_payload_for_lock_names`
+      already passes it so that `AttributePoolApplier.apply(allocate=False)` resolves the pool for
+      the lock names without allocating), collect the attributes whose payload carried `from_pool`,
+      then call `pool_applier.apply(node=self, attribute=attribute, allocate=True)` for each after
+      the loop. `BaseAttribute.from_graphql` keeps assigning `from_pool` inline (the mutation lock
+      names are read from it). Assert `Node.from_graphql` still has exactly its two callers
+      (`lock_utils.apply_payload_for_lock_names`, `graphql/mutations/main.py`).
 - [ ] T031 [US2] Defer pool handling on template create: in
       `backend/infrahub/templates/node_applier.py::NodeTemplateApplier._handle_pool_relationship`,
       record the pool id and mark the attribute pending in `TemplatePoolFields.pending` instead of
       allocating through `pools/default_allocator.py::DefaultPoolAllocator`; in
-      `Node._process_fields_attributes`, run `handle_pool` for pending attributes after the
-      relationships are applied. Remove `DefaultPoolAllocator.allocate_for_attribute` if it has no
-      other caller; otherwise leave it and note the caller.
+      `Node._process_fields_attributes`, run `pool_applier.apply(..., allocate=True)` for pending
+      attributes after the relationships are applied. Remove
+      `DefaultPoolAllocator.allocate_for_attribute` if it has no other caller; otherwise leave it
+      and note the caller.
 - [ ] T032 [US2] Functional tests in `backend/tests/functional/pools/test_numberpool_lifecycle.py`
       (extend): a scoped field changed and `from_pool` sent in one update allocates after the
       relationship is applied and the pool lock is taken after the division is resolved; a
-      template-created node allocates after its relationships exist. These pass with an unscoped
-      pool (lock `resource_pool.<id>`) and gain scoped assertions with T039.
+      template-created node allocates after its relationships exist; an attach (`value` and
+      `from_pool`) and a bare value change on a tracked attribute take the same lock key as
+      allocation (FR-031, last sentence). These pass with an unscoped pool (lock
+      `resource_pool.<id>`) and gain scoped assertions with T039
+      (`resource_pool.<pool id>.<division key>` for the attach and the value change too).
 - [ ] T092 [US2] Key the allocation lock by pool and division (FR-031): in
       `backend/infrahub/core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource`,
       lock on `resource_pool.<pool id>.<division key>` when a division is given (the key is the
       normalised tuple of the writer's entry values in scope order) and on `resource_pool.<pool
-      id>` otherwise, after the division is resolved. Decide what happens to the mutation-level pool
-      lock that `backend/infrahub/core/node/lock_utils.py::get_lock_names_on_object_mutation`
-      derives from `from_pool` before the node is saved: remove it for `from_pool` allocations, or
-      keep it as a pool-level guard, so that two writers in different divisions allocate in
-      parallel; record the choice in the PR description. Every write that takes the pool lock for a
-      tracked attribute uses the same key.
+      id>` otherwise, after the division is resolved. On a scoped pool this lock replaces the
+      mutation-level pool lock that
+      `backend/infrahub/core/node/lock_utils.py::get_lock_names_on_object_mutation` derives from
+      `from_pool` before the node is saved: do not derive it when the pool carries a scope, because
+      held for the whole mutation it serialises every division; an unscoped pool keeps it. Every
+      write that takes the pool lock for a tracked attribute uses the same key.
 
 ### Tests first
 
@@ -389,7 +454,9 @@ allocation path, on one branch and on two.
 - [ ] T037 [P] [US2] Component tests in
       `backend/tests/component/core/resource_manager/test_division_resolver.py` for
       `DivisionResolver.division_of`: relationship entry (peer set by id, by node, by
-      human-friendly id), attribute entry, enum attribute unwrapped, two entries in scope order.
+      human-friendly id), attribute entry, enum attribute unwrapped, two entries in scope order,
+      entries resolved on the generic's schema when the pooled attribute is inherited from a
+      generic.
 - [ ] T038 [P] [US2] Component tests in
       `backend/tests/component/core/resource_manager/test_number_pool_scoped_query.py`
       (`NumberPoolGetFree` / `NumberPoolGetUsed` with a division): one relationship entry; one
@@ -401,7 +468,11 @@ allocation path, on one branch and on two.
       result.
 - [ ] T039 [P] [US2] Functional tests in
       `backend/tests/functional/pools/test_numberpool_scoped_allocation.py` through GraphQL: the
-      User Story 2 scenarios 1, 2, 3, 7, 8 and 9 of `spec.md`; fifty concurrent creates in site A
+      User Story 2 scenarios 1, 2, 3, 7, 8, 9, 10 (a composite uniqueness constraint on site plus
+      the attribute refuses a duplicate within site A and accepts a number held only in site C,
+      the pool refusing nothing) and 11 (a scope set on a pool already holding one number twice
+      within site A: accepted, and the next allocation in A skips that number once) of `spec.md`;
+      fifty concurrent creates in site A
       yield fifty distinct numbers and fifty in A plus fifty in B yield 1–50 twice (FR-004); two
       writers in different divisions hold different lock keys and allocate in parallel, two writers
       in one division serialise on `resource_pool.<pool id>.<division key>` (FR-031); on a kind that
@@ -413,10 +484,11 @@ allocation path, on one branch and on two.
 - [ ] T040 [US2] Add `DivisionResolver.division_of(db, node, entries) -> DivisionKey` to
       `backend/infrahub/pools/scope.py` (peer id through `RelationshipManager.get_peer_id`,
       attribute `.value`, enum unwrapped, `None` kept as `None`). In
-      `backend/infrahub/core/node/__init__.py::Node.handle_pool`, resolve the entries against
-      `registry.schema.get_schema_branch(name=self._branch.name)` from
+      `backend/infrahub/pools/attribute_pool_applier.py::AttributePoolApplier.apply`, once the pool
+      is resolved and `allocate` is set, resolve the entries against
+      `registry.schema.get_schema_branch(name=node._branch.name)` from
       `number_pool.allocation_scope.value`, on the generic's schema when the pooled attribute is
-      inherited from a generic, compute the division from `self`, and pass it to
+      inherited from a generic, compute the division from `node`, and pass it to
       `NumberPoolAttributeAllocator.allocate`. Keep every existing refusal and message.
 - [ ] T041 [US2] Pass the division from the two remaining allocation callers:
       `backend/infrahub/core/node/create.py` (template allocation after `obj.new()`) and
@@ -456,7 +528,7 @@ allocation path, on one branch and on two.
 check against the largest division (research decision D9). The divisions list of the dedicated
 queries derives from the allocation rows, so this checker is the query's only consumer.
 
-**Depends on**: IFC-3334, IFC-3348 (`entries_in_force`). Reuses the visibility constant of
+**Depends on**: IFC-3348 (`entries_in_force`). Reuses the visibility constant of
 IFC-3349 when it has merged; otherwise introduces it and IFC-3349 adopts it. **Blocks**: IFC-3356.
 
 - [ ] T046 [P] [US3] Component tests in
@@ -485,15 +557,16 @@ IFC-3349 when it has merged; otherwise introduces it and IFC-3349 adopts it. **B
 ## IFC-3351: Declare the allocation scope on a number-pool attribute in the schema
 
 **Delivers**: User Story 4 (FR-012, FR-013): the schema-created pool carries the declared scope, a
-default-branch schema load that changes the declaration updates the pool, and an invalid declared
-entry refuses the load.
+schema load that sets, changes or clears the declaration on an existing attribute is refused
+(`update: NOT_SUPPORTED`, as shipped by IFC-3334), and an invalid declared entry refuses the load.
 
 **Depends on**: IFC-3348 (the validator), IFC-3349 (the allocation assertions). **Blocks**: IFC-3354.
 
 - [ ] T055 [P] [US4] Component tests in `backend/tests/component/pools/test_schema_number_pool_scope.py`:
       `vlan_id` with ranges 100–200 and scope `["site"]` → the created pool reads back the scope and
-      two sites both receive 100; clearing the scope on the default branch and reloading → next
-      allocation 102; a scope declared on `b1` only does not change the pool until merge; a direct
+      two sites both receive 100; a reload that clears or changes the declared scope, on the
+      default branch and on `b1`, is refused by the schema-update validation naming the parameter
+      path, the pool keeps `["site"]` and the next allocation in a site holding 100 is 101; a direct
       `CoreNumberPoolUpdate` of the scope is refused with the default-branch message; a declaration
       naming an optional field, a many relationship, a related-node path or an unknown field is
       refused at load naming the entry; a declaration on a `unique: true` number-pool attribute is
@@ -502,9 +575,10 @@ entry refuses the load.
       the generic.
 - [ ] T059 [US4] Write the schema-declared scope onto the pool:
       `backend/infrahub/pools/schema_number_pool_upserter.py::SchemaNumberPoolUpserter.upsert_number_pool`
-      sets `allocation_scope` from the parameters at creation;
+      sets `allocation_scope` from the parameters at creation.
       `backend/infrahub/pools/schema_number_pool_synchronizer.py::SchemaNumberPoolSynchronizer._update_pool_from_schema`
-      copies it from the default-branch schema when it differs, as it does the bounds.
+      is not changed: a declared scope cannot change (`update: NOT_SUPPORTED`), so there is nothing
+      to copy; the rename rewrite of IFC-3352 (T095) is the only later write to the pool's scope.
 - [ ] T060 [US4] Call `ScopeValidator` from
       `backend/infrahub/core/schema/schema_branch.py::SchemaBranch._validate_number_pool_parameters`
       with `self` as the schema branch when `parameters.allocation_scope` is set.
@@ -518,8 +592,9 @@ entry refuses the load.
 ## IFC-3329: Show number pool usage for each allocation scope
 
 **Delivers**: User Story 3 and the open part of User Story 1 (change sets D2 and E): the
-allocated-rows query on the shared fragment with branch, provenance, in-space and per-entry
-division values; the pure division reporter; the three resolvers reading the database; the fixed
+allocated-rows query on the shared fragment with branch, provenance, the pool's-space filter (rows
+outside the space dropped) and per-entry division values; the pure division reporter; the three
+resolvers reading the database; the fixed
 dataset deleted. The three queries switch together so that they agree with each other (SC-010).
 
 **Depends on**: IFC-3347, IFC-3349. **Blocks**: IFC-3354, IFC-3356, IFC-3357, IFC-3358.
@@ -557,10 +632,15 @@ division rows, the range rows and the filtered allocation list against the recor
       return before this ticket (count, percentages, edges, the 500 row absent); on the scoped pool
       they return pool-wide figures and the whole pool's values (FR-029).
 - [ ] T034 [P] [US3] Unit tests in `backend/tests/unit/pools/test_division_report.py`: divisions
-      ordered by utilization; a division with nodes and no records is not listed; branch split per
-      division; absolute counts (`size`, `used`, `used_default_branch`, `used_branches`) per
-      division; unscoped single division equals the whole; `of_within` reports `used` 0 for a range
-      in which the division holds no value (spec User Story 3, scenario 3).
+      ordered by utilization; a division with nodes and no records is not listed; a row whose
+      holder occupies two divisions (site A on the default branch, site C on `b1`) counts in both,
+      so the divisions' `used` do not sum to the pool's (FR-007 union, FR-025); branch split per
+      division computed over that union (`used_default_branch` the division's values held on the
+      default branch, `used_branches` those held on other branches only: the moved holder's value
+      held on the default branch counts in site C's `used_default_branch`); absolute counts
+      (`size`, `used`, `used_default_branch`, `used_branches`) per division; unscoped single
+      division equals the whole; `of_within` reports `used` 0 for a range in which the division
+      holds no value (spec User Story 3, scenario 3).
 - [ ] T047 [P] [US3] Extend `backend/tests/component/graphql/queries/test_number_pool_surface.py`
       with the real-division cases, replacing the T013 fixed-dataset assertions: the spec's User Story 3
       scenario 1 (A 50 records, B two nodes no records, C no nodes → A alone listed with 50 of
@@ -593,10 +673,12 @@ division rows, the range rows and the filtered allocation list against the recor
       one range of `range_id`; the generic callers pass the space's segments as today); add
       `branch_name: str | None = None` and `provenance: PoolRecordProvenance | None = None`;
       project `coalesce(ir.provenance, $allocated_provenance) AS provenance`; add `provenance:
-      PoolRecordProvenance` to `NumberPoolAllocatedResult`; keep `ORDER BY av.value, hv.branch,
-      n.uuid`. A row outside the pool's space is dropped
-      (`backend/infrahub/pools/number_ranges.py::EffectiveSpace.contains`); the `range` of each row
-      comes from `EffectiveSpace.range_for`. The
+      PoolRecordProvenance` to `NumberPoolAllocatedResult`; extend `order_by` to `["av.value",
+      "hv.branch", "n.uuid"]` (today only `av.value`; FR-023 orders by value, then branch, then
+      holder id). A row outside the pool's space is dropped
+      (`backend/infrahub/pools/number_ranges.py::EffectiveSpace.contains`); the id of each row's
+      `range` comes from `EffectiveSpace.range_for`, its `display_label` from the range node loaded
+      by `_ranges`. The
       generic callers (`resolve_number_pool_allocation`, `NumberUtilizationGetter`) pass nothing
       new and render the same text as today. Component test in
       `backend/tests/component/core/resource_manager/test_number_pool.py` (extend): each filter
@@ -638,7 +720,9 @@ division rows, the range rows and the filtered allocation list against the recor
       values within its bounds; `allocation_scope` from `_scope_in_force`; `id` and `display_label`
       from the pool. Validate `division` as T021 does and also refuse one that omits a path in
       force, naming the missing paths; with it, compute every figure and the count over the rows of
-      that division; refuse a scoped pool read without `division` (FR-011).
+      that division (the rows whose holder occupies the division on any live branch, as the
+      allocations filter selects them, FR-007 union); refuse a scoped pool read without `division`
+      (FR-011).
 - [ ] T020 [US1] Add `resolve_number_pool_divisions`: with an empty scope in force return `count`
       0 and an empty `divisions` list; otherwise list the
       divisions holding at least one row from `report.divisions`, compute each division's figures
@@ -653,7 +737,8 @@ division rows, the range rows and the filtered allocation list against the recor
       `offset`, `limit`; when `division` is given, pass it to the query so `count`, `offset` and
       `limit` are Cypher-side; build each row: `holder` from one `NodeManager.get_many(ids,
       branch=<row branch>, at)` per distinct branch (`display_label`, `hfid` via `get_hfid`, `kind`
-      from the pool's `node`), `range` from `EffectiveSpace.range_for`.
+      from the pool's `node`), `range` with its id from `EffectiveSpace.range_for` and its
+      `display_label` from the range node loaded by `_ranges`.
 - [ ] T051 [US3] Replace the fixed dataset in `backend/infrahub/graphql/queries/number_pool.py`: pool
       `figures` from `of(key)`; each range's figures from `of_within(key, start, end)`; the
       divisions list from `report.divisions`; the `division` filter
@@ -729,10 +814,11 @@ No behaviour changes.
 ## IFC-3354: Verify scoped allocation and reads across branches whose schemas differ
 
 **Delivers**: User Story 6: the branch seam end to end, with two branches in every scenario:
-unknown entries dropped per read, validation on the mutation branch, the full scope after merge,
-the scope in force reported by the dedicated queries. Defects the scenarios reveal are fixed here.
+unknown entries dropped per read, validation against the default branch's schema from any branch,
+the full scope after merge, the scope in force reported by the dedicated queries. Defects the
+scenarios reveal are fixed here.
 
-**Depends on**: IFC-3348, IFC-3349, IFC-3329, IFC-3351, IFC-3352. **Blocks**: IFC-3356.
+**Depends on**: IFC-3329, IFC-3351, IFC-3352. **Blocks**: IFC-3356.
 
 - [ ] T069 [US6] Functional tests in `backend/tests/functional/pools/test_numberpool_scoped_branch.py`
       (`workflow_awaited_only` for the merge and the rebase): `pod` declared required on Device in
@@ -744,7 +830,9 @@ the scope in force reported by the dedicated queries. Defects the scenarios reve
       one-entry divisions; a `division` filter on `pod` is accepted on the default branch and
       refused on `b0`; after `b0` is rebased it allocates per the full scope; a node deleted on `b1`
       but live on the default branch still counts in its division on both; the pool re-sent whole
-      from `b0` with its unchanged scope is accepted.
+      from `b0` with its unchanged scope is accepted; a pool whose every entry is unknown on `b0`
+      allocates pool-wide there and the three queries report `allocation_scope: []` (User Story 6
+      scenario 3).
 - [ ] T070 [US6] Extend `backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py`
       with the two lifecycle rows the spec adds: the scoped-field move on a branch (record counts in
       both divisions until merge or delete) and schema divergence (the transient double-1 under the
@@ -763,19 +851,22 @@ fragments.
 **Depends on**: IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354, IFC-3355, IFC-3357. **Blocks**:
 the merge of `feature-number-pools-1.12` into the release branch.
 
-- [ ] T079 [P] Changelog fragments in `changelog/` (use the `creating-changelog-entries` skill):
-      scoped allocation and per-division utilization (feature); `parameters.allocation_scope`
-      (feature); the three dedicated number-pool queries (feature); the description notes on the
-      generic resource-pool queries (changed description); the pool-save refusals (new refusal); the
-      schema-load refusal naming the pool (new refusal); the allocation lists no longer showing a
-      deleting branch's values (changed behaviour, from the allocated read moving onto the shared
-      fragment).
+- [ ] T079 [P] Changelog fragments in `changelog/` (use the `creating-changelog-entries` skill), the
+      eight rows of the spec's "Behaviour changes for the changelog": scoped allocation,
+      per-division utilization and the lock per pool and division (feature);
+      `parameters.allocation_scope`, fixed with the attribute (feature); the three dedicated
+      number-pool queries (feature); the description notes on the generic resource-pool queries
+      (changed description); the pool-save refusals, the `unique: true` and generic cases included
+      (new refusal); the schema-load refusal naming the pool, the `unique: true` case included (new
+      refusal); a rename of a scoped field rewriting the scope entries (changed behaviour); the
+      allocation lists no longer showing a deleting branch's values (changed behaviour, from the
+      allocated read moving onto the shared fragment).
 - [ ] T080 [P] User docs: a "Scope a pool" section in `docs/docs/resource-manager/allocate-number.mdx`
-      (web and GraphQL tabs, the refusal list, the branch note) and a "Read a number pool" section
-      showing the three dedicated queries; an `allocation_scope` example in
-      `docs/docs/schema/number-pool.mdx`; regenerate `docs/docs/snippets/attribute-kind-params.mdx`
-      and `docs/docs/reference/schema/attribute.mdx` with `uv run invoke docs.generate`; run
-      `uv run invoke docs.lint`.
+      (web and GraphQL tabs, the refusal list, the branch note, the rename note) and a "Read a
+      number pool" section showing the three dedicated queries; an `allocation_scope` example and
+      the field's description in `docs/docs/schema/number-pool.mdx`, written by hand because the
+      generated snippet `docs/docs/snippets/attribute-kind-params.mdx` lists only parameters with
+      `update: validate_constraint`; run `uv run invoke docs.lint`.
 - [ ] T089 [P] User docs: a "Replace a pool per site with one scoped pool" procedure in
       `docs/docs/resource-manager/allocate-number.mdx`: scope the kept pool, widen its ranges,
       attach each node with one `<Kind>Update` sending `value` and `from_pool`, delete the other
@@ -785,15 +876,14 @@ the merge of `feature-number-pools-1.12` into the release branch.
       Reservations section, describe the division read (entries in force per branch, the per-entry
       union, the shared visibility rule, the anchor order kept) in a few lines; no spec or ticket
       references.
-- [ ] T082 Record in `spec.md` Open points that the surface keeps form A (three root fields,
+- [X] T082 Record in `spec.md` Open points that the surface keeps form A (three root fields,
       `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions`,
-      `InfrahubNumberPoolAllocations`), decided on 2026-10-07. No root field is renamed.
-- [ ] T090 Check that the `allocation_scope` attribute description ("Fields of the kind that divide
-      the pool's space; allocation returns the lowest free number within the writer's division")
-      matches the delivered behaviour of IFC-3349; correct it in
-      `backend/infrahub/core/schema/definitions/core/resource_pool.py`,
-      `backend/infrahub/core/schema/attribute_parameters.py` and `tasks/backend.py` and regenerate
-      if it does not.
+      `InfrahubNumberPoolAllocations`), decided on 2026-10-07. No root field is renamed. (Recorded
+      by IFC-3346.)
+- [ ] T090 Verify that the `allocation_scope` attribute description ("Fields of the kind that
+      divide the pool's space; allocation returns the lowest free number within the writer's
+      division") describes the behaviour IFC-3349 delivered; the description is kept as shipped,
+      and a mismatch is recorded in the PR description for a follow-up.
 - [ ] T088 SDK: merge [infrahub-sdk-python#1371](https://github.com/opsmill/infrahub-sdk-python/pull/1371)
       and [infrahub-sdk-python#1402](https://github.com/opsmill/infrahub-sdk-python/pull/1402) into
       `infrahub-develop`, then point `python_sdk` at the merged commits, before
@@ -810,9 +900,11 @@ the merge of `feature-number-pools-1.12` into the release branch.
 ### IFC-3358: Search, pagination and other sort orders for the divisions list of a number pool
 
 Not in this epic's definition of done. `InfrahubNumberPoolDivisions` returns the complete list
-ordered by utilization descending then display label, with no search and no pagination (FR-022).
-The ticket records the search, pagination and sort orders (including "most recent") of the
-original request, to be scheduled only if the frontend needs them. Depends on IFC-3329. No tasks.
+ordered by utilization descending then display label, with no search and no pagination (FR-022);
+`InfrahubNumberPoolAllocations` is ordered by value, then branch, then holder id, with no search
+(FR-023). The ticket records the search, pagination and sort orders (including "most recent") of
+the original request for the divisions list, and search and other sort orders for the allocation
+list, to be scheduled only if the frontend needs them. Depends on IFC-3329. No tasks.
 
 ---
 
@@ -845,6 +937,7 @@ flowchart TD
   T3349 --> T3357
   T3329 --> T3357 --> T3356
   T3329 --> T3354 --> T3356
+  T3329 --> T3356
   T3329 --> T3358
 ```
 
@@ -872,8 +965,9 @@ flowchart TD
 - **IFC-3347 unblocks the frontend and the SDK** and freezes the contract; T025 guards it. It needs
   nothing from allocation: the fixed in-memory dataset supplies its data.
 - **IFC-3348 before IFC-3349**: the division resolver only meets scopes the validator accepted.
-- **IFC-3329 needs IFC-3347** (the resolvers and the snapshot) and **IFC-3349** (the shared
-  fragment, the visibility constant, `entries_in_force`, `DivisionKey`).
+- **IFC-3329 needs IFC-3347** (the resolvers and the snapshot), **IFC-3349** (the shared
+  fragment, the visibility constant, `division_of`) and, through IFC-3349, **IFC-3348**
+  (`entries_in_force`, `DivisionKey`).
 - **IFC-3353 needs `entries_in_force`** from IFC-3348; the divisions list of the queries derives
   from the rows, so IFC-3329 does not need `NumberPoolDivisions`.
 - **IFC-3354** needs the validator, the allocation, the reads, the schema-declared scope and the
@@ -896,10 +990,11 @@ which both change `resource_manager.py`, from colliding.
 
 | Within a ticket | In parallel |
 |---|---|
+| IFC-3347 | T093 and T097 beside each other, after T025 |
 | IFC-3348 | T028, T053, T054 before T057 and T091 |
-| IFC-3349 | T036, T037, T038, T039 before T040; T030 and T031 beside T029; T092 after T040 |
+| IFC-3349 | T096 first; T036, T037, T038, T039 before T040; T030 and T031 beside T029; T092 after T040 |
 | IFC-3329 | T012, T014, T015, T034, T047, T085 to T087 before T016; T033 beside T016 |
-| IFC-3352 | T063, T064, T065 before T066 |
+| IFC-3352 | T063, T064, T065, T094 before T066; T095 after T066 |
 | IFC-3353 | T046, T056 before T048 |
 | IFC-3356 | T079, T080, T081, T089 |
 
@@ -909,15 +1004,15 @@ which both change `resource_manager.py`, from colliding.
 |---|---|---|
 | IFC-3346 | 0 | 0 |
 | IFC-3334 | 6 (T005 to T010) | 6 |
-| IFC-3347 | 12 (T001 to T004, T011, T013, T017, T018, T022 to T025) | 12 |
+| IFC-3347 | 14 (T001 to T004, T011, T013, T017, T018, T022 to T025, T093, T097) | 12 |
 | IFC-3348 | 7 (T027, T028, T053, T054, T057, T058, T091) | 0 |
-| IFC-3352 | 6 (T063 to T068) | 0 |
-| IFC-3349 | 15 (T029 to T032, T036 to T045, T092) | 0 |
+| IFC-3352 | 8 (T063 to T068, T094, T095) | 0 |
+| IFC-3349 | 16 (T029 to T032, T036 to T045, T092, T096) | 0 |
 | IFC-3353 | 4 (T046, T048, T056, T061) | 0 |
 | IFC-3351 | 4 (T055, T059, T060, T062) | 0 |
-| IFC-3329 | 24 (T012, T014 to T016, T016a obsolete, T019 to T021, T026, T033 to T035, T047, T049 to T052, T071 to T073, T085 to T087) | 0 |
+| IFC-3329 | 23 (T012, T014 to T016, T016a obsolete, T019 to T021, T026, T033 to T035, T047, T049 to T052, T071 to T073, T085 to T087) | 0 |
 | IFC-3357 | 1 (T074) | 0 |
 | IFC-3355 | 4 (T075 to T078) | 0 |
 | IFC-3354 | 2 (T069, T070) | 0 |
-| IFC-3356 | 9 (T079 to T084, T088 to T090) | 0 |
-| Total | 94 (93 live, T016a obsolete) | 18 |
+| IFC-3356 | 9 (T079 to T084, T088 to T090) | 1 |
+| Total | 98 (97 live, T016a obsolete) | 19 |

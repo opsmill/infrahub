@@ -84,3 +84,12 @@ Combined command, from `backend/`: `uv run pytest tests/component/graphql/resour
   IFC-3352, IFC-3349, IFC-3353, IFC-3351, IFC-3329 (the reads and the dataset removal), IFC-3357,
   IFC-3355, IFC-3354 and IFC-3356. T016a is obsolete: `pools/number_ranges.py::EffectiveSpace` is
   the shared effective-space calculation.
+
+## Erratum (2026-10-08)
+
+- `test_pool_scope.py` (3 tests) in the evidence table repeats the three tests #10917 shipped as
+  `test_pool_allocation_scope.py`; IFC-3347 deletes the copy (T097).
+- The fixed dataset computes a division's figures from the rows whose own division on the row's
+  branch matches (`_own_rows`). The contract now counts the rows whose holder occupies the division
+  on any live branch (FR-007 union), so Site C reads `used_default_branch` 1, `used_branches` 0;
+  IFC-3347 updates the dataset and its tests (T093).

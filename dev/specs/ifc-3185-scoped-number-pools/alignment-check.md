@@ -75,3 +75,25 @@ recorded in the spec's Assumptions, and the form A versus form B choice recorded
   on the generic the pool serves are refused (Notion PRD FR-017 carve-out, FR-015). The allocation
   lock is keyed by pool and division (Notion PRD Mechanism "Lock", FR-031). Decided on 2026-10-07.
   The spec's Open points list the remaining departures from the Notion PRD for product confirmation.
+- Assumptions row above ("P1 landed in part"): P1 has landed on `feature-number-pools-1.12` (the
+  range kind, its mutations, the migration, `pools/number_ranges.py::EffectiveSpace`, allocation
+  across the weighted ranges); the spec's Assumptions say so.
+- Edge case "`unique: true`" row above: the edge case is a refusal at pool save and at schema load
+  (FR-009, FR-010, FR-012), tested in IFC-3348, IFC-3351 and IFC-3352; "no test asserts the
+  refusal" no longer applies.
+
+## Erratum (2026-10-08)
+
+- Division figures: a division's figures count the rows whose holder occupies the division on any
+  live branch (FR-007 union), the same rows the `division` filter returns; `used_default_branch`
+  counts those values held on the default branch. The contract example of Site C reads
+  `used_default_branch` 1, `used_branches` 0. User decision of 2026-10-08.
+- FR-012: `NumberPoolParameters.allocation_scope` ships with `update: NOT_SUPPORTED` (#10917), so a
+  schema load cannot set, change or clear a declared scope on an existing attribute; the PRD's
+  FR-012 and the Notion PRD's FR-018 amendment imply otherwise, and the spec lists the departure
+  for confirmation.
+- FR-032 (new): renaming a field a scope names rewrites the entry of every pool that names it,
+  during the rename's schema migration; a rename on a branch rewrites the pools at merge. Proposed
+  rule, listed for confirmation.
+- FR-031: on a scoped pool the lock per pool and division replaces the mutation-level pool lock; an
+  unscoped pool keeps the pool-level lock. No option is left open.
