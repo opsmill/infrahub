@@ -33,7 +33,7 @@ const row = (start: string, end: string, weight = "", rangeId?: string): RangeRo
 });
 
 describe("sortStoredRanges", () => {
-  it("sorts by weight descending with null weight last, then by start", () => {
+  it("sorts by weight descending with an empty weight as 0, then by start", () => {
     // GIVEN
     const ranges = [
       stored("a", 50, 60),
@@ -48,7 +48,18 @@ describe("sortStoredRanges", () => {
     const sorted = sortStoredRanges(ranges);
 
     // THEN
-    expect(sorted.map((range) => range.id)).toEqual(["c", "d", "b", "f", "e", "a"]);
+    expect(sorted.map((range) => range.id)).toEqual(["c", "d", "b", "e", "a", "f"]);
+  });
+
+  it("orders an empty weight and a weight of 0 by start", () => {
+    // GIVEN
+    const ranges = [stored("zero", 100, 200, 0), stored("empty", 1, 10, null)];
+
+    // WHEN
+    const sorted = sortStoredRanges(ranges);
+
+    // THEN
+    expect(sorted.map((range) => range.id)).toEqual(["empty", "zero"]);
   });
 
   it("does not change the given list", () => {
@@ -151,6 +162,33 @@ describe("diffRanges", () => {
 
     // THEN
     expect(changes.larger).toEqual([{ id: "a", start: 5, end: 15, weight: 2 }]);
+  });
+
+  it("sends a larger update after the larger update that frees its new bounds", () => {
+    // GIVEN
+    const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
+    const rows = [row("11", "20", "", "a"), row("21", "30", "", "b")];
+
+    // WHEN
+    const changes = diffRanges(ranges, rows);
+
+    // THEN
+    expect(changes.larger).toEqual([
+      { id: "b", start: 21, end: 30, weight: null },
+      { id: "a", start: 11, end: 20, weight: null },
+    ]);
+  });
+
+  it("keeps the row order of larger updates that free each other's bounds", () => {
+    // GIVEN
+    const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
+    const rows = [row("11", "20", "", "a"), row("1", "10", "", "b")];
+
+    // WHEN
+    const changes = diffRanges(ranges, rows);
+
+    // THEN
+    expect(changes.larger.map((update) => update.id)).toEqual(["a", "b"]);
   });
 
   it("creates a row whose stored range no longer exists", () => {

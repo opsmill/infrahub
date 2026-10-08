@@ -2,19 +2,13 @@ import type {
   RangeChanges,
   RangeInput,
   RangeRow,
+  RangeUpdate,
   StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
 import { parseWholeNumber } from "@/entities/resource-manager/domain/rules/validate-range-rows";
 
 export function sortStoredRanges(ranges: StoredRange[]): StoredRange[] {
-  return [...ranges].sort((a, b) => {
-    if (a.weight !== b.weight) {
-      if (a.weight === null) return 1;
-      if (b.weight === null) return -1;
-      return b.weight - a.weight;
-    }
-    return a.start - b.start;
-  });
+  return [...ranges].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || a.start - b.start);
 }
 
 export function toRangeRows(ranges: StoredRange[]): RangeRow[] {
@@ -36,6 +30,31 @@ function toRangeInput(row: RangeRow): RangeInput {
     end: parseWholeNumber(row.end)!,
     weight: row.weight.trim() === "" ? null : parseWholeNumber(row.weight),
   };
+}
+
+function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
+  return a.start <= b.end && b.start <= a.end;
+}
+
+/**
+ * Orders updates so that one is sent after every other update whose old bounds it takes, because the
+ * backend checks each call against the stored ranges; updates that take each other's bounds keep their order.
+ */
+function orderLargerUpdates(
+  updates: RangeUpdate[],
+  storedById: Map<string, StoredRange>
+): RangeUpdate[] {
+  const pending = [...updates];
+  const ordered: RangeUpdate[] = [];
+
+  while (pending.length > 0) {
+    const readyIndex = pending.findIndex((update) =>
+      pending.every((other) => other === update || !overlaps(update, storedById.get(other.id)!))
+    );
+    ordered.push(...pending.splice(Math.max(readyIndex, 0), 1));
+  }
+
+  return ordered;
 }
 
 /** Expects rows without validation errors. */
@@ -72,6 +91,7 @@ export function diffRanges(stored: StoredRange[], rows: RangeRow[]): RangeChange
     }
   }
 
+  changes.larger = orderLargerUpdates(changes.larger, storedById);
   return changes;
 }
 
