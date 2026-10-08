@@ -637,17 +637,21 @@ command that it runs. The limit does not stop every command; see "What the limit
   the pipes before it kills Git, and the close waits until Git ends. When Git then fails, GitPython
   adds "process killed because it timed out" to the error lines, and R5 makes it
   `remote-unreachable`, which the chain retries. When Git then succeeds, the call returns normally.
-- **A hung fetch or push is not stopped.** A remote that accepts the connection and never answers
-  keeps the fetch or the push running, with the repository lock and the worker slot, until the
-  connection ends.
+- **A hung fetch or push is not stopped by GitPython.** A remote that accepts the connection and
+  never answers keeps `Remote.fetch` and `Remote.push` running past their limit. So the fetch, the
+  push and the deletion also set Git's low-speed limit, in the environment of that one command:
+  `http.lowSpeedLimit` is 1 byte per second, and `http.lowSpeedTime` is the bound, rounded up. Git
+  then ends a stalled HTTP(S) transfer itself, libcurl reports "Operation too slow", and R5 makes it
+  `remote-unreachable`, which the chain retries. An SSH transfer has no such bound.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
   child processes of Git with `ps`. The runtime image has no `ps`, so there the watchdog cannot stop
   a direct Git call either.
 
-**Open point for a later story**: a bound that stops a hung fetch or push, and a direct Git call in
-the runtime image. Until it ships, FR-004 holds for these commands only when Git ends by itself.
+**Open point for a later story**: a bound on an SSH transfer, and on a direct local Git call in the
+runtime image, which has no `ps`. Until it ships, FR-004 holds for these commands only when Git ends
+by itself.
 
 A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
 killed local command raises a `RepositoryError` that names the command and the limit, and R5
@@ -655,7 +659,8 @@ classifies it. A killed `worktree add` leaves a worktree that Git keeps locked a
 `create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
 other failure, it removes nothing. The deletion of a source branch is a push, so
 `delete_remote_branch` types its errors as `push` does. Past its limit it raises
-`RepositoryConnectionError`, but only where the watchdog can stop Git, which needs `ps` (see above).
+`RepositoryConnectionError`. Where the watchdog cannot stop Git, which needs `ps` (see above), the
+low-speed limit stops a stalled HTTP(S) deletion.
 `reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
 still propagates. The limits live in `git/writeback/constants.py`.
 

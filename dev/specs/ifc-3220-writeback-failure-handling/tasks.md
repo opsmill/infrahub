@@ -576,10 +576,9 @@ T081 to T084 are not.
       age the state past the stale bound, run one sync cycle, and assert the delivery.
 - [X] T083 [P] [US4] Add `test_policy_failure_is_not_retried` to the same module: one attempt only, then
       `action-required`.
-- [ ] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
-      A push to a local TCP server that accepts and never answers fails as `remote-unreachable`
-      within the bound: this case waits for the open point of R6, because `kill_after_timeout` does
-      not stop that push. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
+- [X] T084 [P] [US4] Add two timeout cases to `backend/tests/unit/git/writeback/test_git_adapter.py`.
+      A local TCP server that accepts and never answers makes the push fail as `remote-unreachable`
+      within the bound. A `merge` of `replay` that stalls, through a `pre-merge-commit` hook of the
       temporary repository that `exec`s a long `sleep`, is killed within `LOCAL_GIT_TIMEOUT_SECONDS`,
       lowered for the test. It raises a `RepositoryError` that names the command, which the
       classifier gives `unclassified`, and no `index.lock` stays behind in the worktree. The hook uses

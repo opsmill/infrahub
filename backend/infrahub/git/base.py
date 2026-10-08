@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import math
+import os
 import re
 import shutil
 from abc import ABC, abstractmethod
@@ -49,6 +51,8 @@ from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from infrahub_sdk.branch import BranchData
 
 log = get_logger("infrahub.git")
@@ -96,6 +100,26 @@ def operational_status_for_error(error: RepositoryError) -> RepositoryOperationa
             return RepositoryOperationalStatus.ERROR_CRED
         case _:
             return RepositoryOperationalStatus.ERROR
+
+
+@contextlib.contextmanager
+def stalled_transfer_limit(repo: Repo, timeout_seconds: float | None) -> Iterator[None]:
+    """Make Git end an HTTP(S) transfer of the repo that sends no data for ``timeout_seconds``; ``None`` sets no limit."""
+    if timeout_seconds is None:
+        yield
+        return
+    # GitPython 3.1 does not stop a hung fetch or push at kill_after_timeout, so Git must end a stalled transfer.
+    inherited_count = int(os.environ.get("GIT_CONFIG_COUNT", "0"))
+    with repo.git.custom_environment(
+        GIT_CONFIG_COUNT=str(inherited_count + 2),
+        **{
+            f"GIT_CONFIG_KEY_{inherited_count}": "http.lowSpeedLimit",
+            f"GIT_CONFIG_VALUE_{inherited_count}": "1",
+            f"GIT_CONFIG_KEY_{inherited_count + 1}": "http.lowSpeedTime",
+            f"GIT_CONFIG_VALUE_{inherited_count + 1}": str(max(1, math.ceil(timeout_seconds))),
+        },
+    ):
+        yield
 
 
 class RepoFileInformation(BaseModel):
@@ -639,7 +663,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Delete branch_name from origin; a failure is typed as for a push and never writes the operational status.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         Raises:
             RepositoryConnectionError: When the remote is unreachable, or the deletion did not complete within
@@ -653,7 +678,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return
         repo = self.get_git_repo_main()
         try:
-            repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
+            with stalled_transfer_limit(repo=repo, timeout_seconds=timeout_seconds):
+                repo.git.push("origin", "--delete", branch_name, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             self._raise_enriched_error_static(
                 error=exc, name=self.name, location=self.location, branch_name=branch_name, is_write_operation=True
@@ -920,7 +946,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch the latest update from the remote repository and bring a copy locally.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit.
 
         """
         if not self.has_origin:
@@ -943,15 +970,19 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Fetch every branch and tag from origin into the main clone.
 
         Args:
-            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit. A read-only
-                fetch is always bounded, by this limit when given and by its own default otherwise.
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``, and ends an HTTP(S) transfer that
+                sends no data for that long; ``None`` sets no limit. A read-only fetch is always bounded, by this
+                limit when given and by its own default otherwise.
 
         Raises:
             GitCommandError: When git cannot complete the fetch, or a read-only fetch runs out of time.
 
         """
         if not self.is_read_only:
-            git_repo.remotes.origin.fetch(prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds)
+            with stalled_transfer_limit(repo=git_repo, timeout_seconds=timeout_seconds):
+                git_repo.remotes.origin.fetch(
+                    prune=True, tags=True, prune_tags=True, kill_after_timeout=timeout_seconds
+                )
             return
 
         # A stalled remote must not hold the repository lock, which has no expiry, and GitPython <=3.2.0
@@ -1266,7 +1297,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             "The requested URL returned error: 5xx" (git http.c) plus
             "RPC failed; HTTP 5xx" (git remote-curl.c); and "does not appear to be a git".
           - time limit: "process killed because it timed out", the line GitPython adds to the error
-            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; and for a direct
+            lines of a fetch or a push when Git ran past its ``kill_after_timeout``; "Operation too slow"
+            (libcurl), when an HTTP(S) transfer sent no data for ``http.lowSpeedTime``; and for a direct
             Git call stopped at its limit, "Timeout: the command ... did not complete"
             (``GIT_CALL_TIME_LIMIT``), whose message keeps the Git command and the limit but not the
             arguments, which can name worker paths. A write operation is a push to the remote, so past
@@ -1319,7 +1351,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             raise RepositoryConnectionError(identifier=name) from error
 
         time_limit = GIT_CALL_TIME_LIMIT.search(error.stderr)
-        if "process killed because it timed out" in error.stderr or (time_limit and is_write_operation):
+        if (
+            "process killed because it timed out" in error.stderr
+            or "Operation too slow" in error.stderr
+            or (time_limit and is_write_operation)
+        ):
             raise RepositoryConnectionError(
                 identifier=name,
                 message=(

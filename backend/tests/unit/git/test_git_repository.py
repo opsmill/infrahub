@@ -639,7 +639,7 @@ class _ScriptedPushRepository(InfrahubRepository):
 
     def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Any:
         self.worktree_lookup_timeouts.append(timeout_seconds)
-        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
+        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin), git=Git())
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
         self.recorded_statuses.append(status)
