@@ -44,12 +44,14 @@ class PythonAttributeReadSet:
     """One Python transform computed attribute and the schema elements its query reads.
 
     ``pinned`` is ``False`` when the query root is not restricted to a single object.
+    ``repository_id`` is the repository whose transform computes the attribute, None when it is not known.
     """
 
     kind: str
     attribute_name: str
     read_set: TransformReadSet
     pinned: bool = True
+    repository_id: str | None = None
 
 
 class PythonReadSetSource(Protocol):
@@ -245,6 +247,17 @@ class IndexedPythonTargetResolver:
                 }
             ),
             precise=accumulator.precise,
+        )
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        """Return the repository of the attribute, from the read sets that a resolution on the branch loaded."""
+        return next(
+            (
+                read_set.repository_id
+                for read_set in self._read_sets.get(branch, [])
+                if read_set.kind == kind and read_set.attribute_name == attribute_name
+            ),
+            None,
         )
 
     async def _load_read_sets(self, *, branch: str) -> list[PythonAttributeReadSet]:

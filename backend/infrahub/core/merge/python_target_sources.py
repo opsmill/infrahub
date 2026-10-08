@@ -47,10 +47,11 @@ class DeclaredPythonAttributes(Protocol):
 
 @dataclass(frozen=True)
 class AnalyzedRead:
-    """What one transform query reads, and whether its root is restricted to a single object."""
+    """What one transform query reads, whether its root is restricted to a single object, and its repository."""
 
     read_set: TransformReadSet
     pinned: bool
+    repository_id: str
 
 
 class AnalyzedPythonReadSets(Protocol):
@@ -96,7 +97,7 @@ class SchemaDeclaredPythonAttributes:
 
 
 class GatheredPythonReadSets:
-    """The reads, mapped from the transform queries the gather resolved and analyzed.
+    """The reads, mapped from the transform queries the gather resolved and analyzed, with the repository of each.
 
     Every query is mapped the same way the schema-scoped backfill maps it, so both sides agree on
     what a query reads. A root that is not restricted to a single object is carried as a separate
@@ -127,6 +128,7 @@ class GatheredPythonReadSets:
             reads[attribute] = AnalyzedRead(
                 read_set=transform_read_set_from_query_report(report=report, schema_branch=schema_branch),
                 pinned=report.only_has_unique_targets,
+                repository_id=item.repository_id,
             )
         return reads
 
@@ -177,6 +179,7 @@ class ComposedPythonReadSetSource:
                 attribute_name=attribute.attribute_name,
                 read_set=analyzed[attribute].read_set,
                 pinned=analyzed[attribute].pinned,
+                repository_id=analyzed[attribute].repository_id,
             )
             for attribute in declared
             if attribute in analyzed
@@ -207,6 +210,15 @@ class UnavailablePythonTargetResolver:
         branch: str,  # noqa: ARG002
     ) -> list[AffectedTarget]:
         raise RuntimeError("the Python target resolver could not be built")
+
+    def owner_of(
+        self,
+        *,
+        kind: str,  # noqa: ARG002
+        attribute_name: str,  # noqa: ARG002
+        branch: str,  # noqa: ARG002
+    ) -> str | None:
+        return None
 
 
 async def build_python_target_resolver(
