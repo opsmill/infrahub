@@ -923,7 +923,8 @@ async def test_failed_release_on_the_final_attempt_asks_for_no_action_when_a_mer
     )
     assert rig.intent.queue.entries == (OTHER_MERGE,)
     assert rig.intent.status == RepositoryDeliveryStatus.PENDING
-    assert rig.intent.error == message
+    # The queued merge owns what the repository shows, and a release failure has no cause to show.
+    assert rig.intent.error is None
 
 
 @dataclass
