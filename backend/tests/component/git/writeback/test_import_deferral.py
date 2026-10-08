@@ -6,13 +6,20 @@ from typing import TYPE_CHECKING
 
 import pytest
 from infrahub_sdk.protocols import CoreGraphQLQuery, CoreRepository
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
-from infrahub.core.constants import RepositoryOperationalStatus
+from infrahub.core.constants import (
+    RepositoryDeliveryFailureCause,
+    RepositoryDeliveryStatus,
+    RepositoryOperationalStatus,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
-from infrahub.git.tasks import bootstrap_local_repository
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
+from infrahub.git.tasks import bootstrap_local_repository, sync_repository_from_origin
+from infrahub.git.writeback.models import DeliveryFailure
 from infrahub.git.writeback.store import build_intent_store
 from infrahub.services import InfrahubServices
 from tests.adapters.workflow import WorkflowRecorder
@@ -58,6 +65,42 @@ DELIVERY_STATE_CASES: list[DeliveryStateCase] = [
 ]
 
 
+@dataclass(frozen=True)
+class FreshCloneCase:
+    name: str
+    pending: bool
+    unusable_local_copy: bool
+    """An unusable local copy makes this worker clone again through its fallback path."""
+
+
+FRESH_CLONE_CASES: list[FreshCloneCase] = [
+    FreshCloneCase(name="pending-missing-copy", pending=True, unusable_local_copy=False),
+    FreshCloneCase(name="pending-unusable-copy", pending=True, unusable_local_copy=True),
+    FreshCloneCase(name="nothing-pending-missing-copy", pending=False, unusable_local_copy=False),
+    FreshCloneCase(name="nothing-pending-unusable-copy", pending=False, unusable_local_copy=True),
+]
+
+
+@dataclass(frozen=True)
+class ReimportCase:
+    name: str
+    branch_name: str
+    status: RepositoryDeliveryStatus
+    by_name: bool = False
+
+
+REIMPORT_CASES: list[ReimportCase] = [
+    ReimportCase(name="pending-on-the-default-branch", branch_name=TRUNK, status=RepositoryDeliveryStatus.PENDING),
+    ReimportCase(
+        name="pending-on-another-branch", branch_name="reimport-on-a-branch", status=RepositoryDeliveryStatus.PENDING
+    ),
+    ReimportCase(name="action-required", branch_name=TRUNK, status=RepositoryDeliveryStatus.ACTION_REQUIRED),
+    ReimportCase(
+        name="named-by-its-name", branch_name="reimport-by-name", status=RepositoryDeliveryStatus.PENDING, by_name=True
+    ),
+]
+
+
 def query_files(query_name: str) -> dict[str, str]:
     return {
         ".infrahub.yml": f"queries:\n  - name: {query_name}\n    file_path: query.gql\n",
@@ -65,32 +108,51 @@ def query_files(query_name: str) -> dict[str, str]:
     }
 
 
-async def enqueue_merge(db: InfrahubDatabase, repository_id: str, source_git_branch: str) -> None:
+async def queue_merge(
+    db: InfrahubDatabase,
+    repository_id: str,
+    source_git_branch: str,
+    status: RepositoryDeliveryStatus = RepositoryDeliveryStatus.PENDING,
+) -> None:
     store = await build_intent_store(db=db, lock_registry=lock.registry)
     await store.enqueue(
         repository_id=repository_id,
         entry=pending_merge(entry_id="merge-1", source_git_branch=source_git_branch),
         widen=False,
     )
+    if status is RepositoryDeliveryStatus.ACTION_REQUIRED:
+        await store.record_failure(
+            repository_id=repository_id,
+            failure=DeliveryFailure(
+                cause=RepositoryDeliveryFailureCause.PERMISSION, retryable=False, message="remote: push declined"
+            ),
+            final=True,
+            retry_due_at=None,
+        )
+    assert (await store.read(repository_id=repository_id)).status is status
 
 
-@pytest.mark.parametrize("branch_name", [TRUNK, "feature-reimport"])
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in REIMPORT_CASES])
 async def test_reimport_is_refused_on_every_branch_while_a_push_is_pending(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch_name: str
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, case: ReimportCase
 ) -> None:
-    repository = await create_repository(db=db, branch=default_branch, name="pending-repository")
-    await enqueue_merge(db=db, repository_id=repository.id, source_git_branch="feature-1")
-    branch = default_branch if branch_name == TRUNK else await create_branch(branch_name=branch_name, db=db)
+    name = f"repository-{case.name}"
+    repository = await create_repository(db=db, branch=default_branch, name=name)
+    await queue_merge(db=db, repository_id=repository.id, source_git_branch="feature-1", status=case.status)
+    branch = default_branch if case.branch_name == TRUNK else await create_branch(branch_name=case.branch_name, db=db)
     workflow = WorkflowRecorder()
     service = await InfrahubServices.new(database=db, workflow=workflow)
 
     result = await graphql_mutation(
-        query=REIMPORT, db=db, branch=branch, variables={"id": repository.id}, service=service
+        query=REIMPORT,
+        db=db,
+        branch=branch,
+        variables={"id": name if case.by_name else repository.id},
+        service=service,
     )
 
-    assert result.errors
-    assert [error.message for error in result.errors] == [
-        "Repository pending-repository has pending pushes; a reimport now would remove the objects they added. "
+    assert [error.message for error in result.errors or []] == [
+        f"Repository {name} has pending pushes; a reimport now would remove the objects they added. "
         "Retry or abandon the pending pushes first."
     ]
     assert workflow.submit_calls == []
@@ -157,7 +219,7 @@ class TestImportDeferral(TestInfrahubApp):
         other_commit = remote.commit(branch_name=other_branch, files={"data.txt": "other\n"})
         advanced = remote.commit(branch_name=TRUNK, files={".infrahub.yml": EMPTY_CONFIG})
         if case.pending:
-            await enqueue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
+            await queue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
 
         state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
 
@@ -173,12 +235,9 @@ class TestImportDeferral(TestInfrahubApp):
         assert [
             record.getMessage()
             for record in caplog.records
-            if record.name == SYNC_LOGGER and record.getMessage().startswith("Skipped the synchronization")
+            if record.name == SYNC_LOGGER and record.getMessage().startswith("Deferred")
         ] == (
-            [
-                f"Skipped the synchronization of branches {TRUNK} of repository {name}: "
-                "a push of merged changes to the remote is pending"
-            ]
+            [f"Deferred the synchronization of {TRUNK} of repository {name} until its pending pushes reach the remote"]
             if case.pending
             else []
         )
@@ -199,12 +258,12 @@ class TestImportDeferral(TestInfrahubApp):
         node = await self._add(db=db, remote=remote, name=name)
         remote.commit(branch_name=source_branch, files={"data.txt": "source\n"})
         if case.pending:
-            await enqueue_merge(db=db, repository_id=node.id, source_git_branch=source_branch)
+            await queue_merge(db=db, repository_id=node.id, source_git_branch=source_branch)
 
         state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
 
         assert state.is_completed()
-        assert {source_branch} & set(await client.branch.all()) == (set() if case.pending else {source_branch})
+        assert (source_branch in await client.branch.all()) is not case.pending
 
     @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DELIVERY_STATE_CASES])
     async def test_sync_does_not_advance_the_source_branch_of_a_pending_push(
@@ -224,7 +283,7 @@ class TestImportDeferral(TestInfrahubApp):
         assert await self._graph_commit(client=client, node=node, branch_name=source_branch) == kept
         advanced = remote.commit(branch_name=source_branch, files={"data.txt": "advanced\n"})
         if case.pending:
-            await enqueue_merge(db=db, repository_id=node.id, source_git_branch=source_branch)
+            await queue_merge(db=db, repository_id=node.id, source_git_branch=source_branch)
 
         state = await run_sync_flow(client=client, repository_id=node.id, name=name, location=str(remote.directory))
 
@@ -236,10 +295,10 @@ class TestImportDeferral(TestInfrahubApp):
         )
         assert await self._graph_commit(client=client, node=node, branch_name=source_branch) == source_commit
 
-    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in DELIVERY_STATE_CASES])
-    async def test_seed_import_after_a_fresh_clone_leaves_the_default_branch_while_a_push_is_pending(
+    @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in FRESH_CLONE_CASES])
+    async def test_a_fresh_clone_leaves_the_default_branch_while_a_push_is_pending(
         self,
-        case: DeliveryStateCase,
+        case: FreshCloneCase,
         db: InfrahubDatabase,
         client: InfrahubClient,
         initialize_registry: None,
@@ -249,19 +308,24 @@ class TestImportDeferral(TestInfrahubApp):
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
-        name = f"seed-{case.name}"
-        query_name = f"seed_{case.name.replace('-', '_')}"
+        caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
+        name = f"clone-{case.name}"
+        query_name = f"clone_{case.name.replace('-', '_')}"
         remote = LocalRemote.create(directory=tmp_path / name, trunk=TRUNK, branches=[])
-        remote.commit(branch_name=TRUNK, files=query_files(query_name))
+        imported = remote.commit(branch_name=TRUNK, files=query_files(query_name))
         node = await self._add(db=db, remote=remote, name=name)
         advanced = remote.commit(branch_name=TRUNK, files={".infrahub.yml": EMPTY_CONFIG})
         if case.pending:
-            await enqueue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
+            await queue_merge(db=db, repository_id=node.id, source_git_branch="merged-feature")
         fresh_worker_dir = tmp_path / "fresh-worker-repositories"
-        fresh_worker_dir.mkdir()
+        if case.unusable_local_copy:
+            for directory in ("main", BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME):
+                (fresh_worker_dir / node.id / directory).mkdir(parents=True)
+        else:
+            fresh_worker_dir.mkdir()
         monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(fresh_worker_dir))
         repository = await client.get(kind=CoreRepository, id=node.id)
-        state = await build_intent_store(db=db, lock_registry=lock.registry)
+        delivery_state = await build_intent_store(db=db, lock_registry=lock.registry)
 
         repo = await call_in_flow(
             lambda: bootstrap_local_repository(
@@ -269,21 +333,37 @@ class TestImportDeferral(TestInfrahubApp):
                 repository=repository,
                 infrahub_branch=registry.default_branch,
                 client=client,
-                state=state,
+                state=delivery_state,
+            )
+        )
+        assert repo is not None
+        await call_in_flow(
+            lambda: sync_repository_from_origin(
+                repository=repository,
+                repo=repo,
+                staging_branch=None,
+                infrahub_branch=registry.default_branch,
+                default_branch_id=str(UUIDT()),
+                client=client,
+                graph_commits={TRUNK: imported},
             )
         )
 
-        assert repo is not None
         assert repo.get_commit_value(branch_name=TRUNK, remote=False) == advanced
+        assert await self._graph_commit(client=client, node=node, branch_name=TRUNK) == (
+            imported if case.pending else advanced
+        )
         assert await self._query_names(client=client, node=node) == ({query_name} if case.pending else set())
         assert [
             record.getMessage()
             for record in caplog.records
-            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Skipped the import")
+            if record.name in {FLOW_RUN_LOGGER, SYNC_LOGGER} and record.getMessage().startswith("Deferred")
         ] == (
             [
-                f"Skipped the import of the default branch {TRUNK} of repository {name}: "
-                "a push of merged changes to the remote is pending"
+                f"Deferred the import of the default branch {TRUNK} of repository {name} until its pending pushes "
+                "reach the remote",
+                f"Deferred the synchronization of {TRUNK} of repository {name} until its pending pushes reach the "
+                "remote",
             ]
             if case.pending
             else []

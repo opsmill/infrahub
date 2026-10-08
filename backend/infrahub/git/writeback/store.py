@@ -396,7 +396,10 @@ def _stored[ModelT: BaseModel](
 
 
 async def build_intent_store(db: InfrahubDatabase, lock_registry: InfrahubLockRegistry) -> WritebackIntentStore:
-    """Build the store on the default branch, with a timezone-aware wall clock."""
+    """Build the store on the default branch, with a timezone-aware wall clock.
+
+    The store reads and writes through `db`, so that session must stay open while the store is in use.
+    """
     default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
     return WritebackIntentStore(
         db=db, lock_registry=lock_registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
