@@ -913,6 +913,47 @@ describe("Check remote now", () => {
     );
   });
 
+  test("keeps the check running when one poll of its task fails", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
+    taskDetailsApiMock.mockRejectedValue(new Error("Task manager unavailable"));
+    const component = await renderTab({ isReadOnly: true });
+    const checkButton = component.getByRole("button", { name: "Check remote now" });
+
+    // WHEN
+    await checkButton.click();
+
+    // THEN
+    // A second poll means the first failure has reached the button.
+    await expect
+      .poll(() => taskDetailsApiMock.mock.calls.length, { timeout: 5000 })
+      .toBeGreaterThan(1);
+    await expect.element(checkButton).toBeDisabled();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+  });
+
+  test("follows a running check after the tab remounts", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
+    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(1));
+    const component = await renderTab({ isReadOnly: true });
+    await component.getByRole("button", { name: "Check remote now" }).click();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+
+    // WHEN
+    await component.rerender(<CaptureQueryClient />);
+    await component.rerender(tab({ isReadOnly: true }));
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Check remote now" }))
+      .toBeDisabled();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+    expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
+  });
+
   test("shows the new check time beside the older update time once the check ends", async () => {
     // GIVEN
     const checkedBefore = "2025-03-10T18:00:00Z";

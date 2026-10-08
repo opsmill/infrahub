@@ -408,10 +408,17 @@ determinism logic, no test and no documentation entry.
 - Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
-  `InfrahubReadOnlyRepositoryCheckRefs`. Disabled while a check is in flight, and it surfaces the
-  returned task id rather than firing a second run (FR-025). Without it the on-demand half of
-  User Story 2 has no entry point outside the API, which matters because the interval stays at 15
-  minutes. Not landed yet, and its placement on the design canvas is still open.
+  `InfrahubReadOnlyRepositoryCheckRefs`. After a press, the button stays disabled and links the
+  returned task until that task leaves the ongoing states; the started task is read from the
+  mutation cache, so it survives the tab remounting. Without it the on-demand half of User Story 2
+  has no entry point outside the API, which matters because the interval stays at 15 minutes. Its
+  placement on the design canvas is still open (T094).
+- Departure from FR-025 in the interface, recorded rather than fixed here: the mutation always
+  submits a new run and returns that run's id. When another check holds the repository, the new run
+  exits at once as `SKIPPED_CLAIMED` with `claimed_by` set, records no check time, and the button
+  reports a finished check while the holder is still running. FR-025 allows the duplicate run when
+  it reports the claim it found; the run records it, but the button does not show it. Either the
+  button reads the task result, or the mutation returns the holder's run id.
 - Waiting for a worker uses capped retries, not polling. The use-case throws an `UNAVAILABLE` answer
   as `RepositoryGitUnavailableError`, and the query retries it every 10 seconds, up to 30 times
   (about five minutes), for `NOT_CLONED`, `TIMEOUT` and a missing reason. `NOT_IMPLEMENTED` is not

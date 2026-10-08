@@ -25,6 +25,7 @@ export const checkRemoteRefsFromApi = async ({
     variables: {
       repositoryId,
     },
-    context: { branch: branchName },
+    // The caller shows the error toast, so the client's own toast would show it twice.
+    context: { branch: branchName, processErrorMessage: () => {} },
   });
 };
