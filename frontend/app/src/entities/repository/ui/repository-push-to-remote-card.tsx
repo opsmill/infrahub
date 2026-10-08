@@ -1,13 +1,12 @@
 import { Card, CardHeader } from "@infrahub/ui";
 
-import { Col, Row } from "@/shared/components/container";
 import { ColorDisplay } from "@/shared/components/display/color-display";
-import { DateDisplay } from "@/shared/components/display/date-display";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import type { PushFailureCause } from "@/entities/repository/domain/model/repository-push-state";
+import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 
 const REQUIRED_ACTION_BY_CAUSE: Record<PushFailureCause, string> = {
@@ -81,17 +80,7 @@ function RepositoryPushToRemoteState({ repositoryId }: RepositoryPushToRemoteCar
 
       {state.pendingMerges.length > 0 && (
         <DetailRow label="Pending merges">
-          <Col className="w-0 min-w-full gap-1">
-            {state.pendingMerges.map((merge) => (
-              <Row key={merge.entry_id}>
-                <span className="min-w-0 truncate font-medium" title={merge.source_branch}>
-                  {merge.source_branch}
-                </span>
-                <code className="text-xs">{merge.source_commit.slice(0, 7)}</code>
-                <DateDisplay date={merge.merged_at} />
-              </Row>
-            ))}
-          </Col>
+          <PendingMergeList merges={state.pendingMerges} />
         </DetailRow>
       )}
     </div>

@@ -1,29 +1,29 @@
 import { MenuItem, MenuSection } from "@infrahub/ui";
-import { ArrowUpRightIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Icon } from "@/shared/components/display/icon";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Link } from "@/shared/components/ui/link";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
 import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read-only-repository";
 import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
 import { useRetryDeliveryMutation } from "@/entities/repository/ui/queries/retry-delivery.mutation";
+import { toastTaskStarted } from "@/entities/repository/ui/toast-task-started";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
-import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 interface RepositoryMenuSectionProps {
   repositoryId: string;
   objectSchema: ModelSchema;
   onCheckConnectivity: () => void;
+  onAbandonDelivery: (deliveryState: RepositoryPushState) => void;
   permission: Permission;
 }
 
@@ -31,6 +31,7 @@ export function RepositoryMenuSection({
   repositoryId,
   objectSchema,
   onCheckConnectivity,
+  onAbandonDelivery,
   permission,
 }: RepositoryMenuSectionProps) {
   const isReadOnly = isReadOnlyRepository(objectSchema);
@@ -91,6 +92,7 @@ export function RepositoryMenuSection({
         <RepositoryDeliveryMenuItems
           repositoryId={repositoryId}
           isUpdateAllowed={isUpdateAllowed}
+          onAbandonDelivery={onAbandonDelivery}
         />
       )}
     </MenuSection>
@@ -100,15 +102,17 @@ export function RepositoryMenuSection({
 interface RepositoryDeliveryMenuItemsProps {
   repositoryId: string;
   isUpdateAllowed: boolean;
+  onAbandonDelivery: (deliveryState: RepositoryPushState) => void;
 }
 
 function RepositoryDeliveryMenuItems({
   repositoryId,
   isUpdateAllowed,
+  onAbandonDelivery,
 }: RepositoryDeliveryMenuItemsProps) {
   const { data: state } = useGetRepositoryPushState({ repositoryId });
   // Until the state loads, nothing is known to be pending.
-  const { canRetry } = getPushActions(state?.status ?? "none");
+  const { canRetry, canAbandon } = getPushActions(state?.status ?? "none");
 
   const { mutate: retryDelivery } = useRetryDeliveryMutation({
     onSuccess: async (result) => {
@@ -126,27 +130,22 @@ function RepositoryDeliveryMenuItems({
   });
 
   return (
-    <MenuItem
-      isDisabled={!isUpdateAllowed || !canRetry}
-      onAction={() => retryDelivery({ repositoryId })}
-    >
-      <Icon icon="mdi:upload" />
-      Retry push
-    </MenuItem>
-  );
-}
-
-function toastTaskStarted(startedMessage: string, taskId?: string) {
-  const message = taskId ? (
     <>
-      {startedMessage}
-      <br />
-      <Link to={getTaskDetailsUrl(taskId)} className="inline-flex items-center gap-1 underline">
-        View task <ArrowUpRightIcon className="size-3.5" />
-      </Link>
+      <MenuItem
+        isDisabled={!isUpdateAllowed || !canRetry}
+        onAction={() => retryDelivery({ repositoryId })}
+      >
+        <Icon icon="mdi:upload" />
+        Retry push
+      </MenuItem>
+
+      <MenuItem
+        isDisabled={!isUpdateAllowed || !canAbandon}
+        onAction={() => state && onAbandonDelivery(state)}
+      >
+        <Icon icon="mdi:upload-off" />
+        Abandon pending push
+      </MenuItem>
     </>
-  ) : (
-    `${startedMessage} You can view its status on the "Tasks" tab.`
   );
-  toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 }
