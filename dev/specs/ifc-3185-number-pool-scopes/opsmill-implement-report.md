@@ -16,7 +16,8 @@ The phase first ran on `feature-number-pools-1.12` and produced about 30 commits
    - Only generated files conflicted, and they were regenerated.
    - The new base moves `PoolRecordProvenance` into `infrahub.core.constants`, so the dedicated queries and the fixed dataset import it from there.
 2. **Curation** of the 33 commits into 11, with an identical final tree.
-3. **Shared provenance enum.** The dedicated queries return `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, instead of a second enum `NumberPoolProvenance` with the same values. The values `ALLOCATED` and `PROVIDED` do not change. A client that names the type in a query variable must use the new name.
+3. **SDL snapshot test removed** on 2026-10-09 (`backend/tests/unit/graphql/test_number_pool_surface_contract.py` and its snapshot). No other test in the repository pins a GraphQL surface that way; the contract is agreed with the frontend team directly, and `schema/schema.graphql` shows any change in a pull request. The evidence below that names the test predates its removal.
+4. **Shared provenance enum.** The dedicated queries return `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, instead of a second enum `NumberPoolProvenance` with the same values. The values `ALLOCATED` and `PROVIDED` do not change. A client that names the type in a query variable must use the new name.
 
 Commits on the branch, from the base up:
 

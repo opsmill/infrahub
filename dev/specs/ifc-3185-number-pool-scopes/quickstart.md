@@ -16,7 +16,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 | Allocation per division, parallel writers in two divisions, repeatable identifier, update moving a node to another site, branch whose schema lacks the element | FR-010 to FR-013, FR-016 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py` |
 | Free, used, divisions and allocated queries with a division, read on the request branch | FR-015, FR-020 to FR-022 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope.py` |
 | Scope on create, every refusal, immutability on update, `null` refused | FR-001 to FR-008 | `uv run pytest backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py` |
-| The fixed dataset of PR #10932 on the `{id, name}` contract (until the resolvers read the database) | FR-018 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py backend/tests/unit/graphql/test_number_pool_surface_contract.py` |
+| The fixed dataset of PR #10932 on the `{id, name}` contract (until the resolvers read the database) | FR-018 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | The three dedicated queries on real pools and their refusals | FR-017 to FR-023 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | Declared scope on a schema-created pool | FR-024 to FR-027 | `uv run pytest backend/tests/component/pools/test_schema_number_pool_scope.py` |
 | Schema checker decision table, without a database | FR-026, FR-028 | `uv run pytest backend/tests/unit/core/validators/test_number_pool_scope_checker.py` |
