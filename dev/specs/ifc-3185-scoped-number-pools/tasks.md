@@ -313,11 +313,11 @@ from allocation or reads and runs in parallel with IFC-3348 and IFC-3349.
 - [ ] T064 [P] [US5] Component tests in
       `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py`: a pool
       scoped by `site`; three loads (optional, removed, cardinality many) → three refusals naming the
-      pool; a pool scoped by `["site", "pod"]` and a load on a branch forked before `pod` reached
-      the default branch, where `pod` never existed → accepted; the scope `["site", "pod"]` saved on
-      `b1`, then a default-branch load that adds an optional `pod` to Device → accepted, `pod` stays
-      ignored on the default branch (an entry that does not apply on the loaded branch before the
-      load is not a violation, FR-010); a load that sets `unique: true` on
+      pool; the scope `["site", "pod"]` saved on `b1`, where `pod` is a required attribute of
+      Device, then a default-branch load where `pod` has never existed → accepted, and a
+      default-branch load that adds an optional `pod` to Device → accepted, `pod` stays ignored on
+      the default branch (an entry that does not apply on the loaded branch before the load is not
+      a violation, FR-010); a load that sets `unique: true` on
       the pool's own attribute while the pool carries a scope → refused naming the pool; a pool
       scoped by `site` on a generic and a load that makes `site` optional on the generic → refused
       naming the pool, while a change on a field an implementing kind declares on its own is not
