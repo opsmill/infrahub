@@ -6,7 +6,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Any, Self, cast
 
 import httpx
-from graphene import Boolean, Field, InputObjectType, Mutation, String
+from graphene import Boolean, Field, InputObjectType, Int, Mutation, String
 
 from infrahub import config, lock
 from infrahub.core.constants import (
@@ -20,9 +20,10 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
-from infrahub.exceptions import NothingPendingError, ValidationError
+from infrahub.exceptions import DeliveryQueueChangedError, NothingPendingError, ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
+    GitRepositoryDeliveryAbandon,
     GitRepositoryDeliveryRetry,
     GitRepositoryImportObjects,
     GitRepositoryPullReadOnly,
@@ -40,6 +41,7 @@ from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
+    GIT_REPOSITORY_DELIVERY_ABANDON,
     GIT_REPOSITORY_DELIVERY_RETRY,
 )
 
@@ -54,6 +56,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.writeback.models import WritebackIntent
     from infrahub.graphql.initialization import GraphqlContext
 
 log = get_logger()
@@ -353,6 +356,102 @@ class RepositoryDeliveryRetry(Mutation):
             tags=delivery_run_tags(repository_id=repo.id),
         )
         return cls(ok=True, task={"id": workflow.id})
+
+
+def _check_delivery_permissions(graphql_context: GraphqlContext) -> None:
+    """Refuse a request off the default branch, or from an account that cannot edit repositories there.
+
+    Raises:
+        ValidationError: The request is not on the default branch.
+        PermissionDeniedError: The account lacks one of the permissions.
+
+    """
+    branch = graphql_context.branch
+    if branch.name != registry.default_branch:
+        raise ValidationError(
+            f"Send this request on the default branch {registry.default_branch}; the pending pushes live there."
+        )
+
+    schema = registry.get_node_schema(name=InfrahubKind.REPOSITORY, branch=branch.name, duplicate=False)
+    for permission in (
+        define_object_permission_from_branch(schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name),
+        define_global_permission_from_branch(permission=GlobalPermissions.MANAGE_REPOSITORIES, branch_name=branch.name),
+        define_global_permission_from_branch(permission=GlobalPermissions.EDIT_DEFAULT_BRANCH, branch_name=branch.name),
+    ):
+        graphql_context.active_permissions.raise_for_permission(permission=permission)
+
+
+async def _read_pending_delivery(
+    graphql_context: GraphqlContext, repository_id: str
+) -> tuple[CoreGenericRepository, WritebackIntent]:
+    """Return the repository and its delivery state, refusing a repository that has nothing to push.
+
+    Raises:
+        ValidationError: The repository is read-only or staging.
+        NothingPendingError: The queue is empty.
+
+    """
+    repository = await NodeManager.get_one_by_id_or_default_filter(
+        db=graphql_context.db, kind=CoreGenericRepository, id=repository_id, branch=graphql_context.branch
+    )
+    name = repository.name.value
+    if repository.get_kind() != InfrahubKind.REPOSITORY:
+        raise ValidationError(f"Repository {name} is read-only and never pushes to its remote.")
+    if repository.internal_status.value == RepositoryInternalStatus.STAGING.value:
+        raise ValidationError(f"Repository {name} is staging; its changes are pushed when its proposed change merges.")
+
+    intent = await WritebackIntentStore(
+        db=graphql_context.db,
+        lock_registry=lock.registry,
+        default_branch=graphql_context.branch,
+        clock=partial(datetime.now, UTC),
+    ).read(repository_id=repository.id)
+    if not intent.queue.entries:
+        raise NothingPendingError(repository_name=name)
+    return repository, intent
+
+
+class RepositoryDeliveryAbandonInput(InputObjectType):
+    id = String(required=True, description="The id of the CoreRepository")
+    queue_version = Int(
+        required=True,
+        description="The version of the delivery queue the user saw. The request is refused if the queue changed since.",
+    )
+
+
+class RepositoryDeliveryAbandon(Mutation):
+    class Arguments:
+        data = RepositoryDeliveryAbandonInput(required=True)
+
+    ok = Boolean()
+    task = Field(TaskInfo, required=False)
+
+    @classmethod
+    async def mutate(
+        cls,
+        root: dict,  # noqa: ARG003
+        info: GraphQLResolveInfo,
+        data: RepositoryDeliveryAbandonInput,
+    ) -> Self:
+        graphql_context: GraphqlContext = info.context
+        _check_delivery_permissions(graphql_context=graphql_context)
+        repository, intent = await _read_pending_delivery(graphql_context=graphql_context, repository_id=str(data.id))
+
+        name = repository.name.value
+        queue_version = int(data.queue_version)
+        if queue_version != intent.queue.version:
+            raise DeliveryQueueChangedError(repository_name=name, queue_version=queue_version)
+
+        model = GitRepositoryDeliveryAbandon(
+            repository_id=repository.id, repository_name=name, queue_version=queue_version
+        )
+        workflow = await graphql_context.active_service.workflow.submit_workflow(
+            workflow=GIT_REPOSITORY_DELIVERY_ABANDON,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
+        )
+        task = {"id": workflow.id}
+        return cls(ok=True, task=task)
 
 
 class ValidateRepositoryConnectivity(Mutation):

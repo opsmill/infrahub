@@ -559,7 +559,7 @@ rule.** T094 is not.
       `backend/infrahub/git/writeback/factory.py`, with the same releaser as
       `build_writeback_service`. After T069, that releaser dispatches the held work. **Gate: spec
       decision 15 for the broadcast.**
-- [ ] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
+- [X] T087 [US5] Write `InfrahubRepositoryDeliveryAbandon` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
       decision 1.**
@@ -569,7 +569,7 @@ rule.** T094 is not.
       later hold; a crash between the removal and the clear leaves a lease that expires, and the
       recovery check then releases the work; a release that fails sets the lease's expiry to now and
       keeps the items held.
-- [ ] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
+- [X] T089 [US5] Write `backend/tests/component/graphql/mutations/test_repository_delivery_abandon.py`: off
       the default branch, each permission missing, a stale version, nothing pending.
 - [ ] T090 [US5] Add `test_conflict_then_abandon` to
       `backend/tests/integration/git/test_git_live_remote.py`: cause `replay-conflict`, nothing
