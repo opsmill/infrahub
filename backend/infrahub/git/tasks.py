@@ -1053,11 +1053,16 @@ async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
         return None
 
     database = await get_database()
+    lost_merge: str | None = None
     async with database.start_session() as db:
         entry = None
         # Once the branch merge queued the entry, a user can abandon it while this run waits, so it is not queued again.
         if not model.pending_merge_enqueued:
-            entry = model.pending_merge or await _read_unqueued_merge(db=db, model=model)
+            try:
+                entry = model.pending_merge or await _read_unqueued_merge(db=db, model=model)
+            except BranchNotFoundError:
+                lost_merge = _describe_lost_merge(repo=repo, model=model)
+                log.error(lost_merge)
         service = await build_writeback_service(db=db, repository=repo)
         outcome = await deliver_pending_merges(service=service, manual=False, entry=entry)
 
@@ -1065,20 +1070,34 @@ async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
     log.info(message)
     if outcome in {DeliveryOutcome.FAILED, DeliveryOutcome.UNREPLAYABLE}:
         return Failed(message=message)
+    if lost_merge is not None:
+        return Failed(message=lost_merge)
     return Completed(message=message)
 
 
-async def _read_unqueued_merge(db: InfrahubDatabase, model: GitRepositoryMerge) -> PendingMerge | None:
-    """Build the queue entry that the submission did not carry, or return None when the merge changes no content."""
-    log = get_run_logger()
+def _describe_lost_merge(repo: InfrahubRepository, model: GitRepositoryMerge) -> str:
+    """Say which merge the remote never receives, and how to push it by hand."""
     try:
-        source_branch = await registry.get_branch(db=db, branch=model.source_branch)
-    except BranchNotFoundError:
-        log.warning(
-            f"The branch {model.source_branch} no longer exists, so its merge is not queued for the push to "
-            f"repository {model.repository_name}."
-        )
-        return None
+        commit = repo.get_commit_value(branch_name=model.source_branch)
+    except ValueError:
+        commit = "unknown"
+    return (
+        f"The branch {model.source_branch} was deleted before its merge was queued, so repository "
+        f"{model.repository_name} does not push that merge to its remote. The last commit of the branch on this "
+        f"worker is {commit}. Merge the branch {model.source_branch} into the branch {repo.default_branch} on the "
+        "remote by hand."
+    )
+
+
+async def _read_unqueued_merge(db: InfrahubDatabase, model: GitRepositoryMerge) -> PendingMerge | None:
+    """Build the queue entry that the submission did not carry, or return None when the merge changes no content.
+
+    Raises:
+        BranchNotFoundError: The source branch no longer exists.
+
+    """
+    log = get_run_logger()
+    source_branch = await registry.get_branch(db=db, branch=model.source_branch)
     pending_merges = await read_pending_merges(
         db=db,
         source_branch=source_branch,
