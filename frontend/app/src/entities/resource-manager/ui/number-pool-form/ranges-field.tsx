@@ -1,0 +1,183 @@
+import { Button } from "@infrahub/ui";
+import { PlusIcon, Trash2Icon } from "lucide-react";
+import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
+
+import { Col, Row } from "@/shared/components/container";
+import { Input } from "@/shared/components/ui/input";
+import { inputErrorStyle } from "@/shared/components/ui/style";
+import { classNames } from "@/shared/utils/common";
+import { formatNumberDisplay } from "@/shared/utils/number";
+
+import type { RangeRow } from "@/entities/resource-manager/domain/model/number-pool-range";
+import {
+  getRangeClipHint,
+  type RangeLimits,
+  validateRangeRows,
+} from "@/entities/resource-manager/domain/rules/validate-range-rows";
+
+export const RANGES_FIELD = "ranges";
+
+// Rows hold the plain typed strings rather than `{ source, value }` because a range is a peer node of the pool, not an attribute with a provenance.
+export const EMPTY_RANGE_ROW: RangeRow = { start: "", end: "", weight: "" };
+
+type RangeKey = "start" | "end" | "weight";
+type RangeFieldName = `${typeof RANGES_FIELD}.${number}.${RangeKey}`;
+type RangesFormValues = { [RANGES_FIELD]: RangeRow[] };
+
+const RANGE_KEYS: RangeKey[] = ["start", "end", "weight"];
+const RANGE_LABELS: Record<RangeKey, string> = { start: "Start", end: "End", weight: "Weight" };
+const RANGE_WIDTHS: Record<RangeKey, string> = {
+  start: "min-w-0 flex-1",
+  end: "min-w-0 flex-1",
+  weight: "w-18 shrink-0",
+};
+
+function getRangeError(rows: RangeRow[], index: number, key: RangeKey): string | true {
+  const errors = validateRangeRows(rows)[index] ?? {};
+  if (key === "weight") return errors.weight ?? true;
+  return errors[key] ?? errors.row ?? true;
+}
+
+interface RangesFieldProps {
+  limits?: RangeLimits | null;
+}
+
+export function RangesField({ limits }: RangesFieldProps) {
+  const { control, register, getValues, getFieldState, trigger } =
+    useFormContext<RangesFormValues>();
+  const { fields, append, remove } = useFieldArray({ control, name: RANGES_FIELD });
+  const rows = useWatch({ control, name: RANGES_FIELD }) ?? [];
+  const formState = useFormState({ control, name: RANGES_FIELD });
+
+  function revalidate(changedField?: RangeFieldName) {
+    const current = getValues(RANGES_FIELD);
+    const overlapping = validateRangeRows(current);
+    const fieldNames = current.flatMap((_, index) =>
+      RANGE_KEYS.map((key) => ({ key, name: `${RANGES_FIELD}.${index}.${key}` as const })).filter(
+        ({ key, name }) =>
+          name === changedField ||
+          getFieldState(name).invalid ||
+          (key !== "weight" && !!overlapping[index]?.row)
+      )
+    );
+    trigger(fieldNames.map(({ name }) => name));
+  }
+
+  return (
+    <Col>
+      <RangesSectionHeader limits={limits} />
+
+      {fields.length > 0 && (
+        <Row aria-hidden className="px-0.5 font-medium text-foreground-muted text-xs">
+          {RANGE_KEYS.map((key) => (
+            <span key={key} className={RANGE_WIDTHS[key]}>
+              {RANGE_LABELS[key]}
+            </span>
+          ))}
+          <span className="w-9 shrink-0" />
+        </Row>
+      )}
+
+      {fields.map((field, index) => {
+        // RHF mutates its errors object in place, so errors are read through the per-render form state to stay fresh under the React Compiler.
+        const fieldErrors = RANGE_KEYS.map(
+          (key) => getFieldState(`${RANGES_FIELD}.${index}.${key}`, formState).error?.message
+        );
+        const message = fieldErrors.find(Boolean);
+        const clipHint = getRangeClipHint(rows[index] ?? field, limits);
+        const messageId = `range-${field.id}-message`;
+
+        return (
+          <Col key={field.id} className="gap-1">
+            <Row>
+              {RANGE_KEYS.map((key, keyIndex) => {
+                const name: RangeFieldName = `${RANGES_FIELD}.${index}.${key}`;
+                const hasError = !!fieldErrors[keyIndex];
+
+                return (
+                  <Input
+                    key={key}
+                    aria-label={RANGE_LABELS[key]}
+                    inputMode="numeric"
+                    placeholder={key === "weight" ? "0" : undefined}
+                    aria-invalid={hasError}
+                    aria-describedby={message || clipHint ? messageId : undefined}
+                    className={classNames(
+                      "h-9 min-h-0 rounded-lg px-2 tabular-nums",
+                      RANGE_WIDTHS[key],
+                      hasError && inputErrorStyle
+                    )}
+                    {...register(name, {
+                      validate: (_value, values) => getRangeError(values[RANGES_FIELD], index, key),
+                      onBlur: () => revalidate(name),
+                      onChange: () => {
+                        if (formState.isSubmitted || getFieldState(name).isTouched)
+                          revalidate(name);
+                      },
+                    })}
+                  />
+                );
+              })}
+              <Button
+                variant="ghost"
+                shape="square"
+                size="md"
+                aria-label="Remove range"
+                className="text-foreground-muted"
+                onPress={() => {
+                  remove(index);
+                  revalidate();
+                }}
+              >
+                <Trash2Icon />
+              </Button>
+            </Row>
+
+            {message && (
+              <p id={messageId} className="text-danger text-xs">
+                {message}
+              </p>
+            )}
+            {!message && clipHint && (
+              <p id={messageId} className="text-warning text-xs">
+                {clipHint}
+              </p>
+            )}
+          </Col>
+        );
+      })}
+
+      {fields.length === 0 && (
+        <p className="rounded-lg border border-dashed px-3 py-2.5 text-foreground-muted text-sm">
+          No ranges. The pool can't hand out numbers until you add one.
+        </p>
+      )}
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        onPress={() => append({ ...EMPTY_RANGE_ROW })}
+      >
+        <PlusIcon />
+        Add range
+      </Button>
+    </Col>
+  );
+}
+
+function RangesSectionHeader({ limits }: RangesFieldProps) {
+  const hasLimits = limits?.min != null && limits?.max != null;
+
+  return (
+    <Col className="gap-0.5">
+      <h3 className="font-medium text-sm">Ranges</h3>
+      <p className="text-pretty text-foreground-muted text-xs">
+        The highest weight is used first. An empty weight counts as 0, and equal weights start with
+        the lowest range.
+        {hasLimits &&
+          ` ${limits.attribute} accepts ${formatNumberDisplay(limits.min!)} – ${formatNumberDisplay(limits.max!)}.`}
+      </p>
+    </Col>
+  );
+}

@@ -4,6 +4,7 @@ export const IP_PREFIX_POOL = "CoreIPPrefixPool";
 export const NUMBER_POOL_KIND = "CoreNumberPool";
 export const NUMBER_POOL_NODE_FIELD = "node";
 export const NUMBER_POOL_NODE_ATTRIBUTE_FIELD = "node_attribute";
+export const NUMBER_POOL_ALLOCATION_SCOPE_FIELD = "allocation_scope";
 export const MIN_PREFIX_LENGTH = 1;
 export const MAX_PREFIX_LENGTH = 128;
 
