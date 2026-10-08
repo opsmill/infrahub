@@ -445,13 +445,13 @@ deployment rule.** T070 to T073 are not.
       `TERMINAL_SELECTION_FAILED`). Add the `releasing` parameter to `dispatch` and `_dispatch_plan`.
       Wire the flag-off path, which holds scope `all` with the reason `FEATURE_DISABLED`, and the
       builder in `backend/infrahub/core/branch/tasks.py`.
-- [ ] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
+- [X] T067 [US3] Write `HeldRegenerationReleaser` and `HeldDefinitionResolver` in
       `backend/infrahub/core/merge/regeneration_release.py`, per contracts section 9, with the renew
       callback after each awaited step and both `widen` scopes. A `widen` release logs the reason
       that its marker carries, and `HELD_SET_UNRESOLVED` only for an identifier that does not
       resolve. After the artifact trigger of a `terminals` marker, the release continues with the
       generator items and Python items of the window.
-- [ ] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
+- [X] T068 [US3] Write `backend/tests/unit/core/merge/test_regeneration_release.py`: a cache hit
       dispatches the narrowed request, a miss dispatches the identifier, an unresolvable identifier
       widens with `include_repository_ids` and logs `HELD_SET_UNRESOLVED`, a marker of scope `all`
       logs its own reason, for example `UNHELD_FOLLOW_UP`, and never `HELD_SET_UNRESOLVED`, a
