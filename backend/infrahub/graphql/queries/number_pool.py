@@ -72,7 +72,7 @@ class NumberPoolRangeUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the range's values. On a scoped pool, only the values held in the division passed in\n"
+            "Figures over the range's values. On a scoped pool, only the values held in the division passed in "
             "the division argument."
         ),
     )
@@ -81,7 +81,7 @@ class NumberPoolRangeUtilization(ObjectType):
 class NumberPoolUtilization(ObjectType):
     class Meta:
         description = (
-            "Utilization of one number pool and of each of its ranges, with the allocation scope in force on\n"
+            "Utilization of one number pool and of each of its ranges, with the allocation scope in force on "
             "the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization."
         )
 
@@ -91,7 +91,7 @@ class NumberPoolUtilization(ObjectType):
         List(NonNull(String)),
         required=True,
         description=(
-            "Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,\n"
+            "Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, "
             "and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry."
         ),
     )
@@ -99,7 +99,7 @@ class NumberPoolUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the pool's whole space. On a scoped pool, only the values held in the division passed\n"
+            "Figures over the pool's whole space. On a scoped pool, only the values held in the division passed "
             "in the division argument, which is required."
         ),
     )
@@ -131,7 +131,7 @@ class NumberPoolDivisionEntry(ObjectType):
         String,
         required=True,
         description=(
-            "Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing\n"
+            "Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing "
             "for the entry: an empty string."
         ),
     )
@@ -139,7 +139,7 @@ class NumberPoolDivisionEntry(ObjectType):
         String,
         required=True,
         description=(
-            "Relationship entry: the peer's display label, read on any branch, falling back to the peer's id\n"
+            "Relationship entry: the peer's display label, read on any branch, falling back to the peer's id "
             "when the peer cannot be read. Attribute entry: the value as text."
         ),
     )
@@ -193,7 +193,7 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division whose holders hold at least one value the pool tracks on any live branch, ordered\n"
+            "Every division whose holders hold at least one value the pool tracks on any live branch, ordered "
             "by utilization descending then by display_label. Empty when the scope in force is empty."
         ),
     )
@@ -288,7 +288,7 @@ InfrahubNumberPoolUtilization = Field(
     resolver=NumberPoolUtilization.resolve,
     required=True,
     description=(
-        "Utilization of one number pool and of its ranges. On a scoped pool, division is required and\n"
+        "Utilization of one number pool and of its ranges. On a scoped pool, division is required and "
         "the figures are those of that division."
     ),
 )
@@ -299,7 +299,7 @@ InfrahubNumberPoolDivisions = Field(
     resolver=NumberPoolDivisions.resolve,
     required=True,
     description=(
-        "The divisions of one number pool that hold at least one value, with their figures over the whole\n"
+        "The divisions of one number pool that hold at least one value, with their figures over the whole "
         "pool. Complete list, no pagination."
     ),
 )

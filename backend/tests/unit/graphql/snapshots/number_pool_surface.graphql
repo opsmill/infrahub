@@ -39,8 +39,7 @@ type NumberPoolDivision {
 """The value one scope entry takes in a division."""
 type NumberPoolDivisionEntry {
   """
-  Relationship entry: the peer's display label, read on any branch, falling back to the peer's id
-  when the peer cannot be read. Attribute entry: the value as text.
+  Relationship entry: the peer's display label, read on any branch, falling back to the peer's id when the peer cannot be read. Attribute entry: the value as text.
   """
   display_label: String!
   """The scope entry, as stored on the pool ("site", "role")."""
@@ -50,8 +49,7 @@ type NumberPoolDivisionEntry {
   """
   peer_kind: String
   """
-  Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing
-  for the entry: an empty string.
+  Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing for the entry: an empty string.
   """
   value: String!
 }
@@ -71,8 +69,7 @@ type NumberPoolDivisions {
   """Number of divisions listed."""
   count: Int!
   """
-  Every division whose holders hold at least one value the pool tracks on any live branch, ordered
-  by utilization descending then by display_label. Empty when the scope in force is empty.
+  Every division whose holders hold at least one value the pool tracks on any live branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty.
   """
   divisions: [NumberPoolDivision!]!
 }
@@ -105,8 +102,7 @@ type NumberPoolRangeUtilization {
   """Last value of the range, included."""
   end: BigInt!
   """
-  Figures over the range's values. On a scoped pool, only the values held in the division passed in
-  the division argument.
+  Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument.
   """
   figures: NumberPoolUtilizationFigures!
   """The range node's id."""
@@ -118,20 +114,17 @@ type NumberPoolRangeUtilization {
 }
 
 """
-Utilization of one number pool and of each of its ranges, with the allocation scope in force on
-the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization.
+Utilization of one number pool and of each of its ranges, with the allocation scope in force on the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization.
 """
 type NumberPoolUtilization {
   """
-  Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,
-  and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
+  Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
   """
   allocation_scope: [String!]!
   """The pool's display label."""
   display_label: String!
   """
-  Figures over the pool's whole space. On a scoped pool, only the values held in the division passed
-  in the division argument, which is required.
+  Figures over the pool's whole space. On a scoped pool, only the values held in the division passed in the division argument, which is required.
   """
   figures: NumberPoolUtilizationFigures!
   """The pool's id, as given in pool_id."""
@@ -168,13 +161,11 @@ type Query {
   """The numbers one number pool tracks, filtered and paginated."""
   InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], limit: Int, offset: Int, pool_id: String!, provenance: NumberPoolProvenance, range_id: String): NumberPoolAllocations!
   """
-  The divisions of one number pool that hold at least one value, with their figures over the whole
-  pool. Complete list, no pagination.
+  The divisions of one number pool that hold at least one value, with their figures over the whole pool. Complete list, no pagination.
   """
   InfrahubNumberPoolDivisions(pool_id: String!): NumberPoolDivisions!
   """
-  Utilization of one number pool and of its ranges. On a scoped pool, division is required and
-  the figures are those of that division.
+  Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division.
   """
   InfrahubNumberPoolUtilization(division: [NumberPoolDivisionEntryInput!], pool_id: String!): NumberPoolUtilization!
 }

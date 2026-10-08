@@ -23920,19 +23920,13 @@ export type NumberPoolDivision = {
 /** The value one scope entry takes in a division. */
 export type NumberPoolDivisionEntry = {
   __typename: 'NumberPoolDivisionEntry';
-  /**
-   * Relationship entry: the peer's display label, read on any branch, falling back to the peer's id
-   * when the peer cannot be read. Attribute entry: the value as text.
-   */
+  /** Relationship entry: the peer's display label, read on any branch, falling back to the peer's id when the peer cannot be read. Attribute entry: the value as text. */
   display_label: Scalars['String']['output'];
   /** The scope entry, as stored on the pool ("site", "role"). */
   path: Scalars['String']['output'];
   /** Relationship entry: the peer's kind when the peer can be read. Otherwise null. */
   peer_kind: Maybe<Scalars['String']['output']>;
-  /**
-   * Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing
-   * for the entry: an empty string.
-   */
+  /** Relationship entry: the peer's id. Attribute entry: the value as text. A holder holding nothing for the entry: an empty string. */
   value: Scalars['String']['output'];
 };
 
@@ -23951,10 +23945,7 @@ export type NumberPoolDivisions = {
   allocation_scope: Array<Scalars['String']['output']>;
   /** Number of divisions listed. */
   count: Scalars['Int']['output'];
-  /**
-   * Every division whose holders hold at least one value the pool tracks on any live branch, ordered
-   * by utilization descending then by display_label. Empty when the scope in force is empty.
-   */
+  /** Every division whose holders hold at least one value the pool tracks on any live branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty. */
   divisions: Array<NumberPoolDivision>;
 };
 
@@ -23989,10 +23980,7 @@ export type NumberPoolRangeUtilization = {
   display_label: Scalars['String']['output'];
   /** Last value of the range, included. */
   end: Scalars['BigInt']['output'];
-  /**
-   * Figures over the range's values. On a scoped pool, only the values held in the division passed in
-   * the division argument.
-   */
+  /** Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument. */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
   id: Scalars['String']['output'];
@@ -24002,23 +23990,14 @@ export type NumberPoolRangeUtilization = {
   weight: Scalars['BigInt']['output'];
 };
 
-/**
- * Utilization of one number pool and of each of its ranges, with the allocation scope in force on
- * the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization.
- */
+/** Utilization of one number pool and of each of its ranges, with the allocation scope in force on the request's branch. For a number pool, prefer this over InfrahubResourcePoolUtilization. */
 export type NumberPoolUtilization = {
   __typename: 'NumberPoolUtilization';
-  /**
-   * Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,
-   * and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
-   */
+  /** Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool, and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry. */
   allocation_scope: Array<Scalars['String']['output']>;
   /** The pool's display label. */
   display_label: Scalars['String']['output'];
-  /**
-   * Figures over the pool's whole space. On a scoped pool, only the values held in the division passed
-   * in the division argument, which is required.
-   */
+  /** Figures over the pool's whole space. On a scoped pool, only the values held in the division passed in the division argument, which is required. */
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */
   id: Scalars['String']['output'];
@@ -26223,15 +26202,9 @@ export type Query = {
   InfrahubInfo: Info;
   /** The numbers one number pool tracks, filtered and paginated. */
   InfrahubNumberPoolAllocations: NumberPoolAllocations;
-  /**
-   * The divisions of one number pool that hold at least one value, with their figures over the whole
-   * pool. Complete list, no pagination.
-   */
+  /** The divisions of one number pool that hold at least one value, with their figures over the whole pool. Complete list, no pagination. */
   InfrahubNumberPoolDivisions: NumberPoolDivisions;
-  /**
-   * Utilization of one number pool and of its ranges. On a scoped pool, division is required and
-   * the figures are those of that division.
-   */
+  /** Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division. */
   InfrahubNumberPoolUtilization: NumberPoolUtilization;
   /** Find all shortest paths between two nodes in the graph */
   InfrahubPathTraversal: PathTraversalResultType;
