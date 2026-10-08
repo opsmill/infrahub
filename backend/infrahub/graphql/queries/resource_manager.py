@@ -18,6 +18,7 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.types.enums import PoolRecordProvenance
 from infrahub.pools.number import NumberUtilizationGetter, UtilizationFigures
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_space import SchemaAttributeDomains, to_pool_ranges
@@ -59,6 +60,11 @@ class PoolAllocatedNode(ObjectType):
     kind = Field(String, required=True, description="The node kind")
     branch = Field(String, required=True, description="The branch where the node is allocated")
     identifier = Field(String, required=False, description="Identifier used for the allocation")
+    provenance = Field(
+        PoolRecordProvenance,
+        required=False,
+        description="Whether the number pool allocated the value the branch holds or a user provided it; null for IP pools",
+    )
 
 
 class PoolAllocatedEdge(ObjectType):
@@ -341,6 +347,7 @@ async def resolve_number_pool_allocation(
                     "branch": item.branch,
                     "display_label": item.value,
                     "identifier": item.identifier,
+                    "provenance": item.provenance,
                 }
             }
             edges.append(node)

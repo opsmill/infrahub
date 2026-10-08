@@ -22,6 +22,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
 )
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -34,7 +35,6 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
@@ -94,7 +94,8 @@ class PayloadPresence(Enum):
 
 
 class PoolPropertyData(NodePropertyData):
-    provenance: PoolRecordProvenance
+    allocated_value: int | None
+    """The number the pool allocated to the attribute, None when a user provided the value."""
 
 
 class AttributeCreateData(BaseModel):
@@ -761,7 +762,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         # Add the pool ID if this attribute came from a pool.
         if self.from_pool and self.value is not None and (pool_id := self.from_pool.get("id")):
-            data.pool_prop.append(PoolPropertyData(name="pool", peer_id=pool_id, provenance=self.pool_provenance))
+            allocated_value = self.value if self.pool_provenance is PoolRecordProvenance.ALLOCATED else None
+            data.pool_prop.append(PoolPropertyData(name="pool", peer_id=pool_id, allocated_value=allocated_value))
 
         return data
 

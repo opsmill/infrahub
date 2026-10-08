@@ -161,6 +161,7 @@ query Allocated($pool_id: String!, $resource_id: String!) {
         id
         identifier
         kind
+        provenance
       }
     }
   }
@@ -442,6 +443,9 @@ async def test_create_ipv4_address_and_read_allocations(
     assert device1_address in addresses
     assert device2_address in addresses
     assert device3_address in addresses
+    assert [node["node"]["provenance"] for node in nodes] == [None, None, None], (
+        "only a number pool says whether it allocated the value"
+    )
 
 
 async def test_read_resources_in_pool_with_branch(

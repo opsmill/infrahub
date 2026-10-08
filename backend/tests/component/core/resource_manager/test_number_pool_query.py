@@ -26,7 +26,6 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetUsed,
     NumberPoolReleaseReserved,
     NumberPoolSetReserved,
-    PoolRecordProvenance,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
@@ -568,7 +567,7 @@ class TestNumberPoolReleaseReserved:
             pool_id=other_pool.get_id(),
             identifier=moved.get_id(),
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
         )
         await move.execute(db=db)
         assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) == other_pool.get_id()
@@ -820,7 +819,7 @@ class TestCreateRecordsItsReservation:
             "from": edges["value_from"],
             "from_user_id": SYSTEM_USER_ID,
             "identifier": first.get_id(),
-            "provenance": PoolRecordProvenance.ALLOCATED.value,
+            "allocated_values": [first_number],
         }
 
         second = await Node.init(db=db, schema=incident_schema, branch=default_branch.name)

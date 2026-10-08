@@ -177,7 +177,7 @@ On top of the common edge properties a record carries:
 | Property | Type | Description |
 |----------|------|-------------|
 | `identifier` | string | UUID of the object the allocation was made for |
-| `provenance` | string? | `"allocated"` when the pool chose the number, `"provided"` when the user supplied it. Number pools only; an absent value reads as `"allocated"` |
+| `allocated_values` | list of integers? | Number pools only: every number the pool allocated to that attribute, on any branch. A row of the in-use list reads `"allocated"` when its branch-resolved value is in the list and `"provided"` otherwise; an absent list reads `"allocated"` for every value |
 
 A number pool's record carries the account that wrote it like any other edge: `from_user_id` when it
 opens, `to_user_id` when it closes. Because the record is global, every write that opens or closes one
@@ -187,6 +187,14 @@ vertex (`updated_at` / `updated_by`) and moves the stamp it replaces into `previ
 restore the pool when a schema migration allocates numbers inside a merge window — invariant 5 in
 [Merge Failure Recovery](merge-failure-recovery.md). A write that keeps a pool's live record unchanged
 stamps nothing; one that closes another pool's record stamps that pool too.
+
+Never change `allocated_values` in place: the list grows only when the pool holding the record
+allocates a number it does not list yet, and that write closes the record and creates one with the
+longer list, so the history is kept and the pool is stamped like any other record change. Nothing
+removes a member, because the label is read only for a row whose branch-resolved value matches, so a
+number the attribute no longer holds stays listed and stays inert. The label is per record and value,
+not per branch, so it cannot tell a number the pool allocated on one branch from the same number a user
+provided on another: both rows read `"allocated"`.
 
 A number pool's record stores no value. Every read resolves it forward instead — from the attribute
 to the values its object holds — so a record whose object holds no value in range reports nothing.

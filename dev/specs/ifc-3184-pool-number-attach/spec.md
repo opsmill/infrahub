@@ -208,7 +208,7 @@ pool's in-use count dropped by one, and the number is offered again.
 ### Record lifecycle
 
 Every read requires the owning object to still hold the recorded value. That liveness join, not
-record deletion, is what frees a number. `provenance` is irrelevant to every row.
+record deletion, is what frees a number. `allocated_values` is irrelevant to every row.
 
 | Event | Required behaviour | Status at spec time |
 |---|---|---|
@@ -269,9 +269,34 @@ listed here stand as written there.
   branch-agnostic record between the pool and that object's attribute; identifier matching is no
   longer needed, because the anchor is already per-object. No source is cleared, because under
   FR-030b the pool never wrote one.
-- **FR-026**: Each record MUST carry `provenance` ∈ {`allocated`, `provided`}. Two values, not
-  three. Absent means `allocated`, so the property itself needs no backfill. Under FR-021/FR-024,
-  "provided" and "attached" are the same request made on create and on update.
+- **FR-026**: Each record MUST carry `allocated_values`, the list of every number the pool
+  allocated to that attribute, on any branch. A row of the in-use list reads `allocated` when its
+  branch-resolved value is in the list and `provided` otherwise. Two labels, not three: under
+  FR-021/FR-024, "provided" and "attached" are the same request made on create and on update. The
+  record carries no single label, because two branches can hold different values on one attribute
+  with different intents and one label cannot be true on both. *(Revised 2026-10-07: replaces the
+  single `provenance` property.)*
+- **FR-026a**: The in-use list MUST report the label per row, where a row is one record and one
+  branch-resolved value. After 5 is allocated from pool P on branch A and branch B updates the same
+  object with value 9 and `from_pool` P, in either order, the list MUST show (A, 5, allocated) and
+  (B, 9, provided).
+- **FR-026b**: A number the pool allocates MUST read `allocated` on the branch that received it. A
+  number the user sends together with `from_pool` MUST read `provided` on that branch, including
+  the current number sent with a different pool, unless the pool holding the record allocated that
+  same number before (FR-026c).
+- **FR-026c**: Restating the number a branch already holds together with `from_pool` MUST write
+  nothing to the record and keep the row's label. The label is read per record and value, not per
+  branch, so a number the pool once allocated reads `allocated` on every branch that holds it, even
+  on a branch where a user hand-set it after holding another number, and a number changed away by
+  hand and later hand-set back reads `allocated` again. This limit is accepted: closing it would
+  need a branch-aware write on the value edge, which the bulk merge can copy over a base that moved.
+- **FR-026d**: The label MUST follow its value through merge, conflict resolution, rebase and
+  branch delete, with no rule of its own: merging B into the default branch gives (default, 9,
+  provided); a conflict resolved for the default branch keeps (default, 5, allocated); a rebase
+  leaves B's row unchanged; deleting B removes B's row and leaves the default branch's.
+- **FR-026e**: A record with no list MUST read `allocated` for every value, on every branch. The
+  re-anchoring migration writes the value each legacy record was anchored on into the list, so no
+  row of a pre-existing pool changes label after an upgrade.
 - **FR-027**: A tracked number inside the pool's effective space MUST count in utilization and
   appear in the in-use list beside allocated ones. A tracked number outside the effective space MUST
   be reported in a separate bucket, not folded into the utilization fraction.
@@ -287,7 +312,8 @@ listed here stand as written there.
   ordinary duplicate error.
 - **FR-028a**: Utilization MUST count distinct elements of the effective space consumed, never
   records — a number held by three objects consumes one element. The in-use list MUST return one row
-  per **(record, branch-resolved value)**, so every holder is visible with its own `provenance`.
+  per **(record, branch-resolved value)**, so every holder is visible with its own `provenance`,
+  read from the record's `allocated_values` against that row's value (FR-026).
   Because a record is anchored on the attribute, one record reserves whichever values its attribute
   holds across branches: a record whose object holds 1 on the default branch and 5 on another
   contributes two rows and consumes two elements. Both numbers are genuinely unavailable, so this is
@@ -445,7 +471,7 @@ attribute reports as its `source`.
 ### Key Entities
 
 - **Number pool record** (pool → **attribute**, branch-agnostic): **re-anchored by this slice**, and
-  gains `provenance`. The attribute is per-object and survives value changes, so the record no
+  gains `allocated_values`. The attribute is per-object and survives value changes, so the record no
   longer needs an identifier to say whose it is. What it reserves is resolved forward through the
   value edge, per branch.
 - **Attribute source** (attribute → user-chosen node): **no longer written by the pool** (FR-030b).
@@ -519,7 +545,7 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
     whether the attribute is currently tracked by a *different* pool, which yields the re-pool
     intent (FR-024a). Encodes the whole contract, including its refusal rule, as pure decision logic.
   - **`PoolRecordLedger`** (core, query layer, extends): creates and ends branch-agnostic records
-    between a pool and an attribute, with `provenance`. Carries the new release query. No identifier
+    between a pool and an attribute, with `allocated_values`. Carries the new release query. No identifier
     scoping and no record-move — both disappear with the re-anchoring.
   - **`PoolUtilizationReporter`** (pools, new, pure): takes a record set and an effective space;
     returns the distinct-element count, the branch split, and the out-of-space bucket. Owns the

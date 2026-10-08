@@ -206,7 +206,7 @@ first means writing it twice.
 | B1 | Payload-presence flags on `BaseAttribute` (create path) | D3 |
 | B2 | `FromPoolIntentResolver` (pure) + unit suite | D4, FR-021/022/024/024a |
 | B3 | `Node.handle_pool` becomes an executor driven by the resolver | FR-021, FR-024 |
-| B4 | `PoolRecordLedger`: create with `provenance`, match-close-create, new release query | FR-025, FR-026, FR-024b |
+| B4 | `PoolRecordLedger`: create with `allocated_values`, match-close-create, new release query | FR-025, FR-026, FR-024b |
 | B5 | Lock the currently-tracking pool as well as the named one | D6 |
 | B6 | The one new refusal, with both remedies named | FR-024 |
 
@@ -229,7 +229,7 @@ Shape:
 
 | `value` | `from_pool` | currently tracked by | intent |
 |---|---|---|---|
-| present, non-null | present, pool P | nothing | **attach** (`provenance=provided`) |
+| present, non-null | present, pool P | nothing | **attach** (record created with an empty `allocated_values`) |
 | present, non-null | present, pool P | P, same value | **attach** (the record is kept unchanged; revised 2026-10-05) |
 | present, non-null | present, pool P | P, different value | **attach** (record already on the attribute; nothing to write) |
 | present, non-null | present, pool B | A | **attach** (ends A's record; revised 2026-10-05) |
@@ -256,13 +256,15 @@ Two properties this table must have, and the unit suite must assert:
 
 - **create**: match-close-create. Closes any live record on the target `Attribute` *before* creating
   its own, which is what makes FR-024b hold by construction rather than by accident. Writes
-  `provenance ∈ {allocated, provided}`.
+  `allocated_values`, the numbers the pool allocated to the attribute; the in-use row's label is
+  read from that list against the value the row's branch holds (FR-026, revised 2026-10-07).
 - **release**: ends the single `-global-` record between a pool and an `Attribute`. No identifier
   matching — the anchor is already per-object. This is new; nothing in the codebase has ever closed
   an `IS_RESERVED` edge except `PoolChangeReserved`.
 - **no move**: FR-031 is deleted. A value change writes nothing.
 
-`provenance` absent means `allocated`, so the property needs no backfill — it rides the migration.
+An absent `allocated_values` reads `allocated` for every value, and the re-anchoring migration
+writes the anchored value into each legacy record's list.
 
 **Closing semantics**: `to = $at` (time-close), not `status = "deleted"`. Consistent with every
 existing global-edge closure in the tree (retirement, `PoolChangeReserved`), and required because a

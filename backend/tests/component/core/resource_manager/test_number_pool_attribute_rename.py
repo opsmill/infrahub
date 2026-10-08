@@ -21,7 +21,6 @@ from infrahub.core.migrations.schema.attribute_name_update import AttributeNameU
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from tests.component.core.agnostic_retirement.support import rebase_branch
 from tests.component.core.resource_manager.conftest import (
     SERIAL_ATTRIBUTE_NAME,
@@ -38,7 +37,7 @@ from tests.helpers.agnostic_edges import (
     is_reserved_edge_on,
     open_active_edges,
     open_is_reserved_edge_on,
-    set_open_is_reserved_edge_provenance,
+    set_open_is_reserved_edge_allocated_values,
 )
 from tests.helpers.number_pool import pool_lowest_free_number, pool_used_numbers
 from tests.helpers.schema.agnostic_retirement import WIDGET_KIND
@@ -273,15 +272,15 @@ async def test_renaming_a_pooled_attribute_carries_every_property_of_its_is_rese
     serial_pool: CoreNumberPool,
     case: IsReservedPropertiesCase,
 ) -> None:
-    """The IS_RESERVED edge says which object holds the number and how it got there; a rename must not lose either."""
+    """The IS_RESERVED edge says which object holds the number and which numbers the pool allocated; a rename must not lose either."""
     holder = await Node.init(db=db, schema=WIDGET_KIND, branch=default_branch)
     await holder.new(db=db, name="holds-a-pooled-serial", serial={"from_pool": {"id": serial_pool.id}})
     await holder.save(db=db)
-    await set_open_is_reserved_edge_provenance(
+    await set_open_is_reserved_edge_allocated_values(
         db=db,
         node_id=holder.id,
         attribute_name=PREVIOUS_ATTRIBUTE_NAME,
-        provenance=PoolRecordProvenance.PROVIDED.value,
+        values=[1, 2],
     )
 
     branch = default_branch if case.on_default_branch else await create_branch(db=db, branch_name="rename-is-reserved")
@@ -291,8 +290,8 @@ async def test_renaming_a_pooled_attribute_carries_every_property_of_its_is_rese
         db=db, pool_id=serial_pool.id, node_id=holder.id, attribute_name=NEW_ATTRIBUTE_NAME
     )
     assert renamed["identifier"] == holder.id, "the IS_RESERVED edge must still name the object that holds the number"
-    assert renamed["provenance"] == PoolRecordProvenance.PROVIDED.value, (
-        "the IS_RESERVED edge must still say the number was provided rather than assume the pool chose it"
+    assert renamed["allocated_values"] == [1, 2], (
+        "the IS_RESERVED edge must still list the numbers the pool allocated rather than start the record over"
     )
     assert renamed["branch"] == GLOBAL_BRANCH_NAME
     assert renamed["status"] == "active"
