@@ -140,6 +140,12 @@ deleted with their event.
   including failed and cancelled flows and a worker restart, and fails on any stored non-`infrahub.`
   type that is missing. Update the list when either fails after a Prefect upgrade, and when an
   Infrahub flow introduces a custom state name, which creates a new state event type.
+- Neither test sees a type that Prefect emits outside the workload. So once Prefect's startup has
+  migrated the database, `prefect_server/app.py::create_infrahub_prefect` reads each stored event
+  type, one index lookup per type through `prefect_server/database.py::read_stored_event_types`,
+  and logs a warning naming every `prefect.*` type missing from the list. A type appears from the
+  first start after Prefect stored an event of it; a failed read is logged and does not stop the
+  task manager.
 - Prefect's per-type vacuum deletes roughly 20 times fewer rows per second than its time-based
   vacuum. That is acceptable because the first run after an upgrade has little to delete and later
   runs delete one hour of events.
