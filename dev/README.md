@@ -68,6 +68,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)
 - [graphql-execution.md](knowledge/backend/graphql-execution.md) - Sync vs async field completion and why middleware must stay synchronous
+- [graphql-query-cost.md](knowledge/backend/graphql-query-cost.md) - Actual counts and estimated cost of each GraphQL field: recorder, statistics cache, refresh flow and estimator
 - [tls.md](knowledge/backend/tls.md) - How the CA bundle of every outbound TLS connection is resolved and where each component applies it
 
 Frontend architecture documentation in [knowledge/frontend/](knowledge/frontend/):
