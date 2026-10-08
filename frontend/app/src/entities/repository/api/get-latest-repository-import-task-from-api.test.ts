@@ -30,6 +30,26 @@ describe("getLatestRepositoryImportTaskFromApi", () => {
     vi.unstubAllGlobals();
   });
 
+  it("asks for the single newest task of the repository on the branch", async () => {
+    // GIVEN
+    respondWith({ data: { InfrahubTask: { edges: [] } } });
+    const lookup = {
+      branch: "feature",
+      repositoryId: "repo-1",
+      workflows: ["git-repository-import-object"],
+      states: ["RUNNING", "FAILED"],
+    };
+
+    // WHEN
+    await getLatestRepositoryImportTaskFromApi(lookup);
+
+    // THEN
+    const [, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    const body = JSON.parse(String(init?.body));
+    expect(body.variables).toEqual(lookup);
+    expect(body.query).toMatch(/limit:\s*1\b/);
+  });
+
   it("returns the id and state of the newest matching task", async () => {
     // GIVEN
     respondWith({

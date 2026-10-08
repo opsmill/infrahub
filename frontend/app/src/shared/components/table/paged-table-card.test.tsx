@@ -52,6 +52,23 @@ const failedQuery = (error: Error) => ({
 });
 
 describe("PagedTableCard", () => {
+  it("keeps the previous rows, not the out-of-range state, while a placeholder is shown", async () => {
+    // GIVEN the previous page's rows stand in while page 3 loads
+    const { component } = await renderShell({
+      page: 3,
+      query: {
+        data: { count: 2, rows: ["first", "second"] },
+        error: null,
+        isPlaceholderData: true,
+        refetch: vi.fn(),
+      },
+    });
+
+    // THEN
+    await expect.element(component.getByText("first")).toBeVisible();
+    expect(component.getByText("Page 3 doesn't exist.").query()).toBeNull();
+  });
+
   it("names its region after the title", async () => {
     // WHEN
     const { component } = await renderShell();
