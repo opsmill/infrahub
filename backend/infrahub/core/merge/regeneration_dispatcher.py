@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING, Literal, assert_never
 
 from infrahub import config
 from infrahub.core.constants import FullRegenerationReason
@@ -15,11 +15,13 @@ from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.writeback.models import HeldItem, HeldRegeneration, HeldWiden
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
+    REQUEST_GENERATOR_DEFINITION_RUN,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from logging import Logger, LoggerAdapter
 
     from infrahub_sdk.diff import NodeDiff
@@ -148,6 +150,62 @@ class PostMergeRegenerationDispatcher:
                 reason=FullRegenerationReason.SELECTION_FAILED,
                 releasing=releasing,
             )
+
+    async def dispatch_requests(
+        self,
+        *,
+        context: InfrahubContext,
+        target_branch: str,
+        generator_runs: Sequence[RequestGeneratorDefinitionRun],
+        artifact_generates: Sequence[RequestArtifactDefinitionGenerate],
+        releasing: str | None,
+    ) -> None:
+        """Dispatch the requests as a merge plan, so the generator cascade runs and every dispatch passes the barrier.
+
+        A failed submission raises, with no fallback to a full regeneration.
+        """
+        entries = [
+            PlannedRegeneration(
+                workflow=REQUEST_GENERATOR_DEFINITION_RUN, cascade_role=CascadeRole.SOURCE, requests=generator_runs
+            ),
+            PlannedRegeneration(
+                workflow=REQUEST_ARTIFACT_DEFINITION_GENERATE,
+                cascade_role=CascadeRole.TERMINAL,
+                requests=artifact_generates,
+            ),
+        ]
+        await self._dispatch_plan(
+            context=context,
+            target_branch=target_branch,
+            plan=SelectiveRegenerationPlan(entries=self.planner.consolidate_submissions(entries)),
+            releasing=releasing,
+        )
+
+    async def submit_repository_regeneration(
+        self, *, context: InfrahubContext, target_branch: str, repository_id: str, scope: Literal["all", "terminals"]
+    ) -> None:
+        """Regenerate every definition of the repository, or only its terminal definitions.
+
+        The barrier is not consulted: only the definitions of this repository run, so no other repository has work
+        to hold.
+        """
+        match scope:
+            case "all":
+                await submit_full_regeneration(
+                    workflow=self.workflow,
+                    context=context,
+                    target_branch=target_branch,
+                    include_repository_ids=[repository_id],
+                )
+            case "terminals":
+                for regeneration in self.planner.terminal_full_regenerations(target_branch):
+                    await self.workflow.submit_workflow(
+                        workflow=regeneration.workflow,
+                        context=context,
+                        parameters={**regeneration.parameters, "include_repository_ids": [repository_id]},
+                    )
+            case _:
+                assert_never(scope)
 
     async def _dispatch_plan(
         self,
