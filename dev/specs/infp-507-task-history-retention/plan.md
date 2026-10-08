@@ -42,9 +42,9 @@ Research and code locations: [research.md](research.md).
 | Principle | Status | Notes |
 |---|---|---|
 | I. Schema-Driven Integrity | Pass | No Infrahub schema or graph change. Generated docs regenerated, not edited. |
-| II. Branch-Safe by Default | Pass | No graph query changes. Branch filters resolve names through the branch registry; deleted branches through their deletion event. Branch-deletion purge of runs unchanged. |
+| II. Branch-Safe by Default | Pass | No graph query changes. Branch filters resolve names to IDs from the database; deleted branches through their deletion event. Branch-deletion purge of runs unchanged. |
 | III. Type Safety & Explicit Contracts | Pass | Pydantic settings section and request/response models for the new routes; contracts written before implementation (contracts/). |
-| IV. Test Discipline | Pass (with private-test evidence) | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; integration-docker guard and a unit test for the event-type list; Vitest for paging; an E2E test for Activities "load more" without the count; the private performance tests provide the evidence at production scale that CI cannot (backups with 25 to 100 GB of task history and a year of activity log). |
+| IV. Test Discipline | Pass (with private-test evidence) | Unit tests for settings and filter construction; component tests for the cleanup and filter equivalence on the Prefect harness; integration-docker guard and a unit test for the event-type list; Vitest for paging; an E2E test for Activities "load more" while new events arrive; the private performance tests provide the evidence at production scale that CI cannot (backups with 25 to 100 GB of task history and a year of activity log). |
 | V. Query Performance | Pass | SQL built with SQLAlchemy Core, parameterized. Plans validated with EXPLAIN in the design-doc benchmark; regression covered by private performance tests. |
 | VI. Security & Input Boundaries | **Deviation (needs maintainer approval)** | The new cleanup route mutates without authentication. Decided by the tech owner on 2026-10-04; the constitution allows a deviation only with maintainer approval, so the PR description asks for it explicitly. The route takes only `rewrite`. See Complexity Tracking. Settings input is validated at start. |
 | VII. Simplicity | Pass, with one justified addition | The background job with status polling exists so that a dropped session or HTTP timeout during a long upgrade does not stop the cleanup. See Complexity Tracking. |
@@ -81,12 +81,12 @@ backend/infrahub/
 │   ├── task_history.py                # new: cleanup job (SQL deletes per day, rewrite on Postgres) + routes
 │   ├── task_history_models.py         # new: request and job models the routes and the client share
 │   ├── database.py                    # newest-first time windows, optional count, plan per query
-│   ├── events.py, models.py           # include_count, retention window, nullable total
+│   ├── events.py, models.py           # include_total, retention window, nullable total
 ├── task_manager/
 │   ├── event/models.py                # account/branch/node/parent/branch-name filters on resource IDs
-│   ├── event/query.py                 # pass include_count, nullable count
+│   ├── event/query.py                 # pass include_total, nullable count
 │   └── flow_run/retention.py          # FlowRunRetention kept for stale-runs
-├── graphql/queries/event.py           # include_count from selected fields, branch name → ID resolution
+├── graphql/queries/event.py           # include_total from selected fields, branch name → ID resolution
 └── cli/
     ├── tasks.py                       # flush flow-runs via the job, background-services command
     └── upgrade.py                     # task history cleanup step, --no-task-history-cleanup
@@ -98,8 +98,8 @@ backend/tests/
 ├── unit/prefect_server/test_prefect_event_types.py  # every built-in Prefect state in the list
 └── integration_docker/                # Prefect event-type list guard on the full stack
 
-frontend/app/src/entities/events/      # page by `until`, drop `count`, dedupe by id
-tests/e2e/                             # Activities load more without count
+frontend/app/src/entities/events/      # page by `until` (`since` in ascending order), dedupe by id
+tests/e2e/                             # Activities load more while new events arrive, no event twice
 
 python_testcontainers/infrahub_testcontainers/docker-compose*.test.yml  # background-services command
 tasks/docs.py                          # add `infrahub tasks` to the CLI reference
