@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING, Literal, assert_never
 
+import httpx
+from prefect.exceptions import ObjectNotFound
+
 from infrahub import config
 from infrahub.core.constants import FullRegenerationReason
 from infrahub.core.merge.regeneration_barrier import OwnedRegeneration
@@ -34,6 +37,11 @@ if TYPE_CHECKING:
     from .regeneration_barrier import RegenerationBarrier
     from .selective_regen.models import RegenerationRequest
     from .selective_regen.orchestrator import RegenerationPlanner
+
+
+# ponytail: the run's own error of these types also raises, which only repeats the run; a typed error from the
+# workflow adapter would separate a failed start from a failed run.
+_ORCHESTRATOR_ERRORS = (httpx.HTTPError, ObjectNotFound, OSError)
 
 
 async def submit_full_regeneration(
@@ -182,8 +190,8 @@ class PostMergeRegenerationDispatcher:
     ) -> None:
         """Dispatch the requests as a merge plan, so the generator cascade runs and every dispatch passes the barrier.
 
-        A failed generator run falls back to the regeneration of every terminal, as on a merge. A failed
-        fire-and-forget submission raises, with no fallback to a full regeneration.
+        A generator run that fails falls back to the regeneration of every terminal, as on a merge. A generator
+        run that the orchestrator cannot start or follow raises, and so does a failed fire-and-forget submission.
 
         Args:
             renew: Called after each generator run and after the last submissions.
@@ -290,7 +298,10 @@ class PostMergeRegenerationDispatcher:
                     await self.workflow.execute_workflow(
                         workflow=entry.workflow, context=context, parameters={"model": run}
                     )
-                except Exception:
+                except Exception as exc:
+                    # A release must keep a held run that may not have run, so the next release of its items runs it.
+                    if releasing is not None and isinstance(exc, _ORCHESTRATOR_ERRORS):
+                        raise
                     generator_failed = True
                     self.log.exception("Post-merge generator run failed")
                 if renew is not None:

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+import httpx
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from structlog.testing import capture_logs
@@ -190,9 +191,10 @@ class ReselectingPlanner(MergeSelectiveRegeneration):
 class FailingWorkflowRecorder(WorkflowRecorder):
     """Record each call, and raise on every submission or run of one workflow."""
 
-    def __init__(self, *, failing: WorkflowDefinition) -> None:
+    def __init__(self, *, failing: WorkflowDefinition, run_error: type[Exception] = RuntimeError) -> None:
         super().__init__()
         self.failing = failing
+        self.run_error = run_error
 
     async def execute_workflow(  # noqa: PLR0913, PLR0917
         self,
@@ -212,7 +214,7 @@ class FailingWorkflowRecorder(WorkflowRecorder):
             priority=priority,
         )
         if workflow == self.failing:
-            raise RuntimeError(f"Could not run {workflow.name}")
+            raise self.run_error(f"Could not run {workflow.name}")
         return result
 
     async def submit_workflow(
@@ -642,9 +644,19 @@ class DispatchFailureTestCase:
     error: type[Exception]
     match: str
     expected_calls: list[tuple[str, WorkflowDefinition, dict[str, Any]]] = field(default_factory=list)
+    run_error: type[Exception] = RuntimeError
 
 
 DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
+    DispatchFailureTestCase(
+        name="a_held_generator_run_that_the_orchestrator_cannot_start",
+        failing=REQUEST_GENERATOR_DEFINITION_RUN,
+        held=HeldRegeneration(generator_definitions=(HeldItem(id="gd-x", hold_seq=1),)),
+        run_error=httpx.ConnectError,
+        error=httpx.ConnectError,
+        match=r"^Could not run request-generator-definition-run$",
+        expected_calls=[("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")})],
+    ),
     DispatchFailureTestCase(
         name="a_failed_submission_of_a_held_artifact_definition",
         failing=REQUEST_ARTIFACT_DEFINITION_GENERATE,
@@ -678,11 +690,13 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DISPATCH_FAILURE_TEST_CASES])
 async def test_a_failed_dispatch_raises_before_the_lease_is_renewed(test_case: DispatchFailureTestCase) -> None:
-    recorder = FailingWorkflowRecorder(failing=test_case.failing)
+    recorder = FailingWorkflowRecorder(failing=test_case.failing, run_error=test_case.run_error)
     renew = RecordedRenewals(recorder=recorder)
     releaser = _releaser(
         recorder=recorder,
-        definitions=FakeHeldDefinitions(artifacts=[_artifact_generate(definition_id="ad-x")]),
+        definitions=FakeHeldDefinitions(
+            artifacts=[_artifact_generate(definition_id="ad-x")], generators=[_generator_run(definition_id="gd-x")]
+        ),
         state=await _delivery_state(),
         narrowed=_narrowed(),
     )
