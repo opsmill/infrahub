@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from infrahub import lock
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
@@ -14,6 +18,7 @@ from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispa
 from infrahub.core.registry import registry
 from infrahub.events.branch_action import BranchMergedEvent
 from infrahub.events.schema_action import SchemaUpdatedEvent
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from tests.adapters.event import FailingInfrahubEvent, MemoryInfrahubEvent
 from tests.adapters.python_target_sources import RecordingPythonTargetResolver, ResolveCall
@@ -37,7 +42,14 @@ def _build_dispatcher(
     workflow = WorkflowLocalExecution()
     return PostMergeDispatcher(
         repository_merge_dispatcher=RepositoryMergeDispatcher(
-            db=db, source_branch=source_branch, destination_branch=destination_branch, workflow=workflow
+            db=db,
+            source_branch=source_branch,
+            destination_branch=destination_branch,
+            workflow=workflow,
+            state=WritebackIntentStore(
+                db=db, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
+            ),
+            sleep=asyncio.sleep,
         ),
         workflow=workflow,
         event_service=event_service,
