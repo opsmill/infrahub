@@ -386,13 +386,13 @@ SC-002, SC-007.
 - [X] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
-- [ ] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
+- [X] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
 - [ ] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
       during the outage; the sync skips the default branch; the retry records, then imports; an
       artifact definition updated by the import renders against the delivered commit.
-- [ ] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
+- [X] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
       `block_commit_worktree`: no second push, the queue clears by observation.
-- [ ] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
+- [X] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
 - [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
