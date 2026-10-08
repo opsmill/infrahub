@@ -87,7 +87,7 @@ const GET_BRANCH_READONLY_REPOSITORY_HEALTH = graphql(
   [BRANCH_REPOSITORY_FIELDS]
 );
 
-export type BranchRepositoryHealthResponse =
+type BranchRepositoryHealthConnections =
   | ResultOf<typeof GET_BRANCH_REPOSITORY_HEALTH>
   | ResultOf<typeof GET_BRANCH_READONLY_REPOSITORY_HEALTH>;
 
@@ -103,7 +103,7 @@ export async function getBranchRepositoryHealthFromApi({
   branchName,
   kind,
   ...variables
-}: GetBranchRepositoryHealthFromApiParams): Promise<BranchRepositoryHealthResponse> {
+}: GetBranchRepositoryHealthFromApiParams): Promise<BranchRepositoryHealthConnections> {
   const context = { branch: branchName, processErrorMessage: () => {} };
 
   if (kind === READONLY_REPOSITORY_KIND) {

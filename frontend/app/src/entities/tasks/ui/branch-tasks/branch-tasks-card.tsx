@@ -26,7 +26,7 @@ import {
 } from "@/entities/tasks/ui/queries/get-branch-tasks.query";
 import { TasksTable } from "@/entities/tasks/ui/tasks-table/tasks-table";
 
-export const TASKS_URL_KEY = "tasks";
+const TASKS_URL_KEY = "tasks";
 
 interface BranchTasksCardProps {
   branchName: string;

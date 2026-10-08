@@ -26,7 +26,7 @@ export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
   });
 }
 
-export interface UseGetBranchTasksParams {
+interface UseGetBranchTasksParams {
   branchName: string;
   page: number;
   pageSize: number;

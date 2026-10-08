@@ -12,7 +12,7 @@ import {
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
 
-export interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
+interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
   isSyncing: boolean;
 }
 
@@ -38,7 +38,7 @@ export function getBranchRepositoriesQueryOptions({
   });
 }
 
-export interface UseGetBranchRepositoriesParams {
+interface UseGetBranchRepositoriesParams {
   branchName: string;
   syncWithGit: boolean;
   isSyncing: boolean;

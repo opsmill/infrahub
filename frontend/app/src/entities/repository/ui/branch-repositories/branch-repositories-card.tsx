@@ -29,7 +29,7 @@ import { RepositoryErrorBands } from "@/entities/repository/ui/branch-repositori
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { useGetBranchRepositoryHealth } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 
-export const REPOSITORIES_URL_KEY = "repositories";
+const REPOSITORIES_URL_KEY = "repositories";
 
 interface BranchRepositoriesCardProps {
   branchName: string;

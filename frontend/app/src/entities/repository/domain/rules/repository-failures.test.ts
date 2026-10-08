@@ -9,8 +9,8 @@ import {
 import { isAnyRepositorySyncing } from "./is-any-repository-syncing";
 import {
   countUnlistedFailures,
-  getBandKind,
   getFailingRepositories,
+  getFailureKind,
   hasImportError,
   isRepositoryUnreachable,
 } from "./repository-failures";
@@ -74,7 +74,7 @@ describe("getFailingRepositories", () => {
 
     // THEN
     expect(failing.map(({ id }) => id)).toEqual(["both", "other"]);
-    expect(failing.map(getBandKind)).toEqual(["import-error", "unreachable"]);
+    expect(failing.map(getFailureKind)).toEqual(["import-error", "unreachable"]);
   });
 
   it("returns nothing before the health has loaded", () => {
@@ -142,10 +142,10 @@ describe("countUnlistedFailures", () => {
   });
 });
 
-describe("getBandKind", () => {
+describe("getFailureKind", () => {
   it("returns import-error or unreachable", () => {
-    expect(getBandKind(importError("a"))).toBe("import-error");
-    expect(getBandKind(unreachable("a"))).toBe("unreachable");
+    expect(getFailureKind(importError("a"))).toBe("import-error");
+    expect(getFailureKind(unreachable("a"))).toBe("unreachable");
   });
 });
 

@@ -1,5 +1,5 @@
 import { Button, type ButtonProps, Tooltip } from "@infrahub/ui";
-import { matchQuery, type Query } from "@tanstack/react-query";
+import { matchQuery, type Query, type QueryKey } from "@tanstack/react-query";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
@@ -9,18 +9,16 @@ import { classNames } from "@/shared/utils/common";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
-type QueryKeyPrefix = readonly unknown[];
-
 export interface RefreshButtonProps extends ButtonProps {
-  queryKeys?: ReadonlyArray<QueryKeyPrefix>;
+  queryKeys?: ReadonlyArray<QueryKey>;
 }
 
 const DEFAULT_QUERY_KEYS = [objectQueryKeys.all];
 
-const isWatched = (queryKeys: ReadonlyArray<QueryKeyPrefix>, query: Query) =>
+const isWatched = (queryKeys: ReadonlyArray<QueryKey>, query: Query) =>
   queryKeys.some((queryKey) => matchQuery({ queryKey }, query));
 
-function getLastUpdateTime(queryKeys: ReadonlyArray<QueryKeyPrefix>) {
+function getLastUpdateTime(queryKeys: ReadonlyArray<QueryKey>) {
   const queries = queryClient
     .getQueryCache()
     .findAll({ type: "active", predicate: (query) => isWatched(queryKeys, query) });

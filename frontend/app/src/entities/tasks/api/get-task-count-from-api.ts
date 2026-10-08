@@ -1,6 +1,6 @@
 import { graphql, graphqlClient, type VariablesOf } from "@/shared/api/graphql/client";
 
-import type { TaskQueryOptions } from "@/entities/tasks/api/get-task-list-from-api";
+import type { TaskRequestOptions } from "@/entities/tasks/api/get-task-list-from-api";
 
 const TASK_COUNT = graphql(`
   query TASK_COUNT(
@@ -24,7 +24,7 @@ export interface GetTaskCountFromApiParams extends VariablesOf<typeof TASK_COUNT
 
 export function getTaskCountFromApi(
   variables?: GetTaskCountFromApiParams,
-  { silenceErrors = false }: TaskQueryOptions = {}
+  { silenceErrors = false }: TaskRequestOptions = {}
 ) {
   return graphqlClient.query({
     query: TASK_COUNT,

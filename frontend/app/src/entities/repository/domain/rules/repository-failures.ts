@@ -7,7 +7,7 @@ import {
   REPOSITORY_SYNC_STATUS_ERROR_VALUE,
 } from "@/entities/repository/domain/model/repository";
 
-export type RepositoryBandKind = "import-error" | "unreachable";
+type RepositoryFailureKind = "import-error" | "unreachable";
 
 const OPERATIONAL_ERRORS: ReadonlySet<string> = new Set(REPOSITORY_OPERATIONAL_ERRORS);
 
@@ -59,6 +59,6 @@ export function countUnlistedFailures(health: BranchRepositoryHealth | undefined
   );
 }
 
-export function getBandKind(repository: BranchRepository): RepositoryBandKind {
+export function getFailureKind(repository: BranchRepository): RepositoryFailureKind {
   return hasImportError(repository) ? "import-error" : "unreachable";
 }
