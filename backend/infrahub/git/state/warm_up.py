@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+from git.exc import GitCommandError
 from infrahub_sdk.protocols import CoreGenericRepository
 
 from infrahub.core.constants import InfrahubKind
@@ -14,10 +16,33 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.git.models import GitRepositoryWarmUp
-    from infrahub.lock import InfrahubLockRegistry
+    from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
+    from infrahub.lock import InfrahubLock, InfrahubLockRegistry
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
 
 log = get_logger()
+
+
+async def fetch_if_never_fetched(repo: InfrahubReadOnlyRepository | InfrahubRepository, lock: InfrahubLock) -> None:
+    """Fetch a local copy that has no fetch time yet, so the reads report one.
+
+    A failed fetch is logged rather than raised, and leaves the copy as the clone left it.
+    """
+    if not repo.has_origin:
+        return
+    git_repo = repo.get_git_repo_main()
+    fetch_head = Path(git_repo.git_dir) / "FETCH_HEAD"
+    if fetch_head.exists():
+        return
+
+    async with lock:
+        # Another fetch may have run while this waited for the lock.
+        if fetch_head.exists():
+            return
+        try:
+            await asyncio.to_thread(repo.fetch_from_origin, git_repo)
+        except GitCommandError as exc:
+            log.warning("Could not fetch the local copy", repository=repo.name, status=exc.status)
 
 
 class RepositoryWarmUp:
@@ -36,69 +61,47 @@ class RepositoryWarmUp:
         self._worker_identity = worker_identity
 
     async def warm_up(self, model: GitRepositoryWarmUp) -> None:
-        """Clone the repository here at the imported commit, then broadcast so every other worker holds a copy too.
+        """Clone the repository here, ask every other worker to clone it too, then fetch the copy here.
 
-        The imported commit is read with the repository lock held. Other workers receive a fetch
-        pinned to it, or a clone-only request for a read-only branch with nothing imported. A
-        read-write repository with nothing imported is neither cloned nor broadcast; its sync
-        creates the copy.
+        No local branch is moved, so the copies stay wherever their clone left them and a sync is
+        never rolled back. A read-write repository with nothing imported on the branch is neither
+        cloned nor broadcast; its sync creates the copy. The fetch only gives this copy a fetch time,
+        so it runs after the broadcast and its failure is logged rather than raised.
 
         Raises:
             RepositoryError: When the repository cannot be cloned.
-            GitCommandError: When the fetch from the remote fails.
 
         """
-        async with self._lock_registry.get(name=model.repository_name, namespace="repository"):
-            repository = await self._client.get(
-                kind=CoreGenericRepository,
-                id=model.repository_id,
-                branch=model.infrahub_branch_name,
-                include=["commit"],
-            )
-            imported_commit = repository.commit.value
-            if not imported_commit and model.repository_kind == InfrahubKind.REPOSITORY:
-                log.info("Not warming up a repository with nothing imported", repository=model.repository_name)
-                return
+        if model.repository_kind == InfrahubKind.REPOSITORY and not await self._has_imported_commit(model=model):
+            log.info("Not warming up a repository with nothing imported", repository=model.repository_name)
+            return
 
-            repo = await get_initialized_repo(
-                client=self._client,
+        # The clone takes the repository lock itself, and may be shared with a call already waiting for that lock.
+        repo = await get_initialized_repo(
+            client=self._client,
+            repository_id=model.repository_id,
+            name=model.repository_name,
+            repository_kind=model.repository_kind,
+            infrahub_branch_name=model.infrahub_branch_name,
+        )
+        await self._message_bus.send(
+            message=messages.RefreshGitClone(
+                meta=Meta(initiator_id=self._worker_identity),
                 repository_id=model.repository_id,
-                name=model.repository_name,
+                repository_name=model.repository_name,
                 repository_kind=model.repository_kind,
                 infrahub_branch_name=model.infrahub_branch_name,
             )
-            await asyncio.to_thread(repo.fetch_from_origin, repo.get_git_repo_main())
+        )
+        await fetch_if_never_fetched(
+            repo=repo, lock=self._lock_registry.get(name=model.repository_name, namespace="repository")
+        )
 
-            meta = Meta(initiator_id=self._worker_identity)
-            if not imported_commit:
-                await self._message_bus.send(
-                    message=messages.RefreshGitClone(
-                        meta=meta,
-                        repository_id=model.repository_id,
-                        repository_name=model.repository_name,
-                        repository_kind=model.repository_kind,
-                        infrahub_branch_name=model.infrahub_branch_name,
-                    )
-                )
-                return
-
-            branch = await self._client.branch.get(branch_name=model.infrahub_branch_name)
-            await repo.reset_to_commit(
-                branch_name=model.infrahub_branch_name,
-                commit=imported_commit,
-                branch_id=branch.id,
-                create_if_missing=True,
-                update_commit_value=False,
-            )
-            await self._message_bus.send(
-                message=messages.RefreshGitFetch(
-                    meta=meta,
-                    location=model.location,
-                    repository_id=model.repository_id,
-                    repository_name=model.repository_name,
-                    repository_kind=model.repository_kind,
-                    infrahub_branch_name=model.infrahub_branch_name,
-                    infrahub_branch_id=branch.id,
-                    commit=imported_commit,
-                )
-            )
+    async def _has_imported_commit(self, model: GitRepositoryWarmUp) -> bool:
+        repository = await self._client.get(
+            kind=CoreGenericRepository,
+            id=model.repository_id,
+            branch=model.infrahub_branch_name,
+            include=["commit"],
+        )
+        return bool(repository.commit.value)

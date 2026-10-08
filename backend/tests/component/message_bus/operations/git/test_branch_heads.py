@@ -574,10 +574,10 @@ async def test_a_read_write_repository_with_nothing_imported_starts_no_warm_up(
     assert workflow_recorder.calls == []
 
 
-async def test_a_worker_without_a_clone_starts_a_warm_up_pinned_to_a_tracked_branch(
+async def test_a_worker_without_a_clone_starts_a_warm_up_for_a_tracked_branch(
     git_repos_dir: Path, read_heads: ReadHeads, recording_cache: RecordingCache, workflow_recorder: WorkflowRecorder
 ) -> None:
-    """The first row has nothing imported, so the warm-up is pinned to the first row that has."""
+    """The first row has nothing imported, so the warm-up runs for the first row that has, as a read-write repository needs."""
     repository_id = str(uuid.uuid4())
 
     data = await read_heads(
@@ -615,7 +615,6 @@ async def test_a_worker_without_a_clone_starts_a_warm_up_pinned_to_a_tracked_bra
                     repository_id=repository_id,
                     repository_name=NEVER_CLONED_NAME,
                     repository_kind=InfrahubKind.REPOSITORY,
-                    location=NEVER_CLONED_LOCATION,
                     infrahub_branch_name="imported",
                 )
             },

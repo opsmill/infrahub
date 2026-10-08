@@ -12,6 +12,7 @@ from infrahub.exceptions import (
 from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
 from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
+from infrahub.git.state.warm_up import fetch_if_never_fetched
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -65,17 +66,20 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
 
 @flow(name="refresh-git-clone", flow_run_name="Clone git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def clone(message: messages.RefreshGitClone) -> None:
-    """Create this worker's local copy if it has none, without changing which commit an existing copy has checked out."""
+    """Create this worker's local copy if it has none, and fetch a copy never fetched, without moving any local branch."""
     if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
         log.info("Ignoring git clone request originating from self", worker=WORKER_IDENTITY)
         return
 
-    await get_initialized_repo(
+    repo = await get_initialized_repo(
         client=get_client(),
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
         infrahub_branch_name=message.infrahub_branch_name,
+    )
+    await fetch_if_never_fetched(
+        repo=repo, lock=lock.registry.get(name=message.repository_name, namespace="repository")
     )
 
 

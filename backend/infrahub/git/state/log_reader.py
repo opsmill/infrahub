@@ -95,7 +95,6 @@ class RepositoryLogReader:
                 repository_id=request.repository_id,
                 repository_name=request.repository_name,
                 repository_kind=request.repository_kind,
-                location=request.location,
                 infrahub_branch_name=request.infrahub_branch_name,
             ),
             has_imported_commit=request.imported_commit is not None,
@@ -134,7 +133,7 @@ class RepositoryLogReader:
         if not request.branches:
             return BranchDriftResult()
 
-        # Any branch with something imported gives the warm-up a commit to pin every worker to.
+        # A read-write repository is warmed up only for a branch with something imported, so prefer such a branch.
         warm_up_branch = next(
             (branch for branch in request.branches if branch.tracked_commit is not None), request.branches[0]
         )
@@ -144,7 +143,6 @@ class RepositoryLogReader:
                 repository_id=request.repository_id,
                 repository_name=request.repository_name,
                 repository_kind=request.repository_kind,
-                location=request.location,
                 infrahub_branch_name=warm_up_branch.branch_name,
             ),
             has_imported_commit=warm_up_branch.tracked_commit is not None,

@@ -54,7 +54,7 @@ own. The reader performs, in order:
 
 Handler `infrahub.message_bus.operations.git.branch_heads::get` is shallow in the same way. Step 1
 above is the same code, reached through the same reader rather than written a second time. The
-warm-up it starts is pinned to the first row with a tracked commit, or the first row when none has
+warm-up it starts runs for the first row with a tracked commit, or the first row when none has
 one, so a read-write repository whose rows all have nothing imported claims and submits nothing. The
 reader then resolves each distinct ref the rows name, once, by its full name: `refs/remotes/origin/<ref>`,
 then `refs/tags/<ref>` and a commit-hash match for the read-only kind. It never lists every remote
@@ -89,15 +89,18 @@ Whether a timeout reaches the client as an error is a resolver decision, not an 
 
 `RefreshGitFetch` broadcast to every worker (`broadcasted_event_bindings = ["refresh.git.*"]`),
 handled by `infrahub.message_bus.operations.git.repository::fetch`, which clones if missing, fetches
-and resets to the pinned `commit` with `update_commit_value=False`. Both the warm-up flow and the
-read-only refs check send it with `commit` pinned to the imported commit, so convergence can never
-move the pin (FR-016, FR-017). The warm-up reads that commit through the client only once it holds the
-repository lock, and resets its own fresh copy to it as well, so that worker holds the same commit as
-every worker the broadcast reaches rather than a remote head Infrahub has not imported. The sync
-moves every copy forward when it imports that head: it selects a branch whose commit in the graph
-differs from the remote head, whatever the worker's own copy holds. When a read-only branch has nothing imported it sends `refresh.git.clone` instead,
-since an unpinned fetch pulls the wrong remote branch for a read-only repository. A read-write
-repository with nothing imported is not warmed up at all; its sync creates and imports the copy.
+and resets to the pinned `commit` with `update_commit_value=False`. The read-only refs check sends it
+with `commit` pinned to the imported commit, so convergence can never move the pin (FR-016, FR-017).
+The warm-up does not send it (IFC-3345): it sends `refresh.git.clone` for both repository kinds and
+never resets a copy, because the commit log and the branch-heads read only `origin/<ref>`, tags and
+the imported commit from the graph, never a local branch. Other flows that read a local branch, such
+as the staging-to-active merge and a proposed change's repository tests, see a warmed copy at the
+remote head, as they already did for every first clone. A reset in the warm-up could roll back a
+sync, and when the imported commit was no longer on the remote it failed before the broadcast, set the
+repository's operational status to error and left every other worker without a copy. The warm-up
+broadcasts before it fetches, and a failed fetch is logged, so nothing after the clone can stop the
+broadcast. A read-write repository with nothing imported is not warmed up at all; its sync creates
+and imports the copy.
 
 ## New: `refresh.git.clone`
 
@@ -107,7 +110,8 @@ repository with nothing imported is not warmed up at all; its sync creates and i
 
 Matches the existing `refresh.git.*` broadcast binding, so every worker receives it with no topology
 change. Handler `infrahub.message_bus.operations.git.repository::clone` calls `get_initialized_repo`,
-which clones a missing copy (checking out the configured `ref` for the read-only kind) and leaves an
-existing one untouched. It exists because the warm-up runs on whichever worker the workflow engine
+which clones a missing copy (checking out the configured `ref` for the read-only kind). The handler
+then fetches, under the repository lock, any copy without a `FETCH_HEAD`, so it reports a fetch time
+whichever call cloned it; a failed fetch is logged, not raised. It moves no local branch. It exists because the warm-up runs on whichever worker the workflow engine
 picks, which need not be the worker that reported `NOT_CLONED`, so the broadcast is what reaches that
-worker when there is no commit to pin.
+worker. A copy it creates is at the remote head, as every first clone already is.

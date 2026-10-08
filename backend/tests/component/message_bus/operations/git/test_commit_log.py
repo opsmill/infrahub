@@ -720,7 +720,6 @@ async def test_a_worker_without_a_clone_starts_a_warm_up(
                     repository_id=repository_id,
                     repository_name=NEVER_CLONED_NAME,
                     repository_kind=InfrahubKind.REPOSITORY,
-                    location=NEVER_CLONED_LOCATION,
                     infrahub_branch_name="main",
                 )
             },
