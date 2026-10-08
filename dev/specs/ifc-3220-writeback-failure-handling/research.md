@@ -591,6 +591,9 @@ that it runs, so no command can hold the repository lock for ever:
 | The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
 | Each local command: `rev-parse`, in `remote_head`; `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
 
+GitPython does not stop a hung fetch or push at `kill_after_timeout`. So the fetch, the push and the
+deletion also stop a stalled HTTP(S) transfer through Git's low-speed limit: `http.lowSpeedTime` is
+the bound, rounded up, set in the environment of that one command. An SSH transfer has no such bound.
 A fetch or a push to a remote that accepts the connection and never answers fails as
 `remote-unreachable`, and the chain retries it. A local command normally ends in seconds, so its
 bound stops only a command that is stuck. A killed local command raises a `RepositoryError` that

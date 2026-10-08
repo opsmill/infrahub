@@ -173,9 +173,10 @@ Every port method that runs Git bounds each of its Git commands with GitPython's
 `kill_after_timeout` (`research.md` R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. A timeout of `fetch` or `push` raises `RepositoryConnectionError`, because
-  `_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
-  (section 10).
+  `PUSH_TIMEOUT_SECONDS`. The three also stop a stalled HTTP(S) transfer through Git's low-speed
+  limit, set to the bound; an SSH transfer has no such bound. A timeout of `fetch` or `push` raises
+  `RepositoryConnectionError`, because `_raise_enriched_error_static` maps GitPython's "process killed
+  because it timed out" text and libcurl's "Operation too slow" text to it (section 10).
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
   database. A timeout raises `RepositoryError`, with a message that names the command and the bound
@@ -542,7 +543,7 @@ Contract:
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
 | `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. |
 | `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out". |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out" and libcurl's "Operation too slow". |
 | `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status with `isinstance`, most specific first. |
 | `message_bus/operations/git/repository.py::connectivity` | Same `isinstance` resolution. |
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
