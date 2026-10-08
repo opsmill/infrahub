@@ -21,11 +21,15 @@ describe("getBranchTasksQueryOptions", () => {
   });
 
   describe("placeholder data", () => {
-    const placeholderFor = (branchName: string, previousBranchName: string) => {
+    const placeholderFor = (
+      branchName: string,
+      previousBranchName: string,
+      previousTasks: unknown[] = [{ id: "task-1" }]
+    ) => {
       const { placeholderData } = getBranchTasksQueryOptions({ ...params, branchName, offset: 10 });
       if (typeof placeholderData !== "function") throw new Error("expected a placeholder function");
       type Args = Parameters<typeof placeholderData>;
-      const previousData = { previous: true } as unknown as Args[0];
+      const previousData = { tasks: previousTasks, count: 11 } as unknown as Args[0];
       const previousQuery = {
         queryKey: tasksQueryKeys.branchList({ ...params, branchName: previousBranchName }),
       } as unknown as Args[1];
@@ -40,6 +44,12 @@ describe("getBranchTasksQueryOptions", () => {
 
     it("doesn't show another branch's rows while the new branch loads", () => {
       const { placeholder } = placeholderFor("feature", "other-branch");
+
+      expect(placeholder).toBeUndefined();
+    });
+
+    it("doesn't keep a previous page without rows, such as a page past the end", () => {
+      const { placeholder } = placeholderFor("feature", "feature", []);
 
       expect(placeholder).toBeUndefined();
     });

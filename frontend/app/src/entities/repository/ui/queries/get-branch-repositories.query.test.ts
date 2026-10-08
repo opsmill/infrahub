@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   BranchRepositoriesError,
   type BranchRepository,
+  type BranchRepositoryPage,
 } from "@/entities/repository/domain/model/branch-repository";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 
@@ -59,7 +60,10 @@ describe("getBranchRepositoriesQueryOptions", () => {
   });
 
   describe("placeholder data", () => {
-    const placeholderFor = (previousParams: typeof pageParams) => {
+    const placeholderFor = (
+      previousParams: typeof pageParams,
+      previousData: BranchRepositoryPage = { repositories: [generateBranchRepository()], count: 11 }
+    ) => {
       const { placeholderData } = getBranchRepositoriesQueryOptions({
         ...pageParams,
         offset: 10,
@@ -67,7 +71,6 @@ describe("getBranchRepositoriesQueryOptions", () => {
       });
       if (typeof placeholderData !== "function")
         throw new Error("placeholderData must be a function");
-      const previousData = { repositories: [], count: 11 };
       const previousQuery = {
         queryKey: ["repository", "branch-repositories", previousParams],
       };
@@ -78,12 +81,18 @@ describe("getBranchRepositoriesQueryOptions", () => {
     };
 
     it("keeps the previous page while the same list's next page loads", () => {
-      expect(placeholderFor(pageParams)).toEqual({ repositories: [], count: 11 });
+      const previousData = { repositories: [generateBranchRepository()], count: 11 };
+
+      expect(placeholderFor(pageParams, previousData)).toBe(previousData);
     });
 
     it("doesn't show another branch's or another list's rows", () => {
       expect(placeholderFor({ ...pageParams, branchName: "other" })).toBeUndefined();
       expect(placeholderFor({ ...pageParams, syncWithGit: false })).toBeUndefined();
+    });
+
+    it("doesn't keep a previous page without rows, such as a page past the end", () => {
+      expect(placeholderFor(pageParams, { repositories: [], count: 11 })).toBeUndefined();
     });
   });
 });
