@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions
-from infrahub.core.registry import registry
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
 from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
@@ -32,7 +32,7 @@ async def _current_branch_ids(db: InfrahubDatabase, names: list[str]) -> dict[st
         if not name:
             continue
         try:
-            branch = await registry.get_branch(db=db, branch=name)
+            branch = await Branch.get_by_name(db=db, name=name, ignore_deleting=False)
         except BranchNotFoundError:
             continue
         current_branch_ids[name] = str(branch.get_uuid())
