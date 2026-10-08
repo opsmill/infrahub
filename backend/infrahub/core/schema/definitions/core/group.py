@@ -27,6 +27,7 @@ core_group = GenericSchema(
     hierarchical=True,
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
+    documentation="/groups/overview/",
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="label", kind="Text", optional=True),
@@ -72,6 +73,7 @@ core_standard_group = NodeSchema(
     branch=BranchSupportType.AWARE,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
+    documentation="/groups/overview/",
 )
 
 core_generator_group = NodeSchema(
@@ -87,6 +89,7 @@ core_generator_group = NodeSchema(
     branch=BranchSupportType.LOCAL,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
+    documentation="/groups/overview/",
 )
 
 core_generator_aware_group = NodeSchema(
@@ -102,6 +105,7 @@ core_generator_aware_group = NodeSchema(
     branch=BranchSupportType.AWARE,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
+    documentation="/groups/overview/",
 )
 
 core_graphql_query_group = NodeSchema(
@@ -117,6 +121,7 @@ core_graphql_query_group = NodeSchema(
     branch=BranchSupportType.LOCAL,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
+    documentation="/groups/overview/",
     attributes=[
         Attr(name="parameters", kind="JSON", description="GraphQL query parameters for the group", optional=True),
     ],
@@ -145,6 +150,7 @@ core_repository_group = NodeSchema(
     branch=BranchSupportType.LOCAL,
     inherit_from=[InfrahubKind.GENERICGROUP],
     generate_profile=False,
+    documentation="/groups/overview/",
     attributes=[
         Attr(
             name="content",
