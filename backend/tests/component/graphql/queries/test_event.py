@@ -10,6 +10,7 @@ from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -814,6 +815,38 @@ async def test_event_query_branch_name_without_a_current_branch(
     assert [edge["node"]["id"] for edge in deleted.data["InfrahubEvent"]["edges"]] == [events["rebased"].get_id()]
     assert unknown.errors is None
     assert unknown.data == {"InfrahubEvent": {"count": 0, "edges": []}}
+
+
+async def test_event_query_branch_name_of_a_branch_being_deleted(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    prefect_client: PrefectClient,
+    session_admin: AccountSession,
+) -> None:
+    """A branch whose deletion has started still resolves its name to its ID, as its deletion event is not sent yet."""
+    deleting_branch = await create_branch(branch_name=f"deleting-{_TEST_ID}", db=db)
+    deleting_branch.status = BranchStatus.DELETING
+    await deleting_branch.save(db=db)
+    rebased = BranchRebasedEvent(
+        branch_name=deleting_branch.name,
+        branch_id=str(deleting_branch.get_uuid()),
+        meta=dummy_event_meta(branch=deleting_branch),
+    )
+    await send_events(client=prefect_client, events=[rebased])
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_EVENT,
+        variables={"branch": [deleting_branch.name]},
+        account_session=session_admin,
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubEvent"]["count"] == 1
+    assert [edge["node"]["id"] for edge in result.data["InfrahubEvent"]["edges"]] == [rebased.get_id()]
 
 
 @pytest.fixture
