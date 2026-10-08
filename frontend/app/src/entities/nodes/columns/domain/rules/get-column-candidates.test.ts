@@ -242,4 +242,45 @@ describe("getColumnCandidates", () => {
       fieldsBySurface.every((fields) => fields.every(({ isDefaultVisible }) => isDefaultVisible))
     ).toBe(true);
   });
+
+  it("never lists the push state attributes of a repository, so a link cannot reveal them", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "CoreRepository",
+      attributes: [
+        generateAttributeSchema({ name: "name", kind: "Text" }),
+        generateAttributeSchema({ name: "delivery_status", kind: "Dropdown", display: "extra" }),
+        generateAttributeSchema({
+          name: "delivery_last_delivered_commit",
+          kind: "Text",
+          display: "extra",
+        }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
+
+    // THEN
+    expect(fields.map(({ name }) => name)).toEqual(["name"]);
+  });
+
+  it("lists an attribute named like the push state on any kind other than a repository", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "LogisticsShipment",
+      attributes: [
+        generateAttributeSchema({ name: "name", kind: "Text" }),
+        generateAttributeSchema({ name: "delivery_status", kind: "Dropdown", display: "extra" }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const fields = getColumnCandidates(schema, OBJECT_COLUMN_SURFACE);
+
+    // THEN
+    expect(fields.map(({ name }) => name)).toEqual(["name", "delivery_status"]);
+  });
 });
