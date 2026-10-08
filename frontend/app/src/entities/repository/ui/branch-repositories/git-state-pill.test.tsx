@@ -33,4 +33,37 @@ describe("GitStatePill", () => {
     // THEN
     await expect.element(component.getByText("error-import")).toBeVisible();
   });
+
+  it("paints the status colour behind the label", async () => {
+    // WHEN
+    const component = await render(
+      <GitStatePill
+        syncStatus={{
+          value: "in-sync",
+          label: "In sync",
+          color: "#16a34a",
+          description: null,
+        }}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByText("In sync"))
+      .toHaveStyle({ backgroundColor: "rgb(22, 163, 74)" });
+  });
+
+  it("does not paint the colour when the status has no label", async () => {
+    // WHEN
+    const component = await render(
+      <GitStatePill
+        syncStatus={{ value: "in-sync", label: null, color: "#16a34a", description: null }}
+      />
+    );
+
+    // THEN
+    await expect
+      .element(component.getByText("in-sync"))
+      .not.toHaveStyle({ backgroundColor: "rgb(22, 163, 74)" });
+  });
 });
