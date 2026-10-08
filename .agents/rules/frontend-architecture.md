@@ -50,6 +50,7 @@ Applies to TypeScript in `frontend/app/src/`.
 
 - `// invalidation-at-callsite` and a call-site `onSuccess` in that file; `processErrorMessage: () => {}`.
 - `shared/components/form/` importing entities; `shared/api/` importing `authentication` or `nodes/filters`.
+- `as` in a test double whose type a test cannot build in full, such as a mocked query or mutation result (`as unknown as ReturnType<typeof useX>`). Build domain data with the `tests/fake/` generators instead.
 - TypeScript errors in untouched code (betterer ratchets them), and migration debt the change did not add.
 
 Full reference: `dev/knowledge/frontend/entities-structure.md`, `branches.md`; `dev/guidelines/frontend/route-architecture.md`, `typescript.md`, `naming-conventions.md`, `url-construction.md`.
