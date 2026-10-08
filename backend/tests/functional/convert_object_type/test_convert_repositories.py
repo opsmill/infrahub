@@ -59,6 +59,26 @@ CONVERSION_RESPONSE_COMMON_FIELDS = {
         "source_field_name": "sync_status",
         "relationship_cardinality": None,
     },
+    "last_rewrite_previous_commit": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_previous_commit",
+        "relationship_cardinality": None,
+    },
+    "last_rewrite_commit": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_commit",
+        "relationship_cardinality": None,
+    },
+    "last_rewrite_at": {
+        "is_mandatory": False,
+        "source_field_name": "last_rewrite_at",
+        "relationship_cardinality": None,
+    },
+    "rewrite_count": {
+        "is_mandatory": False,
+        "source_field_name": "rewrite_count",
+        "relationship_cardinality": None,
+    },
     "credential": {
         "is_mandatory": False,
         "source_field_name": "credential",

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+from fast_depends import Provider
 from git import Repo
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import CoreRepository
@@ -21,18 +22,31 @@ from infrahub.core.constants import (
     RepositorySyncStatus,
 )
 from infrahub.core.initialization import create_branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreRepository as CoreRepositoryNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
-from infrahub.git.sync import RepositoryBranchesFailedError, RepositoryFileImporter, RepositorySyncer, SyncReport
-from infrahub.git.tasks import sync_repository_from_origin
+from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+from infrahub.git.sync import (
+    RepositoryBranchesFailedError,
+    RepositoryFileImporter,
+    RepositorySyncer,
+    SyncOutcome,
+    SyncReport,
+    raise_if_branches_failed,
+)
+from infrahub.git.tasks import report_failed_branches, sync_remote_repositories, sync_repository_from_origin
 from infrahub.message_bus.messages import RefreshGitFetch
-from infrahub.workers.dependencies import clear_singletons
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
+from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
-from tests.adapters.message_bus import BusRecorder
+from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
+from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
 from tests.conftest import TestHelper
+from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
 from tests.helpers.repository_sync import (
     FLOW_RUN_LOGGER,
@@ -87,6 +101,12 @@ SCENARIOS = [
         active_internal_status=RepositoryInternalStatus.STAGING.value,
     ),
 ]
+
+
+@pytest.fixture
+def no_import_sync_filter(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every remote branch is a candidate for import, whatever the environment configures."""
+    monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
 
 
 @pytest.fixture
@@ -150,10 +170,10 @@ async def test_sync_broadcasts_synced_commit(
     prefect_test_fixture: None,
     message_bus_recorder: BusRecorder,
 ) -> None:
-    """The commit broadcast to the worker pool resolves to the repository's git default branch HEAD.
+    """The trunk broadcast to the worker pool resolves to the repository's git default branch HEAD.
 
     Holds across matching and mismatched default branches and staging syncs, so every worker
-    converges on the same pinned commit.
+    converges on the same pinned commit, including on a cycle that advanced nothing.
     """
     source_dir = tmp_path / "source-repo"
     source_dir.mkdir()
@@ -175,7 +195,7 @@ async def test_sync_broadcasts_synced_commit(
             repo=repo,
             staging_branch=scenario.staging_branch,
             infrahub_branch=infrahub_branch,
-            infrahub_branch_id="branch-id",
+            default_branch_id="default-branch-id",
             client=client,
         )
 
@@ -184,8 +204,19 @@ async def test_sync_broadcasts_synced_commit(
     fetch_messages = [message for message in message_bus_recorder.messages if isinstance(message, RefreshGitFetch)]
     assert len(fetch_messages) == 1
 
-    expected_commit = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-    assert fetch_messages[0].commit == expected_commit
+    # A staging sync still names the Infrahub default branch, which is where the other workers keep the trunk.
+    trunk = BranchCommitPair(
+        infrahub_branch_name=registry.default_branch,
+        infrahub_branch_id="default-branch-id",
+        commit=repo.get_commit_value(branch_name=repo.default_branch, remote=False),
+    )
+    message = fetch_messages[0]
+    assert (message.infrahub_branch_name, message.infrahub_branch_id, message.commit) == (
+        trunk.infrahub_branch_name,
+        trunk.infrahub_branch_id,
+        trunk.commit,
+    )
+    assert message.branches == (trunk,)
 
 
 TRUNK = "develop"
@@ -221,6 +252,7 @@ def run_tags(branches: list[str], node_id: str) -> set[str]:
     }
 
 
+@pytest.mark.usefixtures("no_import_sync_filter")
 class TestSkippedBranchTaskLog(TestInfrahubApp):
     """A remote branch named like Infrahub's default branch is reported in the repository's task log.
 
@@ -232,11 +264,6 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
     async def prefect_client(self, prefect: str) -> AsyncGenerator[PrefectClient, None]:
         async with get_client(sync_client=False) as client:
             yield client
-
-    @pytest.fixture(autouse=True)
-    def no_import_sync_filter(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Every remote branch is a candidate for import, whatever the environment configures."""
-        monkeypatch.setattr(config.SETTINGS.git, "import_sync_branch_names", [])
 
     @pytest.fixture(autouse=True)
     def capture_run_logs(self, caplog: pytest.LogCaptureFixture) -> None:
@@ -333,7 +360,7 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert error.message.startswith(
             f"Unable to synchronize the following branches of repository {name}: broken (step=import): "
         )
-        assert error.report == SyncReport(
+        assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
             failed_import_branches=("broken",),
@@ -448,10 +475,19 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             infrahub_branch_name=registry.default_branch,
         )
 
-        report = await RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter()).sync(repo)
+        outcome = await RepositorySyncer(
+            lock_registry=lock.registry, importer=RepositoryFileImporter(), recorder=build_in_memory_recorder()
+        ).sync(repo)
 
-        assert report == SyncReport(
-            skipped_branches=("main",), imported_branches=(), failed_import_branches=(), advanced_skipped_branches=()
+        assert outcome == SyncOutcome(
+            report=SyncReport(
+                skipped_branches=("main",),
+                imported_branches=(),
+                failed_import_branches=(),
+                advanced_skipped_branches=(),
+            ),
+            reconciled=(),
+            failed=(),
         )
 
     async def test_no_warning_once_the_colliding_branch_is_deleted(
@@ -578,10 +614,10 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert error.report.skipped_branches == ("main",)
-        assert error.report.imported_branches == ("main",)
-        assert sorted(error.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
-        assert error.report.advanced_skipped_branches == ()
+        assert error.outcome.report.skipped_branches == ("main",)
+        assert error.outcome.report.imported_branches == ("main",)
+        assert sorted(error.outcome.report.failed_import_branches) == sorted([failing_branch, unexpected_branch])
+        assert error.outcome.report.advanced_skipped_branches == ()
         assert error.message == (
             f"Unable to synchronize the following branches of repository {name}: "
             f"{failing_branch} (step=import): {invalid_yaml_config_message(name)}; "
@@ -597,6 +633,9 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
             failing_branch: RepositorySyncStatus.ERROR_IMPORT.value,
             unexpected_branch: RepositorySyncStatus.ERROR_IMPORT.value,
         }
+        assert sorted((failed.branch_name, failed.on_default_branch) for failed in error.outcome.failed) == sorted(
+            [(failing_branch, False), (unexpected_branch, False)]
+        )
         assert skipped_branch_warnings(caplog, state) == [
             skipped_branch_warning(branch_name="main", repository_name=name, default_branch=TRUNK)
         ]
@@ -624,12 +663,14 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         error = await state.aresult(raise_on_failure=False)
         assert isinstance(error, RepositoryBranchesFailedError)
-        assert error.report == SyncReport(
+        assert error.outcome.report == SyncReport(
             skipped_branches=("main",),
             imported_branches=(),
             failed_import_branches=("main",),
             advanced_skipped_branches=(),
         )
+        # The trunk is git branch develop, which imports into the Infrahub default branch.
+        assert [(failed.branch_name, failed.on_default_branch) for failed in error.outcome.failed] == [("main", True)]
         assert skipped_branch_warnings(caplog, state) == []
         assert await flow_run_tags(prefect_client, state) == run_tags(branches=["main"], node_id=node.id)
 
@@ -714,3 +755,253 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         assert state.is_failed()
         assert isinstance(await state.aresult(raise_on_failure=False), RepositoryError)
         assert await is_linked_to_node(prefect_client, state, repository_id) is case.expected_linked
+
+
+@dataclass
+class FailedTrunkCase:
+    name: str
+    broadcast_fails: bool
+
+
+FAILED_TRUNK_CASES = [
+    FailedTrunkCase(name="broadcast_sent", broadcast_fails=False),
+    FailedTrunkCase(name="broadcast_fails", broadcast_fails=True),
+]
+
+
+@pytest.mark.usefixtures("no_import_sync_filter")
+class TestSynchronisationCycleFailures(TestInfrahubApp):
+    """A synchronization cycle in which some branches fail, against a remote whose trunk is `main`."""
+
+    async def _connect(self, db: InfrahubDatabase, tmp_path: Path, name: str) -> tuple[LocalRemote, Node]:
+        remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+        node = await create_repository_node(
+            db=db,
+            name=name,
+            location=str(remote.directory),
+            default_branch="main",
+            operational_status=RepositoryOperationalStatus.ONLINE.value,
+        )
+        state = await run_add_flow(node=node, name=name, location=str(remote.directory))
+        assert state.is_completed()
+        return remote, node
+
+    async def test_a_failed_branch_does_not_hold_back_the_message_for_the_advanced_branches(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        bus_simulator: BusSimulator,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        name = "partly-failing-broadcast-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        await create_branch(branch_name="broken-branch", db=db)
+        await create_branch(branch_name="healthy-branch", db=db)
+        remote.commit(branch_name="broken-branch", files={".infrahub.yml": "schemas: [unclosed\n"})
+        healthy_commit = remote.commit(branch_name="healthy-branch", files={"data.txt": "healthy\n"})
+        branches = await client.branch.all()
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        sent_before = len(bus_simulator.messages)
+
+        @flow(name="test-sync-a-partly-failing-repository")
+        async def _run_sync() -> None:
+            await sync_repository_from_origin(
+                repository=node,
+                repo=repo,
+                staging_branch=None,
+                infrahub_branch=registry.default_branch,
+                default_branch_id=branches[registry.default_branch].id,
+                client=client,
+            )
+
+        await _run_sync()
+
+        fetch_messages = [
+            message for message in bus_simulator.messages[sent_before:] if isinstance(message, RefreshGitFetch)
+        ]
+        assert [message.branches for message in fetch_messages] == [
+            (
+                BranchCommitPair(
+                    infrahub_branch_name=registry.default_branch,
+                    infrahub_branch_id=branches[registry.default_branch].id,
+                    commit=repo.get_commit_value(branch_name="main", remote=False),
+                ),
+                BranchCommitPair(
+                    infrahub_branch_name="healthy-branch",
+                    infrahub_branch_id=branches["healthy-branch"].id,
+                    commit=healthy_commit,
+                ),
+            )
+        ]
+
+    @pytest.mark.parametrize("case", FAILED_TRUNK_CASES, ids=[case.name for case in FAILED_TRUNK_CASES])
+    async def test_a_failed_default_branch_is_logged_as_an_error_and_recorded(
+        self,
+        case: FailedTrunkCase,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The trunk fails while it is collected, where no import has recorded anything yet.
+
+        The failure is never raised, so only a broadcast that fails can make the synchronization raise.
+        """
+        caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
+        name = f"failing-trunk-collection-repo-{case.name}"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        advanced = remote.commit(branch_name="main", files={"data.txt": "trunk v2\n"})
+        # An occupied commit worktree directory makes the trunk fail after its worktree moved.
+        (repo.directory_commits / advanced).mkdir()
+        (repo.directory_commits / advanced / "blocker.txt").write_text("blocking worktree creation\n")
+        branches = await client.branch.all()
+
+        @flow(name="test-sync-a-repository-whose-trunk-fails")
+        async def _run_sync() -> None:
+            await sync_repository_from_origin(
+                repository=node,
+                repo=repo,
+                staging_branch=None,
+                infrahub_branch=registry.default_branch,
+                default_branch_id=branches[registry.default_branch].id,
+                client=client,
+            )
+
+        if case.broadcast_fails:
+            failing_bus = FailingBus()
+            with (
+                override_dependency(build_message_bus, lambda: failing_bus, dependency_provider=dependency_provider),
+                pytest.raises(ConnectionError, match=r"^The message bus cannot be reached$"),
+            ):
+                await _run_sync()
+        else:
+            await _run_sync()
+
+        # The reason is the stderr of git, which names a temporary path.
+        prefix = f"Unable to synchronize the default branch main of repository {name} at step collection: "
+        default_branch_messages = [
+            (record.levelno, record.getMessage().startswith(prefix))
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize the default")
+        ]
+        assert default_branch_messages == [(logging.ERROR, True)]
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert recorded.sync_status.value == RepositorySyncStatus.ERROR_IMPORT.value
+
+    async def test_a_failed_rewrite_record_of_the_default_branch_leaves_its_sync_status_in_sync(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The import of the rewritten trunk still runs, so its objects match the branch."""
+        caplog.set_level(logging.INFO, logger=FLOW_RUN_LOGGER)
+        name = "failing-trunk-record-repo"
+        remote, node = await self._connect(db=db, tmp_path=tmp_path, name=name)
+        repo = await InfrahubRepository.init(
+            id=node.id,
+            name=name,
+            location=str(remote.directory),
+            client=client,
+            infrahub_branch_name=registry.default_branch,
+        )
+        imported = repo.get_commit_value(branch_name="main", remote=False)
+        rewritten = remote.commit(branch_name="main", files={"data.txt": "trunk rewritten\n"}, amend=True)
+        syncer = RepositorySyncer(
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
+        )
+
+        @flow(name="test-sync-a-trunk-whose-rewrite-record-fails")
+        async def _run_sync() -> SyncOutcome:
+            outcome = await syncer.sync(repo, graph_commits={registry.default_branch: imported})
+            with pytest.raises(RepositoryBranchesFailedError) as failure:
+                raise_if_branches_failed(repo=repo, outcome=outcome)
+            await report_failed_branches(repo=repo, failure=failure.value, infrahub_branch=registry.default_branch)
+            return outcome
+
+        outcome = await _run_sync()
+
+        assert outcome.report.imported_branches == (registry.default_branch,)
+        recorded = await NodeManager.get_one(
+            db=db, id=node.id, kind=CoreRepositoryNode, branch=registry.default_branch, raise_on_error=True
+        )
+        assert (recorded.commit.value, recorded.sync_status.value) == (rewritten, RepositorySyncStatus.IN_SYNC.value)
+        assert [
+            (record.levelno, record.getMessage())
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize the default")
+        ] == [
+            (
+                logging.ERROR,
+                f"Unable to synchronize the default branch main of repository {name} at step record: "
+                "The API is unreachable from main",
+            )
+        ]
+
+
+class TestSynchronisationCycleIsolation(TestInfrahubApp):
+    """A synchronization cycle over repositories this worker holds no clone of yet.
+
+    The cycle visits every repository of the stack, so these tests run in a stack of their own.
+    """
+
+    async def test_a_repository_that_fails_does_not_stop_the_cycle_for_the_others(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        initialize_registry: None,
+        caplog: pytest.LogCaptureFixture,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """A broadcast that fails raises out of its repository once the repository's failures are handled."""
+        caplog.set_level(logging.ERROR, logger=FLOW_RUN_LOGGER)
+        nodes: dict[str, Node] = {}
+        for name in ("unreachable-broadcast-repo", "healthy-cycle-repo"):
+            remote = LocalRemote.create(directory=tmp_path / name, trunk="main", branches=[])
+            nodes[name] = await create_repository_node(
+                db=db,
+                name=name,
+                location=str(remote.directory),
+                default_branch="main",
+                operational_status=RepositoryOperationalStatus.ONLINE.value,
+            )
+        bus = RepositoryFailingBus(failing_repository_id=nodes["unreachable-broadcast-repo"].id)
+
+        with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
+            await sync_remote_repositories()
+
+        assert [message.repository_id for message in bus.messages if isinstance(message, RefreshGitFetch)] == [
+            nodes["healthy-cycle-repo"].id
+        ]
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == FLOW_RUN_LOGGER and record.getMessage().startswith("Unable to synchronize repository")
+        ] == ["Unable to synchronize repository unreachable-broadcast-repo, continuing with the other repositories"]

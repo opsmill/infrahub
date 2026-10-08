@@ -68,8 +68,21 @@ After mutating git state, the initiating worker resolves a concrete SHA and send
 `RefreshGitFetch` carrying it (six emission sites in `git/tasks.py`, covering repository add
 read-write and read-only, periodic sync, branch create, read-only pull, and merge). Every other
 worker takes the same repository lock, fetches, and then either hard-resets onto the pinned SHA or,
-when no SHA was supplied, pulls (the `fetch` handler in `message_bus/operations/git/repository.py`).
-A worker ignores its own broadcast by comparing `meta.initiator_id` against `WORKER_IDENTITY`.
+when no SHA was supplied, pulls (`git/convergence.py::WorktreeConverger`, which the `fetch` handler
+in `message_bus/operations/git/repository.py` builds). A worker ignores its own broadcast by
+comparing `meta.initiator_id` against `WORKER_IDENTITY`. A worker that lacks the branch creates its
+worktree in its own clone only and never pushes it, so a branch deleted on the remote after the sync
+does not come back.
+
+The periodic sync sends one message per repository per cycle. Its `branches` list starts with the
+trunk, on every cycle, and then names every other branch the cycle advanced, each with its pinned
+commit. The trunk is listed at its local head even when its import failed; any other branch whose
+import failed is not listed. The receiving worker resets each entry inside one lock hold and after
+one fetch, and a branch it cannot reset is logged and skipped. The single-branch fields repeat the
+first entry, so a worker on older code still converges the trunk. The message is sent even when a
+branch of the cycle failed. Listing the trunk on an idle cycle is what brings back a worker that
+missed an earlier message. When the cycle cannot read the trunk's commit, the trunk entry carries no
+commit, and every worker pulls the trunk instead of resetting it.
 
 Pinning a SHA rather than a branch name is deliberate: the remote may advance between the
 initiating worker's operation and a receiving worker's fetch, and a pull would land that worker
@@ -249,8 +262,8 @@ branch worktree that does not lead to the remote head. [Git Sync](git-sync.md#re
 describes how.
 
 > **Volatile section.** `InfrahubRepositoryBase.pull` still raises on a diverged branch, so a worker
-> that advances a branch outside the sync collector does not reset it yet. The broadcast still covers
-> only the trunk, and no record of a rewrite is stored. Update this section when those land.
+> that advances a branch outside the sync collector does not reset it yet. No record of a rewrite is
+> stored. Update this section when those land.
 
 ## Known limitations
 

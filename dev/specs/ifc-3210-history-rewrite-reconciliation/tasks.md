@@ -239,20 +239,20 @@ healthy branch is still sent, and a second worker converges on it.
 
 **Maps to**: FR-006, SC-005. Depends on Phase 3 for `ReconciledBranch`.
 
-- [ ] T028 [US3] Add the optional `branches` field and its `BranchCommitPair` model to
+- [x] T028 [US3] Add the optional `branches` field and its `BranchCommitPair` model to
       `backend/infrahub/message_bus/messages/refresh_git_fetch.py`, per
       [data-model.md](data-model.md), "Message change". A coalesced message still populates the
       required single-branch fields from its first pair.
-- [ ] T029 [US3] Add a model validator to `RefreshGitFetch` asserting that
+- [x] T029 [US3] Add a model validator to `RefreshGitFetch` asserting that
       `infrahub_branch_name`, `infrahub_branch_id` and `commit` equal the first entry of `branches`
       whenever `branches` is set. A worker on the previous code reads only the single-branch fields,
       so a mismatch converges it onto a branch the message was not about. PR #10669 is no precedent
       here: it sends one message per moved ref and adds no field, so this coalescing is new.
-- [ ] T030 [US3] Read the list in
+- [x] T030 [US3] Read the list in
       `backend/infrahub/message_bus/operations/git/repository.py::fetch`. Reset every pair inside
       one lock acquisition and one fetch. Fall back to the single-branch fields when `branches` is
       absent. Log a failed pair with its branch and carry on with the rest.
-- [ ] T031 [US3] Return a `SyncOutcome` from `backend/infrahub/git/sync.py::RepositorySyncer.sync`
+- [x] T031 [US3] Return a `SyncOutcome` from `backend/infrahub/git/sync.py::RepositorySyncer.sync`
       instead of raising. It carries the reconciled branches and the failures, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 4.
       **Update its other two callers in the same change**, or the API change loses behaviour that
@@ -260,38 +260,46 @@ healthy branch is still sent, and a second worker converges on it.
       its `except`, which the return no longer reaches, and `git/tasks.py::add_git_repository` calls
       `sync` directly and would ignore a failed initial import in silence. Both must read the
       returned failures and act on them.
-- [ ] T032 [US3] Broadcast before the raise in
+- [x] T032 [US3] Broadcast before the raise in
       `backend/infrahub/git/tasks.py::sync_repository_from_origin`. Send one coalesced
       `RefreshGitFetch` covering every reconciled branch, then re-raise the failures of branches
       **other than** the configured default branch, which keeps today's failure tagging working.
       A failed default branch never leaves this flow: T033 owns it.
+      *As landed:* the tagging flow below this function still raises for every failed branch, which
+      is what tags the run; this function catches that error, broadcasts from the outcome it
+      carries, and re-raises nothing. See contracts section 5, "The catch boundary".
       **Keep sending the trunk message every cycle, even when no branch advanced.** That message is
       what heals a worker which missed an earlier broadcast, and its replacement is the pull-path
       reset in Phase 5. Dropping it here would leave a gap with no self-heal on either side.
-- [ ] T033 [US3] Log a failed trunk reconciliation at error level and record it against the
+- [x] T033 [US3] Log a failed trunk reconciliation at error level and record it against the
       repository in `sync_repository_from_origin`, and do not retry it inside the same cycle
       (FR-018). Do **not** let it propagate: `sync_remote_repositories` loops over every repository
       with no per-repository `try`, so a raise would abort the cycle for every repository after it.
-- [ ] T034 [US3] Wrap the per-repository call in
+- [x] T034 [US3] Wrap the per-repository call in
       `backend/infrahub/git/tasks.py::sync_remote_repositories` in its own `try`, so no failure in
       one repository can stop the others (FR-018a). This guard is missing today, independently of
       this feature.
-- [ ] T035 [US3] Make the `fetch` handler's collaborators injectable before testing it. It reads
+- [x] T035 [US3] Make the `fetch` handler's collaborators injectable before testing it. It reads
       the module-global `lock.registry` and calls `get_initialized_repo(get_client())`, neither of
       which a database-free, mock-free unit test can substitute.
-- [ ] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
+- [x] T036 [US3] Component-test that a failed trunk reconciliation is logged at error level and
       recorded against the repository, and that it does **not** propagate out of
       `sync_repository_from_origin` (FR-018).
-- [ ] T037 [US3] Component-test that one repository failing does not stop the repositories after it
+- [x] T037 [US3] Component-test that one repository failing does not stop the repositories after it
       in the same cycle (FR-018a). `sync_remote_repositories` has no per-repository guard today, so
       this test holds the one this phase adds. It is the repository-level version of the outage US3
       removes at branch level.
-- [ ] T038 [P] [US3] Unit-test the handler fan-out in
-      `backend/tests/unit/message_bus/test_refresh_git_fetch_fanout.py`: N pairs are reset inside
-      one lock acquisition and one fetch. Use a fake lock registry, not a mock.
-- [ ] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
-      raising, in `backend/tests/component/git/test_sync_repository.py`.
-- [ ] T040 [US3] Add a live-remote test in
+      *As landed:* in `backend/tests/component/git/test_sync_repository.py`. The failure it uses is a
+      broadcast that fails for one repository: after it handles that repository's failures, the cycle
+      raises the send's error. The schema failure it used first no longer escapes: the clone step now
+      records a failed first import on its branch.
+- [x] T038 [P] [US3] Unit-test the handler fan-out in `backend/tests/unit/git/test_convergence.py`,
+      which mirrors `backend/infrahub/git/convergence.py`, where the handler's logic lives: N pairs
+      are reset inside one lock acquisition and one fetch. Use a fake lock registry, not a mock.
+- [x] T039 [US3] Component-test that `RepositorySyncer.sync` returns its outcome rather than
+      raising, in `backend/tests/component/git/test_git_repository.py`, where the test that asserted
+      the raise already lived.
+- [x] T040 [US3] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a repository with one failing branch
       and one healthy branch still broadcasts for the healthy one, and a second worker converges on
       it.
@@ -388,30 +396,36 @@ emits no signal.
 > design is complete in [data-model.md](data-model.md) and
 > [contracts/repository_rewrite.graphql](contracts/repository_rewrite.graphql).
 
-- [ ] T053 [US1] Declare the four attributes on `CoreGenericRepository` in
+- [x] T053 [US1] Declare the four attributes on `CoreGenericRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`:
       `last_rewrite_previous_commit` (`Text`), `last_rewrite_commit` (`Text`), `last_rewrite_at`
       (`DateTime`) and `rewrite_count` (`Number`). All optional, no default, all
       `BranchSupportType.LOCAL`. Do not override them on `CoreRepository` or
       `CoreReadOnlyRepository`.
-- [ ] T054 [US1] Regenerate the generated files for the four attributes and commit them:
+- [x] T054 [US1] Regenerate the generated files for the four attributes and commit them:
       `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       `uv run invoke schema.generate-jsonschema`, `uv run invoke docs.generate`, and
-      `cd frontend/app && pnpm codegen`. CI fails when any of them is stale.
+      `cd frontend/app && pnpm codegen`, then `pnpm codegen:graphql` for `graphql-env.d.ts` and
+      `graphql-cache.d.ts`. CI fails when any of them is stale. `backend.generate` also rewrites
+      `python_sdk/infrahub_sdk/protocols.py`: that change lands as an SDK PR against
+      `infrahub-develop`, and the submodule pointer moves here once the commit is upstream.
       Phase 7 adds an `EventType` member, which feeds the webhook `event_type` enum and makes these
       same files stale again. That phase regenerates them a second time.
-- [ ] T055 [US1] Write `HistoryRewriteRecorder` in
+- [x] T055 [US1] Write `HistoryRewriteRecorder` in
       `backend/infrahub/git/divergence/recorder.py`, per
-      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2. Take its two
-      collaborators as constructor-injected protocols, `RepositoryRecordStore` and
-      `RewriteEventEmitter`, so the unit tests of T059 need no database and no mocks
-      (`.agents/rules/backend-component-design.md`). The recorder itself imports neither the SDK
-      nor the event service, and it never reads the cache.
-- [ ] T056 [US1] Isolate the record write per branch, the way the other per-branch git failures
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2. Take its
+      collaborator as a constructor-injected protocol, `RepositoryRecordStore`, so the unit tests of
+      T059 need no database and no mocks (`.agents/rules/backend-component-design.md`). The second
+      port, `RewriteEventEmitter`, comes with T067. The recorder itself imports neither the SDK nor
+      the event service, and it never reads the cache.
+- [x] T056 [US1] Isolate the record write per branch, the way the other per-branch git failures
       already are. `collect_pending_imports` lets graph errors propagate, so an SDK error from the
       store would otherwise abort collection for every branch and skip the broadcast. A failed
-      record joins `failed_imports` and the cycle continues.
-- [ ] T057 [US1] Call the recorder from
+      record joins `failed_imports` at step `record` and the cycle continues. Its import still
+      runs, so the failure leaves `sync_status` alone (FR-013). On the default branch it is logged
+      at error level, and the run fails. It is logged once, where it is caught, with the traceback
+      only for an error that is not recognised, as a failed import is.
+- [x] T057 [US1] Call the recorder from
       `backend/infrahub/git/repository.py::InfrahubRepository.collect_pending_imports`, immediately
       after the reconciled commit is written for that branch, inside the collection lock hold. The
       count increment is safe there because it is inside a lock hold; what is unsafe is a call
@@ -420,30 +434,30 @@ emits no signal.
       `UNCHANGED` and the rewrite would never be recorded at all. See
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 2, "Where it is
       called".
-- [ ] T058 [US1] Write the production `RepositoryRecordStore` in
-      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads
-      `rewrite_count` and writes the four attributes in one call, so the `python_sdk` submodule
-      needs no change.
-- [ ] T059 [P] [US1] Unit-test the recorder in
+- [x] T058 [US1] Write the production `RepositoryRecordStore` in
+      `backend/infrahub/git/divergence/store.py`, backed by the SDK node API. It reads the
+      repository node once, builds the record from its `rewrite_count` with the function the
+      recorder passes, and saves the four attributes, so no SDK method needs a change.
+- [x] T059 [P] [US1] Unit-test the recorder in
       `backend/tests/unit/git/divergence/test_recorder.py` against in-memory ports: last-write-wins,
       the increment from absent to 1 and 1 to 2, a `RETARGET`, a `FAST_FORWARD` and a
       `REMOTE_ABSENT` each writing nothing, and a rejected divergence whose two commits are equal.
       No database, no mocks.
-- [ ] T060 [US1] Component-test the read inheritance in
+- [x] T060 [US1] Component-test the read inheritance in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: a branch created
       after the default branch was reconciled reads the default branch's four values, and its own
       first reconciliation increments the count it inherited. This is what LOCAL does, and the
       test exists so nobody meets it in production. See [data-model.md](data-model.md), "What LOCAL
       does not do".
-- [ ] T061 [US1] Add the branch-safety test, in the same file as T060, in
+- [x] T061 [US1] Add the branch-safety test, in the same file as T060, in
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py`: the four attributes
       appear in no branch diff on `CoreRepository` or `CoreReadOnlyRepository`, and merging a
       branch that carries a record does not carry it to the destination. The constitution's
       branch-safe principle requires this to be asserted rather than inferred from the declaration.
-- [ ] T062 [US1] Assert that `sync_status` is unchanged by a reconciliation (FR-013). The record is
+- [x] T062 [US1] Assert that `sync_status` is unchanged by a reconciliation (FR-013). The record is
       four attributes of its own, and folding any of it into the synchronisation status would take
       that status away from INFP-671, which is free to redefine it.
-- [ ] T063 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
+- [x] T063 [US1] Add a live-remote test asserting the record's contents after a rewrite, in
       `backend/tests/integration/git/test_git_live_remote.py`.
 
 **Checkpoint**: SC-006 holds for the stored state. The human-facing view is INFP-671's.
@@ -479,7 +493,9 @@ cycles. The record written once, the signal emitted once, never twice, and a hea
       here ships a stale schema.
 - [ ] T067 [US4] Emit the event from `HistoryRewriteRecorder` in
       `backend/infrahub/git/divergence/recorder.py`, after a successful record, and only when the
-      reconciled branch is the repository's configured default branch.
+      reconciled branch is the repository's configured default branch. Add the `RewriteEventEmitter`
+      port to the recorder's constructor, and the repository name and `is_default_branch` to
+      `record`.
 - [ ] T068 [US4] Confirm the events reference documentation regenerated by T066 is committed.
 - [ ] T069 [P] [US4] Unit-test the emission rule in
       `backend/tests/unit/git/divergence/test_recorder.py`: the trunk emits the event once, and any
@@ -670,6 +686,12 @@ read-write repository's configured default branch. Neither writes a record.
       IFC-3281 adds `changelog/6299.fixed.md`: that PR fixes the bug #6299 reports, a branch that
       goes to the error status after a force push, and it can ship before the rest of the stack.
       Extend that fragment instead of adding a second one.
+      IFC-3282 fixes a different outage a user can see: one failed branch no longer keeps the
+      others off the other workers, and one failed repository no longer stops the cycle. It adds no
+      fragment of its own, because a stacked series carries one fragment, on its top PR. IFC-3284,
+      the top PR of the stack, carries that entry as
+      `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its own
+      `changelog/+repository-rewrite-record.added.md`.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires
