@@ -2,7 +2,10 @@ import { describe, expect, test, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 
 import type { RangeRow } from "@/entities/resource-manager/domain/model/number-pool-range";
-import { RangesField } from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
+import {
+  RangesField,
+  ReadOnlyRangesField,
+} from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
 
 import { TestForm } from "../../../../../tests/components/form.story";
 import { render } from "../../../../../tests/components/render";
@@ -219,5 +222,42 @@ describe("RangesField", () => {
       .toHaveBeenCalledWith({
         ranges: [{ rangeId: "range-1", start: "100", end: "199", weight: "" }],
       });
+  });
+});
+
+describe("ReadOnlyRangesField", () => {
+  test("lists the ranges as text by weight then start, with no input", async () => {
+    // GIVEN
+    const ranges = [
+      { id: "range-2", start: 5000, end: 5999, weight: null },
+      { id: "range-1", start: 1000, end: 1999, weight: 10 },
+    ];
+
+    // WHEN
+    const component = await render(<ReadOnlyRangesField ranges={ranges} />);
+
+    // THEN
+    const items = component.getByRole("listitem");
+    await expect.element(items.nth(0)).toHaveTextContent("1,000 – 1,999Weight 10");
+    await expect.element(items.nth(1)).toHaveTextContent("5,000 – 5,999");
+    expect(component.getByRole("textbox").elements()).toHaveLength(0);
+    expect(component.getByRole("button", { name: "Add range" }).elements()).toHaveLength(0);
+  });
+
+  test("says the ranges are changed in the schema on the default branch", async () => {
+    // GIVEN
+    const ranges = [{ id: "range-1", start: 1, end: 10, weight: null }];
+
+    // WHEN
+    const component = await render(<ReadOnlyRangesField ranges={ranges} />);
+
+    // THEN
+    await expect
+      .element(
+        component.getByText(
+          "These ranges come from the schema. To change them, update the schema on the default branch."
+        )
+      )
+      .toBeVisible();
   });
 });

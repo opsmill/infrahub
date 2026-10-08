@@ -8,7 +8,11 @@ import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import type { RangeRow } from "@/entities/resource-manager/domain/model/number-pool-range";
+import type {
+  RangeRow,
+  StoredRange,
+} from "@/entities/resource-manager/domain/model/number-pool-range";
+import { sortStoredRanges } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import {
   getRangeClipHint,
   type RangeLimits,
@@ -162,6 +166,43 @@ export function RangesField({ limits }: RangesFieldProps) {
         <PlusIcon />
         Add range
       </Button>
+    </Col>
+  );
+}
+
+interface ReadOnlyRangesFieldProps {
+  ranges: StoredRange[];
+}
+
+export function ReadOnlyRangesField({ ranges }: ReadOnlyRangesFieldProps) {
+  return (
+    <Col>
+      <Col className="gap-0.5">
+        <h3 className="font-medium text-sm">Ranges</h3>
+        <p className="text-pretty text-foreground-muted text-xs">
+          These ranges come from the schema. To change them, update the schema on the default
+          branch.
+        </p>
+      </Col>
+
+      {ranges.length === 0 ? (
+        <p className="text-foreground-muted text-sm">No ranges.</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {sortStoredRanges(ranges).map((range) => (
+            <li key={range.id} className="flex gap-2 text-sm tabular-nums">
+              <span>
+                {formatNumberDisplay(range.start)} – {formatNumberDisplay(range.end)}
+              </span>
+              {range.weight !== null && (
+                <span className="text-foreground-muted">
+                  Weight {formatNumberDisplay(range.weight)}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </Col>
   );
 }

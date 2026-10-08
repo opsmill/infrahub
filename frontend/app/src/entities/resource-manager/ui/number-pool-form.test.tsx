@@ -374,4 +374,51 @@ describe("NumberPoolForm", () => {
       });
     });
   });
+
+  describe("edit a pool defined in the schema", () => {
+    const schemaPool: NumberPoolForEditing = {
+      ...storedPool,
+      poolType: "Schema",
+      ranges: [{ id: "range-1", start: 1000, end: 1999, weight: null }],
+    };
+    const currentObject = { id: "pool-1" } as NonNullable<
+      Parameters<typeof NumberPoolForm>[0]["currentObject"]
+    >;
+
+    test("shows the ranges as read-only text with where to change them", async () => {
+      // GIVEN
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(schemaPool);
+
+      // WHEN
+      const component = await render(<NumberPoolForm currentObject={currentObject} />);
+
+      // THEN
+      await expect.element(component.getByText("1,000 – 1,999")).toBeVisible();
+      await expect
+        .element(component.getByText(/update the schema on the default branch/))
+        .toBeVisible();
+      expect(component.getByRole("textbox", { name: "Start" }).elements()).toHaveLength(0);
+      await expect.element(component.getByLabelText("Name *")).toBeEnabled();
+    });
+
+    test("saving a renamed pool updates the pool and sends no range call", async () => {
+      // GIVEN
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(schemaPool);
+      const component = await render(
+        <NumberPoolForm currentObject={currentObject} onSuccess={onSuccess} />
+      );
+      await component.getByLabelText("Name *").fill("Renamed pool");
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(updatePool).toHaveBeenCalledWith({
+        objectKind: "CoreNumberPool",
+        data: { id: "pool-1", name: { value: "Renamed pool" } },
+      });
+      expect(applyRangeChanges).not.toHaveBeenCalled();
+    });
+  });
 });

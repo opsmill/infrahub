@@ -42,6 +42,7 @@ import {
   EMPTY_RANGE_ROW,
   RANGES_FIELD,
   RangesField,
+  ReadOnlyRangesField,
 } from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
 import { ScopeField } from "@/entities/resource-manager/ui/number-pool-form/scope-field";
 import { useApplyNumberPoolRangeChangesMutation } from "@/entities/resource-manager/ui/queries/apply-number-pool-range-changes.mutation";
@@ -112,6 +113,7 @@ const NumberPoolFormContent = ({
   const [createdPool, setCreatedPool] = useState<NodeCore | null>(null);
   const [rangeSaveError, setRangeSaveError] = useState<string | null>(null);
   const poolId = initialPool?.id ?? createdPool?.id;
+  const isSchemaPool = initialPool?.poolType === "Schema";
   const { data: storedPool } = useGetNumberPoolForEditing(
     { poolId: poolId ?? "" },
     { enabled: !!poolId }
@@ -147,9 +149,10 @@ const NumberPoolFormContent = ({
   ): Promise<boolean> {
     const rows: RangeRow[] = data[RANGES_FIELD];
     const changes = diffRanges(stored, rows);
-    const { errorMessage } = hasRangeChanges(changes)
-      ? await applyRangeChanges.mutateAsync({ poolId: pool.id, changes })
-      : { errorMessage: null };
+    const { errorMessage } =
+      !isSchemaPool && hasRangeChanges(changes)
+        ? await applyRangeChanges.mutateAsync({ poolId: pool.id, changes })
+        : { errorMessage: null };
 
     if (errorMessage === null) {
       setRangeSaveError(null);
@@ -236,7 +239,11 @@ const NumberPoolFormContent = ({
         )}
 
         {rangeSaveError && <Alert type={ALERT_TYPES.ERROR} message={rangeSaveError} />}
-        <RangesField limits={rangeLimits} />
+        {isSchemaPool ? (
+          <ReadOnlyRangesField ranges={storedPool?.ranges ?? initialPool.ranges} />
+        ) : (
+          <RangesField limits={rangeLimits} />
+        )}
 
         <Row className="justify-end">
           {onCancel && (

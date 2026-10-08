@@ -55,7 +55,7 @@ Rules for every task: follow `frontend/app/AGENTS.md`, `dev/guidelines/frontend/
 **Goal**: ranges of a schema pool are read-only with a note; name and description stay editable.
 **Independent test**: open the `service_identifier` pool and view its ranges as text.
 
-- [ ] T013 [US4] In `ui/number-pool-form/ranges-field.tsx` and `ui/number-pool-form.tsx`, when `poolType` is "Schema", render the ranges as read-only text with the note that they are changed in the schema on the default branch, and send no range call on save; tests first in `ui/number-pool-form/ranges-field.test.tsx` and `ui/number-pool-form.test.tsx`
+- [X] T013 [US4] In `ui/number-pool-form/ranges-field.tsx` and `ui/number-pool-form.tsx`, when `poolType` is "Schema", render the ranges as read-only text with the note that they are changed in the schema on the default branch, and send no range call on save; tests first in `ui/number-pool-form/ranges-field.test.tsx` and `ui/number-pool-form.test.tsx`
 
 ## Phase 7: Polish & cross-cutting
 
