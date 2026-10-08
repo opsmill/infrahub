@@ -26,6 +26,15 @@ log = get_run_logger()
 
 REPOSITORY_LOCK_NAMESPACE = "repository"
 
+REFUSAL_ACTIONS: dict[RepositoryDeliveryFailureCause, str] = {
+    RepositoryDeliveryFailureCause.DESTINATION_REWRITTEN: "Abandon the push queue to clear it.",
+    RepositoryDeliveryFailureCause.SOURCE_DISCARDED: "Abandon the push queue to clear it.",
+    RepositoryDeliveryFailureCause.REPLAY_CONFLICT: (
+        "Merge the source branch on the remote by hand, then retry the push, or abandon the push queue."
+    ),
+}
+"""What a user can do about each refusal, which only a user's action ends."""
+
 
 class RetryableDeliveryError(Error):
     """A delivery attempt failed in a way that a later attempt can fix."""
@@ -475,7 +484,13 @@ class RepositoryWritebackService:
 
         """
         failure = DeliveryFailure(cause=cause, retryable=False, message=message)
-        log.error("The delivery to repository %s was refused: %s", self.repository.name, message)
+        log.error(
+            "The delivery to repository %s was refused: %s The branches are merged in Infrahub, and their merges "
+            "wait in the push queue of the repository. %s",
+            self.repository.name,
+            message,
+            REFUSAL_ACTIONS[cause],
+        )
         await self.state.record_failure(
             repository_id=self.repository.id, failure=failure, final=True, retry_due_at=None
         )
