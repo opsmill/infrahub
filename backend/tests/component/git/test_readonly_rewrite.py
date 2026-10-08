@@ -189,7 +189,9 @@ class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
             await _wait_until_queued(timeline=recording_lock_timeline, lock_name=f"repository.{tracked.name}", count=2)
         finally:
             release.set()
-        await asyncio.wait_for(asyncio.gather(holder, *imports), timeout=120)
+            outcomes = await asyncio.wait_for(asyncio.gather(holder, *imports, return_exceptions=True), timeout=120)
+
+        assert outcomes == [None, None, None]
 
         record = await _rewrite_record(db=db, tracked=tracked)
         assert (record[0], record[1], record[3]) == (tracked.imported_commit, rewritten, 1)
