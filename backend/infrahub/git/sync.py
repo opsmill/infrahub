@@ -241,8 +241,8 @@ class RepositorySyncer:
     The lock serializes mutations of the repository's on-disk git state. Each synced branch is then
     built outside the lock, reading from the per-commit worktree pinned during the locked phase, and
     applied to the graph under the lock so that concurrent imports of the same repository are
-    serialized. A branch that an import must not move while merged changes wait for their push to the
-    remote is left out.
+    serialized. While the repository has pending pushes, the default branch and the source branch of
+    each pending merge are left out.
     """
 
     def __init__(
