@@ -449,8 +449,9 @@ async def bootstrap_local_repository(
     Returns None when the repository should be skipped for this cycle: the clone fails, or the
     default-branch import cannot reach the remote or its credentials are invalid. Any other failed
     default-branch import is already logged and recorded on the branch, so the repository is still
-    returned and its other branches still synchronize. While merged changes wait for their push to
-    the remote, the seed import is skipped, because it would remove the objects of those merges.
+    returned and its other branches still synchronize. While the repository has pending pushes, a
+    fresh clone records no commit and the seed import is skipped, because the import would remove
+    the objects of the pending merges.
     """
     log = get_run_logger()
     pending_import: PendingObjectImport | None = None
@@ -468,7 +469,9 @@ async def bootstrap_local_repository(
             get_logger().error(str(exc))
             init_failed = True
 
+        delivery_pending = False
         if init_failed:
+            delivery_pending = repository.id in await state.pending_repository_ids()
             try:
                 repo = await InfrahubRepository.new(
                     id=repository.id,
@@ -476,27 +479,30 @@ async def bootstrap_local_repository(
                     location=repository.location.value,
                     client=client,
                     infrahub_branch_name=infrahub_branch,
+                    # With the seed import skipped, the graph would record a commit whose objects it lacks.
+                    update_commit_value=not delivery_pending,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
                 return None
+        elif repo.reinitialized:
+            delivery_pending = repository.id in await state.pending_repository_ids()
 
         default_import_git_branch = resolve_initial_import_branch(repo, init_failed=init_failed)
 
-        if default_import_git_branch is not None:
-            if str(repo.id) in await state.pending_repository_ids():
-                log.info(
-                    f"Skipped the import of the default branch {default_import_git_branch} of repository "
-                    f"{repo.name}: a push of merged changes to the remote is pending"
-                )
-            else:
-                # Pin the commit while the lock is held so the import below reads an immutable
-                # worktree even though it is built after the lock is released.
-                pending_import = PendingObjectImport(
-                    infrahub_branch_name=infrahub_branch,
-                    git_branch_name=default_import_git_branch,
-                    commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
-                )
+        if default_import_git_branch is not None and delivery_pending:
+            log.info(
+                f"Deferred the import of the default branch {default_import_git_branch} of repository "
+                f"{repo.name} until its pending pushes reach the remote"
+            )
+        elif default_import_git_branch is not None:
+            # Pin the commit while the lock is held so the import below reads an immutable
+            # worktree even though it is built after the lock is released.
+            pending_import = PendingObjectImport(
+                infrahub_branch_name=infrahub_branch,
+                git_branch_name=default_import_git_branch,
+                commit=repo.get_commit_value(branch_name=default_import_git_branch, remote=False),
+            )
 
     if pending_import is not None:
         try:

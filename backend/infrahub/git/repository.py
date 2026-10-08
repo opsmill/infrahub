@@ -435,9 +435,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 the trunk. A marker that applied to this cycle is cleared when the collection ends with
                 the trunk on the remote head of the default branch. Without them, every lineage break of
                 the trunk is a rewrite.
-            state: While merged changes of an active repository wait for their push to the remote,
-                its default branch and the source branch of each merge are left out. Without it no
-                branch is left out.
+            state: While an active repository has pending pushes, its default branch and the source
+                branch of each pending merge are left out. Without it, no branch is left out for a
+                pending push.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -1005,10 +1005,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
     async def _exclude_pending_delivery_branches(
         self, state: DeliveryStatePort, new_branches: list[str], updated_branches: list[str]
     ) -> tuple[list[str], list[str]]:
-        """Drop the branches that an import must not move while merged changes wait for their push.
+        """Drop the default branch and the source branch of each merge while the repository has pending pushes.
 
-        An import of the default branch at the remote head would remove the objects of those merges,
-        and a source branch kept on the remote for them would be imported again as an Infrahub branch.
+        An import of the default branch at the remote head would remove the objects of the pending
+        merges, and a source branch kept on the remote for them would be imported again, as a new
+        Infrahub branch or onto the one still open.
         """
         repository_id = str(self.id)
         if repository_id not in await state.pending_repository_ids():
@@ -1019,8 +1020,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         skipped = sorted(deferred.intersection([*new_branches, *updated_branches]))
         if skipped:
             log.info(
-                "Skipped the synchronization of branches %s of repository %s: "
-                "a push of merged changes to the remote is pending",
+                "Deferred the synchronization of %s of repository %s until its pending pushes reach the remote",
                 ", ".join(skipped),
                 self.name,
             )
