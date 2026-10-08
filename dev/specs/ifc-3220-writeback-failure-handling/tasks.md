@@ -390,6 +390,7 @@ SC-002, SC-007.
 - [ ] T056 [US2] Add `test_remote_advanced_is_imported` to the same module: a direct push to the remote
       during the outage; the sync skips the default branch; the retry records, then imports; an
       artifact definition updated by the import renders against the delivered commit.
+      Partial: written without the sync step, which needs T039; add it when this branch meets T039.
 - [X] T057 [US2] Add `test_observed_after_record_failure` to the same module, reusing
       `block_commit_worktree`: no second push, the queue clears by observation.
 - [X] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run

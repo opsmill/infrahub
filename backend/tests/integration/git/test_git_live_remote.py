@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import git
 import pytest
+import yaml
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.task.models import TaskFilter, TaskState
 from prefect.client.schemas.objects import StateType
@@ -41,6 +42,8 @@ from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
+from tests.constants import TestKind
+from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
@@ -63,7 +66,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
     from testcontainers.core.container import DockerContainer
 
-    from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreArtifact, CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
     from infrahub.git.writeback.models import WritebackIntent
     from tests.adapters.message_bus import BusSimulator
@@ -205,6 +208,53 @@ async def _retry_states(client: InfrahubClient, repository_id: str) -> list[Task
         filter=TaskFilter(workflow=[GIT_REPOSITORY_DELIVERY_RETRY.name], related_node__ids=[repository_id])
     )
     return [task.state for task in tasks]
+
+
+CARD_GROUP = "delivery-remote-advanced-people"
+CARD_DEFINITION = "delivery-remote-advanced-card"
+
+
+def _card_files(version: int) -> dict[str, str]:
+    """Return a repository configuration whose artifact definition renders a card of each person, at a version."""
+    config = {
+        "queries": [{"name": "delivery_remote_advanced_person", "file_path": "person.gql"}],
+        "jinja2_transforms": [
+            {
+                "name": "delivery_remote_advanced_card",
+                "query": "delivery_remote_advanced_person",
+                "template_path": "card.j2",
+            }
+        ],
+        "artifact_definitions": [
+            {
+                "name": CARD_DEFINITION,
+                "artifact_name": f"card-v{version}",
+                "parameters": {"name": "name__value"},
+                "content_type": "text/plain",
+                "targets": CARD_GROUP,
+                "transformation": "delivery_remote_advanced_card",
+            }
+        ],
+    }
+    return {
+        ".infrahub.yml": yaml.safe_dump(config),
+        "person.gql": (
+            "query delivery_remote_advanced_person($name: String!) "
+            "{ TestingPerson(name__value: $name) { edges { node { name { value } } } } }\n"
+        ),
+        "card.j2": f"Card v{version} of {{{{ data.TestingPerson.edges[0].node.name.value }}}}",
+    }
+
+
+async def _card_artifacts(db: InfrahubDatabase, client: InfrahubClient) -> list[tuple[str | None, str]]:
+    """Return the name and the stored content of each artifact of the card definition on the default branch."""
+    artifacts: list[CoreArtifact] = await NodeManager.query(
+        db=db, schema=InfrahubKind.ARTIFACT, filters={"definition__name__value": CARD_DEFINITION}
+    )
+    return [
+        (artifact.name.value, await client.object_store.get(identifier=str(artifact.storage_id.value)))
+        for artifact in artifacts
+    ]
 
 
 @dataclass(frozen=True)
@@ -1298,6 +1348,91 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         # The first merge fast-forwards main, so the head merges the second source commit into the first one.
         parents = [gogs_repo_branch_commit(gogs_server.container, first.name, f"main^{number}") for number in (1, 2)]
         assert parents == [first.source_commit, second.source_commit]
+
+    async def test_remote_advanced_is_imported(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        caplog: pytest.LogCaptureFixture,
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """A retry replays a merge onto a remote that moved meanwhile, records the result, then imports it."""
+        await load_schema(db=db, schema=CAR_SCHEMA, update_db=True)
+        person = await Node.init(schema=TestKind.PERSON, db=db)
+        await person.new(db=db, name="Ada")
+        await person.save(db=db)
+        group = await Node.init(schema=InfrahubKind.STANDARDGROUP, db=db)
+        await group.new(db=db, name=CARD_GROUP, members=[person])
+        await group.save(db=db)
+        # The artifact definition is on the default branch before the branch forks, so only the remote changes it.
+        repo_name = "delivery-remote-advanced-repo"
+        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+        trunk_commit = commit_to_remote_branch(
+            gogs_server.container, repo_name, branch="main", files=_card_files(version=1)
+        )
+        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
+        await node.save()
+        repository = SyncedBranchRepository(
+            name=repo_name,
+            node_id=node.id,
+            branch_name="delivery-remote-advanced",
+            trunk_commit=trunk_commit,
+            source_commit=await _sync_new_branch(
+                db=db,
+                client=client,
+                container=gogs_server.container,
+                repo_name=repo_name,
+                repository_id=node.id,
+                branch_name="delivery-remote-advanced",
+            ),
+        )
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        assert (await _delivery_state(db=db, repository_id=repository.node_id)).cause == (
+            RepositoryDeliveryFailureCause.PERMISSION
+        )
+        assert await _card_artifacts(db=db, client=client) == [("card-v1", "Card v1 of Ada")]
+        # Someone else pushes to the default branch of the remote while the merge waits.
+        lift_rejection()
+        advanced = commit_to_remote_branch(
+            gogs_server.container, repository.name, branch="main", files=_card_files(version=2)
+        )
+
+        with caplog.at_level(logging.INFO, logger=SYNC_LOGGER):
+            await self._retry_delivery(client=client, repository=repository)
+
+        assert await _retry_states(client=client, repository_id=repository.node_id) == [TaskState.COMPLETED]
+        head = gogs_repo_branch_commit(gogs_server.container, repository.name, "main")
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (
+            state.status,
+            state.cause,
+            state.error,
+            state.queue.entries,
+            state.queue.import_owed_commit,
+            state.last_delivered_commit,
+        ) == (RepositoryDeliveryStatus.NONE, None, None, (), None, head)
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == head
+        parents = [
+            gogs_repo_branch_commit(gogs_server.container, repository.name, f"main^{number}") for number in (1, 2)
+        ]
+        assert parents == [advanced, repository.source_commit]
+        assert [
+            record.getMessage()
+            for record in caplog.records
+            if record.name == SYNC_LOGGER
+            and record.getMessage().startswith(("An import of ", "Recorded ", "Imported "))
+            and record.getMessage().endswith(f" for repository {repository.name}.")
+        ] == [
+            f"An import of {head} is owed for repository {repository.name}.",
+            f"Recorded {head} for repository {repository.name}.",
+            f"Imported {head} for repository {repository.name}.",
+        ]
+        # The import renders at the recorded commit, so a render before the record would give the first card.
+        assert await _card_artifacts(db=db, client=client) == [("card-v2", "Card v2 of Ada")]
 
     async def test_observed_after_record_failure(
         self,
