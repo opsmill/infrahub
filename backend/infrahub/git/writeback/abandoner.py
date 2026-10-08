@@ -42,12 +42,16 @@ class WritebackAbandoner:
     async def abandon(self, *, queue_version: int, actor: Actor) -> AbandonmentRecord:
         """Remove every queued merge and the owed import of the repository, and return the record that names them.
 
-        It pushes nothing, deletes no remote branch and imports nothing.
+        It pushes nothing, deletes no remote branch and imports nothing. It tells the workers that each source
+        branch flagged for deletion is gone, so they drop their local copy.
 
         Raises:
             DeliveryQueueChangedError: The queue is no longer at `queue_version`.
             NothingPendingError: The queue is empty.
+            DeliveryStateUnavailableError: The lock of the delivery state was not acquired in time.
             RuntimeError: The state saved no record of the abandonment.
+            Exception: The release of the held regeneration failed after the abandonment was saved; the items stay
+                held, and a later delivery run of the repository releases them.
 
         """
         async with self.lock_registry.get(name=self.repository.name, namespace=REPOSITORY_LOCK_NAMESPACE):
@@ -77,8 +81,18 @@ class WritebackAbandoner:
             )
             await self._notify_deleted_branches(record=record)
         if lease is not None:
-            # A release awaits generator runs, which take the repository lock to fetch a commit they lack.
-            await self._release(lease=lease)
+            try:
+                # A release awaits generator runs, which take the repository lock to fetch a commit they lack.
+                await self._release(lease=lease)
+            except Exception:
+                # The run fails with the error of the release, so this line tells the user that nothing is left to abandon.
+                log.error(
+                    "The merges %s of repository %s are abandoned, but the release of their held regeneration failed; "
+                    "a later delivery run of the repository releases it.",
+                    sorted(record.entry_ids),
+                    self.repository.name,
+                )
+                raise
         return record
 
     async def _notify_deleted_branches(self, *, record: AbandonmentRecord) -> None:

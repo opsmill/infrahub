@@ -387,6 +387,7 @@ async def _read_pending_delivery(
     """Return the repository and its delivery state, refusing a repository that has nothing to push.
 
     Raises:
+        NodeNotFoundError: No repository has this id.
         ValidationError: The repository is read-only or staging.
         NothingPendingError: The queue is empty.
 
@@ -403,7 +404,7 @@ async def _read_pending_delivery(
     intent = await WritebackIntentStore(
         db=graphql_context.db,
         lock_registry=lock.registry,
-        default_branch=graphql_context.branch,
+        default_branch=await registry.get_branch(db=graphql_context.db),
         clock=partial(datetime.now, UTC),
     ).read(repository_id=repository.id)
     if not intent.queue.entries:
