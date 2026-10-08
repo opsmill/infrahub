@@ -165,9 +165,10 @@ class MockPool:
 
     @property
     def size(self) -> int:
-        return sum(item.size for item in self.ranges) - len(
-            {value for value in self.excluded_values if self._in_a_range(value)}
-        )
+        return sum(self.size_of(item) for item in self.ranges)
+
+    def size_of(self, item: MockRange) -> int:
+        return item.size - sum(1 for value in self.excluded_values if item.holds(value))
 
     def _in_a_range(self, value: int) -> bool:
         return any(item.holds(value) for item in self.ranges)
@@ -309,7 +310,7 @@ def _division_label(entries: tuple[MockDivisionEntry, ...]) -> str:
 def _space_figures(pool: MockPool, rows: Iterable[_Row], space: MockRange | None) -> MockFigures:
     if space is None:
         return _figures(rows=rows, size=pool.size)
-    return _figures(rows=(row for row in rows if space.holds(row.value)), size=space.size)
+    return _figures(rows=(row for row in rows if space.holds(row.value)), size=pool.size_of(space))
 
 
 def _as_filter(entries: tuple[MockDivisionEntry, ...]) -> list[DivisionFilterEntry]:
