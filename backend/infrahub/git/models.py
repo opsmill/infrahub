@@ -211,7 +211,6 @@ class GitRepositoryWarmUp(BaseModel):
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
     repository_kind: str = Field(..., description="The kind of the repository")
-    location: str = Field(..., min_length=1, description="The external URL of the repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch the read was made for")
 
 

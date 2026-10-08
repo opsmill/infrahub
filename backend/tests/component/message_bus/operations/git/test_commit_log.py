@@ -386,6 +386,18 @@ async def test_a_clone_never_fetched_reports_no_fetch_time(
     assert data.fetched_at is None
 
 
+async def test_a_clone_whose_last_fetch_failed_reports_no_fetch_time(
+    git_fixture_repo: InfrahubRepository, clone: Repo, read_log: ReadLog
+) -> None:
+    """A failed fetch still writes the fetch record but leaves it empty, so its time is not a fetch time."""
+    Path(clone.git_dir, "FETCH_HEAD").write_text("", encoding="utf-8")
+
+    data = await read_log(_message(repository=git_fixture_repo, imported_commit=clone.commit("origin/main").hexsha))
+
+    assert data.condition is RepositoryGitCondition.IN_SYNC
+    assert data.fetched_at is None
+
+
 async def test_an_unselected_pending_count_is_not_reported(
     git_fixture_repo: InfrahubRepository, upstream: Repo, clone: Repo, read_log: ReadLog
 ) -> None:
@@ -720,7 +732,6 @@ async def test_a_worker_without_a_clone_starts_a_warm_up(
                     repository_id=repository_id,
                     repository_name=NEVER_CLONED_NAME,
                     repository_kind=InfrahubKind.REPOSITORY,
-                    location=NEVER_CLONED_LOCATION,
                     infrahub_branch_name="main",
                 )
             },

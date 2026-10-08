@@ -220,21 +220,28 @@ between these and the domain `BranchHeadsRequest`, `BranchRef`, `BranchDriftResu
 
 ```text
 GitRepositoryWarmUp
-  repository_id, repository_name, repository_kind, location, infrahub_branch_name
-  No imported commit: the warm-up reads it through the client once it holds the repository lock, so a
-  sync that finished while the warm-up waited cannot be rolled back by a commit read before it.
-  It runs on whichever worker the workflow engine picks, so it broadcasts: RefreshGitFetch pinned to
-  that commit when there is one, after resetting its own fresh copy to it; RefreshGitClone for a
-  read-only branch with none; nothing for a read-write repository with none, which it does not
-  clone either, since that repository's sync creates the copy along with its first import
+  repository_id, repository_name, repository_kind, infrahub_branch_name
+  No location: the clone reads it from the graph, and no broadcast the warm-up sends carries one
+  No imported commit: for a read-write repository the warm-up reads it through the client only to
+  decide whether to run; a read-only repository is warmed up without that read.
+  It runs on whichever worker the workflow engine picks, so after cloning it broadcasts
+  RefreshGitClone for both repository kinds, and never resets a copy (IFC-3345); nothing for a
+  read-write repository with nothing imported, which it does not clone either, since that
+  repository's sync creates the copy along with its first import. It calls get_initialized_repo
+  without holding the repository lock, because the clone takes that lock itself and a call already
+  waiting for it shares the same cached result. After the broadcast it fetches a copy without a
+  FETCH_HEAD or with an empty one, under the lock, and logs a failed fetch rather than raising
 
 ### `infrahub.message_bus.messages.refresh_git_clone`
 
 RefreshGitClone(InfrahubMessage)              routing key refresh.git.clone, broadcast to every worker
   repository_id, repository_name, repository_kind, infrahub_branch_name (whose ref a new copy checks out)
   Handler infrahub.message_bus.operations.git.repository::clone creates the local copy when it is
-  missing and leaves an existing one untouched: no fetch, pull, reset or graph write. The sender
-  ignores its own broadcast, as it does for RefreshGitFetch
+  missing, then fetches, under the repository lock, any copy without a FETCH_HEAD or with an empty
+  one (a failed fetch writes an empty file) so it reports a fetch time, logging a failed fetch rather than raising. It never pulls, resets or moves a local
+  branch. Initialising an existing copy can still fetch and write the operational status when the
+  configured location has changed, as every initialisation does. The sender ignores its own
+  broadcast, as it does for RefreshGitFetch
 
 GitReadOnlyRepositoryCheckRefs
   repository_id, repository_name, location

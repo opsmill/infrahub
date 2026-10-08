@@ -220,7 +220,7 @@ graph alone. `BusRecorder` shows exactly one `git.branch_heads.get` message.
 The resolver sends no `git.branch_heads.get` message when no row resolves a `git_ref`, or when the
 query selects neither `fetched_at` nor `unavailable`, and neither `remote_head` nor `condition`
 under `edges.node`. A worker with no local copy answers
-`unavailable.reason: NOT_CLONED` and no rows from the worker, and starts the warm-up pinned to the
+`unavailable.reason: NOT_CLONED` and no rows from the worker, and starts the warm-up for the
 first row with a tracked commit, or the first row when none has one.
 
 The live run needs a running stack. Locally, the same assertions are split across component tests:

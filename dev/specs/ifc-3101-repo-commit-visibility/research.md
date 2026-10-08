@@ -103,28 +103,36 @@ and call `InfrahubRepositoryBase.validate_local_directories()`; on
 `RepositoryInvalidFileSystemError` they reply `condition = UNAVAILABLE`,
 `unavailable.reason = NOT_CLONED`, and trigger a warm-up: `service.cache.set(key=f"git:warmup:{repository_id}", value=WORKER_IDENTITY, expires=60, not_exists=True)`
 and, only when that set succeeded, `submit_workflow(GIT_REPOSITORY_WARM_UP)`. The new flow
-`infrahub.git.tasks::warm_up_git_repository` runs `get_initialized_repo` under
-`lock.registry.get(name=<repository_name>, namespace="repository")` and then broadcasts
-`RefreshGitFetch` pinned to the imported commit so every other worker converges too.
+`infrahub.git.tasks::warm_up_git_repository` runs `get_initialized_repo`, broadcasts
+`RefreshGitClone` so every other worker holds a copy too, and then fetches a copy never fetched under
+`lock.registry.get(name=<repository_name>, namespace="repository")`, logging a failed fetch.
+
+**Superseded (IFC-3345)**: the warm-up first ran `get_initialized_repo` under the repository lock,
+reset its own copy to the imported commit and broadcast `RefreshGitFetch` pinned to it. The reset came
+only from reusing `RefreshGitFetch`, whose handler resets; neither the commit log nor the branch heads
+read a local branch. Other flows do, such as the staging-to-active merge and a proposed change's
+repository tests, and they now see a copy at the remote head, as they already did for every first
+clone; IFC-3210 owns that convergence. It
+could roll back a sync, and when the imported commit was no longer on the remote it raised before the
+broadcast and set the operational status to error. Holding the lock while awaiting the cached
+`get_initialized_repo` could also deadlock against a broadcast handler's clone of the same repository
+on the same worker, which had started the cached call and waits for that lock.
 
 **Rationale**: `InfrahubRepositoryIntegrator.init` clones inline, outside the repository lock, on
 first sight of a missing directory. That is precisely the synchronous clone FR-013 forbids inside a
 read. The cache `not_exists` flag (`infrahub.services.adapters.cache::InfrahubCache.set`) is the
 existing distributed set-if-absent and collapses concurrent triggers across workers with no new
-primitive. `RefreshGitFetch` handled by `infrahub.message_bus.operations.git.repository::fetch`
-already clones-if-missing, fetches, and resets with `update_commit_value=False`; it is the
-established convergence broadcast and needs no change for this feature's purposes.
+primitive. `RefreshGitClone` handled by `infrahub.message_bus.operations.git.repository::clone`
+clones a missing copy and fetches a copy that has never been fetched, without moving any local
+branch, which is all a worker without a copy needs.
 
-One caveat to carry into implementation, found during review on 2026-09-07: in
-`operations/git/repository.py` that handler calls `get_initialized_repo` *before* entering the
-`lock.registry.get(...)` block. The fetch and the reset or pull are all inside the lock; the
-initialisation is the single step outside it, and initialisation is what clones when the directory is
-missing. So a cold worker receiving the broadcast clones concurrently with any other git operation on
-that repository, while every subsequent step is serialised as intended. This is pre-existing behaviour on the read-write path, but this feature newly
-triggers the broadcast for read-only repositories, so FR-019's no-interleaving guarantee covers only
-the steps *this* flow performs, not the clone a receiving worker may do. Either move the
-initialisation inside that handler's lock or state the exposure; it is not this feature's to fix
-silently, and the guarantee should not be read as broader than it is. For read-write repositories the every-minute
+A caveat found during review on 2026-09-07, resolved since: the broadcast handlers in
+`operations/git/repository.py` call `get_initialized_repo` *before* entering the
+`lock.registry.get(...)` block. That is correct and must stay so (IFC-3345): initialisation takes the
+repository lock itself around the clone, so the clone is serialised with every other git operation,
+and `get_initialized_repo` is memoised with a shared in-flight result, so a caller that awaits it while
+holding the repository lock deadlocks against a clone another caller started, which waits for that
+lock. Never wrap `get_initialized_repo` in the repository lock. For read-write repositories the every-minute
 `GIT_REPOSITORIES_SYNC` already broadcasts unconditionally, so a cold worker also warms within a
 minute without our help; read-only repositories rely on the new flow.
 
@@ -189,7 +197,8 @@ commits).
 
 `fetched_at` is the modification time of `<root>/main/.git/FETCH_HEAD` on the answering worker,
 measured in the handler and returned in the RPC reply. Null when the file does not exist (a clone
-that never fetched).
+that never fetched) or is empty (git writes an empty file when a fetch fails, so its time is the
+failed attempt's).
 
 `checked_at` is read by the API resolver from the cache key `git:refs_check:last:<repository_id>`,
 written at the end of every refs check. Read-only repositories only; null for read-write, where the

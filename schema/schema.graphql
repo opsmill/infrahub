@@ -27149,7 +27149,7 @@ type RepositoryCommits {
   condition: RepositoryGitCondition!
   edges: [RepositoryCommitNode!]!
   """
-  When the answering worker last fetched from the remote. Null before the first fetch.
+  When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch.
   """
   fetched_at: DateTime
   """

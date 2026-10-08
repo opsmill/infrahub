@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import asyncio
 import shutil
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from git import Repo
+from git.exc import GitCommandError
+from infrahub_sdk import Config, InfrahubClient
+from structlog.testing import capture_logs
 
 from infrahub import lock
 from infrahub.core.constants import InfrahubKind
@@ -29,9 +33,7 @@ from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterator
-
-    from infrahub_sdk import InfrahubClient
+    from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, MutableMapping
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
@@ -64,18 +66,55 @@ def _without_local_copy(repos_dir: Path, repository_id: str) -> Iterator[None]:
         _get_initialized_repo.cache_clear()
 
 
+@contextmanager
+def _unreachable(upstream: Path) -> Iterator[None]:
+    """Move the remote away so every fetch from it fails, and put it back afterwards."""
+    moved = upstream.with_name(f"{upstream.name}-unreachable")
+    upstream.rename(moved)
+    try:
+        yield
+    finally:
+        moved.rename(upstream)
+
+
 @asynccontextmanager
-async def _without_imported_commit(
-    db: InfrahubDatabase, repository: CoreRepository | CoreReadOnlyRepository
+async def _with_imported_commit(
+    db: InfrahubDatabase, repository: CoreRepository | CoreReadOnlyRepository, commit: str | None
 ) -> AsyncIterator[None]:
     imported = repository.commit.value
-    repository.commit.value = None
+    repository.commit.value = commit
     await repository.save(db=db)
     try:
         yield
     finally:
         repository.commit.value = imported
         await repository.save(db=db)
+
+
+class SignallingClient(InfrahubClient):
+    """An SDK client that awaits a hook before its first GraphQL call, then sends every call as usual."""
+
+    def __init__(self, config: Config, before_first_query: Callable[[], Awaitable[None]]) -> None:
+        super().__init__(config=config)
+        self._before_first_query: Callable[[], Awaitable[None]] | None = before_first_query
+
+    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        if self._before_first_query is not None:
+            hook, self._before_first_query = self._before_first_query, None
+            await hook()
+        return await super().execute_graphql(*args, **kwargs)
+
+
+FETCH_FAILURE_EVENT = "Could not fetch the local copy"
+
+
+def _fetch_failures(records: list[MutableMapping[str, Any]]) -> list[MutableMapping[str, Any]]:
+    return [record for record in records if record["event"] == FETCH_FAILURE_EVENT]
+
+
+def _fetch_failure(repository: CoreRepository) -> dict[str, Any]:
+    """The warning a fetch from the unreachable remote logs, git exiting with its fatal status."""
+    return {"event": FETCH_FAILURE_EVENT, "repository": repository.name.value, "status": 128, "log_level": "warning"}
 
 
 def _advance(upstream: Repo) -> None:
@@ -164,14 +203,22 @@ class TestRepositoryWarmUp(TestInfrahubApp):
 
     @pytest.fixture
     async def nothing_imported(self, db: InfrahubDatabase, repository: CoreRepository) -> AsyncIterator[None]:
-        async with _without_imported_commit(db=db, repository=repository):
+        async with _with_imported_commit(db=db, repository=repository, commit=None):
             yield
 
     @pytest.fixture
     async def read_only_nothing_imported(
         self, db: InfrahubDatabase, read_only_repository: CoreReadOnlyRepository
     ) -> AsyncIterator[None]:
-        async with _without_imported_commit(db=db, repository=read_only_repository):
+        async with _with_imported_commit(db=db, repository=read_only_repository, commit=None):
+            yield
+
+    @pytest.fixture
+    async def read_only_imported_commit_not_on_remote(
+        self, db: InfrahubDatabase, read_only_repository: CoreReadOnlyRepository
+    ) -> AsyncIterator[None]:
+        """Leave the graph pointing at a commit the remote no longer has, as after a history rewrite."""
+        async with _with_imported_commit(db=db, repository=read_only_repository, commit="0" * 40):
             yield
 
     @pytest.fixture
@@ -185,6 +232,29 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         )
         # Otherwise the memo answers the next initialization and the copy on disk is never looked at.
         _get_initialized_repo.cache_clear()
+
+    @pytest.fixture
+    def fetched_existing_copy(
+        self, repository: CoreRepository, git_repos_dir_module_scope: Path, existing_copy: None
+    ) -> None:
+        Repo(git_repos_dir_module_scope / repository.id / "main").remotes.origin.fetch()
+
+    @pytest.fixture
+    def copy_whose_last_fetch_failed(
+        self,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
+        existing_copy: None,
+    ) -> None:
+        with _unreachable(upstream=git_repos_source_dir_module_scope / "car-dealership"), suppress(GitCommandError):
+            Repo(git_repos_dir_module_scope / repository.id / "main").remotes.origin.fetch()
+
+    @pytest.fixture
+    def unreachable_upstream(self, git_repos_source_dir_module_scope: Path) -> Iterator[None]:
+        """Make every fetch from the remote fail, while a local copy made beforehand stays valid."""
+        with _unreachable(upstream=git_repos_source_dir_module_scope / "car-dealership"):
+            yield
 
     @pytest.fixture
     def bus(self) -> BusRecorder:
@@ -209,39 +279,163 @@ class TestRepositoryWarmUp(TestInfrahubApp):
             repository_id=repository.id,
             repository_name=repository.name.value,
             repository_kind=repository_kind,
-            location=repository.location.value,
             infrahub_branch_name=default_branch.name,
         )
 
-    async def test_warm_up_clones_and_broadcasts_the_commit_imported_now(
+    async def test_warm_up_clones_at_the_remote_head_and_broadcasts_a_clone(
         self,
         default_branch: Branch,
         repository: CoreRepository,
         git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
         cold_worker: None,
         advanced_upstream: str,
         bus: BusRecorder,
         warm_up: RepositoryWarmUp,
     ) -> None:
-        """Every copy, this one included, is reset to the commit the graph holds, not the remote head just cloned."""
+        """No local branch is moved back to the imported commit, so the warm-up cannot roll back a sync."""
         await warm_up.warm_up(model=self._model(repository=repository, default_branch=default_branch))
 
+        upstream_head = Repo(git_repos_source_dir_module_scope / "car-dealership").head.commit.hexsha
+        assert upstream_head != advanced_upstream
+        local_copy = Repo(git_repos_dir_module_scope / repository.id / "main")
+        assert local_copy.commit(f"origin/{default_branch.name}").hexsha == upstream_head
         assert (
             _local_branch_commit(
                 repos_dir=git_repos_dir_module_scope, repository=repository, branch_name=default_branch.name
             )
-            == advanced_upstream
+            == upstream_head
         )
+        assert (Path(local_copy.git_dir) / "FETCH_HEAD").is_file()
         assert bus.messages == [
-            messages.RefreshGitFetch(
+            messages.RefreshGitClone(
                 meta=Meta(initiator_id=WORKER_IDENTITY),
-                location=repository.location.value,
                 repository_id=repository.id,
                 repository_name=repository.name.value,
                 repository_kind=InfrahubKind.REPOSITORY,
                 infrahub_branch_name=default_branch.name,
-                infrahub_branch_id=str(default_branch.uuid),
-                commit=advanced_upstream,
+            )
+        ]
+
+    async def test_warm_up_of_a_read_only_repository_whose_imported_commit_left_the_remote(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        read_only_repository: CoreReadOnlyRepository,
+        cold_read_only_worker: None,
+        read_only_imported_commit_not_on_remote: None,
+        bus: BusRecorder,
+        warm_up: RepositoryWarmUp,
+    ) -> None:
+        """Nothing repairs a read-only repository's copies later, so the broadcast must still reach every worker."""
+        status_before = (
+            await NodeManager.get_one(
+                db=db, id=read_only_repository.id, kind=CoreReadOnlyRepository, raise_on_error=True
+            )
+        ).operational_status.value
+
+        await warm_up.warm_up(
+            model=self._model(
+                repository=read_only_repository,
+                default_branch=default_branch,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+            )
+        )
+
+        assert bus.messages == [
+            messages.RefreshGitClone(
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+                repository_id=read_only_repository.id,
+                repository_name=read_only_repository.name.value,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
+                infrahub_branch_name=default_branch.name,
+            )
+        ]
+        reloaded = await NodeManager.get_one(
+            db=db, id=read_only_repository.id, kind=CoreReadOnlyRepository, raise_on_error=True
+        )
+        assert reloaded.operational_status.value == status_before
+
+    async def test_warm_up_shares_a_clone_another_handler_started_on_this_worker(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        cold_worker: None,
+        bus: BusRecorder,
+    ) -> None:
+        """A clone already started here waits for the repository lock, so the warm-up must not hold it meanwhile."""
+        warm_up_querying = asyncio.Event()
+        handler_cloning = asyncio.Event()
+
+        async def start_the_handler_clone() -> None:
+            warm_up_querying.set()
+            await handler_cloning.wait()
+
+        async def mark_handler_cloning() -> None:
+            handler_cloning.set()
+
+        async def clone_as_a_message_handler() -> None:
+            await warm_up_querying.wait()
+            await get_initialized_repo(
+                client=SignallingClient(config=client.config, before_first_query=mark_handler_cloning),
+                repository_id=repository.id,
+                name=repository.name.value,
+                repository_kind=InfrahubKind.REPOSITORY,
+                infrahub_branch_name=default_branch.name,
+            )
+
+        # Started before the warm-up, so the clone does not inherit a repository lock the warm-up holds.
+        handler = asyncio.create_task(clone_as_a_message_handler())
+        warm_up = RepositoryWarmUp(
+            client=SignallingClient(config=client.config, before_first_query=start_the_handler_clone),
+            message_bus=bus,
+            lock_registry=lock.registry,
+            worker_identity=WORKER_IDENTITY,
+        )
+
+        try:
+            await asyncio.wait_for(
+                warm_up.warm_up(model=self._model(repository=repository, default_branch=default_branch)), timeout=60
+            )
+        finally:
+            await asyncio.wait_for(handler, timeout=60)
+
+        assert (git_repos_dir_module_scope / repository.id / "main").is_dir()
+        assert bus.messages == [
+            messages.RefreshGitClone(
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                repository_kind=InfrahubKind.REPOSITORY,
+                infrahub_branch_name=default_branch.name,
+            )
+        ]
+
+    async def test_warm_up_broadcasts_even_when_the_fetch_fails(
+        self,
+        default_branch: Branch,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        cold_worker: None,
+        existing_copy: None,
+        unreachable_upstream: None,
+        bus: BusRecorder,
+        warm_up: RepositoryWarmUp,
+    ) -> None:
+        """The fetch only gives this copy a fetch time, so it must not keep other workers without a copy."""
+        with capture_logs() as records:
+            await warm_up.warm_up(model=self._model(repository=repository, default_branch=default_branch))
+
+        assert _fetch_failures(records=records) == [_fetch_failure(repository=repository)]
+        assert bus.messages == [
+            messages.RefreshGitClone(
+                meta=Meta(initiator_id=WORKER_IDENTITY),
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                repository_kind=InfrahubKind.REPOSITORY,
+                infrahub_branch_name=default_branch.name,
             )
         ]
 
@@ -272,7 +466,7 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         bus: BusRecorder,
         warm_up: RepositoryWarmUp,
     ) -> None:
-        """With no commit to pin other workers to, they are asked to clone without checking anything out."""
+        """A read-only repository with nothing imported is still cloned at the remote head and broadcast to other workers."""
         await warm_up.warm_up(
             model=self._model(
                 repository=read_only_repository,
@@ -305,8 +499,30 @@ class TestRepositoryWarmUp(TestInfrahubApp):
             )
             == repository.commit.value
         )
+        # A clone alone leaves no fetch time, so the copy would report none until the next sync.
+        local_copy = Repo(git_repos_dir_module_scope / repository.id / "main")
+        assert (Path(local_copy.git_dir) / "FETCH_HEAD").is_file()
 
-    async def test_the_clone_request_leaves_an_existing_copy_as_it_is(
+    async def test_the_clone_request_leaves_an_existing_fetched_copy_as_it_is(
+        self,
+        client: InfrahubClient,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        cold_worker: None,
+        fetched_existing_copy: None,
+    ) -> None:
+        local_copy = Repo(git_repos_dir_module_scope / repository.id / "main")
+        head_before = local_copy.head.commit.hexsha
+        worktrees_before = local_copy.git.worktree("list", "--porcelain")
+        fetched_before = (Path(local_copy.git_dir) / "FETCH_HEAD").stat().st_mtime_ns
+
+        await repository_operations.clone.fn(message=_clone_request(repository=repository, initiator="another-worker"))
+
+        assert local_copy.head.commit.hexsha == head_before
+        assert local_copy.git.worktree("list", "--porcelain") == worktrees_before
+        assert (Path(local_copy.git_dir) / "FETCH_HEAD").stat().st_mtime_ns == fetched_before
+
+    async def test_the_clone_request_fetches_an_existing_copy_never_fetched(
         self,
         client: InfrahubClient,
         repository: CoreRepository,
@@ -314,14 +530,54 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         cold_worker: None,
         existing_copy: None,
     ) -> None:
+        """Another initialization on this worker may have cloned the copy first, leaving it without a fetch time."""
         local_copy = Repo(git_repos_dir_module_scope / repository.id / "main")
         head_before = local_copy.head.commit.hexsha
-        worktrees_before = local_copy.git.worktree("list", "--porcelain")
 
         await repository_operations.clone.fn(message=_clone_request(repository=repository, initiator="another-worker"))
 
         assert local_copy.head.commit.hexsha == head_before
-        assert local_copy.git.worktree("list", "--porcelain") == worktrees_before
+        assert (Path(local_copy.git_dir) / "FETCH_HEAD").is_file()
+
+    async def test_the_clone_request_fetches_a_copy_whose_last_fetch_failed(
+        self,
+        client: InfrahubClient,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
+        cold_worker: None,
+        copy_whose_last_fetch_failed: None,
+    ) -> None:
+        """A failed fetch leaves an empty fetch record, which gives the copy no fetch time."""
+        fetch_head = Path(Repo(git_repos_dir_module_scope / repository.id / "main").git_dir) / "FETCH_HEAD"
+        assert fetch_head.stat().st_size == 0
+
+        await repository_operations.clone.fn(message=_clone_request(repository=repository, initiator="another-worker"))
+
+        upstream = Repo(git_repos_source_dir_module_scope / "car-dealership")
+        fetched = {line.split("\t")[0] for line in fetch_head.read_text().splitlines()}
+        assert fetched == {branch.commit.hexsha for branch in upstream.branches}
+
+    async def test_the_clone_request_succeeds_when_the_fetch_fails(
+        self,
+        client: InfrahubClient,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        cold_worker: None,
+        existing_copy: None,
+        unreachable_upstream: None,
+    ) -> None:
+        """The fetch only records a fetch time, so its failure must not fail the request that created the copy."""
+        local_copy = Repo(git_repos_dir_module_scope / repository.id / "main")
+        head_before = local_copy.head.commit.hexsha
+
+        with capture_logs() as records:
+            await repository_operations.clone.fn(
+                message=_clone_request(repository=repository, initiator="another-worker")
+            )
+
+        assert _fetch_failures(records=records) == [_fetch_failure(repository=repository)]
+        assert local_copy.head.commit.hexsha == head_before
 
     async def test_the_worker_that_sent_the_clone_request_ignores_it(
         self, client: InfrahubClient, repository: CoreRepository, git_repos_dir_module_scope: Path, cold_worker: None

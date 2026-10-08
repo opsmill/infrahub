@@ -95,7 +95,6 @@ class RepositoryLogReader:
                 repository_id=request.repository_id,
                 repository_name=request.repository_name,
                 repository_kind=request.repository_kind,
-                location=request.location,
                 infrahub_branch_name=request.infrahub_branch_name,
             ),
             has_imported_commit=request.imported_commit is not None,
@@ -134,7 +133,7 @@ class RepositoryLogReader:
         if not request.branches:
             return BranchDriftResult()
 
-        # Any branch with something imported gives the warm-up a commit to pin every worker to.
+        # A read-write repository is warmed up only for a branch with something imported, so prefer such a branch.
         warm_up_branch = next(
             (branch for branch in request.branches if branch.tracked_commit is not None), request.branches[0]
         )
@@ -144,7 +143,6 @@ class RepositoryLogReader:
                 repository_id=request.repository_id,
                 repository_name=request.repository_name,
                 repository_kind=request.repository_kind,
-                location=request.location,
                 infrahub_branch_name=warm_up_branch.branch_name,
             ),
             has_imported_commit=warm_up_branch.tracked_commit is not None,
@@ -328,13 +326,17 @@ def _resolve_pinned_commit(repo: Repo, git_ref: str) -> Commit | None:
     return None
 
 
-def _read_fetched_at(repo: Repo) -> datetime | None:
+def read_fetched_at(repo: Repo) -> datetime | None:
+    """Return when the clone last fetched from its remote, or None when that is not known."""
     try:
-        modified = (Path(repo.git_dir) / "FETCH_HEAD").stat().st_mtime
+        fetch_head = (Path(repo.git_dir) / "FETCH_HEAD").stat()
     # An unreadable file means no known fetch time, and its error would carry the clone's path.
     except OSError:
         return None
-    return datetime.fromtimestamp(modified, tz=UTC)
+    # A failed fetch still writes the file, but leaves it empty.
+    if fetch_head.st_size == 0:
+        return None
+    return datetime.fromtimestamp(fetch_head.st_mtime, tz=UTC)
 
 
 def _measure_facts(
@@ -426,7 +428,7 @@ def _read_commit_log(repo: Repo, request: CommitLogRequest) -> CommitLogResult:
         imported_commit=facts.imported if facts.imported_resolvable else None,
         pending_count=pending_count,
         commits=commits,
-        fetched_at=_read_fetched_at(repo=repo),
+        fetched_at=read_fetched_at(repo=repo),
     )
 
 
@@ -500,7 +502,7 @@ def _read_branch_heads(repo: Repo, request: BranchHeadsRequest) -> BranchDriftRe
             )
             for branch in request.branches
         ),
-        fetched_at=_read_fetched_at(repo=repo),
+        fetched_at=read_fetched_at(repo=repo),
     )
 
 

@@ -129,7 +129,7 @@ backend/infrahub/
 ├── git/state/log_reader.py                       # NEW   every git read against an existing clone; both handlers are thin over it
 ├── git/state/commit_log_wire.py                  # NEW   both-way conversion between the commit-log messages and the dataclasses
 ├── git/state/branch_heads_wire.py                # NEW   both-way conversion between the branch-heads messages and the dataclasses
-├── git/state/warm_up.py                          # NEW   RepositoryWarmUp: clone, fetch, broadcast pinned to the commit read under the lock
+├── git/state/warm_up.py                          # NEW   RepositoryWarmUp: clone, broadcast RefreshGitClone, then fetch a copy never fetched
 ├── git/state/cache_keys.py                       # NEW   prefix + the five key builders, shared by resolver and flows
 ├── git/branch_mapping.py                         # NEW   extracted remote-branch mapping, required parameters, no fallback
 ├── git/base.py                                   # EDIT  _get_mapped_remote_branch delegates to branch_mapping
@@ -153,7 +153,7 @@ backend/tests/
 ├── unit/git/state/test_classification.py                         # NEW  parametrised, no fixtures
 ├── unit/git/state/test_bus_reader.py                             # NEW  routing key, timeout, reply mapping
 ├── unit/git/state/test_commit_log_wire.py                        # NEW  both round trips, field-set parity
-├── integration/git/test_repository_warm_up.py                    # NEW  clone, pin read under the lock, no broadcast without a pin
+├── integration/git/test_repository_warm_up.py                    # NEW  clone at the remote head, RefreshGitClone broadcast, no reset, no deadlock on the shared clone
 ├── unit/git/                                                     # NEW  ref-format validation, including a "-" prefixed ref
 ├── unit/errors/                                                  # existing suites gain WORKER_TIMEOUT via parametrisation
 ├── unit/workflows/test_catalogue.py                              # existing, picks up new definitions

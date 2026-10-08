@@ -39083,7 +39083,7 @@ export type RepositoryCommits = {
   checked_at: Maybe<Scalars['DateTime']['output']>;
   condition: RepositoryGitCondition;
   edges: Array<RepositoryCommitNode>;
-  /** When the answering worker last fetched from the remote. Null before the first fetch. */
+  /** When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch. */
   fetched_at: Maybe<Scalars['DateTime']['output']>;
   /** Remote branch or tracked ref whose history is listed. Null when the branch tracks nothing, matching RepositoryBranchDrift.git_ref. */
   git_ref: Maybe<Scalars['String']['output']>;
