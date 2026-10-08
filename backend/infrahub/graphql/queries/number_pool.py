@@ -36,19 +36,25 @@ NumberPoolProvenance = Enum.from_enum(
 
 class NumberPoolUtilizationFigures(ObjectType):
     class Meta:
-        description = "Absolute and relative utilization of one space: a pool, a range or a division."
+        description = "Absolute and relative utilization of a pool, a range or a division."
 
     size = Field(
-        BigInt, required=True, description="Number of values the measured space holds. 0 when the pool has no range."
+        BigInt,
+        required=True,
+        description="Number of values the pool, range or division can allocate. 0 when the pool has no range.",
     )
-    used = Field(BigInt, required=True, description="Distinct values of the space held on any live branch.")
+    used = Field(
+        BigInt,
+        required=True,
+        description="Number of these values in use on any branch. A value used on several branches counts once.",
+    )
     used_default_branch = Field(
-        BigInt, required=True, description="Distinct values of the space held on the default branch."
+        BigInt, required=True, description="Number of these values in use on the default branch."
     )
     used_branches = Field(
         BigInt,
         required=True,
-        description="Distinct values of the space held on other branches and not on the default branch.",
+        description="Number of these values in use only on other branches, not on the default branch.",
     )
     utilization = Field(Float, required=True, description="used as a percentage of size. 0 when size is 0.")
     utilization_default_branch = Field(
@@ -99,7 +105,7 @@ class NumberPoolUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the pool's whole space. On a scoped pool, only the values held in the division passed "
+            "Figures over all the values the pool can allocate. On a scoped pool, only the values held in the division passed "
             "in the division argument, which is required."
         ),
     )
@@ -175,7 +181,7 @@ class NumberPoolDivision(ObjectType):
     figures = Field(
         NumberPoolUtilizationFigures,
         required=True,
-        description="Figures over the pool's whole space for this division.",
+        description="Figures for this division, over all the values the pool can allocate.",
     )
 
 
@@ -193,7 +199,7 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division whose holders hold at least one value the pool tracks on any live branch, ordered "
+            "Every division whose holders hold at least one value the pool tracks on any branch, ordered "
             "by utilization descending then by display_label. Empty when the scope in force is empty."
         ),
     )

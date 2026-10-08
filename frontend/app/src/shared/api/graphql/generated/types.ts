@@ -23913,7 +23913,7 @@ export type NumberPoolDivision = {
   display_label: Scalars['String']['output'];
   /** One entry per scope entry in force, in scope order. */
   entries: Array<NumberPoolDivisionEntry>;
-  /** Figures over the pool's whole space for this division. */
+  /** Figures for this division, over all the values the pool can allocate. */
   figures: NumberPoolUtilizationFigures;
 };
 
@@ -23945,7 +23945,7 @@ export type NumberPoolDivisions = {
   allocation_scope: Array<Scalars['String']['output']>;
   /** Number of divisions listed. */
   count: Scalars['Int']['output'];
-  /** Every division whose holders hold at least one value the pool tracks on any live branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty. */
+  /** Every division whose holders hold at least one value the pool tracks on any branch, ordered by utilization descending then by display_label. Empty when the scope in force is empty. */
   divisions: Array<NumberPoolDivision>;
 };
 
@@ -23997,7 +23997,7 @@ export type NumberPoolUtilization = {
   allocation_scope: Array<Scalars['String']['output']>;
   /** The pool's display label. */
   display_label: Scalars['String']['output'];
-  /** Figures over the pool's whole space. On a scoped pool, only the values held in the division passed in the division argument, which is required. */
+  /** Figures over all the values the pool can allocate. On a scoped pool, only the values held in the division passed in the division argument, which is required. */
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */
   id: Scalars['String']['output'];
@@ -24005,16 +24005,16 @@ export type NumberPoolUtilization = {
   ranges: Array<NumberPoolRangeUtilization>;
 };
 
-/** Absolute and relative utilization of one space: a pool, a range or a division. */
+/** Absolute and relative utilization of a pool, a range or a division. */
 export type NumberPoolUtilizationFigures = {
   __typename: 'NumberPoolUtilizationFigures';
-  /** Number of values the measured space holds. 0 when the pool has no range. */
+  /** Number of values the pool, range or division can allocate. 0 when the pool has no range. */
   size: Scalars['BigInt']['output'];
-  /** Distinct values of the space held on any live branch. */
+  /** Number of these values in use on any branch. A value used on several branches counts once. */
   used: Scalars['BigInt']['output'];
-  /** Distinct values of the space held on other branches and not on the default branch. */
+  /** Number of these values in use only on other branches, not on the default branch. */
   used_branches: Scalars['BigInt']['output'];
-  /** Distinct values of the space held on the default branch. */
+  /** Number of these values in use on the default branch. */
   used_default_branch: Scalars['BigInt']['output'];
   /** used as a percentage of size. 0 when size is 0. */
   utilization: Scalars['Float']['output'];
