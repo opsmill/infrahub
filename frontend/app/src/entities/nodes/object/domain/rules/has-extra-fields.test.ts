@@ -130,4 +130,23 @@ describe("hasExtraFields", () => {
     // THEN
     expect(result).toBe(true);
   });
+
+  it("should return false when the only extra fields are the push state of a repository", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "CoreRepository",
+      attributes: [
+        generateAttributeSchema({ name: "name", display: "default" }),
+        generateAttributeSchema({ name: "delivery_status", display: "extra" }),
+        generateAttributeSchema({ name: "delivery_queue", display: "extra" }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const result = hasExtraFields(schema);
+
+    // THEN
+    expect(result).toBe(false);
+  });
 });

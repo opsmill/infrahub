@@ -604,4 +604,56 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     await expect.element(component.getByText("Name")).toBeVisible();
     await expect.element(component.baseElement).not.toHaveTextContent("Missing");
   });
+
+  it("never shows the push state attributes of a repository, even when showExtra is true", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "CoreRepository",
+      attributes: [
+        generateAttributeSchema({
+          name: "name",
+          label: "Name",
+          display: "default",
+          order_weight: 1000,
+        }),
+        generateAttributeSchema({
+          name: "delivery_error",
+          label: "Push error",
+          display: "extra",
+          order_weight: 6300,
+        }),
+        generateAttributeSchema({
+          name: "delivery_last_delivered_commit",
+          label: "Last pushed commit",
+          display: "extra",
+          order_weight: 6700,
+        }),
+      ],
+      relationships: [],
+    });
+
+    const objectData: NodeObjectWithMetadata = {
+      id: "repo-1",
+      display_label: "infrahub-demo",
+      __typename: "CoreRepository",
+      name: generateNodeAttributeWithMetadata({ value: "infrahub-demo" }),
+      delivery_error: generateNodeAttributeWithMetadata({ value: "stale copy of the branch" }),
+      delivery_last_delivered_commit: generateNodeAttributeWithMetadata({ value: "4b825dc" }),
+    };
+
+    // WHEN
+    const component = await render(
+      <ObjectDataDisplay
+        objectSchema={schema}
+        objectData={objectData}
+        permission={permission}
+        showExtra
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Name")).toBeVisible();
+    await expect.element(component.baseElement).not.toHaveTextContent("Push error");
+    await expect.element(component.baseElement).not.toHaveTextContent("Last pushed commit");
+  });
 });

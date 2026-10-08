@@ -18,6 +18,7 @@ import FieldMetadataForm from "@/entities/nodes/object/ui/metadata/field-metadat
 import { ObjectAttributeRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-attribute-row";
 import { ObjectRelationshipRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-relationship-row";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { isRepositoryDeliveryAttribute } from "@/entities/repository/domain/rules/is-repository-delivery-attribute";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -68,7 +69,9 @@ export function ObjectDataDisplay({
     setShowMetaEditModal(true);
   };
 
-  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
+  const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []).filter(
+    (attribute) => !isRepositoryDeliveryAttribute(objectSchema, attribute.name)
+  );
   const relationships = getRelationshipsVisibleInDataDisplay(
     objectSchema.relationships ?? [],
     excludeRelationships

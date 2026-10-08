@@ -353,7 +353,7 @@ SC-002, SC-007.
       repository details page for `CoreRepository` only: status, cause, required action, the
       paused-imports sentence, the remote's message verbatim, and the pending merges. Add
       `repository-delivery-section.test.tsx`. **Label gate: spec decision 2.**
-- [ ] T049 [US1] Keep the nine attributes out of the generic surfaces for `CoreRepository`:
+- [X] T049 [US1] Keep the nine attributes out of the generic surfaces for `CoreRepository`:
       `frontend/app/src/entities/nodes/object/ui/object-details/object-data-display/object-data-display.tsx`
       (main list and "extra" toggle) and
       `frontend/app/src/entities/nodes/columns/domain/rules/get-column-candidates.ts`. Add tests.
