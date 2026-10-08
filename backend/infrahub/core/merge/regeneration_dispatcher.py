@@ -21,7 +21,7 @@ from infrahub.workflows.catalogue import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Awaitable, Callable, Sequence
     from logging import Logger, LoggerAdapter
 
     from infrahub_sdk.diff import NodeDiff
@@ -63,8 +63,24 @@ async def submit_full_regeneration(
     )
 
 
+async def submit_blanket_regeneration(
+    *,
+    workflow: InfrahubWorkflow,
+    barrier: RegenerationBarrier,
+    context: InfrahubContext,
+    target_branch: str,
+    reason: FullRegenerationReason,
+    releasing: str | None,
+) -> None:
+    """Hold a marker of scope `all` under each pending repository, then regenerate every other repository."""
+    held = await barrier.hold_widen(branch=target_branch, scope="all", reason=reason, releasing=releasing)
+    await submit_full_regeneration(
+        workflow=workflow, context=context, target_branch=target_branch, exclude_repository_ids=held
+    )
+
+
 def _repository_filters(
-    *, exclude_repository_ids: list[str] | None, include_repository_ids: list[str] | None = None
+    *, exclude_repository_ids: list[str] | None = None, include_repository_ids: list[str] | None = None
 ) -> dict[str, list[str]]:
     """Keep only the lists that are not empty, so that a run with no filter keeps the parameters of a blanket run."""
     filters = {"exclude_repository_ids": exclude_repository_ids, "include_repository_ids": include_repository_ids}
@@ -72,15 +88,16 @@ def _repository_filters(
 
 
 class PostMergeRegenerationDispatcher:
-    """Decide and submit which generators and artifacts a committed merge should regenerate.
+    """Decide and submit which generators and artifacts a committed merge or a release should regenerate.
 
-    Runs the selective path only when the feature is enabled and a merge diff summary is available;
-    every other outcome -- feature disabled, no captured summary, an unloadable summary, or any
-    failure during selection or dispatch -- falls back to the blanket regeneration the merge
-    follow-up has always performed, so no path can leave an affected artifact stale.
+    A merge runs the selective path only when the feature is enabled and a merge diff summary is available.
+    Every other outcome, and any failure during selection or dispatch, falls back to the blanket regeneration,
+    so no path can leave an affected artifact stale. The requests of a release have no such fallback: a failed
+    fire-and-forget submission raises.
 
-    Every dispatch passes the barrier first: the work of a repository whose merges wait for their push
-    is held, and a blanket regeneration excludes that repository and holds a marker for it instead.
+    The dispatches of a merge or a release pass the barrier first: the work of a repository whose merges wait
+    for their push is held, and a blanket regeneration excludes that repository and holds a marker for it
+    instead. The regeneration of one named repository does not pass the barrier.
     """
 
     def __init__(
@@ -141,7 +158,9 @@ class PostMergeRegenerationDispatcher:
         # _dispatch_plan and does not reach here.
         try:
             plan = await self.planner.build_plan(diff_summary=diff_summary, target_branch=target_branch)
-            await self._dispatch_plan(context=context, target_branch=target_branch, plan=plan, releasing=releasing)
+            await self._dispatch_plan(
+                context=context, target_branch=target_branch, plan=plan, releasing=releasing, renew=None
+            )
         except Exception:
             self.log.exception("Selective post-merge regeneration failed; falling back to full regeneration")
             await self._full_regeneration(
@@ -159,10 +178,16 @@ class PostMergeRegenerationDispatcher:
         generator_runs: Sequence[RequestGeneratorDefinitionRun],
         artifact_generates: Sequence[RequestArtifactDefinitionGenerate],
         releasing: str | None,
+        renew: Callable[[], Awaitable[None]] | None,
     ) -> None:
         """Dispatch the requests as a merge plan, so the generator cascade runs and every dispatch passes the barrier.
 
-        A failed submission raises, with no fallback to a full regeneration.
+        A failed generator run falls back to the regeneration of every terminal, as on a merge. A failed
+        fire-and-forget submission raises, with no fallback to a full regeneration.
+
+        Args:
+            renew: Called after each generator run and after the last submissions.
+
         """
         entries = [
             PlannedRegeneration(
@@ -179,6 +204,7 @@ class PostMergeRegenerationDispatcher:
             target_branch=target_branch,
             plan=SelectiveRegenerationPlan(entries=self.planner.consolidate_submissions(entries)),
             releasing=releasing,
+            renew=renew,
         )
 
     async def submit_repository_regeneration(
@@ -198,12 +224,11 @@ class PostMergeRegenerationDispatcher:
                     include_repository_ids=[repository_id],
                 )
             case "terminals":
-                for regeneration in self.planner.terminal_full_regenerations(target_branch):
-                    await self.workflow.submit_workflow(
-                        workflow=regeneration.workflow,
-                        context=context,
-                        parameters={**regeneration.parameters, "include_repository_ids": [repository_id]},
-                    )
+                await self._submit_terminal_regenerations(
+                    context=context,
+                    target_branch=target_branch,
+                    repository_filters=_repository_filters(include_repository_ids=[repository_id]),
+                )
             case _:
                 assert_never(scope)
 
@@ -214,6 +239,7 @@ class PostMergeRegenerationDispatcher:
         target_branch: str,
         plan: SelectiveRegenerationPlan,
         releasing: str | None,
+        renew: Callable[[], Awaitable[None]] | None,
     ) -> None:
         admitted = SelectiveRegenerationPlan(
             entries=await self._admitted(entries=plan.entries, target_branch=target_branch, releasing=releasing)
@@ -232,8 +258,30 @@ class PostMergeRegenerationDispatcher:
 
         if cascade_started_at is None:
             await self._submit(context=context, entries=terminals)
-            return
+        else:
+            await self._run_cascade(
+                context=context,
+                target_branch=target_branch,
+                sources=sources,
+                terminals=terminals,
+                since=cascade_started_at,
+                releasing=releasing,
+                renew=renew,
+            )
+        if renew is not None:
+            await renew()
 
+    async def _run_cascade(
+        self,
+        *,
+        context: InfrahubContext,
+        target_branch: str,
+        sources: list[PlannedRegeneration],
+        terminals: list[PlannedRegeneration],
+        since: Timestamp,
+        releasing: str | None,
+        renew: Callable[[], Awaitable[None]] | None,
+    ) -> None:
         generator_failed = False
         for entry in sources:
             for run in entry.requests:
@@ -245,6 +293,8 @@ class PostMergeRegenerationDispatcher:
                 except Exception:
                     generator_failed = True
                     self.log.exception("Post-merge generator run failed")
+                if renew is not None:
+                    await renew()
 
         if generator_failed:
             # A failed source's consuming terminals cannot be selected from its output, so regenerate
@@ -255,7 +305,7 @@ class PostMergeRegenerationDispatcher:
             return
 
         targeted = await self._reselect_from_cascade_output(
-            context=context, target_branch=target_branch, sources=sources, since=cascade_started_at, releasing=releasing
+            context=context, target_branch=target_branch, sources=sources, since=since, releasing=releasing
         )
         if targeted is None:
             # Every terminal was already regenerated wholesale, which covers the merge-diff selection too.
@@ -310,9 +360,13 @@ class PostMergeRegenerationDispatcher:
         self, context: InfrahubContext, target_branch: str, reason: FullRegenerationReason, releasing: str | None
     ) -> None:
         self.log.debug(f"{reason}; regenerating all definitions")
-        held = await self.barrier.hold_widen(branch=target_branch, scope="all", reason=reason, releasing=releasing)
-        await submit_full_regeneration(
-            workflow=self.workflow, context=context, target_branch=target_branch, exclude_repository_ids=held
+        await submit_blanket_regeneration(
+            workflow=self.workflow,
+            barrier=self.barrier,
+            context=context,
+            target_branch=target_branch,
+            reason=reason,
+            releasing=releasing,
         )
 
     async def _submit_full_terminal_regeneration(
@@ -324,7 +378,15 @@ class PostMergeRegenerationDispatcher:
             reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED,
             releasing=releasing,
         )
-        repository_filters = _repository_filters(exclude_repository_ids=held)
+        await self._submit_terminal_regenerations(
+            context=context,
+            target_branch=target_branch,
+            repository_filters=_repository_filters(exclude_repository_ids=held),
+        )
+
+    async def _submit_terminal_regenerations(
+        self, *, context: InfrahubContext, target_branch: str, repository_filters: dict[str, list[str]]
+    ) -> None:
         for regeneration in self.planner.terminal_full_regenerations(target_branch):
             await self.workflow.submit_workflow(
                 workflow=regeneration.workflow,

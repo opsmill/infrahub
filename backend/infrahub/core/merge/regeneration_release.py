@@ -190,8 +190,8 @@ class HeldRegenerationReleaser:
                 generator_runs=generator_runs,
                 artifact_generates=artifact_generates,
                 releasing=repository_id,
+                renew=renew,
             )
-            await renew()
 
         for attribute in held.python_attributes:
             await self._recompute_whole_kind(kind=attribute.kind, attribute_name=attribute.attribute)
