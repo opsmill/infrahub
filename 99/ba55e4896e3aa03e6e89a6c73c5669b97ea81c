@@ -1,0 +1,19 @@
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_f79f241964f1cc::t_6d2e3c10ece02f 32,36,46-48,60,65,69,72,78,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99ba55e4896e3aa03e6e89a6c73c5669b97ea81c",
+  "prompts": {},
+  "sessions": {
+    "s_f79f241964f1cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a94f430-9532-473e-8415-d7b8aa7f8024",
+        "model": "unknown"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

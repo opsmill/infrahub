@@ -1,0 +1,23 @@
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py
+  s_c37e68507bd16d::t_fce9f54bf977cf 1-117
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_c37e68507bd16d::t_6bfe42bae4ff00 8,11,33-34,599-600,673-723
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_c37e68507bd16d::t_4d740cc42807e5 69,74,78,81,87,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64978794b55fc41f983b85f1100ad255d246dad1",
+  "prompts": {},
+  "sessions": {
+    "s_c37e68507bd16d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1ad7ee8-1d0e-4c64-aebc-c3a0119e98fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

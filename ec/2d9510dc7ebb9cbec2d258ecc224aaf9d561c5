@@ -1,0 +1,19 @@
+frontend/app/.betterer.results
+  s_0d946e7ab4dd58::t_ec43767ae842fa 55,113,260,275,285,288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec2d9510dc7ebb9cbec2d258ecc224aaf9d561c5",
+  "prompts": {},
+  "sessions": {
+    "s_0d946e7ab4dd58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e5b54bb-72c0-45ce-9655-bb63548c5cbf",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}

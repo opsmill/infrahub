@@ -1,0 +1,61 @@
+backend/infrahub/pools/number_pool_repository.py
+  s_c47d1ff1b9fc75::t_d551c6ccace688 23,26-27,31-38,70-78,144-150
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_c47d1ff1b9fc75::t_63ea89766cff21 201
+backend/infrahub/pools/number_pool_space.py
+  s_c47d1ff1b9fc75::t_a17eac3e6c2776 15,44-45,47-59
+backend/infrahub/pools/number_pool_shorthand.py
+  s_c47d1ff1b9fc75::t_06fd24105c29ed 13,24,55
+backend/infrahub/graphql/mutations/resource_manager/number_pools/common.py
+  s_c47d1ff1b9fc75::t_7fdef0d0706528 50
+backend/tests/helpers/number_pool.py
+  s_c47d1ff1b9fc75::t_c726c6c9c7d606 74
+  s_c47d1ff1b9fc75::t_52ceaa7e58786d 105
+  s_c47d1ff1b9fc75::t_d2a2c33c03af9b 18-19
+  s_c47d1ff1b9fc75::t_96de7f6a6d8613 97-101
+  s_c47d1ff1b9fc75::t_9b9014413c56ce 112
+backend/tests/unit/pools/helpers.py
+  s_c47d1ff1b9fc75::t_38efdf0c702024 1-24
+backend/infrahub/graphql/queries/resource_manager.py
+  s_c47d1ff1b9fc75::t_93617131ba4f3c 292-299,301-307,310-312
+  s_c47d1ff1b9fc75::t_0155b08043ff7f 34
+  s_c47d1ff1b9fc75::t_f63b323e2868f9 378
+  s_c47d1ff1b9fc75::t_b9dcc78390e857 102
+  s_c47d1ff1b9fc75::t_864acfcf9d1553 23
+  s_c47d1ff1b9fc75::t_98a706fbe2d288 203-207
+  s_c47d1ff1b9fc75::t_8530e2c00c2681 368
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_c47d1ff1b9fc75::t_c8148752b0130b 7,9,22-27,38,49-51,73-75,77-87
+backend/tests/unit/pools/test_number_pool_allocator.py
+  s_c47d1ff1b9fc75::t_e8e1de579e8835 1-103
+  s_c47d1ff1b9fc75::t_4dbb2683622941 104-121
+backend/tests/unit/pools/test_number_pool_space.py
+  s_c47d1ff1b9fc75::t_fb7884af74ebf1 1-4,7-8,11-13,37-83
+backend/tests/component/core/resource_manager/test_number_pool.py
+  s_c47d1ff1b9fc75::t_86e4b68b8913e7 800
+  s_c47d1ff1b9fc75::t_95474eebf067de 134
+  s_c47d1ff1b9fc75::t_f465316c9a6a9a 22
+  s_c47d1ff1b9fc75::t_349e95d2edc0ca 162-165,245-247,269-271,361-363,424-426,633,657,699-701,717-719,741-743,760-762,775-777
+backend/infrahub/pools/number_pool_allocator.py
+  s_c47d1ff1b9fc75::t_744817f392d890 1-51
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_c47d1ff1b9fc75::t_b008187c83242d 297
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_c47d1ff1b9fc75::t_73d47d54533419 175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d6a8a79d888826f17e7c016d1a8f8350f9834fb",
+  "prompts": {},
+  "sessions": {
+    "s_c47d1ff1b9fc75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f01d1d66-69c7-480a-ae64-d43d74f85faf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

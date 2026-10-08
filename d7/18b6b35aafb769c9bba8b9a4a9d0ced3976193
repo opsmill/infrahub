@@ -1,0 +1,27 @@
+dev/specs/ifc-3185-scoped-number-pools/tasks.md
+  s_4eea8be9d72caf::t_575b0c49cb4b3c 614
+  s_4eea8be9d72caf::t_a4a26b10bddd02 862,868
+  s_4eea8be9d72caf::t_1581098507b38c 393
+  s_4eea8be9d72caf::t_cd07ff88cc6fc4 29-30
+  s_4eea8be9d72caf::t_f3fd2ee08a5bb7 786,788-789,791-829,839,857-858,928-929,948,951,953,968-969,976,978,981,1009
+dev/specs/ifc-3185-scoped-number-pools/plan.md
+  s_4eea8be9d72caf::t_98e61b64bc7a35 215-216,520
+dev/specs/ifc-3185-scoped-number-pools/spec.md
+  s_4eea8be9d72caf::t_f6d1737df3586d 104-106,124-125,927
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d718b6b35aafb769c9bba8b9a4a9d0ced3976193",
+  "prompts": {},
+  "sessions": {
+    "s_4eea8be9d72caf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "259deb7f-370f-4979-b65f-9b061d8f121e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

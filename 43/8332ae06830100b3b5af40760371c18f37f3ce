@@ -1,0 +1,37 @@
+backend/infrahub/core/schema/attribute_parameters.py
+  s_c29bc2a8dbf032::t_d61be11fde468f 185-213,215-230,233-236,245-262,265-281,284-298,301
+backend/tests/helpers/schema/snow.py
+  s_c29bc2a8dbf032::t_1157071a2ea140 1-2,5,15-22
+backend/tests/unit/core/schema/test_number_pool_parameters.py
+  s_c29bc2a8dbf032::t_0fcf05ea9f2602 1-189
+backend/infrahub/core/validators/attribute/number_pool.py
+  s_c29bc2a8dbf032::t_fb06af47dd1718 30,32-34
+backend/infrahub/pools/schema_number_pool_synchronizer.py
+  s_c29bc2a8dbf032::t_061e45b45499a2 92-97,99-100
+backend/infrahub/pools/schema_number_pool_upserter.py
+  s_c29bc2a8dbf032::t_04bd0ee65ab211 165-166,175-176
+backend/tests/component/core/resource_manager/test_number_pool_query.py
+  s_c29bc2a8dbf032::t_65fdde02eae674 1,29,44-51,61-68
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_c29bc2a8dbf032::t_d8899b7cc9069e 87-135
+backend/tests/functional/convert_object_type/test_convert_object_type.py
+  s_c29bc2a8dbf032::t_13f4a60db1cdf4 12,224-229
+backend/tests/functional/pools/test_numberpool_branch.py
+  s_c29bc2a8dbf032::t_3e66299cdfcfa5 10,31-38,48-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "438332ae06830100b3b5af40760371c18f37f3ce",
+  "prompts": {},
+  "sessions": {
+    "s_c29bc2a8dbf032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "79ee2d68-517a-4978-9862-3a65b01b3f78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
