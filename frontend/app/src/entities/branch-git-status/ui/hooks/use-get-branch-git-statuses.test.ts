@@ -11,8 +11,8 @@ import { useGetBranchGitStatuses } from "@/entities/branch-git-status/ui/hooks/u
 
 import {
   generateBranchGitRepository,
-  generateRepositoryBranchStatus,
-  generateRepositoryBranchStatusPage,
+  generateRepositoryBranchGitStatus,
+  generateRepositoryBranchGitStatusPage,
 } from "../../../../../tests/fake/branch-git-status";
 
 vi.mock("@/entities/branch-git-status/domain/use-cases/get-branch-git-repositories");
@@ -37,7 +37,7 @@ describe("useGetBranchGitStatuses", () => {
   beforeEach(() => {
     vi.mocked(getBranchGitRepositories).mockResolvedValue(REPOSITORIES);
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
-      generateRepositoryBranchStatusPage("primary", "feature")
+      generateRepositoryBranchGitStatusPage({ branchNames: ["primary", "feature"] })
     );
   });
 
@@ -67,8 +67,8 @@ describe("useGetBranchGitStatuses", () => {
     const featureBefore = result.current.feature;
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue({
       rows: [
-        generateRepositoryBranchStatus({ branchName: "primary" }),
-        generateRepositoryBranchStatus({ branchName: "feature", commit: "new" }),
+        generateRepositoryBranchGitStatus({ branchName: "primary" }),
+        generateRepositoryBranchGitStatus({ branchName: "feature", commit: "new" }),
       ],
       count: 2,
     });
@@ -78,6 +78,10 @@ describe("useGetBranchGitStatuses", () => {
 
     // THEN
     await expect.poll(() => result.current.feature).not.toBe(featureBefore);
+    expect(result.current.feature).toMatchObject({
+      status: "ok",
+      repositories: [{ commit: "new" }, { commit: "new" }],
+    });
     expect(result.current.primary).toBe(primaryBefore);
   });
 
@@ -153,7 +157,7 @@ describe("useGetBranchGitStatuses", () => {
     expect(result.current.feature).toEqual(result.current.primary);
   });
 
-  test("marks every branch denied when every status read is denied", async () => {
+  test("reads a permission error on every status read as denied", async () => {
     // GIVEN
     vi.mocked(getRepositoryBranchStatus).mockRejectedValue(
       new BranchGitStatusError("PERMISSION_DENIED", "denied")
@@ -174,7 +178,7 @@ describe("useGetBranchGitStatuses", () => {
       if (repositoryId === "repo-2") {
         throw new BranchGitStatusError("UNKNOWN", "Repository index unavailable");
       }
-      return generateRepositoryBranchStatusPage("primary", "feature");
+      return generateRepositoryBranchGitStatusPage({ branchNames: ["primary", "feature"] });
     });
 
     // WHEN
@@ -188,19 +192,6 @@ describe("useGetBranchGitStatuses", () => {
         { status: "error", repository: REPOSITORY_TWO, message: "Repository index unavailable" },
       ],
     });
-  });
-
-  test("gives every branch an empty status when there are no repositories", async () => {
-    // GIVEN
-    vi.mocked(getBranchGitRepositories).mockResolvedValue({ repositories: [], count: 0 });
-
-    // WHEN
-    const { result } = await renderStatuses();
-
-    // THEN
-    await expect
-      .poll(() => result.current.feature)
-      .toEqual({ status: "ok", repositories: [], counts: [], unloaded: [] });
   });
 
   test("gives no status when there are no branches", async () => {

@@ -1,6 +1,6 @@
 import { getRepositoryBranchStatusFromApi } from "@/entities/branch-git-status/api/get-repository-branch-status-from-api";
-import { toRepositoryBranchStatusPage } from "@/entities/branch-git-status/api/repository-branch-status.mappers";
-import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
+import { toRepositoryBranchGitStatusPage } from "@/entities/branch-git-status/api/repository-branch-status.mappers";
+import type { RepositoryBranchGitStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-git-status";
 import { toBranchGitStatusError } from "@/entities/branch-git-status/domain/rules/to-branch-git-status-error";
 
 export interface GetRepositoryBranchStatusParams {
@@ -8,9 +8,11 @@ export interface GetRepositoryBranchStatusParams {
   limit: number;
 }
 
+export type GetRepositoryBranchStatusResult = RepositoryBranchGitStatusPage;
+
 export type GetRepositoryBranchStatus = (
   params: GetRepositoryBranchStatusParams
-) => Promise<RepositoryBranchStatusPage>;
+) => Promise<GetRepositoryBranchStatusResult>;
 
 export const getRepositoryBranchStatus: GetRepositoryBranchStatus = async ({
   repositoryId,
@@ -22,5 +24,5 @@ export const getRepositoryBranchStatus: GetRepositoryBranchStatus = async ({
     }
   );
 
-  return toRepositoryBranchStatusPage(connection);
+  return toRepositoryBranchGitStatusPage(connection);
 };

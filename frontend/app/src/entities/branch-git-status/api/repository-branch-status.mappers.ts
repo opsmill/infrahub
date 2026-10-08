@@ -1,11 +1,11 @@
 import type { RepositoryBranchStatusConnection } from "@/entities/branch-git-status/api/get-repository-branch-status-from-api";
-import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
-import type { BranchRepositorySyncStatus } from "@/entities/repository/domain/model/branch-repository";
+import type { BranchGitSyncStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
+import type { RepositoryBranchGitStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-git-status";
 
 type SyncStatusWire = RepositoryBranchStatusConnection["edges"][number]["node"]["sync_status"];
 
 // A dropdown carrying no value is not a selection.
-function toSyncStatus(syncStatus: SyncStatusWire): BranchRepositorySyncStatus | null {
+function toSyncStatus(syncStatus: SyncStatusWire): BranchGitSyncStatus | null {
   if (!syncStatus?.value) return null;
   return {
     value: syncStatus.value,
@@ -15,9 +15,9 @@ function toSyncStatus(syncStatus: SyncStatusWire): BranchRepositorySyncStatus | 
   };
 }
 
-export function toRepositoryBranchStatusPage(
+export function toRepositoryBranchGitStatusPage(
   connection: RepositoryBranchStatusConnection
-): RepositoryBranchStatusPage {
+): RepositoryBranchGitStatusPage {
   return {
     rows: connection.edges.map(({ node }) => ({
       branchName: node.name.value,

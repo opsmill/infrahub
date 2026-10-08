@@ -7,13 +7,13 @@ import {
   formatFailedRepositoryReasons,
   formatRepositoryState,
   formatSyncStatusCounts,
+  getRepositoryNoun,
 } from "@/entities/branch-git-status/domain/rules/format-branch-git-status";
 
 const repository = (name: string): BranchGitRepository => ({
   id: `repo-${name}`,
   name,
   kind: "CoreRepository",
-  isReadOnly: false,
 });
 
 const state = (overrides: Partial<BranchRepositoryState> = {}): BranchRepositoryState => ({
@@ -27,7 +27,7 @@ describe("formatRepositoryState", () => {
   it("joins the label, the 7-character commit and read-only", () => {
     // GIVEN
     const readOnly = state({
-      repository: { id: "r", name: "r", kind: "CoreReadOnlyRepository", isReadOnly: true },
+      repository: { id: "r", name: "r", kind: "CoreReadOnlyRepository" },
     });
 
     // WHEN
@@ -69,6 +69,16 @@ describe("formatSyncStatusCounts", () => {
     ]);
 
     expect(text).toBe("Import Error: 1 · In Sync: 2");
+  });
+});
+
+describe("getRepositoryNoun", () => {
+  it.each([
+    { count: 0, noun: "repositories" },
+    { count: 1, noun: "repository" },
+    { count: 2, noun: "repositories" },
+  ])("reads $noun for $count", ({ count, noun }) => {
+    expect(getRepositoryNoun(count)).toBe(noun);
   });
 });
 

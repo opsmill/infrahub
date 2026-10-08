@@ -4,7 +4,6 @@ export interface BranchGitRepository {
   id: string;
   name: string;
   kind: BranchRepositoryKind;
-  isReadOnly: boolean;
 }
 
 export interface BranchGitRepositoryPage {

@@ -11,7 +11,7 @@ export const useRebaseBranch = () => {
   return useMutation({
     mutationFn: rebaseBranch,
     onSuccess: () => {
-      // A rebase rewrites branch history and repository commits, and enqueues a background task.
+      // The rebase can run as a background task, so this refresh shows only its start.
       queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all });

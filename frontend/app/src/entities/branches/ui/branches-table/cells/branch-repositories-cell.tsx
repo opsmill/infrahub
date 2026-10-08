@@ -12,6 +12,7 @@ import {
   formatFailedRepositoryCount,
   formatFailedRepositoryReasons,
   formatRepositoryState,
+  getRepositoryNoun,
 } from "@/entities/branch-git-status/domain/rules/format-branch-git-status";
 import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { getBranchDetailsUrl, getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
@@ -29,12 +30,16 @@ export function BranchRepositoriesCell({ branch }: BranchRepositoriesCellProps) 
   );
 }
 
-function RepositoriesLoading() {
+interface RepositoriesLoadingProps {
+  label?: string;
+}
+
+function RepositoriesLoading({ label = "Loading repositories" }: RepositoriesLoadingProps) {
   // Every row loads at once, so a live status region per row would announce the same thing many times.
   return (
     <>
       <Spinner aria-hidden />
-      <span className="sr-only">Loading repositories</span>
+      <span className="sr-only">{label}</span>
     </>
   );
 }
@@ -82,12 +87,11 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
   const failed = gitStatus.unloaded.filter(
     (repository): repository is FailedRepository => repository.status !== "pending"
   );
+  const isLoadingMore = gitStatus.unloaded.some(({ status }) => status === "pending");
   const [first, ...others] = gitStatus.repositories;
 
   if (!first) {
-    if (gitStatus.unloaded.some(({ status }) => status === "pending")) {
-      return <RepositoriesLoading />;
-    }
+    if (isLoadingMore) return <RepositoriesLoading />;
     if (failed.length > 0) return <FailedRepositoriesNotice failed={failed} />;
     return (
       <span className="text-foreground-muted">
@@ -98,7 +102,7 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
 
   const { repository } = first;
   const href = getObjectDetailsUrl(repository.kind, repository.id, [getBranchQsp(branch.name)]);
-  const moreLabel = `+${others.length} more ${others.length === 1 ? "repository" : "repositories"} on ${branch.name}`;
+  const moreLabel = `+${others.length} more ${getRepositoryNoun(others.length)} on ${branch.name}`;
 
   return (
     <Col className="items-start gap-1">
@@ -119,6 +123,8 @@ function BranchRepositoriesCellContent({ branch }: BranchRepositoriesCellProps) 
             +{others.length} more
           </Link>
         )}
+
+        {isLoadingMore && <RepositoriesLoading label="Loading more repositories" />}
       </Row>
 
       {failed.length > 0 && <FailedRepositoriesNotice failed={failed} />}

@@ -7,6 +7,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchDetail } from "@/entities/branches/domain/model/branch";
+import { useRefreshBranchGitStatusOnTaskEnd } from "@/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end";
 import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/domain/model/task";
@@ -18,6 +19,7 @@ type BranchRebaseButtonProps = {
 export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   const { isAuthenticated } = useAuth();
   const rebaseBranchMutation = useRebaseBranch();
+  useRefreshBranchGitStatusOnTaskEnd(rebaseBranchMutation.data?.relatedTaskId ?? null);
 
   const { isPending, data, refetch } = useGetBranchActionState({
     branchName: branch.name,

@@ -17,7 +17,7 @@ vi.mock("@/entities/branches/domain/use-cases/create-branch");
 const wrapper = ({ children }: { children: React.ReactNode }) =>
   React.createElement(QueryClientProvider, { client: queryClient }, children);
 
-const branchInput = { name: "feature-1" } as Parameters<typeof createBranch>[0];
+const branchInput = { name: "feature-1" };
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe("useCreateBranchMutation", () => {
-  test("refetches branches and invalidates repositories once a branch is created", async () => {
+  test("refetches branches and invalidates branch Git status once a branch is created", async () => {
     // GIVEN
     vi.mocked(createBranch).mockResolvedValue(generateBranch({ name: "feature-1" }));
     const refetchSpy = vi.spyOn(queryClient, "refetchQueries");
@@ -44,9 +44,7 @@ describe("useCreateBranchMutation", () => {
 
   test("touches no cache when the use case creates nothing", async () => {
     // GIVEN
-    vi.mocked(createBranch).mockResolvedValue(
-      undefined as unknown as Awaited<ReturnType<typeof createBranch>>
-    );
+    vi.mocked(createBranch).mockResolvedValue(null);
     const refetchSpy = vi.spyOn(queryClient, "refetchQueries");
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     const { result } = await renderHook(() => useCreateBranchMutation(), { wrapper });

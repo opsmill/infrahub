@@ -16,8 +16,8 @@ describe("toBranchGitRepositoryPage", () => {
     // THEN
     expect(page).toEqual({
       repositories: [
-        { id: "r1", name: "configs", kind: "CoreRepository", isReadOnly: false },
-        { id: "r2", name: "golden", kind: "CoreReadOnlyRepository", isReadOnly: true },
+        { id: "r1", name: "configs", kind: "CoreRepository" },
+        { id: "r2", name: "golden", kind: "CoreReadOnlyRepository" },
       ],
       count: 12,
     });

@@ -142,7 +142,7 @@ describe("BranchRepositoriesCell", () => {
     }
   );
 
-  test("shows the loaded repositories while another one is still loading", async () => {
+  test("shows the loaded repositories and a loading indicator while another one is still loading", async () => {
     // WHEN
     const component = await renderCell(
       okStatus(
@@ -153,7 +153,16 @@ describe("BranchRepositoriesCell", () => {
 
     // THEN
     await expect.element(component.getByRole("link", { name: "fast" })).toBeVisible();
-    expect(component.getByText("Loading repositories").query()).toBeNull();
+    await expect.element(component.getByText("Loading more repositories")).toBeInTheDocument();
+  });
+
+  test("drops the loading indicator once every repository has loaded", async () => {
+    // WHEN
+    const component = await renderCell(okStatus([repositoryState("fast")], []));
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "fast" })).toBeVisible();
+    expect(component.getByText("Loading more repositories").query()).toBeNull();
   });
 
   test.each([

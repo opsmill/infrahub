@@ -1,20 +1,22 @@
 import { describe, expect, it } from "vitest";
 
-import type { BranchGitStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
+import type {
+  BranchGitStatus,
+  BranchGitSyncStatus,
+} from "@/entities/branch-git-status/domain/model/branch-git-status";
 import {
   type RepositoryListFetch,
   type RepositoryStatusFetch,
   summarizeBranchGitStatuses,
 } from "@/entities/branch-git-status/domain/rules/summarize-branch-git-statuses";
-import type { BranchRepositorySyncStatus } from "@/entities/repository/domain/model/branch-repository";
 
 import {
   generateBranchGitRepository,
-  generateRepositoryBranchStatus,
+  generateRepositoryBranchGitStatus,
 } from "../../../../../tests/fake/branch-git-status";
 import { SYNC_STATUS } from "../../../../../tests/fake/branch-repositories";
 
-const UNKNOWN: BranchRepositorySyncStatus = {
+const UNKNOWN: BranchGitSyncStatus = {
   value: "unknown",
   label: "Unknown",
   color: "#9ca3af",
@@ -27,7 +29,7 @@ const row = (
   branchName: string,
   syncStatus = SYNC_STATUS.inSync,
   commit = `${branchName}-commit`
-) => generateRepositoryBranchStatus({ branchName, syncStatus, commit });
+) => generateRepositoryBranchGitStatus({ branchName, syncStatus, commit });
 
 const loaded = (
   name: string,
@@ -158,7 +160,7 @@ describe("summarizeBranchGitStatuses", () => {
         loaded("a", [row("main")]),
         loaded("b", [row("main", SYNC_STATUS.importError)]),
         loaded("c", [row("main")]),
-        loaded("d", [generateRepositoryBranchStatus({ branchName: "main", syncStatus: null })]),
+        loaded("d", [generateRepositoryBranchGitStatus({ branchName: "main", syncStatus: null })]),
         loaded("e", [row("main", SYNC_STATUS.unknown)])
       )
     );
@@ -176,7 +178,7 @@ describe("summarizeBranchGitStatuses", () => {
     const statuses = summarize(
       ["main"],
       listOf(
-        loaded("a", [generateRepositoryBranchStatus({ branchName: "main", syncStatus: null })])
+        loaded("a", [generateRepositoryBranchGitStatus({ branchName: "main", syncStatus: null })])
       )
     );
 

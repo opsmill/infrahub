@@ -24,14 +24,12 @@ afterEach(() => {
 describe("useMergeBranch", () => {
   test("invalidates branches, tasks and branch Git status once the merge succeeds", async () => {
     // GIVEN
-    vi.mocked(mergeBranch).mockResolvedValue({} as Awaited<ReturnType<typeof mergeBranch>>);
+    vi.mocked(mergeBranch).mockResolvedValue({ ok: true, taskId: "task-1" });
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     const { result } = await renderHook(() => useMergeBranch(), { wrapper });
 
     // WHEN
-    await result.current.mutateAsync({ branchName: "feature-1" } as Parameters<
-      typeof mergeBranch
-    >[0]);
+    await result.current.mutateAsync({ branchName: "feature-1" });
 
     // THEN
     await expect

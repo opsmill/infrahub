@@ -3,6 +3,7 @@ import type { GetBranchTasksParams } from "@/entities/tasks/domain/use-cases/get
 import type { GetTaskDetailsParams } from "@/entities/tasks/domain/use-cases/get-task-details";
 import type { GetTaskDetailsTitleParams } from "@/entities/tasks/domain/use-cases/get-task-details-title";
 import type { GetTaskListParams } from "@/entities/tasks/domain/use-cases/get-task-list";
+import type { IsTaskFinishedParams } from "@/entities/tasks/domain/use-cases/is-task-finished";
 
 export const tasksQueryKeys = {
   all: ["tasks"] as const,
@@ -18,4 +19,5 @@ export const tasksQueryKeys = {
   detailsTitle: (params: GetTaskDetailsTitleParams) =>
     [...tasksQueryKeys.all, "details-title", params] as const,
   check: (params?: CheckTaskDetailsParams) => [...tasksQueryKeys.all, "check", params] as const,
+  finished: (params: IsTaskFinishedParams) => [...tasksQueryKeys.all, "finished", params] as const,
 };

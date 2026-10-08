@@ -14,8 +14,8 @@ import { render } from "../../../../../tests/components/render";
 import { generateBranch } from "../../../../../tests/fake/branch";
 import {
   generateBranchGitRepository,
-  generateRepositoryBranchStatusPage,
-  generateRepositoryBranchStatusWire,
+  generateRepositoryBranchGitStatusPage,
+  generateRepositoryBranchGitStatusWire,
 } from "../../../../../tests/fake/branch-git-status";
 
 vi.mock("@/entities/authentication/ui/auth-provider");
@@ -112,7 +112,7 @@ describe("BranchesTable", () => {
     mockBranchPages([zulu, main, alpha]);
     vi.mocked(getBranchGitRepositories).mockResolvedValue(REPOSITORIES);
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
-      generateRepositoryBranchStatusPage("main", "alpha", "zulu")
+      generateRepositoryBranchGitStatusPage({ branchNames: ["main", "alpha", "zulu"] })
     );
   });
 
@@ -156,7 +156,7 @@ describe("BranchesTable", () => {
   test("loading a second page of branches issues no new status request", async () => {
     // GIVEN
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
-      generateRepositoryBranchStatusPage("main", "alpha", "zulu", "yankee")
+      generateRepositoryBranchGitStatusPage({ branchNames: ["main", "alpha", "zulu", "yankee"] })
     );
     const component = await render(<BranchesTable />);
     await expect
@@ -200,7 +200,7 @@ describe("BranchesTable", () => {
             data: {
               InfrahubRepositoryBranchStatus: {
                 count: 1,
-                edges: [{ node: generateRepositoryBranchStatusWire("main") }],
+                edges: [{ node: generateRepositoryBranchGitStatusWire({ branchName: "main" }) }],
               },
             },
           }

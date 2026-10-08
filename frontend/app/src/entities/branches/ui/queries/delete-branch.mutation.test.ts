@@ -21,11 +21,9 @@ afterEach(() => {
 });
 
 describe("useDeleteBranchMutation", () => {
-  test("invalidates branches and repository status once the deletion succeeds", async () => {
+  test("invalidates branches and branch Git status once the deletion succeeds", async () => {
     // GIVEN
-    vi.mocked(deleteBranch).mockResolvedValue(
-      "feature-1" as Awaited<ReturnType<typeof deleteBranch>>
-    );
+    vi.mocked(deleteBranch).mockResolvedValue("feature-1");
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     const { result } = await renderHook(() => useDeleteBranchMutation(), { wrapper });
 

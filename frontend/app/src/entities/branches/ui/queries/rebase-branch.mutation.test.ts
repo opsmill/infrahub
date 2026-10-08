@@ -29,9 +29,7 @@ describe("useRebaseBranch", () => {
     const { result } = await renderHook(() => useRebaseBranch(), { wrapper });
 
     // WHEN
-    await result.current.mutateAsync({ branchName: "feature-1" } as Parameters<
-      typeof rebaseBranch
-    >[0]);
+    await result.current.mutateAsync({ branchName: "feature-1" });
 
     // THEN
     await expect

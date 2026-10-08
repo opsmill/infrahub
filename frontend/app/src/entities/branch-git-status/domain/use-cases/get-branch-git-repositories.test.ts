@@ -27,7 +27,7 @@ describe("getBranchGitRepositories", () => {
     // THEN
     expect(getBranchGitRepositoriesFromApi).toHaveBeenCalledWith(PARAMS);
     expect(page).toEqual({
-      repositories: [{ id: "r1", name: "configs", kind: "CoreRepository", isReadOnly: false }],
+      repositories: [{ id: "r1", name: "configs", kind: "CoreRepository" }],
       count: 1,
     });
   });

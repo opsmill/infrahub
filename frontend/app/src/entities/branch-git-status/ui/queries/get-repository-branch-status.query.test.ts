@@ -1,24 +1,24 @@
 import { describe, expect, test } from "vitest";
 
 import { BranchGitStatusError } from "@/entities/branch-git-status/domain/model/branch-git-status";
-import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
+import type { RepositoryBranchGitStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-git-status";
 import { getRepositoryBranchStatusRefetchInterval } from "@/entities/branch-git-status/ui/queries/get-repository-branch-status.query";
 
 import {
-  generateRepositoryBranchStatus,
-  generateRepositoryBranchStatusPage,
+  generateRepositoryBranchGitStatus,
+  generateRepositoryBranchGitStatusPage,
 } from "../../../../../tests/fake/branch-git-status";
 import { SYNC_STATUS } from "../../../../../tests/fake/branch-repositories";
 
-const refetchIntervalFor = (data: RepositoryBranchStatusPage | undefined, error?: Error) =>
+const refetchIntervalFor = (data: RepositoryBranchGitStatusPage | undefined, error?: Error) =>
   getRepositoryBranchStatusRefetchInterval({
     state: { data, status: error ? "error" : "success", error: error ?? null },
   });
 
-const syncingPage = (): RepositoryBranchStatusPage => ({
+const syncingPage = (): RepositoryBranchGitStatusPage => ({
   rows: [
-    generateRepositoryBranchStatus({ branchName: "main" }),
-    generateRepositoryBranchStatus({ branchName: "feature", syncStatus: SYNC_STATUS.syncing }),
+    generateRepositoryBranchGitStatus({ branchName: "main" }),
+    generateRepositoryBranchGitStatus({ branchName: "feature", syncStatus: SYNC_STATUS.syncing }),
   ],
   count: 2,
 });
@@ -26,7 +26,11 @@ const syncingPage = (): RepositoryBranchStatusPage => ({
 describe("getRepositoryBranchStatusRefetchInterval", () => {
   test("polls every 10 seconds only while a row is syncing", () => {
     expect(refetchIntervalFor(syncingPage())).toBe(10_000);
-    expect(refetchIntervalFor(generateRepositoryBranchStatusPage("main", "feature"))).toBe(false);
+    expect(
+      refetchIntervalFor(
+        generateRepositoryBranchGitStatusPage({ branchNames: ["main", "feature"] })
+      )
+    ).toBe(false);
     expect(refetchIntervalFor(undefined)).toBe(false);
   });
 

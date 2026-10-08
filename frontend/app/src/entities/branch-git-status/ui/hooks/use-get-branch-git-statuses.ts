@@ -5,7 +5,7 @@ import type {
   BranchGitRepositoryPage,
 } from "@/entities/branch-git-status/domain/model/branch-git-repository";
 import type { BranchGitStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
-import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
+import type { RepositoryBranchGitStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-git-status";
 import { getUnknownSyncStatus } from "@/entities/branch-git-status/domain/rules/get-unknown-sync-status";
 import {
   type RepositoryListFetch,
@@ -43,7 +43,7 @@ function getRepositoryListFailure(
 
 function toRepositoryStatusFetch(
   repository: BranchGitRepository,
-  result: UseQueryResult<RepositoryBranchStatusPage> | undefined
+  result: UseQueryResult<RepositoryBranchGitStatusPage> | undefined
 ): RepositoryStatusFetch {
   if (result?.data) {
     return { status: "ok", repository, rows: result.data.rows, count: result.data.count };

@@ -11,7 +11,7 @@ export function useMergeBranch() {
   return useMutation({
     mutationFn: mergeBranch,
     onSuccess: () => {
-      // A merge changes branch status and repository commits, and enqueues a background task.
+      // The merge runs as a background task, so this refresh shows only its start.
       queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all });

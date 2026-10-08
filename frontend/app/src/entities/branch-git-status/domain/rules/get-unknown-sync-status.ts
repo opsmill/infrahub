@@ -1,13 +1,13 @@
 import type { components } from "@/shared/api/rest/types.generated";
 
-import type { BranchRepositorySyncStatus } from "@/entities/repository/domain/model/branch-repository";
+import type { BranchGitSyncStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import { REPOSITORY_SYNC_STATUS_UNKNOWN } from "@/entities/repository/domain/model/repository";
 
 type DropdownChoice = components["schemas"]["DropdownChoiceRead"];
 
 export function getUnknownSyncStatus(
   choices: readonly DropdownChoice[] | null | undefined
-): BranchRepositorySyncStatus {
+): BranchGitSyncStatus {
   const choice = choices?.find(({ name }) => name === REPOSITORY_SYNC_STATUS_UNKNOWN);
 
   return {

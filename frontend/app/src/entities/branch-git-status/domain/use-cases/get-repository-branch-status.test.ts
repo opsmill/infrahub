@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getRepositoryBranchStatusFromApi } from "@/entities/branch-git-status/api/get-repository-branch-status-from-api";
 import { getRepositoryBranchStatus } from "@/entities/branch-git-status/domain/use-cases/get-repository-branch-status";
 
-import { generateRepositoryBranchStatusWire } from "../../../../../tests/fake/branch-git-status";
+import { generateRepositoryBranchGitStatusWire } from "../../../../../tests/fake/branch-git-status";
 
 vi.mock("@/entities/branch-git-status/api/get-repository-branch-status-from-api");
 
@@ -17,8 +17,8 @@ describe("getRepositoryBranchStatus", () => {
     vi.mocked(getRepositoryBranchStatusFromApi).mockResolvedValue({
       count: 2,
       edges: [
-        { node: generateRepositoryBranchStatusWire("main") },
-        { node: generateRepositoryBranchStatusWire("feature") },
+        { node: generateRepositoryBranchGitStatusWire({ branchName: "main" }) },
+        { node: generateRepositoryBranchGitStatusWire({ branchName: "feature" }) },
       ],
     });
 

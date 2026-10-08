@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { toRepositoryBranchStatusPage } from "@/entities/branch-git-status/api/repository-branch-status.mappers";
+import { toRepositoryBranchGitStatusPage } from "@/entities/branch-git-status/api/repository-branch-status.mappers";
 
 import { SYNC_STATUS } from "../../../../tests/fake/branch-repositories";
 
-describe("toRepositoryBranchStatusPage", () => {
+describe("toRepositoryBranchGitStatusPage", () => {
   it("maps each row's branch, commit and sync status, and keeps the server's count", () => {
     // WHEN
-    const page = toRepositoryBranchStatusPage({
+    const page = toRepositoryBranchGitStatusPage({
       count: 501,
       edges: [
         {
@@ -31,7 +31,7 @@ describe("toRepositoryBranchStatusPage", () => {
     { name: "no sync status", sync_status: null },
     { name: "a sync status with no value", sync_status: { ...SYNC_STATUS.inSync, value: null } },
   ])("reads $name as no status, and a missing commit as none", ({ sync_status }) => {
-    const page = toRepositoryBranchStatusPage({
+    const page = toRepositoryBranchGitStatusPage({
       count: 1,
       edges: [{ node: { name: { value: "main" }, commit: null, sync_status } }],
     });

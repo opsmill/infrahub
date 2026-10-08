@@ -3,7 +3,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import BranchesList from "@/entities/branches/ui/branches-list";
+import { buildGitStatusRefreshNavigationState } from "@/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
+import { isTaskFinished } from "@/entities/tasks/domain/use-cases/is-task-finished";
 
 import { render } from "../../../../tests/components/render";
 
@@ -19,6 +21,8 @@ vi.mock("@/entities/nodes/filters/ui/hooks/use-filters", () => ({
   useFilters: () => [[], vi.fn()],
 }));
 
+vi.mock("@/entities/tasks/domain/use-cases/is-task-finished");
+
 // The reload control is a clickable div with no role or accessible name.
 const findReloadControl = (container: HTMLElement) =>
   container.querySelector<HTMLElement>(':has(> iconify-icon[icon="mdi:reload"])');
@@ -29,7 +33,10 @@ function CaptureQueryClient({ onClient }: { onClient: (client: QueryClient) => v
 }
 
 afterEach(() => {
+  window.history.replaceState(null, "");
+  vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("BranchesList", () => {
@@ -91,5 +98,42 @@ describe("BranchesList", () => {
     // THEN
     await expect.poll(() => client?.isFetching({ queryKey: branchGitStatusQueryKeys.all })).toBe(1);
     expect(findReloadControl(container)?.className).not.toContain("animate-spin");
+  });
+
+  test("refreshes the branch Git status once when the task it was opened for ends", async () => {
+    // GIVEN the list is opened after a merge that ends on the second check
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.mocked(isTaskFinished).mockResolvedValueOnce(false).mockResolvedValue(true);
+    const invalidateSpy = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    const gitStatusInvalidations = () =>
+      invalidateSpy.mock.calls.filter(
+        ([filters]) => filters?.queryKey === branchGitStatusQueryKeys.all
+      ).length;
+    window.history.replaceState(
+      { usr: buildGitStatusRefreshNavigationState("task-1"), key: "merge", idx: 0 },
+      ""
+    );
+
+    // WHEN the merge is still running
+    await render(<BranchesList />);
+    await expect.poll(() => vi.mocked(isTaskFinished).mock.calls.length).toBe(1);
+
+    // THEN the Git status is left alone
+    expect(isTaskFinished).toHaveBeenCalledWith({ taskId: "task-1" });
+    expect(gitStatusInvalidations()).toBe(0);
+
+    // WHEN the next check finds the merge ended
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // THEN the Git status is refreshed once
+    await expect.poll(() => gitStatusInvalidations()).toBe(1);
+  });
+
+  test("checks no task when opened without one", async () => {
+    // WHEN
+    await render(<BranchesList />);
+
+    // THEN
+    expect(isTaskFinished).not.toHaveBeenCalled();
   });
 });

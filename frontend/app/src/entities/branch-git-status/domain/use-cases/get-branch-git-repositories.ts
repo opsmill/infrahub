@@ -1,16 +1,18 @@
 import { toBranchGitRepositoryPage } from "@/entities/branch-git-status/api/branch-git-repository.mappers";
-import { getBranchGitRepositoriesFromApi } from "@/entities/branch-git-status/api/get-branch-git-repositories-from-api";
+import {
+  type GetBranchGitRepositoriesFromApiParams,
+  getBranchGitRepositoriesFromApi,
+} from "@/entities/branch-git-status/api/get-branch-git-repositories-from-api";
 import type { BranchGitRepositoryPage } from "@/entities/branch-git-status/domain/model/branch-git-repository";
 import { toBranchGitStatusError } from "@/entities/branch-git-status/domain/rules/to-branch-git-status-error";
 
-export interface GetBranchGitRepositoriesParams {
-  limit: number;
-  offset: number;
-}
+export type GetBranchGitRepositoriesParams = GetBranchGitRepositoriesFromApiParams;
+
+export type GetBranchGitRepositoriesResult = BranchGitRepositoryPage;
 
 export type GetBranchGitRepositories = (
   params: GetBranchGitRepositoriesParams
-) => Promise<BranchGitRepositoryPage>;
+) => Promise<GetBranchGitRepositoriesResult>;
 
 export const getBranchGitRepositories: GetBranchGitRepositories = async (params) => {
   const connection = await getBranchGitRepositoriesFromApi(params).catch((error: unknown) => {

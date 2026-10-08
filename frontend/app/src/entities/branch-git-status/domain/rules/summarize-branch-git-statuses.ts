@@ -1,18 +1,18 @@
 import type { BranchGitRepository } from "@/entities/branch-git-status/domain/model/branch-git-repository";
 import type {
   BranchGitStatus,
+  BranchGitSyncStatus,
   BranchRepositoryState,
   SyncStatusCount,
   UnloadedRepository,
 } from "@/entities/branch-git-status/domain/model/branch-git-status";
-import type { RepositoryBranchStatus } from "@/entities/branch-git-status/domain/model/repository-branch-status";
+import type { RepositoryBranchGitStatus } from "@/entities/branch-git-status/domain/model/repository-branch-git-status";
 import { compareWorstSyncStatusFirst } from "@/entities/branch-git-status/domain/rules/sync-status-severity";
-import type { BranchRepositorySyncStatus } from "@/entities/repository/domain/model/branch-repository";
 
 interface LoadedRepositoryStatus {
   status: "ok";
   repository: BranchGitRepository;
-  rows: RepositoryBranchStatus[];
+  rows: RepositoryBranchGitStatus[];
   count: number;
 }
 
@@ -31,7 +31,7 @@ function compareStates(a: BranchRepositoryState, b: BranchRepositoryState): numb
 
 function groupStatesByBranch(
   statuses: readonly LoadedRepositoryStatus[],
-  unknownSyncStatus: BranchRepositorySyncStatus
+  unknownSyncStatus: BranchGitSyncStatus
 ) {
   const statesByBranch = new Map<string, BranchRepositoryState[]>();
 
@@ -92,7 +92,7 @@ function summarizeBranch(
 export function summarizeBranchGitStatuses(
   branchNames: readonly string[],
   repositoryList: RepositoryListFetch,
-  unknownSyncStatus: BranchRepositorySyncStatus
+  unknownSyncStatus: BranchGitSyncStatus
 ): Record<string, BranchGitStatus> {
   const forEveryBranch = (status: BranchGitStatus) =>
     Object.fromEntries(branchNames.map((branchName) => [branchName, status]));

@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import React from "react";
+import { useLocation } from "react-router";
 
 import { Col, Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
@@ -8,6 +9,10 @@ import { useTitle } from "@/shared/hooks/useTitle";
 import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { BRANCH_FILTER_DEFINITIONS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
+import {
+  getGitStatusRefreshTaskId,
+  useRefreshBranchGitStatusOnTaskEnd,
+} from "@/entities/branches/ui/hooks/use-refresh-branch-git-status-on-task-end";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches-count.query";
 import { ActiveFilterTags } from "@/entities/nodes/filters/ui/active-filter-tags";
@@ -69,6 +74,8 @@ function BranchesListContent() {
 
 export default function BranchesList() {
   useTitle("Branches list");
+  const location = useLocation();
+  useRefreshBranchGitStatusOnTaskEnd(getGitStatusRefreshTaskId(location.state));
 
   return (
     <Content.Card>

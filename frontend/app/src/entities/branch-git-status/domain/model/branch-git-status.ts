@@ -1,10 +1,16 @@
 import type { BranchGitRepository } from "@/entities/branch-git-status/domain/model/branch-git-repository";
-import type { BranchRepositorySyncStatus } from "@/entities/repository/domain/model/branch-repository";
+
+export interface BranchGitSyncStatus {
+  value: string | null;
+  label: string | null;
+  color: string | null;
+  description: string | null;
+}
 
 export interface BranchRepositoryState {
   repository: BranchGitRepository;
   commit: string | null;
-  syncStatus: BranchRepositorySyncStatus;
+  syncStatus: BranchGitSyncStatus;
 }
 
 export interface SyncStatusCount {
