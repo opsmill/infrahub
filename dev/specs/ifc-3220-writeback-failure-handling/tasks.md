@@ -268,9 +268,9 @@ SC-002, SC-007.
 
 ### Enqueue in the branch merge flow, and the delivery in `merge_git_repository`
 
-- [ ] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
+- [X] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
       `GitRepositoryMerge.pending_merge_enqueued: bool = False` to `backend/infrahub/git/models.py`.
-- [ ] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
+- [X] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
       repository, on a branch that syncs with Git, whose source commit carries content (R3: compare
       with the default branch's commit at `branched_from` and with the recorded commit). Guard each
@@ -285,7 +285,7 @@ SC-002, SC-007.
       `delivery_run_tags` to `backend/infrahub/git/writeback/runs.py`. Pass
       `tags=delivery_run_tags(repository_id)` when you submit the merge of an `active` repository,
       so a run that waits in the queue carries the node tag and the delivery marker (R20, R21).
-- [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
+- [X] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
       repository, when `model.pending_merge_enqueued` is `False`, pass `model.pending_merge` as the
       `entry` of `deliver_pending_merges`, or build it from the source branch's graph commit when it
       is `None`, after the content test of R3. Step 0 of `deliver` enqueues it with `widen=True`, so
@@ -298,7 +298,7 @@ SC-002, SC-007.
       locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag
       the run with the repository node and the default branch, log one line per transition, and set
       the run state from the outcome (R21).
-- [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
+- [X] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
       `entry` parameter of contracts section 5, and no retry yet. Phase 6 adds the retries. Until
       then, a failed enqueue of step 0 fails the run at once, with the error-level log line.
 

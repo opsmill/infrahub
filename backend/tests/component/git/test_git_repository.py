@@ -2,6 +2,7 @@ import json
 import re
 import shutil
 from collections.abc import Generator
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -48,6 +49,7 @@ from infrahub.git.repository import ImportStep
 from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer, SyncOutcome
 from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
+from infrahub.git.writeback.models import PendingMerge
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
@@ -608,10 +610,11 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
 ) -> None:
     """The merge flow resolves the trunk itself now that the merge model no longer carries one.
 
-    Asserts the remote trunk ref advanced, and that the node was read on the destination branch.
+    Asserts the remote trunk ref holds the merged commit, and that the node was read on the destination branch.
     """
     upstream_path = str(git_upstream_repo_01["path"])
     Repo(upstream_path).git.branch("develop", "main")
+    develop_before = Repo(upstream_path).commit("develop").hexsha
 
     repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo_node.new(db=db, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="develop")
@@ -622,6 +625,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         name=str(git_upstream_repo_01["name"]),
         location=upstream_path,
         default_branch="develop",
+        commit=develop_before,
     )
     repo = await clone_repository(
         id=repo_node.id,
@@ -631,6 +635,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         client=client,
     )
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    merged_commit = Repo(upstream_path).commit(branch01.name).hexsha
 
     model = GitRepositoryMerge(
         repository_id=repo_node.id,
@@ -640,18 +645,26 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         destination_branch_id=str(default_branch.get_uuid()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
+        pending_merge=PendingMerge(
+            entry_id=str(uuid4()),
+            source_branch=branch01.name,
+            source_git_branch=branch01.name,
+            source_commit=merged_commit,
+            merged_at=datetime.now(UTC),
+        ),
     )
     assert "default_branch" not in model.model_dump()
 
-    develop_before = Repo(upstream_path).commit("develop").hexsha
     bus_simulator = await helper.get_message_bus_simulator()
     with (
-        dependency_provider.scope(build_client, lambda: client),
-        dependency_provider.scope(build_message_bus, lambda: bus_simulator),
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
+        override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
     ):
         await merge_git_repository(model=model)
 
-    assert Repo(upstream_path).commit("develop").hexsha != develop_before
+    upstream = Repo(upstream_path)
+    assert upstream.commit("develop").hexsha != develop_before
+    assert upstream.is_ancestor(merged_commit, "develop")
 
 
 async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
