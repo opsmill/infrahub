@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 from prefect import flow
 
@@ -20,9 +19,6 @@ from tests.unit.git.writeback.fakes import (
     RecordingRegenerationReleaser,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
 REPOSITORY = RepositoryRef(id="repository-1", name="net-repo", destination_git_branch="main")
 NOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
 TRUNK = "a" * 40
@@ -33,26 +29,9 @@ ENTRY = PendingMerge(
 UNREACHABLE = "The remote net-repo does not answer."
 
 
-class WaitingDeliveryState(RecordingDeliveryState):
-    """Moves the clock to the due time of each recorded retry, as the wait of the task moves the real time."""
-
-    def __init__(self, *, clock: FixedClock, repository_names: Mapping[str, str]) -> None:
-        super().__init__(clock=clock, repository_names=repository_names)
-        self.fixed_clock = clock
-
-    async def record_failure(
-        self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
-    ) -> None:
-        await super().record_failure(
-            repository_id=repository_id, failure=failure, final=final, retry_due_at=retry_due_at
-        )
-        if retry_due_at is not None:
-            self.fixed_clock.now = retry_due_at
-
-
 async def test_the_delivery_task_records_when_its_retry_is_due_before_it_waits(prefect_test_fixture: None) -> None:
     clock = FixedClock(now=NOW)
-    state = WaitingDeliveryState(clock=clock, repository_names={REPOSITORY.id: REPOSITORY.name})
+    state = RecordingDeliveryState(clock=clock, repository_names={REPOSITORY.id: REPOSITORY.name})
     git = InMemoryDeliveryGit(destination_git_branch=REPOSITORY.destination_git_branch, head=TRUNK)
     git.add_commit(commit=FEATURE, parents=(TRUNK,))
     git.remote_heads.update({"main": TRUNK, "feature": FEATURE})

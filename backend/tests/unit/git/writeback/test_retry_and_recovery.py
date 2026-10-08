@@ -401,6 +401,7 @@ def test_the_wait_before_the_next_attempt_follows_the_retries_of_the_task(case: 
 class WaitingRetryCase:
     name: str
     manual: bool
+    first_attempt: bool
     retry_due_at: datetime
     """When the retry of another attempt chain is due."""
     deferred: bool
@@ -410,25 +411,37 @@ WAITING_RETRY_CASES: list[WaitingRetryCase] = [
     WaitingRetryCase(
         name="automatic_attempt_leaves_the_queue_to_a_retry_due_later",
         manual=False,
+        first_attempt=True,
         retry_due_at=NOW + timedelta(seconds=30),
         deferred=True,
     ),
     WaitingRetryCase(
         name="manual_attempt_runs_while_a_retry_is_due_later",
         manual=True,
+        first_attempt=True,
         retry_due_at=NOW + timedelta(seconds=30),
         deferred=False,
     ),
     WaitingRetryCase(
         name="automatic_attempt_runs_when_the_retry_is_due_now",
         manual=False,
+        first_attempt=True,
         retry_due_at=NOW,
         deferred=False,
     ),
     WaitingRetryCase(
         name="automatic_attempt_runs_when_the_retry_was_due_earlier",
         manual=False,
+        first_attempt=True,
         retry_due_at=NOW - timedelta(seconds=1),
+        deferred=False,
+    ),
+    WaitingRetryCase(
+        # The clock can read earlier than the due time of the retry that it runs, so a retry never defers.
+        name="later_attempt_runs_while_a_retry_is_due_later",
+        manual=False,
+        first_attempt=False,
+        retry_due_at=NOW + timedelta(seconds=30),
         deferred=False,
     ),
 ]
@@ -444,7 +457,11 @@ async def test_an_automatic_attempt_leaves_the_queue_to_the_retry_that_another_c
 
     with caplog.at_level(logging.INFO, logger=RUN_LOGGER):
         result = await rig.service.deliver(
-            final_attempt=False, manual=case.manual, entry=ENTRY, retry_delay=timedelta(seconds=30)
+            final_attempt=False,
+            manual=case.manual,
+            entry=ENTRY,
+            retry_delay=timedelta(seconds=30),
+            first_attempt=case.first_attempt,
         )
 
     intent = rig.state.intents[REPOSITORY.id]

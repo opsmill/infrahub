@@ -235,6 +235,7 @@ class RepositoryWritebackService:
         manual: bool,
         entry: PendingMerge | None,
         retry_delay: timedelta | None = None,
+        first_attempt: bool = True,
     ) -> DeliveryAttemptResult: ...
 ```
 
@@ -260,10 +261,11 @@ disagree.
   then covers every held item. The run of a failed release sets its lease's expiry to now, so that
   live lease belongs to a release that still runs. The one exception is an `expire_lease` call
   that failed (`research.md` R10, rule 4).
-- When `manual` is `False` and a retry of another chain is due in the future, it returns
-  `deferred` at once (one chain per repository). It reads the state for this check after step 0
-  and before the repository lock. A chain's own retry starts at or after its recorded due time, so
-  it does not defer.
+- When `first_attempt` is `True`, `manual` is `False` and a retry of another chain is due in the
+  future, it returns `deferred` at once (one chain per repository). It reads the state for this
+  check after step 0 and before the repository lock. Only a first attempt defers, because a
+  chain's own retry must never defer itself: after the wait, the wall clock can still read earlier
+  than the recorded due time.
 - It never raises for a classified failure that is final: it records it and returns `failed` or
   `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
   re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.
@@ -297,9 +299,10 @@ async def deliver_pending_merges(
 The task computes the wait before its next retry from `task_run.run_count` and its own `retries`
 and `retry_delay_seconds`, which are `DELIVERY_RETRIES` and `DELIVERY_RETRY_DELAYS_SECONDS` unless a
 test changes them with `with_options`. It passes that wait to `deliver` as `retry_delay`, which sets
-`retry_due_at` at the time of the failure, and `final_attempt` is `True` when no retry follows. It
-passes `entry` to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that
-enqueued finds the id and writes nothing. The flow sets
+`retry_due_at` at the time of the failure, and `final_attempt` is `True` when no retry follows.
+`first_attempt` is `True` when `task_run.run_count` is 1, or outside a task run. It passes `entry`
+to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that enqueued
+finds the id and writes nothing. The flow sets
 its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3` and
 `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through
 `deliver_pending_merges.with_options(retry_delay_seconds=...)`.

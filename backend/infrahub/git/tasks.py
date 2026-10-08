@@ -1174,7 +1174,11 @@ async def deliver_pending_merges(
         )
     )
     result = await service.deliver(
-        final_attempt=retry_delay is None, manual=manual, entry=entry, retry_delay=retry_delay
+        final_attempt=retry_delay is None,
+        manual=manual,
+        entry=entry,
+        retry_delay=retry_delay,
+        first_attempt=context is None or context.task_run.run_count == 1,
     )
     return result.outcome
 

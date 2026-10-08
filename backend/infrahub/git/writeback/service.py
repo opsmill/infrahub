@@ -94,16 +94,18 @@ class RepositoryWritebackService:
         manual: bool,
         entry: PendingMerge | None,
         retry_delay: timedelta | None = None,
+        first_attempt: bool = True,
     ) -> DeliveryAttemptResult:
         """Run one delivery attempt and return its result; a final failure of a step is also recorded on the repository.
 
         Args:
             final_attempt: No automatic retry follows, so a failure that a retry could fix is final.
-            manual: A user asked for this attempt. An automatic attempt queues `entry`, then returns deferred when the
-                retry of another attempt is due later.
+            manual: A user asked for this attempt.
             entry: A merge to queue before the attempt, because the branch merge could not queue it.
             retry_delay: The wait before the automatic retry that follows when this attempt fails, which sets when the
                 recorded retry is due.
+            first_attempt: No earlier attempt of this chain ran. An automatic first attempt queues `entry`, then
+                returns deferred when the retry of another chain is due later.
 
         Raises:
             RetryableDeliveryError: A step failed in a way that a later attempt can fix, and the attempt is not the
@@ -120,7 +122,8 @@ class RepositoryWritebackService:
         try:
             if entry is not None:
                 await self._enqueue(entry=entry, attempt=attempt)
-            if not manual:
+            # A later attempt is the retry that is due, so it never defers to itself.
+            if first_attempt and not manual:
                 retry_due_at = (await self.state.read(repository_id=self.repository.id)).progress.retry_due_at
                 if retry_due_at is not None and retry_due_at > self.clock():
                     # The waiting retry snapshots the queue when it starts, so it also delivers the merge queued above.
