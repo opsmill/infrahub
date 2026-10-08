@@ -17,6 +17,19 @@ export function sortStoredRanges(ranges: StoredRange[]): StoredRange[] {
   });
 }
 
+export function toRangeRows(ranges: StoredRange[]): RangeRow[] {
+  return sortStoredRanges(ranges).map((range) => ({
+    rangeId: range.id,
+    start: String(range.start),
+    end: String(range.end),
+    weight: range.weight === null ? "" : String(range.weight),
+  }));
+}
+
+export function hasRangeChanges(changes: RangeChanges): boolean {
+  return Object.values(changes).some((group) => group.length > 0);
+}
+
 function toRangeInput(row: RangeRow): RangeInput {
   return {
     start: parseWholeNumber(row.start)!,

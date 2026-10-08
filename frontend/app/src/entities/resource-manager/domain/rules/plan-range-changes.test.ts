@@ -5,7 +5,13 @@ import type {
   StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
 
-import { diffRanges, matchRowsToStored, sortStoredRanges } from "./plan-range-changes";
+import {
+  diffRanges,
+  hasRangeChanges,
+  matchRowsToStored,
+  sortStoredRanges,
+  toRangeRows,
+} from "./plan-range-changes";
 
 const stored = (
   id: string,
@@ -223,5 +229,42 @@ describe("matchRowsToStored", () => {
 
     // THEN
     expect(matched).toEqual(rows);
+  });
+});
+
+describe("toRangeRows", () => {
+  it("lists stored ranges as linked rows of typed strings, by weight then start", () => {
+    // GIVEN
+    const ranges = [stored("a", 300, 399), stored("b", 100, 199, 10)];
+
+    // WHEN
+    const rows = toRangeRows(ranges);
+
+    // THEN
+    expect(rows).toEqual([row("100", "199", "10", "b"), row("300", "399", "", "a")]);
+  });
+});
+
+describe("hasRangeChanges", () => {
+  it("is false when no group has a change", () => {
+    // GIVEN
+    const changes = diffRanges([stored("a", 1, 10)], [row("1", "10", "", "a")]);
+
+    // WHEN
+    const result = hasRangeChanges(changes);
+
+    // THEN
+    expect(result).toBe(false);
+  });
+
+  it("is true when one group has a change", () => {
+    // GIVEN
+    const changes = diffRanges([stored("a", 1, 10)], []);
+
+    // WHEN
+    const result = hasRangeChanges(changes);
+
+    // THEN
+    expect(result).toBe(true);
   });
 });

@@ -46,6 +46,7 @@ describe("NumberPoolForm", () => {
   const initialNodeSchemas = store.get(nodeSchemasAtom);
   const initialGenericSchemas = store.get(genericSchemasAtom);
   const createPool = vi.fn();
+  const updatePool = vi.fn();
   const applyRangeChanges = vi.fn();
   const onSuccess = vi.fn();
 
@@ -61,13 +62,14 @@ describe("NumberPoolForm", () => {
 
   beforeEach(() => {
     createPool.mockResolvedValue(createdPool);
+    updatePool.mockResolvedValue(createdPool);
     applyRangeChanges.mockResolvedValue({ appliedCount: 2, errorMessage: null });
     vi.mocked(getNumberPoolForEditing).mockResolvedValue(storedPool);
     vi.mocked(useCreateObjectMutation).mockReturnValue({
       mutateAsync: createPool,
     } as unknown as ReturnType<typeof useCreateObjectMutation>);
     vi.mocked(useUpdateObjectMutation).mockReturnValue({
-      mutateAsync: vi.fn(),
+      mutateAsync: updatePool,
     } as unknown as ReturnType<typeof useUpdateObjectMutation>);
     vi.mocked(useApplyNumberPoolRangeChangesMutation).mockReturnValue({
       mutateAsync: applyRangeChanges,
@@ -189,6 +191,154 @@ describe("NumberPoolForm", () => {
         larger: [],
         creates: [{ start: 300, end: 399, weight: null }],
       },
+    });
+  });
+
+  describe("edit", () => {
+    const poolWithRanges: NumberPoolForEditing = {
+      ...storedPool,
+      ranges: [
+        { id: "range-3", start: 600, end: 699, weight: null },
+        { id: "range-2", start: 300, end: 399, weight: null },
+        { id: "range-1", start: 100, end: 199, weight: 10 },
+      ],
+    };
+    const currentObject = { id: "pool-1" } as NonNullable<
+      Parameters<typeof NumberPoolForm>[0]["currentObject"]
+    >;
+
+    async function renderEditForm() {
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(poolWithRanges);
+      const component = await render(
+        <NumberPoolForm currentObject={currentObject} onSuccess={onSuccess} />
+      );
+      await expect.element(component.getByRole("textbox", { name: "Start" }).first()).toBeVisible();
+      return component;
+    }
+
+    test("lists the stored ranges by weight then start, with node and attribute as read-only text", async () => {
+      // GIVEN
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(poolWithRanges);
+
+      // WHEN
+      const component = await render(<NumberPoolForm currentObject={currentObject} />);
+
+      // THEN
+      await expect.element(component.getByText("Not scoped")).toBeVisible();
+      const starts = component.getByRole("textbox", { name: "Start" });
+      await expect.element(starts.nth(0)).toHaveValue("100");
+      await expect.element(starts.nth(1)).toHaveValue("300");
+      await expect.element(starts.nth(2)).toHaveValue("600");
+      expect(component.getByRole("combobox", { name: "Node *" }).elements()).toHaveLength(0);
+    });
+
+    test("a name-only change updates the pool and sends no range call", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      await component.getByLabelText("Name *").fill("Renamed pool");
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(updatePool).toHaveBeenCalledWith({
+        objectKind: "CoreNumberPool",
+        data: { id: "pool-1", name: { value: "Renamed pool" } },
+      });
+      expect(applyRangeChanges).not.toHaveBeenCalled();
+    });
+
+    test("sends only the changed ranges, grouped as removals, smaller, larger and additions", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      const ends = component.getByRole("textbox", { name: "End" });
+      await ends.nth(0).fill("150");
+      await ends.nth(1).fill("450");
+      await component.getByRole("button", { name: "Remove range" }).nth(2).click();
+      await component.getByRole("button", { name: "Add range" }).click();
+      await component.getByRole("textbox", { name: "Start" }).nth(2).fill("800");
+      await component.getByRole("textbox", { name: "End" }).nth(2).fill("899");
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(updatePool).not.toHaveBeenCalled();
+      expect(applyRangeChanges).toHaveBeenCalledWith({
+        poolId: "pool-1",
+        changes: {
+          deletes: ["range-3"],
+          smaller: [{ id: "range-1", start: 100, end: 150, weight: 10 }],
+          larger: [{ id: "range-2", start: 300, end: 450, weight: null }],
+          creates: [{ start: 800, end: 899, weight: null }],
+        },
+      });
+    });
+
+    test("after a refusal mid-sequence, keeps the rows as typed and the next save sends only what remains", async () => {
+      // GIVEN
+      applyRangeChanges.mockResolvedValueOnce({ appliedCount: 2, errorMessage: RANGE_REFUSED });
+      const component = await renderEditForm();
+      await component.getByRole("textbox", { name: "Weight" }).nth(0).fill("20");
+      await component.getByRole("button", { name: "Remove range" }).nth(2).click();
+      await component.getByRole("button", { name: "Add range" }).click();
+      await component.getByRole("textbox", { name: "Start" }).nth(2).fill("800");
+      await component.getByRole("textbox", { name: "End" }).nth(2).fill("899");
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
+        ...poolWithRanges,
+        ranges: [
+          { id: "range-2", start: 300, end: 399, weight: null },
+          { id: "range-1", start: 100, end: 199, weight: 20 },
+        ],
+      });
+      await component.getByRole("button", { name: "Save" }).click();
+      await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+      expect(component.getByText(RANGE_REFUSED).elements()).toHaveLength(1);
+      await expect
+        .element(component.getByRole("textbox", { name: "Start" }).nth(2))
+        .toHaveValue("800");
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(applyRangeChanges).toHaveBeenLastCalledWith({
+        poolId: "pool-1",
+        changes: {
+          deletes: [],
+          smaller: [],
+          larger: [],
+          creates: [{ start: 800, end: 899, weight: null }],
+        },
+      });
+    });
+
+    test("a refused delete of a range that no longer exists is reported, and the next save sends no range call", async () => {
+      // GIVEN
+      const RANGE_MISSING = "Unable to find the range range-3";
+      applyRangeChanges.mockResolvedValueOnce({ appliedCount: 0, errorMessage: RANGE_MISSING });
+      const component = await renderEditForm();
+      await component.getByRole("button", { name: "Remove range" }).nth(2).click();
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
+        ...poolWithRanges,
+        ranges: poolWithRanges.ranges.filter(({ id }) => id !== "range-3"),
+      });
+      await component.getByRole("button", { name: "Save" }).click();
+      await expect.element(component.getByText(RANGE_MISSING)).toBeVisible();
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(applyRangeChanges).toHaveBeenCalledTimes(1);
+      expect(applyRangeChanges).toHaveBeenCalledWith({
+        poolId: "pool-1",
+        changes: { deletes: ["range-3"], smaller: [], larger: [], creates: [] },
+      });
     });
   });
 });
