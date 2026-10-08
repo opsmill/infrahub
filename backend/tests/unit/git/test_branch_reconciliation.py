@@ -1159,19 +1159,41 @@ def reverted_push(state: InMemoryDeliveryState, tracked: TrackedRepository) -> t
     return (reverted.delivered_commit, reverted.new_head) if reverted else None
 
 
+@pytest.mark.parametrize(
+    ("fetch_pushed", "fetch_imported"),
+    [
+        pytest.param(True, True, id="clone_holds_both_commits"),
+        pytest.param(True, False, id="clone_lacks_the_imported_commit"),
+        pytest.param(False, False, id="clone_lacks_both_commits"),
+    ],
+)
 async def test_a_rewrite_of_the_default_branch_that_discards_the_pushed_commit_records_a_reverted_push(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    fetch_pushed: bool,
+    fetch_imported: bool,
 ) -> None:
+    """A clone that never fetched a commit cannot compare it, but the fetch shows the pushed commit is off the remote."""
     tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
-    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
-    state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    if fetch_pushed:
+        await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"})
+    if fetch_imported:
+        await tracked.repository.fetch()
+    tracked.remote.repo.git.reset("--hard", tracked.trunk_commit)
+    rewritten_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"})
+    state = pushed_state(tracked, last_delivered_commit=pushed)
 
-    collected = await tracked.repository.collect_pending_imports(graph_commits=tracked.graph_commits(), state=state)
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
 
     assert collected.failed_imports == []
-    assert reverted_push(state, tracked) == (tracked.trunk_commit, rewritten_trunk)
+    assert reverted_push(state, tracked) == (pushed, rewritten_trunk)
     assert (
-        f"The rewrite of branch main of repository tracked-repo discarded the pushed commit {tracked.trunk_commit}, "
+        f"The rewrite of branch main of repository tracked-repo discarded the pushed commit {pushed}, "
         f"the branch now points to {rewritten_trunk}"
     ) in caplog.messages
 
@@ -1185,6 +1207,25 @@ async def test_a_rewrite_of_the_default_branch_that_keeps_the_pushed_commit_reco
     await tracked.repository.fetch()
     tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
     state = pushed_state(tracked, last_delivered_commit=tracked.trunk_commit)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) is None
+
+
+async def test_a_pushed_commit_that_an_earlier_rewrite_discarded_is_not_recorded_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    await tracked.repository.fetch()
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"}, amend=True)
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    state = pushed_state(tracked, last_delivered_commit=pushed)
 
     collected = await tracked.repository.collect_pending_imports(
         graph_commits=tracked.graph_commits(main=imported_trunk), state=state
@@ -1209,7 +1250,7 @@ async def test_a_reverted_push_that_fails_to_record_fails_the_default_branch_and
         FailedImport(
             branch_name="main",
             step=ImportStep.RECORD,
-            reason="RepositoryError: The database is down",
+            reason="The database is down",
             on_default_branch=True,
         )
     ]

@@ -31,6 +31,7 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import (
     BranchNotFoundError,
     CommitNotFoundError,
+    Error,
     RepositoryDivergentHistoryError,
     RepositoryError,
     RepositoryPushRejectedError,
@@ -136,7 +137,7 @@ class ImportStep(StrEnum):
     COLLECTION = "collection"
     IMPORT = "import"
     RECORD = "record"
-    """The rewrite record of the branch failed, while its import still runs."""
+    """A record of the rewrite that the branch reconciled failed, while its import still runs."""
 
 
 @dataclass
@@ -870,11 +871,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         new_head = rewrite.remote_head
         try:
             pushed_commit = (await state.read(repository_id=repository_id)).last_delivered_commit
-            gateway = self._get_ancestry_gateway()
-            if (
-                pushed_commit is None
-                or not gateway.is_ancestor(ancestor_commit=pushed_commit, descendant_commit=discarded_commit)
-                or gateway.is_ancestor(ancestor_commit=pushed_commit, descendant_commit=new_head)
+            if pushed_commit is None or not self._rewrite_discarded(
+                commit=pushed_commit, discarded_commit=discarded_commit, new_head=new_head
             ):
                 return
             await state.record_reverted(
@@ -885,13 +883,19 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
         # The graph already records the new commit, so an error that escapes would lose the imports of the cycle.
         except Exception as exc:
-            reason = f"{type(exc).__name__}: {exc}"
+            reason = exc.message if isinstance(exc, Error) else f"{type(exc).__name__}: {exc}"
             log.warning(
                 "Failed to record the reverted push of branch %s of repository %s: %s",
                 rewrite.branch_name,
                 self.name,
                 reason,
-                exc_info=exc,
+                exc_info=None if isinstance(exc, Error) else exc,
+                extra={
+                    "repository": self.name,
+                    "branch": rewrite.branch_name,
+                    "step": ImportStep.RECORD.value,
+                    "reason": reason,
+                },
             )
             collected.failed_imports.append(
                 FailedImport(
@@ -912,6 +916,26 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 "pushed_commit": pushed_commit,
                 "commit": new_head,
             },
+        )
+
+    def _rewrite_discarded(self, commit: str, discarded_commit: str, new_head: str) -> bool:
+        """Whether the rewrite from the discarded commit to the new head discarded the commit.
+
+        A fetch brings every ancestor of the new head, so a commit that this clone lacks is off the remote.
+        A commit outside the discarded history left the remote in an earlier rewrite, which git can tell
+        only while this clone holds the discarded commit.
+
+        Raises:
+            RepositoryError: When git could not answer.
+
+        """
+        gateway = self._get_ancestry_gateway()
+        if not gateway.has_commit(commit=commit):
+            return True
+        if gateway.is_ancestor(ancestor_commit=commit, descendant_commit=new_head):
+            return False
+        return not gateway.has_commit(commit=discarded_commit) or gateway.is_ancestor(
+            ancestor_commit=commit, descendant_commit=discarded_commit
         )
 
     async def _find_branches_behind_in_graph(self, graph_commits: Mapping[str, str | None]) -> list[str]:
