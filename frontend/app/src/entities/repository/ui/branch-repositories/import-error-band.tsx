@@ -1,6 +1,5 @@
 import { AlertCircleIcon } from "lucide-react";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { Link } from "@/shared/components/ui/link";
 
@@ -11,6 +10,7 @@ import type {
   RepositoryImportError,
 } from "@/entities/repository/domain/model/branch-repository";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 interface ImportErrorBandProps {
   repository: BranchRepository;
@@ -76,7 +76,7 @@ function ImportErrorLink({ importError, repository, branchName }: ImportErrorLin
 
   if (importError.taskId) {
     return (
-      <Link to={constructPath(`/tasks/${importError.taskId}`)} className={linkClassName}>
+      <Link to={getTaskDetailsUrl(importError.taskId)} className={linkClassName}>
         View task log →
       </Link>
     );

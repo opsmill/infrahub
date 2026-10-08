@@ -20,6 +20,7 @@ import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-u
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 import { getStateBadge } from "@/entities/tasks/ui/task-item-details";
 
@@ -105,7 +106,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
 
   const getUrl = (id: string) => {
     if (!relatedNodeId) {
-      return constructPath(`/tasks/${id}`);
+      return getTaskDetailsUrl(id);
     }
 
     // pathname already ends in /tasks (parent route is the tasks tab); append /:taskId

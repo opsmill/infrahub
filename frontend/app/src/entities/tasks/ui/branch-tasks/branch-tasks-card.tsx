@@ -1,16 +1,13 @@
 import { Card, CardHeader, LinkButton, Tooltip } from "@infrahub/ui";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
 import { TablePageOutOfRange } from "@/shared/components/table/table-page-out-of-range";
 import { TablePagination } from "@/shared/components/table/table-pagination";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/shared/config/qsp";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
-import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { useGetRepositoryNames } from "@/entities/repository/ui/queries/get-repository-names.query";
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
 import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
@@ -24,22 +21,13 @@ import {
   useGetBranchFailedTaskCount,
   useGetBranchTasks,
 } from "@/entities/tasks/ui/queries/get-branch-tasks.query";
+import { getTasksPageUrl } from "@/entities/tasks/ui/routing/task-urls";
 import { TasksTable } from "@/entities/tasks/ui/tasks-table/tasks-table";
 
 const TASKS_URL_KEY = "tasks";
 
 interface BranchTasksCardProps {
   branchName: string;
-}
-
-function getTasksPageUrl(branchName: string, filters: { name: string; value: string }[]) {
-  return constructPath("/tasks", [
-    getBranchQsp(branchName),
-    {
-      name: QSP.FILTER,
-      value: JSON.stringify([{ name: "branch__value", value: branchName }, ...filters]),
-    },
-  ]);
 }
 
 export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
