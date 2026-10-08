@@ -224,7 +224,7 @@ All are `ValidationError`.
 | `pool_id` is not a number pool | all three | `NodeNotFoundError` for `CoreNumberPool` |
 | `range_id` is not a range of the pool | `InfrahubNumberPoolAllocations` | `The range <range_id> does not belong to the pool <pool_id>` |
 | Negative `offset` or `limit` | `InfrahubNumberPoolAllocations` | `<argument> must be 0 or greater` |
-| The schema of the request's branch does not define a scope element on the pool's kind | all three | `The scope element "<name>" of pool <pool_id> does not exist on <kind> on branch <branch>` |
+| The schema of the request's branch does not define a scope element on the pool's kind | all three | `The scope element "<name>" of pool <pool_id> does not exist on <kind> on branch <branch>; rebase the branch to get it` |
 
 `InfrahubNumberPoolAllocations` on a scoped pool without `division` is not an error: it lists the values of every division.
 

@@ -22,6 +22,8 @@
 
 Order inside the list is the scope order; division tuples follow it.
 
+**Reading the stored value** (`backend/infrahub/pools/scope.py::AllocationScope.from_stored`): an entry that is not an object with `id` and `name` (a plain name written before this change, on a database built from the feature branch) is refused with an error naming the pool and asking to recreate it. No migration rewrites the old shape, because no released version stores a scope.
+
 **Validation rules at creation** (`backend/infrahub/pools/scope.py::AllocationScopeResolver`), each refusal names the element:
 
 1. Every entry resolves, by id or by name, to one attribute or one relationship declared on the pool's kind in the schema of the default branch. When the kind is a generic, the element must be declared on the generic itself.

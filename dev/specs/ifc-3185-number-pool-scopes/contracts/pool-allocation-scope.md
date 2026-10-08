@@ -65,7 +65,7 @@ The same list, in any accepted input form, is not a change. The refusal applies 
 
 | Case | Message |
 |------|---------|
-| The schema of the request's branch does not define a scope element on the pool's kind | `<attribute>.from_pool: the scope element "<name>" of pool <pool name> does not exist on <kind> on branch <branch>` |
+| The schema of the request's branch does not define a scope element on the pool's kind | `<attribute>.from_pool: the scope element "<name>" of pool <pool name> does not exist on <kind> on branch <branch>; rebase the branch to get it` |
 
 ## Interaction with the rest of the pool
 
