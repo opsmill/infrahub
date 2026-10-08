@@ -30,12 +30,17 @@ class RecordingLock(InfrahubLock):
         self._timeline = timeline
 
     async def acquire(self) -> None:
-        reentrant = self._recursion_var.get() is not None
-        if not reentrant:
-            self._timeline.record(self.name, LockAction.WAIT)
-        await super().acquire()
-        if not reentrant:
-            self._timeline.record(self.name, LockAction.ACQUIRE)
+        if self._recursion_var.get() is not None:
+            await super().acquire()
+            return
+        self._timeline.record(self.name, LockAction.WAIT)
+        try:
+            await super().acquire()
+        except BaseException:
+            # A cancelled or failed wait leaves the queue, so the count of waiters must drop too.
+            self._timeline.record(self.name, LockAction.ABANDON)
+            raise
+        self._timeline.record(self.name, LockAction.ACQUIRE)
 
     async def release(self) -> None:
         will_release = self._recursion_var.get() == 1
