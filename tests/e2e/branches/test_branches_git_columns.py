@@ -17,25 +17,10 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from broken_repository_factory import BrokenRepositoryFactory
+    from broken_repository import BrokenRepository
     from helpers import BranchAPI
     from infrahub_sdk import InfrahubClient
-    from playwright.async_api import Locator, Page
-
-# The table is a flat CSS grid with no row element, so a row's cells are the siblings that follow
-# its identifier cell, in column order.
-REPOSITORIES_OFFSET = 3
-GIT_STATE_OFFSET = 4
-
-
-def _identifier_cell(page: Page, branch: str) -> Locator:
-    return page.get_by_test_id("branch-identifier-cell").filter(
-        has=page.get_by_role("checkbox", name=f"Select {branch}", exact=True)
-    )
-
-
-def _row_cell(identifier_cell: Locator, offset: int) -> Locator:
-    return identifier_cell.locator(f"xpath=following-sibling::*[{offset}]")
+    from playwright.async_api import Page
 
 
 class TestBranchesGitColumns:
@@ -49,37 +34,37 @@ class TestBranchesGitColumns:
         except Exception:
             logger.warning("Teardown could not delete branch %s", name, exc_info=True)
 
-    async def test_broken_repository_leads_its_branch_row(
-        self, admin_page: Page, broken_repository: BrokenRepositoryFactory
+    async def test_branch_row_shows_broken_repository_and_import_error(
+        self, admin_page: Page, broken_repository: BrokenRepository
     ) -> None:
-        broken = await broken_repository(sync_with_git=True)
-
         await admin_page.goto("/branches")
-        await admin_page.get_by_role("searchbox", name="Search").fill(broken.branch)
+        await admin_page.get_by_role("searchbox", name="Search").fill(broken_repository.branch)
 
-        identifier_cell = _identifier_cell(admin_page, broken.branch)
-        await expect(identifier_cell).to_have_count(1)
-
-        repository_link = _row_cell(identifier_cell, REPOSITORIES_OFFSET).get_by_role(
-            "link", name=broken.repository_name, exact=True
-        )
+        repositories_cell = admin_page.get_by_test_id(f"branch-repositories-cell-{broken_repository.branch}")
+        repository_link = repositories_cell.get_by_role("link", name=broken_repository.repository_name, exact=True)
         await expect(repository_link).to_be_visible()
-        await expect(repository_link).to_have_attribute("href", re.compile(rf"branch={re.escape(broken.branch)}"))
+        await expect(repository_link).to_have_attribute(
+            "href", re.compile(rf"branch={re.escape(broken_repository.branch)}")
+        )
 
-        await expect(
-            _row_cell(identifier_cell, GIT_STATE_OFFSET).get_by_text("Import Error", exact=True)
-        ).to_be_visible()
+        git_state_cell = admin_page.get_by_test_id(f"branch-git-state-cell-{broken_repository.branch}")
+        await expect(git_state_cell.get_by_text("Import Error", exact=True)).to_be_visible()
 
-    async def test_branch_without_git_sync_reads_not_synced_with_git(
+    async def test_branch_without_git_sync_lists_only_read_only_repositories(
         self, admin_page: Page, infrahub_client: InfrahubClient, branch_without_git_sync: str
     ) -> None:
-        # A branch without Git sync lists only read-only repositories, so the cell text depends on there being none.
-        if await infrahub_client.all(kind="CoreReadOnlyRepository"):
-            pytest.skip("A read-only repository exists, so the branch lists it")
+        read_only_names = [
+            repository.name.value for repository in await infrahub_client.all(kind="CoreReadOnlyRepository")
+        ]
 
         await admin_page.goto("/branches")
         await admin_page.get_by_role("searchbox", name="Search").fill(branch_without_git_sync)
 
-        identifier_cell = _identifier_cell(admin_page, branch_without_git_sync)
-        await expect(identifier_cell).to_have_count(1)
-        await expect(_row_cell(identifier_cell, REPOSITORIES_OFFSET)).to_have_text("Not synced with Git")
+        repositories_cell = admin_page.get_by_test_id(f"branch-repositories-cell-{branch_without_git_sync}")
+        if not read_only_names:
+            await expect(repositories_cell).to_have_text("Not synced with Git")
+            return
+
+        # Other tests can leave read-only repositories, and a branch without Git sync still lists them.
+        names_pattern = "|".join(re.escape(name) for name in read_only_names)
+        await expect(repositories_cell.get_by_role("link").first).to_have_text(re.compile(rf"^(?:{names_pattern})$"))

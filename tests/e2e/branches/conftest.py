@@ -4,15 +4,16 @@ import logging
 from typing import TYPE_CHECKING
 
 import pytest
-from broken_repository_factory import BrokenRepository
+from broken_repository import BrokenRepository
 from helpers import Deadline, generate_random_branch_name
+from infrahub_sdk.graphql import Mutation
+from infrahub_sdk.testing.repository import GitRepo
 from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from pathlib import Path
 
-    from broken_repository_factory import BrokenRepositoryFactory
     from helpers import BranchAPI
     from infrahub_sdk import InfrahubClient
 
@@ -62,6 +63,11 @@ async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repo
         await deadline.tick(pause=POLL_INTERVAL_SECONDS)
 
 
+async def _delete_repository(client: InfrahubClient, repository_name: str) -> None:
+    repository = await client.get(kind="CoreRepository", name__value=repository_name)
+    await repository.delete()
+
+
 @pytest.fixture
 async def broken_repository(
     branch_api: BranchAPI,
@@ -69,31 +75,25 @@ async def broken_repository(
     infrahub_compose_dir: Path,
     infrahub_provisioned_externally: bool,
     tmp_path: Path,
-) -> AsyncGenerator[BrokenRepositoryFactory, None]:
-    """Create branches that each hold one repository in Import Error, and remove them on teardown."""
+) -> AsyncGenerator[BrokenRepository, None]:
+    """Create a Git-synced branch holding one repository in Import Error, and remove both on teardown."""
     if infrahub_provisioned_externally:
         pytest.skip("Needs the compose /remote directory to host the fixture repository")
 
-    from infrahub_sdk.graphql import Mutation
-    from infrahub_sdk.testing.repository import GitRepo
+    branch = generate_random_branch_name("repo-error-")
+    repository_name = generate_random_branch_name("broken-repo-")
 
+    source = tmp_path / repository_name
+    source.mkdir()
+    # Without an .infrahub.yml the first import of the repository always fails.
+    (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
     remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
-    created_branches: list[str] = []
-    created_repositories: list[str] = []
+    GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
 
-    async def make(*, sync_with_git: bool) -> BrokenRepository:
-        branch = generate_random_branch_name("repo-error-")
-        repository_name = generate_random_branch_name("broken-repo-")
-
-        source = tmp_path / repository_name
-        source.mkdir()
-        # Without an .infrahub.yml the first import of the repository always fails.
-        (source / "README.md").write_text("Fixture repository without an .infrahub.yml\n", encoding="utf-8")
-        GitRepo(name=repository_name, src_directory=source, dst_directory=remote_dir)
-
-        await branch_api.create(branch, sync_with_git=sync_with_git)
-        created_branches.append(branch)
-
+    # A branch without Git sync lists only read-only repositories, so it would hide this one.
+    await branch_api.create(branch, sync_with_git=True)
+    repository_created = False
+    try:
         mutation = Mutation(
             mutation="CoreRepositoryCreate",
             input_data={
@@ -104,27 +104,22 @@ async def broken_repository(
             },
             query={"ok": None},
         )
-        created_repositories.append(repository_name)
         await infrahub_client.execute_graphql(
             query=mutation.render(), branch_name=branch, tracker="mutation-repository-create"
         )
+        repository_created = True
 
         repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
         task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
-        return BrokenRepository(branch=branch, repository_name=repository_name, failed_task_id=task_id)
-
-    try:
-        yield make
+        yield BrokenRepository(branch=branch, repository_name=repository_name, failed_task_id=task_id)
     finally:
-        for branch in created_branches:
+        try:
+            await branch_api.delete(branch)
+        except Exception:
+            logger.warning("Teardown could not delete branch %s", branch, exc_info=True)
+        if repository_created:
+            # Repositories are branch-agnostic, so the node outlives its branch.
             try:
-                await branch_api.delete(branch)
-            except Exception:
-                logger.warning("Teardown could not delete branch %s", branch, exc_info=True)
-        # Repositories are branch-agnostic, so the node outlives its branch.
-        for repository_name in created_repositories:
-            try:
-                repository = await infrahub_client.get(kind="CoreRepository", name__value=repository_name)
-                await repository.delete()
+                await _delete_repository(infrahub_client, repository_name)
             except Exception:
                 logger.warning("Teardown could not delete repository %s", repository_name, exc_info=True)

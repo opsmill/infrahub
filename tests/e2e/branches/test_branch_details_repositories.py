@@ -12,7 +12,7 @@ from playwright.async_api import expect
 pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
-    from broken_repository_factory import BrokenRepositoryFactory
+    from broken_repository import BrokenRepository
     from playwright.async_api import Page
 
 BAND_TIMEOUT_MS = 30_000
@@ -20,13 +20,9 @@ BAND_TIMEOUT_MS = 30_000
 
 class TestBranchDetailsRepositoryImportError:
     async def test_import_error_band_links_to_the_task_page(
-        self, admin_page: Page, broken_repository: BrokenRepositoryFactory
+        self, admin_page: Page, broken_repository: BrokenRepository
     ) -> None:
-        # A branch without Git sync lists only read-only repositories, so its card would not show
-        # the broken CoreRepository.
-        broken = await broken_repository(sync_with_git=True)
-
-        await admin_page.goto(f"/branches/{quote(broken.branch, safe='')}")
+        await admin_page.goto(f"/branches/{quote(broken_repository.branch, safe='')}")
 
         # The table is paged and ordered by name on the server, so the repository's row may sit on
         # another page; its band comes from a separate failing-repositories query and is always shown.
@@ -38,10 +34,10 @@ class TestBranchDetailsRepositoryImportError:
         if await show_all.is_visible():
             await show_all.click()
 
-        band = bands.filter(has_text=broken.repository_name)
+        band = bands.filter(has_text=broken_repository.repository_name)
         await expect(band).to_be_visible(timeout=BAND_TIMEOUT_MS)
         await expect(band).to_contain_text("import failed")
         await expect(band).to_contain_text("is missing a configuration file")
 
         await band.get_by_role("link", name="View task log").click()
-        await expect(admin_page).to_have_url(re.compile(rf"/tasks/{re.escape(broken.failed_task_id)}"))
+        await expect(admin_page).to_have_url(re.compile(rf"/tasks/{re.escape(broken_repository.failed_task_id)}"))
