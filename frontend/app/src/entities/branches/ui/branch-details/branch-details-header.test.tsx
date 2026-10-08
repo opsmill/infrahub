@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
@@ -15,7 +15,7 @@ import { BranchDetailsHeader } from "./branch-details-header";
 vi.mock("@/entities/nodes/object/ui/metadata/node-metadata-popover", () => ({
   NodeMetadataPopover: vi.fn(() => <button type="button">Metadata</button>),
 }));
-vi.mock("@/entities/nodes/object/ui/object-details/refresh-button", () => ({
+vi.mock("@/shared/components/buttons/refresh-button", () => ({
   RefreshButton: vi.fn(() => <button type="button">Refresh data</button>),
 }));
 

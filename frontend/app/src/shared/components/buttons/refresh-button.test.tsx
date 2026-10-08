@@ -3,9 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { queryClient } from "@/shared/api/rest/client";
 
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
-
-import { render } from "../../../../../../tests/components/render";
+import { render } from "../../../../tests/components/render";
 import { RefreshButton } from "./refresh-button";
 
 describe("RefreshButton", () => {
@@ -22,7 +20,7 @@ describe("RefreshButton", () => {
         finishRefresh = resolve;
       })
     );
-    const component = await render(<RefreshButton />);
+    const component = await render(<RefreshButton queryKeys={[["object"]]} />);
     const button = component.getByRole("button");
 
     // WHEN
@@ -56,19 +54,19 @@ describe("RefreshButton", () => {
     expect(button.element().querySelector("svg")?.classList.contains("animate-spin")).toBe(false);
   });
 
-  it("invalidates queries scoped to the default query key when clicking refresh", async () => {
+  it("invalidates the given query key when clicking refresh", async () => {
     // GIVEN
     const invalidateQueriesSpy = vi
       .spyOn(queryClient, "invalidateQueries")
       .mockResolvedValue(undefined);
 
-    const component = await render(<RefreshButton />);
+    const component = await render(<RefreshButton queryKeys={[["object"]]} />);
 
     // WHEN
     await component.getByRole("button").click();
 
     // THEN
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: objectQueryKeys.all });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["object"] });
   });
 
   it("invalidates every given query key", async () => {
