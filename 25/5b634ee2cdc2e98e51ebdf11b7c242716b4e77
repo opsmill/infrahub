@@ -1,0 +1,87 @@
+backend/infrahub/pools/number_pool_shorthand.py
+  s_bec9166785f63a::t_b03fe79e782896 16-22,53-55
+backend/infrahub/graphql/manager.py
+  s_9704426f757b7f::t_a1a110ef05d0e3 65,331,334-335
+  s_9704426f757b7f::t_a59fe6edbcdf80 330,332-333,836,892,953
+  s_9704426f757b7f::t_dbfa82bcc78bf1 345-355,845-847,901,962-964
+backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py
+  s_bec9166785f63a::t_941d0bc1e50d4e 71
+  s_bec9166785f63a::t_72ad451524972e 107
+  s_bec9166785f63a::t_b03fe79e782896 21,81-84
+  s_bec9166785f63a::t_47a9a439fe1e55 73-74,76,88-95,313-319,340-341,360-361
+  s_9704426f757b7f::t_66279fa41647a6 97,321
+  s_9704426f757b7f::t_0562465e007e28 11,24,72,80,85,96,101-105,108-110,113-119,121-128,136,144,159,161,169,296,303-309
+  s_9704426f757b7f::t_76c4b0ebfa0435 8,14,35-36,106,111-112,120,129-130,140
+  s_9704426f757b7f::t_69e743f6deb5af 52
+  s_9704426f757b7f::t_67b423bdb782fe 9
+  s_bec9166785f63a::t_77fa232624646b 131-135,137-139,141-143,145-158,160,162-168,170-182
+backend/tests/component/graphql/resource_manager/number_pools/test_schema_pool_range_writes.py
+  s_9704426f757b7f::t_850331cc1eb6c8 156,162,168,174
+  s_9704426f757b7f::t_5c5649473d88d3 45,53,61
+backend/tests/component/graphql/resource_manager/number_pools/helpers.py
+  s_9704426f757b7f::t_5c5649473d88d3 180,197,206-210
+  s_bec9166785f63a::t_f1a304963a2dc2 221-234
+  s_9704426f757b7f::t_4963ab21d62c8e 211
+  s_9704426f757b7f::t_7dd27b5a21c295 201
+  s_9704426f757b7f::t_7d65834b3a9bee 6,247-254
+  s_9704426f757b7f::t_faf123024b6a34 194-196,198-200,202-205,212-220
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_update.py
+  s_9704426f757b7f::t_52a2e4aaeb5a74 478-481
+  s_9704426f757b7f::t_a62faa522cd103 16,493-515
+  s_bec9166785f63a::t_f1a304963a2dc2 26,29,248,250,255,264
+  s_9704426f757b7f::t_faf123024b6a34 24-25,27-28,30-38,66-70,258,269,330-477,482-492
+  s_9704426f757b7f::t_850331cc1eb6c8 286
+  s_bec9166785f63a::t_92b4747fa2a184 71-75
+backend/tests/component/graphql/test_manager_number_pool_ranges_input.py
+  s_9704426f757b7f::t_60d97cf5b48396 1-62
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_ranges.py
+  s_9704426f757b7f::t_8632b144cbee50 660,669,686
+  s_9704426f757b7f::t_7cd8b33cf19233 697,700,709,712-713
+  s_9704426f757b7f::t_b01bfb66af2f63 691-694,714-717
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_events.py
+  s_bec9166785f63a::t_35153efa471df3 14
+  s_9704426f757b7f::t_b778a3223e8b5e 9-10,16,81-93,219-290
+  s_bec9166785f63a::t_0b8257e5183d3f 62,70,76,327-331
+  s_9704426f757b7f::t_f5b1dfddda5b69 167-171
+  s_9704426f757b7f::t_94bceb4ce60376 130,137-139
+  s_bec9166785f63a::t_91b3524379aaec 37,41-53,174-177
+  s_bec9166785f63a::t_6c2857adf47744 114
+  s_9704426f757b7f::t_7dd27b5a21c295 40
+  s_9704426f757b7f::t_05571201b76cc5 1-8,11-13,15,17-36,38-39,54-56,94-113,115-129,131-136,140-166,178-218
+  s_bec9166785f63a::t_220c3862bc1fae 57-61,63-69,71-75,77-80,172-173,291-326
+backend/infrahub/graphql/types/__init__.py
+  s_9704426f757b7f::t_a1a110ef05d0e3 19,58
+backend/tests/component/graphql/resource_manager/number_pools/test_pool_create.py
+  s_9704426f757b7f::t_52a2e4aaeb5a74 24,27,33-34,129-156,158-177,180-182,189,193,198-200,398-417
+  s_9704426f757b7f::t_a62faa522cd103 13-17,201,418-435
+  s_bec9166785f63a::t_f1a304963a2dc2 25,28,243,245,255-256
+backend/infrahub/graphql/types/attribute.py
+  s_bec9166785f63a::t_2e3af0f34f0067 62-64
+  s_9704426f757b7f::t_e35473c763ea55 59-61
+backend/infrahub/graphql/mutations/resource_manager/number_pools/common.py
+  s_bec9166785f63a::t_54faec529e73cb 47-48,54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "255b634ee2cdc2e98e51ebdf11b7c242716b4e77",
+  "prompts": {},
+  "sessions": {
+    "s_9704426f757b7f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b51a041-824a-4b66-836a-630cb843bdb9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    },
+    "s_bec9166785f63a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "66373eb4-60d0-4641-be9f-f5b6e09e2092",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
