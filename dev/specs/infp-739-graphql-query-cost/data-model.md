@@ -117,14 +117,22 @@ Tree rules (critique E2):
 | Field | Type | Rule |
 | --- | --- | --- |
 | `top_level` | map of path to `FirstStepTopLevelCount` | One entry for each counted top-level field. A top-level field filtered by `hfid` is not counted. |
-| `relationships` | map of path to list of `FirstStepPeerCount` | One entry for each relationship field directly under a counted top-level field, with one item for each concrete peer kind. Only the top-level nodes of the field's `parent_kinds` are counted, with the field's filters and without its `offset` and `limit`. A field under a top-level field that exceeds `query_size_limit` has no entry, and neither do `ancestors`, `descendants` and a field with `include_descendants: true`. |
+| `relationships` | map of path to `FirstStepRelationshipCount` | One entry for each relationship field directly under a counted top-level field. Only the top-level nodes of the field's `parent_kinds` are counted, with the field's filters, and with its `offset` and `limit` applied to the peers of each top-level node. A field under a top-level field that exceeds `query_size_limit` has no entry, and neither do `ancestors`, `descendants` and a field with `include_descendants: true`. |
 | `label_counts` | map of kind to integer | Current label count of each kind in the query, read by the same queries. |
 
 `FirstStepTopLevelCount`: `kinds` (one `FirstStepKindCount` for each concrete kind with nodes) and `exceeds_size_limit` (the field returns more than `query_size_limit` nodes, so nothing under it is counted).
 
 `FirstStepKindCount`: `kind`, `node_count` (after the filters, `offset` and `limit`) and `node_ids` (at most `query_size_limit` of them).
 
-`FirstStepPeerCount`: `peer_kind`, `paths` (pairs of a top-level node and one of its peers of that kind), `distinct_peers` and `max_parents` (the largest number of top-level nodes that reach one peer).
+`FirstStepRelationshipCount`: `returned_paths` (pairs of a top-level node and one of its peers that the field returns after its `offset` and `limit`, exact) and `peer_kinds` (one `FirstStepPeerCount` for each concrete peer kind). `returned_paths` is at most the sum of the `max_returned_paths` of the peer kinds.
+
+`FirstStepPeerCount`:
+
+- `peer_kind`
+- `paths`: pairs of a top-level node and one of its peers of that kind, without the `offset` and `limit`
+- `expected_returned_paths`: the pairs of that kind that the field returns, when the peers each top-level node returns are split between the peer kinds in proportion to its peers of each kind; exact when the peers of each top-level node are all of one kind
+- `max_returned_paths`: for each top-level node, the smaller of its peers of that kind and the peers it returns, added up; at most `paths`
+- `distinct_peers` and `max_parents` (the largest number of top-level nodes that reach one peer), both without the `offset` and `limit`
 
 ## Estimate and actual counts
 

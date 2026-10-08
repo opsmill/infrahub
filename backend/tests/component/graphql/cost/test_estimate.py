@@ -206,6 +206,37 @@ query {
 }
 """
 
+FIRST_PERSON_BY_NAME_QUERY = """
+query {
+    TestPerson(limit: 1, order: {by: [{field: "name__value", direction: %(direction)s}]}) {
+        edges { node { name { value } cars { edges { node { name { value } } } } } }
+    }
+}
+"""
+
+CAR_WINDOW_OF_PERSON_QUERY = """
+query($name: String!) {
+    TestPerson(name__value: $name) {
+        edges {
+            node {
+                cars(%(window)s) { edges { node { name { value } owner { node { name { value } } } } } }
+            }
+        }
+    }
+}
+"""
+
+CAR_WINDOW_OF_PERSONS_QUERY = """
+query {
+    TestPerson {
+        edges {
+            node {
+                cars(%(window)s) { edges { node { name { value } owner { node { name { value } } } } } }
+            }
+        }
+    }
+}
+"""
 
 REPORT_COST_ESTIMATE_QUERY = """
 query ($q: String!, $variables: GenericScalar) {
@@ -369,6 +400,87 @@ async def test_first_step_counts_the_nodes_in_the_window_of_the_top_level_field(
         "TestCar/electric_owner": ("counted", 8, 8, 8, 8),
         "TestCar/gaz_owner": ("counted", 1, 1, 1, 1),
     }
+
+
+async def test_first_step_counts_the_node_that_a_limit_of_one_returns_whatever_the_order(
+    counting_client: TestClient, car_fleet_with_statistics: dict[str, Node]
+) -> None:
+    names_by_id = {person.id: name for name, person in car_fleet_with_statistics.items()}
+    smallest_id_name = names_by_id[min(names_by_id)]
+    # The order puts another person first, so only a count that drops the order finds the person returned.
+    direction = "DESC" if smallest_id_name == min(names_by_id.values()) else "ASC"
+
+    with counting_client:
+        payload = post_query(
+            client=counting_client,
+            query=FIRST_PERSON_BY_NAME_QUERY % {"direction": direction},
+            headers=QUERY_COST_HEADERS,
+        )
+
+    assert [edge["node"]["name"]["value"] for edge in payload["data"]["TestPerson"]["edges"]] == [smallest_id_name]
+    cars = fields_by_path(query_cost=payload["extensions"]["query_cost"])["TestPerson/cars"]
+    assert cars["estimate"]["source"] == "counted"
+    assert (cars["estimate"]["expected"]["nodes"], cars["estimate"]["worst_case"]["nodes"]) == (
+        len(CARS_BY_OWNER[smallest_id_name]),
+        len(CARS_BY_OWNER[smallest_id_name]),
+    )
+    assert cars["actual"]["nodes"] == len(CARS_BY_OWNER[smallest_id_name])
+
+
+@dataclass
+class PeerWindowTestCase:
+    name: str
+    query: str
+    variables: dict[str, Any]
+    returned_cars: int
+    """Cars the field returns, over every person the top-level field returns."""
+
+
+PEER_WINDOW_TEST_CASES: list[PeerWindowTestCase] = [
+    PeerWindowTestCase(
+        name="offset_on_a_person_with_one_car_kind",
+        query=CAR_WINDOW_OF_PERSON_QUERY % {"window": "offset: 3"},
+        variables={"name": "Ben"},
+        returned_cars=3,
+    ),
+    PeerWindowTestCase(
+        name="offset_and_limit_on_a_person_with_two_car_kinds",
+        query=CAR_WINDOW_OF_PERSON_QUERY % {"window": "offset: 7, limit: 5"},
+        variables={"name": "Ann"},
+        returned_cars=2,
+    ),
+    PeerWindowTestCase(
+        name="offset_and_limit_on_every_person",
+        query=CAR_WINDOW_OF_PERSONS_QUERY % {"window": "offset: 2, limit: 5"},
+        variables={},
+        returned_cars=5 + 4 + 1,
+    ),
+    PeerWindowTestCase(
+        name="limit_on_every_person",
+        query=CAR_WINDOW_OF_PERSONS_QUERY % {"window": "limit: 4"},
+        variables={},
+        returned_cars=4 + 4 + 3,
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "test_case", [pytest.param(test_case, id=test_case.name) for test_case in PEER_WINDOW_TEST_CASES]
+)
+async def test_first_step_counts_the_peers_in_the_window_of_each_parent(
+    counting_client: TestClient, car_fleet_with_statistics: dict[str, Node], test_case: PeerWindowTestCase
+) -> None:
+    with counting_client:
+        query_cost = post_with_details(client=counting_client, query=test_case.query, variables=test_case.variables)
+
+    cars = fields_by_path(query_cost=query_cost)["TestPerson/cars"]
+    assert cars["estimate"]["source"] == "counted"
+    assert (cars["estimate"]["expected"]["nodes"], cars["estimate"]["worst_case"]["nodes"]) == (
+        test_case.returned_cars,
+        test_case.returned_cars,
+    )
+    assert cars["actual"]["nodes"] == test_case.returned_cars
+    assert figures_above_worst_case(query_cost=query_cost) == []
 
 
 async def test_first_step_counts_the_branch_of_the_request(

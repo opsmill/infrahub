@@ -4,7 +4,13 @@ from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import BranchSupportType, RelationshipCardinality
 from infrahub.graphql.cost.constants import ESTIMATE_FIELD_PATH
-from infrahub.graphql.cost.models import FirstStepCounts, FirstStepKindCount, FirstStepPeerCount, FirstStepTopLevelCount
+from infrahub.graphql.cost.models import (
+    FirstStepCounts,
+    FirstStepKindCount,
+    FirstStepPeerCount,
+    FirstStepRelationshipCount,
+    FirstStepTopLevelCount,
+)
 from infrahub.graphql.cost.queries import FirstStepNodesQuery, FirstStepPeerCountQuery, KindLabelCountQuery
 from infrahub.graphql.cost.recorder import resolving_field
 from infrahub.graphql.order import deserialize_order_input
@@ -67,7 +73,7 @@ class FirstStepCounter:
 
         """
         top_level: dict[str, FirstStepTopLevelCount] = {}
-        relationships: dict[str, tuple[FirstStepPeerCount, ...]] = {}
+        relationships: dict[str, FirstStepRelationshipCount] = {}
         label_counts: dict[str, int] = {}
         async with self.db.start_session(read_only=True) as db:
             with resolving_field(path=ESTIMATE_FIELD_PATH):
@@ -137,33 +143,43 @@ class FirstStepCounter:
 
     async def _count_peers(
         self, db: InfrahubDatabase, tree_field: CostTreeField, parent: FirstStepTopLevelCount
-    ) -> tuple[FirstStepPeerCount, ...]:
+    ) -> FirstStepRelationshipCount:
         source_ids = [
             node_id for kind in parent.kinds if kind.kind in tree_field.parent_kinds for node_id in kind.node_ids
         ]
         if not source_ids:
-            return ()
+            return FirstStepRelationshipCount(returned_paths=0, peer_kinds=())
         relationship = self._relationship_schema(tree_field=tree_field)
+        many = tree_field.cardinality == RelationshipCardinality.MANY
+        offset = _int_argument(tree_field=tree_field, name="offset") if many else None
+        limit = _int_argument(tree_field=tree_field, name="limit") if many else None
         query = await FirstStepPeerCountQuery.init(
             db=db,
             branch=self.branch,
             at=self.at,
             source_ids=source_ids,
             schema=relationship,
-            filters=build_peer_filters(field_name=relationship.name, arguments=tree_field.arguments)
-            if tree_field.cardinality == RelationshipCardinality.MANY
-            else {},
+            filters=build_peer_filters(field_name=relationship.name, arguments=tree_field.arguments) if many else {},
+            peer_offset=max(offset or 0, 0),
+            # The peer query of the field reads a limit of zero as no limit.
+            peer_limit=limit if limit is not None and limit > 0 else None,
             branch_agnostic=relationship.branch is BranchSupportType.AGNOSTIC,
         )
         await query.execute(db=db)
-        return tuple(
-            FirstStepPeerCount(
-                peer_kind=peer_count.peer_kind,
-                paths=peer_count.paths,
-                distinct_peers=peer_count.distinct_peers,
-                max_parents=peer_count.max_parents,
-            )
-            for peer_count in sorted(query.get_data(), key=lambda peer_count: peer_count.peer_kind)
+        result = query.get_data()
+        return FirstStepRelationshipCount(
+            returned_paths=result.returned_paths,
+            peer_kinds=tuple(
+                FirstStepPeerCount(
+                    peer_kind=peer_count.peer_kind,
+                    paths=peer_count.paths,
+                    expected_returned_paths=peer_count.expected_returned_paths,
+                    max_returned_paths=peer_count.max_returned_paths,
+                    distinct_peers=peer_count.distinct_peers,
+                    max_parents=peer_count.max_parents,
+                )
+                for peer_count in sorted(result.peer_kinds, key=lambda peer_count: peer_count.peer_kind)
+            ),
         )
 
     def _relationship_schema(self, tree_field: CostTreeField) -> RelationshipSchema:

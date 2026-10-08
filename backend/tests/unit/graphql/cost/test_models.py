@@ -14,6 +14,8 @@ from infrahub.graphql.cost.models import (
     EstimateSource,
     FieldDescription,
     FieldEstimate,
+    FirstStepPeerCount,
+    FirstStepRelationshipCount,
     HistogramBucket,
     KindStatistics,
     RelationshipRef,
@@ -557,3 +559,31 @@ def test_cost_tree_field_rejects_impossible_selections(test_case: InvalidTreeFie
             arguments={},
             children=test_case.children,
         )
+
+
+def _gaz_cars(paths: int, max_returned_paths: int) -> FirstStepPeerCount:
+    return FirstStepPeerCount(
+        peer_kind="TestGazCar",
+        paths=paths,
+        expected_returned_paths=max_returned_paths,
+        max_returned_paths=max_returned_paths,
+        distinct_peers=paths,
+        max_parents=1,
+    )
+
+
+def test_first_step_peer_count_returns_no_more_paths_than_it_reads() -> None:
+    with pytest.raises(
+        ValueError, match=r"^Inconsistent peer counts for TestGazCar: paths=2, .*max_returned_paths=3, "
+    ):
+        _gaz_cars(paths=2, max_returned_paths=3)
+
+
+def test_first_step_relationship_count_returns_at_most_what_its_peer_kinds_can_return() -> None:
+    peer_kinds = (_gaz_cars(paths=4, max_returned_paths=2), _gaz_cars(paths=3, max_returned_paths=1))
+
+    counted = FirstStepRelationshipCount(returned_paths=3, peer_kinds=peer_kinds)
+
+    assert counted.returned_paths == 3
+    with pytest.raises(ValueError, match=r"^4 returned paths cannot come from peer kinds that return at most 3$"):
+        FirstStepRelationshipCount(returned_paths=4, peer_kinds=peer_kinds)

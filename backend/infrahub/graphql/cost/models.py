@@ -281,15 +281,47 @@ class FirstStepPeerCount:
     """Pairs of a top-level node and one of its peers of this concrete kind, read with the filters of the field
     but without its offset and limit."""
 
+    expected_returned_paths: float
+    """Pairs of this kind that the field returns after its offset and limit, when the peers each top-level node
+    returns are split between the peer kinds in proportion to its peers of each kind; exact when the peers of each
+    top-level node are all of one kind."""
+
+    max_returned_paths: int
+    """Most pairs of this kind that the field can return after its offset and limit: for each top-level node, the
+    smaller of its peers of this kind and the peers it returns."""
+
     distinct_peers: int
     max_parents: int
-    """Largest number of top-level nodes that reach one peer of this kind."""
+    """Largest number of top-level nodes that reach one peer of this kind, read without the offset and limit."""
 
     def __post_init__(self) -> None:
-        if not 0 <= self.max_parents <= self.paths or not 0 <= self.distinct_peers <= self.paths:
+        if (
+            not 0 <= self.max_parents <= self.paths
+            or not 0 <= self.distinct_peers <= self.paths
+            or not 0 <= self.max_returned_paths <= self.paths
+            or self.expected_returned_paths < 0
+        ):
             raise ValueError(
                 f"Inconsistent peer counts for {self.peer_kind}: paths={self.paths}, "
-                f"distinct_peers={self.distinct_peers}, max_parents={self.max_parents}"
+                f"expected_returned_paths={self.expected_returned_paths}, "
+                f"max_returned_paths={self.max_returned_paths}, distinct_peers={self.distinct_peers}, "
+                f"max_parents={self.max_parents}"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class FirstStepRelationshipCount:
+    returned_paths: int
+    """Pairs of a top-level node and one of its peers that the field returns, after its offset and limit."""
+
+    peer_kinds: tuple[FirstStepPeerCount, ...]
+    """One entry for each concrete peer kind."""
+
+    def __post_init__(self) -> None:
+        most_returned = sum(peer_kind.max_returned_paths for peer_kind in self.peer_kinds)
+        if not 0 <= self.returned_paths <= most_returned:
+            raise ValueError(
+                f"{self.returned_paths} returned paths cannot come from peer kinds that return at most {most_returned}"
             )
 
 
@@ -304,10 +336,10 @@ class FirstStepCounts:
     top_level: Mapping[str, FirstStepTopLevelCount]
     """Counts of each top-level field, by path."""
 
-    relationships: Mapping[str, tuple[FirstStepPeerCount, ...]]
-    """Counts of each relationship field directly under a counted top-level field, by path, one entry for each
-    concrete peer kind. Only the top-level nodes of the parent kinds of the field are counted, and a field under
-    a top-level field that exceeds the size limit has no entry."""
+    relationships: Mapping[str, FirstStepRelationshipCount]
+    """Counts of each relationship field directly under a counted top-level field, by path. Only the top-level
+    nodes of the parent kinds of the field are counted, and a field under a top-level field that exceeds the size
+    limit has no entry."""
 
     label_counts: Mapping[str, int]
     """Current label count of each kind in the query, read by the same queries."""

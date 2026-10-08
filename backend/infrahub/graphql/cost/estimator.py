@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from infrahub.graphql.cost.models import (
         CostTreeField,
         FirstStepCounts,
-        FirstStepPeerCount,
+        FirstStepRelationshipCount,
         FirstStepTopLevelCount,
         KindStatistics,
         RelationshipRef,
@@ -273,7 +273,7 @@ class _QueryEstimator:
             else None
         )
         if counted is not None:
-            step = self._counted_relationship(tree_field=tree_field, parent_paths=applicable_paths, counted=counted)
+            step = self._counted_relationship(parent_paths=applicable_paths, counted=counted)
         else:
             step = self._statistics_relationship(
                 tree_field=tree_field,
@@ -288,28 +288,20 @@ class _QueryEstimator:
             self._add_relationship(tree_field=child, parent_paths=step.peer_paths, counted_parent=False, listed_ids=())
 
     def _counted_relationship(
-        self,
-        tree_field: CostTreeField,
-        parent_paths: Mapping[str, _KindPaths],
-        counted: Sequence[FirstStepPeerCount],
+        self, parent_paths: Mapping[str, _KindPaths], counted: FirstStepRelationshipCount
     ) -> _Step:
-        calls = sum(paths.worst_case for paths in parent_paths.values())
-        total = sum(peer_count.paths for peer_count in counted)
-        limit = _int_argument(tree_field=tree_field, name="limit")
-        returned = total if limit is None else min(total, calls * limit)
-        share = returned / total if total else 0.0
         return _Step(
-            expected_nodes=returned,
-            worst_case_nodes=returned,
+            expected_nodes=counted.returned_paths,
+            worst_case_nodes=counted.returned_paths,
             expected_calls=sum(paths.expected for paths in parent_paths.values()),
-            worst_case_calls=calls,
+            worst_case_calls=sum(paths.worst_case for paths in parent_paths.values()),
             peer_paths={
                 peer_count.peer_kind: _KindPaths(
-                    expected=peer_count.paths * share,
-                    worst_case=min(peer_count.paths, returned),
-                    worst_case_per_node=min(peer_count.max_parents, peer_count.paths, returned),
+                    expected=min(peer_count.expected_returned_paths, peer_count.max_returned_paths),
+                    worst_case=peer_count.max_returned_paths,
+                    worst_case_per_node=min(peer_count.max_parents, peer_count.max_returned_paths),
                 )
-                for peer_count in counted
+                for peer_count in counted.peer_kinds
             },
             source=EstimateSource.COUNTED,
         )

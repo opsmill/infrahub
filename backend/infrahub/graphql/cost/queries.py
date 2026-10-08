@@ -286,6 +286,8 @@ class FirstStepNodesQuery(NodeGetListQuery):
             filters=filters,
             partial_match=partial_match,
             order=order if has_window else OrderModel(disable=True),
+            # Given the limit, the list query drops the order of a one-node window as it does when the field runs.
+            limit=self.node_limit,
             **kwargs,
         )
         # The counts come back in one row, and a set limit makes the query run once instead of in pages.
@@ -343,28 +345,58 @@ class FirstStepPeerCountQueryResult:
     """Concrete kind of the peers."""
 
     paths: int
-    """Pairs of a source node and one of its peers of this kind."""
+    """Pairs of a source node and one of its peers of this kind, before the offset and limit."""
+
+    expected_returned_paths: float
+    """Pairs of this kind returned after the offset and limit, when the peers each source node returns are split
+    between the peer kinds in proportion to its peers of each kind."""
+
+    max_returned_paths: int
+    """Sum over the source nodes of the smaller of their peers of this kind and the peers they return."""
 
     distinct_peers: int
     max_parents: int
     """Largest number of source nodes that reach one peer of this kind."""
 
 
-class FirstStepPeerCountQuery(RelationshipGetPeerQuery):
-    """Count, for each concrete peer kind, the peers that a relationship field returns for the given source nodes.
+@dataclass(frozen=True)
+class FirstStepRelationshipCountQueryResult:
+    returned_paths: int
+    """Pairs of a source node and one of its peers returned after the offset and limit."""
 
-    The peers are matched with the filters and the active-edge rule of the peer query of the field, without its
-    offset and limit.
+    peer_kinds: tuple[FirstStepPeerCountQueryResult, ...]
+
+
+class FirstStepPeerCountQuery(RelationshipGetPeerQuery):
+    """Count the peers that a relationship field returns for the given source nodes, in total and for each peer kind.
+
+    The peers are matched with the filters and the active-edge rule of the peer query of the field. The offset and
+    limit apply to the peers of each source node, as the field reads them for one parent node at a time.
     """
 
     name = "graphql-cost-first-step-peer-count"
     insert_return = False
 
     def __init__(
-        self, source_ids: Sequence[str], schema: RelationshipSchema, filters: dict[str, Any], **kwargs: Any
+        self,
+        source_ids: Sequence[str],
+        schema: RelationshipSchema,
+        filters: dict[str, Any],
+        peer_offset: int,
+        peer_limit: int | None,
+        **kwargs: Any,
     ) -> None:
+        """Prepare the count of the peers of a relationship field.
+
+        Args:
+            peer_offset: Peers of each source node skipped before the ones returned; 0 for no offset.
+            peer_limit: Most peers returned for each source node; None for no limit.
+
+        """
         kwargs.pop("limit", None)
         kwargs.pop("offset", None)
+        self.peer_offset = peer_offset
+        self.peer_limit = peer_limit
         super().__init__(
             source_ids=list(source_ids),
             schema=schema,
@@ -379,19 +411,58 @@ class FirstStepPeerCountQuery(RelationshipGetPeerQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
         await super().query_init(db=db, **kwargs)
         self.order_by = []
+        self.params["peer_offset"] = self.peer_offset
+        returned = "after_offset"
+        if self.peer_limit is not None:
+            self.params["peer_limit"] = self.peer_limit
+            returned = "CASE WHEN after_offset > $peer_limit THEN $peer_limit ELSE after_offset END"
         query = """
         WITH DISTINCT source_node.uuid AS source_id, peer.uuid AS peer_id, peer.kind AS peer_kind
-        WITH peer_kind, peer_id, count(source_id) AS parents
-        WITH peer_kind, sum(parents) AS paths, count(peer_id) AS distinct_peers, max(parents) AS max_parents
-        RETURN collect({
-            peer_kind: peer_kind, paths: paths, distinct_peers: distinct_peers, max_parents: max_parents
-        }) AS peer_counts
-        """
+        WITH source_id, peer_kind, collect(peer_id) AS peer_ids
+        WITH source_id, collect({peer_kind: peer_kind, peer_ids: peer_ids}) AS kinds, sum(size(peer_ids)) AS peers
+        WITH kinds, peers, CASE WHEN peers > $peer_offset THEN peers - $peer_offset ELSE 0 END AS after_offset
+        WITH kinds, peers, %(returned)s AS returned
+        WITH collect({kinds: kinds, peers: peers, returned: returned}) AS source_counts, sum(returned) AS returned_paths
+        CALL (source_counts) {
+            UNWIND source_counts AS source_count
+            UNWIND source_count.kinds AS kind
+            WITH
+                kind.peer_kind AS peer_kind,
+                kind.peer_ids AS peer_ids,
+                source_count.peers AS peers,
+                source_count.returned AS returned
+            // the order of the peers is not read, so the peers a source returns are split in proportion to its kinds
+            WITH
+                peer_kind,
+                collect(peer_ids) AS peer_ids_by_source,
+                sum(size(peer_ids)) AS paths,
+                sum(toFloat(returned) * size(peer_ids) / peers) AS expected_returned_paths,
+                sum(CASE WHEN size(peer_ids) < returned THEN size(peer_ids) ELSE returned END) AS max_returned_paths
+            CALL (peer_ids_by_source) {
+                UNWIND peer_ids_by_source AS peer_ids
+                UNWIND peer_ids AS peer_id
+                WITH peer_id, count(*) AS parents
+                RETURN count(peer_id) AS distinct_peers, max(parents) AS max_parents
+            }
+            RETURN collect({
+                peer_kind: peer_kind,
+                paths: paths,
+                expected_returned_paths: expected_returned_paths,
+                max_returned_paths: max_returned_paths,
+                distinct_peers: distinct_peers,
+                max_parents: max_parents
+            }) AS peer_kinds
+        }
+        RETURN returned_paths, peer_kinds
+        """ % {"returned": returned}
         self.add_to_query(query)
-        self.return_labels = ["peer_counts"]
+        self.return_labels = ["returned_paths", "peer_kinds"]
 
-    def get_data(self) -> Generator[FirstStepPeerCountQueryResult, None, None]:
+    def get_data(self) -> FirstStepRelationshipCountQueryResult:
         result = self.get_result()
         if result is None:
-            return
-        yield from result.get_as_list_of_type("peer_counts", FirstStepPeerCountQueryResult)
+            return FirstStepRelationshipCountQueryResult(returned_paths=0, peer_kinds=())
+        return FirstStepRelationshipCountQueryResult(
+            returned_paths=result.get_as_type("returned_paths", int),
+            peer_kinds=tuple(result.get_as_list_of_type("peer_kinds", FirstStepPeerCountQueryResult)),
+        )

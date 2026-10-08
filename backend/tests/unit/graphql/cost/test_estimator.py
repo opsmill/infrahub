@@ -22,6 +22,7 @@ from infrahub.graphql.cost.models import (
     FirstStepCounts,
     FirstStepKindCount,
     FirstStepPeerCount,
+    FirstStepRelationshipCount,
     FirstStepTopLevelCount,
     KindStatistics,
     RelationshipRef,
@@ -154,9 +155,55 @@ UNEVEN_LABELS = {PERSON: 3, ELECTRIC: 6, GAZ: 2}
 UNEVEN_FIRST_STEP_PERSONS = FirstStepTopLevelCount(
     kinds=(FirstStepKindCount(kind=PERSON, node_count=2, node_ids=("p1", "p2")),), exceeds_size_limit=False
 )
-UNEVEN_FIRST_STEP_CARS = (
-    FirstStepPeerCount(peer_kind=ELECTRIC, paths=6, distinct_peers=6, max_parents=1),
-    FirstStepPeerCount(peer_kind=GAZ, paths=2, distinct_peers=2, max_parents=1),
+UNEVEN_FIRST_STEP_CARS = FirstStepRelationshipCount(
+    returned_paths=8,
+    peer_kinds=(
+        FirstStepPeerCount(
+            peer_kind=ELECTRIC,
+            paths=6,
+            expected_returned_paths=6.0,
+            max_returned_paths=6,
+            distinct_peers=6,
+            max_parents=1,
+        ),
+        FirstStepPeerCount(
+            peer_kind=GAZ, paths=2, expected_returned_paths=2.0, max_returned_paths=2, distinct_peers=2, max_parents=1
+        ),
+    ),
+)
+# With a limit of 2, p1 returns two of its six electric cars and p2 both its gaz cars.
+UNEVEN_FIRST_STEP_FIRST_TWO_CARS = FirstStepRelationshipCount(
+    returned_paths=4,
+    peer_kinds=(
+        FirstStepPeerCount(
+            peer_kind=ELECTRIC,
+            paths=6,
+            expected_returned_paths=2.0,
+            max_returned_paths=2,
+            distinct_peers=6,
+            max_parents=1,
+        ),
+        FirstStepPeerCount(
+            peer_kind=GAZ, paths=2, expected_returned_paths=2.0, max_returned_paths=2, distinct_peers=2, max_parents=1
+        ),
+    ),
+)
+# With an offset of 3, p1 returns three of its six electric cars and p2 none of its two gaz cars.
+UNEVEN_FIRST_STEP_CARS_AFTER_THREE = FirstStepRelationshipCount(
+    returned_paths=3,
+    peer_kinds=(
+        FirstStepPeerCount(
+            peer_kind=ELECTRIC,
+            paths=6,
+            expected_returned_paths=3.0,
+            max_returned_paths=3,
+            distinct_peers=6,
+            max_parents=1,
+        ),
+        FirstStepPeerCount(
+            peer_kind=GAZ, paths=2, expected_returned_paths=0.0, max_returned_paths=0, distinct_peers=2, max_parents=1
+        ),
+    ),
 )
 
 # No histogram is stored: only the node with the most peers of each side is known.
@@ -499,7 +546,7 @@ ESTIMATE_CASES: list[EstimateCase] = [
         label_counts=UNEVEN_LABELS,
         first_step=FirstStepCounts(
             top_level={"TestPerson": UNEVEN_FIRST_STEP_PERSONS},
-            relationships={"TestPerson/cars": UNEVEN_FIRST_STEP_CARS},
+            relationships={"TestPerson/cars": UNEVEN_FIRST_STEP_FIRST_TWO_CARS},
             label_counts=UNEVEN_LABELS,
         ),
         expected_mode=EstimateMode.COUNTED_FIRST_STEP,
@@ -510,7 +557,102 @@ ESTIMATE_CASES: list[EstimateCase] = [
             "TestPerson/cars": _estimated(
                 CARS_FIELD, expected=_figures(4, 2, 12), worst_case=_figures(4, 2, 12), source=EstimateSource.COUNTED
             ),
-            "TestPerson/cars/owner": _estimated(OWNER_FIELD, expected=_figures(4, 4, 8), worst_case=_figures(6, 6, 12)),
+            "TestPerson/cars/owner": _estimated(OWNER_FIELD, expected=_figures(4, 4, 8), worst_case=_figures(4, 4, 8)),
+        },
+    ),
+    EstimateCase(
+        # Without the offset, the persons would return their eight cars.
+        name="a_nested_offset_skips_the_counted_peers_of_each_parent",
+        tree=[
+            _top_level(
+                path="TestPerson",
+                kind=PERSON,
+                children=(
+                    _cars(
+                        selected_cardinality_one_count=1,
+                        arguments={"offset": 3},
+                        children=(_owner(selected_attribute_count=1),),
+                    ),
+                ),
+            )
+        ],
+        snapshot=UNEVEN_SNAPSHOT,
+        label_counts=UNEVEN_LABELS,
+        first_step=FirstStepCounts(
+            top_level={"TestPerson": UNEVEN_FIRST_STEP_PERSONS},
+            relationships={"TestPerson/cars": UNEVEN_FIRST_STEP_CARS_AFTER_THREE},
+            label_counts=UNEVEN_LABELS,
+        ),
+        expected_mode=EstimateMode.COUNTED_FIRST_STEP,
+        expected={
+            "TestPerson": _estimated(
+                PERSON_FIELD, expected=_figures(2, 1, 4), worst_case=_figures(2, 1, 4), source=EstimateSource.COUNTED
+            ),
+            "TestPerson/cars": _estimated(
+                CARS_FIELD, expected=_figures(3, 2, 9), worst_case=_figures(3, 2, 9), source=EstimateSource.COUNTED
+            ),
+            "TestPerson/cars/owner": _estimated(OWNER_FIELD, expected=_figures(3, 3, 6), worst_case=_figures(3, 3, 6)),
+        },
+    ),
+    EstimateCase(
+        # p1 returns one of its two electric cars and one gaz car: two thirds of an electric car and one third of
+        # a gaz car are expected, and at most one car of each kind.
+        name="the_counted_window_of_several_peer_kinds_is_split_in_proportion_and_bounded_for_each_kind",
+        tree=[
+            _top_level(
+                path="TestPerson",
+                kind=PERSON,
+                children=(
+                    _cars(
+                        selected_cardinality_one_count=1,
+                        arguments={"offset": 1, "limit": 1},
+                        children=(_owner(selected_attribute_count=1),),
+                    ),
+                ),
+            )
+        ],
+        snapshot=EVEN_SNAPSHOT,
+        label_counts=EVEN_LABELS,
+        first_step=FirstStepCounts(
+            top_level={
+                "TestPerson": FirstStepTopLevelCount(
+                    kinds=(FirstStepKindCount(kind=PERSON, node_count=1, node_ids=("p1",)),), exceeds_size_limit=False
+                )
+            },
+            relationships={
+                "TestPerson/cars": FirstStepRelationshipCount(
+                    returned_paths=1,
+                    peer_kinds=(
+                        FirstStepPeerCount(
+                            peer_kind=ELECTRIC,
+                            paths=2,
+                            expected_returned_paths=2 / 3,
+                            max_returned_paths=1,
+                            distinct_peers=2,
+                            max_parents=1,
+                        ),
+                        FirstStepPeerCount(
+                            peer_kind=GAZ,
+                            paths=1,
+                            expected_returned_paths=1 / 3,
+                            max_returned_paths=1,
+                            distinct_peers=1,
+                            max_parents=1,
+                        ),
+                    ),
+                )
+            },
+            label_counts=EVEN_LABELS,
+        ),
+        expected_mode=EstimateMode.COUNTED_FIRST_STEP,
+        expected={
+            "TestPerson": _estimated(
+                PERSON_FIELD, expected=_figures(1, 1, 2), worst_case=_figures(1, 1, 2), source=EstimateSource.COUNTED
+            ),
+            "TestPerson/cars": _estimated(
+                CARS_FIELD, expected=_figures(1, 1, 3), worst_case=_figures(1, 1, 3), source=EstimateSource.COUNTED
+            ),
+            "TestPerson/cars/owner": _estimated(OWNER_FIELD, expected=_figures(1, 1, 2), worst_case=_figures(2, 2, 4)),
         },
     ),
     EstimateCase(
@@ -1001,12 +1143,17 @@ def test_worst_case_equals_the_largest_value_over_every_assignment_of_paths(test
             )
         },
         relationships={
-            "TestPerson/cars": (
-                FirstStepPeerCount(
-                    peer_kind=GAZ,
-                    paths=test_case.paths,
-                    distinct_peers=min(len(cars), test_case.paths),
-                    max_parents=test_case.paths_per_car,
+            "TestPerson/cars": FirstStepRelationshipCount(
+                returned_paths=test_case.paths,
+                peer_kinds=(
+                    FirstStepPeerCount(
+                        peer_kind=GAZ,
+                        paths=test_case.paths,
+                        expected_returned_paths=test_case.paths,
+                        max_returned_paths=test_case.paths,
+                        distinct_peers=min(len(cars), test_case.paths),
+                        max_parents=test_case.paths_per_car,
+                    ),
                 ),
             )
         },
