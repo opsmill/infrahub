@@ -139,9 +139,12 @@ class CoalescedRecompute:
 
 
 class PythonTargetResolver(Protocol):
-    """The Python transform computed attributes a merge or rebase change set affects."""
+    """The Python transform computed attributes a merge or rebase change set affects, and who owns each."""
 
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]: ...
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        """Return the id of the repository whose transform computes the attribute, or None when it is not known."""
 
 
 @dataclass

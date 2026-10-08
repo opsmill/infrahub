@@ -21,8 +21,8 @@ SUMMARY = DeclaredAttribute(kind=DEVICE, attribute_name="summary")
 ROSTER = DeclaredAttribute(kind=DEVICE, attribute_name="roster")
 DIGEST = DeclaredAttribute(kind=DEVICE, attribute_name="digest")
 DEVICE_READS = TransformReadSet(read_kinds=frozenset({DEVICE}), read_fields={DEVICE: frozenset({"name"})})
-SUMMARY_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=True)
-ROSTER_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=False)
+SUMMARY_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=True, repository_id="repository-1")
+ROSTER_READ = AnalyzedRead(read_set=DEVICE_READS, pinned=False, repository_id="repository-2")
 
 
 def _source(
@@ -38,8 +38,8 @@ async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
     """An attribute with no transform to compute it stays out of the pass.
 
     Nothing can render its value until the transform arrives, and the recompute that follows the
-    transform being created is what covers it then. The two the analysis did answer for keep both
-    of its findings: what the query reads, and whether its root is pinned.
+    transform being created is what covers it then. The two the analysis did answer for keep each
+    of its findings: what the query reads, whether its root is pinned, and the repository of the transform.
     """
     source = _source(declared=[SUMMARY, ROSTER, DIGEST], analyzed={SUMMARY: SUMMARY_READ, ROSTER: ROSTER_READ})
 
@@ -49,12 +49,17 @@ async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
     assert read_sets["summary"].read_set == DEVICE_READS
     assert read_sets["summary"].pinned is True
     assert read_sets["roster"].pinned is False
+    assert {name: entry.repository_id for name, entry in read_sets.items()} == {
+        "summary": "repository-1",
+        "roster": "repository-2",
+    }
 
 
 async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     """The analysis resolves its peers strictly, so one missing peer raises for all of them.
 
-    Each declared attribute is then reported undeterminable and recomputed over its whole kind.
+    Each declared attribute is then reported undeterminable, with no known repository, and recomputed
+    over its whole kind.
     """
     analyzed = FailingAnalyzedPythonReadSets()
     source = ComposedPythonReadSetSource(
@@ -66,6 +71,7 @@ async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     assert analyzed.calls == [BRANCH]
     assert {entry.attribute_name for entry in read_sets} == {"summary", "digest"}
     assert all(entry.read_set.depends_on_everything for entry in read_sets)
+    assert [entry.repository_id for entry in read_sets] == [None, None]
 
 
 async def test_a_branch_declaring_nothing_never_reaches_the_analysis() -> None:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub.core.query_group.subscribers import SubscriberRef
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from infrahub.core.merge.python_target_resolution import PythonAttributeReadSet
     from infrahub.core.merge.python_target_sources import AnalyzedRead, DeclaredAttribute
@@ -64,15 +64,22 @@ class ResolveCall:
 
 
 class RecordingPythonTargetResolver:
-    """Serves a fixed target list and records the branch and node ids of every call."""
+    """Serves a fixed target list and records the branch and node ids of every call.
 
-    def __init__(self, targets: list[AffectedTarget]) -> None:
+    ``owners`` maps a ``(kind, attribute)`` pair to the repository of its transform, on every branch.
+    """
+
+    def __init__(self, targets: list[AffectedTarget], owners: Mapping[tuple[str, str], str] | None = None) -> None:
         self.targets = targets
+        self.owners = owners or {}
         self.calls: list[ResolveCall] = []
 
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]:
         self.calls.append(ResolveCall(branch=branch, node_ids=tuple(change.node_id for change in changes)))
         return self.targets
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        return self.owners.get((kind, attribute_name))
 
 
 class FailingSubscriberSource:
@@ -95,6 +102,9 @@ class FailingPythonTargetResolver:
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]:
         self.calls.append(branch)
         raise RuntimeError("read set unavailable")
+
+    def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
+        return None
 
 
 class StaticDeclaredPythonAttributes:
