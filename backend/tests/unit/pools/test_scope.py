@@ -121,6 +121,13 @@ class TestDivisionKey:
     def test_key_does_not_depend_on_the_key_order_of_a_document(self) -> None:
         assert Division(values=({"pod": 1, "row": "b"},)).key == Division(values=({"row": "b", "pod": 1},)).key
 
+    def test_key_of_a_value_holding_a_lone_surrogate_is_computed(self) -> None:
+        # A JSON document decoded from a "\\ud83d" escape holds a lone surrogate, which UTF-8 cannot encode.
+        division = Division(values=({"label": "\ud83d"},))
+
+        assert division.key != Division(values=({"label": ""},)).key
+        assert {division} == {Division(values=({"label": "\ud83d"},))}
+
     def test_key_is_the_same_in_every_process(self) -> None:
         division = Division(values=("site-a-id", ["red", "blue"], {"pod": 1}))
 

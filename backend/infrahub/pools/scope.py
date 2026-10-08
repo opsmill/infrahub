@@ -81,8 +81,8 @@ class Division:
     def key(self) -> str:
         """Return a hash of the values that stays the same across processes, used to name the division's lock."""
         # Sorted keys make the hash ignore the key order of a document, as its equality does.
-        encoded = json.dumps(list(self.values), sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-        return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+        encoded = json.dumps(list(self.values), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        return hashlib.sha256(encoded.encode("ascii")).hexdigest()
 
     # Equality and hashing follow the lock key, so equal divisions share one lock and list values stay hashable.
     def __eq__(self, other: object) -> bool:
