@@ -3,12 +3,8 @@ from prefect import flow
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
 from infrahub.core.registry import registry
-from infrahub.exceptions import (
-    RepositoryConnectionError,
-    RepositoryCredentialsError,
-    RepositoryError,
-    RepositoryPermissionError,
-)
+from infrahub.exceptions import RepositoryError
+from infrahub.git.base import operational_status_for_error
 from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
 from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
@@ -50,11 +46,7 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
         )
         response_data.success = False
         response_data.message = exc.message
-        response_data.operational_status = {
-            RepositoryConnectionError: RepositoryOperationalStatus.ERROR_CONNECTION,
-            RepositoryCredentialsError: RepositoryOperationalStatus.ERROR_CRED,
-            RepositoryPermissionError: RepositoryOperationalStatus.ERROR_CRED,
-        }.get(type(exc), RepositoryOperationalStatus.ERROR).value
+        response_data.operational_status = operational_status_for_error(error=exc).value
 
     if message.reply_requested:
         response = GitRepositoryConnectivityResponse(

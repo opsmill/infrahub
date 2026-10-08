@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.diff.model.diff import SchemaConflict
     from infrahub.core.validators.model import SchemaViolation
+    from infrahub.git.models import PushRejectionReason
 
 
 def _rebuild_error(cls: type[Error], args: tuple[Any, ...], state: Any) -> Error:
@@ -126,6 +127,20 @@ class RepositoryConnectionError(RepositoryError):
         )
 
 
+class RepositoryTLSError(RepositoryConnectionError):
+    """Raised when Git does not accept the certificate of the remote."""
+
+    def __init__(self, identifier: str, message: str | None = None) -> None:
+        super().__init__(
+            identifier=identifier,
+            message=message or f"SSL verification failed for {identifier}, please validate the certificate chain.",
+        )
+
+
+class RepositoryNotFoundError(RepositoryConnectionError):
+    """Raised when the remote reports the repository as not found, as a host also does for one the token cannot see."""
+
+
 class RepositoryCredentialsError(RepositoryError):
     def __init__(self, identifier: str, message: str | None = None) -> None:
         super().__init__(
@@ -152,6 +167,15 @@ class RepositoryDivergentHistoryError(RepositoryError):
             identifier=identifier,
             message=message or f"The local history of repository {identifier} and its remote history have diverged.",
         )
+
+
+class RepositoryPushRejectedError(RepositoryError):
+    """Raised when the remote refuses a pushed ref; ``remote_message`` holds the remote's own ``remote:`` lines."""
+
+    def __init__(self, identifier: str, reason: PushRejectionReason, remote_message: str, message: str) -> None:
+        super().__init__(identifier=identifier, message=message)
+        self.reason = reason
+        self.remote_message = remote_message
 
 
 class RepositoryInvalidBranchError(RepositoryError):
@@ -460,6 +484,23 @@ class HFIDViolatedError(UniquenessViolationError):
     def __init__(self, message: str, *, node_kind: str, fields: list[str], matching_nodes_ids: set[str]) -> None:
         self.matching_nodes_ids = matching_nodes_ids
         super().__init__(message, node_kind=node_kind, fields=fields)
+
+
+class DeliveryQueueChangedError(ValidationError):
+    """Raised when the pending pushes of a repository changed since the queue version the caller read."""
+
+    def __init__(self, repository_name: str, queue_version: int) -> None:
+        super().__init__(
+            f"The pending pushes of repository {repository_name} changed since version {queue_version}; "
+            "reload and try again."
+        )
+
+
+class NothingPendingError(ValidationError):
+    """Raised when a repository has no pending push to act on."""
+
+    def __init__(self, repository_name: str) -> None:
+        super().__init__(f"Repository {repository_name} has nothing pending to push.")
 
 
 class DiffRangeValidationError(DiffError): ...

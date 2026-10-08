@@ -1,17 +1,57 @@
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+from uuid import UUID
 
 import pytest
+from fast_depends import Provider
+from git import Repo
 from git.exc import GitCommandError
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.core.constants import RepositoryInternalStatus, RepositoryOperationalStatus
 from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
+    RepositoryInvalidBranchError,
+    RepositoryNotFoundError,
     RepositoryPermissionError,
+    RepositoryTLSError,
 )
-from infrahub.git.base import InfrahubRepositoryBase
+from infrahub.git import InfrahubRepository
+from infrahub.git.base import InfrahubRepositoryBase, operational_status_for_error
+from infrahub.message_bus import InfrahubMessage, Meta
+from infrahub.message_bus.messages.git_repository_connectivity import (
+    GitRepositoryConnectivity,
+    GitRepositoryConnectivityResponse,
+    GitRepositoryConnectivityResponseData,
+)
+from infrahub.message_bus.operations.git.repository import connectivity
+from infrahub.workers.dependencies import build_message_bus
+from tests.adapters.message_bus import BusRecorder
+from tests.helpers.dependency_override import override_dependency
+from tests.helpers.test_client import dummy_async_request
 
 TLS_HINT = "SSL verification failed for net-repo, please validate the certificate chain."
+CONNECTION_HINT = "Unable to clone the repository net-repo, please check the address and the credential"
+TIME_LIMIT_HINT = (
+    "The Git command for repository net-repo did not complete within its time limit, "
+    "please check that the remote is reachable."
+)
+PERMISSION_HINT = (
+    "Write access to repository net-repo was denied. The credentials can read but not push; "
+    "grant the token write access to the repository."
+)
+TLS_STDERR = (
+    "fatal: unable to access 'https://git.example.com/demo.git/': "
+    "SSL certificate problem: unable to get local issuer certificate"
+)
+NOT_FOUND_STDERR = (
+    "remote: Repository not found.\nfatal: repository 'https://gitlab.example.com/net/repo.git/' not found"
+)
 
 
 @dataclass
@@ -59,17 +99,62 @@ ENRICHMENT_CASES = [
     ),
     EnrichmentCase(
         name="repository_not_found",
-        stderr="remote: Repository not found.\nfatal: repository 'https://gitlab.example.com/net/repo.git/' not found",
+        stderr=NOT_FOUND_STDERR,
+        expected=RepositoryNotFoundError,
+        message=CONNECTION_HINT,
+    ),
+    EnrichmentCase(
+        # Git's own line for an HTTP 404, the only one a fetch or a push keeps, since the host's line starts with "remote:".
+        name="repository_not_found_http_404",
+        stderr="fatal: repository 'http://127.0.0.1:18765/missing.git/' not found",
+        expected=RepositoryNotFoundError,
+        message=CONNECTION_HINT,
+    ),
+    EnrichmentCase(
+        # Git's line for a missing branch also says "not found", but it names no missing repository.
+        name="remote_branch_not_found_is_not_a_missing_repository",
+        stderr="fatal: Remote branch feature not found in upstream origin",
+        expected=RepositoryError,
+        command=["git", "clone", "-v", "--branch=feature", "--", "https://gitlab.example.com/net/repo.git"],
+    ),
+    EnrichmentCase(
+        name="local_path_that_is_not_a_repository",
+        stderr="fatal: '/srv/git/net-repo' does not appear to be a git repository\n"
+        "fatal: Could not read from remote repository.",
         expected=RepositoryConnectionError,
+    ),
+    EnrichmentCase(
+        # The line GitPython adds to the error lines of a fetch or a push when Git ran past its kill_after_timeout.
+        name="fetch_or_push_past_its_time_limit",
+        stderr="error: process killed because it timed out. kill_after_timeout=60 seconds",
+        expected=RepositoryConnectionError,
+        message=TIME_LIMIT_HINT,
+    ),
+    EnrichmentCase(
+        # GitPython's text when its watchdog kills a direct Git call; the arguments can name worker paths.
+        name="direct_git_call_past_its_time_limit",
+        stderr='Timeout: the command "git worktree add /opt/infrahub/git/repo/commits/abc abc" did not complete '
+        "in 120 secs.",
+        expected=RepositoryError,
+        command=["git", "worktree", "add", "/opt/infrahub/git/repo/commits/abc", "abc"],
+        message="The command git worktree for repository net-repo did not complete within 120 seconds.",
+    ),
+    EnrichmentCase(
+        # A write operation is a push to the remote, so past its limit it fails as a push does.
+        name="write_operation_past_its_time_limit",
+        stderr='Timeout: the command "git push origin --delete feature" did not complete in 300 secs.',
+        expected=RepositoryConnectionError,
+        command=["git", "push", "origin", "--delete", "feature"],
+        is_write_operation=True,
+        message=TIME_LIMIT_HINT,
     ),
     # One case per wording libcurl emits for an unverifiable certificate: the test host's own git covers
     # only the wording of the TLS backend it happens to be linked against, so they are asserted as text.
     EnrichmentCase(
         # OpenSSL handshake path, every curl version.
         name="tls_untrusted_openssl",
-        stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
-        "SSL certificate problem: unable to get local issuer certificate",
-        expected=RepositoryConnectionError,
+        stderr=TLS_STDERR,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -77,7 +162,7 @@ ENRICHMENT_CASES = [
         name="tls_untrusted_openssl_verify_result",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
         "SSL certificate verify result: unable to get local issuer certificate (20)",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -85,14 +170,14 @@ ENRICHMENT_CASES = [
         name="tls_untrusted_openssl_verify_result_since_815",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
         "SSL certificate OpenSSL verify result: unable to get local issuer certificate (20)",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
         name="tls_untrusted_gnutls_legacy",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
         "server certificate verification failed. CAfile: none CRLfile: none",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -100,7 +185,7 @@ ENRICHMENT_CASES = [
         name="tls_untrusted_gnutls_shipped_image",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': server verification failed: "
         "certificate signer not trusted. (CAfile: /opt/infrahub/tls/ca-bundle.pem CRLfile: none)",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -109,7 +194,7 @@ ENRICHMENT_CASES = [
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': "
         "SSL certificate verification failed: certificate signer not trusted. "
         "(CAfile: /opt/infrahub/tls/ca-bundle.pem CRLfile: none)",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -117,7 +202,7 @@ ENRICHMENT_CASES = [
         name="tls_hostname_mismatch_openssl",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': SSL: no alternative certificate "
         "subject name matches target host name 'git.example.com'",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -125,7 +210,7 @@ ENRICHMENT_CASES = [
         name="tls_hostname_mismatch_gnutls",
         stderr="fatal: unable to access 'https://git.example.com/demo.git/': SSL: certificate subject name "
         "(git.internal) does not match target hostname 'git.example.com'",
-        expected=RepositoryConnectionError,
+        expected=RepositoryTLSError,
         message=TLS_HINT,
     ),
     EnrichmentCase(
@@ -213,3 +298,244 @@ def test_raise_enriched_error_static_classification(case: EnrichmentCase) -> Non
     assert type(exc_info.value) is case.expected
     if case.message is not None:
         assert exc_info.value.message == case.message
+
+
+@dataclass
+class StatusCase:
+    name: str
+    error: RepositoryError
+    expected: RepositoryOperationalStatus
+
+
+STATUS_CASES = [
+    StatusCase(
+        name="connection",
+        error=RepositoryConnectionError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR_CONNECTION,
+    ),
+    StatusCase(
+        name="certificate_not_accepted",
+        error=RepositoryTLSError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR_CONNECTION,
+    ),
+    StatusCase(
+        name="repository_not_found",
+        error=RepositoryNotFoundError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR_CONNECTION,
+    ),
+    StatusCase(
+        name="credentials",
+        error=RepositoryCredentialsError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR_CRED,
+    ),
+    StatusCase(
+        name="write_permission",
+        error=RepositoryPermissionError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR_CRED,
+    ),
+    StatusCase(
+        name="invalid_branch",
+        error=RepositoryInvalidBranchError(identifier="net-repo", branch_name="main", location="/srv/git/net-repo"),
+        expected=RepositoryOperationalStatus.ERROR,
+    ),
+    StatusCase(
+        name="unclassified",
+        error=RepositoryError(identifier="net-repo"),
+        expected=RepositoryOperationalStatus.ERROR,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", STATUS_CASES, ids=lambda c: c.name)
+def test_operational_status_for_a_repository_error(case: StatusCase) -> None:
+    assert operational_status_for_error(error=case.error) == case.expected
+
+
+def failing_remote_location(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stderr: str, delay_seconds: int = 0
+) -> str:
+    """Return a remote location whose Git transport waits ``delay_seconds``, prints ``stderr`` and fails.
+
+    Git runs ``git-remote-<transport>`` for a ``<transport>::<address>`` location and passes its stderr
+    through, as it does for the HTTPS helper whose messages a real remote failure produces.
+    """
+    helper_directory = tmp_path / "remote-helper"
+    helper_directory.mkdir()
+    helper = helper_directory / "git-remote-failing"
+    helper.write_text(f"#!/bin/sh\nsleep {delay_seconds}\ncat >&2 <<'EOF'\n{stderr}\nEOF\nexit 128\n", encoding="utf-8")
+    helper.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+    # Allow the helper's transport whatever protocol policy the host's Git configuration sets.
+    monkeypatch.setenv("GIT_ALLOW_PROTOCOL", "failing")
+    return "failing::https://git.example.com/net/repo.git"
+
+
+class StatusRecordingClient(InfrahubClient):
+    """An SDK client that records the status of every operational status update instead of sending it."""
+
+    def __init__(self) -> None:
+        super().__init__(config=Config(requester=dummy_async_request))
+        self.recorded_statuses: list[str] = []
+
+    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        self.recorded_statuses.append(kwargs["variables"]["status"])
+        return {}
+
+
+def build_failing_remote_repository(location: str) -> tuple[InfrahubRepository, StatusRecordingClient]:
+    """Return a repository whose clone has `location` as its origin, and the client that records its status writes."""
+    repository = InfrahubRepository(
+        id=UUID(str(UUIDT.new())),
+        name="net-repo",
+        location=location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+    )
+    Repo.init(repository.directory_default).create_remote(name="origin", url=location, allow_unsafe_protocols=True)
+    recorder = StatusRecordingClient()
+    repository.client = recorder
+    return repository, recorder
+
+
+@dataclass
+class FetchConnectionFailureCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryConnectionError]
+    message: str
+    delay_seconds: int = 0
+    """How long the remote waits before it fails."""
+    timeout_seconds: float | None = None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        FetchConnectionFailureCase(
+            name="certificate_not_accepted", stderr=TLS_STDERR, expected=RepositoryTLSError, message=TLS_HINT
+        ),
+        FetchConnectionFailureCase(
+            # GitPython adds its time limit line only once Git ends, so the remote fails soon after the limit.
+            name="past_its_timeout",
+            stderr="",
+            expected=RepositoryConnectionError,
+            message=TIME_LIMIT_HINT,
+            delay_seconds=1,
+            timeout_seconds=0.3,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+@pytest.mark.usefixtures("git_repos_dir")
+async def test_fetch_failure_to_connect_records_the_connection_status(
+    case: FetchConnectionFailureCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    location = failing_remote_location(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
+    )
+    repository, recorder = build_failing_remote_repository(location=location)
+
+    with pytest.raises(case.expected) as raised:
+        await repository.fetch(timeout_seconds=case.timeout_seconds)
+
+    assert type(raised.value) is case.expected
+    assert raised.value.message == case.message
+    assert recorder.recorded_statuses == [RepositoryOperationalStatus.ERROR_CONNECTION.value]
+
+
+@dataclass
+class BranchDeletionFailureCase:
+    name: str
+    stderr: str
+    expected: type[RepositoryError]
+    message: str
+    delay_seconds: int = 0
+    """How long the remote waits before it fails."""
+    timeout_seconds: float | None = None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        BranchDeletionFailureCase(
+            # Only a write operation reads a 403 as missing write access.
+            name="write_access_denied",
+            stderr="fatal: unable to access 'https://git.example.com/net/repo.git/': "
+            "The requested URL returned error: 403",
+            expected=RepositoryPermissionError,
+            message=PERMISSION_HINT,
+        ),
+        BranchDeletionFailureCase(
+            name="past_its_time_limit",
+            stderr="",
+            expected=RepositoryConnectionError,
+            message=TIME_LIMIT_HINT,
+            delay_seconds=1,
+            timeout_seconds=0.3,
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+@pytest.mark.usefixtures("git_repos_dir")
+async def test_branch_deletion_types_its_failure_as_a_push_does(
+    case: BranchDeletionFailureCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    location = failing_remote_location(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr, delay_seconds=case.delay_seconds
+    )
+    repository, recorder = build_failing_remote_repository(location=location)
+
+    with pytest.raises(case.expected) as raised:
+        await repository.delete_remote_branch(branch_name="feature", timeout_seconds=case.timeout_seconds)
+
+    assert type(raised.value) is case.expected
+    assert raised.value.message == case.message
+    assert recorder.recorded_statuses == []
+
+
+class ReplyRecordingBus(BusRecorder):
+    """Message bus double that keeps every reply instead of sending it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.replies: list[InfrahubMessage] = []
+
+    async def reply(self, message: InfrahubMessage, routing_key: str) -> None:
+        self.replies.append(message)
+
+
+@dataclass
+class ConnectivityCase:
+    name: str
+    stderr: str
+    message: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ConnectivityCase(name="certificate_not_accepted", stderr=TLS_STDERR, message=TLS_HINT),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_connectivity_check_reports_the_connection_status_for_a_connection_subtype(
+    case: ConnectivityCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, dependency_provider: Provider
+) -> None:
+    location = failing_remote_location(tmp_path=tmp_path, monkeypatch=monkeypatch, stderr=case.stderr)
+    message = GitRepositoryConnectivity(
+        repository_name="net-repo", repository_location=location, meta=Meta(reply_to="connectivity-check")
+    )
+    bus = ReplyRecordingBus()
+
+    with override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider):
+        await connectivity.fn(message=message)
+
+    [reply] = bus.replies
+    assert isinstance(reply, GitRepositoryConnectivityResponse)
+    assert reply.data == GitRepositoryConnectivityResponseData(
+        message=case.message,
+        success=False,
+        operational_status=RepositoryOperationalStatus.ERROR_CONNECTION.value,
+    )
