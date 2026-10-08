@@ -547,7 +547,8 @@ UNRECORDED_FAILURE_CASES: list[UnrecordedFailureCase] = [
         error_line=(
             f"The delivery to repository net-repo was refused: The merge merge-1 of branch add-vlan at commit "
             f"{FEATURE} conflicts with the remote branch main of repository net-repo at {TRUNK}, so nothing was "
-            "pushed."
+            "pushed. The branches are merged in Infrahub, and their merges wait in the push queue of the repository. "
+            "Merge the source branch on the remote by hand, then retry the push, or abandon the push queue."
         ),
     ),
 ]
