@@ -206,9 +206,10 @@ async def test_admit_on_another_branch_returns_every_candidate_without_a_read() 
 
 async def test_admit_of_no_candidate_on_the_default_branch_reads_nothing() -> None:
     state = await _state(queued=(REPOSITORY_X,))
+    candidates: list[OwnedRegeneration[RequestArtifactDefinitionGenerate]] = []
 
     admitted = await _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep()).admit(
-        branch=DEFAULT_BRANCH, candidates=[], releasing=None
+        branch=DEFAULT_BRANCH, candidates=candidates, releasing=None
     )
 
     assert admitted == []
