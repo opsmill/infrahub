@@ -10,7 +10,6 @@ from ..models import GitReadOnlyRepositoryCheckRefs, TrackedRef
 from .checker import ReadOnlyRepositoryRefsChecker, RefNameValidator, RefsCheckScheduler
 from .constants import (
     REFS_CHECK_CLAIM_TTL_SECONDS,
-    REFS_CHECK_FETCH_TIMEOUT_SECONDS,
     REFS_CHECK_GIT_KILL_MARGIN_SECONDS,
     REFS_CHECK_RETRY_SECONDS,
     REFS_CHECK_TIMEOUT_SECONDS,
@@ -80,11 +79,7 @@ def build_refs_checker(
     # Sooner than the wall-clock ceiling on the listing, so a hung remote ends as a git failure
     # with the process gone rather than as an abandoned await over a process still running.
     list_kill_after_seconds = REFS_CHECK_TIMEOUT_SECONDS - REFS_CHECK_GIT_KILL_MARGIN_SECONDS
-    gateway = GitRepositoryRefsGateway(
-        client=client,
-        list_kill_after_seconds=list_kill_after_seconds,
-        fetch_kill_after_seconds=REFS_CHECK_FETCH_TIMEOUT_SECONDS,
-    )
+    gateway = GitRepositoryRefsGateway(client=client, list_kill_after_seconds=list_kill_after_seconds)
     return ReadOnlyRepositoryRefsChecker(
         cache=cache,
         message_bus=message_bus,

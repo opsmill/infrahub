@@ -304,6 +304,14 @@ network call holds no lock:
    ref, so every worker's copy converges while `update_commit_value=False` guarantees the pin does not
    move (FR-016, FR-017).
 
+**Superseded in part by T065h.** Steps 3 and 4 compare the remote against this worker's local copy,
+which decides the broadcast from whichever worker happened to run the check. The broadcast is now
+decided per tracked ref against the remote head the last check listed, held in
+`git:refs_check:listed:<id>:<ref>` and written by the check alone; the local comparison still
+decides whether this worker fetches. The recipients' fetch is also forced for a read-only
+repository, since git refuses to move an existing tag otherwise, and stopped with every process it
+started once a deadline passes, since every recipient runs it while holding the repository lock.
+
 Failure of any step is caught per repository, recorded with the repository and the reason, and the
 `git:refs_check:due:<id>` due key is deleted so the next tick retries rather than treating the repository
 as checked (FR-026). The cycle continues with the other repositories and does not fail the flow run.
@@ -425,9 +433,11 @@ from `auto_camelcase=False`.
 as a `Commits` tab on the generic object detail page
 (`frontend/app/src/entities/nodes/object/ui/object-details/object-details-tabs.tsx`, gated with
 `isOfKind(GENERIC_REPOSITORY_KIND, ...)` like the existing `repository_objects` tab), backed by the
-three-file query chain under `frontend/app/src/entities/repository/`, polling with
-`refetchInterval` while `condition === "UNAVAILABLE"` (pattern:
-`entities/branches/ui/queries/get-branch-action-state.query.ts`). The drift column has no rows to
+three-file query chain under `frontend/app/src/entities/repository/`. While the answer is
+`UNAVAILABLE` the query retries rather than polls: `retry` with a fixed 10-second `retryDelay`,
+capped at 30 retries (`ui/queries/repository-commits.constants.ts`), for `NOT_CLONED`, `TIMEOUT` and
+a missing reason, and no retry for `NOT_IMPLEMENTED`. `refetchInterval` was the planned pattern and
+was dropped because an interval refetch of a query with no data resets it to pending. The drift column has no rows to
 annotate yet: IFC-3104 has not landed and no per-repository branch list exists in the frontend, so
 User Story 3's UI waits for that card while its query ships now.
 

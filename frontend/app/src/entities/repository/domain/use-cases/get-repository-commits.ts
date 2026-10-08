@@ -3,7 +3,11 @@ import {
   getRepositoryCommitsFromApi,
 } from "@/entities/repository/api/get-repository-commits-from-api";
 import { mapToRepositoryCommitLog } from "@/entities/repository/api/repository-commits.mappers";
-import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
+import {
+  type RepositoryCommitLog,
+  RepositoryGitCondition,
+} from "@/entities/repository/domain/model/repository";
+import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 
 export type GetRepositoryCommitsParams = GetRepositoryCommitsFromApiParams;
 
@@ -24,5 +28,11 @@ export const getRepositoryCommits: GetRepositoryCommits = async (params) => {
     throw new Error("The commit log response carried no data");
   }
 
-  return mapToRepositoryCommitLog(data.InfrahubRepositoryCommits);
+  const log = mapToRepositoryCommitLog(data.InfrahubRepositoryCommits);
+
+  if (log.condition === RepositoryGitCondition.UNAVAILABLE) {
+    throw new RepositoryGitUnavailableError(log);
+  }
+
+  return log;
 };

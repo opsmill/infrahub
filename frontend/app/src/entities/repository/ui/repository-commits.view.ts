@@ -9,7 +9,7 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
-import { isGitStateAvailable } from "@/entities/repository/domain/rules/is-git-state-available";
+import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 
 // Offset paging over a moving log can repeat a commit at a page boundary.
 export function getLoadedCommits(
@@ -22,34 +22,74 @@ export function getLoadedCommits(
   ];
 }
 
-export type HistoryRetry = "fetch-next-page" | "refetch";
+export type CommitLogWithoutPages =
+  | { kind: "loading" }
+  | { kind: "unavailable"; error: RepositoryGitUnavailableError; isRetrying: boolean }
+  | { kind: "failed"; error: Error };
 
-// A failed fetch leaves its page out of `pages`; an UNAVAILABLE answer is kept and ends paging, so only a refetch re-reads it.
-export function getHistoryRetry(
-  pages: Pick<RepositoryCommitLog, "condition">[],
-  { isFetchNextPageError }: { isFetchNextPageError: boolean }
-): HistoryRetry | null {
-  if (isFetchNextPageError) return "fetch-next-page";
-  const lastPage = pages.at(-1);
-  if (pages.length > 1 && lastPage !== undefined && !isGitStateAvailable(lastPage)) {
-    return "refetch";
-  }
-  return null;
+interface CommitLogFailure {
+  error: Error | null;
+  failureReason: Error | null;
+}
+
+// A retried attempt only reports its failure through failureReason; error stays null until retrying stops.
+export function getCommitLogWithoutPages({
+  error,
+  failureReason,
+  isFetching,
+}: CommitLogFailure & { isFetching: boolean }): CommitLogWithoutPages {
+  const failure = error ?? failureReason;
+  if (failure instanceof RepositoryGitUnavailableError)
+    return { kind: "unavailable", error: failure, isRetrying: isFetching };
+  if (failure) return { kind: "failed", error: failure };
+  return { kind: "loading" };
+}
+
+export function isLoadingFirstPage({
+  isPending,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & { isPending: boolean }): boolean {
+  return isPending && failureReason === null;
 }
 
 export function isShowingStaleCommits({
-  firstPage,
-  hasError,
-  isFetchNextPageError,
-  loadedCommitCount,
-}: {
-  firstPage: Pick<RepositoryCommitLog, "condition">;
-  hasError: boolean;
-  isFetchNextPageError: boolean;
-  loadedCommitCount: number;
+  isRefetchError,
+  isRefetching,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & {
+  isRefetchError: boolean;
+  isRefetching: boolean;
 }): boolean {
-  if (loadedCommitCount === 0) return false;
-  return (hasError && !isFetchNextPageError) || !isGitStateAvailable(firstPage);
+  return (isRefetchError && !isRefetching) || (isRefetching && failureReason !== null);
+}
+
+// Older pages are read at offsets of the current history, so they must not be appended to a first page
+// that a failed or running refresh has left out of date.
+export function canLoadOlderCommits({
+  hasNextPage,
+  isRefetching,
+  isRefetchError,
+}: {
+  hasNextPage: boolean;
+  isRefetching: boolean;
+  isRefetchError: boolean;
+}): boolean {
+  return hasNextPage && !isRefetching && !isRefetchError;
+}
+
+export type NextPageState = "idle" | "loading" | "failed" | "retry-pending";
+
+export function getNextPageState({
+  isFetchNextPageError,
+  isFetchingNextPage,
+  failureReason,
+}: Pick<CommitLogFailure, "failureReason"> & {
+  isFetchNextPageError: boolean;
+  isFetchingNextPage: boolean;
+}): NextPageState {
+  if (!isFetchingNextPage) return isFetchNextPageError ? "failed" : "idle";
+  // Pressing Retry while the query still retries on its own would cancel that retry.
+  return failureReason !== null ? "retry-pending" : "loading";
 }
 
 export interface CommitLogEmptyState {
@@ -57,23 +97,38 @@ export interface CommitLogEmptyState {
   message: string;
 }
 
-export function getEmptyState({
+export function getEmptyState(
+  { reason, message }: Pick<RepositoryGitUnavailableError, "reason" | "message">,
+  { isRetrying }: { isRetrying: boolean }
+): CommitLogEmptyState {
+  if (reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
+    return {
+      title: "Commit log not available",
+      message: message || "Reading commits is not available in this version of Infrahub.",
+    };
+  }
+  if (!isRetrying && reason === RepositoryGitUnavailableReason.NOT_CLONED) {
+    return {
+      title: "Commit log not available yet",
+      message: `${message || "No worker holds a copy of this repository yet."} Refresh to check again.`,
+    };
+  }
+  if (!isRetrying) {
+    return {
+      title: "Commit log not available yet",
+      message: "No worker has answered yet. Refresh to check again.",
+    };
+  }
+  return {
+    title: "Commit log not available yet",
+    message: message || "Waiting for a worker to answer.",
+  };
+}
+
+export function getNoCommitLogState({
   condition,
-  unavailable,
-}: Pick<RepositoryCommitLog, "condition" | "unavailable">): CommitLogEmptyState | null {
+}: Pick<RepositoryCommitLog, "condition">): CommitLogEmptyState | null {
   switch (condition) {
-    case RepositoryGitCondition.UNAVAILABLE:
-      if (unavailable?.reason === RepositoryGitUnavailableReason.NOT_IMPLEMENTED) {
-        return {
-          title: "Commit log not available",
-          message:
-            unavailable.message || "Reading commits is not available in this version of Infrahub.",
-        };
-      }
-      return {
-        title: "Commit log not available yet",
-        message: unavailable?.message ?? "Waiting for a worker to answer.",
-      };
     case RepositoryGitCondition.NOT_TRACKED:
       return { title: "No commit log", message: "This branch tracks no remote ref." };
     case RepositoryGitCondition.NO_REMOTE:
@@ -131,7 +186,7 @@ export function getFreshness({
   return {
     trackedRef: git_ref,
     checkedAt: checked_at,
-    // A check that brought the update already shows that time.
+    // fetched_at equals checked_at when the last check fetched new commits, so show the time once.
     updatedAt: fetched_at === checked_at ? null : fetched_at,
   };
 }

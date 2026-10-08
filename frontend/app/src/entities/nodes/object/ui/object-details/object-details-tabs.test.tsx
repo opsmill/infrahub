@@ -1,22 +1,24 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { NodeObject } from "@/entities/nodes/object/domain/model/node";
-import { getRepositoryCommitStatusFromApi } from "@/entities/repository/api/get-repository-commit-status-from-api";
+import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import {
   GENERIC_REPOSITORY_KIND,
   REPOSITORY_KIND,
 } from "@/entities/repository/domain/model/repository";
 
 import { render } from "../../../../../../tests/components/render";
+import {
+  generateCommitsApiResult,
+  generateInSyncCommitsResponse,
+} from "../../../../../../tests/fake/repository-commit";
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 import { ObjectDetailsTabs } from "./object-details-tabs";
 
-vi.mock("@/entities/repository/api/get-repository-commit-status-from-api");
+vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 vi.mock("@/entities/nodes/relationships/ui/queries/get-relationship-count.query", () => ({
   useGetRelationshipCount: () => ({ isPending: false, data: 0 }),
 }));
-
-type StatusApiResult = Awaited<ReturnType<typeof getRepositoryCommitStatusFromApi>>;
 
 const renderTabs = (kind: string, inheritFrom: string[]) => {
   const objectSchema = generateNodeSchema({ kind, inherit_from: inheritFrom, relationships: [] });
@@ -26,9 +28,9 @@ const renderTabs = (kind: string, inheritFrom: string[]) => {
 
 describe("ObjectDetailsTabs", () => {
   beforeEach(() => {
-    vi.mocked(getRepositoryCommitStatusFromApi).mockResolvedValue({
-      data: { InfrahubRepositoryCommits: { condition: "IN_SYNC", pending_count: 0 } },
-    } as StatusApiResult);
+    vi.mocked(getRepositoryCommitsFromApi).mockResolvedValue(
+      generateCommitsApiResult(generateInSyncCommitsResponse())
+    );
   });
 
   afterEach(() => {
@@ -50,6 +52,6 @@ describe("ObjectDetailsTabs", () => {
     // THEN
     await expect.element(component.getByRole("link", { name: "Details" })).toBeVisible();
     expect(component.getByRole("link", { name: /^Commits/ }).query()).toBeNull();
-    expect(getRepositoryCommitStatusFromApi).not.toHaveBeenCalled();
+    expect(getRepositoryCommitsFromApi).not.toHaveBeenCalled();
   });
 });

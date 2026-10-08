@@ -38,7 +38,7 @@ export function mapToRepositoryCommitLog(log: RepositoryCommitsWire): Repository
     condition: log.condition,
     imported_commit: log.imported_commit,
     remote_head: log.remote_head,
-    pending_count: log.pending_count,
+    pending_count: log.pending_count ?? null,
     fetched_at: toDateTimeOrNull(log.fetched_at),
     checked_at: toDateTimeOrNull(log.checked_at),
     unavailable: log.unavailable && {

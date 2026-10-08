@@ -1,5 +1,4 @@
 import { Button, Spinner } from "@infrahub/ui";
-import { useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -8,15 +7,18 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
+import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
+  type CommitLogEmptyState,
+  canLoadOlderCommits,
+  getCommitLogWithoutPages,
   getEmptyState,
-  getHistoryRetry,
   getLoadedCommits,
-  type HistoryRetry,
+  getNextPageState,
+  getNoCommitLogState,
   isShowingStaleCommits,
 } from "@/entities/repository/ui/repository-commits.view";
 import {
@@ -25,17 +27,14 @@ import {
 } from "@/entities/repository/ui/repository-commits-header";
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
-export interface RepositoryCommitsManagerProps {
-  repositoryId: string;
-  repositoryLocation: string | null;
+interface RepositoryCheckRemoteProps {
   isReadOnly: boolean;
   updatePermission: PermissionDecision;
 }
 
-interface RetryInFlight {
-  retry: HistoryRetry;
+export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;
-  branchName: string;
+  repositoryLocation: string | null;
 }
 
 const gridTemplateColumns = () =>
@@ -50,65 +49,66 @@ export function RepositoryCommitsManager({
   const {
     data,
     error,
+    failureReason,
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isFetchNextPageError,
-    refetch,
+    isRefetchError,
+    isRefetching,
   } = useGetRepositoryCommits({ repositoryId });
-  const { currentBranch } = useCurrentBranch();
-  const [startedRetry, setStartedRetry] = useState<RetryInFlight | null>(null);
-  const retryInFlight =
-    startedRetry?.repositoryId === repositoryId && startedRetry.branchName === currentBranch.name
-      ? startedRetry.retry
-      : null;
   const pages = data?.pages ?? [];
   const [log] = pages;
-  const commits = getLoadedCommits(pages);
-  // Starting a retry clears the error it answers, so the notice stays up until the retry settles.
-  const historyRetry = retryInFlight ?? getHistoryRetry(pages, { isFetchNextPageError });
-  const isLoadingMoreOnScroll = isFetchingNextPage && !retryInFlight;
-
-  const retryHistory = async (retry: HistoryRetry) => {
-    const started = { retry, repositoryId, branchName: currentBranch.name };
-    setStartedRetry(started);
-    try {
-      await (retry === "fetch-next-page" ? fetchNextPage() : refetch());
-    } finally {
-      setStartedRetry((current) => (current === started ? null : current));
-    }
-  };
-
-  if (error && commits.length === 0) {
-    return (
-      <Col className="h-full gap-0">
-        <Row className="p-2">
-          <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
-        </Row>
-        <ErrorScreen message={error.message} />
-      </Col>
-    );
-  }
 
   if (!log) {
-    return <LoadingIndicator className="h-full p-4" />;
-  }
+    const withoutPages = getCommitLogWithoutPages({ error, failureReason, isFetching });
 
-  if (commits.length === 0) {
-    const emptyState = getEmptyState(log);
-    if (emptyState) {
-      return (
-        <Col className="h-full gap-0">
-          <RepositoryCommitsHeader
-            log={log}
+    switch (withoutPages.kind) {
+      case "unavailable":
+        return (
+          <RepositoryCommitsEmptyState
+            log={withoutPages.error.log}
             repositoryId={repositoryId}
             isReadOnly={isReadOnly}
             updatePermission={updatePermission}
+            emptyState={getEmptyState(withoutPages.error, {
+              isRetrying: withoutPages.isRetrying,
+            })}
           />
-          <NoDataFound title={emptyState.title} message={emptyState.message} />
-        </Col>
-      );
+        );
+      case "failed":
+        return (
+          <Col className="h-full gap-0">
+            <Row className="p-2">
+              <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
+            </Row>
+            <ErrorScreen message={withoutPages.error.message} />
+          </Col>
+        );
+      default:
+        return <LoadingIndicator className="h-full p-4" />;
     }
+  }
+
+  const commits = getLoadedCommits(pages);
+  const noCommitLogState = commits.length === 0 ? getNoCommitLogState(log) : null;
+  const nextPageState = getNextPageState({
+    isFetchNextPageError,
+    isFetchingNextPage,
+    failureReason,
+  });
+
+  if (noCommitLogState) {
+    return (
+      <RepositoryCommitsEmptyState
+        log={log}
+        repositoryId={repositoryId}
+        isReadOnly={isReadOnly}
+        updatePermission={updatePermission}
+        emptyState={noCommitLogState}
+      />
+    );
   }
 
   return (
@@ -119,21 +119,20 @@ export function RepositoryCommitsManager({
         isReadOnly={isReadOnly}
         updatePermission={updatePermission}
       />
-      {isShowingStaleCommits({
-        firstPage: log,
-        hasError: error !== null,
-        isFetchNextPageError,
-        loadedCommitCount: commits.length,
-      }) && (
+      {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
-          <p>Couldn't refresh the commit log right now. Showing the last loaded commits.</p>
+          <p>
+            Couldn't refresh the commit log right now. Showing the last loaded commits; older
+            commits load after a successful refresh.
+          </p>
         </RepositoryCommitsNotice>
       )}
       <InfiniteScroll
         scrollX
         className="bg-table-frame"
-        hasNextPage={hasNextPage}
-        onLoadMore={fetchNextPage}
+        hasNextPage={canLoadOlderCommits({ hasNextPage, isRefetching, isRefetchError })}
+        // An older page that is still retrying must not be cancelled and restarted by another scroll.
+        onLoadMore={() => fetchNextPage({ cancelRefetch: false })}
       >
         <DataTable
           columns={getRepositoryCommitsColumns({
@@ -145,21 +144,47 @@ export function RepositoryCommitsManager({
           gridTemplateColumns={gridTemplateColumns}
           renderEmpty={() => <NoDataFound message="This ref has no commits." />}
         />
-        {isLoadingMoreOnScroll && <Spinner className="mx-auto my-2" />}
-        {historyRetry && !isLoadingMoreOnScroll && (
+        {nextPageState === "loading" && <Spinner className="mx-auto my-2" />}
+        {(nextPageState === "failed" || nextPageState === "retry-pending") && (
           <RepositoryCommitsNotice>
             <p>Older commits could not be loaded right now.</p>
             <Button
               variant="outline"
               size="sm"
-              isPending={retryInFlight !== null}
-              onPress={() => retryHistory(historyRetry)}
+              isPending={nextPageState === "retry-pending"}
+              onPress={() => fetchNextPage()}
             >
               Retry
             </Button>
           </RepositoryCommitsNotice>
         )}
       </InfiniteScroll>
+    </Col>
+  );
+}
+
+interface RepositoryCommitsEmptyStateProps extends RepositoryCheckRemoteProps {
+  log: RepositoryCommitLog;
+  repositoryId: string;
+  emptyState: CommitLogEmptyState;
+}
+
+function RepositoryCommitsEmptyState({
+  log,
+  repositoryId,
+  isReadOnly,
+  updatePermission,
+  emptyState,
+}: RepositoryCommitsEmptyStateProps) {
+  return (
+    <Col className="h-full gap-0">
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        isReadOnly={isReadOnly}
+        updatePermission={updatePermission}
+      />
+      <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );
 }

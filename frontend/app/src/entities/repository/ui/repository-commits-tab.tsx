@@ -1,5 +1,4 @@
 import { Spinner } from "@infrahub/ui";
-import { useMatch } from "react-router";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { LinkTab } from "@/shared/components/ui/link";
@@ -7,7 +6,8 @@ import { LinkTab } from "@/shared/components/ui/link";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { REPOSITORY_COMMITS_TAB } from "@/entities/repository/domain/model/repository";
 import { getPendingImportCount } from "@/entities/repository/domain/rules/get-pending-import-count";
-import { useGetRepositoryCommitStatus } from "@/entities/repository/ui/queries/get-repository-commit-status.query";
+import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import { isLoadingFirstPage } from "@/entities/repository/ui/repository-commits.view";
 
 export interface RepositoryCommitsTabProps {
   objectKind: string;
@@ -15,24 +15,28 @@ export interface RepositoryCommitsTabProps {
 }
 
 export function RepositoryCommitsTab({ objectKind, objectId }: RepositoryCommitsTabProps) {
-  const tabUrl = getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB);
-  const isCommitLogOpen = !!useMatch({
-    path: new URL(tabUrl, window.location.origin).pathname,
-    end: true,
-  });
-  const { isPending, data: status } = useGetRepositoryCommitStatus({
-    repositoryId: objectId,
-    isCommitLogOpen,
-  });
-  const pendingImportCount = status ? getPendingImportCount(status) : null;
+  const {
+    isPending,
+    failureReason,
+    data: pendingImportCount,
+  } = useGetRepositoryCommits(
+    { repositoryId: objectId },
+    {
+      select: ({ pages: [firstPage] }) => (firstPage ? getPendingImportCount(firstPage) : null),
+    }
+  );
 
   return (
-    <LinkTab to={tabUrl} scrollIntoViewOnActive>
+    <LinkTab
+      to={getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_COMMITS_TAB)}
+      scrollIntoViewOnActive
+    >
       Commits
-      {isPending ? (
+      {isLoadingFirstPage({ isPending, failureReason }) ? (
         <Spinner />
       ) : (
-        pendingImportCount !== null && (
+        pendingImportCount !== null &&
+        pendingImportCount !== undefined && (
           <Badge className="rounded-full font-medium text-subtle">
             {pendingImportCount}
             <span className="sr-only"> pending import</span>

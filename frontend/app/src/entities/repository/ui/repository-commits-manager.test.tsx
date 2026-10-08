@@ -5,17 +5,24 @@ import { queryClient as appQueryClient } from "@/shared/api/rest/client";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
+import { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import {
+  REPOSITORY_COMMITS_MAX_RETRIES,
+  REPOSITORY_COMMITS_RETRY_DELAY_MS,
+} from "@/entities/repository/ui/queries/repository-commits.constants";
+import { checkTaskDetailsFromApi } from "@/entities/tasks/api/check-task-details-from-api";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
 import {
   BEHIND_HEAD,
   BEHIND_IMPORTED,
-  fullHash,
   generateBehindCommitsResponse,
+  generateCommitsApiResult,
   generateFirstCommitsPage,
   generateInSyncCommitsResponse,
   generateJustCheckedCommitsResponse,
@@ -41,21 +48,23 @@ import { RepositoryCommitsManager } from "./repository-commits-manager";
 
 vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
+vi.mock("@/entities/repository/api/check-remote-refs-from-api");
+vi.mock("@/entities/tasks/api/check-task-details-from-api");
 
 const apiMock = vi.mocked(getRepositoryCommitsFromApi);
+const checkRemoteRefsApiMock = vi.mocked(checkRemoteRefsFromApi);
+const taskDetailsApiMock = vi.mocked(checkTaskDetailsFromApi);
 const useCurrentBranchMock = vi.mocked(useCurrentBranch);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
-
-const apiResult = (response: RepositoryCommitsWire) =>
-  ({ data: { InfrahubRepositoryCommits: response } }) as unknown as ApiResult;
 
 const formatDate = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "date");
 const formatDateTime = (date: string) =>
   formatWithPreferences(date, { pattern: null, timezone: null }, "datetime");
 
-const STALE_NOTICE = "Couldn't refresh the commit log right now. Showing the last loaded commits.";
+const STALE_NOTICE =
+  "Couldn't refresh the commit log right now. Showing the last loaded commits; older commits load after a successful refresh.";
 
 let queryClient: QueryClient;
 
@@ -64,7 +73,15 @@ function CaptureQueryClient() {
   return null;
 }
 
-const tab = () => (
+interface TabRepository {
+  isReadOnly?: boolean;
+  updatePermission?: PermissionDecision;
+}
+
+const tab = ({
+  isReadOnly = false,
+  updatePermission = { isAllowed: true },
+}: TabRepository = {}) => (
   <>
     <CaptureQueryClient />
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
@@ -72,14 +89,14 @@ const tab = () => (
       <RepositoryCommitsManager
         repositoryId="repo-1"
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
-        isReadOnly={false}
-        updatePermission={{ isAllowed: true }}
+        isReadOnly={isReadOnly}
+        updatePermission={updatePermission}
       />
     </div>
   </>
 );
 
-const renderTab = () => render(tab());
+const renderTab = (repository?: TabRepository) => render(tab(repository));
 
 const useBranch = (name: string) =>
   useCurrentBranchMock.mockReturnValue({
@@ -93,15 +110,14 @@ describe("RepositoryCommitsManager", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.resetAllMocks();
-    vi.unstubAllGlobals();
-    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
   });
 
   test("renders every commit field newest-first as returned", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -118,7 +134,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("labels head, imported and pending rows from the response, not from their position", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -135,7 +151,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("puts both markers on the same row when the remote head is the imported commit", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateInSyncCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -149,7 +165,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("replaces the pending line with the rewritten notice", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateRewrittenCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateRewrittenCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -188,7 +204,7 @@ describe("RepositoryCommitsManager", () => {
       condition === "ORPHANED"
         ? generateOrphanedCommitsResponse()
         : generateRepositoryCommitsResponse({ condition, unavailable: null });
-    apiMock.mockResolvedValue(apiResult(response));
+    apiMock.mockResolvedValue(generateCommitsApiResult(response));
 
     // WHEN
     const component = await renderTab();
@@ -201,7 +217,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("keeps the tracked ref and the refresh button above the not-yet-available state", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -214,7 +230,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("renders the not-yet-available message when no worker holds a copy", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -227,7 +243,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("renders a settled not-available message when reading commits is not implemented", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateNotImplementedCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateNotImplementedCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -241,7 +257,6 @@ describe("RepositoryCommitsManager", () => {
   });
 
   test.each<{ condition: RepositoryGitCondition; response: RepositoryCommitsWire }>([
-    { condition: "UNAVAILABLE", response: generateNotClonedCommitsResponse() },
     {
       condition: "NOT_TRACKED",
       response: generateRepositoryCommitsResponse({ condition: "NOT_TRACKED", git_ref: null }),
@@ -255,8 +270,8 @@ describe("RepositoryCommitsManager", () => {
     async ({ response }) => {
       // GIVEN
       apiMock
-        .mockResolvedValueOnce(apiResult(response))
-        .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+        .mockResolvedValueOnce(generateCommitsApiResult(response))
+        .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
       const component = await renderTab();
       await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
       vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
@@ -274,7 +289,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("refreshes only the current repository's commit log", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const callsFor = (repositoryId: string) =>
       apiMock.mock.calls.filter(([params]) => params.repositoryId === repositoryId).length;
     const component = await renderTab();
@@ -309,6 +324,25 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("renders the error screen with the message when the repository cannot be read", async () => {
+    // GIVEN
+    apiMock.mockRejectedValue(
+      new Error("Unable to find the node repo-1 / CoreRepository in the database.")
+    );
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect
+      .element(
+        component.getByText("Unable to find the node repo-1 / CoreRepository in the database.")
+      )
+      .toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+    expect(component.getByText(/Commit log not available/).query()).toBeNull();
+  });
+
   test("offers a refresh on the error screen when the first load fails", async () => {
     // GIVEN
     apiMock.mockRejectedValue(new Error("Worker did not answer in time"));
@@ -321,16 +355,99 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
   });
 
-  test("renders the error screen when a poll fails after an unavailable answer", async () => {
+  test("keeps the not-yet-available state on screen while it retries, then renders the rows", async () => {
     // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    let answerSecondAttempt: (result: ApiResult) => void = () => {};
     apiMock
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateNotClonedCommitsResponse()))
+      .mockReturnValueOnce(
+        new Promise<ApiResult>((resolve) => {
+          answerSecondAttempt = resolve;
+        })
+      )
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+
+    // WHEN
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    expect(component.getByText("Loading...", { exact: true }).query()).toBeNull();
+    answerSecondAttempt(generateCommitsApiResult(generateNotClonedCommitsResponse()));
+    await expect
+      .poll(() => component.getByText("Commit log not available yet").query())
+      .not.toBeNull();
+    expect(component.getByText("Loading...", { exact: true }).query()).toBeNull();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+  });
+
+  test("asks for a refresh once it stops retrying an unavailable answer", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(NOT_CLONED_MESSAGE)).toBeVisible();
+
+    // WHEN
+    for (let retry = 1; retry <= REPOSITORY_COMMITS_MAX_RETRIES; retry++) {
+      await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+      await expect.poll(() => apiMock.mock.calls.length).toBe(retry + 1);
+    }
+
+    // THEN
+    await expect
+      .element(component.getByText(`${NOT_CLONED_MESSAGE} Refresh to check again.`))
+      .toBeVisible();
+    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    expect(apiMock).toHaveBeenCalledTimes(REPOSITORY_COMMITS_MAX_RETRIES + 1);
+  });
+
+  test.each([
+    {
+      name: "reading commits is not implemented",
+      answer: () =>
+        Promise.resolve(generateCommitsApiResult(generateNotImplementedCommitsResponse())),
+      text: NOT_IMPLEMENTED_MESSAGE,
+    },
+    {
+      name: "the read fails",
+      answer: () => Promise.reject(new Error("Worker did not answer in time")),
+      text: "Worker did not answer in time",
+    },
+  ])("asks once and does not retry when $name", async ({ answer, text }) => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock.mockImplementation(answer);
+
+    // WHEN
+    const component = await renderTab();
+    await expect.element(component.getByText(text)).toBeVisible();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
+
+    // THEN
+    expect(apiMock).toHaveBeenCalledTimes(1);
+    await expect.element(component.getByText(text)).toBeVisible();
+  });
+
+  test("renders the error screen when a retry fails after an unavailable answer", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock
+      .mockResolvedValueOnce(generateCommitsApiResult(generateNotClonedCommitsResponse()))
       .mockRejectedValue(new Error("Worker did not answer in time"));
     const component = await renderTab();
     await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
 
     // WHEN
-    await queryClient.refetchQueries();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
 
     // THEN
     await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
@@ -338,11 +455,40 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Commit log not available yet").query()).toBeNull();
   });
 
+  test("keeps the loaded rows as stale while a refresh answering unavailable is retried, then refreshes them", async () => {
+    // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    apiMock
+      .mockResolvedValueOnce(generateCommitsApiResult(generateBehindCommitsResponse()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateNotClonedCommitsResponse()))
+      .mockResolvedValue(generateCommitsApiResult(generateInSyncCommitsResponse()));
+    const component = await renderTab();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    const staleNotice = component.getByText(STALE_NOTICE);
+    expect(staleNotice.query()).toBeNull();
+
+    // WHEN
+    const refetch = queryClient.refetchQueries();
+
+    // THEN
+    await expect.element(staleNotice).toBeVisible();
+    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
+    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
+    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+    expect(apiMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await refetch;
+    await expect.element(component.getByText(IN_SYNC_HEAD)).toBeVisible();
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(staleNotice.query()).toBeNull();
+    expect(component.getByText(BEHIND_HEAD).query()).toBeNull();
+  });
+
   test("refetches the log when refresh is pressed on the error screen", async () => {
     // GIVEN
     apiMock
       .mockRejectedValueOnce(new Error("Worker did not answer in time"))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
     await expect.element(component.getByText("Worker did not answer in time")).toBeVisible();
     vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
@@ -357,50 +503,10 @@ describe("RepositoryCommitsManager", () => {
     expect(apiMock).toHaveBeenCalledTimes(2);
   });
 
-  test("keeps the loaded rows when a later poll answers unavailable", async () => {
+  test("keeps the loaded rows when a later refresh fails", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
-      .mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
-    const component = await renderTab();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    expect(apiMock).toHaveBeenCalledTimes(2);
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
-    expect(component.getByText("Commit log not available yet").query()).toBeNull();
-  });
-
-  test("says the rows are stale while polls answer unavailable, until one answers with the log", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
-    const component = await renderTab();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    const staleNotice = component.getByText(STALE_NOTICE);
-    expect(staleNotice.query()).toBeNull();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    await expect.element(staleNotice).toBeVisible();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await queryClient.refetchQueries();
-    await expect.poll(() => staleNotice.query()).toBeNull();
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-  });
-
-  test("keeps the loaded rows when a later poll fails", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateBehindCommitsResponse()))
       .mockRejectedValue(new Error("boom"));
     const component = await renderTab();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
@@ -418,9 +524,9 @@ describe("RepositoryCommitsManager", () => {
   test("says the rows are stale while a refresh fails, until one succeeds", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateBehindCommitsResponse()))
       .mockRejectedValueOnce(new Error("boom"))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
     const staleNotice = component.getByText(STALE_NOTICE);
@@ -437,29 +543,50 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
   });
 
-  test("replaces the not-yet-available state with the rows once a worker answers", async () => {
+  test("hides the stale notice while a refresh runs after an older page failed", async () => {
     // GIVEN
+    let answerRefresh: (result: ApiResult) => void = () => {};
     apiMock
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockReturnValueOnce(
+        new Promise<ApiResult>((resolve) => {
+          answerRefresh = resolve;
+        })
+      )
+      .mockResolvedValue(generateCommitsApiResult(generateSecondCommitsPage()));
     const component = await renderTab();
-    await expect.element(component.getByText("Commit log not available yet")).toBeVisible();
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
+    vi.spyOn(appQueryClient, "invalidateQueries").mockImplementation((filters) =>
+      queryClient.invalidateQueries(filters)
+    );
+    const staleNotice = component.getByText(STALE_NOTICE);
 
     // WHEN
-    await queryClient.refetchQueries();
+    await component.getByRole("button", { name: "Refresh data" }).click();
 
     // THEN
-    await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
-    await expect.element(component.getByText(BEHIND_IMPORTED)).toBeVisible();
-    expect(component.getByText("Commit log not available yet").query()).toBeNull();
+    await expect
+      .element(component.getByRole("button", { name: "Refresh data" }))
+      .toHaveAttribute("aria-disabled", "true");
+    expect(apiMock).toHaveBeenCalledTimes(3);
+    expect(staleNotice.query()).toBeNull();
+    answerRefresh(generateCommitsApiResult(generateFirstCommitsPage()));
+    await expect
+      .element(component.getByRole("button", { name: "Refresh data" }))
+      .not.toHaveAttribute("aria-disabled", "true");
+    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
+    expect(staleNotice.query()).toBeNull();
   });
 
   test("drops the previous branch's rows when the branch changes", async () => {
     // GIVEN
     useBranch("main");
     apiMock
-      .mockResolvedValueOnce(apiResult(generateBehindCommitsResponse()))
-      .mockResolvedValue(apiResult(generateNotClonedCommitsResponse()));
+      .mockResolvedValueOnce(generateCommitsApiResult(generateBehindCommitsResponse()))
+      .mockResolvedValue(generateCommitsApiResult(generateNotClonedCommitsResponse()));
     const component = await renderTab();
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
 
@@ -477,8 +604,8 @@ describe("RepositoryCommitsManager", () => {
   test("loads the next page when the end of the list comes into view", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
+      .mockResolvedValue(generateCommitsApiResult(generateSecondCommitsPage()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     expect(apiMock).toHaveBeenCalledTimes(1);
@@ -493,46 +620,36 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(PAGE_ONE_LAST).elements()).toHaveLength(1);
   });
 
-  test("still loads the next page after a poll answered unavailable", async () => {
+  test("keeps the retry pending while a later page answering unavailable is retried, then offers it", async () => {
     // GIVEN
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
-    const component = await renderTab();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-    await queryClient.refetchQueries();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-
-    // WHEN
-    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-
-    // THEN
-    await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
-    expect(apiMock).toHaveBeenNthCalledWith(3, expect.objectContaining({ offset: 20, limit: 20 }));
-  });
-
-  test("offers a retry when a later page answers unavailable, and loads it on retry", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockResolvedValueOnce(apiResult(generateNotClonedCommitsResponse()))
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateNotClonedCommitsResponse()))
+      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
+      .mockResolvedValue(generateCommitsApiResult(generateSecondCommitsPage()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
     await expect
       .element(component.getByText("Older commits could not be loaded right now."))
       .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .toHaveAttribute("data-pending");
     await expect.element(component.getByText(PAGE_ONE_LAST)).toBeVisible();
     expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
     expect(apiMock).toHaveBeenCalledTimes(2);
 
     // WHEN
-    await component.getByRole("button", { name: "Retry" }).click();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
 
     // THEN
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect
+      .element(component.getByRole("button", { name: "Retry" }))
+      .not.toHaveAttribute("data-pending");
+    await component.getByRole("button", { name: "Retry" }).click();
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
     expect(apiMock).toHaveBeenCalledTimes(4);
     expect(apiMock).toHaveBeenNthCalledWith(4, expect.objectContaining({ offset: 20, limit: 20 }));
@@ -542,9 +659,9 @@ describe("RepositoryCommitsManager", () => {
   test("offers a retry when loading the next page fails, and loads only that page on retry", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
       .mockRejectedValueOnce(new Error("Worker did not answer in time"))
-      .mockResolvedValue(apiResult(generateSecondCommitsPage()));
+      .mockResolvedValue(generateCommitsApiResult(generateSecondCommitsPage()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
@@ -565,32 +682,10 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
-  test("keeps offering the retry after a later poll succeeds without the missing page", async () => {
-    // GIVEN
-    apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
-      .mockRejectedValueOnce(new Error("Worker did not answer in time"))
-      .mockResolvedValue(apiResult(generateFirstCommitsPage()));
-    const component = await renderTab();
-    await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
-    await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-    await expect
-      .element(component.getByText("Older commits could not be loaded right now."))
-      .toBeVisible();
-
-    // WHEN
-    await queryClient.refetchQueries();
-
-    // THEN
-    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
-    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
-    expect(component.getByText(PAGE_TWO_FIRST).query()).toBeNull();
-  });
-
   test("settles the retry and offers it again when the retry fails too", async () => {
     // GIVEN
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
       .mockRejectedValue(new Error("Worker did not answer in time"));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
@@ -615,17 +710,15 @@ describe("RepositoryCommitsManager", () => {
     // GIVEN
     useBranch("main");
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
       .mockRejectedValueOnce(new Error("Worker did not answer in time"))
       .mockReturnValueOnce(new Promise<ApiResult>(() => {}))
-      .mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+      .mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
     await component.getByRole("button", { name: "Retry" }).click();
-    await expect
-      .element(component.getByRole("button", { name: "Retry" }))
-      .toHaveAttribute("data-pending");
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
 
     // WHEN
     useBranch("feature");
@@ -637,11 +730,11 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText("Older commits could not be loaded right now.").query()).toBeNull();
   });
 
-  test("hides the retry notice while a scroll-triggered page load is in flight", async () => {
+  test("shows no Retry while a page load after a failed page is in flight", async () => {
     // GIVEN
     let answerNextPage: (result: ApiResult) => void = () => {};
     apiMock
-      .mockResolvedValueOnce(apiResult(generateFirstCommitsPage()))
+      .mockResolvedValueOnce(generateCommitsApiResult(generateFirstCommitsPage()))
       .mockRejectedValueOnce(new Error("Worker did not answer in time"))
       .mockReturnValueOnce(
         new Promise<ApiResult>((resolve) => {
@@ -651,9 +744,7 @@ describe("RepositoryCommitsManager", () => {
     const component = await renderTab();
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();
     await component.getByText(PAGE_ONE_LAST).element().scrollIntoView({ block: "end" });
-    await expect
-      .element(component.getByText("Older commits could not be loaded right now."))
-      .toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Retry" })).toBeVisible();
 
     // WHEN
     const nextPage = new InfiniteQueryObserver(
@@ -662,18 +753,17 @@ describe("RepositoryCommitsManager", () => {
     ).fetchNextPage();
 
     // THEN
-    await expect
-      .poll(() => component.getByText("Older commits could not be loaded right now.").query())
-      .toBeNull();
-    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
-    answerNextPage(apiResult(generateSecondCommitsPage()));
+    await expect.poll(() => apiMock.mock.calls.length).toBe(3);
+    await expect.poll(() => component.getByRole("button", { name: "Retry" }).query()).toBeNull();
+    answerNextPage(generateCommitsApiResult(generateSecondCommitsPage()));
     await nextPage;
     await expect.element(component.getByText(PAGE_TWO_FIRST)).toBeVisible();
+    expect(component.getByRole("button", { name: "Retry" }).query()).toBeNull();
   });
 
   test("shows both the check time and the update time when they differ", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateReadOnlyCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -690,7 +780,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("shows only the check time when the last check brought the update", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateJustCheckedCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateJustCheckedCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -704,7 +794,7 @@ describe("RepositoryCommitsManager", () => {
 
   test("shows only the update time when the remote was never checked", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -716,26 +806,9 @@ describe("RepositoryCommitsManager", () => {
     expect(component.getByText(/^Checked /).query()).toBeNull();
   });
 
-  test("copies the full hash and confirms it in a toast", async () => {
-    // GIVEN
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("isSecureContext", true);
-    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
-    const component = await renderTab();
-
-    // WHEN
-    await component.getByRole("button", { name: `Actions for commit ${BEHIND_HEAD}` }).click();
-    await component.getByRole("menuitem", { name: "Copy commit hash" }).click();
-
-    // THEN
-    expect(writeText).toHaveBeenCalledWith(fullHash(BEHIND_HEAD));
-    await expect.element(component.getByText("Commit hash copied")).toBeVisible();
-  });
-
   test("renders no total commit count", async () => {
     // GIVEN
-    apiMock.mockResolvedValue(apiResult(generateBehindCommitsResponse()));
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
 
     // WHEN
     const component = await renderTab();
@@ -744,6 +817,131 @@ describe("RepositoryCommitsManager", () => {
     await expect.element(component.getByText(BEHIND_HEAD)).toBeVisible();
     expect(component.getByText(/of \d+ results/).query()).toBeNull();
     expect(component.getByText(/\d+ commits$/).query()).toBeNull();
-    expect(component.getByText(/\d+ counts?$/).query()).toBeNull();
+    expect(component.getByText(/^counts?$/).query()).toBeNull();
+    const grid = component.getByTestId("data-table-row").first().element().parentElement;
+    // Footer cells carry no accessible role; only they carry the sticky-bottom class.
+    expect(grid?.querySelectorAll(":scope > .bottom-0")).toHaveLength(0);
+    expect(component.getByRole("navigation").query()).toBeNull();
+  });
+});
+
+type CheckRemoteRefsApiResult = Awaited<ReturnType<typeof checkRemoteRefsFromApi>>;
+
+const checkRemoteRefsApiResult = (taskId: string) =>
+  ({
+    data: { InfrahubReadOnlyRepositoryCheckRefs: { ok: true, task: { id: taskId } } },
+  }) as CheckRemoteRefsApiResult;
+
+type TaskDetailsApiResult = Awaited<ReturnType<typeof checkTaskDetailsFromApi>>;
+
+const ongoingTaskCount = (count: number) =>
+  ({ data: { InfrahubTask: { count } } }) as TaskDetailsApiResult;
+
+const CHECK_TASK_ID = "check-task-1";
+
+describe("Check remote now", () => {
+  beforeEach(() => {
+    useBranch("test-branch");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.resetAllMocks();
+  });
+
+  test("is offered on a read-only repository", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab({ isReadOnly: true });
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Check remote now" }))
+      .toBeEnabled();
+  });
+
+  test("is not offered on a read-write repository", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab();
+
+    // THEN
+    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
+    expect(component.getByRole("button", { name: "Check remote now" }).query()).toBeNull();
+  });
+
+  test("is disabled without permission to update the repository", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+
+    // WHEN
+    const component = await renderTab({
+      isReadOnly: true,
+      updatePermission: { isAllowed: false, message: "You do not have permission to update" },
+    });
+
+    // THEN
+    await expect
+      .element(component.getByRole("button", { name: "Check remote now" }))
+      .toBeDisabled();
+  });
+
+  test("links the running check's task and stays disabled until it ends", async () => {
+    // GIVEN
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
+    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(1));
+    const component = await renderTab({ isReadOnly: true });
+    const checkButton = component.getByRole("button", { name: "Check remote now" });
+
+    // WHEN
+    await checkButton.click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("link", { name: "View task" }))
+      .toHaveAttribute("href", expect.stringContaining(`/tasks/${CHECK_TASK_ID}`));
+    await expect.element(checkButton).toBeDisabled();
+    expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
+    expect(checkRemoteRefsApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ repositoryId: "repo-1" })
+    );
+    expect(taskDetailsApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: [CHECK_TASK_ID] })
+    );
+  });
+
+  test("shows the new check time beside the older update time once the check ends", async () => {
+    // GIVEN
+    const checkedBefore = "2025-03-10T18:00:00Z";
+    apiMock.mockResolvedValue(
+      generateCommitsApiResult({ ...generateReadOnlyCommitsResponse(), checked_at: checkedBefore })
+    );
+    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
+    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(0));
+    const component = await renderTab({ isReadOnly: true });
+    await expect
+      .element(component.getByText(`Checked ${formatDateTime(checkedBefore)}`))
+      .toBeVisible();
+    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+
+    // WHEN
+    await component.getByRole("button", { name: "Check remote now" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByText(`Checked ${formatDateTime(READ_ONLY_CHECKED_AT)}`))
+      .toBeVisible();
+    await expect
+      .element(component.getByText(`Updated ${formatDateTime(READ_ONLY_FETCHED_AT)}`))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Check remote now" }))
+      .toBeEnabled();
+    expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
   });
 });

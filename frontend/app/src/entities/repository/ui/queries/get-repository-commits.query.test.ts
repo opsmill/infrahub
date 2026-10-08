@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query";
+import { focusManager, InfiniteQueryObserver, QueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
@@ -8,12 +8,13 @@ import {
   RepositoryGitCondition,
   RepositoryGitUnavailableReason,
 } from "@/entities/repository/domain/model/repository";
+import { RepositoryGitUnavailableError } from "@/entities/repository/domain/model/repository-git-unavailable-error";
 import { getRepositoryCommits } from "@/entities/repository/domain/use-cases/get-repository-commits";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
-import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
+  REPOSITORY_COMMITS_MAX_RETRIES,
   REPOSITORY_COMMITS_PAGE_SIZE,
-  REPOSITORY_COMMITS_POLL_INTERVAL_MS,
+  REPOSITORY_COMMITS_RETRY_DELAY_MS,
   REPOSITORY_COMMITS_STALE_TIME_MS,
 } from "@/entities/repository/ui/queries/repository-commits.constants";
 
@@ -45,239 +46,183 @@ function buildLog(condition: RepositoryGitCondition, commitCount = 1): Repositor
     pending_count: null,
     fetched_at: null,
     checked_at: null,
-    unavailable:
-      condition === RepositoryGitCondition.UNAVAILABLE
-        ? { reason: RepositoryGitUnavailableReason.NOT_CLONED, message: "not cloned" }
-        : null,
+    unavailable: null,
     commits: Array.from({ length: commitCount }, (_, index) => buildCommit(index)),
   };
 }
 
-function buildUnavailableLog(reason: RepositoryGitUnavailableReason | null): RepositoryCommitLog {
-  return {
+function buildUnavailableError(reason: RepositoryGitUnavailableReason | null) {
+  return new RepositoryGitUnavailableError({
     ...buildLog(RepositoryGitCondition.UNAVAILABLE, 0),
     unavailable: reason === null ? null : { reason, message: reason },
-  };
-}
-
-function resolveRefetchInterval(pages: RepositoryCommitLog[] | undefined) {
-  const { refetchInterval } = getRepositoryCommitsQueryOptions(PARAMS);
-  if (typeof refetchInterval !== "function") {
-    throw new Error("refetchInterval is expected to be a function");
-  }
-  const data = pages && { pages, pageParams: pages.map(() => 0) };
-  return refetchInterval({ state: { data } } as Parameters<typeof refetchInterval>[0]);
-}
-
-function resolveStructuralSharing(
-  oldPages: RepositoryCommitLog[] | undefined,
-  newPages: RepositoryCommitLog[]
-) {
-  const { structuralSharing } = getRepositoryCommitsQueryOptions(PARAMS);
-  if (typeof structuralSharing !== "function") {
-    throw new Error("structuralSharing is expected to be a function");
-  }
-  const toData = (pages: RepositoryCommitLog[]) => ({
-    pages,
-    pageParams: pages.map((_, index) => index * REPOSITORY_COMMITS_PAGE_SIZE),
   });
-  const oldData = oldPages && toData(oldPages);
-  const newData = toData(newPages);
-  const result = structuralSharing(oldData, newData) as typeof newData;
-  return { newData, result };
+}
+
+function resolveRetry(error: Error, failureCount = 0) {
+  const { retry } = getRepositoryCommitsQueryOptions(PARAMS);
+  if (typeof retry !== "function") {
+    throw new Error("retry is expected to be a function");
+  }
+  return retry(failureCount, error);
+}
+
+function observeCommits() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const observer = new InfiniteQueryObserver(client, getRepositoryCommitsQueryOptions(PARAMS));
+  const unsubscribe = observer.subscribe(() => {});
+  return { observer, unsubscribe };
 }
 
 describe("getRepositoryCommitsQueryOptions", () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.resetAllMocks();
-  });
-
-  test("keeps the loaded commits but records the unavailable answer when a refetch answers unavailable", () => {
-    // GIVEN
-    const loaded = [
-      {
-        ...buildLog(RepositoryGitCondition.BEHIND, REPOSITORY_COMMITS_PAGE_SIZE),
-        fetched_at: "2026-01-01T00:00:00Z",
-        checked_at: "2026-01-02T00:00:00Z",
-        imported_commit: buildCommit(3).hash,
-        remote_head: buildCommit(0).hash,
-        pending_count: 3,
-      },
-      buildLog(RepositoryGitCondition.BEHIND, 2),
-    ];
-    const coldPage = buildLog(RepositoryGitCondition.UNAVAILABLE, 0);
-
-    // WHEN
-    const { result } = resolveStructuralSharing(loaded, [coldPage]);
-
-    // THEN
-    expect(result.pages).toEqual([
-      {
-        ...loaded[0],
-        condition: RepositoryGitCondition.UNAVAILABLE,
-        unavailable: coldPage.unavailable,
-        pending_count: null,
-      },
-      loaded[1],
-    ]);
-  });
-
-  test("still keeps the loaded commits when a second refetch answers unavailable", () => {
-    // GIVEN
-    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
-    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
-    const { result: afterFirstCold } = resolveStructuralSharing(loaded, cold);
-
-    // WHEN
-    const { result } = resolveStructuralSharing(afterFirstCold.pages, cold);
-
-    // THEN
-    expect(result.pages[0]?.commits).toEqual(loaded[0]?.commits);
-    expect(result.pages[0]?.condition).toBe(RepositoryGitCondition.UNAVAILABLE);
-  });
-
-  test("replaces the kept commits once a refetch answers with a git state again", () => {
-    // GIVEN
-    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
-    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
-    const { result: afterCold } = resolveStructuralSharing(loaded, cold);
-    const fresh = [buildLog(RepositoryGitCondition.BEHIND, 5)];
-
-    // WHEN
-    const { newData, result } = resolveStructuralSharing(afterCold.pages, fresh);
-
-    // THEN
-    expect(result).toEqual(newData);
-  });
-
-  test.each([
-    {
-      reason: RepositoryGitUnavailableReason.NOT_CLONED,
-      interval: REPOSITORY_COMMITS_POLL_INTERVAL_MS,
-    },
-    { reason: RepositoryGitUnavailableReason.NOT_IMPLEMENTED, interval: false },
-  ])(
-    "polls as for $reason after that answer arrives over loaded commits",
-    ({ reason, interval }) => {
-      // GIVEN
-      const loaded = [buildLog(RepositoryGitCondition.IN_SYNC, 2)];
-      const { result } = resolveStructuralSharing(loaded, [buildUnavailableLog(reason)]);
-
-      // WHEN
-      const nextInterval = resolveRefetchInterval(result.pages);
-
-      // THEN
-      expect(nextInterval).toBe(interval);
-    }
-  );
-
-  test("appends a page fetched after a refetch answered unavailable", () => {
-    // GIVEN
-    const loaded = buildLog(RepositoryGitCondition.BEHIND, REPOSITORY_COMMITS_PAGE_SIZE);
-    const keptAfterColdPoll = { ...loaded, condition: RepositoryGitCondition.UNAVAILABLE };
-    const nextPage = buildLog(RepositoryGitCondition.BEHIND, 3);
-
-    // WHEN
-    const { result } = resolveStructuralSharing([keptAfterColdPoll], [keptAfterColdPoll, nextPage]);
-
-    // THEN
-    expect(result.pages).toHaveLength(2);
-  });
-
-  test("takes the new pages when a refetch carries a git state", () => {
-    // GIVEN
-    const loaded = [buildLog(RepositoryGitCondition.IN_SYNC)];
-    const fresh = [buildLog(RepositoryGitCondition.BEHIND)];
-
-    // WHEN
-    const { newData, result } = resolveStructuralSharing(loaded, fresh);
-
-    // THEN
-    expect(result).toEqual(newData);
-  });
-
-  test("takes the unavailable answer when nothing was loaded before", () => {
-    // GIVEN
-    const cold = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
-
-    // WHEN
-    const { newData, result } = resolveStructuralSharing(undefined, cold);
-
-    // THEN
-    expect(result).toEqual(newData);
-  });
-
-  test("takes a newer unavailable answer over an older one", () => {
-    // GIVEN
-    const notCloned = [buildLog(RepositoryGitCondition.UNAVAILABLE, 0)];
-    const timedOut = [
-      {
-        ...buildLog(RepositoryGitCondition.UNAVAILABLE, 0),
-        unavailable: { reason: RepositoryGitUnavailableReason.TIMEOUT, message: "timed out" },
-      },
-    ];
-
-    // WHEN
-    const { newData, result } = resolveStructuralSharing(notCloned, timedOut);
-
-    // THEN
-    expect(result).toEqual(newData);
+    focusManager.setFocused(undefined);
   });
 
   test.each([
     RepositoryGitUnavailableReason.NOT_CLONED,
     RepositoryGitUnavailableReason.TIMEOUT,
     null,
-  ])("polls while the first page is unavailable with reason %s", (reason) => {
+  ])("retries an unavailable answer with reason %s", (reason) => {
     // GIVEN
-    const pages = [buildUnavailableLog(reason)];
+    const error = buildUnavailableError(reason);
 
     // WHEN
-    const interval = resolveRefetchInterval(pages);
+    const shouldRetry = resolveRetry(error);
 
     // THEN
-    expect(interval).toBe(REPOSITORY_COMMITS_POLL_INTERVAL_MS);
+    expect(shouldRetry).toBe(true);
   });
 
-  test("does not poll when reading commits is not implemented", () => {
+  test("stops retrying a repository that stays not cloned", () => {
     // GIVEN
-    const pages = [buildUnavailableLog(RepositoryGitUnavailableReason.NOT_IMPLEMENTED)];
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED);
 
     // WHEN
-    const interval = resolveRefetchInterval(pages);
+    const lastRetry = resolveRetry(error, REPOSITORY_COMMITS_MAX_RETRIES - 1);
+    const beyondCap = resolveRetry(error, REPOSITORY_COMMITS_MAX_RETRIES);
 
     // THEN
-    expect(interval).toBe(false);
+    expect(lastRetry).toBe(true);
+    expect(beyondCap).toBe(false);
+  });
+
+  test("does not retry when reading commits is not implemented", () => {
+    // GIVEN
+    const error = buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED);
+
+    // WHEN
+    const shouldRetry = resolveRetry(error);
+
+    // THEN
+    expect(shouldRetry).toBe(false);
+  });
+
+  test("does not retry an error that is not an unavailable answer", () => {
+    // GIVEN
+    const error = new Error("Permission denied");
+
+    // WHEN
+    const shouldRetry = resolveRetry(error);
+
+    // THEN
+    expect(shouldRetry).toBe(false);
+  });
+
+  test("keeps the query pending with the unavailable answer as its failure reason until a worker answers", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock
+      .mockRejectedValueOnce(buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED))
+      .mockRejectedValueOnce(buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED))
+      .mockResolvedValue(buildLog(RepositoryGitCondition.IN_SYNC));
+
+    // WHEN
+    const { observer, unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // THEN
+    expect(observer.getCurrentResult()).toMatchObject({ status: "pending", error: null });
+    expect(observer.getCurrentResult().failureReason).toBeInstanceOf(RepositoryGitUnavailableError);
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    expect(observer.getCurrentResult()).toMatchObject({ status: "pending", error: null });
+    expect(observer.getCurrentResult().failureReason).toBeInstanceOf(RepositoryGitUnavailableError);
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    expect(observer.getCurrentResult().status).toBe("success");
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
+    unsubscribe();
+  });
+
+  test("stops retrying once nothing observes the commit log", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock.mockRejectedValue(
+      buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED)
+    );
+    const { unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // WHEN
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
+
+    // THEN
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("retries only the page that answered unavailable", async () => {
+    // GIVEN
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock
+      .mockResolvedValueOnce(buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE))
+      .mockRejectedValueOnce(buildUnavailableError(RepositoryGitUnavailableReason.NOT_CLONED))
+      .mockResolvedValue(buildLog(RepositoryGitCondition.IN_SYNC));
+    const { observer, unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(0);
+
+    // WHEN
+    const nextPage = observer.fetchNextPage();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS);
+    await nextPage;
+
+    // THEN
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(3);
+    expect(getRepositoryCommitsMock).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ offset: REPOSITORY_COMMITS_PAGE_SIZE })
+    );
+    expect(observer.getCurrentResult().data?.pages).toHaveLength(2);
+    unsubscribe();
   });
 
   test.each([
-    RepositoryGitCondition.IN_SYNC,
-    RepositoryGitCondition.BEHIND,
-    RepositoryGitCondition.REWRITTEN,
-    RepositoryGitCondition.ORPHANED,
-    RepositoryGitCondition.NO_REMOTE,
-    RepositoryGitCondition.NOT_TRACKED,
-  ])("does not poll once the first page answers %s", (condition) => {
+    {
+      name: "reading commits is not implemented",
+      error: buildUnavailableError(RepositoryGitUnavailableReason.NOT_IMPLEMENTED),
+    },
+    { name: "the read fails", error: new Error("Permission denied") },
+  ])("fails at once without retrying when $name", async ({ error }) => {
     // GIVEN
-    const pages = [buildLog(condition)];
+    vi.useFakeTimers();
+    focusManager.setFocused(true);
+    getRepositoryCommitsMock.mockRejectedValue(error);
 
     // WHEN
-    const interval = resolveRefetchInterval(pages);
+    const { observer, unsubscribe } = observeCommits();
+    await vi.advanceTimersByTimeAsync(REPOSITORY_COMMITS_RETRY_DELAY_MS * 3);
 
     // THEN
-    expect(interval).toBe(false);
-  });
-
-  test("does not poll before any data has arrived", () => {
-    // GIVEN
-    const pages = undefined;
-
-    // WHEN
-    const interval = resolveRefetchInterval(pages);
-
-    // THEN
-    expect(interval).toBe(false);
+    expect(observer.getCurrentResult().error).toBe(error);
+    expect(getRepositoryCommitsMock).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 
   test("requests the next offset when the last page is full", () => {
@@ -299,24 +244,6 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // WHEN
     const nextOffset = getNextPageParam(lastPage, [lastPage], 0, [0]);
-
-    // THEN
-    expect(nextOffset).toBeUndefined();
-  });
-
-  test("stops paging when the last page answers unavailable", () => {
-    // GIVEN
-    const { getNextPageParam } = getRepositoryCommitsQueryOptions(PARAMS);
-    const firstPage = buildLog(RepositoryGitCondition.IN_SYNC, REPOSITORY_COMMITS_PAGE_SIZE);
-    const lastPage = buildLog(RepositoryGitCondition.UNAVAILABLE, 0);
-
-    // WHEN
-    const nextOffset = getNextPageParam(
-      lastPage,
-      [firstPage, lastPage],
-      REPOSITORY_COMMITS_PAGE_SIZE,
-      [0, REPOSITORY_COMMITS_PAGE_SIZE]
-    );
 
     // THEN
     expect(nextOffset).toBeUndefined();
@@ -347,62 +274,6 @@ describe("getRepositoryCommitsQueryOptions", () => {
 
     // THEN
     expect(refetchOnWindowFocus).toBe(false);
-  });
-
-  describe("feeding the commit status", () => {
-    const statusKey = repositoriesQueryKeys.commitStatus(PARAMS);
-
-    test("writes the status of the first page", async () => {
-      // GIVEN
-      const client = new QueryClient();
-      getRepositoryCommitsMock.mockResolvedValue({
-        ...buildLog(RepositoryGitCondition.BEHIND),
-        pending_count: 4,
-      });
-
-      // WHEN
-      await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
-
-      // THEN
-      expect(client.getQueryData(statusKey)).toEqual({
-        condition: RepositoryGitCondition.BEHIND,
-        pending_count: 4,
-        unavailable: null,
-      });
-    });
-
-    test("leaves the status alone for a later page", async () => {
-      // GIVEN
-      const client = new QueryClient();
-      getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.BEHIND));
-
-      // WHEN
-      await client.fetchInfiniteQuery({
-        ...getRepositoryCommitsQueryOptions(PARAMS),
-        initialPageParam: REPOSITORY_COMMITS_PAGE_SIZE,
-      });
-
-      // THEN
-      expect(client.getQueryData(statusKey)).toBeUndefined();
-    });
-
-    test("keeps a known status when the first page answers unavailable", async () => {
-      // GIVEN
-      const client = new QueryClient();
-      const known = {
-        condition: RepositoryGitCondition.IN_SYNC,
-        pending_count: null,
-        unavailable: null,
-      };
-      client.setQueryData(statusKey, known);
-      getRepositoryCommitsMock.mockResolvedValue(buildLog(RepositoryGitCondition.UNAVAILABLE, 0));
-
-      // WHEN
-      await client.fetchInfiniteQuery(getRepositoryCommitsQueryOptions(PARAMS));
-
-      // THEN
-      expect(client.getQueryData(statusKey)).toEqual(known);
-    });
   });
 
   test("does not replay every loaded page on a quick remount", async () => {
