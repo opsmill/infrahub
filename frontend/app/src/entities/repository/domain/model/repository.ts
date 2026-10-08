@@ -17,8 +17,6 @@ export const READONLY_REPOSITORY_KIND = "CoreReadOnlyRepository";
 
 export const REPOSITORY_COMMITS_TAB = "repository_commits";
 
-export const READONLY_REPOSITORY_CHECK_REFS_WORKFLOW = "git-read-only-repository-check-refs";
-
 export const RepositoryCommitState = GeneratedRepositoryCommitState;
 export type RepositoryCommitState = GeneratedRepositoryCommitState;
 

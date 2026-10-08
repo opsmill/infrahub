@@ -32,7 +32,6 @@ from infrahub.workflows.catalogue import (
     GIT_REPOSITORIES_IMPORT_OBJECTS,
     GIT_REPOSITORIES_PULL_READ_ONLY,
 )
-from infrahub.workflows.constants import WorkflowTag
 
 from ...core.node.create import create_node
 from ..types.task import TaskInfo
@@ -343,13 +342,10 @@ class ReadOnlyRepositoryCheckRefs(Mutation):
                 ),
             ),
         )
-        # Tagged at submission, not only once the flow starts, so a check still waiting for a worker is
-        # already listed under its repository's tasks.
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_READ_ONLY_REPOSITORY_CHECK_REFS,
             context=graphql_context.get_context(),
             parameters={"model": model},
-            tags=[WorkflowTag.RELATED_NODE.render(identifier=repo.get_id())],
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

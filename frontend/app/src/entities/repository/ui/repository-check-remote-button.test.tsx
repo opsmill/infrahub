@@ -6,8 +6,8 @@ import { formatWithPreferences } from "@/shared/context/date-preferences-context
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
+import { getRemoteCheckTaskFromApi } from "@/entities/repository/api/get-remote-check-task-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
-import { getRunningRefsCheckFromApi } from "@/entities/repository/api/get-running-refs-check-from-api";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
 
@@ -24,18 +24,18 @@ import {
   EARLIER_CHECKED_AT,
   generateCheckRemoteRefsApiResult,
   generateRemoteCheck,
-  generateRunningRefsCheckApiResult,
+  generateRemoteCheckTaskApiResult,
 } from "../../../../tests/fake/repository-refs-check";
 import { RepositoryCommitsManager } from "./repository-commits-manager";
 
 vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
 vi.mock("@/entities/repository/api/check-remote-refs-from-api");
-vi.mock("@/entities/repository/api/get-running-refs-check-from-api");
+vi.mock("@/entities/repository/api/get-remote-check-task-from-api");
 
 const commitsApiMock = vi.mocked(getRepositoryCommitsFromApi);
 const checkRemoteRefsApiMock = vi.mocked(checkRemoteRefsFromApi);
-const runningRefsCheckApiMock = vi.mocked(getRunningRefsCheckFromApi);
+const remoteCheckTaskApiMock = vi.mocked(getRemoteCheckTaskFromApi);
 
 const REPOSITORY_ID = "repo-1";
 const TASK_ID = "check-task-1";
@@ -51,33 +51,39 @@ function CaptureQueryClient() {
   return null;
 }
 
-const renderCommitLog = (remoteCheck: RepositoryRemoteCheck | null = generateRemoteCheck()) =>
-  render(
-    <>
-      <CaptureQueryClient />
-      <div className="h-96">
-        <RepositoryCommitsManager
-          repositoryId={REPOSITORY_ID}
-          repositoryLocation={null}
-          remoteCheck={remoteCheck}
-        />
-      </div>
-    </>
-  );
+const commitLog = (remoteCheck: RepositoryRemoteCheck | null) => (
+  <>
+    <CaptureQueryClient />
+    <div className="h-96">
+      <RepositoryCommitsManager
+        repositoryId={REPOSITORY_ID}
+        repositoryLocation={null}
+        remoteCheck={remoteCheck}
+      />
+    </div>
+  </>
+);
 
-const pollRunningCheckAgain = () =>
+const renderCommitLog = (remoteCheck: RepositoryRemoteCheck | null = generateRemoteCheck()) =>
+  render(commitLog(remoteCheck));
+
+const useBranch = (name: string) =>
+  vi.mocked(useCurrentBranch).mockReturnValue({
+    currentBranch: generateBranch({ name }),
+    setCurrentBranch: () => {},
+  });
+
+const pollCheckTaskAgain = () =>
   queryClient.invalidateQueries({
-    queryKey: repositoriesQueryKeys.runningRefsCheck({ repositoryId: REPOSITORY_ID }),
+    queryKey: repositoriesQueryKeys.remoteCheckTask({ taskId: TASK_ID }),
   });
 
 describe("Check remote now in the commit log", () => {
   beforeEach(() => {
-    vi.mocked(useCurrentBranch).mockReturnValue({
-      currentBranch: generateBranch({ name: "test-branch" }),
-      setCurrentBranch: () => {},
-    });
+    useBranch("test-branch");
     commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(null));
+    checkRemoteRefsApiMock.mockResolvedValue(generateCheckRemoteRefsApiResult(TASK_ID));
+    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult({ isOngoing: true }));
   });
 
   afterEach(() => {
@@ -160,12 +166,14 @@ describe("Check remote now in the commit log", () => {
     expect(checkRemoteRefsApiMock).not.toHaveBeenCalled();
   });
 
-  test("shows a check started elsewhere and links its task in the repository", async () => {
+  test("starts a check on the current branch and links its task in the repository", async () => {
     // GIVEN
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
+    const component = await renderCommitLog();
+    const checkButton = component.getByRole("button", CHECK_BUTTON);
+    await expect.element(checkButton).toBeEnabled();
 
     // WHEN
-    const component = await renderCommitLog();
+    await checkButton.click();
 
     // THEN
     await expect
@@ -174,31 +182,49 @@ describe("Check remote now in the commit log", () => {
         "href",
         expect.stringContaining(`/objects/CoreReadOnlyRepository/${REPOSITORY_ID}/tasks/${TASK_ID}`)
       );
-    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeDisabled();
-  });
-
-  test("starts a check on the current branch and follows it", async () => {
-    // GIVEN
-    checkRemoteRefsApiMock.mockResolvedValue(generateCheckRemoteRefsApiResult(TASK_ID));
-    const component = await renderCommitLog();
-    const checkButton = component.getByRole("button", CHECK_BUTTON);
-    await expect.element(checkButton).toBeEnabled();
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
-
-    // WHEN
-    await checkButton.click();
-
-    // THEN
-    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
     await expect.element(checkButton).toBeDisabled();
     expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
     expect(checkRemoteRefsApiMock).toHaveBeenCalledWith({
       repositoryId: REPOSITORY_ID,
       branchName: "test-branch",
     });
+    expect(remoteCheckTaskApiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: TASK_ID })
+    );
   });
 
-  test("reloads the commit log when the running check ends", async () => {
+  test("follows a running check after the commit view remounts", async () => {
+    // GIVEN
+    const component = await renderCommitLog();
+    await component.getByRole("button", CHECK_BUTTON).click();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+    await component.rerender(<CaptureQueryClient />);
+
+    // WHEN
+    await component.rerender(commitLog(generateRemoteCheck()));
+
+    // THEN
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeDisabled();
+    expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not show a check started on another branch", async () => {
+    // GIVEN
+    const component = await renderCommitLog();
+    await component.getByRole("button", CHECK_BUTTON).click();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+    useBranch("other-branch");
+
+    // WHEN
+    await component.rerender(commitLog(generateRemoteCheck()));
+
+    // THEN
+    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
+    expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
+  });
+
+  test("reloads the commit log when the check ends", async () => {
     // GIVEN
     commitsApiMock.mockResolvedValue(
       generateCommitsApiResult({
@@ -206,14 +232,16 @@ describe("Check remote now in the commit log", () => {
         checked_at: EARLIER_CHECKED_AT,
       })
     );
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
     const component = await renderCommitLog();
+    await component.getByRole("button", CHECK_BUTTON).click();
     await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
     commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(null));
+    remoteCheckTaskApiMock.mockResolvedValue(
+      generateRemoteCheckTaskApiResult({ isOngoing: false })
+    );
 
     // WHEN
-    await pollRunningCheckAgain();
+    await pollCheckTaskAgain();
 
     // THEN
     await expect
@@ -223,7 +251,7 @@ describe("Check remote now in the commit log", () => {
     expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
   });
 
-  test("reloads the commit log after a check that ended before the next poll", async () => {
+  test("reloads the commit log after a check that ended before the first poll", async () => {
     // GIVEN
     commitsApiMock.mockResolvedValue(
       generateCommitsApiResult({
@@ -231,7 +259,9 @@ describe("Check remote now in the commit log", () => {
         checked_at: EARLIER_CHECKED_AT,
       })
     );
-    checkRemoteRefsApiMock.mockResolvedValue(generateCheckRemoteRefsApiResult(TASK_ID));
+    remoteCheckTaskApiMock.mockResolvedValue(
+      generateRemoteCheckTaskApiResult({ isOngoing: false })
+    );
     const component = await renderCommitLog();
     const checkButton = component.getByRole("button", CHECK_BUTTON);
     await expect.element(checkButton).toBeEnabled();
@@ -247,48 +277,15 @@ describe("Check remote now in the commit log", () => {
     await expect.element(checkButton).toBeEnabled();
   });
 
-  test("reloads the commit log when a check ended while the tab was closed", async () => {
-    // GIVEN
-    commitsApiMock.mockResolvedValue(
-      generateCommitsApiResult({
-        ...generateReadOnlyCommitsResponse(),
-        checked_at: EARLIER_CHECKED_AT,
-      })
-    );
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
-    const component = await renderCommitLog();
-    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
-    await component.rerender(<CaptureQueryClient />);
-    commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(null));
-
-    // WHEN
-    await component.rerender(
-      <div className="h-96">
-        <RepositoryCommitsManager
-          repositoryId={REPOSITORY_ID}
-          repositoryLocation={null}
-          remoteCheck={generateRemoteCheck()}
-        />
-      </div>
-    );
-
-    // THEN
-    await expect
-      .element(component.getByText(`Checked ${formatDateTime(READ_ONLY_CHECKED_AT)}`))
-      .toBeVisible();
-    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
-  });
-
   test("keeps the check running when one poll fails", async () => {
     // GIVEN
-    runningRefsCheckApiMock.mockResolvedValue(generateRunningRefsCheckApiResult(TASK_ID));
     const component = await renderCommitLog();
+    await component.getByRole("button", CHECK_BUTTON).click();
     await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
-    runningRefsCheckApiMock.mockRejectedValue(new Error("Task manager unavailable"));
+    remoteCheckTaskApiMock.mockRejectedValue(new Error("Task manager unavailable"));
 
     // WHEN
-    await pollRunningCheckAgain();
+    await pollCheckTaskAgain();
 
     // THEN
     await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeDisabled();
@@ -309,5 +306,6 @@ describe("Check remote now in the commit log", () => {
       .element(component.getByText("Error checking the remote: Repository is not active"))
       .toBeVisible();
     await expect.element(checkButton).toBeEnabled();
+    expect(remoteCheckTaskApiMock).not.toHaveBeenCalled();
   });
 });

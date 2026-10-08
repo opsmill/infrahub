@@ -7,8 +7,8 @@ export interface RepositoryCommitsKeyParams extends RepositoryKeyParams {
   limit: number;
 }
 
-export interface RunningRefsCheckKeyParams {
-  repositoryId: string;
+export interface RemoteCheckTaskKeyParams {
+  taskId: string;
 }
 
 export const repositoriesQueryKeys = {
@@ -17,7 +17,7 @@ export const repositoriesQueryKeys = {
     [...repositoriesQueryKeys.all, { repositoryId, branchName }] as const,
   commits: ({ limit, ...params }: RepositoryCommitsKeyParams) =>
     [...repositoriesQueryKeys.repository(params), "commits", { limit }] as const,
-  // Outside `repository`: the commit-log refetch this check triggers when it ends must not refetch it.
-  runningRefsCheck: ({ repositoryId }: RunningRefsCheckKeyParams) =>
-    [...repositoriesQueryKeys.all, "running-refs-check", { repositoryId }] as const,
+  // Outside `repository`: the commit-log refetch this task triggers when it ends must not refetch it.
+  remoteCheckTask: ({ taskId }: RemoteCheckTaskKeyParams) =>
+    [...repositoriesQueryKeys.all, "remote-check-task", { taskId }] as const,
 } as const;

@@ -6,10 +6,11 @@ import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import { useCheckRemoteRefsMutation } from "@/entities/repository/ui/queries/check-remote-refs.mutation";
-import { useGetRunningRefsCheck } from "@/entities/repository/ui/queries/get-running-refs-check.query";
+import { useGetRemoteCheckTask } from "@/entities/repository/ui/queries/get-remote-check-task.query";
 
 export interface RepositoryRemoteCheck {
   objectKind: string;
@@ -25,12 +26,14 @@ export function RepositoryCheckRemoteButton({
   objectKind,
   updatePermission,
 }: RepositoryCheckRemoteButtonProps) {
-  const { runningTaskId } = useGetRunningRefsCheck({ repositoryId });
-  const { mutate: checkRemoteRefs, isPending } = useCheckRemoteRefsMutation();
+  const { currentBranch } = useCurrentBranch();
+  const { mutate: checkRemoteRefs } = useCheckRemoteRefsMutation();
+  const { isSubmitting, isOngoing, taskId } = useGetRemoteCheckTask({ repositoryId });
+  const runningTaskId = isOngoing ? taskId : null;
 
   const startCheck = () =>
     checkRemoteRefs(
-      { repositoryId },
+      { repositoryId, branchName: currentBranch.name },
       {
         onError: (error) => {
           toast(
@@ -69,7 +72,7 @@ export function RepositoryCheckRemoteButton({
           size="sm"
           isDisabled={updatePermission.isAllowed && runningTaskId !== null}
           isDisabledAndFocusable={!updatePermission.isAllowed}
-          isPending={isPending}
+          isPending={isSubmitting}
           onPress={startCheck}
         >
           <RadarIcon aria-hidden="true" />

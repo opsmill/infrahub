@@ -158,13 +158,12 @@ uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log
    commit view shows `BEHIND`; the repository's `commit` attribute is unchanged; no import task ran.
 
 2. On demand: push again, then press "Check remote now" on the repository's Commits tab (or run
-   `InfrahubReadOnlyRepositoryCheckRefs`). While an on-demand check of the repository runs, started
-   here or elsewhere, the button is disabled and a "View task" link points to it in the repository's
-   Tasks tab. When it ends, the commit view shows `BEHIND` with the new count, before the interval
+   `InfrahubReadOnlyRepositoryCheckRefs`). Until the task you started ends, the button is disabled
+   and a "View task" link points to it in the repository's Tasks tab. When it ends, the commit view shows `BEHIND` with the new count, before the interval
    elapses. If a scheduled check holds the repository when you press the button, your task ends at
    once without checking, and the new count shows once the scheduled check finishes and you refresh
-   the commit view. The button is absent on a read-write repository and
-   disabled for a user without update permission on the repository.
+   the commit view. The button is absent on a read-write repository and disabled for a user without
+   update permission on the repository.
 
 3. Idle cost: with no upstream change, the flow log shows a refs listing and no fetch. After an
    on-demand check, the freshness line's check time is newer than before and the update time has

@@ -1,5 +1,5 @@
 import type { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
-import type { getRunningRefsCheckFromApi } from "@/entities/repository/api/get-running-refs-check-from-api";
+import type { getRemoteCheckTaskFromApi } from "@/entities/repository/api/get-remote-check-task-from-api";
 import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
 
 import { generatePermission } from "./permission";
@@ -21,8 +21,10 @@ export const generateCheckRemoteRefsApiResult = (
   data: { InfrahubReadOnlyRepositoryCheckRefs: { ok: true, task: { id: taskId } } },
 });
 
-export const generateRunningRefsCheckApiResult = (
-  taskId: string | null
-): Awaited<ReturnType<typeof getRunningRefsCheckFromApi>> => ({
-  data: { InfrahubTask: { edges: taskId !== null ? [{ node: { id: taskId } }] : [] } },
+export const generateRemoteCheckTaskApiResult = ({
+  isOngoing,
+}: {
+  isOngoing: boolean;
+}): Awaited<ReturnType<typeof getRemoteCheckTaskFromApi>> => ({
+  data: { InfrahubTask: { count: isOngoing ? 1 : 0 } },
 });

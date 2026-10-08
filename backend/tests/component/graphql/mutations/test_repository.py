@@ -27,7 +27,6 @@ from infrahub.workflows.catalogue import (
     GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT,
     GIT_REPOSITORIES_IMPORT_OBJECTS,
 )
-from infrahub.workflows.constants import WorkflowTag
 from tests.adapters.message_bus import BusRecorder
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.graphql import graphql_mutation
@@ -346,7 +345,6 @@ async def test_check_refs_submits_the_check_for_a_read_only_repository(
             ],
         )
     }
-    assert submissions[0]["tags"] == [WorkflowTag.RELATED_NODE.render(identifier=repo.id)]
     assert result.data["InfrahubReadOnlyRepositoryCheckRefs"]["task"]["id"]
 
 
