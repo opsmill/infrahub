@@ -216,7 +216,7 @@ CARD_DEFINITION = "delivery-remote-advanced-card"
 
 def _card_files(version: int) -> dict[str, str]:
     """Return a repository configuration whose artifact definition renders a card of each person, at a version."""
-    config = {
+    repository_config = {
         "queries": [{"name": "delivery_remote_advanced_person", "file_path": "person.gql"}],
         "jinja2_transforms": [
             {
@@ -237,7 +237,7 @@ def _card_files(version: int) -> dict[str, str]:
         ],
     }
     return {
-        ".infrahub.yml": yaml.safe_dump(config),
+        ".infrahub.yml": yaml.safe_dump(repository_config),
         "person.gql": (
             "query delivery_remote_advanced_person($name: String!) "
             "{ TestingPerson(name__value: $name) { edges { node { name { value } } } } }\n"
@@ -390,15 +390,18 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
-    ) -> Callable[[str], Awaitable[SyncedBranchRepository]]:
+    ) -> Callable[..., Awaitable[SyncedBranchRepository]]:
         """Return a factory for a repository whose branch adds a file that the default branch does not have.
 
         Each test gets a remote and a repository of its own, so a queued merge of one test never reaches another.
+        The files of `trunk_files` are on the default branch before the repository and its branch exist.
         """
 
-        async def create(branch_name: str) -> SyncedBranchRepository:
+        async def create(branch_name: str, trunk_files: dict[str, str] | None = None) -> SyncedBranchRepository:
             repo_name = f"{branch_name}-repo"
             location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+            if trunk_files:
+                commit_to_remote_branch(gogs_server.container, repo_name, branch="main", files=trunk_files)
             node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
             await node.save()
             source_commit = await _sync_new_branch(
@@ -1307,7 +1310,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
         reject_pushes_to_main: Callable[[str], Callable[[], None]],
     ) -> None:
-        """One retry delivers every pending merge of a repository, in merge order, and leaves nothing pending."""
+        """A retry fails while the remote refuses, and one retry after that delivers every pending merge in order."""
         first = await synced_branch_repository("delivery-one-retry")
         second_branch = "delivery-one-retry-second"
         second = replace(
@@ -1330,20 +1333,39 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             (first.branch_name, first.source_commit),
             (second.branch_name, second.source_commit),
         ]
+
+        with pytest.raises(GraphQLError) as exc:
+            await self._retry_delivery(client=client, repository=first)
+
+        assert [error["message"] for error in exc.value.errors] == [
+            f"The delivery to repository {first.name} ended with the outcome failed."
+        ]
+        assert await _retry_states(client=client, repository_id=first.node_id) == [TaskState.FAILED]
+        refused = await _delivery_state(db=db, repository_id=first.node_id)
+        assert (refused.status, refused.cause, refused.queue.entries) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.PERMISSION,
+            queued.queue.entries,
+        )
+        assert gogs_repo_branch_commit(gogs_server.container, first.name, "main") == first.trunk_commit
         lift_rejection()
 
         await self._retry_delivery(client=client, repository=first)
 
-        assert await _retry_states(client=client, repository_id=first.node_id) == [TaskState.COMPLETED]
+        assert sorted(await _retry_states(client=client, repository_id=first.node_id)) == [
+            TaskState.COMPLETED,
+            TaskState.FAILED,
+        ]
         head = gogs_repo_branch_commit(gogs_server.container, first.name, "main")
         state = await _delivery_state(db=db, repository_id=first.node_id)
-        assert (state.status, state.cause, state.error, state.queue.entries, state.last_delivered_commit) == (
-            RepositoryDeliveryStatus.NONE,
-            None,
-            None,
-            (),
-            head,
-        )
+        assert (
+            state.status,
+            state.cause,
+            state.error,
+            state.queue.entries,
+            state.queue.import_owed_commit,
+            state.last_delivered_commit,
+        ) == (RepositoryDeliveryStatus.NONE, None, None, (), None, head)
         assert await _recorded_commit(db=db, repository_id=first.node_id) == head
         # The first merge fast-forwards main, so the head merges the second source commit into the first one.
         parents = [gogs_repo_branch_commit(gogs_server.container, first.name, f"main^{number}") for number in (1, 2)]
@@ -1351,12 +1373,11 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
 
     async def test_remote_advanced_is_imported(
         self,
-        initialize_registry: None,
-        git_repos_dir_module_scope: Path,
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         caplog: pytest.LogCaptureFixture,
+        synced_branch_repository: Callable[..., Awaitable[SyncedBranchRepository]],
         reject_pushes_to_main: Callable[[str], Callable[[], None]],
     ) -> None:
         """A retry replays a merge onto a remote that moved meanwhile, records the result, then imports it."""
@@ -1368,27 +1389,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         await group.new(db=db, name=CARD_GROUP, members=[person])
         await group.save(db=db)
         # The artifact definition is on the default branch before the branch forks, so only the remote changes it.
-        repo_name = "delivery-remote-advanced-repo"
-        location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        trunk_commit = commit_to_remote_branch(
-            gogs_server.container, repo_name, branch="main", files=_card_files(version=1)
-        )
-        node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
-        await node.save()
-        repository = SyncedBranchRepository(
-            name=repo_name,
-            node_id=node.id,
-            branch_name="delivery-remote-advanced",
-            trunk_commit=trunk_commit,
-            source_commit=await _sync_new_branch(
-                db=db,
-                client=client,
-                container=gogs_server.container,
-                repo_name=repo_name,
-                repository_id=node.id,
-                branch_name="delivery-remote-advanced",
-            ),
-        )
+        repository = await synced_branch_repository("delivery-remote-advanced", trunk_files=_card_files(version=1))
         lift_rejection = reject_pushes_to_main(repository.name)
         await client.branch.merge(branch_name=repository.branch_name)
         assert (await _delivery_state(db=db, repository_id=repository.node_id)).cause == (
@@ -1482,7 +1483,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             f"The remote of repository {repository.name} already holds the merges ['{failed.queue.entries[0].entry_id}']."
         ]
         state = await _delivery_state(db=db, repository_id=repository.node_id)
-        # The retry pushed nothing, so it names no delivered commit.
+        # The first attempt stopped before it settled and the retry pushed nothing, so no delivered commit is set.
         assert (
             state.status,
             state.cause,
@@ -1502,7 +1503,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         fast_forward_merges: None,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
     ) -> None:
-        """A retry run that starts after an attempt delivered the queue finds nothing pending and changes nothing."""
+        """A retry run after the queue was delivered finds nothing pending and changes only its progress times."""
         repository = await synced_branch_repository("delivery-concurrent-attempts")
         await client.branch.merge(branch_name=repository.branch_name)
         delivered = await _delivery_state(db=db, repository_id=repository.node_id)
@@ -1524,7 +1525,7 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         # The attempt stamps its start before it reads the queue, so only its progress times move.
         after = await _delivery_state(db=db, repository_id=repository.node_id)
-        assert replace(after, progress=delivered.progress) == delivered
+        assert (replace(after, progress=delivered.progress), after.progress.retry_due_at) == (delivered, None)
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
 
