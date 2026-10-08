@@ -54,7 +54,7 @@ export function PagedTableCard<TPage extends { count: number }>({
       <CardHeader className="flex items-center gap-2">
         <h2 id={titleId}>{title}</h2>
         {count !== undefined && (
-          <Badge variant="blue" className="rounded-full font-normal tabular-nums">
+          <Badge variant="blue" className="relative rounded-full font-normal tabular-nums">
             {formatNumberDisplay(count)}{" "}
             <span className="sr-only">{count === 1 ? itemName.one : itemName.other}</span>
           </Badge>
@@ -145,7 +145,7 @@ function PagedTableBody<TPage extends { count: number }>({
 
 function PagedTableLoading({ label }: { label: string }) {
   return (
-    <div role="status" aria-busy="true">
+    <div role="status" aria-busy="true" className="relative">
       <span className="sr-only">{label}</span>
       {[0, 1, 2].map((index) => (
         <Row key={index} className="h-10 gap-4 border-b px-3 last:border-b-0">
