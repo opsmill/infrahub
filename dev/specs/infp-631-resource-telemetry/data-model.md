@@ -72,13 +72,13 @@ Read by each process on its main loop every 10 seconds and written into `workers
 
 | Field | Type | Source |
 |-------|------|--------|
-| `host` | `str` | `socket.gethostname()` (by default the short container ID under Docker, the pod name under Kubernetes). Groups the readings that share a container; `"unknown"` on a failed read. |
+| `host` | `str` | `socket.gethostname()` (by default the short container ID under Docker, the pod name under Kubernetes). Groups the readings that share a container. A failed read keeps the name; it is `"unknown"` only when the name itself cannot be read. |
 | `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` capped by the cgroup CPU quota **and** by the process's CPU-affinity mask, i.e. `min(host, max(1, floor(quota)), affinity)`, each cap applied only when known (D2 correction — psutil alone is not container-aware, and a `cpuset` restriction sets no quota; the quota rounds **down** here and **up** for `processor_assigned`). |
 | `processor_assigned` | `int \| None` | cgroup CPU quota rounded up (D3/D5); `None` if unbounded. Both CPU figures are `None` when a CPU limit file exists but yields no usable limit. |
 | `memory_total` | `int \| None` | The most restrictive cgroup `memory.max` across every enforcing level — an ancestor's limit is charged against its whole subtree, so it binds even when the process's own level is unset; else `psutil.virtual_memory().total`. Both memory figures are `None` when a memory limit file exists but yields no usable limit, or when the host capacity read fails. |
 | `memory_available` | `int \| None` | Smallest `max(0, memory.max − memory.current)` across every level that enforces a limit (an ancestor's limit is charged against its whole subtree, so it can bind first); else `psutil.virtual_memory().available`. Clamped at zero, since a limit lowered below current usage would otherwise go negative. `None` on its own, leaving `memory_total` standing, when a usage file or the host free-memory read fails. |
 
-Internal transport shape (`WorkerResourceReading`, a small typed model in `resources.py`), **not** a payload model — the payload carries only each component's per-worker share, never per-process rows (FR-004). The `host` identifier only groups readings by container and is never emitted. The four figures are bounded non-negative (`ge=0`), so a corrupted cache entry fails to parse and is skipped by the scan rather than reaching the payload. A read that fails after its retries is written as `WorkerResourceReading.failed()`: host `"unknown"` and every figure `None`. Any reading with every figure `None` counts as failed, including one whose CPU and memory pairs were both nulled field by field.
+Internal transport shape (`WorkerResourceReading`, a small typed model in `resources.py`), **not** a payload model — the payload carries only each component's per-worker share, never per-process rows (FR-004). The `host` identifier only groups readings by container and is never emitted. The four figures are bounded non-negative (`ge=0`), so a corrupted cache entry fails to parse and is skipped by the scan rather than reaching the payload. A read that fails after its retries is written as `WorkerResourceReading.failed(host=...)`: the process's container name and every figure `None`. The name is read again on its own, so it is still known when the rest of the read failed; only when that lookup also fails is the host `"unknown"`. Any reading with every figure `None` counts as failed, including one whose CPU and memory pairs were both nulled field by field.
 
 `host`, the resolved cgroup path, and the host's logical CPU count are read once per process and cached — none can change without a container restart. `processor_available`, `processor_assigned`, `memory_total`, and `memory_available` are all re-read every 10 seconds, since a live limit reconfiguration (a `docker update`, a Kubernetes in-place pod resize) changes them without restarting the process (D12).
 
@@ -96,12 +96,12 @@ Internal transport shape (`WorkerResourceReading`, a small typed model in `resou
 
 Given every reading the scan returns for a component type (one per process whose resource key is live, not filtered against the active set):
 
-1. **Drop failed readings** — those with every figure `None`. If none remain, every `per_worker` figure is `None`.
-2. **Choose the most complete reading**: the one with the most non-`None` figures; on a tie, the first one the scan returned.
-3. **Count the sharers**: the remaining readings whose `host` equals the chosen reading's.
+1. **Set failed readings aside for the choice** — those with every figure `None`. If no other reading remains, every `per_worker` figure is `None`.
+2. **Choose the most complete reading** among the others: the one with the most non-`None` figures; on a tie, the first one the scan returned.
+3. **Count the sharers**: every reading whose `host` equals the chosen reading's, failed ones included, because a process whose read failed still uses part of its container.
 4. **Divide** each figure of the chosen reading by the sharer count: processor figures rounded to two decimals, memory figures by floor division. A `None` figure stays `None`.
 
-A task worker has its container to itself, so its share is the container's figures. The API server's gunicorn processes share one container, so each gets a fraction. `per_worker × active` is the component's total on the assumption that every replica runs with the same configuration. A process that has not yet written a reading, or whose read failed, is not a sharer, so a shared container's share reads high until it writes a usable reading. The contract lists the consumer-facing consequences.
+A task worker has its container to itself, so its share is the container's figures. The API server's gunicorn processes share one container, so each gets a fraction. `per_worker × active` is the component's total on the assumption that every replica runs with the same configuration. A process that has not yet written a reading is not a sharer, so a shared container's share reads high until it writes one. A process whose read failed is a sharer, unless its container name could not be read either. The contract lists the consumer-facing consequences.
 
 ## Validation rules
 

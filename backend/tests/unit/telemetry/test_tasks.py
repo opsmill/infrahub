@@ -88,10 +88,18 @@ SHARE_CASES = [
         expected=TelemetryPerWorkerData(processor_available=0.5, processor_assigned=0.5),
     ),
     ShareCase(
-        name="a_failed_read_is_not_counted_as_a_sharer",
+        name="a_failed_read_still_shares_its_container",
         readings=[
             *[WorkerResourceReading(host="api", processor_available=4, memory_total=8_000_000_000)] * 2,
-            WorkerResourceReading.failed(),
+            WorkerResourceReading.failed(host="api"),
+        ],
+        expected=TelemetryPerWorkerData(processor_available=1.33, memory_total=2_666_666_666),
+    ),
+    ShareCase(
+        name="a_failed_read_from_another_container_does_not_change_the_share",
+        readings=[
+            *[WorkerResourceReading(host="api", processor_available=4, memory_total=8_000_000_000)] * 2,
+            WorkerResourceReading.failed(host="other"),
         ],
         expected=TelemetryPerWorkerData(processor_available=2.0, memory_total=4_000_000_000),
     ),
@@ -110,7 +118,7 @@ SHARE_CASES = [
     ),
     ShareCase(
         name="only_failed_reads_reports_nothing",
-        readings=[WorkerResourceReading.failed(), WorkerResourceReading.failed()],
+        readings=[WorkerResourceReading.failed(host="api"), WorkerResourceReading.failed(host="api")],
         expected=TelemetryPerWorkerData(),
     ),
 ]

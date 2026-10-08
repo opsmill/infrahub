@@ -31,7 +31,8 @@ Feed synthetic per-process readings to `_per_worker_share()`; assert one worker'
 - `processes_of_one_container_split_it_evenly`: 4 readings from host `api` with 4 CPUs and 8 GB → `processor_available == 1.0`, `memory_total == 2_000_000_000`.
 - `an_uneven_split_rounds_processors_to_two_decimals`: 3 readings from one host with 4 CPUs → `processor_available == 1.33`; memory divided by floor division.
 - `more_processes_than_processors_gives_a_fraction`: 4 readings from one host with 2 CPUs → `processor_available == 0.5`.
-- `a_failed_read_is_not_counted_as_a_sharer`: 2 healthy readings and 1 `WorkerResourceReading.failed()` → divided by 2, not 3.
+- `a_failed_read_still_shares_its_container`: 2 healthy readings and 1 `WorkerResourceReading.failed(host="api")` from the same host → divided by 3, not 2: `processor_available == 1.33`, `memory_total == 2_666_666_666`.
+- `a_failed_read_from_another_container_does_not_change_the_share`: the same 2 healthy readings and 1 failed reading from another host → divided by 2.
 - `the_most_complete_reading_is_used_and_partial_ones_still_share`: a reading missing `memory_total` and a complete one from the same host → the complete one's figures, divided by 2.
 - `no_readings_reports_nothing` and `only_failed_reads_reports_nothing`: every figure `None`.
 

@@ -12,7 +12,12 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
-from infrahub.telemetry.resources import RESOURCE_READ_FAILURES, ProcessResources, WorkerResourceReading
+from infrahub.telemetry.resources import (
+    RESOURCE_READ_FAILURES,
+    UNKNOWN_CONTAINER,
+    ProcessResources,
+    WorkerResourceReading,
+)
 from infrahub.worker import WORKER_IDENTITY
 
 if TYPE_CHECKING:
@@ -226,6 +231,8 @@ class InfrahubComponent:
 
         If every try fails, a warning names the component and the error and an empty
         reading is stored, so a worker that stops reporting leaves a trace in the log.
+        The empty reading still names the process's container, so the process still
+        counts as one of the processes sharing it.
         """
         last_error: Exception | None = None
         for _ in range(RESOURCE_READ_MAX_ATTEMPTS):
@@ -240,7 +247,12 @@ class InfrahubComponent:
             worker_id=WORKER_IDENTITY,
             error=str(last_error),
         )
-        return WorkerResourceReading.failed()
+        try:
+            host = self.process_resources.container_name()
+        except RESOURCE_READ_FAILURES:
+            # The empty reading must still be stored, so a name that cannot be read is replaced instead of raised.
+            host = UNKNOWN_CONTAINER
+        return WorkerResourceReading.failed(host=host)
 
     async def read_worker_resources(self) -> dict[str, list[WorkerResourceReading]]:
         """Return the latest CPU and memory reading of every worker, grouped by component, skipping damaged ones."""

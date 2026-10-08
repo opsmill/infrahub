@@ -9,6 +9,7 @@ renamed or removed.
 
 import logging
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 from typing import Generator
 
 import pytest
@@ -43,11 +44,22 @@ class _AlwaysFailingProcessResources(ProcessResources):
     raise, so it cannot be deterministically forced into the transient failure the
     retry loop guards against (a control-group file rotated mid-read, a psutil
     hiccup). This adapter stands in for that failure by raising on every attempt, so
-    the bounded retries are exhausted and the warning-then-null branch runs.
+    the bounded retries are exhausted and the warning-then-null branch runs. Its
+    container name is fixed, so the stored reading can be checked exactly.
     """
 
     def read(self) -> WorkerResourceReading:
         raise OSError("resource read unavailable")
+
+    def container_name(self) -> str:
+        return "worker-container"
+
+
+class _NamelessFailingProcessResources(_AlwaysFailingProcessResources):
+    """A resource reader that cannot read even its container's name, the case where no name can be stored."""
+
+    def container_name(self) -> str:
+        raise OSError("container name unavailable")
 
 
 # The full set of `data` fields the payload emitted before resource telemetry; the
@@ -424,15 +436,39 @@ async def test_resources_key_does_not_change_worker_counts(resource_environment:
     assert (after.server.total, after.server.active) == (1, 1)
 
 
+@dataclass
+class FailedSelfReadCase:
+    name: str
+    process_resources: ProcessResources
+    expected_reading: WorkerResourceReading
+
+
+FAILED_SELF_READ_CASES = [
+    FailedSelfReadCase(
+        name="the_empty_reading_keeps_the_container_name",
+        process_resources=_AlwaysFailingProcessResources(),
+        expected_reading=WorkerResourceReading(host="worker-container"),
+    ),
+    FailedSelfReadCase(
+        name="a_container_name_that_cannot_be_read_is_stored_as_unknown",
+        process_resources=_NamelessFailingProcessResources(),
+        expected_reading=WorkerResourceReading(host="unknown"),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", FAILED_SELF_READ_CASES, ids=[case.name for case in FAILED_SELF_READ_CASES])
 async def test_self_read_failure_after_retries_logs_and_writes_null(
     db: InfrahubDatabase,
     caplog: pytest.LogCaptureFixture,
+    case: FailedSelfReadCase,
 ) -> None:
-    """An exhausted self-read logs a warning with component + source, then writes a null reading.
+    """An exhausted self-read logs a warning with component + source, then writes a reading with no figures.
 
     A reader that raises on every attempt exhausts the bounded retries; the heartbeat
     must leave a traceable warning carrying the component and the failing source, then
-    write a null-valued reading so a worker that stops reporting leaves a trace in the log.
+    write a reading with no figures so a worker that stops reporting leaves a trace in the log.
+    The reading keeps the container's name, so the process still counts as sharing its container.
     """
     cache = MemoryCache()
     component = InfrahubComponent(
@@ -440,7 +476,7 @@ async def test_self_read_failure_after_retries_logs_and_writes_null(
         db=db,
         message_bus=BusSimulator(),
         component_type=ComponentType.GIT_AGENT,
-        process_resources=_AlwaysFailingProcessResources(),
+        process_resources=case.process_resources,
     )
 
     with caplog.at_level(logging.WARNING, logger="infrahub"):
@@ -460,4 +496,4 @@ async def test_self_read_failure_after_retries_logs_and_writes_null(
 
     # After exhausted retries the heartbeat still writes a reading, with no figures.
     stored = cache.storage[f"workers:resources:git_agent:worker:{WORKER_IDENTITY}"]
-    assert WorkerResourceReading.model_validate_json(stored) == WorkerResourceReading(host="unknown")
+    assert WorkerResourceReading.model_validate_json(stored) == case.expected_reading

@@ -53,6 +53,9 @@ _CGROUP_MEMORY_UNLIMITED_THRESHOLD = 2**62
 # The errors a read can still raise, all worth retrying, because bad values in the limit files are handled where they are read.
 RESOURCE_READ_FAILURES = (OSError, psutil.Error)
 
+# Stored as the container name only when even the name cannot be read, so the reading matches no real container.
+UNKNOWN_CONTAINER = "unknown"
+
 
 class WorkerResourceReading(BaseModel):
     """One process's CPU and memory figures, as stored in the cache between heartbeats.
@@ -69,9 +72,9 @@ class WorkerResourceReading(BaseModel):
     memory_available: int | None = Field(default=None, ge=0)
 
     @classmethod
-    def failed(cls) -> WorkerResourceReading:
-        """The reading stored when a process could not read its figures at all: no figures, and "unknown" as the container."""
-        return cls(host="unknown")
+    def failed(cls, *, host: str) -> WorkerResourceReading:
+        """The reading stored when a process could not read its figures at all: no figures, but still its container's name."""
+        return cls(host=host)
 
     @property
     def is_failed(self) -> bool:
@@ -422,9 +425,18 @@ class ProcessResources:
         self._proc_cgroup = proc_cgroup
         self._identity: _ProcessIdentity | None = None
 
+    def container_name(self) -> str:
+        """The name of the container this process runs in, the same for every process in that container.
+
+        Raises:
+            OSError: The name could not be read.
+
+        """
+        return socket.gethostname()
+
     def _read_identity(self) -> _ProcessIdentity:
         return _ProcessIdentity(
-            host=socket.gethostname(),
+            host=self.container_name(),
             cgroup_dirs=_own_cgroup_dirs(cgroup_root=self._cgroup_root, proc_cgroup=self._proc_cgroup),
             host_processor_count=psutil.cpu_count(logical=True),
             v1_cpu_dirs=_v1_controller_dirs(self._cgroup_root, self._proc_cgroup, "cpu"),

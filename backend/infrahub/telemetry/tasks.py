@@ -133,16 +133,17 @@ def _per_worker_share(readings: list[WorkerResourceReading]) -> TelemetryPerWork
 
     Every copy of a component is assumed to run with the same settings, so one
     container stands for all of them. The processes in a container share it, so its
-    figures are divided by how many of them reported: a task worker has its
+    figures are divided by how many of them stored a reading: a task worker has its
     container to itself, while each API server process gets part of its container.
     If a process could read only some of its figures, the most complete reading is
-    used. A process whose whole read failed is not counted.
+    used. A process whose whole read failed still uses part of its container, so it
+    is counted when the figures are divided, but its empty reading is never used.
     """
     usable = [reading for reading in readings if not reading.is_failed]
     if not usable:
         return TelemetryPerWorkerData()
     chosen = max(usable, key=_reported_field_count)
-    sharers = sum(reading.host == chosen.host for reading in usable)
+    sharers = sum(reading.host == chosen.host for reading in readings)
     return TelemetryPerWorkerData(
         processor_available=_processor_share(chosen.processor_available, sharers),
         processor_assigned=_processor_share(chosen.processor_assigned, sharers),
