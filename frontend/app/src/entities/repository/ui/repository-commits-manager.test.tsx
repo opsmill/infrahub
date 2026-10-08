@@ -857,9 +857,7 @@ describe("Check remote now", () => {
     const component = await renderTab({ isReadOnly: true });
 
     // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Check remote now" }))
-      .toBeEnabled();
+    await expect.element(component.getByRole("button", { name: "Check remote now" })).toBeEnabled();
   });
 
   test("is not offered on a read-write repository", async () => {
@@ -939,9 +937,7 @@ describe("Check remote now", () => {
     await expect
       .element(component.getByText(`Updated ${formatDateTime(READ_ONLY_FETCHED_AT)}`))
       .toBeVisible();
-    await expect
-      .element(component.getByRole("button", { name: "Check remote now" }))
-      .toBeEnabled();
+    await expect.element(component.getByRole("button", { name: "Check remote now" })).toBeEnabled();
     expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
   });
 });

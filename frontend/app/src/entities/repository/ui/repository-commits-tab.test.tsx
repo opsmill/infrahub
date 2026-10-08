@@ -145,7 +145,12 @@ describe("RepositoryCommitsTab", () => {
     const component = await render(
       <>
         <RepositoryCommitsTab objectKind="CoreRepository" objectId="repo-1" />
-        <RepositoryCommitsManager repositoryId="repo-1" repositoryLocation="/remote/repo" isReadOnly={false} updatePermission={{ isAllowed: true }} />
+        <RepositoryCommitsManager
+          repositoryId="repo-1"
+          repositoryLocation="/remote/repo"
+          isReadOnly={false}
+          updatePermission={{ isAllowed: true }}
+        />
       </>
     );
 
