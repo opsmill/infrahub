@@ -114,7 +114,7 @@ function RepositoryDeliveryMenuItems({
   onAbandonDelivery,
 }: RepositoryDeliveryMenuItemsProps) {
   const { data: state } = useGetDeliveryState({ repositoryId });
-  // Until the state loads, nothing is known to be pending.
+  // Until the state loads, or when it fails to load, nothing is known to be pending.
   const { canRetry, canAbandon } = getDeliveryActions(state?.status ?? "none");
 
   const { mutate: retryDelivery } = useRetryDeliveryMutation({

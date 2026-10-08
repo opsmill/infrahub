@@ -32,6 +32,7 @@ export const DELIVERY_TEXTS = {
     "The default branch can also lack repository objects that the recorded commit holds.",
   reimport: "Reimport current commit",
   reimportStarted: "Import of current commit started.",
+  reimportFailed: "Error importing current commit:",
 } as const;
 
 export const REQUIRED_ACTION_BY_CAUSE: Record<DeliveryFailureCause, string> = {

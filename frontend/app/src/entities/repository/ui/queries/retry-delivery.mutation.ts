@@ -13,6 +13,7 @@ interface RetryDeliveryProps extends MutationConfig<typeof retryDelivery> {}
 export const RETRY_DELIVERY_MUTATION_KEY = ["repository", "retry-delivery"] as const;
 
 // The pending pushes live on the default branch, and the backend refuses a retry sent on any other.
+// invalidation-at-callsite: the caller invalidates `objectQueryKeys.all` with its own toast.
 export function useRetryDeliveryMutation(config?: Omit<RetryDeliveryProps, "mutationFn">) {
   const defaultBranch = useDefaultBranch();
 

@@ -1,4 +1,5 @@
 import { Button, Card, CardHeader } from "@infrahub/ui";
+import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { ColorDisplay } from "@/shared/components/display/color-display";
@@ -6,6 +7,7 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -106,11 +108,18 @@ interface LastAbandonmentProps {
 function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonmentProps) {
   const defaultBranch = useDefaultBranch();
 
-  // The client's own error toast shows the refusal message of the backend.
   const { mutate: importCurrentCommit, isPending } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
       toastTaskStarted(DELIVERY_TEXTS.reimportStarted, result.taskId);
       await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+    },
+    onError: (error) => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`${DELIVERY_TEXTS.reimportFailed} ${error.message}`}
+        />
+      );
     },
   });
 
@@ -126,15 +135,17 @@ function LastAbandonment({ repositoryId, record, isUpdateAllowed }: LastAbandonm
         <PendingMergeList merges={record.entries} />
       </DetailRow>
 
-      <DetailRow label={DELIVERY_TEXTS.recordedCommit}>
-        <code className="text-xs">{record.recorded_commit.slice(0, 7)}</code>
-      </DetailRow>
+      {record.recorded_commit && (
+        <DetailRow label={DELIVERY_TEXTS.recordedCommit}>
+          <code className="text-xs">{record.recorded_commit.slice(0, 7)}</code>
+        </DetailRow>
+      )}
 
       <DetailRow label={DELIVERY_TEXTS.repositoryObjects}>
         <p>{DELIVERY_TEXTS.objectsCanStay}</p>
         {record.import_owed_commit && <p>{DELIVERY_TEXTS.objectsCanLack}</p>}
         <div>
-          {/* The repository objects live on the default branch, whatever branch the user selected. */}
+          {/* The abandonment changed the default branch, so the reimport runs there whatever branch the user selected. */}
           <Button
             size="sm"
             variant="outline"

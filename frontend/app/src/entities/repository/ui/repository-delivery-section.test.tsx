@@ -246,6 +246,25 @@ describe("RepositoryDeliverySection", () => {
       .toHaveAttribute("href", "/tasks/task-2");
   });
 
+  test("shows why the reimport is refused", async () => {
+    // GIVEN
+    vi.mocked(getDeliveryState).mockResolvedValue(nothingPendingAfterAbandonment);
+    vi.mocked(importCurrentCommit).mockRejectedValue(
+      new Error("You are not allowed to edit main.")
+    );
+    const component = await renderSection();
+
+    // WHEN
+    await component.getByRole("button", { name: "Reimport current commit" }).click();
+
+    // THEN
+    await expect
+      .element(
+        component.getByText("Error importing current commit: You are not allowed to edit main.")
+      )
+      .toBeVisible();
+  });
+
   test("disables Reimport current commit without update permission", async () => {
     // GIVEN
     vi.mocked(getDeliveryState).mockResolvedValue(nothingPendingAfterAbandonment);
