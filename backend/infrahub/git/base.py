@@ -344,8 +344,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return self.cache_repo
 
-    def get_git_repo_worktree(self, identifier: str) -> Repo:
+    def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Repo:
         """Return Git Repo object of the given worktree.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Returns:
             Repo: git object of the main repository
@@ -354,7 +357,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             RepositoryError: When no worktree matches the provided identifier.
 
         """
-        if worktree := self.get_worktree(identifier=identifier):
+        if worktree := self.get_worktree(identifier=identifier, timeout_seconds=timeout_seconds):
             return Repo(worktree.directory)
 
         raise RepositoryError(identifier=self.name, message=f"Unable to find the worktree {identifier}.")
@@ -510,14 +513,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return False
 
-    def get_worktree(self, identifier: str) -> Worktree:
+    def get_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Worktree:
         """Access a specific worktree by its identifier.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Raises:
             RepositoryError: When no worktree matches the provided identifier.
 
         """
-        worktrees = self.get_worktrees()
+        worktrees = self.get_worktrees(timeout_seconds=timeout_seconds)
         for worktree in worktrees:
             if worktree.identifier == identifier:
                 return worktree
