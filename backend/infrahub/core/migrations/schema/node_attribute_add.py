@@ -117,6 +117,7 @@ class NodeAttributeAddMigration(AttributeSchemaMigration):
                     attribute=self.new_attribute_schema,
                     attribute_id=attr.id,
                     at=at,
+                    user_id=migration_input.user_id,
                 )
                 attr.value = number
 

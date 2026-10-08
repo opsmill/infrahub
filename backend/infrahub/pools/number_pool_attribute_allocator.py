@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.query.resource_manager import (
     NumberPoolReleaseReserved,
     NumberPoolSetReserved,
@@ -29,6 +30,7 @@ class _AllocatingNumberPool(Protocol):
         identifier: str,
         attribute_id: str | None = None,
         at: Timestamp | None = None,
+        user_id: str = SYSTEM_USER_ID,
     ) -> int: ...
 
 
@@ -38,7 +40,7 @@ class NumberPoolAttributeAllocator:
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
 
-    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> int:
+    async def allocate(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> int:
         """Return the number the pool holds for the attribute, or the next free one.
 
         Raises:
@@ -54,9 +56,10 @@ class NumberPoolAttributeAllocator:
             identifier=node.get_id(),
             attribute=attribute.schema,
             attribute_id=attribute.id,
+            user_id=user_id,
         )
 
-    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute) -> None:
+    async def attach(self, pool: CoreNumberPool, node: Node, attribute: BaseAttribute, user_id: str) -> None:
         """Have the pool track the number the saved attribute already holds.
 
         Raises:
@@ -73,10 +76,11 @@ class NumberPoolAttributeAllocator:
             provenance=PoolRecordProvenance.PROVIDED,
             value=attribute.value,
             branch=node.get_branch(),
+            user_id=user_id,
         )
         await query.execute(db=self.db)
 
-    async def release(self, attribute: BaseAttribute) -> None:
+    async def release(self, attribute: BaseAttribute, user_id: str) -> None:
         """Have every pool stop tracking the saved attribute, which keeps the number it holds.
 
         Raises:
@@ -85,5 +89,5 @@ class NumberPoolAttributeAllocator:
         """
         if attribute.id is None:
             raise InitializationError(f"'{attribute.name}' must be saved before a pool can stop tracking it")
-        query = await NumberPoolReleaseReserved.init(db=self.db, attribute_id=attribute.id)
+        query = await NumberPoolReleaseReserved.init(db=self.db, attribute_id=attribute.id, user_id=user_id)
         await query.execute(db=self.db)

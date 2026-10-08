@@ -14,7 +14,7 @@ import pytest
 from infrahub_sdk.convert_object_type import ConversionFieldInput
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, InfrahubKind
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID, BranchSupportType, InfrahubKind
 from infrahub.core.convert_object_type.object_conversion import convert_object_type
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
@@ -26,6 +26,7 @@ from tests.helpers.agnostic_edges import (
     IsReservedEdge,
     active_is_reserved_edges_on,
     is_reserved_edge_on,
+    node_metadata,
     open_is_reserved_edge_on,
     set_open_is_reserved_edge_provenance,
 )
@@ -164,6 +165,11 @@ async def test_converting_an_object_carries_its_is_reserved_edge_onto_the_replac
     assert moved["branch"] == GLOBAL_BRANCH_NAME
     assert moved["status"] == "active"
     assert "to" not in moved, "a moved IS_RESERVED edge is open, whatever state the one it came from was in"
+    assert moved["from_user_id"] == SYSTEM_USER_ID, "the move opens the record under the account converting the object"
+    pool_metadata = await node_metadata(db=db, node_id=convert_pool.get_id())
+    assert (pool_metadata.updated_at, pool_metadata.updated_by) == (moved["from"], SYSTEM_USER_ID), (
+        "moving a record is a change to the pool"
+    )
 
 
 async def test_a_pool_does_not_follow_its_is_reserved_edge_onto_a_kind_it_does_not_track(

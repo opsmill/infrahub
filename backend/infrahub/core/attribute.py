@@ -669,8 +669,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         data: dict,
         pool_applier: AttributePoolApplierInterface,
         process_pools: bool = True,
+        user_id: str = SYSTEM_USER_ID,
     ) -> bool:
-        """Update attr from GraphQL payload."""
+        """Update attr from GraphQL payload, drawing from or releasing to a number pool as `user_id`."""
         changed = False
         self.value_presence = PayloadPresence.of(data=data, key="value")
         self.from_pool_presence = PayloadPresence.of(data=data, key="from_pool")
@@ -688,7 +689,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if "from_pool" in data:
             self.from_pool = data["from_pool"]
             if process_pools:
-                await pool_applier.apply(node=self.node, attribute=self, allocate=True)
+                await pool_applier.apply(node=self.node, attribute=self, allocate=True, user_id=user_id)
             changed = True
 
         if changed and self.is_from_profile:

@@ -179,6 +179,15 @@ On top of the common edge properties a record carries:
 | `identifier` | string | UUID of the object the allocation was made for |
 | `provenance` | string? | `"allocated"` when the pool chose the number, `"provided"` when the user supplied it. Number pools only; an absent value reads as `"allocated"` |
 
+A number pool's record carries the account that wrote it like any other edge: `from_user_id` when it
+opens, `to_user_id` when it closes. Because the record is global, every write that opens or closes one
+of a pool's records is a global-branch change to that pool, so the write also stamps the pool's `Node`
+vertex (`updated_at` / `updated_by`) and moves the stamp it replaces into `previous_updated_at` /
+`previous_updated_by` (`core/query/vertex_metadata.py`). The snapshot is what lets a merge rollback
+restore the pool when a schema migration allocates numbers inside a merge window — invariant 5 in
+[Merge Failure Recovery](merge-failure-recovery.md). A write that keeps a pool's live record unchanged
+stamps nothing; one that closes another pool's record stamps that pool too.
+
 A number pool's record stores no value. Every read resolves it forward instead — from the attribute
 to the values its object holds — so a record whose object holds no value in range reports nothing.
 The read carries no branch filter, which is what makes a number taken while *any* branch holds it:

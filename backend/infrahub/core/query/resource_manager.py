@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Generator, Unpack
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RelationshipStatus
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
 if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
@@ -490,6 +491,7 @@ class NumberPoolChangeReserved(Query):
         self.params["existing_identifier"] = self.existing_identifier
         self.params["not_closed_before"] = self.not_closed_before.to_string()
         self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
 
         # What a pool tracks is itself branch-aware data: a pool can be repointed at another kind or
         # attribute, so both subqueries read it as of this branch and time.
@@ -502,6 +504,7 @@ class NumberPoolChangeReserved(Query):
             "branch_level": global_branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
             "identifier": self.new_identifier,
         }
 
@@ -559,9 +562,10 @@ class NumberPoolChangeReserved(Query):
         // ----------
         // Only one active IS_RESERVED edge for any attribute exists at a time
         // ----------
-        OPTIONAL MATCH ()-[live:IS_RESERVED]->(new_attr)
+        OPTIONAL MATCH (holding_pool)-[live:IS_RESERVED]->(new_attr)
         WHERE live.status = "active" AND live.to IS NULL
-        SET live.to = $at
+        SET live.to = $at, live.to_user_id = $user_id
+        %(stamp_holding_pool)s
         WITH DISTINCT pool, new_attr, old_props
         CREATE (pool)-[new_rel:IS_RESERVED]->(new_attr)
         SET new_rel = old_props
@@ -570,7 +574,13 @@ class NumberPoolChangeReserved(Query):
         // unset the properties for closed edges
         // --------------
         REMOVE new_rel.to, new_rel.to_user_id
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "branch_filter": branch_filter}
+        %(stamp_pool)s
+        """ % {
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "branch_filter": branch_filter,
+            "stamp_holding_pool": stamp_vertex_metadata("holding_pool"),
+            "stamp_pool": stamp_vertex_metadata("pool"),
+        }
         self.add_to_query(query)
         self.return_labels = ["pool.uuid AS pool_id", "new_attr.uuid AS attribute_id", "new_rel"]
 
@@ -900,6 +910,7 @@ class NumberPoolSetReserved(Query):
         self.params["pool_id"] = self.pool_id
         self.params["identifier"] = self.identifier
         self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
         self.params["provenance"] = self.provenance.value
         # An IS_RESERVED edge written before provenance existed carries none, and an absent provenance already
         # reads as an allocation.
@@ -939,6 +950,7 @@ class NumberPoolSetReserved(Query):
             "branch_level": global_branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": self.at.to_string(),
+            "from_user_id": self.user_id,
             "identifier": self.identifier,
             "provenance": self.provenance.value,
         }
@@ -968,22 +980,29 @@ class NumberPoolSetReserved(Query):
           AND coalesce(kept.provenance, $allocated_provenance) IN accepted_provenances
         WITH pool, attr, collect(kept) AS kept_edges
         // ----------
-        // End every other live IS_RESERVED edge on the attribute
+        // End every other live IS_RESERVED edge on the attribute, and stamp the pool that loses it
         // ----------
         CALL (attr, kept_edges) {
-            MATCH ()-[live:IS_RESERVED]->(attr)
+            MATCH (other_pool:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
             WHERE live.status = "active"
               AND live.to IS NULL
               AND NOT live IN kept_edges
-            SET live.to = $at
+            SET live.to = $at, live.to_user_id = $user_id
+            %(stamp_other_pool)s
         }
         // ----------
-        // Create the expected IS_RESERVED edge unless one was kept
+        // Create the expected IS_RESERVED edge unless one was kept, which is the only case the pool changes
         // ----------
         WITH pool, attr, kept_edges
         WHERE size(kept_edges) = 0
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(attr)
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "accepted_provenances": accepted_provenances}
+        %(stamp_pool)s
+        """ % {
+            "number_pool": InfrahubKind.NUMBERPOOL,
+            "accepted_provenances": accepted_provenances,
+            "stamp_other_pool": stamp_vertex_metadata("other_pool"),
+            "stamp_pool": stamp_vertex_metadata("pool"),
+        }
 
         self.add_to_query(query)
         self.return_labels = ["attr.uuid AS attribute_id", "rel"]
@@ -1012,6 +1031,7 @@ class NumberPoolReleaseReserved(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params["attribute_id"] = self.attribute_id
         self.params["at"] = self.at.to_string()
+        self.params["user_id"] = self.user_id
 
         query = """
         MATCH (attr:Attribute { uuid: $attribute_id })
@@ -1023,11 +1043,12 @@ class NumberPoolReleaseReserved(Query):
         SET attr._number_pool_lock = TRUE
         REMOVE attr._number_pool_lock
         WITH attr
-        MATCH (:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
+        MATCH (pool:Node:%(number_pool)s)-[live:IS_RESERVED]->(attr)
         WHERE live.status = "active"
           AND live.to IS NULL
-        SET live.to = $at
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        SET live.to = $at, live.to_user_id = $user_id
+        %(stamp_pool)s
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
 
         self.add_to_query(query)
 
@@ -1054,11 +1075,12 @@ class NumberPoolReleaseAllReserved(Query):
         self.params["user_id"] = self.user_id
 
         query = """
-        MATCH (:Node:%(number_pool)s { uuid: $pool_id })-[live:IS_RESERVED]->(:Attribute)
+        MATCH (pool:Node:%(number_pool)s { uuid: $pool_id })-[live:IS_RESERVED]->(:Attribute)
         WHERE live.status = "active"
           AND live.to IS NULL
         SET live.to = $at, live.to_user_id = $user_id
-        """ % {"number_pool": InfrahubKind.NUMBERPOOL}
+        %(stamp_pool)s
+        """ % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
 
         self.add_to_query(query)
 

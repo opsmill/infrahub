@@ -38,6 +38,7 @@ from infrahub.core.order import (
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
+from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByMetadataField,
@@ -272,6 +273,7 @@ class NodeCreateAllQuery(NodeQuery):
             "branch_level": global_branch.hierarchy_level,
             "status": RelationshipStatus.ACTIVE.value,
             "from": at.to_string(),
+            "from_user_id": self.user_id,
             "identifier": self.node.id,
         }
 
@@ -295,7 +297,8 @@ class NodeCreateAllQuery(NodeQuery):
                 MATCH (pool:%(number_pool)s { uuid: prop.peer_id })
                 CREATE (pool)-[reserved:IS_RESERVED $pool_rel_prop]->(a)
                 SET reserved.provenance = prop.provenance
-            }""" % {"number_pool": InfrahubKind.NUMBERPOOL}
+                %(stamp_pool)s
+            }""" % {"number_pool": InfrahubKind.NUMBERPOOL, "stamp_pool": stamp_vertex_metadata("pool")}
 
         rel_vertex_prop_str = "{ uuid: rel.uuid, name: rel.name, branch_support: rel.branch_support"
         if self.branch.is_default or self.branch.is_global:

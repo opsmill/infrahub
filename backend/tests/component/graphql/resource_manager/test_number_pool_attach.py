@@ -4,6 +4,8 @@ from typing import Any
 
 import pytest
 
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
 from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.constants import InfrahubKind
@@ -18,7 +20,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
-from tests.helpers.agnostic_edges import EdgeState, attribute_edges
+from tests.helpers.agnostic_edges import TEST_ACTOR_ID, EdgeState, attribute_edges, node_metadata
 from tests.helpers.graphql import graphql
 from tests.helpers.number_pool import add_pool_range, pool_used_numbers
 from tests.helpers.schema import TICKET, load_schema
@@ -67,15 +69,27 @@ WHERE reserved.status = "active" AND reserved.to IS NULL
 RETURN attr.name AS attribute_name, pool.uuid AS pool_id, reserved.provenance AS provenance
 """
 
+SECOND_ACTOR_ID = "5b7d2e0c-4f3a-4c1e-9a6b-2d8f1c0e7a41"
+THIRD_ACTOR_ID = "9e1f6a3b-7c2d-4e8f-b5a0-6d4c3b2a1f09"
+
+
+def _session(account_id: str) -> AccountSession:
+    return AccountSession(authenticated=True, account_id=account_id, auth_type=AuthType.JWT)
+
+
 # `sequence` is a second pooled number with no uniqueness constraint, so one schema serves every test.
 TICKET_WITH_SEQUENCE = deepcopy(TICKET)
 TICKET_WITH_SEQUENCE.attributes.append(AttributeSchema(name="sequence", kind="Number", optional=True))
 
 
 async def _execute(
-    db: InfrahubDatabase, branch: Branch, source: str, variables: dict[str, Any]
+    db: InfrahubDatabase,
+    branch: Branch,
+    source: str,
+    variables: dict[str, Any],
+    account_session: AccountSession | None = None,
 ) -> dict[str, Any] | None:
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    gql_params = await prepare_graphql_params(db=db, branch=branch, account_session=account_session)
     result = await graphql(
         schema=gql_params.schema,
         source=source,
@@ -87,16 +101,34 @@ async def _execute(
     return result.data
 
 
-async def _create_ticket(db: InfrahubDatabase, branch: Branch, title: str, **fields: dict[str, Any]) -> dict[str, Any]:
-    data = await _execute(db=db, branch=branch, source=CREATE_TICKET, variables={"title": title, **fields})
+async def _create_ticket(
+    db: InfrahubDatabase,
+    branch: Branch,
+    title: str,
+    account_session: AccountSession | None = None,
+    **fields: dict[str, Any],
+) -> dict[str, Any]:
+    data = await _execute(
+        db=db,
+        branch=branch,
+        source=CREATE_TICKET,
+        variables={"title": title, **fields},
+        account_session=account_session,
+    )
     assert data
     return data["TestingTicketCreate"]["object"]
 
 
 async def _update_ticket(
-    db: InfrahubDatabase, branch: Branch, node_id: str, **fields: dict[str, Any]
+    db: InfrahubDatabase,
+    branch: Branch,
+    node_id: str,
+    account_session: AccountSession | None = None,
+    **fields: dict[str, Any],
 ) -> dict[str, Any]:
-    data = await _execute(db=db, branch=branch, source=UPDATE_TICKET, variables={"id": node_id, **fields})
+    data = await _execute(
+        db=db, branch=branch, source=UPDATE_TICKET, variables={"id": node_id, **fields}, account_session=account_session
+    )
     assert data
     return data["TestingTicketUpdate"]["object"]
 
@@ -672,3 +704,62 @@ class TestNumberPoolAttach:
             (provided["id"], "provided"),
         }
         assert await _used(db=db, branch=main_branch, pool=successor) == [1700, 1701, 1705]
+
+    async def test_pool_writes_record_the_acting_account_on_the_record_and_the_pool(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """Drawing, releasing and attaching each run as a different account, and each leaves that account behind."""
+        pool = await _new_pool(db=db, name="actor", start_range=1800, end_range=1809, node_attribute="sequence")
+
+        drawn = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="actor-drawn",
+            account_session=_session(TEST_ACTOR_ID),
+            ticket_id={"value": 1890},
+            sequence={"from_pool": {"id": pool.id}},
+        )
+
+        [opened] = await _is_reserved_edges(db=db, node_id=drawn["id"], attribute_name="sequence")
+        assert (opened.from_user_id, opened.to_user_id) == (TEST_ACTOR_ID, None)
+        after_draw = await node_metadata(db=db, node_id=pool.get_id())
+        assert (after_draw.updated_at, after_draw.updated_by) == (opened.from_time, TEST_ACTOR_ID)
+
+        await _update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=drawn["id"],
+            account_session=_session(SECOND_ACTOR_ID),
+            sequence={"from_pool": None},
+        )
+
+        [released] = await _is_reserved_edges(db=db, node_id=drawn["id"], attribute_name="sequence")
+        assert (released.from_user_id, released.is_open, released.to_user_id) == (TEST_ACTOR_ID, False, SECOND_ACTOR_ID)
+        after_release = await node_metadata(db=db, node_id=pool.get_id())
+        assert (
+            after_release.updated_at,
+            after_release.updated_by,
+            after_release.previous_updated_at,
+            after_release.previous_updated_by,
+        ) == (released.to_time, SECOND_ACTOR_ID, opened.from_time, TEST_ACTOR_ID)
+
+        hand_set = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="actor-hand-set",
+            account_session=_session(TEST_ACTOR_ID),
+            ticket_id={"value": 1891},
+            sequence={"value": 1805},
+        )
+        await _update_ticket(
+            db=db,
+            branch=main_branch,
+            node_id=hand_set["id"],
+            account_session=_session(THIRD_ACTOR_ID),
+            sequence={"value": 1805, "from_pool": {"id": pool.id}},
+        )
+
+        [attached] = await _is_reserved_edges(db=db, node_id=hand_set["id"], attribute_name="sequence")
+        assert (attached.from_user_id, attached.to_user_id) == (THIRD_ACTOR_ID, None)
+        after_attach = await node_metadata(db=db, node_id=pool.get_id())
+        assert (after_attach.updated_at, after_attach.updated_by) == (attached.from_time, THIRD_ACTOR_ID)
