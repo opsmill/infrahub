@@ -5,8 +5,6 @@ import { queryClient as appQueryClient } from "@/shared/api/rest/client";
 import { formatWithPreferences } from "@/shared/context/date-preferences-context";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
-import { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
 import type { RepositoryGitCondition } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsQueryOptions } from "@/entities/repository/ui/queries/get-repository-commits.query";
@@ -14,7 +12,6 @@ import {
   REPOSITORY_COMMITS_MAX_RETRIES,
   REPOSITORY_COMMITS_RETRY_DELAY_MS,
 } from "@/entities/repository/ui/queries/repository-commits.constants";
-import { checkTaskDetailsFromApi } from "@/entities/tasks/api/check-task-details-from-api";
 
 import { render } from "../../../../tests/components/render";
 import { generateBranch } from "../../../../tests/fake/branch";
@@ -48,12 +45,8 @@ import { RepositoryCommitsManager } from "./repository-commits-manager";
 
 vi.mock("@/entities/branches/ui/branches-provider");
 vi.mock("@/entities/repository/api/get-repository-commits-from-api");
-vi.mock("@/entities/repository/api/check-remote-refs-from-api");
-vi.mock("@/entities/tasks/api/check-task-details-from-api");
 
 const apiMock = vi.mocked(getRepositoryCommitsFromApi);
-const checkRemoteRefsApiMock = vi.mocked(checkRemoteRefsFromApi);
-const taskDetailsApiMock = vi.mocked(checkTaskDetailsFromApi);
 const useCurrentBranchMock = vi.mocked(useCurrentBranch);
 
 type ApiResult = Awaited<ReturnType<typeof getRepositoryCommitsFromApi>>;
@@ -73,15 +66,7 @@ function CaptureQueryClient() {
   return null;
 }
 
-interface TabRepository {
-  isReadOnly?: boolean;
-  updatePermission?: PermissionDecision;
-}
-
-const tab = ({
-  isReadOnly = false,
-  updatePermission = { isAllowed: true },
-}: TabRepository = {}) => (
+const tab = () => (
   <>
     <CaptureQueryClient />
     {/* Bounded like the tab panel, or the scroll sentinel can start in view and load page two on its own. */}
@@ -89,14 +74,13 @@ const tab = ({
       <RepositoryCommitsManager
         repositoryId="repo-1"
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
-        isReadOnly={isReadOnly}
-        updatePermission={updatePermission}
+        remoteCheck={null}
       />
     </div>
   </>
 );
 
-const renderTab = (repository?: TabRepository) => render(tab(repository));
+const renderTab = () => render(tab());
 
 const useBranch = (name: string) =>
   useCurrentBranchMock.mockReturnValue({
@@ -822,163 +806,5 @@ describe("RepositoryCommitsManager", () => {
     // Footer cells carry no accessible role; only they carry the sticky-bottom class.
     expect(grid?.querySelectorAll(":scope > .bottom-0")).toHaveLength(0);
     expect(component.getByRole("navigation").query()).toBeNull();
-  });
-});
-
-type CheckRemoteRefsApiResult = Awaited<ReturnType<typeof checkRemoteRefsFromApi>>;
-
-const checkRemoteRefsApiResult = (taskId: string) =>
-  ({
-    data: { InfrahubReadOnlyRepositoryCheckRefs: { ok: true, task: { id: taskId } } },
-  }) as CheckRemoteRefsApiResult;
-
-type TaskDetailsApiResult = Awaited<ReturnType<typeof checkTaskDetailsFromApi>>;
-
-const ongoingTaskCount = (count: number) =>
-  ({ data: { InfrahubTask: { count } } }) as TaskDetailsApiResult;
-
-const CHECK_TASK_ID = "check-task-1";
-
-describe("Check remote now", () => {
-  beforeEach(() => {
-    useBranch("test-branch");
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.resetAllMocks();
-  });
-
-  test("is offered on a read-only repository", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-
-    // WHEN
-    const component = await renderTab({ isReadOnly: true });
-
-    // THEN
-    await expect.element(component.getByRole("button", { name: "Check remote now" })).toBeEnabled();
-  });
-
-  test("is not offered on a read-write repository", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateBehindCommitsResponse()));
-
-    // WHEN
-    const component = await renderTab();
-
-    // THEN
-    await expect.element(component.getByRole("button", { name: "Refresh data" })).toBeVisible();
-    expect(component.getByRole("button", { name: "Check remote now" }).query()).toBeNull();
-  });
-
-  test("is disabled without permission to update the repository", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-
-    // WHEN
-    const component = await renderTab({
-      isReadOnly: true,
-      updatePermission: { isAllowed: false, message: "You do not have permission to update" },
-    });
-
-    // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Check remote now" }))
-      .toBeDisabled();
-  });
-
-  test("links the running check's task and stays disabled until it ends", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
-    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(1));
-    const component = await renderTab({ isReadOnly: true });
-    const checkButton = component.getByRole("button", { name: "Check remote now" });
-
-    // WHEN
-    await checkButton.click();
-
-    // THEN
-    await expect
-      .element(component.getByRole("link", { name: "View task" }))
-      .toHaveAttribute("href", expect.stringContaining(`/tasks/${CHECK_TASK_ID}`));
-    await expect.element(checkButton).toBeDisabled();
-    expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
-    expect(checkRemoteRefsApiMock).toHaveBeenCalledWith(
-      expect.objectContaining({ repositoryId: "repo-1" })
-    );
-    expect(taskDetailsApiMock).toHaveBeenCalledWith(
-      expect.objectContaining({ ids: [CHECK_TASK_ID] })
-    );
-  });
-
-  test("keeps the check running when one poll of its task fails", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
-    taskDetailsApiMock.mockRejectedValue(new Error("Task manager unavailable"));
-    const component = await renderTab({ isReadOnly: true });
-    const checkButton = component.getByRole("button", { name: "Check remote now" });
-
-    // WHEN
-    await checkButton.click();
-
-    // THEN
-    // A second poll means the first failure has reached the button.
-    await expect
-      .poll(() => taskDetailsApiMock.mock.calls.length, { timeout: 5000 })
-      .toBeGreaterThan(1);
-    await expect.element(checkButton).toBeDisabled();
-    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
-  });
-
-  test("follows a running check after the tab remounts", async () => {
-    // GIVEN
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
-    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(1));
-    const component = await renderTab({ isReadOnly: true });
-    await component.getByRole("button", { name: "Check remote now" }).click();
-    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
-
-    // WHEN
-    await component.rerender(<CaptureQueryClient />);
-    await component.rerender(tab({ isReadOnly: true }));
-
-    // THEN
-    await expect
-      .element(component.getByRole("button", { name: "Check remote now" }))
-      .toBeDisabled();
-    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
-    expect(checkRemoteRefsApiMock).toHaveBeenCalledTimes(1);
-  });
-
-  test("shows the new check time beside the older update time once the check ends", async () => {
-    // GIVEN
-    const checkedBefore = "2025-03-10T18:00:00Z";
-    apiMock.mockResolvedValue(
-      generateCommitsApiResult({ ...generateReadOnlyCommitsResponse(), checked_at: checkedBefore })
-    );
-    checkRemoteRefsApiMock.mockResolvedValue(checkRemoteRefsApiResult(CHECK_TASK_ID));
-    taskDetailsApiMock.mockResolvedValue(ongoingTaskCount(0));
-    const component = await renderTab({ isReadOnly: true });
-    await expect
-      .element(component.getByText(`Checked ${formatDateTime(checkedBefore)}`))
-      .toBeVisible();
-    apiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-
-    // WHEN
-    await component.getByRole("button", { name: "Check remote now" }).click();
-
-    // THEN
-    await expect
-      .element(component.getByText(`Checked ${formatDateTime(READ_ONLY_CHECKED_AT)}`))
-      .toBeVisible();
-    await expect
-      .element(component.getByText(`Updated ${formatDateTime(READ_ONLY_FETCHED_AT)}`))
-      .toBeVisible();
-    await expect.element(component.getByRole("button", { name: "Check remote now" })).toBeEnabled();
-    expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
   });
 });

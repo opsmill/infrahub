@@ -7,10 +7,10 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
-import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
+import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
 import {
   type CommitLogEmptyState,
   canLoadOlderCommits,
@@ -28,8 +28,7 @@ import {
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
 interface RepositoryCheckRemoteProps {
-  isReadOnly: boolean;
-  updatePermission: PermissionDecision;
+  remoteCheck: RepositoryRemoteCheck | null;
 }
 
 export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
@@ -43,8 +42,7 @@ const gridTemplateColumns = () =>
 export function RepositoryCommitsManager({
   repositoryId,
   repositoryLocation,
-  isReadOnly,
-  updatePermission,
+  remoteCheck,
 }: RepositoryCommitsManagerProps) {
   const {
     data,
@@ -70,8 +68,7 @@ export function RepositoryCommitsManager({
           <RepositoryCommitsEmptyState
             log={withoutPages.error.log}
             repositoryId={repositoryId}
-            isReadOnly={isReadOnly}
-            updatePermission={updatePermission}
+            remoteCheck={remoteCheck}
             emptyState={getEmptyState(withoutPages.error, {
               isRetrying: withoutPages.isRetrying,
             })}
@@ -104,8 +101,7 @@ export function RepositoryCommitsManager({
       <RepositoryCommitsEmptyState
         log={log}
         repositoryId={repositoryId}
-        isReadOnly={isReadOnly}
-        updatePermission={updatePermission}
+        remoteCheck={remoteCheck}
         emptyState={noCommitLogState}
       />
     );
@@ -113,12 +109,7 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader
-        log={log}
-        repositoryId={repositoryId}
-        isReadOnly={isReadOnly}
-        updatePermission={updatePermission}
-      />
+      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>
@@ -172,18 +163,12 @@ interface RepositoryCommitsEmptyStateProps extends RepositoryCheckRemoteProps {
 function RepositoryCommitsEmptyState({
   log,
   repositoryId,
-  isReadOnly,
-  updatePermission,
+  remoteCheck,
   emptyState,
 }: RepositoryCommitsEmptyStateProps) {
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader
-        log={log}
-        repositoryId={repositoryId}
-        isReadOnly={isReadOnly}
-        updatePermission={updatePermission}
-      />
+      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );

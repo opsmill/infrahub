@@ -81,8 +81,7 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryLocation={null}
-          isReadOnly={false}
-          updatePermission={{ isAllowed: true }}
+          remoteCheck={null}
         />
       </>
     );
@@ -112,8 +111,7 @@ describe("RepositoryCommitsManager loading more", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryLocation={null}
-          isReadOnly={false}
-          updatePermission={{ isAllowed: true }}
+          remoteCheck={null}
         />
       </>
     );

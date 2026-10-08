@@ -1,27 +1,28 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { MutationConfig } from "@/shared/api/types";
+import type { BranchContextParams } from "@/shared/api/types";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import {
   type CheckRemoteRefsParams,
   checkRemoteRefs,
 } from "@/entities/repository/domain/use-cases/check-remote-refs";
+import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
-interface CheckRemoteRefsProps extends MutationConfig<typeof checkRemoteRefs> {}
+export function useCheckRemoteRefsMutation() {
+  const queryClient = useQueryClient();
+  const { currentBranch } = useCurrentBranch();
 
-export const CHECK_REMOTE_REFS_MUTATION_KEY = ["repository", "check-remote-refs"] as const;
-
-// The started task is read back from this mutation, so it must outlive the default five minutes
-// once its button unmounts, or a long check is forgotten when the tab comes back.
-const CHECK_REMOTE_REFS_GC_TIME_MS = 30 * 60 * 1000;
-
-// invalidation-at-callsite: the mutation only starts a task, so there is nothing to invalidate
-// when it returns; the poll of that task refetches the commit log once the task ends.
-export function useCheckRemoteRefsMutation(config?: Omit<CheckRemoteRefsProps, "mutationFn">) {
   return useMutation({
-    mutationKey: CHECK_REMOTE_REFS_MUTATION_KEY,
-    mutationFn: (params: CheckRemoteRefsParams) => checkRemoteRefs(params),
-    gcTime: CHECK_REMOTE_REFS_GC_TIME_MS,
-    ...config,
+    mutationFn: (params: Omit<CheckRemoteRefsParams, keyof BranchContextParams>) => {
+      return checkRemoteRefs({ branchName: currentBranch.name, ...params });
+    },
+    // Seeding the started task means the poll sees it end even if it finishes before the next poll,
+    // which is when the poll refetches the commit log.
+    onSuccess: (taskId, { repositoryId }) => {
+      const queryKey = repositoriesQueryKeys.runningRefsCheck({ repositoryId });
+      queryClient.setQueryData(queryKey, taskId);
+      return queryClient.invalidateQueries({ queryKey });
+    },
   });
 }

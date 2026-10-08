@@ -206,6 +206,9 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:6ee4f3dbdfe85a2e5af0516f41f85945 */
     "\n  query REPOSITORY_GROUP($nodeIds: [ID]) {\n    CoreRepositoryGroup(repository__ids: $nodeIds) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreRepositoryGroup: { edges: { node: { id: string; } | null; }[]; }; }, { nodeIds?: (string | null)[] | null | undefined; }, void>;
+    /** @gql.tada/hash sha256:5cc7563629c7d2b31aad1ee27b48435f */
+    "\n  query RUNNING_REFS_CHECK($workflow: [String], $state: [StateType], $repositoryId: String!) {\n    InfrahubTask(\n      workflow: $workflow\n      state: $state\n      related_node__ids: [$repositoryId]\n      limit: 1\n    ) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubTask: { edges: { node: { __typename?: "TaskNode" | undefined; id: string; } | { __typename?: "WebhookDeliveryTask" | undefined; id: string; } | null; }[]; }; }, { repositoryId: string; state?: ("RUNNING" | "CANCELLED" | "CANCELLING" | "COMPLETED" | "CRASHED" | "FAILED" | "PAUSED" | "PENDING" | "SCHEDULED" | null)[] | null | undefined; workflow?: (string | null)[] | null | undefined; }, void>;
     /** @gql.tada/hash sha256:b35593f1b58f714e6e34ea935a3a9286 */
     "\n  query Search($search: String!, $caseSensitive: Boolean) {\n    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true, case_sensitive: $caseSensitive) {\n      count\n      edges {\n        node {\n          id\n          kind\n        }\n      }\n      parent_prefixes {\n        node {\n          id\n          kind\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubSearchAnywhere: { count: number; edges: { node: { id: string; kind: string; }; }[]; parent_prefixes: { node: { id: string; kind: string; }; }[] | null; }; }, { caseSensitive?: boolean | null | undefined; search: string; }, void>;

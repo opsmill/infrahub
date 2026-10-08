@@ -148,8 +148,7 @@ describe("RepositoryCommitsTab", () => {
         <RepositoryCommitsManager
           repositoryId="repo-1"
           repositoryLocation="/remote/repo"
-          isReadOnly={false}
-          updatePermission={{ isAllowed: true }}
+          remoteCheck={null}
         />
       </>
     );

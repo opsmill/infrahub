@@ -408,17 +408,19 @@ determinism logic, no test and no documentation entry.
 - Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
-  `InfrahubReadOnlyRepositoryCheckRefs`. After a press, the button stays disabled and links the
-  returned task until that task leaves the ongoing states; the started task is read from the
-  mutation cache, so it survives the tab remounting. Without it the on-demand half of User Story 2
-  has no entry point outside the API, which matters because the interval stays at 15 minutes. Its
+  `InfrahubReadOnlyRepositoryCheckRefs`. The mutation tags the run with the repository when it
+  submits it, and the commit view asks the task manager for an on-demand check of that repository
+  in an ongoing state: every 2 seconds while one runs, every 10 seconds otherwise. While one runs,
+  from this tab or anywhere else, the button is disabled and links that task in the repository's
+  Tasks tab; when it ends, the commit log is refetched. Without it the on-demand half of User Story
+  2 has no entry point outside the API, which matters because the interval stays at 15 minutes. Its
   placement on the design canvas is still open (T094).
-- Departure from FR-025 in the interface, recorded rather than fixed here: the mutation always
-  submits a new run and returns that run's id. When another check holds the repository, the new run
-  exits at once as `SKIPPED_CLAIMED` with `claimed_by` set, records no check time, and the button
-  reports a finished check while the holder is still running. FR-025 allows the duplicate run when
-  it reports the claim it found; the run records it, but the button does not show it. Either the
-  button reads the task result, or the mutation returns the holder's run id.
+- Departure from FR-025 in the interface, recorded rather than fixed here: a scheduled check runs
+  inside the fleet-wide task, not as a task of its own, so the commit view cannot see it. Pressing
+  the button while one holds the repository submits a run that exits at once as `SKIPPED_CLAIMED`
+  with `claimed_by` set and records no check time; the new check time shows once the scheduled
+  check ends and the commit view is refreshed. FR-025 allows the duplicate run when it reports the
+  claim it found; the run records it, but the button does not show it.
 - Waiting for a worker uses capped retries, not polling. The use-case throws an `UNAVAILABLE` answer
   as `RepositoryGitUnavailableError`, and the query retries it every 10 seconds, up to 30 times
   (about five minutes), for `NOT_CLONED`, `TIMEOUT` and a missing reason. `NOT_IMPLEMENTED` is not

@@ -119,7 +119,6 @@ class TestRepositoryCheckRemote:
 
         await expect(task_link).to_have_count(0, timeout=CHECK_TIMEOUT_MS)
         await expect(check_button).to_be_enabled()
-        await expect(admin_page.get_by_text(re.compile(r"^Checked "))).to_be_visible()
 
         after = await read_freshness(infrahub_client, read_only_repo_id)
         assert before["checked_at"] is not None

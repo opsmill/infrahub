@@ -2,65 +2,79 @@ import { Button, Tooltip } from "@infrahub/ui";
 import { ArrowUpRightIcon, RadarIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Link } from "@/shared/components/ui/link";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import { useCheckRemoteRefsMutation } from "@/entities/repository/ui/queries/check-remote-refs.mutation";
-import { useGetRemoteCheckTask } from "@/entities/repository/ui/queries/get-remote-check-task.query";
+import { useGetRunningRefsCheck } from "@/entities/repository/ui/queries/get-running-refs-check.query";
 
-export interface RepositoryCheckRemoteButtonProps {
-  repositoryId: string;
+export interface RepositoryRemoteCheck {
+  objectKind: string;
   updatePermission: PermissionDecision;
+}
+
+export interface RepositoryCheckRemoteButtonProps extends RepositoryRemoteCheck {
+  repositoryId: string;
 }
 
 export function RepositoryCheckRemoteButton({
   repositoryId,
+  objectKind,
   updatePermission,
 }: RepositoryCheckRemoteButtonProps) {
-  const { currentBranch } = useCurrentBranch();
-  const { isSubmitting, isOngoing, taskId } = useGetRemoteCheckTask({ repositoryId });
+  const { runningTaskId } = useGetRunningRefsCheck({ repositoryId });
+  const { mutate: checkRemoteRefs, isPending } = useCheckRemoteRefsMutation();
 
-  const { mutate: checkRemoteRefs } = useCheckRemoteRefsMutation({
-    onError: (error) => {
-      toast(
-        <Alert type={ALERT_TYPES.ERROR} message={`Error checking the remote: ${error.message}`} />
-      );
-    },
-  });
+  const startCheck = () =>
+    checkRemoteRefs(
+      { repositoryId },
+      {
+        onError: (error) => {
+          toast(
+            <Alert
+              type={ALERT_TYPES.ERROR}
+              message={`Error checking the remote: ${error.message}`}
+            />
+          );
+        },
+      }
+    );
 
   return (
-    <Row className="ml-auto items-center gap-2">
-      {isOngoing && taskId && (
-        <Row className="items-center gap-1 text-foreground-muted text-sm">
-          Check running.
-          <Link
-            to={constructPath(`/tasks/${taskId}`)}
-            className="inline-flex items-center gap-1 underline"
-          >
-            View task <ArrowUpRightIcon className="size-3.5" />
-          </Link>
-        </Row>
-      )}
-      <Tooltip
-        message={updatePermission.isAllowed ? undefined : updatePermission.message}
-        nonInteractiveTrigger
-      >
-        <span>
-          <Button
-            variant="outline"
-            size="sm"
-            isDisabled={!updatePermission.isAllowed || isOngoing}
-            isPending={isSubmitting}
-            onPress={() => checkRemoteRefs({ repositoryId, branchName: currentBranch.name })}
-          >
-            <RadarIcon aria-hidden="true" />
-            Check remote now
-          </Button>
-        </span>
+    <Row className="items-center gap-2">
+      <Row role="status" className="items-center gap-1 text-foreground-muted text-sm">
+        {runningTaskId && (
+          <>
+            Check running.
+            <Link
+              to={getObjectDetailsUrl(
+                objectKind,
+                repositoryId,
+                undefined,
+                `tasks/${runningTaskId}`
+              )}
+              className="inline-flex items-center gap-1 underline"
+            >
+              View task <ArrowUpRightIcon className="size-3.5" />
+            </Link>
+          </>
+        )}
+      </Row>
+      <Tooltip message={updatePermission.isAllowed ? undefined : updatePermission.message}>
+        <Button
+          variant="outline"
+          size="sm"
+          isDisabled={updatePermission.isAllowed && runningTaskId !== null}
+          isDisabledAndFocusable={!updatePermission.isAllowed}
+          isPending={isPending}
+          onPress={startCheck}
+        >
+          <RadarIcon aria-hidden="true" />
+          Check remote now
+        </Button>
       </Tooltip>
     </Row>
   );
