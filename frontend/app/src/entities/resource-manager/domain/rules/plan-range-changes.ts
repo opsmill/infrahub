@@ -75,7 +75,7 @@ export function diffRanges(
   knownRangeIds: ReadonlySet<string>
 ): RangeChanges {
   const storedById = new Map(stored.map((range) => [range.id, range]));
-  const linkedIds = new Set(rows.flatMap((row) => (row.rangeId ? [row.rangeId] : [])));
+  const linkedIds = new Set(getLinkedRangeIds(rows));
   const changes: RangeChanges = {
     deletes: stored
       .filter((range) => knownRangeIds.has(range.id) && !linkedIds.has(range.id))
@@ -112,8 +112,12 @@ export function diffRanges(
   return changes;
 }
 
+export function getLinkedRangeIds(rows: RangeRow[]): string[] {
+  return rows.flatMap((row) => (row.rangeId ? [row.rangeId] : []));
+}
+
 export function matchRowsToStored(rows: RangeRow[], stored: StoredRange[]): RangeRow[] {
-  const linkedIds = new Set(rows.flatMap((row) => (row.rangeId ? [row.rangeId] : [])));
+  const linkedIds = new Set(getLinkedRangeIds(rows));
 
   return rows.map((row) => {
     if (row.rangeId) return row;

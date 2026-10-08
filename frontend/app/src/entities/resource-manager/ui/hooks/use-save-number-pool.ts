@@ -24,6 +24,7 @@ import {
 } from "@/entities/resource-manager/domain/model/pool";
 import {
   diffRanges,
+  getLinkedRangeIds,
   hasRangeChanges,
   matchRowsToStored,
 } from "@/entities/resource-manager/domain/rules/plan-range-changes";
@@ -39,10 +40,6 @@ interface UseSaveNumberPoolParams {
 
 function toPoolFields(pool: NumberPoolForEditing) {
   return { name: { value: pool.name }, description: { value: pool.description } };
-}
-
-function linkedRangeIds(rows: RangeRow[]): string[] {
-  return rows.flatMap((row) => (row.rangeId ? [row.rangeId] : []));
 }
 
 export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolParams) {
@@ -92,7 +89,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     // Rows left unlinked here are linked on the next save, which reads the stored ranges again.
     const refreshed = await fetchStoredPool(pool.id).catch(() => null);
     const keptRows = refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
-    setKnownRangeIds((known) => new Set([...known, ...linkedRangeIds(keptRows)]));
+    setKnownRangeIds((known) => new Set([...known, ...getLinkedRangeIds(keptRows)]));
     return keptRows;
   }
 
