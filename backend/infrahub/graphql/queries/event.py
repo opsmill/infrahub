@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any
 
 from graphene import Argument, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 
-from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions
+from infrahub.core.query.branch import BranchGetIdsByNameQuery
 from infrahub.events.constants import ACCOUNT_EVENT_PREFIX, EventSortOrder
-from infrahub.exceptions import BranchNotFoundError, PermissionDeniedError, ValidationError
+from infrahub.exceptions import PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.event import EventNodes, EventTypeFilter
 from infrahub.permissions import define_global_permission_from_branch
@@ -27,16 +27,9 @@ InfrahubEventSortOrder = Enum.from_enum(EventSortOrder)
 
 
 async def _current_branch_ids(db: InfrahubDatabase, names: list[str]) -> dict[str, str]:
-    current_branch_ids: dict[str, str] = {}
-    for name in names:
-        if not name:
-            continue
-        try:
-            branch = await Branch.get_by_name(db=db, name=name, ignore_deleting=False)
-        except BranchNotFoundError:
-            continue
-        current_branch_ids[name] = str(branch.get_uuid())
-    return current_branch_ids
+    query = await BranchGetIdsByNameQuery.init(db=db, names=[name for name in names if name])
+    await query.execute(db=db)
+    return {branch.name: branch.uuid for branch in query.get_data()}
 
 
 class Events(ObjectType):
