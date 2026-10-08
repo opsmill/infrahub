@@ -228,6 +228,12 @@ either case.
 - **A deliberate change of tracking target.** Re-pointing a read-only repository to a new tag, or
   editing a repository's configured default branch, breaks lineage without rewriting anything. It
   is reconciled and not reported. User Story 6 covers it.
+- **An import of the latest commit during a read-only re-point.** The import a user asks for
+  carries no re-point flag. A run that still resolves the old ref records nothing. A run that takes
+  the lock after a change of `ref` and before the runs of that change, or after a pull writes a pin
+  that the ref does not hold and before the import that this write submits, records a false
+  rewrite. This is accepted: it needs a user action during a re-point, and a read-only repository
+  sends no trunk signal.
 - **A tracked ref that disappears from the remote.** This is an absent ref, not a lineage break. It
   keeps its current behaviour and writes no record.
 - **A remote rewound onto an ancestor of the imported commit.** A force push, or a ref moved

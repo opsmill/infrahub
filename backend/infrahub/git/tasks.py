@@ -76,7 +76,7 @@ from .branch_status import accepts_commit_write
 from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE_CONFLICT_CHECK_KIND
 from .divergence.models import ReconciledBranch
 from .divergence.recorder import HistoryRewriteRecorder
-from .divergence.store import SdkRepositoryRecordStore
+from .divergence.store import SdkRepositoryRecordStore, SdkTrackedTargetReader
 from .divergence.suppression import RetargetMarkers
 from .models import (
     CheckRepositoryImportStatus,
@@ -1153,7 +1153,12 @@ async def import_read_only_repository_last_commit(model: GitReadOnlyRepositoryIm
             infrahub_branch_name=model.infrahub_branch_name,
             ref=model.ref,
         )
-        await repo.update_latest_commit()
+        await repo.update_latest_commit(
+            tracked_targets=SdkTrackedTargetReader(client=client),
+            recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+            # Two mutations submit this flow, and only the submitter knows whether it re-pointed the repository.
+            target_changed=model.target_changed,
+        )
 
 
 @flow(
