@@ -16,18 +16,6 @@ Every piece of state has exactly one owner. When in doubt, push it up; never dup
 | Cross-page global state | Jotai atoms | `shared/stores/` or `entities/*/stores.ts` |
 | Local UI state (open/closed, hover) | Component | `useState` |
 
-Fetch data that several table columns share once, in the page or a hook, and attach the derived values to each row; those cells only render the row. A fetch inside each cell repeats the query and its derivation in every column, and keeps the derivation out of pure tests.
-
-```tsx
-// ✅ One read for the table; the cells render the row
-const summaries = useGetSummaries(items);
-<Table data={items.map((item) => ({ ...item, summary: summaries[item.name] }))} />
-cell: ({ row }) => <StateCell summary={row.original.summary} />
-
-// ❌ Every cell of two columns reads and derives the same data
-cell: ({ row }) => <StateCell name={row.original.name} /> // calls useGetSummaries inside
-```
-
 ### Forbidden patterns
 
 - **Page `useState` shadowed by selector `useState` for the same field.** Lift to a single owner. If the selector is a form, expose `onSubmit(values)` and let the page commit the values to the URL.

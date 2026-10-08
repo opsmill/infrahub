@@ -123,3 +123,14 @@ Still pending: T032, T034 and T042 (live stack), now against the rework A quicks
 **Erratum (2026-10-06):** the hook named `useBranchRepositorySummaries` in `ui/hooks/` above is now `useGetBranchRepositorySummaries` in `frontend/app/src/entities/branches/ui/queries/get-branch-repository-summaries.query.ts`. The body above is left as written.
 
 **Erratum (2026-10-07):** the "Lifted from #10658" row above lists `hasThrownCatalogueCode`. It was not lifted: `frontend/app/src/shared/api/graphql/error-handling.ts` is unchanged, and the status use case calls the base's `hasOnlyThrownCatalogueCode`. The body above is left as written.
+
+**Erratum (2026-10-08):** the list's Git state moved into its own entity, `frontend/app/src/entities/branch-git-status/`. The body above is left as written; read its names as follows:
+
+- `useGetBranchRepositorySummaries` (and `useBranchRepositorySummaries`) is `useGetBranchGitStatuses` in `ui/hooks/use-get-branch-git-statuses.ts`, and it takes branch names.
+- `summarizeBranchRepositories` is `summarizeBranchGitStatuses`.
+- `BranchRepositorySummary` is `BranchGitStatus`.
+- `compareSyncStatusSeverity` is `compareWorstSyncStatusFirst`.
+- `repositoryQueryKeys.branchStatus` is `branchGitStatusQueryKeys.repositoryBranchStatus`.
+- Paths under `entities/branches/domain/` are under `entities/branch-git-status/domain/`.
+
+The repository list reads the entity's own `GET_BRANCH_GIT_REPOSITORIES` document without a branch context, not #10779's branch repositories query with flags. The status read is the entity's own `GET_REPOSITORY_BRANCH_STATUS` document; the #10658 files are no longer lifted. Failure handling is per repository: a failed, denied or pending status read no longer blanks every row, and the cell shows the repositories that loaded with the notice "N repositories could not be loaded". The "No default branch found" error is removed. `pr-notes.md`, `review-synthesis.md`, `rework-contract.md` and `rework-contract-a.md`, named above, were removed from this folder (`.agents/rules/dev-specs.md`); their decisions are in `research.md` and the spec's Clarifications, and the PR notes are in the PR description. The E2E `broken_repository` factory is a plain fixture, and the E2E tests find the two cells by the test ids `branch-repositories-cell-<branch>` and `branch-git-state-cell-<branch>`.

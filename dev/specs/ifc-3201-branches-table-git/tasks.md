@@ -330,3 +330,18 @@ The table above maps the 2026-09-30 requirements. The rewritten spec maps to Pha
 | SC-005 branch cells always render | T074 |
 | SC-006 a test per state, gates pass | T063, T065, T067, T072, T073, T074, T077 |
 | SC-007 1 + R, none on scroll, none within 60 s of refocus | T068, T074 |
+
+---
+
+**Erratum (2026-10-08):** the list's Git state moved into its own entity, `frontend/app/src/entities/branch-git-status/`. The tasks above are left as written; read their names as follows:
+
+- `useGetBranchRepositorySummaries` is `useGetBranchGitStatuses` in `ui/hooks/use-get-branch-git-statuses.ts`, and it takes branch names.
+- `summarizeBranchRepositories` is `summarizeBranchGitStatuses`.
+- `BranchRepositorySummary` is `BranchGitStatus`.
+- `compareSyncStatusSeverity` is `compareWorstSyncStatusFirst`.
+- `repositoryQueryKeys.branchStatus` is `branchGitStatusQueryKeys.repositoryBranchStatus`.
+- Paths under `entities/branches/domain/` are under `entities/branch-git-status/domain/`.
+
+The repository list reads the entity's own `GET_BRANCH_GIT_REPOSITORIES` document without a branch context, not #10779's branch repositories query with flags. The status read is the entity's own `GET_REPOSITORY_BRANCH_STATUS` document; the #10658 files are no longer lifted. Failure handling is per repository: a failed, denied or pending status read no longer blanks every row, and the cell shows the repositories that loaded with the notice "N repositories could not be loaded". The "No default branch found" error is removed. `pr-notes.md`, `rework-contract.md`, `rework-contract-a.md` and `dev/specs/docs/branches-list-git-state.checks.md`, named above, were removed (`.agents/rules/dev-specs.md`); their decisions are in `research.md` and the spec's Clarifications, and the PR notes are in the PR description. The E2E `broken_repository` factory is a plain fixture, and the E2E tests find the two cells by the test ids `branch-repositories-cell-<branch>` and `branch-git-state-cell-<branch>`.
+
+T032 and T042 (live stack) are still open; they are tracked in the PR description.

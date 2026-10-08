@@ -2,92 +2,122 @@
 
 **Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Research**: [research.md](./research.md)
 
-This feature is frontend-only. It adds no schema, no migration and no backend change. Since rework A (2026-10-01, `rework-contract-a.md`, research R15) the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository and pivots the rows to one summary per branch in the branches domain. Paths are relative to `frontend/app/src/`.
+This feature is frontend-only. It adds no schema, no migration and no backend change. The list reads its own repository list once and the epic's `InfrahubRepositoryBranchStatus` once per repository, then groups the rows into one Git status per branch. The types and rules live in the `branch-git-status` entity. Paths are relative to `frontend/app/src/`.
 
-## Consumed: `BranchRepository` (repository list) and `RepositoryBranchStatusRow` (status rows)
-
-`BranchRepository` (`entities/repository/domain/model/branch-repository.ts`, #10779) comes from `useQuery(getBranchRepositoriesQueryOptions({ branchName: <default branch>, syncWithGit: true, isSyncing: false, limit: 500, offset: 0 }))`, called once. The list reads `id`, `name`, `kind` and `isReadOnly`.
-
-`RepositoryBranchStatusRow` (`entities/repository/domain/model/repository-branch-status.ts`, lifted from #10658) is one row per branch of one repository's status page:
-
-| Field | Used for |
-|---|---|
-| `name` | the branch the row belongs to; the pivot key |
-| `commit` (`string \| null`) | the 7-character commit in the pill's tooltip; `null` drops that part |
-| `syncStatus` (`RepositoryBranchStatusDropdown`: `value`, `label`, `color`, `description`) | the Git state: severity, `GitStatePill`, counts; `syncing` drives the poll |
-| `isDefault`, `ref` | not used |
-
-The row set is the backend's: read/write repositories list only `sync_with_git` branches, read-only repositories list every branch; merged, deleting and global branches are excluded.
-
-## `RepositoryStatusFetch` (`entities/branches/domain/rules/summarize-branch-repositories.ts`)
-
-One per repository, built in the hook's `combine` from each `useQueries` result (plus one for the repository list):
+## Repository list: `BranchGitRepository` (`entities/branch-git-status/domain/model/branch-git-repository.ts`)
 
 ```ts
-export type RepositoryStatusFetch =
-  | { status: "pending" }
-  | { status: "denied" }
-  | { status: "error"; message: string }
-  | { status: "ok"; repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">; rows: RepositoryBranchStatusRow[]; count: number };
+export interface BranchGitRepository {
+  id: string;
+  name: string;
+  kind: BranchRepositoryKind; // "CoreRepository" | "CoreReadOnlyRepository"
+  isReadOnly: boolean;
+}
+
+export interface BranchGitRepositoryPage {
+  repositories: BranchGitRepository[];
+  count: number;
+}
 ```
 
-Mapping: a result with `data` is `ok` even when `isError` is set (a failed background refetch keeps the last loaded rows); else `error.code === "PERMISSION_DENIED"` → `denied`; else an error → `error` with its message; else `pending`. The repository list pending counts as `pending`.
+`toBranchGitRepositoryPage` (`entities/branch-git-status/api/branch-git-repository.mappers.ts`) builds the page from the `CoreGenericRepository` connection: `kind` is the node's `__typename`, `isReadOnly` is true for `CoreReadOnlyRepository`, `name` falls back to the id, and a node without an id is dropped. `count > repositories.length` means the list was cut at the 500-row limit.
 
-## `BranchRepositorySummary` (`entities/branches/domain/model/branch-repository-summary.ts`)
+## Status rows: `RepositoryBranchStatus` (`entities/branch-git-status/domain/model/repository-branch-status.ts`)
+
+```ts
+export interface RepositoryBranchStatus {
+  branchName: string;
+  commit: string | null;
+  syncStatus: BranchRepositorySyncStatus | null;
+}
+
+export interface RepositoryBranchStatusPage {
+  rows: RepositoryBranchStatus[];
+  count: number;
+}
+```
+
+One row per branch of one repository's status page. `BranchRepositorySyncStatus` (`value`, `label`, `color`, `description`) is the repository entity's type (`entities/repository/domain/model/branch-repository.ts`). `toRepositoryBranchStatusPage` (`entities/branch-git-status/api/repository-branch-status.mappers.ts`) maps a `sync_status` without a value to `null`.
+
+The row set is the backend's: read/write repositories list only branches with Sync with Git on, read-only repositories list every branch; merged, deleting and global branches are excluded.
+
+## Per-branch status: `BranchGitStatus` (`entities/branch-git-status/domain/model/branch-git-status.ts`)
 
 ```ts
 export interface BranchRepositoryState {
-  repository: Pick<BranchRepository, "id" | "name" | "kind" | "isReadOnly">;
+  repository: BranchGitRepository;
   commit: string | null;
-  syncStatus: RepositoryBranchStatusDropdown;
+  syncStatus: BranchRepositorySyncStatus;
 }
+
 export interface SyncStatusCount { value: string | null; label: string; count: number }
-export type BranchRepositorySummary =
+
+export type FailedRepository =
+  | { status: "denied"; repository: BranchGitRepository }
+  | { status: "error"; repository: BranchGitRepository; message: string };
+
+export type UnloadedRepository =
+  | { status: "pending"; repository: BranchGitRepository }
+  | FailedRepository;
+
+export type BranchGitStatus =
   | { status: "pending" }
   | { status: "denied" }
   | { status: "error"; message: string }
-  | { status: "ok"; repositories: BranchRepositoryState[]; counts: SyncStatusCount[] };
+  | { status: "ok"; repositories: BranchRepositoryState[]; counts: SyncStatusCount[]; unloaded: UnloadedRepository[] };
 ```
 
-`repositories` is ordered worst first; `repositories[0]` is the pill, the Git state and the base of "+N more".
+`repositories` is ordered worst first; `repositories[0]` is the pill, the Git state and the base of "+N more". `unloaded` lists the repositories whose status read is pending, denied or failed.
 
-## `summarizeBranchRepositories(branches, fetches, compareSeverity)` invariants
+## Errors: `BranchGitStatusError`
 
-`summarizeBranchRepositories(branches: readonly BranchListItem[], fetches: readonly RepositoryStatusFetch[], compareSeverity: CompareSyncStatusSeverity): Record<string /* branch name */, BranchRepositorySummary>` is pure and imports only its own models (`entities/branches/domain/model/branch.ts`, `branch-repository-summary.ts`). The status row types and `UNKNOWN_SYNC_STATUS` reach it through `branch-repository-summary.ts`; the hook passes `compareSyncStatusSeverity` as `compareSeverity`.
+`BranchGitStatusError extends Error` with `code: "PERMISSION_DENIED" | "UNKNOWN"`. `toBranchGitStatusError` (`entities/branch-git-status/domain/rules/to-branch-git-status-error.ts`) sets `PERMISSION_DENIED` only when every GraphQL error carries that code (`hasOnlyThrownCatalogueCode`), so a denial mixed with another failure reads as `UNKNOWN`. The message is the error's message, or a fallback when the thrown value is not an `Error`. Both use cases (`getBranchGitRepositories`, `getRepositoryBranchStatus`) throw it.
 
-1. Every fetch `denied` (and at least one fetch) → every branch `denied`; a denied fetch among others is left out silently. The hook passes a denied repository list as the single fetch, so a list denial (either kind unviewable) denies every branch.
-2. Else any `pending` fetch → every branch `pending`.
-3. Else any `error` fetch → every branch `error` with the first error's message.
-4. Else each branch collects the rows whose `name === branch.name`, across every `ok` fetch, as `BranchRepositoryState`s. If an `ok` fetch was cut short (`count > rows.length`), every branch absent from its rows gets `{ status: "error" }` naming the cut repositories instead of a guessed summary. Which branches a repository lists is the backend's rule, so the client does not try to tell "absent" from "past the cut"; past 500 branches per repository, a branch the repository would never list (an unsynced branch for a read/write repository, a merged one) can read this error too. Accepted limit.
-5. The states are sorted by `compareSyncStatusSeverity` (`error-import` > `unknown` > `syncing` > `in-sync`; any other value ranks with `unknown`), then by repository name, case-insensitive.
-6. A row with no `sync_status` reads as `UNKNOWN_SYNC_STATUS` (`{ value: "unknown", label: "Unknown", color: null, description: null }`), so it counts with real `unknown` rows. `counts` has one entry per distinct `syncStatus.value`, with `label = label || value || "Unknown"`.
-7. A branch with no rows → `{ status: "ok", repositories: [], counts: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.
-8. The record is keyed by branch name; structural sharing in `combine` keeps untouched branches' summaries by reference.
+## Hook input: `RepositoryListFetch` and `RepositoryStatusFetch` (`entities/branch-git-status/domain/rules/summarize-branch-git-statuses.ts`)
+
+```ts
+export type RepositoryStatusFetch =
+  | { status: "ok"; repository: BranchGitRepository; rows: RepositoryBranchStatus[]; count: number }
+  | UnloadedRepository;
+
+export type RepositoryListFetch =
+  | { status: "pending" }
+  | { status: "denied" }
+  | { status: "error"; message: string }
+  | { status: "ok"; statuses: readonly RepositoryStatusFetch[] };
+```
+
+`useGetBranchGitStatuses` builds them in `combine`:
+
+- A query result holding `data` is `ok`, even when a background refetch failed.
+- Else an error with `code === "PERMISSION_DENIED"` is `denied`, any other error is `error` with its message, and no error is `pending`.
+- A repository list cut at 500 rows is an `error` ("Only the first N of M repositories were read. Open the branch for the full list.").
+
+## `summarizeBranchGitStatuses(branchNames, repositoryList, unknownSyncStatus)` invariants
+
+`summarizeBranchGitStatuses(branchNames: readonly string[], repositoryList: RepositoryListFetch, unknownSyncStatus: BranchRepositorySyncStatus): Record<string, BranchGitStatus>` is pure. The record is keyed by branch name.
+
+1. The repository list is not `ok` → every branch gets the list's status (`pending`, `denied`, or `error` with its message).
+2. At least one status read and every status read `denied` → every branch is `denied`.
+3. Otherwise each branch collects, across every loaded status page, the rows whose `branchName` matches, as `BranchRepositoryState`s. Pending, denied and failed reads go into `unloaded` on every `ok` branch; they no longer turn every branch into `pending` or `error`. Because the client does not re-derive which branches a repository lists, a failed read/write repository is also carried on branches not synced with Git. Accepted limit.
+4. Truncated page: when a loaded page was cut (`count > rows.length`) and does not list the branch, the branch gets `{ status: "error" }` naming the cut repositories ("Too many branches to load for <names>, so this branch could not be checked. Open the branch for the full list."). Which branches a repository lists is the backend's rule, so the client does not tell "absent" from "past the cut". Past 500 branches per repository, a branch the repository would never list can read this error too. Accepted limit.
+5. Ordering: `compareWorstSyncStatusFirst` (`entities/branch-git-status/domain/rules/sync-status-severity.ts`) ranks `error-import`, then `unknown` (and any other or missing value), then `syncing`, then `in-sync`; ties sort by repository name, case-insensitive.
+6. A row without a sync status reads as `unknownSyncStatus`, so it counts with real `unknown` rows. `getUnknownSyncStatus(choices)` (`entities/branch-git-status/domain/rules/get-unknown-sync-status.ts`) builds it from the `sync_status` attribute's `unknown` choice in the `CoreGenericRepository` schema; when the choice is missing, its label, colour and description are `null`.
+7. `counts` has one entry per distinct `syncStatus.value`, in the order of `repositories`, so `counts[0]` belongs to `repositories[0]`. Its label is `label || value || ""`.
+8. A branch with no rows and nothing unloaded → `{ status: "ok", repositories: [], counts: [], unloaded: [] }`; the cell picks "Not synced with Git" or "No repositories" from `branch.sync_with_git`.
 
 ## Row: `BranchTableRow` (`entities/branches/ui/branches-table/branch-table-row.ts`)
 
 ```ts
-export interface BranchTableRow extends BranchListItem { repositorySummary: BranchRepositorySummary }
+export interface BranchTableRow extends BranchListItem { gitStatus: BranchGitStatus }
 ```
 
-`toBranchTableRows(branches, summaries)` adds each branch's summary. `BranchesTable` passes `data={toBranchTableRows(flatData, summaries)}`; `BranchesDataTable` and `getBranchTableColumns` are typed on `BranchTableRow`. Being a superset of `BranchListItem`, it leaves selection, the toolbar and the delete modal unchanged; `getRowId: (row) => row.id` is unchanged.
+`toBranchTableRows(branches, gitStatusesByBranchName)` adds each branch's status, `{ status: "pending" }` when the record has no entry. `BranchesTable` passes the rows to `BranchesDataTable`; `getBranchTableColumns` is typed on `BranchTableRow`. Being a superset of `BranchListItem`, it leaves selection, the toolbar and the delete modal unchanged.
 
 ## `BRANCH_FIELD_SCHEMAS` additions (`entities/branches/ui/branches-table/branch-field-schemas.ts`)
 
-Header-only schemas for `TableColumnHeaderSimple`, in the file's existing object shape:
-
-```ts
-repositories: { name: "repositories", label: "Repositories", kind: "Text" } as AttributeSchema,
-git_state:    { name: "git_state",    label: "Git state",    kind: "Text" } as AttributeSchema,
-```
-
-Neither is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids match the keys: `repositories`, `git_state`.
-
-## Superseded
-
-- 2026-10-01 (the one-row-per-branch rework, before rework A): "Derived per cell": each cell calling `useGetBranchRepositories` for its row's branch and ranking with `rankRepositories`. `BranchRepository.operationalStatus` no longer affects order. The list no longer reads `BranchRepositoriesResult`.
-- 2026-10-01 (rework): `BranchRepositoriesFetch`, the fan-out `BranchTableRow` and `BranchTableRowState`, `isBranchAnchorRow`, the fan-out `toBranchTableRows` and its invariants, the `repository` and `commit` schema entries, and the `frontend/app/tests/fake/branch-table-rows.ts` fakes. Git history keeps them.
+Header-only schemas for `TableColumnHeaderSimple`, built by `buildDisplayColumnSchema(name, label)`: `repositories` ("Repositories") and `git_state` ("Git state"). Neither is added to `BRANCH_FILTER_DEFINITIONS` (FR-015). The column ids match the keys.
 
 ## Test fakes
 
-Reused: `frontend/app/tests/fake/branch.ts::generateBranch` and `frontend/app/tests/fake/branch-repositories.ts` (outside `src/`). A colourless status `SYNC_STATUS_NO_COLOUR = { value: "mystery", label: null, color: null, description: null }` is a constant local to `get-branch-table-columns.test.tsx`.
+Outside `src/`: `frontend/app/tests/fake/branch.ts::generateBranch` (reused) and `frontend/app/tests/fake/branch-git-status.ts` (`generateBranchGitRepository`, `generateRepositoryBranchStatus`, `generateRepositoryBranchStatusPage`, `generateRepositoryBranchStatusWire`).

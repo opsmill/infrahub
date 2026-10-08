@@ -57,9 +57,3 @@ The page component reads URL params and passes them down. Children should not re
 ## An effect-driven retry needs a dependency that changes on failure
 
 The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a failed query stays failed until something re-triggers it. The one exception is a 429 load-shed, replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`). An effect that launches a must-eventually-succeed step re-runs only when a dependency changes; if every dependency is stable after a failure (same name, same boolean, a stable `refetch`), the step never retries and the screen wedges until reload. Give such an effect a fetch-identity dependency — TanStack Query's `dataUpdatedAt` — so each fresh response re-arms it.
-
-## `useQueries` `combine` output is structurally shared by position
-
-TanStack Query runs `replaceEqualDeep` on what `combine` returns. It pairs arrays by index and objects by key, so if `combine` returns a flat array and one upstream result grows (a pending entry becomes N rows), every entry after it shifts and is copied as a new object, so the identity of every later entry is lost. Return a record keyed by a stable id and flatten it outside `combine`. A module-level cache doesn't help: mismatched array entries are still copied.
-
-In-repo example: `entities/branches/ui/queries/get-branch-repository-summaries.query.ts::useGetBranchRepositorySummaries`, whose `combine` returns a record keyed by branch name, so an unchanged branch keeps the same summary object.

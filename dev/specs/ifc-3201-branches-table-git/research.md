@@ -1,167 +1,72 @@
-# Research: Repository, Git state and Commit columns on the branches table
+# Research: Repositories and Git state columns on the branches list
 
-**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-09-30, rework 2026-10-01 (R14), rework A 2026-10-01 (R15)
+**Feature**: [spec.md](./spec.md) | **Plan**: [plan.md](./plan.md) | **Date**: 2026-09-30, rework 2026-10-01 (R14), rework A 2026-10-01 (R15), PR review 2026-10-08 (R16 to R19)
 
-Code references name the module and symbol; line numbers are left out on purpose. Paths are relative to `frontend/app/` unless stated. Every decision below comes from `plan-synthesis.md`; this file records the reasoning and the code it was checked against.
+Code references name the module and symbol; line numbers are left out on purpose. Paths are relative to `frontend/app/` unless stated. This file records the reasoning behind each decision and the code it was checked against.
 
 ## What is on the base branch (`ple-branch-details-repos-infp-671`, PR #10779)
 
 | Needed | On this base? | Consequence |
 |---|---|---|
-| Per-branch repository query, model, pill, ranking | Yes: `entities/repository/ui/queries/get-branch-repositories.query.ts::getBranchRepositoriesQueryOptions`, `domain/model/branch-repository.ts`, `ui/branch-repositories/git-state-pill.tsx::GitStatePill`, `domain/rules/rank-repositories.ts::rankRepositories` | Reused unchanged. |
-| Repository fakes | Yes: `tests/fake/branch-repositories.ts` (`SYNC_STATUS`, `OPERATIONAL_STATUS`, `generateBranchRepository`, `generateBranchRepositoriesResult`) | Reused; no extra fake file since R14. |
-| `CommitHash` | **No** (PR #10658 only) | Lifted (R8), then dropped with the Commit column (R14). |
-| Branches table tests | **None** under `entities/branches/ui/branches-table/` | Both component test files are new. |
-| Deterministic import-error E2E fixture | Class-local: `tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::broken_repository` | In scope: promoted to `tests/e2e/branches/conftest.py` as a function-scoped fixture with a `sync_with_git` parameter (plan IV). |
+| Git state pill | Yes: `entities/repository/ui/branch-repositories/git-state-pill.tsx::GitStatePill` | Reused unchanged by the Git state cell. |
+| Per-branch repository query for the details card | Yes: `entities/repository/ui/queries/get-branch-repositories.query.ts` | Not used by the list since R15; the list has its own documents (R16). |
+| Branches table tests | **None** under `entities/branches/ui/branches-table/` | The component test files are new. |
+| Deterministic import-error E2E fixture | Class-local: `tests/e2e/branches/test_branch_details_repositories.py::TestBranchDetailsRepositoryImportError::broken_repository` | Promoted to `tests/e2e/branches/conftest.py` as a function-scoped fixture that creates its branch with `sync_with_git=True`, so both E2E files share it (plan IV). |
 
-## R1 — Selection: the anchor row
+## Superseded decisions
 
-Superseded by R14 (2026-10-01): one row per branch uses the base branch's ordinary per-row selection; the anchor row, the `enableRowSelection` predicate and the id-keyed shift-range handler are removed.
+Each line names the decision and what replaced it. The full reasoning is in the Git history of this file.
 
-## R2 — Fan-out location and layering
-
-Superseded 2026-10-01: the rule and its row model are deleted (R14). Kept as history.
-
-**Decision**: `entities/branches/domain/rules/to-branch-table-rows.ts::toBranchTableRows({ branches, fetchByBranchId, orderRepositories })` does the fan-out. It gets the ordering as an injected parameter. The row types live in `entities/branches/domain/model/branch-table-row.ts`, built on `entities/repository/domain/model/branch-repository.ts`.
-
-**Rationale**: the layering table in `dev/knowledge/frontend/entities-structure.md` puts limits on each layer:
-
-- `domain/rules` may import only its own `domain/model`, `shared/` and generated types. It may not import `repository/domain/rules/rank-repositories.ts`.
-- `domain/model` may import other entities' `domain/model`, so the types are legal.
-
-Injecting `orderRepositories` keeps the rule pure and inside its layer. The tests still assert FR-006a on the rule's output, because they pass the real `rankRepositories`. A fan-out inside a cell is impossible, since a cell cannot add rows.
-
-**Alternatives considered**:
-
-- A `ui/` helper. It works, but breaks "pure helpers go in `domain/rules`".
-- Placing the rule in `entities/repository`. It produces branches-table rows, so branches owns it.
-
-## R3 — Ordering: `rankRepositories`, and the spec correction
-
-Superseded by R14 (2026-10-01): `rankRepositories` is still the rule, but it now only picks the repository shown first and the worst Git state (spec FR-005) instead of ordering rows.
-
-## R4 — Grid template: fixed tracks for the new columns
-
-Superseded by R14 (2026-10-01): two fixed tracks (`REPOSITORIES_TRACK = "minmax(12rem, 18rem)"`, `GIT_STATE_TRACK = "9rem"`, `repeat(columnCount - 6, …)`) replace the three, and the one-track-per-column test is gone with `branches-data-table.test.tsx`.
-
-## R5 — Data-fetch strategy: (a) one request per branch
-
-Superseded by R15 (2026-10-01): option (b), one `InfrahubRepositoryBranchStatus` request per repository, replaces the per-branch requests; the comparison below is history.
-
-**Decision**: use (a). `useQueries` over `getBranchRepositoriesQueryOptions({ branchName, syncWithGit: Boolean(branch.sync_with_git) })` runs once per loaded branch.
-
-The options compared (P = pages loaded, 40 branches per page, R = number of repositories):
-
-| | Requests | Permissions | Verdict |
-|---|---|---|---|
-| (a) per branch, #10779 options | 40·P (40, then 80, then 120), independent of R. Plus the existing 40·P proposed-changes queries | A normal node read per branch, so a denial affects only that branch (FR-012) | **Chosen.** Same key as branch details (`repositoryQueryKeys.branch({ branchName, kind })`), so the cache is shared. `syncWithGit=false` queries `CoreReadOnlyRepository` natively |
-| (b) `InfrahubRepositoryBranchStatus` per repository, pivoted | 1 + R, flat while scrolling | Needs VIEW with ALLOW_ALL. One denial blanks the whole column | Rejected. It must fetch every branch and join by name, the order and filters don't match the table, and it excludes MERGED branches |
-| (c) Backend list-of-ids variant | 1 | Same as (b) | Rejected: needs a backend change, which is out of scope |
-
-**Rationale**: (a) is the only option that meets FR-003 (the backend's per-branch row set), FR-011 (per-branch loading) and FR-012 (per-branch denial) without backend work. Its request count is linear in branches shown, not in repositories.
-
-**Constitution V**: this is an N+1 at the HTTP layer, recorded as a justified deviation in the plan's Complexity Tracking.
-
-**Follow-up**: a backend list-of-ids variant of `InfrahubRepositoryBranchStatus` (option (c); the reader already accepts `repository_ids`). The follow-up ticket is to be created by the owner at the checkpoint. SC-007 is the threshold that bounds the current approach.
-
-## R6 — Hook location
-
-Superseded 2026-10-01: `useBranchTableRows` is deleted; each cell calls `useGetBranchRepositories` directly (R14). Kept as history.
-
-**Decision**: `entities/branches/ui/hooks/use-branch-table-rows.ts::useBranchTableRows(branches): BranchTableRow[]`. It maps each `useQueries` result to a `BranchRepositoriesFetch`: `data` present → `data`; else `isError` → `{ status: "error" }`; else `{ status: "pending" }` (R10). It then calls `toBranchTableRows` with `orderRepositories: rankRepositories`, through a `combine` (R13).
-
-**Rationale**: it produces branches-table rows, so it belongs to branches. `branches/ui` may import `repository/ui/queries` and `repository/domain/rules`.
-
-**Alternatives**: `repository/ui/queries/get-branches-repositories.query.ts`. Rejected because it would couple the repository entity to branches-table row shapes.
-
-## R7 — Extract `RepositoryNameLink`
-
-After R14 the table no longer uses it; whether the extraction stays is the rework implementer's call (reverted). Kept as history.
-
-**Decision**: add `entities/repository/ui/branch-repositories/repository-name-link.tsx::RepositoryNameLink({ repository, branchName, isDefaultBranch })`. It holds the `FolderGitIcon`, a `Link` to `getObjectDetailsUrl(kind, id, [getBranchQspOverride(branchName, isDefaultBranch)])` with `title={name}`, and the "Read-only" chip. `repository-row.tsx::RepositoryRow` uses it and keeps the unreachable icon and the `—` commit fallback. The native `title` stays after review (accepted); aligning it with `Tooltip` is a follow-up.
-
-**Rationale**: FR-006 asks for the same name, link and marker as branch details. Two callers satisfy VII. The existing `branch-repositories-card.test.tsx` is the regression net.
-
-**Alternatives**: copying the markup (it drifts), or reusing `RepositoryRow` (it renders a `<tr>`).
-
-## R8 — Lift `CommitHash`
-
-Superseded by R14 (2026-10-01): the Commit column is dropped, so `CommitHash` has no consumer and is no longer lifted.
+- R1, selection through an anchor row for a branch's repeated rows: superseded by R14 (one row per branch, ordinary per-row selection).
+- R2, a `toBranchTableRows` rule that turned each branch into one row per repository: superseded by R14; the rule and its row model are deleted.
+- R3, ordering rows with the details card's `rankRepositories`: superseded by R15 (order by Git state severity, then name).
+- R4, three fixed-width grid tracks for Repository, Git state and Commit: superseded by R14 (two fixed tracks, for Repositories and Git state).
+- R5, one `CoreGenericRepository` request per loaded branch through the details card's query: superseded by R15 (one `InfrahubRepositoryBranchStatus` request per repository). The per-branch option needed about 40 requests per page; the per-repository option needs 1 + R requests, independent of pages loaded.
+- R6, a `useBranchTableRows` table hook: superseded by R14, then by R15 (`useGetBranchGitStatuses`, R16).
+- R7, extracting `RepositoryNameLink` from the details card's row: reverted with R14; the table renders its own repository pill.
+- R8, lifting `CommitHash` from PR #10658: superseded by R14 (the Commit column is dropped).
+- R11, ignoring a cut-short list: superseded by R15. A cut repository list reads "Could not load repositories" on every row; a status page cut at 500 branches reads it on the branches that page does not list.
+- R13, row reuse through `combine` over per-branch queries: superseded by R14. The structural-sharing finding is kept in `dev/knowledge/frontend/react.md`.
 
 ## R9 — Polling
 
-Superseded by R15 for the per-branch part: the 10 s poll now runs per status query while one of its rows is syncing, with a 60 s stale time.
+**Decision**: each repository's status query refreshes every 10 s while one of its rows has `sync_status = syncing`, and stops when no row is syncing (`entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusRefetchInterval`, through `shared/api/background-query.ts::pollWhileHealthy`). Status queries have a 60 s stale time.
 
-**Decision**: keep #10779's `refetchInterval`: 10 s while any repository on that branch has `sync_status = syncing`, otherwise `false`. The options are passed unchanged.
-
-**Rationale**: FR-014 asks for "the cadence already used by the branch details page". Only syncing branches poll, and each stops on settle. Changing the options would split the shared cache key's behaviour.
+**Rationale**: FR-014 asks for the cadence the branch details page already uses (`REPOSITORY_SYNC_REFETCH_INTERVAL_MS`). Only a repository that is syncing polls. `pollWhileHealthy` slows a failing poll down and stops it after a permission denial.
 
 ## R10 — Pending, denied and error rendering
 
-Superseded by R15 for the per-branch part: pending, denied and error now apply to every row at once; the texts, the data-first order and the toast finding stand.
+**Decision**: the branch cells always render; the Repositories cell shows the state of the repository data, and the Git state cell stays blank until a repository on the branch has loaded. Which rows a failure affects is decided in R18.
 
-**Decision**: each state renders per branch, and the branch cells always render:
-
-| State | Repositories cell | Git state cell |
-|---|---|---|
-| `pending` | `Spinner` (the `branch-proposed-changes-cell.tsx` pattern) | blank |
-| `denied` (use-case returns `{ status: "denied" }` when every GraphQL error is `PERMISSION_DENIED`) | muted "No permission" | blank |
-| `error` (the use-case throws, and no earlier `data` is held) | muted "Could not load repositories", with the query error's message as a tooltip and as visually hidden text | blank |
-
-**Rationale**: FR-011 to FR-013 and SC-005. The query client default is `retry: false` (`shared/api/rest/client.ts::queryClient`), so a failure settles immediately. One spinner per pending branch keeps first paint calm (spec FR-011).
-
-**Mapping order**: the cells read `data` first, then the error, then pending (the hook did so before R14). A failed background refetch (the 10 s syncing poll, or a window refocus) therefore keeps the last loaded result rendered, which is also how #10779's card reads its query.
+**Mapping order**: each query result is read `data` first, then the error, then pending (`entities/branch-git-status/ui/hooks/use-get-branch-git-statuses.ts`). A failed background refetch (the syncing poll, or a window refocus) therefore keeps the last loaded result rendered, which is also how #10779's card reads its query.
 
 **Finding (toast)**: the shared GraphQL client routes errors through `shared/api/graphql/error-handling.ts::handleGraphQLErrors`:
 
 - `PERMISSION_DENIED` is skipped, so there is no toast for the denied state.
 - Network errors throw without a toast.
-- Any other GraphQL error calls `notifyUser`, which toasts, deduplicated by `toastId: "alert-error"`, unless the request context supplies `processErrorMessage`.
+- Any other GraphQL error calls `notifyUser`, which toasts, unless the request context supplies `processErrorMessage`.
 
-`get-branch-repositories-from-api.ts::fetchConnection` passes only `{ branch }`, so FR-013's "no toast" does not hold for GraphQL-level errors. The minimal fix is to pass a no-op `processErrorMessage` in that context. That is a one-line change to a #10779 file, and it also affects the branch details card, which renders its own failed state. **Decision: make the change.** FR-013 is explicit, and a page-level toast for a per-row degraded cell is the wrong surface on both pages. Nothing is lost: the use-case's thrown `Error` joins the backend messages, and the Repositories cell shows that message as the tooltip of "Could not load repositories" (and as visually hidden text). The card's failed state renders the same server message and is asserted to render without a toast.
+**Decision**: both requests of the `branch-git-status` entity pass a no-op `processErrorMessage` (`api/get-branch-git-repositories-from-api.ts`, `api/get-repository-branch-status-from-api.ts`). FR-013 asks for no toast, and a page-level toast for a degraded cell is the wrong surface. The error message stays reachable as the tooltip and visually hidden text of the cell. The branch details card's fetcher is not changed by this feature.
 
-## R11 — `isTruncated` ignored (superseded 2026-10-01)
+## R12 — No manual memoization; the no-colour pill
 
-Superseded by rework A: the repository list's `isTruncated` and each status page's `count` are both read. A cut repository list reads "Could not load repositories" on every row; a cut status page reads it on the branches that page could have listed (see data-model invariant 4).
+**Decision**: `branches-table.tsx::BranchesTable` and `branches-data-table.tsx::BranchesDataTable` use no `React.useMemo`. The React Compiler memoizes (`dev/knowledge/frontend/react.md`, "React Compiler").
 
-## R12 — Remove `React.useMemo`; local fakes
-
-**Decision**: remove `React.useMemo` from `branches-table.tsx::BranchesTable` (`columns`, `flatData`) and from `branches-data-table.tsx::BranchesDataTable` (`style`). The React Compiler memoizes (`dev/knowledge/frontend/react.md`, "React Compiler").
-
-Superseded 2026-10-01 for the fakes: `tests/fake/branch-table-rows.ts` is deleted (R14). The 2026-09-30 decision was that new fakes go in `tests/fake/branch-table-rows.ts`:
-
-- `FULL_COMMIT_HASH`: 40 characters.
-- `generateBranchTableRow(overrides)`.
-
-`SYNC_STATUS_NO_COLOUR` (`{ value: "mystery", label: null, color: null, description: null }`) is a constant local to `get-branch-table-columns.test.tsx`, not a shared fake.
-
-That file imports `BranchListItem` from `entities/branches/domain/model/branch`. `tests/fake/branch.ts` keeps its stale `domain/branch.mappers` import, because fixing it would change betterer's results.
-
-**Rationale**: touched files follow the project rule. Local fakes leave #10779's fake file untouched.
-
-**Note (no-colour pill)**: `GitStatePill`'s fallback renders `value || label || "—"`. With `SYNC_STATUS_NO_COLOUR` it shows `mystery` in a grey `Badge`. FR-004 ("the label or value") and the spec's value-first edge case are met; tests assert what the pill renders.
-
-## R13 — Per-branch row reuse with `combine`
-
-Superseded by R14 (2026-10-01): with no table-level `useQueries` there is no `combine`; the structural-sharing finding is kept in `dev/knowledge/frontend/react.md`.
+**No-colour pill**: `GitStatePill`'s fallback renders `value || label || "—"` in a grey `Badge` when the schema defines no colour for a state.
 
 ## R14 — Why one row per branch
 
-Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepositories`); one row per branch, the roll-up and the measurements stand.
+**Decision** (owner, 2026-10-01, after trying the one-row-per-repository list on a dev stack): the list goes back to one row per branch. The Repositories cell shows the first repository as a pill, then "+N more" linking to the branch details page; the Git state cell shows the first repository's pill (the worst state) with an `n/N` count and a per-label tooltip. The Commit column is dropped; the commit is in the pill's tooltip and on the branch details page.
 
-**Decision** (owner, 2026-10-01, after trying the fan-out on a dev stack): the list goes back to one row per branch. The Repositories cell shows the first repository in `rankRepositories` order (failed imports first) as a pill, then "+N more" linking to the branch details page; the Git state cell shows that repository's pill (the worst state) with an `n/N` count and a per-label tooltip. The Commit column is dropped; the commit is in the pill's tooltip and on the branch details page. Each cell reads #10779's `useGetBranchRepositories`, one request per branch shared by key.
-
-**Measurements** (24 branches × 16 repositories): the fan-out rendered 279 rows, 280 checkboxes, about 15 000 DOM nodes and about 200 console warnings, and was visibly slow. The 24 per-branch repository requests completed in 0.36 s in total, so the cost was rendering, not fetching. The ticket's "one row per repository" assumed one or two repositories per branch.
+**Measurements** (24 branches × 16 repositories): one row per repository rendered 279 rows, 280 checkboxes, about 15 000 DOM nodes and about 200 console warnings, and was visibly slow. The 24 per-branch repository requests completed in 0.36 s in total, so the cost was rendering, not fetching. The ticket's "one row per repository" assumed one or two repositories per branch.
 
 **Single-request finding**: one request for every branch is not available today. Aliasing 16 `InfrahubRepositoryBranchStatus` fields (one per repository) into one GraphQL document returns HTTP 500 `read() called while another coroutine is already waiting for incoming data`, and `Branch` has no repositories field. The backend follow-up is either a `repository_ids` list argument on `InfrahubRepositoryBranchStatus` or a fix to the concurrent-resolver path that the aliased document hits.
-
-**Consequences**: R1, R3, R4, R8 and R13 are superseded; R2 and R6 (the fan-out rule and the table hook) have no code left; R5's per-branch strategy stood, now measured, until R15 replaced it.
 
 **Alternatives considered**: a stacked cell listing every repository, which the ticket rules out ("no stacking inside a cell") and whose height grows with the repository count. The roll-up follows the Proposed changes cell's existing "first item + N more" pattern instead.
 
 ## R15 — Repository-anchored data, page-owned
 
-**Decision** (owner, 2026-10-01, after the architecture review of the R14 implementation): the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository, on the default branch, and pivots the rows to one `BranchRepositorySummary` per branch name in the branches domain (`summarizeBranchRepositories`). The page owns the fetch (`useGetBranchRepositorySummaries`, `useQueries` + `combine`), the summary rides on the row view-model (`BranchTableRow`), and the cells are pure. Repositories are ranked by Git state severity (`compareSyncStatusSeverity`: `error-import` > `unknown` > `syncing` > `in-sync`, then name). Requests: 1 + R, independent of pages loaded; a 60 s `staleTime` caps the refocus burst.
+**Decision** (owner, 2026-10-01, after the architecture review of the R14 implementation): the list reads the epic's `InfrahubRepositoryBranchStatus` once per repository and pivots the rows to one `BranchGitStatus` per branch name (`entities/branch-git-status/domain/rules/summarize-branch-git-statuses.ts::summarizeBranchGitStatuses`). The page owns the fetch (`useGetBranchGitStatuses`, `useQueries` with `combine`), the summary rides on the row view-model (`BranchTableRow.gitStatus`), and the cells are pure. Repositories are ordered by Git state severity (`domain/rules/sync-status-severity.ts::compareWorstSyncStatusFirst`: `error-import` > `unknown` > `syncing` > `in-sync`, then name). Requests: 1 + R, independent of pages loaded; a 60 s stale time bounds the requests a window refocus sends.
 
 **Why**: the R14 implementation had three defects.
 
@@ -169,27 +74,66 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 2. The roll-up reused the details card's band ordering (`rankRepositories`), which ranks an unreachable remote above every other non-failed repository. An unreachable repository whose last import succeeded therefore came first, and the Git state cell read "In Sync" while another repository on the branch was syncing or unknown. Severity on `sync_status` alone fixes it.
 3. The per-branch query mirrored the backend's row-set rule on the client (`getRepositoryListKind`: `CoreGenericRepository` when synced, `CoreReadOnlyRepository` otherwise), the rule the epic's query exists to keep server-side (FR-003).
 
-**Consequences**: one failure blanks the column for every row; a denial does so when the repository list is denied (it reads both kinds in one query) or when every status read is denied, and a single denied status read leaves that repository out silently; merged branches read "No repositories"; the cache is no longer shared with the branch details page; the commit of a fresh synced branch is the fork-point commit. R5's option (b) is now chosen, and its rejection reasons (ALLOW_ALL, whole-column denial, join by name) are accepted as spec consequences.
+**Consequences**: merged branches read "No repositories"; the cache is not shared with the branch details page; the commit of a fresh synced branch is the fork-point commit; the status query needs view permission on all branches. How failures spread is revised by R18.
 
 **Alternatives considered**: keeping per-branch requests but lifting them into a table hook (fixes defect 1 only); one aliased document over every repository (HTTP 500 today, R14). The backend `repository_ids` follow-up collapses 1 + R to 2 requests without touching cells or rules.
 
+## R16 — Own entity with its own queries
+
+**Decision** (2026-10-08, PR review): the list's data lives in its own entity, `entities/branch-git-status/`, with its own GraphQL documents, queries and query keys:
+
+- `api/get-branch-git-repositories-from-api.ts`: `GET_BRANCH_GIT_REPOSITORIES` reads `CoreGenericRepository` (id, name, `__typename`, count) in one 500-row page, ordered by name.
+- `api/get-repository-branch-status-from-api.ts`: `GET_REPOSITORY_BRANCH_STATUS($id, $limit)` reads `InfrahubRepositoryBranchStatus` (branch name, commit, sync status).
+- `ui/queries/branch-git-status.query-keys.ts`: `branchGitStatusQueryKeys.repositories(params)` and `branchGitStatusQueryKeys.repositoryBranchStatus(params)`, under `["branch-git-status"]`, which branch create, delete, merge and rebase and the list's reload button invalidate.
+- `ui/hooks/use-get-branch-git-statuses.ts::useGetBranchGitStatuses(branchNames)`: the composed hook the branches table calls.
+
+**Why**: the earlier implementation read the repository list through #10779's details card query with added options (`syncWithGit`, `isSyncing`). Adding options that change a query's behaviour for a new screen couples two features through one query: a change for the card can break the list. A query reused exactly as it is would have been fine. The list needs a smaller read (no pagination, no operational status) and different failure handling, so it gets its own documents. The `branches` entity imports `branch-git-status`; `branch-git-status` does not import `branches` and takes plain branch names.
+
+**Alternatives considered**: keeping the read inside the `branches` entity (it is about repositories, not branches, and pulled repository types into `branches/domain`); fixing the layers inside `entities/repository` (its only consumer would be this list).
+
+## R17 — No branch context on the list request
+
+**Decision** (2026-10-08, PR review): the repository list and status requests carry no branch context. A request without `context.branch` goes to `/graphql`, which reads the default branch (`shared/config/config.ts`, `shared/api/graphql/client.ts`).
+
+**Why**: the earlier hook read every branch to find the default branch by `is_default` and sent it as the request's branch. That made the entity depend on the branch list, added a "No default branch found" error that a user cannot act on, and duplicated what the GraphQL endpoint already does. The lookup, the error and the dependency are removed.
+
+## R18 — Report a failure at the narrowest scope
+
+**Decision** (2026-10-08, PR review): a failure affects only the rows and repositories it belongs to (`summarizeBranchGitStatuses`, cells in `entities/branches/ui/branches-table/cells/`):
+
+| Failure | Repositories cell | Git state cell |
+|---|---|---|
+| The repository list is pending | Loading indicator, every row | Blank |
+| The repository list is denied, or every status read is denied | "No permission", every row | Blank |
+| The repository list fails, or returns fewer repositories than its count (over 500) | "Could not load repositories", every row, with the reason as tooltip and visually hidden text | Blank |
+| A repository's status page is cut at 500 branches and does not list this branch | "Could not load repositories" on that row, naming the repositories | Blank |
+| One repository's status read fails or is denied | On every row: the repositories that loaded, then "1 repository could not be loaded" or "N repositories could not be loaded", with `<repository>: <message>` or `<repository>: No permission` as tooltip and visually hidden text | The worst state among the repositories that loaded; `n/N` counts loaded repositories only |
+| One repository's status read is pending | The repositories that loaded; the loading indicator only when none has loaded | The worst state among the repositories that loaded; `n/N` counts loaded repositories only |
+| A status row has no sync status | Counted and shown as the schema's Unknown choice (`domain/rules/get-unknown-sync-status.ts`) | Same |
+
+**Why**: the earlier rule turned one failed status read into "Could not load repositories" on every row, one pending read into a spinner on every row, and hid a denied repository without saying so. The operator lost every other repository's state because of one repository. Reporting each failure where it happens keeps the rest of the list useful and names the repository that needs attention.
+
+**Accepted limitation**: a failed status read has no rows, so the client cannot tell which branches that repository lists, and it does not re-derive that set from the branch's sync flag (FR-003). The notice therefore appears on every branch, including branches not synced with Git that a failed read/write repository would never list.
+
+## R19 — PR #10658's status files are not lifted
+
+**Decision** (2026-10-08, PR review): this feature does not lift PR #10658's `InfrahubRepositoryBranchStatus` files (API, model, mappers, use case) into `entities/repository/`. The entity of R16 has its own smaller status document and mapper.
+
+**Why**: the lifted files carried hand-written wire types in `domain/model`, fields nothing in the list reads (`id`, `__typename`, `isDefault`, `ref`) and query variables nobody passes, and their only consumer here was the list. Keeping them byte-identical to #10658 blocked fixing their layers. Without the lift, #10658 merges into `entities/repository/` without a conflict with this feature.
+
 ## Risks
 
-1. The GraphQL-level error toast (R10) is closed by the no-op `processErrorMessage` on the details card's fetcher; the list asserts no toast on a status error (`branches-table.test.tsx`).
-2. ~~Unreachable repositories rank up without the reason shown.~~ Superseded by R15: severity ignores operational status.
-3. ~~≈40 queries per page (N+1 over HTTP).~~ Superseded by R15: 1 + R requests.
-4. `isTruncated` is ignored, so a truncated list is silently partial (R11).
-5. The page's reload button refreshes branch queries and repository status; its busy indicator covers that reload only, not background polls.
-6. ~~Pending → N rows pushes lower branches down.~~ Superseded 2026-10-01: one row per branch.
-7. The PR touches #10779 files (fetcher no-op, card message, E2E fixture; `RepositoryNameLink`: reverted; `repository-row.tsx` is back to base. ~~It changes the shared toggle handler.~~ Superseded 2026-10-01: the handler is back to base.
-8. ~~Anchor selection relies on row order.~~ Superseded 2026-10-01 (R1).
-9. E2E is in scope: one `/branches` case over the `broken_repository` fixture promoted from `test_branch_details_repositories.py` to `tests/e2e/branches/conftest.py` (plan IV). The fixture's branch is created with `sync_with_git=False` today, so the branch details test's premise is verified on a live stack first (plan IV pre-step).
+1. The GraphQL-level error toast (R10) is closed by the no-op `processErrorMessage` on the entity's two requests.
+2. The page's reload button refreshes branch queries and repository status; its busy indicator covers that reload only, not background polls.
+3. Up to 1 + 500 requests on a deployment with 500 repositories, each polling every 10 s while it syncs. The backend `repository_ids` follow-up (R14) removes the per-repository requests.
+4. A branch created outside this page (Git import, another user) can read "No repositories" until the status lists are read again: on reload, or on a window refocus at least 60 s after the last read.
+5. E2E: the `broken_repository` fixture's branch is created with `sync_with_git=True`, which changes the premise of #10779's details test (it used `BranchAPI.create`'s default, `False`). To be verified on a live stack (below).
 
 ## E2E premise verification
 
-**Status**: code-derived expectation, to be confirmed on a live stack (T032 ⚠️ partial: no stack was available in the implementing run).
+**Status**: code-derived expectation, to be confirmed on a live stack (T032 partial: no stack was available in the implementing run).
 
-**Expectation**: the branch details card lists repositories through `entities/repository/domain/use-cases/get-branch-repositories.ts::getRepositoryListKind(syncWithGit)`; since R15 the `/branches` list reads the status rows instead, whose backend row set gives the same answer. `getRepositoryListKind(false)` returns `CoreReadOnlyRepository`, so a `sync_with_git=False` branch lists only read-only repositories and its card should NOT list the broken `CoreRepository` the fixture creates. `getRepositoryListKind(true)` returns `CoreGenericRepository`, which includes it.
+**Expectation**: the branch details card lists repositories through `entities/repository/domain/rules/get-repository-list-kind.ts::getRepositoryListKind(syncWithGit)`; the `/branches` list reads the status rows instead, whose backend row set gives the same answer. `getRepositoryListKind(false)` returns `CoreReadOnlyRepository`, so a `sync_with_git=False` branch lists only read-only repositories and its card should not list the broken `CoreRepository` the fixture creates. `getRepositoryListKind(true)` returns `CoreGenericRepository`, which includes it.
 
 **Consequence for the E2E cases**:
 
@@ -197,7 +141,7 @@ Superseded by R15 for the per-branch data path (cells calling `useGetBranchRepos
 |---|---|
 | `tests/e2e/branches/test_branch_details_repositories.py::test_import_error_band_links_to_the_task_page` | `True` (was `False` through `BranchAPI.create`'s default; changes #10779's premise) |
 | `tests/e2e/branches/test_branches_git_columns.py`, broken-branch case (repository pill, "Import Error") | `True` |
-| `tests/e2e/branches/test_branches_git_columns.py`, "Not synced with Git" case | `False`, no fixture repository |
+| `tests/e2e/branches/test_branches_git_columns.py`, branch without Git sync | `False`, no fixture repository; reads "Not synced with Git", or lists only read-only repositories when other tests left some |
 
 **Commit on a failed import**: expected to be set. `backend/infrahub/git/base.py` records the commit value when the repository is cloned (`update_commit_value`), before `.infrahub.yml` is read and the import fails. Also to be confirmed live.
 

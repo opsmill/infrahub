@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Repository, Git state and Commit columns on the branches table
+# Specification Quality Checklist: Repositories and Git state columns on the branches list
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-30
@@ -36,3 +36,4 @@
 - Validation iteration 2 (after critique 2026-09-30): all items still pass. SC-004 is reworded to be meetable, SC-007 is added (request and re-render bound, stated as observable counts), and FR-006a, FR-008, FR-011, FR-013, Edge Cases and Assumptions gained owner-reviewable decisions recorded under "Session 2026-09-30 (critique)".
 - Validation iteration 4 (rework 2026-10-01, one row per branch): all items still pass, no state toggled. User stories, edge cases, FR-001..FR-017 and SC-001..SC-007 were rewritten to the Repositories and Git state roll-up under "Session 2026-10-01"; FR-006a folded into FR-005; the Commit column and its copy control are dropped, so the copy-control owner decision below no longer applies.
 - The empty-state wording ("Not synced with Git" / "No repositories"), the degraded texts ("No permission" / "Could not load repositories") and the copy control on commits are owner decisions, not defaults; changing them is a spec change.
+- Validation iteration 5 (PR review 2026-10-08): all items still pass, no state toggled. FR-011 to FR-013 now handle a failure per repository, FR-018 adds the "could not be loaded" notice and the Unknown fallback for a missing sync status (spec Session 2026-10-08).

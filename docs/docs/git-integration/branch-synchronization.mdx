@@ -251,23 +251,39 @@ The **Branches** page shows the Git repositories on each branch next to the bran
 
 | Column | What it shows |
 |---|---|
-| **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository with an unknown status, then any repository that is syncing, then the rest, each group in alphabetical order. Hover the name to read its Git state, the first seven characters of the branch's commit for that repository, and whether the repository is read-only. When the branch has not imported a commit of its own, the commit can be inherited or missing, as [How values are resolved for each branch](#how-values-are-resolved-for-each-branch) describes. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
+| **Repositories** | The branch's first repository, linking to the repository's page on that branch. A repository whose last import failed comes first, then any repository with an unknown status or no status, then any repository that is syncing, then the rest, each group in alphabetical order. Hover the name to read its Git state, the first seven characters of the branch's commit for that repository, and whether the repository is read-only. When the branch has not imported a commit of its own, the commit can be inherited or missing, as [How values are resolved for each branch](#how-values-are-resolved-for-each-branch) describes. When the branch has more repositories, **+N more** opens the branch, whose details page lists all of them. |
 | **Git state** | The worst sync status among the branch's repositories, with the label and color the schema defines for it, such as **In Sync** or **Import Error**. When the branch has several repositories, a count such as **1/3** gives how many of them share that status. Hover the count to see how many repositories have each status. |
 
 The repositories listed for a branch follow the same rule as the query in the next section. A read-write repository appears only on branches that sync with Git, while a read-only repository appears on every open branch.
 
 When a branch has no repository to show, its **Repositories** cell shows one of these texts, and its **Git state** cell stays empty:
 
-| Repositories cell | Meaning |
+| Repositories cell | Shown on |
 |---|---|
-| **Not synced with Git** | The branch does not sync with Git, and no read-only repository lists it. |
-| **No repositories** | The branch syncs with Git, but no repository lists it. For example, no repository is connected to Infrahub, the branch is merged or deleting, the branch was created after the page last read the repository status lists, or your account cannot view the status of the repositories that would list it, while it can view the status of others. |
-| **No permission** | Your account cannot view one of the two repository kinds (read-write or read-only), or cannot view the status of any repository on every branch. The cell shows this text on every branch. If you can list repositories but cannot view one repository's status on every branch, the cell leaves that repository out without a notice. |
-| **Could not load repositories** | The branch list, the repository list, or a repository's status could not be read, the repository list was cut short, or the branch list has no default branch. The cell shows this text on every branch. When one repository's status list is cut short and the rows that loaded do not include a branch, the cell shows this text on that branch only. Hover the text to read the reason. |
+| **Not synced with Git** | One branch |
+| **No repositories** | One branch |
+| **No permission** | Every branch |
+| **Could not load repositories** | Every branch, or one branch |
+
+Each text has these causes:
+
+- **Not synced with Git**: the branch does not sync with Git, and no read-only repository lists it.
+- **No repositories**: the branch syncs with Git, but no repository lists it. This happens when:
+  - no repository is connected to Infrahub
+  - the branch is merged or being deleted
+  - the branch was created after the page last read the repository status lists
+- **No permission**: your account cannot read the repositories' Git state. This happens when:
+  - your account cannot view one of the two repository kinds (read-write or read-only), so the page cannot list the repositories
+  - your account cannot view the status of any repository
+- **Could not load repositories**: hover the text to read the reason. This happens when:
+  - the list of repositories could not be read, or holds more than 500 repositories: the text shows on every branch
+  - a repository lists more than 500 branches, and the branches the page read for it do not include this one: the text shows on this branch only
+
+When the page cannot read the status of some repositories but can read the others, the **Repositories** cell shows the repositories it read, followed by a notice such as **1 repository could not be loaded** or **3 repositories could not be loaded**. Hover the notice to read the name of each repository and the reason, or **No permission** when your account cannot view that repository's status. The notice shows on every branch, including branches that do not sync with Git, because the page cannot tell which branches a repository it could not read would list. The **Git state** column counts only the repositories the page read.
 
 The **Repositories** cell of a recently created branch can show **No repositories** or **Not synced with Git** until the page reads the repository status lists again. The page reads the status lists again once they are more than a minute old, when you open the page or return to its window, and at once when you select the reload button next to the **Branches** title. Creating, merging, rebasing or deleting a branch in the web interface also starts a new read. A branch that does not sync with Git and that no read-only repository lists keeps showing **Not synced with Git**.
 
-The branch columns load normally in every one of these states. While a repository is syncing on any branch, the open branches page reads that repository's state on every branch again every 10 seconds, until the sync finishes. During a sync, after a read fails the page waits a minute before the next one, and after a permission denial it stops reading that repository's state every 10 seconds.
+The **Branch**, **Status**, **Proposed Changes** and date columns show as usual in every one of these states. While a repository is syncing, the page reads its Git state again until the sync finishes.
 
 ## Checking a repository's status on every branch
 

@@ -10,18 +10,21 @@
 ## Feature tests
 
 ```bash
-cd frontend/app && pnpm vitest run src/entities/branches src/entities/repository
+cd frontend/app && pnpm vitest run src/entities/branch-git-status src/entities/branches
 ```
 
 This covers:
 
-- `summarize-branch-repositories.test.ts`, `sync-status-severity.test.ts`, `format-repository-summary.test.ts`: the pivot, the severity order and the tooltip string.
-- `get-branch-repository-summaries.query.test.ts`: one repository-list request on the default branch, one status request per repository, data-first, denied, poll and stale time.
-- `get-branch-table-columns.test.tsx`: headers, the pure Repositories cell (worst repository, link, tooltip, "+N more"), the pure Git state cell (pill colour, `n/N`, count tooltip and `sr-only` text), and the pending, empty, denied and error texts.
-- `branches-table.test.tsx`: branch cells first, 1 + R requests, no new status request for a second page, denied and error on every row without a toast.
-- The lifted #10658 tests (`repository-branch-status.test.ts`, `get-repository-branch-status.test.ts`), and #10779's `branch-repositories-card.test.tsx` and `get-branch-repositories-from-api.test.ts`.
-
-The 2026-09-30 fan-out tests were deleted (research R14); the per-branch cell tests were rewritten (research R15).
+- `src/entities/branch-git-status/`:
+  - `domain/rules/summarize-branch-git-statuses.test.ts`, `sync-status-severity.test.ts`, `format-branch-git-status.test.ts`, `get-unknown-sync-status.test.ts`, `to-branch-git-status-error.test.ts`: the grouping per branch, the order worst first, the tooltip and notice texts, the Unknown fallback and the permission mapping.
+  - `api/branch-git-repository.mappers.test.ts`, `api/repository-branch-status.mappers.test.ts`, `domain/use-cases/get-branch-git-repositories.test.ts`, `domain/use-cases/get-repository-branch-status.test.ts`: the mapping of both documents and their errors.
+  - `ui/queries/get-repository-branch-status.query.test.ts`: the poll while syncing and the stale time.
+  - `ui/hooks/use-get-branch-git-statuses.test.ts`: one repository-list request, one status request per repository, data first, a denied or failed list, every status read denied, one failed status read, a cut list, no repositories and no branches.
+- `src/entities/branches/ui/branches-table/`:
+  - `cells/branch-repositories-cell.test.tsx`: worst repository, link, tooltip, "+N more" and its accessible name, the "could not be loaded" notice, and the loading, empty, denied and error texts.
+  - `cells/branch-git-state-cell.test.tsx`: pill colour, `n/N`, the count tooltip and `sr-only` text.
+  - `branch-table-row.test.ts`, `branches-data-table.test.tsx`, `branches-table.test.tsx`: rows, selection, 1 + R requests, no new status request for a second page, and failures without a toast.
+- `src/entities/branches/ui/queries/*.mutation.test.ts` and `branches-list.test.tsx`: create, delete, merge, rebase and reload invalidate the Git status cache.
 
 ## Full CI gate (before pushing)
 
@@ -46,7 +49,7 @@ cd frontend/app && pnpm knip && pnpm exec betterer ci && pnpm test
 - **`gc-viewer`**: a user without repository view permission on all branches, but with permission on branches.
 - **`gc-merged`** (optional): a merged branch, shown through the status filter.
 
-**Scenarios** (rewritten 2026-10-01 for one row per branch; rework A 2026-10-01):
+**Scenarios**:
 
 | # | Do | Expect | Spec |
 |---|---|---|---|
@@ -60,17 +63,22 @@ cd frontend/app && pnpm knip && pnpm exec betterer ci && pnpm test
 | 8 | Look at `gc-nosync` with no read-only repository | Repositories reads "Not synced with Git" in a muted style. Git state is blank, with no dash | US3-AS1, FR-007 |
 | 9 | Look at a synced branch with no repositories, and at `gc-merged` | Both read "No repositories" | US3-AS2 |
 | 10 | Log in as `gc-viewer` | Every branch keeps its cells. Every Repositories cell reads "No permission" in a muted style. There is no toast and no page error | US3-AS4, FR-012, SC-005 |
-| 11 | Make the GraphQL endpoint fail (devtools request blocking), then reload | Every row reads "Could not load repositories", and hovering it shows the error message. No toast appears. With the endpoint failing after a successful load, a background refetch keeps the loaded summaries | US3-AS5, FR-013 |
+| 11 | Make the GraphQL endpoint fail (devtools request blocking), then reload | Every row reads "Could not load repositories", and hovering it shows the error message. No toast appears. With the endpoint failing after a successful load, a background refetch keeps the loaded statuses | US3-AS5, FR-013 |
+| 11a | Block only one repository's `GET_REPOSITORY_BRANCH_STATUS` request (devtools request blocking on its payload), then reload | Every row shows its other repositories and "1 repository could not be loaded"; hovering it reads `<repository>: <error message>`. No toast appears | FR-013 |
 | 12 | Reload with the network tab open, then trigger "Import current commit" on `gc-ok`'s repository | Page load shows 1 + R repository requests (one list, one status per repository). While the repository syncs, its status request repeats every 10 s and stops once the sync settles. Refocusing the window within 60 s issues no request | FR-011, FR-014, SC-007 |
 | 13 | Scroll to load the next page | The new branches append one row each, summarized without any new status request. The branch count per page is unchanged | US2-AS4, FR-010, SC-007 |
 | 14 | Switch to the dark theme | The pills, the count and the muted texts are readable, with no light-only colour | Target platform |
 
 ## E2E
 
-`tests/e2e/branches/test_branches_git_columns.py` (`shard_branches_repo`) opens `/branches` with the `broken_repository` fixture (in `tests/e2e/branches/conftest.py`, function-scoped, called with `sync_with_git=True`) and checks the broken branch's row: the repository pill names the repository and links to its page, and the Git state pill reads "Import Error"; and that a `sync_with_git=False` branch reads "Not synced with Git".
+`tests/e2e/branches/test_branches_git_columns.py` (`shard_branches_repo`) uses the `broken_repository` fixture (`tests/e2e/branches/conftest.py`, function-scoped; returns a `BrokenRepository` from `tests/e2e/branches/broken_repository.py`). The fixture creates a branch with Sync with Git on, holding one repository in Import Error. The tests locate cells by the test ids `branch-repositories-cell-<branch>` and `branch-git-state-cell-<branch>` and check:
+
+- On the broken branch's row, the repository pill names the repository and links to it on that branch, and the Git state pill reads "Import Error".
+- A branch with Sync with Git off reads "Not synced with Git", or, when read-only repositories exist, lists one of them.
 
 ```bash
 uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branches_git_columns.py
+uv run pytest -c tests/e2e/pytest.ini tests/e2e/branches/test_branch_details_repositories.py
 ```
 
-Run it with the e2e stack up; see `dev/guides/frontend/writing-e2e-tests.md`.
+Run them with the e2e stack up; see `dev/guides/frontend/writing-e2e-tests.md`.
