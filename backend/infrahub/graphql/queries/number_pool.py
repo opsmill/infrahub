@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from graphene import BigInt, Enum, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import BigInt, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 
-from infrahub.core.constants import PoolRecordProvenance
+from infrahub.graphql.types.enums import PoolRecordProvenance as PoolRecordProvenanceType
 from infrahub.pools.number_pool_mock import (
     DivisionFilterEntry,
     MockAllocations,
@@ -18,6 +18,7 @@ from infrahub.pools.number_pool_mock import (
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.constants import PoolRecordProvenance
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -25,13 +26,6 @@ def _division_filter(division: list[dict[str, str]] | None) -> list[DivisionFilt
     if division is None:
         return None
     return [DivisionFilterEntry(path=entry["path"], value=entry["value"]) for entry in division]
-
-
-NumberPoolProvenance = Enum.from_enum(
-    PoolRecordProvenance,
-    name="NumberPoolProvenance",
-    description="How the number a tracked attribute currently holds got there.",
-)
 
 
 class NumberPoolUtilizationFigures(ObjectType):
@@ -258,7 +252,7 @@ class NumberPoolAllocation(ObjectType):
     )
     identifier = Field(String, description="The identifier given when the number was allocated, if any.")
     provenance = Field(
-        NumberPoolProvenance,
+        PoolRecordProvenanceType,
         required=True,
         description="ALLOCATED when the pool picked the number, PROVIDED when a user gave it.",
     )
@@ -330,7 +324,7 @@ InfrahubNumberPoolAllocations = Field(
     division=List(NonNull(NumberPoolDivisionEntryInput), required=False),
     range_id=String(required=False),
     branch=String(required=False),
-    provenance=NumberPoolProvenance(required=False),
+    provenance=PoolRecordProvenanceType(required=False),
     offset=Int(required=False),
     limit=Int(required=False),
     resolver=NumberPoolAllocations.resolve,

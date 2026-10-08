@@ -11,7 +11,7 @@ type NumberPoolAllocation {
   """
   ALLOCATED when the pool picked the number, PROVIDED when a user gave it.
   """
-  provenance: NumberPoolProvenance!
+  provenance: PoolRecordProvenance!
   """The range whose bounds hold the value."""
   range: NumberPoolRangeRef!
   """The number held."""
@@ -85,12 +85,6 @@ type NumberPoolHolder {
   hfid: [String!]
   id: String!
   kind: String!
-}
-
-"""How the number a tracked attribute currently holds got there."""
-enum NumberPoolProvenance {
-  ALLOCATED
-  PROVIDED
 }
 
 """A reference to one range of the pool."""
@@ -171,9 +165,15 @@ type NumberPoolUtilizationFigures {
   utilization_default_branch: Float!
 }
 
+"""Whether the pool allocated a value or a user provided it."""
+enum PoolRecordProvenance {
+  ALLOCATED
+  PROVIDED
+}
+
 type Query {
   """The numbers one number pool tracks, filtered and paginated."""
-  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], limit: Int, offset: Int, pool_id: String!, provenance: NumberPoolProvenance, range_id: String): NumberPoolAllocations!
+  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], limit: Int, offset: Int, pool_id: String!, provenance: PoolRecordProvenance, range_id: String): NumberPoolAllocations!
   """
   The divisions of one number pool that hold at least one value, with their figures over the whole pool. Complete list, no pagination.
   """

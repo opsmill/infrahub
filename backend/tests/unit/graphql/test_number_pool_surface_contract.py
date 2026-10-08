@@ -28,12 +28,12 @@ SURFACE_TYPES = (
     "NumberPoolDivisionEntryInput",
     "NumberPoolDivisions",
     "NumberPoolHolder",
-    "NumberPoolProvenance",
     "NumberPoolRangeRef",
     "NumberPoolRangeUtilization",
     "NumberPoolScopeElement",
     "NumberPoolUtilization",
     "NumberPoolUtilizationFigures",
+    "PoolRecordProvenance",
 )
 SURFACE_ROOT_FIELDS = (
     "InfrahubNumberPoolAllocations",

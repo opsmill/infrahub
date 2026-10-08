@@ -53,7 +53,7 @@ query NumberPoolAllocations(
   $division: [NumberPoolDivisionEntryInput!]
   $range_id: String
   $branch: String
-  $provenance: NumberPoolProvenance
+  $provenance: PoolRecordProvenance
   $offset: Int
   $limit: Int
 ) {
