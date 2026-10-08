@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
-from dataclasses import dataclass
+from contextlib import AsyncExitStack
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -17,6 +19,8 @@ from prefect.client.schemas.filters import (
 from prefect.client.schemas.objects import FlowRun, StateType, TaskRun
 from prefect.states import Failed
 
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
 from infrahub.exceptions import (
     DatabaseError,
@@ -28,16 +32,33 @@ from infrahub.exceptions import (
     RepositoryTLSError,
     ValidationError,
 )
-from infrahub.git.models import PushRejectionReason
+from infrahub.git.models import GitRepositoryDeliveryRetry, PushRejectionReason
 from infrahub.git.tasks import deliver_pending_merges
-from infrahub.git.writeback.models import DeliveryAttemptResult, DeliveryFailure, DeliveryOutcome, PendingMerge
+from infrahub.git.writeback.constants import STALE_AFTER_SECONDS
+from infrahub.git.writeback.models import (
+    DeliveryAttemptResult,
+    DeliveryFailure,
+    DeliveryOutcome,
+    DeliveryProgress,
+    DeliveryQueue,
+    HeldItem,
+    HeldRegeneration,
+    PendingMerge,
+    ReleaseLease,
+    WritebackIntent,
+)
 from infrahub.git.writeback.ports import RepositoryRef
+from infrahub.git.writeback.recovery import DeliveryRecoveryCheck
 from infrahub.git.writeback.runs import PrefectDeliveryRunQuery, is_retryable_delivery_failure, next_retry_delay
-from infrahub.git.writeback.service import RepositoryWritebackService, RetryableDeliveryError
+from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE, RepositoryWritebackService, RetryableDeliveryError
 from infrahub.lock import InfrahubLockRegistry
+from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
 from tests.unit.git.writeback.fakes import (
+    ContextRecordingWorkflow,
+    FailingDeliveryRunQuery,
     FixedClock,
     InMemoryDeliveryGit,
+    InMemoryDeliveryRunQuery,
     InMemoryDeliveryState,
     RecordingRegenerationReleaser,
 )
@@ -441,3 +462,342 @@ async def test_the_queued_run_query_asks_once_for_a_run_with_both_delivery_tags_
             sort=None,
         )
     ]
+
+
+CHECK_NOW = datetime(2026, 10, 8, 13, 0, tzinfo=UTC)
+STALE_AFTER = timedelta(seconds=STALE_AFTER_SECONDS)
+LONG_AGO = CHECK_NOW - STALE_AFTER - timedelta(seconds=1)
+"""Just older than the stale bound."""
+AT_THE_STALE_BOUND = CHECK_NOW - STALE_AFTER
+RECOVERY_CONTEXT = InfrahubContext(
+    branch=BranchContext(name="main", id="default-branch-id"), account=AnonymousSession()
+)
+DELIVERY_TAGS = ["infrahub.app/node/repository-1", "infrahub.app/repository-delivery"]
+HELD_DEFINITION = HeldItem(id="artifact-definition-1", hold_seq=1)
+RUN_LOGGER = "infrahub.tasks"
+
+
+def delivery_state(
+    *,
+    status: RepositoryDeliveryStatus,
+    entries: tuple[PendingMerge, ...],
+    last_progress_at: datetime | None,
+    retry_due_at: datetime | None = None,
+    held: HeldRegeneration | None = None,
+) -> WritebackIntent:
+    return WritebackIntent(
+        repository_id=REPOSITORY.id,
+        status=status,
+        cause=None,
+        error=None,
+        queue=DeliveryQueue(version=len(entries), entries=entries),
+        held=held or HeldRegeneration(),
+        progress=DeliveryProgress(last_progress_at=last_progress_at, retry_due_at=retry_due_at),
+        last_delivered_commit=None,
+    )
+
+
+def held_definition(*, lease_expires_at: datetime | None = None) -> HeldRegeneration:
+    """One held artifact definition, named by a release lease that expires at the time given, if one is given."""
+    leases = (
+        ()
+        if lease_expires_at is None
+        else (ReleaseLease(lease_id="lease-1", expires_at=lease_expires_at, artifact_definitions=(HELD_DEFINITION,)),)
+    )
+    return HeldRegeneration(next_hold_seq=2, artifact_definitions=(HELD_DEFINITION,), release_leases=leases)
+
+
+@dataclass
+class CheckRig:
+    state: InMemoryDeliveryState
+    workflow: ContextRecordingWorkflow
+    runs: InMemoryDeliveryRunQuery
+    lock_registry: InfrahubLockRegistry
+    check: DeliveryRecoveryCheck
+
+
+@pytest.fixture
+def check_rig() -> CheckRig:
+    clock = FixedClock(now=CHECK_NOW)
+    state = InMemoryDeliveryState(clock=clock, repository_names={REPOSITORY.id: REPOSITORY.name})
+    workflow = ContextRecordingWorkflow()
+    runs = InMemoryDeliveryRunQuery()
+    lock_registry = InfrahubLockRegistry(local_only=True)
+    check = DeliveryRecoveryCheck(
+        state=state, workflow=workflow, runs=runs, lock_registry=lock_registry, clock=clock, context=RECOVERY_CONTEXT
+    )
+    return CheckRig(state=state, workflow=workflow, runs=runs, lock_registry=lock_registry, check=check)
+
+
+async def run_check(rig: CheckRig, *, lock_held: bool = False) -> bool:
+    async with AsyncExitStack() as stack:
+        if lock_held:
+            await stack.enter_async_context(
+                rig.lock_registry.get(name=REPOSITORY.name, namespace=REPOSITORY_LOCK_NAMESPACE)
+            )
+        return await rig.check.run(repository=REPOSITORY)
+
+
+EXPECTED_SUBMISSION = {
+    "kind": "submit",
+    "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
+    "parameters": {
+        "model": GitRepositoryDeliveryRetry(repository_id=REPOSITORY.id, repository_name=REPOSITORY.name, manual=False)
+    },
+    "tags": DELIVERY_TAGS,
+}
+
+
+@dataclass
+class RecoveryCase:
+    name: str
+    intent: WritebackIntent
+    submits: bool
+    asks: bool
+    """Whether the check asks the orchestrator for a delivery run that waits to start."""
+    lock_held: bool = False
+    run_queued: bool = False
+
+
+RECOVERY_CASES: list[RecoveryCase] = [
+    RecoveryCase(
+        name="stale_delivery_is_recovered",
+        intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
+        submits=True,
+        asks=True,
+    ),
+    RecoveryCase(
+        name="repository_with_nothing_pending_makes_no_query",
+        intent=delivery_state(status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=None),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="delivery_that_waits_for_a_user_action_is_not_stale",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.ACTION_REQUIRED, entries=(ENTRY,), last_progress_at=LONG_AGO
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="retry_due_in_the_future_owns_the_delivery",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.PENDING,
+            entries=(ENTRY,),
+            last_progress_at=LONG_AGO,
+            retry_due_at=CHECK_NOW + timedelta(seconds=60),
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="progress_at_the_stale_bound_is_recent",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=AT_THE_STALE_BOUND
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="held_repository_lock_means_an_attempt_still_works",
+        intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
+        lock_held=True,
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="run_that_waits_in_the_queue_gets_no_second_submission",
+        intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
+        run_queued=True,
+        submits=False,
+        asks=True,
+    ),
+    RecoveryCase(
+        # The orchestrator still shows the run as running, which the query does not count as waiting.
+        name="running_run_with_no_progress_and_a_free_lock_is_stale",
+        intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
+        submits=True,
+        asks=True,
+    ),
+    RecoveryCase(
+        name="crashed_run_whose_retry_was_due_is_stale",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.PENDING,
+            entries=(ENTRY,),
+            last_progress_at=LONG_AGO,
+            retry_due_at=LONG_AGO + timedelta(seconds=30),
+        ),
+        submits=True,
+        asks=True,
+    ),
+    RecoveryCase(
+        name="uncovered_held_work_behind_an_empty_queue_is_released",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE,
+            entries=(),
+            last_progress_at=LONG_AGO,
+            held=held_definition(lease_expires_at=CHECK_NOW - timedelta(seconds=1)),
+        ),
+        submits=True,
+        asks=True,
+    ),
+    RecoveryCase(
+        name="held_work_that_a_live_lease_covers_gets_no_submission",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE,
+            entries=(),
+            last_progress_at=LONG_AGO,
+            held=held_definition(lease_expires_at=CHECK_NOW + timedelta(seconds=60)),
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="held_work_with_recent_progress_waits",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE,
+            entries=(),
+            last_progress_at=AT_THE_STALE_BOUND,
+            held=held_definition(),
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="held_work_behind_a_queue_that_waits_for_a_user_action_gets_no_submission",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.ACTION_REQUIRED,
+            entries=(ENTRY,),
+            last_progress_at=LONG_AGO,
+            held=held_definition(),
+        ),
+        submits=False,
+        asks=False,
+    ),
+    RecoveryCase(
+        name="held_work_with_a_run_that_waits_in_the_queue_gets_no_submission",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=LONG_AGO, held=held_definition()
+        ),
+        run_queued=True,
+        submits=False,
+        asks=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in RECOVERY_CASES])
+async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_else_will_deliver(
+    check_rig: CheckRig, case: RecoveryCase
+) -> None:
+    check_rig.state.intents[REPOSITORY.id] = case.intent
+    if case.run_queued:
+        check_rig.runs.queued.add(REPOSITORY.id)
+
+    submitted = await run_check(check_rig, lock_held=case.lock_held)
+
+    assert submitted is case.submits
+    assert check_rig.runs.asked == ([REPOSITORY.id] if case.asks else [])
+    intent = check_rig.state.intents[REPOSITORY.id]
+    if case.submits:
+        assert check_rig.workflow.submit_calls == [EXPECTED_SUBMISSION]
+        assert check_rig.workflow.contexts == [RECOVERY_CONTEXT]
+        assert check_rig.state.calls == ["read", "touch"]
+        assert intent == replace(
+            case.intent, progress=case.intent.progress.model_copy(update={"last_progress_at": CHECK_NOW})
+        )
+    else:
+        assert check_rig.workflow.submit_calls == []
+        assert check_rig.state.calls == ["read"]
+        assert intent == case.intent
+
+
+STALE_INTENT = delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO)
+
+
+async def test_a_query_that_raises_submits_nothing_and_leaves_the_progress_time(
+    check_rig: CheckRig, caplog: pytest.LogCaptureFixture
+) -> None:
+    runs = FailingDeliveryRunQuery(error=ConnectionError("The orchestrator does not answer"))
+    check = DeliveryRecoveryCheck(
+        state=check_rig.state,
+        workflow=check_rig.workflow,
+        runs=runs,
+        lock_registry=check_rig.lock_registry,
+        clock=FixedClock(now=CHECK_NOW),
+        context=RECOVERY_CONTEXT,
+    )
+    check_rig.state.intents[REPOSITORY.id] = STALE_INTENT
+
+    with caplog.at_level(logging.WARNING, logger=RUN_LOGGER):
+        submitted = await check.run(repository=REPOSITORY)
+
+    assert submitted is False
+    assert runs.asked == [REPOSITORY.id]
+    assert check_rig.workflow.submit_calls == []
+    assert check_rig.state.calls == ["read"]
+    assert check_rig.state.intents[REPOSITORY.id] == STALE_INTENT
+    assert [(record.levelno, record.getMessage()) for record in caplog.records if record.name == RUN_LOGGER] == [
+        (
+            logging.WARNING,
+            "Could not ask the orchestrator whether a delivery run of repository net-repo waits, so none is "
+            "submitted: The orchestrator does not answer",
+        )
+    ]
+
+
+@dataclass
+class CheckFailureCase:
+    name: str
+    failing_call: str
+    """`read` or `touch` of the state, or `submit` of the workflow."""
+    submits: bool
+    state_calls: list[str]
+    error_log: str
+
+
+CHECK_FAILURE_CASES: list[CheckFailureCase] = [
+    CheckFailureCase(
+        name="failed_state_read_submits_nothing",
+        failing_call="read",
+        submits=False,
+        state_calls=["read"],
+        error_log="The delivery recovery check of repository net-repo failed; the next cycle checks again.",
+    ),
+    CheckFailureCase(
+        name="failed_submission_leaves_the_progress_time",
+        failing_call="submit",
+        submits=False,
+        state_calls=["read"],
+        error_log="The delivery recovery check of repository net-repo failed; the next cycle checks again.",
+    ),
+    CheckFailureCase(
+        name="failed_touch_keeps_the_submission",
+        failing_call="touch",
+        submits=True,
+        state_calls=["read", "touch"],
+        error_log="Could not move the progress time of the delivery of repository net-repo.",
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in CHECK_FAILURE_CASES])
+async def test_the_recovery_check_never_raises(
+    check_rig: CheckRig, case: CheckFailureCase, caplog: pytest.LogCaptureFixture
+) -> None:
+    check_rig.state.intents[REPOSITORY.id] = STALE_INTENT
+    error = DatabaseError(message=DATABASE_DOWN)
+    if case.failing_call == "submit":
+        check_rig.workflow.failures.append(error)
+    else:
+        check_rig.state.failures[case.failing_call] = [error]
+
+    with caplog.at_level(logging.ERROR, logger=RUN_LOGGER):
+        submitted = await run_check(check_rig)
+
+    assert submitted is case.submits
+    assert check_rig.workflow.submit_calls == ([EXPECTED_SUBMISSION] if case.submits else [])
+    assert check_rig.state.calls == case.state_calls
+    assert check_rig.state.intents[REPOSITORY.id] == STALE_INTENT
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [case.error_log]
