@@ -227,6 +227,72 @@ describe("NumberPoolForm", () => {
     });
   });
 
+  test("saving a renamed pool after a range refusal updates the created pool before its ranges", async () => {
+    // GIVEN
+    const renamedPool = { ...createdPool, display_label: "Renamed pool" };
+    updatePool.mockResolvedValue(renamedPool);
+    applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
+    const component = await renderFilledCreateForm();
+    await component.getByRole("button", { name: "Save" }).click();
+    await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+    await component.getByLabelText("Name *").fill("Renamed pool");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalledWith(renamedPool);
+    expect(updatePool).toHaveBeenCalledWith({
+      objectKind: "CoreNumberPool",
+      data: { id: "pool-1", name: { value: "Renamed pool" } },
+    });
+    expect(updatePool.mock.invocationCallOrder[0]).toBeLessThan(
+      applyRangeChanges.mock.invocationCallOrder[1]!
+    );
+    expect(createPool).toHaveBeenCalledTimes(1);
+  });
+
+  test("keeps the form open with the rows as typed when the pool cannot be reloaded after a range refusal", async () => {
+    // GIVEN
+    applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
+    vi.mocked(getNumberPoolForEditing).mockRejectedValueOnce(new Error("Network error"));
+    const component = await renderFilledCreateForm();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+    await expect
+      .element(component.getByRole("textbox", { name: "Start" }).nth(1))
+      .toHaveValue("300");
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  test("saving again after a failed reload does not create the range that was already created", async () => {
+    // GIVEN
+    applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
+    vi.mocked(getNumberPoolForEditing).mockRejectedValueOnce(new Error("Network error"));
+    const component = await renderFilledCreateForm();
+    await component.getByRole("button", { name: "Save" }).click();
+    await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalled();
+    expect(applyRangeChanges).toHaveBeenLastCalledWith({
+      poolId: "pool-1",
+      changes: {
+        deletes: [],
+        smaller: [],
+        larger: [],
+        creates: [{ start: 300, end: 399, weight: null }],
+      },
+    });
+  });
+
   describe("edit", () => {
     const poolWithRanges: NumberPoolForEditing = {
       ...storedPool,
@@ -310,6 +376,32 @@ describe("NumberPoolForm", () => {
       });
     });
 
+    test("compares the rows with the ranges as stored when saving, not as first loaded", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
+        ...poolWithRanges,
+        ranges: poolWithRanges.ranges.map((range) =>
+          range.id === "range-1" ? { ...range, weight: 20 } : range
+        ),
+      });
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(applyRangeChanges).toHaveBeenCalledWith({
+        poolId: "pool-1",
+        changes: {
+          deletes: [],
+          smaller: [{ id: "range-1", start: 100, end: 199, weight: 10 }],
+          larger: [],
+          creates: [],
+        },
+      });
+    });
+
     test("after a refusal mid-sequence, keeps the rows as typed and the next save sends only what remains", async () => {
       // GIVEN
       applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
@@ -319,13 +411,15 @@ describe("NumberPoolForm", () => {
       await component.getByRole("button", { name: "Add range" }).click();
       await component.getByRole("textbox", { name: "Start" }).nth(2).fill("800");
       await component.getByRole("textbox", { name: "End" }).nth(2).fill("899");
-      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
-        ...poolWithRanges,
-        ranges: [
-          { id: "range-2", start: 300, end: 399, weight: null },
-          { id: "range-1", start: 100, end: 199, weight: 20 },
-        ],
-      });
+      vi.mocked(getNumberPoolForEditing)
+        .mockResolvedValueOnce(poolWithRanges)
+        .mockResolvedValue({
+          ...poolWithRanges,
+          ranges: [
+            { id: "range-2", start: 300, end: 399, weight: null },
+            { id: "range-1", start: 100, end: 199, weight: 20 },
+          ],
+        });
       await component.getByRole("button", { name: "Save" }).click();
       await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
       expect(component.getByText(RANGE_REFUSED).elements()).toHaveLength(1);
@@ -355,10 +449,12 @@ describe("NumberPoolForm", () => {
       applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_MISSING });
       const component = await renderEditForm();
       await component.getByRole("button", { name: "Remove range" }).nth(2).click();
-      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
-        ...poolWithRanges,
-        ranges: poolWithRanges.ranges.filter(({ id }) => id !== "range-3"),
-      });
+      vi.mocked(getNumberPoolForEditing)
+        .mockResolvedValueOnce(poolWithRanges)
+        .mockResolvedValue({
+          ...poolWithRanges,
+          ranges: poolWithRanges.ranges.filter(({ id }) => id !== "range-3"),
+        });
       await component.getByRole("button", { name: "Save" }).click();
       await expect.element(component.getByText(RANGE_MISSING)).toBeVisible();
 

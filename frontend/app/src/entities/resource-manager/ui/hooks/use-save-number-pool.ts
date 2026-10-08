@@ -45,22 +45,26 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
   const updateObject = useUpdateObjectMutation();
   const applyRangeChanges = useApplyNumberPoolRangeChangesMutation();
 
-  const [createdPool, setCreatedPool] = useState<NodeCore | null>(null);
+  const [createdPoolId, setCreatedPoolId] = useState<string | null>(null);
   const [rangeSaveError, setRangeSaveError] = useState<string | null>(null);
+  const poolId = initialPool?.id ?? createdPoolId ?? undefined;
   const isSchemaPool = initialPool?.poolType === "Schema";
 
-  function getPoolOptions(poolId: string) {
-    return getNumberPoolForEditingQueryOptions({ branchName: currentBranch.name, poolId });
+  function fetchStoredPool(id: string) {
+    return queryClient.fetchQuery({
+      ...getNumberPoolForEditingQueryOptions({ branchName: currentBranch.name, poolId: id }),
+      staleTime: 0,
+    });
   }
 
-  /** Resolves to `null` once saved, or to the rows linked to the stored ranges when the server refused a range. */
+  /** Resolves to `null` once saved, or to the rows to keep in the form when the server refused a range. */
   async function saveRanges(
     pool: NodeCore,
     stored: StoredRange[],
     rows: RangeRow[],
     successMessage: string
   ): Promise<RangeRow[] | null> {
-    const changes = diffRanges(stored, rows);
+    const changes = diffRanges(stored, matchRowsToStored(rows, stored));
     const { errorMessage } =
       !isSchemaPool && hasRangeChanges(changes)
         ? await applyRangeChanges.mutateAsync({ poolId: pool.id, changes })
@@ -76,8 +80,9 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     }
 
     setRangeSaveError(errorMessage);
-    const refreshed = await queryClient.fetchQuery({ ...getPoolOptions(pool.id), staleTime: 0 });
-    return matchRowsToStored(rows, refreshed.ranges);
+    // Rows left unlinked here are linked on the next save, which reads the stored ranges again.
+    const refreshed = await fetchStoredPool(pool.id).catch(() => null);
+    return refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
   }
 
   async function createPool(data: FieldValues): Promise<RangeRow[] | null> {
@@ -86,10 +91,6 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
       [NUMBER_POOL_ALLOCATION_SCOPE_FIELD]: scope = [],
       ...poolFields
     } = data;
-    if (createdPool) {
-      const { ranges } = await queryClient.ensureQueryData(getPoolOptions(createdPool.id));
-      return saveRanges(createdPool, ranges, rows, "Number pool created");
-    }
 
     // A refused pool is already reported by the API layer's notification, and the form stays open.
     const pool = await createObject
@@ -103,15 +104,23 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
       .catch(() => null);
     if (!pool) return null;
 
-    const linkedRows = await saveRanges(pool, [], rows, "Number pool created");
-    if (linkedRows) setCreatedPool(pool);
-    return linkedRows;
+    const keptRows = await saveRanges(pool, [], rows, "Number pool created");
+    if (keptRows) setCreatedPoolId(pool.id);
+    return keptRows;
   }
 
-  async function updatePool(pool: NumberPoolForEditing, data: FieldValues) {
-    const { [RANGES_FIELD]: rows, ...poolFields } = data;
-    const stored = await queryClient.ensureQueryData(getPoolOptions(pool.id));
-    const changedFields = getCreateMutationFromFormDataOnly(poolFields, toPoolFields(stored));
+  async function updatePool(id: string, data: FieldValues): Promise<RangeRow[] | null> {
+    const { [RANGES_FIELD]: rows, name, description } = data;
+    const stored = await fetchStoredPool(id);
+    const changedFields = getCreateMutationFromFormDataOnly(
+      { name, description },
+      toPoolFields(stored)
+    );
+    let pool: NodeCore = {
+      id: stored.id,
+      display_label: stored.name,
+      __typename: NUMBER_POOL_KIND,
+    };
 
     if (Object.keys(changedFields).length > 0) {
       // A refused pool update is already reported by the API layer's notification.
@@ -119,21 +128,18 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
         .mutateAsync({ objectKind: NUMBER_POOL_KIND, data: { id: stored.id, ...changedFields } })
         .catch(() => null);
       if (!updatedPool) return null;
+      pool = updatedPool;
     }
 
-    const storedNode: NodeCore = {
-      id: stored.id,
-      display_label: stored.name,
-      __typename: NUMBER_POOL_KIND,
-    };
-    return saveRanges(storedNode, stored.ranges, rows, "Number pool updated");
+    const successMessage = initialPool ? "Number pool updated" : "Number pool created";
+    return saveRanges(pool, stored.ranges, rows, successMessage);
   }
 
   /** Resolves to the values the form resets to, so rows created before a refusal stay linked to their range. */
   async function save(data: FieldValues): Promise<FieldValues | undefined> {
-    const linkedRows = initialPool ? await updatePool(initialPool, data) : await createPool(data);
-    return linkedRows ? { ...data, [RANGES_FIELD]: linkedRows } : undefined;
+    const keptRows = poolId ? await updatePool(poolId, data) : await createPool(data);
+    return keptRows ? { ...data, [RANGES_FIELD]: keptRows } : undefined;
   }
 
-  return { poolId: initialPool?.id ?? createdPool?.id, rangeSaveError, save };
+  return { poolId, rangeSaveError, save };
 }
