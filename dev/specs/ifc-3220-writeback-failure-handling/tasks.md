@@ -472,14 +472,14 @@ deployment rule.** T070 to T073 are not.
       `backend/infrahub/computed_attribute/tasks.py`, on the default branch.
 - [ ] T073 [P] [US3] Add Python-family cases to `backend/tests/unit/core/merge/test_regeneration_barrier.py`:
       a resolved target and a widened target are both filtered, and a rebase admits everything.
-- [ ] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
+- [X] T074 [US3] Write `backend/tests/component/core/merge/test_held_regeneration.py`: Y dispatched, X held;
       one release for X after the delivery, against the delivered commit; a deleted held definition
       widens to X only; and, after an enqueue of X whose every try raised, the follow-ups dispatch
       the work of X at once, and the release after the delivery regenerates every definition of X
       against the delivered commit (R3).
-- [ ] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
+- [X] T075 [P] [US3] Add a case to `test_held_regeneration.py`: a hold of the same definition during a
       release survives the clear and is released again.
-- [ ] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
+- [X] T076 [P] [US3] Add a case to `test_held_regeneration.py` for SC-008: a first attempt that succeeds
       inside the window dispatches the same targets, members and node ids as the same merge with no
       barrier.
 
