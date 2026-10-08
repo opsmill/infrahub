@@ -1,6 +1,44 @@
-import { describe, expect, it } from "vitest";
+import { createRef } from "react";
+import { describe, expect, it, test } from "vitest";
 
-import { findErrorMessage } from "@/shared/components/ui/form";
+import { type FormRef, findErrorMessage } from "@/shared/components/ui/form";
+
+import { TestForm } from "../../../../tests/components/form.story";
+import { render } from "../../../../tests/components/render";
+
+describe("Form", () => {
+  test("resets to the values the submit handler returns", async () => {
+    // GIVEN
+    const formRef = createRef<FormRef>();
+    const component = await render(
+      <TestForm
+        ref={formRef}
+        defaultValues={{ name: "typed" }}
+        onSubmit={() => ({ name: "saved" })}
+      />
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.poll(() => formRef.current?.getValues("name")).toBe("saved");
+  });
+
+  test("resets to the submitted values when the submit handler returns nothing", async () => {
+    // GIVEN
+    const formRef = createRef<FormRef>();
+    const component = await render(<TestForm ref={formRef} defaultValues={{ name: "initial" }} />);
+    formRef.current?.setValue("name", "typed", { shouldDirty: true });
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.poll(() => formRef.current?.formState.defaultValues?.name).toBe("typed");
+    expect(formRef.current?.getValues("name")).toBe("typed");
+  });
+});
 
 describe("findErrorMessage", () => {
   it("returns undefined when there is no error", () => {
