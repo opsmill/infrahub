@@ -10,7 +10,7 @@ from prefect.settings.models.server.events import ServerEventsSettings
 from prefect.settings.models.server.services import ServerServicesDBVacuumSettings
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, MutableMapping
+    from collections.abc import Iterable, Mapping, MutableMapping
 
     from pydantic_settings import BaseSettings
 
@@ -105,6 +105,15 @@ PREFECT_EVENT_TYPES: tuple[str, ...] = (
     "prefect.asset.materialization.succeeded",
     "prefect.asset.materialization.failed",
 )
+
+PREFECT_EVENT_PREFIX = "prefect."
+
+
+def unlisted_prefect_event_types(event_types: Iterable[str]) -> list[str]:
+    """Return the Prefect event types among the given ones that are missing from the list, sorted."""
+    listed = set(PREFECT_EVENT_TYPES)
+    return sorted({event_type for event_type in event_types if event_type.startswith(PREFECT_EVENT_PREFIX)} - listed)
+
 
 VACUUM_ENABLED = "PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED"
 VACUUM_RETENTION_PERIOD = "PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD"
