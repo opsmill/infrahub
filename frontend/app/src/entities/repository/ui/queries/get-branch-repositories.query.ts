@@ -3,6 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
 import { getOffset } from "@/shared/utils/table-pagination";
 
+import type { BranchRepositoryPage } from "@/entities/repository/domain/model/branch-repository";
 import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
 import { isRepositorySyncing } from "@/entities/repository/domain/rules/repository-syncing";
 import {
@@ -33,7 +34,8 @@ export function getBranchRepositoriesQueryOptions({
       repositoryQueryKeys.branchRepositoryList({
         branchName: params.branchName,
         syncWithGit: params.syncWithGit,
-      })
+      }),
+      (page: BranchRepositoryPage) => page.repositories.length > 0
     ),
   });
 }

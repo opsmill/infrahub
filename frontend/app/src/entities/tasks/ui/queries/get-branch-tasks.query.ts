@@ -4,6 +4,7 @@ import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
 import { getOffset } from "@/shared/utils/table-pagination";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
+import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import {
   type GetBranchTasksParams,
   getBranchTasks,
@@ -21,7 +22,8 @@ export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
     // Only the first page gets new tasks as they start.
     refetchInterval: params.offset === 0 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
     placeholderData: keepPreviousDataWithin(
-      tasksQueryKeys.branchListOnBranch({ branchName: params.branchName })
+      tasksQueryKeys.branchListOnBranch({ branchName: params.branchName }),
+      (page: TaskListPage) => page.tasks.length > 0
     ),
   });
 }

@@ -212,6 +212,26 @@ describe("BranchRepositoriesCard", () => {
     expect(new URL(window.location.href).searchParams.get("repositories_page")).toBe("2");
   });
 
+  test("shows the loading rows, not an empty table, while the last page loads after a page past the end", async () => {
+    // GIVEN
+    const repositories = buildBranchRepositoriesScenario("eleven");
+    serve(repositories);
+    vi.mocked(getBranchRepositories).mockImplementation(async ({ offset, limit }) =>
+      offset === 10
+        ? new Promise(() => {})
+        : toBranchRepositoryPage(repositories, { offset, limit })
+    );
+    const component = await renderCard({ search: "&repositories_page=99" });
+    await expect.element(component.getByText("Page 99 doesn't exist.")).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Go to last page" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Loading repositories")).toBeInTheDocument();
+    expect(component.container.querySelector("tbody")).toBeNull();
+  });
+
   test("shows page 1 for a page below 1", async () => {
     // GIVEN
     serve(buildBranchRepositoriesScenario("eleven"));
