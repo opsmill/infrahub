@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 
 from infrahub.exceptions import ValidationError
@@ -77,7 +78,7 @@ class Division:
 
     values: tuple[Any, ...]
 
-    @property
+    @cached_property
     def key(self) -> str:
         """Return a hash of the values that stays the same across processes, used to name the division's lock."""
         # Sorted keys make the hash ignore the key order of a document, as its equality does.
