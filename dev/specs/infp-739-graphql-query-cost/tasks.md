@@ -72,24 +72,25 @@ User Story 1 spans Phases 3 to 5. User Story 2 reuses the estimator from Phase 5
 
 **⚠️ CRITICAL**: Phases 3 to 6 import these modules.
 
-- [ ] T003 [P] Write unit tests in `backend/tests/unit/graphql/cost/test_models.py` (with `__init__.py`). Using the dataclass test case pattern of `dev/guidelines/backend/testing.md`, check:
+- [X] T003 [P] Write unit tests in `backend/tests/unit/graphql/cost/test_models.py` (with `__init__.py`). Using the dataclass test case pattern of `dev/guidelines/backend/testing.md`, check:
     - `KindStatistics` survives a round trip through its JSON form
     - `StatisticsSnapshot.side(identifier, direction, kind)` returns the matching `RelationshipSideStatistics`, and `None` for an unknown kind, identifier or direction
     - `CostFigures` rejects negative values
-- [ ] T004 [P] Create `backend/infrahub/graphql/cost/models.py` with the frozen dataclasses of `data-model.md`:
+- [X] T004 [P] Create `backend/infrahub/graphql/cost/models.py` with the frozen dataclasses of `data-model.md`:
     - `CostFigures`, `HistogramBucket`, `TopNode`, `RelationshipSideStatistics`, `KindStatistics`, `StatisticsPointer` and `StatisticsSnapshot` (with `side()`)
     - `RelationshipRef` and `CostTreeField`
-    - `FieldEstimate` and `QueryEstimate` (mode, statistics pointer or `None`, estimates by path in tree order)
-    - the enums `EstimateMode` (`counted_first_step`, `statistics_only`), `EstimateSource` (`counted`, `statistics`) and `RelationshipSide` (`outbound`, `inbound`, `bidirectional`)
+    - `FieldDescription` (kind, relationship identifier, cardinality), `FieldEstimate` (with its `FieldDescription`) and `QueryEstimate` (mode, statistics pointer or `None`, estimates by path in tree order)
+    - the enums `EstimateMode` (`counted_first_step`, `statistics_only`), `EstimateSource` (`counted`, `statistics`) and `EstimateReason` (`no statistics`). The relationship side uses the existing `infrahub.core.constants.RelationshipDirection` (`outbound`, `inbound`, `bidirectional`) instead of a new `RelationshipSide` enum with the same values.
     - `to_json()` / `from_json()` on the statistics types
     - mutable counters live in `recorder.py` (T013), not here
-- [ ] T005 [P] Write unit tests in `backend/tests/unit/graphql/cost/test_details.py`:
+- [X] T005 [P] Write unit tests in `backend/tests/unit/graphql/cost/test_details.py`:
     - a `QueryCostDetails` built from a sample estimate and sample actual counts dumps (`model_dump(mode="json")`) to exactly the keys and nesting of `contracts/cost-details.schema.json`, including `estimate_queries`, `unattributed` and a field with `reason = "no statistics"`
     - entries come in tree order, followed by recorded paths missing from the tree, in the order they were first recorded
-- [ ] T006 [P] Create `backend/infrahub/graphql/cost/details.py`:
+- [X] T006 [P] Create `backend/infrahub/graphql/cost/details.py`:
     - Pydantic models with `extra="forbid"` that match `contracts/cost-details.schema.json`: `QueryCostFigures`, `QueryCostFieldEstimate`, `QueryCostField`, `QueryCostTotals`, `QueryCostStatistics` and `QueryCostDetails`
     - `build_query_cost_details(estimate: QueryEstimate | None, recorder: QueryCostRecorder) -> QueryCostDetails`
     - when `estimate` is `None`, every recorded field gets `reason = "no statistics"`, `estimate_mode = "statistics_only"` and `statistics = null`
+    - the `QueryCostRecorder` class it reads, in `backend/infrahub/graphql/cost/recorder.py`, with its counters `FieldActual` and `QueryTotals` (T011 adds the rest of that module)
 
 **Checkpoint**: models and the response model are tested. The user stories can start.
 
@@ -127,15 +128,15 @@ Requirements: FR-001, FR-002, FR-015, the actual-count part of FR-014, and SC-00
 ### Implementation for part A
 
 - [ ] T011 [US1] Create `backend/infrahub/graphql/cost/recorder.py` with:
-    - `QueryCostRecorder`: mutable totals for each path, plus estimate and unattributed totals; methods `record_call(path, nodes)` and `record_query(rows)`
+    - `QueryCostRecorder`, created with T006: mutable totals for each path, plus estimate and unattributed totals; methods `record_call(path, field, nodes)`, where `field` is the field's `FieldDescription`, and `record_query(path, rows)`, where `path` is the current field path, `ESTIMATE_FIELD_PATH` or `None`
     - two `ContextVar`s, the recorder and the current field path, with accessors `get_cost_recorder()` and `get_current_field()`
     - context managers `activate_recorder(recorder)` and `resolving_field(path)`, both resetting by token in `finally`
     - `field_path_from_info(info)`, which uses `info.path.as_list()` with `field_path_from_response_keys` and drops `edges`, `node` and list indexes
     - `count_returned_nodes(result)`: `len(result["edges"])` for paginated results, 1 or 0 for a `{"node": ...}` result
-- [ ] T012 [US1] In `backend/infrahub/database/__init__.py::InfrahubDatabase.execute_query_with_metadata`, after the results are read: call `recorder.record_query(rows=len(results))` when `get_cost_recorder()` returns a recorder, and do nothing more when it returns `None` (FR-002). Read `dev/knowledge/backend/query-pattern.md` first; this is the single path for every query.
+- [ ] T012 [US1] In `backend/infrahub/database/__init__.py::InfrahubDatabase.execute_query_with_metadata`, after the results are read: call `recorder.record_query(path=get_current_field(), rows=len(results))` when `get_cost_recorder()` returns a recorder, and do nothing more when it returns `None` (FR-002). Read `dev/knowledge/backend/query-pattern.md` first; this is the single path for every query.
 - [ ] T013 [US1] In `backend/infrahub/graphql/resolvers/resolver.py` (`single_relationship_resolver`, `many_relationship_resolver`, `hierarchy_resolver`, `default_paginated_list_resolver`) and `backend/infrahub/graphql/resolvers/ipam.py::ipam_paginated_list_resolver`, when `get_cost_recorder()` returns a recorder:
     - run the existing body inside `resolving_field(field_path_from_info(info))`
-    - then call `record_call(path, nodes=count_returned_nodes(result))`
+    - call `record_call(path, field=<the field's FieldDescription>, nodes=count_returned_nodes(result))` in a `finally` block, with 0 nodes when the body raises, so that a failed attempt still counts as a call and every path with rows has a field description
     - keep the path without a recorder exactly as it is
     - record inside the function that `retry_db_transaction` wraps, so that a retry counts as a call
 - [ ] T014 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request`:

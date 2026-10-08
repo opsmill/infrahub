@@ -73,9 +73,8 @@ The median, the 95th percentile and the maximum are read from the histogram: the
 
 | Field | Type | Rule |
 | --- | --- | --- |
-| `version` | integer | Version loaded. |
-| `branch`, `computed_at`, `schema_hash` | as in the pointer | |
-| `kinds` | map of kind to `KindStatistics` | |
+| `pointer` | `StatisticsPointer` | The pointer of the version loaded: version, branch, computed time and schema hash. |
+| `kinds` | map of kind to `KindStatistics` | Kinds whose entry was loaded. |
 
 Lookup: `snapshot.side(identifier, direction, kind) -> RelationshipSideStatistics | None`.
 
@@ -110,17 +109,20 @@ Tree rules (critique E2):
 
 `CostFigures` (frozen): `nodes: int`, `resolver_calls: int`, `database_rows: int`.
 
+`FieldDescription` (frozen): `kind`, `relationship_identifier` (none for a top-level field) and `cardinality`. The cost details show it for every field.
+
 `FieldEstimate`:
 
 | Field | Type | Rule |
 | --- | --- | --- |
+| `field` | `FieldDescription` | The field the estimate is for. |
 | `expected` | `CostFigures` or none | None when `reason` is set. |
 | `worst_case` | `CostFigures` or none | None when `reason` is set. `worst_case ≥ expected` for each figure. |
 | `source` | `counted`, `statistics` or none | `counted` only for top-level fields and the fields directly under them, when the first step is counted. |
 | `worst_case_is_bound` | boolean | True only when the statistics describe the request's branch (main) and the request has no `at` time. Otherwise the worst case promises nothing (FR-008). |
-| `reason` | `no statistics` or none | Set when a kind or relationship side has no statistics (FR-012). |
+| `reason` | `no statistics` (`EstimateReason`) or none | Set when a kind or relationship side has no statistics (FR-012). When it is set, `source` is none and `worst_case_is_bound` is false. |
 
-`FieldActual`: `nodes`, `resolver_calls`, `database_rows` (integers, start at 0).
+`FieldActual`: `field` (the `FieldDescription` given by the resolver calls of the path, none until the first call), `nodes`, `resolver_calls`, `database_rows` (integers, start at 0). A path with rows and no resolver call has no description, so a resolver records its call even when its body raises.
 
 `QueryCostRecorder` (mutable, one for each request with the header): a map of field path to `FieldActual`. It records separately the queries and rows of the counted first step (`estimate_queries`), and the queries and rows that run while no field is set (`unattributed`).
 
