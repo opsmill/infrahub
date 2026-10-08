@@ -9,6 +9,7 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import type { PermissionDecision } from "@/entities/permission/domain/model/permission";
 import { getRepositoryCommitsColumns } from "@/entities/repository/ui/get-repository-commits-columns";
 import { useGetRepositoryCommits } from "@/entities/repository/ui/queries/get-repository-commits.query";
 import {
@@ -27,6 +28,8 @@ import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-com
 export interface RepositoryCommitsManagerProps {
   repositoryId: string;
   repositoryLocation: string | null;
+  isReadOnly: boolean;
+  updatePermission: PermissionDecision;
 }
 
 interface RetryInFlight {
@@ -41,6 +44,8 @@ const gridTemplateColumns = () =>
 export function RepositoryCommitsManager({
   repositoryId,
   repositoryLocation,
+  isReadOnly,
+  updatePermission,
 }: RepositoryCommitsManagerProps) {
   const {
     data,
@@ -94,7 +99,12 @@ export function RepositoryCommitsManager({
     if (emptyState) {
       return (
         <Col className="h-full gap-0">
-          <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
+          <RepositoryCommitsHeader
+            log={log}
+            repositoryId={repositoryId}
+            isReadOnly={isReadOnly}
+            updatePermission={updatePermission}
+          />
           <NoDataFound title={emptyState.title} message={emptyState.message} />
         </Col>
       );
@@ -103,7 +113,12 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
+      <RepositoryCommitsHeader
+        log={log}
+        repositoryId={repositoryId}
+        isReadOnly={isReadOnly}
+        updatePermission={updatePermission}
+      />
       {isShowingStaleCommits({
         firstPage: log,
         hasError: error !== null,

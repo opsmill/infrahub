@@ -44,6 +44,9 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:b9d552fb6c26ee6a1b590d9b7b7c2472 */
     "\n  mutation CANCEL_TASK($id: String!) {\n    InfrahubTaskCancel(data: { id: $id }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubTaskCancel: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { id: string; }, void>;
+    /** @gql.tada/hash sha256:09bdd17df426464c7eb389be48ae01a8 */
+    "\n  mutation CHECK_REMOTE_REFS($repositoryId: String!) {\n    InfrahubReadOnlyRepositoryCheckRefs(data: { id: $repositoryId }) {\n      ok\n      task {\n        id\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubReadOnlyRepositoryCheckRefs: { ok: boolean | null; task: { id: string | null; } | null; } | null; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:e008d025b0e36193d0cf48be6d2c8734 */
     "\n  mutation CHECK_REPOSITORY_CONNECTIVITY($repositoryId: String!) {\n    InfrahubRepositoryConnectivity(data: { id: $repositoryId }) {\n      ok\n      message\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubRepositoryConnectivity: { ok: boolean; message: string; } | null; }, { repositoryId: string; }, void>;
@@ -197,6 +200,12 @@ declare module 'gql.tada' {
     /** @gql.tada/hash sha256:66a9ed851f235dd6905782d33684ef61 */
     "\n  query InfrahubGlobalPreferences {\n    InfrahubGlobalPreferences {\n      date_format\n      timezone\n    }\n  }\n":
       TadaDocumentNode<{ InfrahubGlobalPreferences: { date_format: "EU_DATETIME" | "ISO_8601" | "ISO_DATETIME" | "ISO_DATETIME_SECONDS" | "US_12H" | null; timezone: string | null; }; }, {}, void>;
+    /** @gql.tada/hash sha256:cae0fa5c4287f01ca1b88e60df266edf */
+    "\n  query REPOSITORY_COMMITS($repositoryId: String!, $limit: Int, $offset: Int) {\n    InfrahubRepositoryCommits(repository_id: $repositoryId, limit: $limit, offset: $offset) {\n      repository_id\n      branch_name\n      git_ref\n      condition\n      imported_commit\n      remote_head\n      pending_count\n      fetched_at\n      checked_at\n      unavailable {\n        reason\n        message\n      }\n      edges {\n        node {\n          hash\n          short_hash\n          summary\n          author_name\n          authored_at\n          state\n        }\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubRepositoryCommits: { repository_id: string; branch_name: string; git_ref: string | null; condition: "BEHIND" | "IN_SYNC" | "NOT_TRACKED" | "NO_REMOTE" | "ORPHANED" | "REWRITTEN" | "UNAVAILABLE"; imported_commit: string | null; remote_head: string | null; pending_count: number | null; fetched_at: unknown; checked_at: unknown; unavailable: { reason: "NOT_CLONED" | "NOT_IMPLEMENTED" | "TIMEOUT"; message: string; } | null; edges: { node: { hash: string; short_hash: string; summary: string; author_name: string; authored_at: unknown; state: "HEAD" | "HISTORY" | "IMPORTED" | "PENDING" | "UNRELATED"; }; }[]; }; }, { offset?: number | null | undefined; limit?: number | null | undefined; repositoryId: string; }, void>;
+    /** @gql.tada/hash sha256:a9679f38f0e60bd934213f14f09b3e04 */
+    "\n  query REPOSITORY_COMMIT_STATUS($repositoryId: String!) {\n    InfrahubRepositoryCommits(repository_id: $repositoryId, limit: 1) {\n      condition\n      pending_count\n      unavailable {\n        reason\n      }\n    }\n  }\n":
+      TadaDocumentNode<{ InfrahubRepositoryCommits: { condition: "BEHIND" | "IN_SYNC" | "NOT_TRACKED" | "NO_REMOTE" | "ORPHANED" | "REWRITTEN" | "UNAVAILABLE"; pending_count: number | null; unavailable: { reason: "NOT_CLONED" | "NOT_IMPLEMENTED" | "TIMEOUT"; } | null; }; }, { repositoryId: string; }, void>;
     /** @gql.tada/hash sha256:429e5649c4987709aa0b3d4d4b4a6fc3 */
     "\n  query REPOSITORY_GROUP($nodeIds: [ID]) {\n    CoreRepositoryGroup(repository__ids: $nodeIds) {\n      edges {\n        node {\n          id\n        }\n      }\n    }\n  }\n":
       TadaDocumentNode<{ CoreRepositoryGroup: { edges: { node: { id: string; } | null; }[]; }; }, { nodeIds?: (string | null)[] | null | undefined; }, void>;

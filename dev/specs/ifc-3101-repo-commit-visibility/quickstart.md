@@ -156,10 +156,15 @@ uv run pytest backend/tests/component/message_bus/operations/git/test_commit_log
    remote. Within `INFRAHUB_GIT_READ_ONLY_REFS_CHECK_INTERVAL_MINS` (set to 1 for the test) the
    commit view shows `BEHIND`; the repository's `commit` attribute is unchanged; no import task ran.
 
-2. On demand: push again, run `InfrahubReadOnlyRepositoryCheckRefs`, observe `BEHIND` with the new
-   count before the interval elapses.
+2. On demand: push again, then press "Check remote now" on the repository's Commits tab (or run
+   `InfrahubReadOnlyRepositoryCheckRefs`). While the check runs, the button is disabled and a
+   "View task" link names the check's task. When the task ends, the commit view shows `BEHIND` with
+   the new count, before the interval elapses. The button is absent on a read-write repository and
+   disabled for a user without update permission on the repository.
 
-3. Idle cost: with no upstream change, the flow log shows a refs listing and no fetch.
+3. Idle cost: with no upstream change, the flow log shows a refs listing and no fetch. After an
+   on-demand check, the freshness line's check time is newer than before and the update time has
+   not changed (FR-007).
 
 4. Tag move: pin a read-only repository to a tag, move the tag upstream, run the check, then read a
    file at the imported commit through `GET /api/file/{repository_id}/...`. Expected: content still
@@ -199,6 +204,8 @@ Tests:
 
 ```bash
 uv run pytest backend/tests/component/git/test_check_refs.py backend/tests/integration/git/test_readonly_refs_check.py
+cd frontend/app && pnpm exec vitest run src/entities/repository/ui/repository-commits-tab.test.tsx && cd ../..
+INFRAHUB_TESTING_IMAGE_VER=local INFRAHUB_TESTING_DOCKER_PULL=false uv run pytest -c tests/e2e/pytest.ini tests/e2e/repository/test_repository_check_remote.py
 ```
 
 ## Phase D: branch drift

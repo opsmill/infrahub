@@ -72,6 +72,8 @@ const tab = () => (
       <RepositoryCommitsManager
         repositoryId="repo-1"
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
+        isReadOnly={false}
+        updatePermission={{ isAllowed: true }}
       />
     </div>
   </>

@@ -1,0 +1,108 @@
+"""On-demand remote check from a repository's Commits tab (IFC-3101 FR-015, FR-007, FR-025).
+
+The action exists only for read-only repositories, so this module registers one of its own: a
+throwaway git repository copied into the compose `repos` directory (mounted at /remote) with an
+empty `.infrahub.yml`, so its import adds no queries, transforms or definitions to the shared
+dataset. `demo-edge` stands in for the read-write kind. Nothing here needs network egress.
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+import pytest
+from infrahub_sdk.testing.repository import GitRepo, GitRepoType
+from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
+from playwright.async_api import expect
+
+pytestmark = pytest.mark.shard_branches_repo
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from infrahub_sdk import InfrahubClient
+    from playwright.async_api import Page
+
+READ_ONLY_REPO_NAME = "check-remote-read-only"
+CHECK_BUTTON = "Check remote now"
+CHECK_TIMEOUT_MS = 60_000
+
+COMMITS_FRESHNESS_QUERY = """
+query RepositoryFreshness($id: String!) {
+  InfrahubRepositoryCommits(repository_id: $id, limit: 1) {
+    fetched_at
+    checked_at
+  }
+}
+"""
+
+
+def commits_tab_url(kind: str, repository_id: str) -> str:
+    return f"/objects/{kind}/{repository_id}/repository_commits"
+
+
+async def read_freshness(client: InfrahubClient, repository_id: str) -> dict[str, str | None]:
+    response = await client.execute_graphql(
+        query=COMMITS_FRESHNESS_QUERY, variables={"id": repository_id}, tracker="query-repository-freshness"
+    )
+    return response["InfrahubRepositoryCommits"]
+
+
+@pytest.fixture(scope="module")
+async def read_only_repo_id(
+    infrahub_client: InfrahubClient,
+    infrahub_compose_dir: Path,
+    infrahub_provisioned_externally: bool,
+    tmp_path_factory: pytest.TempPathFactory,
+) -> str:
+    if infrahub_provisioned_externally:
+        pytest.skip("Needs a fixture remote in the compose repos directory")
+
+    source = tmp_path_factory.mktemp(READ_ONLY_REPO_NAME)
+    (source / ".infrahub.yml").write_text("---\nqueries: []\n", encoding="utf-8")
+    remote_dir = infrahub_compose_dir / PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_LOCAL_REMOTE_GIT_DIRECTORY"]
+    repo = GitRepo(type=GitRepoType.READ_ONLY, name=READ_ONLY_REPO_NAME, src_directory=source, dst_directory=remote_dir)
+    await repo.add_to_infrahub(client=infrahub_client)
+    if not await repo.wait_for_sync_to_complete(client=infrahub_client, retries=30):
+        raise RuntimeError(f"The {READ_ONLY_REPO_NAME} repository did not reach the in-sync state")
+
+    node = await infrahub_client.get(kind="CoreReadOnlyRepository", name__value=READ_ONLY_REPO_NAME)
+    return node.id
+
+
+@pytest.mark.usefixtures("demo_edge_repo")
+class TestRepositoryCheckRemote:
+    async def test_check_is_offered_on_read_only_repositories_only(
+        self, admin_page: Page, infrahub_client: InfrahubClient, read_only_repo_id: str
+    ) -> None:
+        await admin_page.goto(commits_tab_url("CoreReadOnlyRepository", read_only_repo_id))
+        await expect(admin_page.get_by_role("button", name=CHECK_BUTTON)).to_be_enabled()
+
+        demo_edge = await infrahub_client.get(kind="CoreRepository", name__value="demo-edge")
+        await admin_page.goto(commits_tab_url("CoreRepository", demo_edge.id))
+        await expect(admin_page.get_by_text(re.compile(r"^Tracking "))).to_be_visible()
+        await expect(admin_page.get_by_role("button", name=CHECK_BUTTON)).to_have_count(0)
+
+    async def test_check_links_its_task_and_advances_the_check_time(
+        self, admin_page: Page, infrahub_client: InfrahubClient, read_only_repo_id: str
+    ) -> None:
+        before = await read_freshness(infrahub_client, read_only_repo_id)
+
+        await admin_page.goto(commits_tab_url("CoreReadOnlyRepository", read_only_repo_id))
+        check_button = admin_page.get_by_role("button", name=CHECK_BUTTON)
+        await check_button.click()
+
+        task_link = admin_page.get_by_role("link", name="View task")
+        await expect(task_link).to_have_attribute("href", re.compile(r"/tasks/[\w-]+$"))
+        await expect(check_button).to_be_disabled()
+
+        await expect(task_link).to_have_count(0, timeout=CHECK_TIMEOUT_MS)
+        await expect(check_button).to_be_enabled()
+        await expect(admin_page.get_by_text(re.compile(r"^Checked "))).to_be_visible()
+
+        after = await read_freshness(infrahub_client, read_only_repo_id)
+        assert after["checked_at"] is not None
+        if before["checked_at"] is not None:
+            assert datetime.fromisoformat(after["checked_at"]) > datetime.fromisoformat(before["checked_at"])
