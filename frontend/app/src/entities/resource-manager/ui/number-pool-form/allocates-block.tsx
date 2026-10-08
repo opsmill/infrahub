@@ -47,7 +47,13 @@ export function AllocatesBlock(props: AllocatesBlockProps) {
   }
 
   return (
-    <AllocatesLayout>
+    <AllocatesLayout
+      note={
+        props.scopeField
+          ? "The scope is optional. Only required fields can be used, and every object needs a value for them."
+          : undefined
+      }
+    >
       <AllocatesInputs scopeField={props.scopeField} />
     </AllocatesLayout>
   );
@@ -118,6 +124,16 @@ function AllocatesInputs({ scopeField }: { scopeField?: ReactNode }) {
   );
   const numberAttributeOptions =
     selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
+
+  function removeFromScope(fieldName: string) {
+    const scope: string[] = form.getValues(NUMBER_POOL_ALLOCATION_SCOPE_FIELD) ?? [];
+    if (scope.includes(fieldName)) {
+      form.setValue(
+        NUMBER_POOL_ALLOCATION_SCOPE_FIELD,
+        scope.filter((name) => name !== fieldName)
+      );
+    }
+  }
 
   return (
     <>
@@ -206,6 +222,7 @@ function AllocatesInputs({ scopeField }: { scopeField?: ReactNode }) {
                             field.onChange(
                               updateFormFieldValue(attribute.name, DEFAULT_FORM_FIELD_VALUE)
                             );
+                            removeFromScope(attribute.name);
                             setOpen(false);
                           }}
                         >

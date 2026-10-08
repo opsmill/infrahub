@@ -158,6 +158,33 @@ describe("AllocatesBlock", () => {
       });
     });
 
+    test("removes the newly chosen attribute from the scope", async () => {
+      // GIVEN
+      const formRef = createRef<FormRef>();
+      const component = await render(
+        <TestForm
+          ref={formRef}
+          defaultValues={{
+            node: { source: { type: "user" }, value: "InfraInterface" },
+            node_attribute: { source: { type: "user" }, value: "speed" },
+            allocation_scope: ["device", "mtu"],
+          }}
+        >
+          <AllocatesBlock variant="input" />
+        </TestForm>
+      );
+      await component.getByRole("combobox", { name: "Attribute *" }).click();
+
+      // WHEN
+      await component.getByRole("option", { name: "MTU" }).click();
+
+      // THEN
+      await expect
+        .element(component.getByRole("combobox", { name: "Attribute *" }))
+        .toHaveTextContent("MTU");
+      expect(formRef.current?.getValues("allocation_scope")).toEqual(["device"]);
+    });
+
     test("shows the scope field under Scoped by", async () => {
       // GIVEN
       const scopeField = <span>scope picker</span>;
@@ -172,6 +199,7 @@ describe("AllocatesBlock", () => {
       // THEN
       await expect.element(component.getByText("Scoped by")).toBeVisible();
       await expect.element(component.getByText("scope picker")).toBeVisible();
+      await expect.element(component.getByText(/The scope is optional/)).toBeVisible();
     });
   });
 });

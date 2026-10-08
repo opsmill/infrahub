@@ -1,3 +1,4 @@
+import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
 import type { ScopeCandidate } from "@/entities/resource-manager/domain/model/scope-candidate";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
@@ -5,6 +6,9 @@ import type {
   ModelSchema,
   RelationshipSchema,
 } from "@/entities/schema/domain/model/schema";
+
+// Infrahub adds these to every kind and they never identify a scope; Hierarchy is kept because a required `parent` can.
+const SYSTEM_RELATIONSHIP_KINDS: RelationshipKind[] = ["Group", "Profile", "Template"];
 
 function getAttributeUnavailableReason(
   attribute: AttributeSchema,
@@ -45,17 +49,19 @@ export function getScopeCandidates(schema: ModelSchema, nodeAttribute: string): 
     )
   );
 
-  const relationships = (schema.relationships ?? []).map((relationship) =>
-    toCandidate(
-      {
-        name: relationship.name,
-        label: relationship.label ?? relationship.name,
-        type: "relationship",
-        detail: relationship.peer,
-      },
-      getRelationshipUnavailableReason(relationship)
-    )
-  );
+  const relationships = (schema.relationships ?? [])
+    .filter(({ kind }) => !SYSTEM_RELATIONSHIP_KINDS.includes(kind))
+    .map((relationship) =>
+      toCandidate(
+        {
+          name: relationship.name,
+          label: relationship.label ?? relationship.name,
+          type: "relationship",
+          detail: relationship.peer,
+        },
+        getRelationshipUnavailableReason(relationship)
+      )
+    );
 
   return [...attributes, ...relationships];
 }

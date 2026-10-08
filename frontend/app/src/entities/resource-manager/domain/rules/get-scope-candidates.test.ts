@@ -13,6 +13,7 @@ const attribute = (overrides: Partial<AttributeSchema>): AttributeSchema =>
 
 const relationship = (overrides: Partial<RelationshipSchema>): RelationshipSchema => ({
   ...baseRelationship,
+  kind: "Generic",
   ...overrides,
 });
 
@@ -156,6 +157,44 @@ describe("getScopeCandidates", () => {
 
     // THEN
     expect(candidates.every((candidate) => !candidate.name.includes("__"))).toBe(true);
+  });
+
+  it("leaves out the group, profile and template relationships that every kind has", () => {
+    // GIVEN
+    const withSystemRelationships = generateNodeSchema({
+      attributes: [],
+      relationships: [
+        relationship({ name: "member_of_groups", kind: "Group", cardinality: "many" }),
+        relationship({ name: "subscriber_of_groups", kind: "Group", cardinality: "many" }),
+        relationship({ name: "profiles", kind: "Profile", cardinality: "many" }),
+        relationship({ name: "object_template", kind: "Template", cardinality: "one" }),
+        relationship({
+          name: "parent",
+          label: "Parent",
+          peer: "LocationRegion",
+          kind: "Hierarchy",
+          cardinality: "one",
+          optional: false,
+        }),
+        relationship({
+          name: "device",
+          label: "Device",
+          peer: "InfraDevice",
+          kind: "Parent",
+          cardinality: "one",
+          optional: false,
+        }),
+      ],
+    });
+
+    // WHEN
+    const candidates = getScopeCandidates(withSystemRelationships, "number");
+
+    // THEN
+    expect(candidates).toEqual([
+      { name: "parent", label: "Parent", type: "relationship", detail: "LocationRegion" },
+      { name: "device", label: "Device", type: "relationship", detail: "InfraDevice" },
+    ]);
   });
 
   it("returns no candidates for a kind without fields", () => {

@@ -25,6 +25,7 @@ import type {
   StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
 import {
+  NUMBER_POOL_ALLOCATION_SCOPE_FIELD,
   NUMBER_POOL_KIND,
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
@@ -42,6 +43,7 @@ import {
   RANGES_FIELD,
   RangesField,
 } from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
+import { ScopeField } from "@/entities/resource-manager/ui/number-pool-form/scope-field";
 import { useApplyNumberPoolRangeChangesMutation } from "@/entities/resource-manager/ui/queries/apply-number-pool-range-changes.mutation";
 import {
   getNumberPoolForEditingQueryOptions,
@@ -166,7 +168,11 @@ const NumberPoolFormContent = ({
   }
 
   async function createPool(data: FieldValues) {
-    const { [RANGES_FIELD]: _rows, ...poolFields } = data;
+    const {
+      [RANGES_FIELD]: _rows,
+      [NUMBER_POOL_ALLOCATION_SCOPE_FIELD]: scope = [],
+      ...poolFields
+    } = data;
     if (createdPool) {
       const { ranges } = await queryClient.ensureQueryData(getPoolOptions(createdPool.id));
       await saveRanges(createdPool, ranges, data, "Number pool created");
@@ -177,7 +183,10 @@ const NumberPoolFormContent = ({
     const pool = await createObject
       .mutateAsync({
         objectKind: NUMBER_POOL_KIND,
-        data: getCreateMutationFromFormDataOnly(poolFields),
+        data: {
+          ...getCreateMutationFromFormDataOnly(poolFields),
+          ...(scope.length > 0 && { [NUMBER_POOL_ALLOCATION_SCOPE_FIELD]: { value: scope } }),
+        },
       })
       .catch(() => null);
     if (!pool) return;
@@ -223,7 +232,7 @@ const NumberPoolFormContent = ({
             scope={storedPool?.allocationScope ?? []}
           />
         ) : (
-          <AllocatesBlock variant="input" />
+          <AllocatesBlock variant="input" scopeField={<ScopeField />} />
         )}
 
         {rangeSaveError && <Alert type={ALERT_TYPES.ERROR} message={rangeSaveError} />}

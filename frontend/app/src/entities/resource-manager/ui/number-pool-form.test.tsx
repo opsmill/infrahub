@@ -25,6 +25,17 @@ const interfaceSchema = generateNodeSchema({
   namespace: "Infra",
   label: "Interface",
   attributes: [generateAttributeSchema({ name: "speed", label: "Speed", kind: "Number" })],
+  relationships: [
+    {
+      ...generateNodeSchema().relationships![0]!,
+      name: "device",
+      label: "Device",
+      peer: "InfraDevice",
+      kind: "Parent",
+      cardinality: "one",
+      optional: false,
+    },
+  ],
 });
 
 const createdPool = { id: "pool-1", display_label: "VLAN pool", __typename: "CoreNumberPool" };
@@ -136,6 +147,28 @@ describe("NumberPoolForm", () => {
           { start: 100, end: 199, weight: 10 },
           { start: 300, end: 399, weight: null },
         ],
+      },
+    });
+  });
+
+  test("creates the pool with the chosen scope as bare field names", async () => {
+    // GIVEN
+    const component = await renderFilledCreateForm();
+    await component.getByRole("button", { name: "No relationship or attribute" }).click();
+    await component.getByRole("option", { name: /^Device/ }).click();
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.poll(() => onSuccess).toHaveBeenCalledWith(createdPool);
+    expect(createPool).toHaveBeenCalledWith({
+      objectKind: "CoreNumberPool",
+      data: {
+        name: { value: "VLAN pool" },
+        node: { value: "InfraInterface" },
+        node_attribute: { value: "speed" },
+        allocation_scope: { value: ["device"] },
       },
     });
   });
