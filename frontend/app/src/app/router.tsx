@@ -288,6 +288,12 @@ export const router = createBrowserRouter([
                   },
                 ],
               },
+              // PROTO number-pool — remove with the prototype
+              {
+                path: "/proto/number-pool",
+                lazy: () => import("@/pages/proto/number-pool"),
+              },
+              // END PROTO number-pool
               {
                 path: "/resource-manager",
                 children: [
