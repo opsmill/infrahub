@@ -175,14 +175,21 @@ def whole_kind_python_target(*, kind: str, attribute_name: str) -> AffectedTarge
     )
 
 
-def owned_python_target(
-    *, target: AffectedTarget, attribute_name: str, repository_id: str | None
-) -> OwnedRegeneration[PythonTargetRequest]:
-    """The barrier candidate of one Python computed attribute target."""
+def owned_python_target(*, target: AffectedTarget, repository_id: str | None) -> OwnedRegeneration[PythonTargetRequest]:
+    """The barrier candidate of one Python computed attribute target.
+
+    Raises:
+        ValueError: The target names no attribute, so it has no identity to hold.
+
+    """
+    if target.attribute_name is None:
+        raise ValueError(f"Cannot hold a Python target of {target.target_kind} that names no attribute")
     return OwnedRegeneration(
         repository_id=repository_id,
         held=HeldRegeneration(
-            python_attributes=(HeldPythonAttribute(kind=target.target_kind, attribute=attribute_name, hold_seq=0),)
+            python_attributes=(
+                HeldPythonAttribute(kind=target.target_kind, attribute=target.attribute_name, hold_seq=0),
+            )
         ),
         request=PythonTargetRequest(target=target),
         union=_join_python_requests,
@@ -656,7 +663,6 @@ async def _resolve_python_targets(
     candidates = [
         owned_python_target(
             target=target,
-            attribute_name=target.attribute_name,
             repository_id=resolver.owner_of(
                 kind=target.target_kind, attribute_name=target.attribute_name, branch=branch
             ),

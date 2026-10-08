@@ -813,7 +813,6 @@ async def computed_attribute_setup_python(
             candidates = [
                 owned_python_target(
                     target=whole_kind_python_target(kind=ref.kind, attribute_name=ref.attribute_name),
-                    attribute_name=ref.attribute_name,
                     repository_id=owners.get((ref.kind, ref.attribute_name)),
                 )
                 for ref in report.selected
