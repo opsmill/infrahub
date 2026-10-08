@@ -22,7 +22,8 @@ async def read_pending_merges(
     """Return a new queue entry, by repository id, for each repository whose content the merge of the branch changes.
 
     The merge changes no content of a repository when the branch holds no commit for it, or when the branch holds
-    the commit that the default branch held when the branch was created, or the commit that it holds now.
+    the commit that the default branch held when the branch was created or last rebased, or the commit that
+    it holds now.
     """
     if not repository_ids:
         return {}

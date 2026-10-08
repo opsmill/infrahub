@@ -146,6 +146,7 @@ def test_a_corrupt_object_store_raises_instead_of_answering(clone: DeliveryClone
         build_adapter(repository=clone.repository).is_ancestor(ancestor=clone.trunk, descendant=clone.feature)
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="chmod does not stop root from reading a file")
 def test_an_unreadable_object_store_raises_with_no_path_of_the_worker(clone: DeliveryClone) -> None:
     main = clone.repository.get_git_repo_main()
     main.git.repack("-a", "-d")
