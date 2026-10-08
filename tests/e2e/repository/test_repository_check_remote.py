@@ -127,7 +127,9 @@ class TestRepositoryCheckRemote:
     ) -> None:
         await read_only_page.goto(commits_tab_url("CoreReadOnlyRepository", read_only_repo_id))
         check_button = read_only_page.get_by_role("button", name=CHECK_BUTTON)
-        await check_button.hover()
+        # Focus rather than hover: React Aria opens the tooltip at once on focus, while hover first
+        # needs a prior pointer interaction. The button stays focusable while it lacks permission.
+        await check_button.focus()
         # The tooltip names the permission, so the button is not disabled by a running check instead.
         await expect(read_only_page.get_by_role("tooltip")).to_have_text(
             "You don't have permission to update this object."
