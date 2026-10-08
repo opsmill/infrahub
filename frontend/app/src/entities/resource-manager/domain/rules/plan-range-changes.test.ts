@@ -32,6 +32,8 @@ const row = (start: string, end: string, weight = "", rangeId?: string): RangeRo
   weight,
 });
 
+const idsOf = (ranges: StoredRange[]) => new Set(ranges.map(({ id }) => id));
+
 describe("sortStoredRanges", () => {
   it("sorts by weight descending with an empty weight as 0, then by start", () => {
     // GIVEN
@@ -95,7 +97,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "10", "5", "a"), row(" 11 ", "20", "", "b")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes).toEqual({ deletes: [], smaller: [], larger: [], creates: [] });
@@ -107,10 +109,22 @@ describe("diffRanges", () => {
     const rows = [row("1", "10", "", "a")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes).toEqual({ deletes: ["b"], smaller: [], larger: [], creates: [] });
+  });
+
+  it("keeps a stored range that is not among the known ranges", () => {
+    // GIVEN
+    const ranges = [stored("a", 1, 10), stored("b", 11, 20)];
+    const rows = [row("1", "10", "", "a")];
+
+    // WHEN
+    const changes = diffRanges(ranges, rows, new Set(["a"]));
+
+    // THEN
+    expect(changes).toEqual({ deletes: [], smaller: [], larger: [], creates: [] });
   });
 
   it("creates rows without a stored range, with an empty weight as null", () => {
@@ -118,7 +132,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "10"), row("20", "30", "3")];
 
     // WHEN
-    const changes = diffRanges([], rows);
+    const changes = diffRanges([], rows, new Set());
 
     // THEN
     expect(changes).toEqual({
@@ -138,7 +152,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "10", "", "a")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes).toEqual({
@@ -155,7 +169,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "15", "", "a"), row("16", "20", "", "b")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes).toEqual({
@@ -172,7 +186,7 @@ describe("diffRanges", () => {
     const rows = [row("5", "15", "2", "a")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes.larger).toEqual([{ id: "a", start: 5n, end: 15n, weight: 2 }]);
@@ -184,7 +198,7 @@ describe("diffRanges", () => {
     const rows = [row("11", "20", "", "a"), row("21", "30", "", "b")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes.larger).toEqual([
@@ -199,7 +213,7 @@ describe("diffRanges", () => {
     const rows = [row("11", "20", "", "a"), row("1", "10", "", "b")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes.larger.map((update) => update.id)).toEqual(["a", "b"]);
@@ -210,7 +224,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "10", "", "gone")];
 
     // WHEN
-    const changes = diffRanges([], rows);
+    const changes = diffRanges([], rows, new Set());
 
     // THEN
     expect(changes.creates).toEqual([{ start: 1n, end: 10n, weight: null }]);
@@ -222,7 +236,7 @@ describe("diffRanges", () => {
     const rows = toRangeRows(ranges);
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(hasRangeChanges(changes)).toBe(false);
@@ -234,7 +248,7 @@ describe("diffRanges", () => {
     const rows = [row("1", "9007199254740993", "", "a")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes.larger).toEqual([{ id: "a", start: 1n, end: 9007199254740993n, weight: null }]);
@@ -246,7 +260,7 @@ describe("diffRanges", () => {
     const rows = [row("10", "90", "", "a"), row("150", "300", "", "b"), row("600", "700")];
 
     // WHEN
-    const changes = diffRanges(ranges, rows);
+    const changes = diffRanges(ranges, rows, idsOf(ranges));
 
     // THEN
     expect(changes).toEqual({
@@ -336,7 +350,7 @@ describe("toRangeRows", () => {
 describe("hasRangeChanges", () => {
   it("is false when no group has a change", () => {
     // GIVEN
-    const changes = diffRanges([stored("a", 1, 10)], [row("1", "10", "", "a")]);
+    const changes = diffRanges([stored("a", 1, 10)], [row("1", "10", "", "a")], new Set(["a"]));
 
     // WHEN
     const result = hasRangeChanges(changes);
@@ -347,7 +361,7 @@ describe("hasRangeChanges", () => {
 
   it("is true when one group has a change", () => {
     // GIVEN
-    const changes = diffRanges([stored("a", 1, 10)], []);
+    const changes = diffRanges([stored("a", 1, 10)], [], new Set(["a"]));
 
     // WHEN
     const result = hasRangeChanges(changes);

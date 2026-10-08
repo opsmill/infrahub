@@ -39,6 +39,10 @@ function toPoolFields(pool: NumberPoolForEditing) {
   return { name: { value: pool.name }, description: { value: pool.description } };
 }
 
+function linkedRangeIds(rows: RangeRow[]): string[] {
+  return rows.flatMap((row) => (row.rangeId ? [row.rangeId] : []));
+}
+
 export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolParams) {
   const { currentBranch } = useCurrentBranch();
   const queryClient = useQueryClient();
@@ -48,6 +52,9 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
 
   const [createdPoolId, setCreatedPoolId] = useState<string | null>(null);
   const [rangeSaveError, setRangeSaveError] = useState<string | null>(null);
+  const [knownRangeIds, setKnownRangeIds] = useState<ReadonlySet<string>>(
+    () => new Set(initialPool?.ranges.map(({ id }) => id))
+  );
   const poolId = initialPool?.id ?? createdPoolId ?? undefined;
   const isSchemaPool = initialPool?.poolType === "Schema";
 
@@ -65,7 +72,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     rows: RangeRow[],
     successMessage: string
   ): Promise<RangeRow[] | null> {
-    const changes = diffRanges(stored, matchRowsToStored(rows, stored));
+    const changes = diffRanges(stored, matchRowsToStored(rows, stored), knownRangeIds);
     const { errorMessage } =
       !isSchemaPool && hasRangeChanges(changes)
         ? await applyRangeChanges.mutateAsync({ poolId: pool.id, changes })
@@ -83,7 +90,9 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     setRangeSaveError(errorMessage);
     // Rows left unlinked here are linked on the next save, which reads the stored ranges again.
     const refreshed = await fetchStoredPool(pool.id).catch(() => null);
-    return refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
+    const keptRows = refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
+    setKnownRangeIds((known) => new Set([...known, ...linkedRangeIds(keptRows)]));
+    return keptRows;
   }
 
   async function createPool(data: FieldValues): Promise<RangeRow[] | null> {

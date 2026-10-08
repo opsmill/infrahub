@@ -65,12 +65,21 @@ function orderLargerUpdates(
   return ordered;
 }
 
-/** Expects rows without validation errors. */
-export function diffRanges(stored: StoredRange[], rows: RangeRow[]): RangeChanges {
+/**
+ * Expects rows without validation errors. Deletes only the known ranges that no row links to, so a range
+ * added elsewhere after the rows were loaded is kept.
+ */
+export function diffRanges(
+  stored: StoredRange[],
+  rows: RangeRow[],
+  knownRangeIds: ReadonlySet<string>
+): RangeChanges {
   const storedById = new Map(stored.map((range) => [range.id, range]));
   const linkedIds = new Set(rows.flatMap((row) => (row.rangeId ? [row.rangeId] : [])));
   const changes: RangeChanges = {
-    deletes: stored.filter((range) => !linkedIds.has(range.id)).map((range) => range.id),
+    deletes: stored
+      .filter((range) => knownRangeIds.has(range.id) && !linkedIds.has(range.id))
+      .map((range) => range.id),
     smaller: [],
     larger: [],
     creates: [],

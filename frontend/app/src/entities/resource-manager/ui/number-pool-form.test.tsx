@@ -396,6 +396,38 @@ describe("NumberPoolForm", () => {
       expect(component.getByRole("combobox", { name: "Node *" }).elements()).toHaveLength(0);
     });
 
+    test("reopening the form lists the stored ranges read again, not the ranges from the last opening", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      await component.rerender(<div />);
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(storedPool);
+
+      // WHEN
+      await component.rerender(<NumberPoolForm currentObject={currentObject} />);
+
+      // THEN
+      await expect
+        .poll(() => component.getByRole("textbox", { name: "Start" }).elements())
+        .toHaveLength(1);
+      await expect.element(component.getByRole("textbox", { name: "Start" })).toHaveValue("100");
+    });
+
+    test("keeps a range added elsewhere after the form loaded when saving", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
+        ...poolWithRanges,
+        ranges: [...poolWithRanges.ranges, { id: "range-9", start: 900n, end: 999n, weight: null }],
+      });
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(applyRangeChanges).not.toHaveBeenCalled();
+    });
+
     test("a name-only change updates the pool and sends no range call", async () => {
       // GIVEN
       const component = await renderEditForm();
