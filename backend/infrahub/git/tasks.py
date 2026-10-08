@@ -39,6 +39,7 @@ from infrahub.core.constants import (
     ValidatorConclusion,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreGenericAccount
 from infrahub.core.regeneration.definitions import selects_repository
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
@@ -84,6 +85,7 @@ from .models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
+    GitRepositoryDeliveryAbandon,
     GitRepositoryDeliveryRetry,
     GitRepositoryImportObjects,
     GitRepositoryMerge,
@@ -110,8 +112,8 @@ from .sync import (
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 from .writeback.content import read_pending_merges
-from .writeback.factory import build_writeback_service
-from .writeback.models import DeliveryOutcome, PendingMerge
+from .writeback.factory import build_writeback_abandoner, build_writeback_service
+from .writeback.models import Actor, DeliveryOutcome, PendingMerge
 from .writeback.service import RepositoryWritebackService
 
 
@@ -1166,6 +1168,32 @@ async def retry_repository_delivery(model: GitRepositoryDeliveryRetry, context: 
     if outcome in {DeliveryOutcome.FAILED, DeliveryOutcome.UNREPLAYABLE}:
         return Failed(message=message)
     return Completed(message=message)
+
+
+@flow(
+    name="git-repository-delivery-abandon",
+    flow_run_name="Abandon the pending pushes of git repository {model.repository_name}",
+)
+async def abandon_repository_delivery(model: GitRepositoryDeliveryAbandon, context: InfrahubContext) -> None:
+    log = get_run_logger()
+    await add_tags(nodes=[model.repository_id])
+
+    repo = await InfrahubRepository.init(
+        id=model.repository_id,
+        name=model.repository_name,
+        client=get_client(),
+        infrahub_branch_name=registry.default_branch,
+    )
+    database = await get_database()
+    async with database.start_session() as db:
+        account = await NodeManager.get_one(
+            db=db, kind=CoreGenericAccount, id=context.account.account_id, raise_on_error=True
+        )
+        abandoner = await build_writeback_abandoner(db=db, repository=repo, context=context, log=log)
+        await abandoner.abandon(
+            queue_version=model.queue_version,
+            actor=Actor(account_id=context.account.account_id, account_name=account.name.value),
+        )
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")

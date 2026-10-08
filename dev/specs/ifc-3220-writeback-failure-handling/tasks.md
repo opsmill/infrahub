@@ -549,8 +549,8 @@ release.
 **Maps to**: FR-005b, FR-008, FR-009, FR-015, FR-024, SC-006. **T085 to T093 are in the deployment
 rule.** T094 is not.
 
-- [ ] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
-- [ ] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
+- [X] T085 [P] [US5] Add `GitRepositoryDeliveryAbandon` to `backend/infrahub/git/models.py`.
+- [X] T086 [US5] Write `WritebackAbandoner.abandon` in `backend/infrahub/git/writeback/abandoner.py`, the
       flow `abandon_repository_delivery` in `backend/infrahub/git/tasks.py`, and the catalogue entry
       `GIT_REPOSITORY_DELIVERY_ABANDON`, per [research.md](research.md) R8. The actor comes from the
       workflow context. The abandonment sends `RefreshGitRepositoryBranchDeleted` for every abandoned
@@ -563,7 +563,7 @@ rule.** T094 is not.
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`. **Gate: GraphQL and authorization sign-off; spec
       decision 1.**
-- [ ] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
+- [X] T088 [US5] Write `backend/tests/unit/git/writeback/test_abandoner.py`: a stale version and an empty
       queue refuse; the entries leave and the lease is taken before the release; the broadcast is sent
       for flagged entries only; the release runs after the lock is released; `clear_released` keeps a
       later hold; a crash between the removal and the clear leaves a lease that expires, and the

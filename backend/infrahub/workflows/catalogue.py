@@ -239,6 +239,14 @@ GIT_REPOSITORY_DELIVERY_RETRY = WorkflowDefinition(
     tags=[WorkflowTag.DATABASE_CHANGE],
 )
 
+GIT_REPOSITORY_DELIVERY_ABANDON = WorkflowDefinition(
+    name="git-repository-delivery-abandon",
+    type=WorkflowType.CORE,
+    module="infrahub.git.tasks",
+    function="abandon_repository_delivery",
+    tags=[WorkflowTag.DATABASE_CHANGE],
+)
+
 BRANCH_REBASE = WorkflowDefinition(
     name="branch-rebase",
     type=WorkflowType.CORE,
@@ -738,6 +746,7 @@ WORKFLOWS = [
     GIT_REPOSITORIES_SYNC,
     GIT_REPOSITORY_ADD,
     GIT_REPOSITORY_ADD_READ_ONLY,
+    GIT_REPOSITORY_DELIVERY_ABANDON,
     GIT_REPOSITORY_DELIVERY_RETRY,
     GIT_REPOSITORY_IMPORT_STATUS_CHECKS_RUN,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
