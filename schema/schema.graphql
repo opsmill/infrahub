@@ -10071,6 +10071,10 @@ type Mutation {
   InfrahubReadOnlyRepositoryImportLastCommit(data: IdentifierInput!): ReadOnlyRepositoryImportLastCommit
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
+  """
+  Push every pending merge of a repository to its remote, in order, in a single push.
+  """
+  InfrahubRepositoryDeliveryRetry(data: RepositoryDeliveryRetryInput!): RepositoryDeliveryRetry
   InfrahubRepositoryProcess(data: IdentifierInput!): ProcessRepository
   """
   Write preferences for one writable scope, USER or GLOBAL.
@@ -27183,6 +27187,16 @@ type RelationshipRemove {
 type Relationships {
   count: Int!
   edges: [RelationshipNode!]!
+}
+
+type RepositoryDeliveryRetry {
+  ok: Boolean
+  task: TaskInfo
+}
+
+input RepositoryDeliveryRetryInput {
+  """The id of the CoreRepository"""
+  id: String!
 }
 
 type RequiredStringValueField {

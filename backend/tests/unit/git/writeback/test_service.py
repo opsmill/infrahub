@@ -260,6 +260,20 @@ async def test_entry_is_queued_before_the_snapshot_and_delivered(rig: Rig) -> No
     assert rig.intent.held == HeldRegeneration(next_hold_seq=2)
 
 
+async def test_every_pending_merge_is_replayed_in_order_and_pushed_once(rig: Rig) -> None:
+    await rig.queue(_merge(), OTHER_MERGE)
+
+    result = await rig.deliver()
+
+    delivered = f"{TRUNK}+{FEATURE}+{OTHER}"
+    assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DELIVERED, commit=delivered)
+    assert rig.git.pushed == [delivered]
+    assert rig.git.recorded == [delivered]
+    assert rig.intent.queue.entries == ()
+    assert rig.intent.queue.removed_entry_ids == ("merge-1", "merge-2")
+    assert rig.intent.last_delivered_commit == delivered
+
+
 async def test_failed_enqueue_is_retried_before_the_final_attempt(rig: Rig) -> None:
     rig.state.failures["enqueue"] = [DatabaseError(message="Unable to connect to the database")]
     before = rig.intent
