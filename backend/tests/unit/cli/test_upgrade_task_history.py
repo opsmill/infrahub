@@ -1,0 +1,250 @@
+from __future__ import annotations
+
+import ast
+import inspect
+import re
+import textwrap
+from datetime import timedelta
+from typing import TYPE_CHECKING
+
+import httpx
+import typer
+
+from infrahub.cli.tasks import TASK_HISTORY_CLEANUP_RERUN_HINT
+from infrahub.cli.upgrade import _upgrade_execute, upgrade_cmd, upgrade_task_history
+from tests.helpers.task_history_api import (
+    CLEANUP_PATH,
+    RecordedConsole,
+    RecordedRequest,
+    ScriptedTaskManager,
+    polled,
+    route_missing,
+    running_elsewhere,
+    started,
+    unreachable,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from prefect.client.orchestration import PrefectClient
+
+STEP_HEADER = re.compile(r"^\[bold\]Step (?P<number>\d+)/(?P<total>\d+): (?P<name>.+)\[/bold\]$")
+
+
+class RecordingClientFactory:
+    def __init__(self, task_manager: ScriptedTaskManager) -> None:
+        self._task_manager = task_manager
+        self.calls = 0
+
+    def __call__(self) -> PrefectClient:
+        self.calls += 1
+        return self._task_manager.client()
+
+
+def _upgrade_outline() -> list[str]:
+    """The step headers and the task history cleanup calls of the upgrade, in source order."""
+    tree = ast.parse(textwrap.dedent(inspect.getsource(_upgrade_execute)))
+    outline: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and (match := STEP_HEADER.match(node.value)):
+            outline.append((node.lineno, node.col_offset, f"Step {match['number']}/{match['total']}: {match['name']}"))
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "upgrade_task_history":
+            outline.append((node.lineno, node.col_offset, "upgrade_task_history()"))
+    return [entry for *_, entry in sorted(outline)]
+
+
+def _calls(function: Callable[..., object], name: str) -> list[ast.Call]:
+    tree = ast.parse(textwrap.dedent(inspect.getsource(function)))
+    return [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == name
+    ]
+
+
+def _keywords(call: ast.Call) -> dict[str, str]:
+    return {keyword.arg: ast.unparse(keyword.value) for keyword in call.keywords if keyword.arg is not None}
+
+
+def test_the_upgrade_runs_the_task_history_cleanup_as_step_six_of_seven() -> None:
+    """The upgrade announces seven numbered steps and runs the task history cleanup in the one after the task manager."""
+    assert _upgrade_outline() == [
+        "Step 1/7: Database migrations",
+        "Step 2/7: Internal schema",
+        "Step 3/7: Core schema",
+        "Step 4/7: Internal objects",
+        "Step 5/7: Task manager",
+        "Step 6/7: Task history cleanup",
+        "upgrade_task_history()",
+        "Step 7/7: Branch rebase",
+    ]
+
+
+async def test_the_step_asks_for_a_rewrite_only_when_most_of_the_tables_is_free_space() -> None:
+    """The upgrade's cleanup asks for a rewrite only if more than half of the tables' disk space is free, then summarises."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(rewrite="if_freed"),
+            polled(
+                rewrite="if_freed",
+                state="completed",
+                rewritten=True,
+                current_day="2026-01-16",
+                deleted_runs=40,
+                size_before=3_000_000,
+                size_after=1_000_000,
+            ),
+        ]
+    )
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert task_manager.requests == [
+        RecordedRequest(method="POST", path=CLEANUP_PATH, body={"rewrite": "if_freed"}),
+        RecordedRequest(method="GET", path=f"{CLEANUP_PATH}/job-1"),
+    ]
+    assert console.lines == [
+        "Deleted 40 runs that ended before 2026-09-04 00:00 UTC",
+        "Task history tables: 3.0 MB before, 1.0 MB after",
+        "Task history tables rewritten",
+    ]
+
+
+async def test_the_step_is_skipped_without_reaching_the_task_manager() -> None:
+    """A skipped step says so and never builds a task manager client."""
+    task_manager = ScriptedTaskManager(responses=[])
+    client_factory = RecordingClientFactory(task_manager=task_manager)
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=True, client_factory=client_factory, console=console.console, poll_interval=timedelta(0)
+    )
+
+    assert (client_factory.calls, task_manager.requests) == (0, [])
+    assert console.lines == ["Task history cleanup skipped"]
+
+
+async def test_a_task_manager_without_the_cleanup_lets_the_upgrade_continue() -> None:
+    """A task manager that does not provide the cleanup is reported, and the upgrade continues."""
+    task_manager = ScriptedTaskManager(responses=[route_missing()])
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == ["The task manager does not provide the task history cleanup yet; skipped."]
+
+
+async def test_a_failed_cleanup_is_reported_and_the_upgrade_goes_on() -> None:
+    """A cleanup that fails prints its error and how to finish it, without raising out of the upgrade."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            started(rewrite="if_freed"),
+            polled(
+                rewrite="if_freed",
+                state="failed",
+                error="The cleanup failed with DBAPIError; the task manager log has the details",
+            ),
+        ]
+    )
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "ERROR Task history cleanup failed: The cleanup failed with DBAPIError; the task manager log has the details",
+        "Deleted 0 runs before the failure",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
+
+
+async def test_a_wait_is_printed_and_the_step_follows_the_cleanup_it_then_starts() -> None:
+    """While a cleanup runs elsewhere the step prints why it waits once, then the summary of the cleanup it starts."""
+    task_manager = ScriptedTaskManager(
+        responses=[
+            running_elsewhere(),
+            running_elsewhere(),
+            started(rewrite="if_freed"),
+            polled(rewrite="if_freed", state="completed", current_day="2026-01-16", deleted_runs=3),
+        ]
+    )
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "Waiting to start the cleanup, because the task manager answered that a cleanup runs elsewhere",
+        "Deleted 3 runs that ended before 2026-09-04 00:00 UTC",
+        "Task history tables not rewritten",
+    ]
+
+
+async def test_an_unexpected_answer_is_reported_and_the_upgrade_goes_on() -> None:
+    """An error answer other than the ones the cleanup expects is reported like a failed cleanup."""
+    task_manager = ScriptedTaskManager(responses=[httpx.Response(status_code=500, json={"detail": "boom"})])
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "ERROR Task history cleanup failed: PrefectHTTPStatusError: Server error '500 Internal Server Error' for url "
+        "'http://task-manager:4200/api/infrahub/task-history/cleanup' - Response: {'detail': 'boom'} - "
+        "For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
+
+
+async def test_an_unreachable_task_manager_is_reported_and_the_upgrade_goes_on() -> None:
+    """A task manager that cannot be reached is reported like a failed cleanup, without raising out of the upgrade."""
+    task_manager = ScriptedTaskManager(responses=[unreachable()])
+    console = RecordedConsole()
+
+    await upgrade_task_history(
+        skip=False,
+        client_factory=RecordingClientFactory(task_manager=task_manager),
+        console=console.console,
+        poll_interval=timedelta(0),
+    )
+
+    assert console.lines == [
+        "ERROR Task history cleanup failed: ConnectError: All connection attempts failed",
+        TASK_HISTORY_CLEANUP_RERUN_HINT,
+    ]
+
+
+def test_the_flag_that_leaves_the_cleanup_out_is_what_skips_the_step() -> None:
+    """The upgrade's `--no-task-history-cleanup` flag, off by default, is passed down as the skip of the cleanup step."""
+    option = inspect.signature(upgrade_cmd).parameters["no_task_history_cleanup"].default
+    assert isinstance(option, typer.models.OptionInfo)
+    [execute] = _calls(function=upgrade_cmd, name="_upgrade_execute")
+    [step] = _calls(function=_upgrade_execute, name="upgrade_task_history")
+
+    assert (option.param_decls, option.default) == (("--no-task-history-cleanup",), False)
+    assert _keywords(call=execute)["skip_task_history_cleanup"] == "no_task_history_cleanup"
+    assert _keywords(call=step)["skip"] == "skip_task_history_cleanup"
