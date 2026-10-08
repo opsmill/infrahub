@@ -554,10 +554,61 @@ def test_binding_ancestor_usage_refreshes_between_reads(tmp_path: Path) -> None:
     assert second.memory_available == 4294967296 - 2147483648
 
 
-def test_host_identifier_is_populated(tmp_path: Path) -> None:
-    reading = ProcessResources(cgroup_root=tmp_path).read()
+@dataclass
+class ContainerNameCase:
+    name: str
 
-    assert reading.host == socket.gethostname()
+    namespaces: list[str | None]
+    """For each process, what its process ID namespace link points to; ``None`` leaves no link."""
+
+    expected_suffixes: list[str]
+    """What each process's container name adds after the hostname."""
+
+    plain_files: bool = False
+    """Write each namespace as an ordinary file holding the text, which cannot be read as a link."""
+
+
+CONTAINER_NAME_CASES = [
+    ContainerNameCase(
+        name="processes_in_one_namespace_share_one_container_name",
+        namespaces=["pid:[4026532001]", "pid:[4026532001]"],
+        expected_suffixes=["/pid:[4026532001]", "/pid:[4026532001]"],
+    ),
+    ContainerNameCase(
+        name="two_namespaces_under_one_hostname_get_two_container_names",
+        namespaces=["pid:[4026532001]", "pid:[4026532002]"],
+        expected_suffixes=["/pid:[4026532001]", "/pid:[4026532002]"],
+    ),
+    ContainerNameCase(
+        name="a_missing_namespace_leaves_the_hostname_alone",
+        namespaces=[None, None],
+        expected_suffixes=["", ""],
+    ),
+    ContainerNameCase(
+        name="a_namespace_that_is_not_a_link_leaves_the_hostname_alone",
+        namespaces=["pid:[4026532001]", "pid:[4026532002]"],
+        expected_suffixes=["", ""],
+        plain_files=True,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CONTAINER_NAME_CASES, ids=[case.name for case in CONTAINER_NAME_CASES])
+def test_container_name_is_the_hostname_and_the_process_namespace(case: ContainerNameCase, tmp_path: Path) -> None:
+    namespace_dir = tmp_path / "namespaces"
+    namespace_dir.mkdir()
+    readers = []
+    for index, target in enumerate(case.namespaces):
+        namespace = namespace_dir / f"pid_{index}"
+        if target is not None and case.plain_files:
+            namespace.write_text(target)
+        elif target is not None:
+            namespace.symlink_to(target)
+        readers.append(ProcessResources(cgroup_root=tmp_path / "cgroup", pid_namespace=namespace))
+
+    expected = [socket.gethostname() + suffix for suffix in case.expected_suffixes]
+    assert [reader.read().host for reader in readers] == expected
+    assert [reader.container_name() for reader in readers] == expected
 
 
 @needs_host_cores

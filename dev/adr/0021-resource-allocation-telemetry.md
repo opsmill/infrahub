@@ -44,7 +44,9 @@ writes the limit it puts on a container, and `psutil` for the whole machine.
 figures and hands them to the heartbeat thread through a locked slot in memory. Every 5 seconds the
 heartbeat writes the latest reading to the cache next to its "alive" key, with the same 15-second
 expiry. Once a day the report reads every reading back from the cache. Each reading carries the
-container's hostname, which is never sent, so readings from the same container can be grouped.
+container's name, which is never sent, so readings from the same container can be grouped. The name
+is the hostname followed by the container's process ID namespace, because separate containers can
+share a hostname, for example when they use the host's network.
 
 **Add new blocks and leave existing fields alone.** `workers` keeps its meaning: it counts every
 worker process. Two new blocks, `server` and `task_workers`, count their own component's processes

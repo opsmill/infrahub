@@ -43,6 +43,7 @@ log = logging.getLogger(__name__)
 
 CGROUP_ROOT = Path("/sys/fs/cgroup")
 PROC_SELF_CGROUP = Path("/proc/self/cgroup")
+PROC_SELF_PID_NAMESPACE = Path("/proc/self/ns/pid")
 
 # A CPU limit is written as CPU time allowed per period; this is the period used when the file leaves it out.
 _DEFAULT_CPU_PERIOD_US = 100000
@@ -60,9 +61,10 @@ UNKNOWN_CONTAINER = "unknown"
 class WorkerResourceReading(BaseModel):
     """One process's CPU and memory figures, as stored in the cache between heartbeats.
 
-    ``host`` names the container, so that processes sharing a container can split
-    its figures between them; it is never sent. The figures cannot be negative, so
-    a damaged cache entry is rejected when it is read back.
+    ``host`` names the container by its hostname and its process ID namespace, so
+    that processes sharing a container can split its figures between them; it is
+    never sent. The figures cannot be negative, so a damaged cache entry is rejected
+    when it is read back.
     """
 
     host: str
@@ -420,19 +422,37 @@ class ProcessResources:
     free memory can change while the process runs, so they are read every time.
     """
 
-    def __init__(self, cgroup_root: Path = CGROUP_ROOT, proc_cgroup: Path = PROC_SELF_CGROUP) -> None:
+    def __init__(
+        self,
+        cgroup_root: Path = CGROUP_ROOT,
+        proc_cgroup: Path = PROC_SELF_CGROUP,
+        pid_namespace: Path = PROC_SELF_PID_NAMESPACE,
+    ) -> None:
         self._cgroup_root = cgroup_root
         self._proc_cgroup = proc_cgroup
+        self._pid_namespace = pid_namespace
         self._identity: _ProcessIdentity | None = None
 
     def container_name(self) -> str:
         """The name of the container this process runs in, the same for every process in that container.
 
+        The hostname alone is not enough, because separate containers can share one,
+        for example when they use the host's network. Linux gives each container its
+        own process ID namespace, shared by every process inside it, so the name is
+        the hostname followed by that namespace, such as ``api-1/pid:[4026532001]``.
+        Where the namespace cannot be read, for example outside Linux, the name is the
+        hostname alone.
+
         Raises:
-            OSError: The name could not be read.
+            OSError: The hostname could not be read.
 
         """
-        return socket.gethostname()
+        hostname = socket.gethostname()
+        try:
+            namespace = self._pid_namespace.readlink()
+        except OSError:
+            return hostname
+        return f"{hostname}/{namespace}"
 
     def _read_identity(self) -> _ProcessIdentity:
         return _ProcessIdentity(

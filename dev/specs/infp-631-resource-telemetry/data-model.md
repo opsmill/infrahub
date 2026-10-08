@@ -72,7 +72,7 @@ Read by each process on its main loop every 10 seconds and written into `workers
 
 | Field | Type | Source |
 |-------|------|--------|
-| `host` | `str` | `socket.gethostname()` (by default the short container ID under Docker, the pod name under Kubernetes). Groups the readings that share a container. A failed read keeps the name; it is `"unknown"` only when the name itself cannot be read. |
+| `host` | `str` | The hostname (`socket.gethostname()`) followed by the process's PID namespace from `/proc/self/ns/pid`, such as `api-1/pid:[4026532001]`; the hostname alone where the namespace cannot be read (D7). Groups the readings that share a container. A failed read keeps the name; it is `"unknown"` only when the hostname itself cannot be read. |
 | `processor_available` | `int \| None` | `psutil.cpu_count(logical=True)` capped by the cgroup CPU quota **and** by the process's CPU-affinity mask, i.e. `min(host, max(1, floor(quota)), affinity)`, each cap applied only when known (D2 correction — psutil alone is not container-aware, and a `cpuset` restriction sets no quota; the quota rounds **down** here and **up** for `processor_assigned`). |
 | `processor_assigned` | `int \| None` | cgroup CPU quota rounded up (D3/D5); `None` if unbounded. Both CPU figures are `None` when a CPU limit file exists but yields no usable limit. |
 | `memory_total` | `int \| None` | The most restrictive cgroup `memory.max` across every enforcing level — an ancestor's limit is charged against its whole subtree, so it binds even when the process's own level is unset; else `psutil.virtual_memory().total`. Both memory figures are `None` when a memory limit file exists but yields no usable limit, or when the host capacity read fails. |
