@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import type { ObjectFormProps } from "@/shared/components/form/object-form";
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import type { FormSubmitResult } from "@/shared/components/ui/form";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
@@ -136,9 +137,9 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
   }
 
   /** Resolves to the values the form resets to, so rows created before a refusal stay linked to their range. */
-  async function save(data: FieldValues): Promise<FieldValues | undefined> {
+  async function save(data: FieldValues): Promise<FormSubmitResult | undefined> {
     const keptRows = poolId ? await updatePool(poolId, data) : await createPool(data);
-    return keptRows ? { ...data, [RANGES_FIELD]: keptRows } : undefined;
+    return keptRows ? { resetTo: { ...data, [RANGES_FIELD]: keptRows } } : undefined;
   }
 
   return { poolId, rangeSaveError, save };

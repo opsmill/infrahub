@@ -7,14 +7,14 @@ import { TestForm } from "../../../../tests/components/form.story";
 import { render } from "../../../../tests/components/render";
 
 describe("Form", () => {
-  test("resets to the values the submit handler returns", async () => {
+  test("resets to the values the submit handler returns as resetTo", async () => {
     // GIVEN
     const formRef = createRef<FormRef>();
     const component = await render(
       <TestForm
         ref={formRef}
         defaultValues={{ name: "typed" }}
-        onSubmit={() => ({ name: "saved" })}
+        onSubmit={() => ({ resetTo: { name: "saved" } })}
       />
     );
 
@@ -23,6 +23,26 @@ describe("Form", () => {
 
     // THEN
     await expect.poll(() => formRef.current?.getValues("name")).toBe("saved");
+  });
+
+  test("resets to the submitted values when the submit handler returns any other value", async () => {
+    // GIVEN
+    const formRef = createRef<FormRef>();
+    const component = await render(
+      <TestForm
+        ref={formRef}
+        defaultValues={{ name: "initial" }}
+        onSubmit={async () => new URLSearchParams({ name: "from-url" })}
+      />
+    );
+    formRef.current?.setValue("name", "typed", { shouldDirty: true });
+
+    // WHEN
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    // THEN
+    await expect.poll(() => formRef.current?.formState.defaultValues?.name).toBe("typed");
+    expect(formRef.current?.getValues("name")).toBe("typed");
   });
 
   test("resets to the submitted values when the submit handler returns nothing", async () => {
