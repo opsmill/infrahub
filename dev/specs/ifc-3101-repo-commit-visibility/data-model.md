@@ -230,15 +230,15 @@ GitRepositoryWarmUp
   repository's sync creates the copy along with its first import. It calls get_initialized_repo
   without holding the repository lock, because the clone takes that lock itself and a call already
   waiting for it shares the same cached result. After the broadcast it fetches a copy without a
-  FETCH_HEAD, under the lock, and logs a failed fetch rather than raising
+  FETCH_HEAD or with an empty one, under the lock, and logs a failed fetch rather than raising
 
 ### `infrahub.message_bus.messages.refresh_git_clone`
 
 RefreshGitClone(InfrahubMessage)              routing key refresh.git.clone, broadcast to every worker
   repository_id, repository_name, repository_kind, infrahub_branch_name (whose ref a new copy checks out)
   Handler infrahub.message_bus.operations.git.repository::clone creates the local copy when it is
-  missing, then fetches, under the repository lock, any copy without a FETCH_HEAD so it reports a
-  fetch time, logging a failed fetch rather than raising. It never pulls, resets or moves a local
+  missing, then fetches, under the repository lock, any copy without a FETCH_HEAD or with an empty
+  one (a failed fetch writes an empty file) so it reports a fetch time, logging a failed fetch rather than raising. It never pulls, resets or moves a local
   branch. Initialising an existing copy can still fetch and write the operational status when the
   configured location has changed, as every initialisation does. The sender ignores its own
   broadcast, as it does for RefreshGitFetch

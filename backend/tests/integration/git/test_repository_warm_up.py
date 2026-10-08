@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import shutil
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from git import Repo
+from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from structlog.testing import capture_logs
 
@@ -63,6 +64,17 @@ def _without_local_copy(repos_dir: Path, repository_id: str) -> Iterator[None]:
         yield
     finally:
         _get_initialized_repo.cache_clear()
+
+
+@contextmanager
+def _unreachable(upstream: Path) -> Iterator[None]:
+    """Move the remote away so every fetch from it fails, and put it back afterwards."""
+    moved = upstream.with_name(f"{upstream.name}-unreachable")
+    upstream.rename(moved)
+    try:
+        yield
+    finally:
+        moved.rename(upstream)
 
 
 @asynccontextmanager
@@ -228,15 +240,21 @@ class TestRepositoryWarmUp(TestInfrahubApp):
         Repo(git_repos_dir_module_scope / repository.id / "main").remotes.origin.fetch()
 
     @pytest.fixture
+    def copy_whose_last_fetch_failed(
+        self,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
+        existing_copy: None,
+    ) -> None:
+        with _unreachable(upstream=git_repos_source_dir_module_scope / "car-dealership"), suppress(GitCommandError):
+            Repo(git_repos_dir_module_scope / repository.id / "main").remotes.origin.fetch()
+
+    @pytest.fixture
     def unreachable_upstream(self, git_repos_source_dir_module_scope: Path) -> Iterator[None]:
         """Make every fetch from the remote fail, while a local copy made beforehand stays valid."""
-        upstream = git_repos_source_dir_module_scope / "car-dealership"
-        moved = upstream.with_name("car-dealership-unreachable")
-        upstream.rename(moved)
-        try:
+        with _unreachable(upstream=git_repos_source_dir_module_scope / "car-dealership"):
             yield
-        finally:
-            moved.rename(upstream)
 
     @pytest.fixture
     def bus(self) -> BusRecorder:
@@ -520,6 +538,25 @@ class TestRepositoryWarmUp(TestInfrahubApp):
 
         assert local_copy.head.commit.hexsha == head_before
         assert (Path(local_copy.git_dir) / "FETCH_HEAD").is_file()
+
+    async def test_the_clone_request_fetches_a_copy_whose_last_fetch_failed(
+        self,
+        client: InfrahubClient,
+        repository: CoreRepository,
+        git_repos_dir_module_scope: Path,
+        git_repos_source_dir_module_scope: Path,
+        cold_worker: None,
+        copy_whose_last_fetch_failed: None,
+    ) -> None:
+        """A failed fetch leaves an empty fetch record, which gives the copy no fetch time."""
+        fetch_head = Path(Repo(git_repos_dir_module_scope / repository.id / "main").git_dir) / "FETCH_HEAD"
+        assert fetch_head.stat().st_size == 0
+
+        await repository_operations.clone.fn(message=_clone_request(repository=repository, initiator="another-worker"))
+
+        upstream = Repo(git_repos_source_dir_module_scope / "car-dealership")
+        fetched = {line.split("\t")[0] for line in fetch_head.read_text().splitlines()}
+        assert fetched == {branch.commit.hexsha for branch in upstream.branches}
 
     async def test_the_clone_request_succeeds_when_the_fetch_fails(
         self,

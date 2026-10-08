@@ -39,7 +39,8 @@ own. The reader performs, in order:
    `rev-list imported..head` once: its membership places every listed commit as pending or history, and
    its length is the pending count when requested. Page with `iter_commits(start, max_count=limit,
    skip=offset)`, where `start` is the head, or the imported commit under `REF_MISSING`. Read the
-   `FETCH_HEAD` mtime. No total-count pass exists. A `GitCommandError` is logged on the worker and
+   `FETCH_HEAD` mtime, or no fetch time when the file is missing or empty (a failed fetch leaves it
+   empty). No total-count pass exists. A `GitCommandError` is logged on the worker and
    raised as a `RepositoryError` whose message carries no path or git output. The `Repo` is closed
    when the read ends.
 4. Never take the repository lock: the read is against git's own consistent object store and must not
@@ -111,7 +112,8 @@ and imports the copy.
 Matches the existing `refresh.git.*` broadcast binding, so every worker receives it with no topology
 change. Handler `infrahub.message_bus.operations.git.repository::clone` calls `get_initialized_repo`,
 which clones a missing copy (checking out the configured `ref` for the read-only kind). The handler
-then fetches, under the repository lock, any copy without a `FETCH_HEAD`, so it reports a fetch time
-whichever call cloned it; a failed fetch is logged, not raised. It moves no local branch. It exists because the warm-up runs on whichever worker the workflow engine
+then fetches, under the repository lock, any copy without a `FETCH_HEAD` or with an empty one (a failed
+fetch writes an empty file), so it reports a fetch time whichever call cloned it; a failed fetch is
+logged, not raised. It moves no local branch. It exists because the warm-up runs on whichever worker the workflow engine
 picks, which need not be the worker that reported `NOT_CLONED`, so the broadcast is what reaches that
 worker. A copy it creates is at the remote head, as every first clone already is.

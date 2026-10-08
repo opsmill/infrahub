@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError
@@ -11,6 +10,8 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import Meta, messages
+
+from .log_reader import read_fetched_at
 
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
-async def fetch_if_never_fetched(repo: InfrahubReadOnlyRepository | InfrahubRepository, lock: InfrahubLock) -> None:
+async def fetch_if_no_fetch_time(repo: InfrahubReadOnlyRepository | InfrahubRepository, lock: InfrahubLock) -> None:
     """Fetch a local copy that has no fetch time yet, so the reads report one.
 
     A failed fetch is logged rather than raised, and leaves the copy as the clone left it.
@@ -31,13 +32,12 @@ async def fetch_if_never_fetched(repo: InfrahubReadOnlyRepository | InfrahubRepo
     if not repo.has_origin:
         return
     git_repo = repo.get_git_repo_main()
-    fetch_head = Path(git_repo.git_dir) / "FETCH_HEAD"
-    if fetch_head.exists():
+    if read_fetched_at(repo=git_repo) is not None:
         return
 
     async with lock:
         # Another fetch may have run while this waited for the lock.
-        if fetch_head.exists():
+        if read_fetched_at(repo=git_repo) is not None:
             return
         try:
             await asyncio.to_thread(repo.fetch_from_origin, git_repo)
@@ -93,7 +93,7 @@ class RepositoryWarmUp:
                 infrahub_branch_name=model.infrahub_branch_name,
             )
         )
-        await fetch_if_never_fetched(
+        await fetch_if_no_fetch_time(
             repo=repo, lock=self._lock_registry.get(name=model.repository_name, namespace="repository")
         )
 

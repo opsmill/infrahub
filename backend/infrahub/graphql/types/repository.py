@@ -63,7 +63,7 @@ class RepositoryCommits(ObjectType):
         description="Number of commits between imported_commit and remote_head. Only set when condition is BEHIND."
     )
     fetched_at = DateTime(
-        description="When the answering worker last fetched from the remote. Null before the first fetch."
+        description="When the answering worker last fetched from the remote. Null before the first fetch, and after a failed fetch."
     )
     checked_at = DateTime(
         description="When the remote was last checked for movement. Read-only repositories only; null for "

@@ -12,7 +12,7 @@ from infrahub.exceptions import (
 from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
 from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
 from infrahub.git.repository import get_initialized_repo
-from infrahub.git.state.warm_up import fetch_if_never_fetched
+from infrahub.git.state.warm_up import fetch_if_no_fetch_time
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -78,7 +78,7 @@ async def clone(message: messages.RefreshGitClone) -> None:
         repository_kind=message.repository_kind,
         infrahub_branch_name=message.infrahub_branch_name,
     )
-    await fetch_if_never_fetched(
+    await fetch_if_no_fetch_time(
         repo=repo, lock=lock.registry.get(name=message.repository_name, namespace="repository")
     )
 

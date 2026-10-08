@@ -197,7 +197,8 @@ commits).
 
 `fetched_at` is the modification time of `<root>/main/.git/FETCH_HEAD` on the answering worker,
 measured in the handler and returned in the RPC reply. Null when the file does not exist (a clone
-that never fetched).
+that never fetched) or is empty (git writes an empty file when a fetch fails, so its time is the
+failed attempt's).
 
 `checked_at` is read by the API resolver from the cache key `git:refs_check:last:<repository_id>`,
 written at the end of every refs check. Read-only repositories only; null for read-write, where the
