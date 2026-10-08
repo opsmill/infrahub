@@ -22,6 +22,7 @@ Applies to React code in `frontend/app/src/`. Biome, betterer and knip already g
   - A styled bordered `<section>` is a `Card`, a focus-trapped dialog is a `Modal`, a styled `<button>` is a `Button`.
   - A kind and object combobox wraps `PeerInput` or `PeerField`; a kind select is `NodeKindSelect`, `NodeKindField` or `KindMultiSelect`.
 - Copy to the clipboard with `useCopyToClipboard`, not `navigator.clipboard` and a hand-made "Copied!" state.
+- Build a paginated table in a card with `DataTable` and the shared table pagination. Render the denied, failed and empty states with `UnauthorizedScreen`, `ErrorScreen` and `NoDataFound` from `shared/components/errors/`, not with local components.
 - Use a `.field.tsx` component only inside a `<Form>`; outside one, use the primitive in `shared/components/inputs/`.
 
 ## Page and component structure
