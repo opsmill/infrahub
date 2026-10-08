@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
 import { getOffset } from "@/shared/utils/table-pagination";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
@@ -19,8 +20,9 @@ export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
     queryFn: () => getBranchTasks(params),
     // Only the first page gets new tasks as they start.
     refetchInterval: params.offset === 0 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
-    placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
+    placeholderData: keepPreviousDataWithin(
+      tasksQueryKeys.branchListOnBranch({ branchName: params.branchName })
+    ),
   });
 }
 

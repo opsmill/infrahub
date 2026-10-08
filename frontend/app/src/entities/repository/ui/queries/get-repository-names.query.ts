@@ -1,5 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
+
 import {
   type GetRepositoryNamesParams,
   getRepositoryNames,
@@ -11,8 +13,9 @@ export function getRepositoryNamesQueryOptions(params: GetRepositoryNamesParams)
     queryKey: repositoryQueryKeys.names(params),
     queryFn: () => getRepositoryNames(params),
     enabled: params.ids.length > 0,
-    placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
+    placeholderData: keepPreviousDataWithin(
+      repositoryQueryKeys.namesOnBranch({ branchName: params.branchName })
+    ),
   });
 }
 

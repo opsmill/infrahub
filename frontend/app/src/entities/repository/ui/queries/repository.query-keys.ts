@@ -7,6 +7,8 @@ import type { GetRepositoryNamesParams } from "@/entities/repository/domain/use-
 export const repositoryQueryKeys = {
   all: ["repository"] as const,
   syncHealth: (branch: string) => [...repositoryQueryKeys.all, "sync-health", branch] as const,
+  branchRepositoryList: (params: Pick<GetBranchRepositoriesParams, "branchName" | "syncWithGit">) =>
+    [...repositoryQueryKeys.all, "branch-repositories", params] as const,
   branchRepositories: (params: GetBranchRepositoriesParams) =>
     [...repositoryQueryKeys.all, "branch-repositories", params] as const,
   branchHealth: (params: GetBranchRepositoryHealthParams) =>
@@ -15,6 +17,8 @@ export const repositoryQueryKeys = {
     [...repositoryQueryKeys.all, "latest-import-task", params] as const,
   importLog: (params: GetImportTaskErrorMessageParams) =>
     [...repositoryQueryKeys.all, "import-log", params] as const,
+  namesOnBranch: (params: Pick<GetRepositoryNamesParams, "branchName">) =>
+    [...repositoryQueryKeys.all, "names", params] as const,
   names: (params: GetRepositoryNamesParams) =>
     [...repositoryQueryKeys.all, "names", params] as const,
 };

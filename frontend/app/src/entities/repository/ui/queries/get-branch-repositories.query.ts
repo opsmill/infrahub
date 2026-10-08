@@ -1,5 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
+import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
 import { getOffset } from "@/shared/utils/table-pagination";
 
 import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
@@ -15,16 +16,6 @@ export interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesP
   isSyncing: boolean;
 }
 
-const isListParams = (
-  value: unknown
-): value is Pick<GetBranchRepositoriesParams, "branchName" | "syncWithGit"> =>
-  typeof value === "object" &&
-  value !== null &&
-  "branchName" in value &&
-  typeof value.branchName === "string" &&
-  "syncWithGit" in value &&
-  typeof value.syncWithGit === "boolean";
-
 export function getBranchRepositoriesQueryOptions({
   isSyncing,
   ...params
@@ -38,16 +29,12 @@ export function getBranchRepositoriesQueryOptions({
       (isSyncing || !!query.state.data?.repositories.some(isRepositorySyncing))
         ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
         : false,
-    // Keeps the previous page on screen while the next one loads, within one branch and list only.
-    placeholderData: (previousData, previousQuery) => {
-      const previousParams: unknown = previousQuery?.queryKey.at(-1);
-      const isSameList =
-        isListParams(previousParams) &&
-        previousParams.branchName === params.branchName &&
-        previousParams.syncWithGit === params.syncWithGit;
-
-      return isSameList ? previousData : undefined;
-    },
+    placeholderData: keepPreviousDataWithin(
+      repositoryQueryKeys.branchRepositoryList({
+        branchName: params.branchName,
+        syncWithGit: params.syncWithGit,
+      })
+    ),
   });
 }
 
