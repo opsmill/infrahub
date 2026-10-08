@@ -38,6 +38,7 @@ The [Notion design doc](https://app.notion.com/p/opsmill/Task-history-and-Activi
   - the phases in `prefect.concurrency-limit.<phase>` and `prefect.concurrency-limit.v1.<phase>`;
   - the statuses in `prefect.asset.materialization.<status>`;
   - an event name passed through a helper whose parameter is not named `event` or `event_type`.
+- **Startup warning**: for the names these tests do not cover, the task manager checks what Prefect stored. Once Prefect's own startup has migrated the database, the task manager reads each event type stored in it (one index lookup per type, `infrahub.prefect_server.database::read_stored_event_types`) and logs a warning naming every `prefect.*` type missing from the list, which the activity log retention keeps. A type shows up from the first task manager start after Prefect stored an event of it.
 - **Alternatives considered**: deleting every event whose type does not start with `infrahub.` once it is older than `prefect_own_events`, which needs no list. Prefect's settings cannot do this: the overrides match exact names and are capped by the event retention, and the general cleanup deletes every event older than the event retention. It would need a periodic delete that Infrahub runs in the process that runs Prefect's services, which goes against D1 and D3: both leave the deletes to Prefect's own cleanups.
 
 ## R5. The command for old runs and its endpoint (D9)
