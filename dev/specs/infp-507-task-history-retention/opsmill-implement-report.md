@@ -52,7 +52,7 @@ Orchestrator commits outside the chunks:
 | Task | Reason |
 |---|---|
 | T021, T022, T023, T024 | Release evidence in opsmill/infrahub-private-tests. Per `plan.md`, these run in a separate session in that repository. |
-| T037, T038, T039 | Same: private performance tests. T037 includes switching PR #33's override to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`. |
+| T037, T038 | Same: private performance tests. T037 includes switching PR #33's override to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`. |
 | T046 | Same: activity log retention test on a restored backup. |
 | T050 | The opsmill/infrahub-helm PR is in another repository. It must ship in the same release; see §7. |
 | T057 | The private-tests run against the release candidate. It depends on the tasks above and on a release candidate. |
@@ -196,7 +196,7 @@ cubic findings on PR 1 and PR 2 (16 in total) were all fixed or recorded as know
    - the retention values go in `values.yaml`.
 
    The Enterprise sizing presets run the background services in their own pod, so the hourly deletion does not run there until this chart PR ships.
-4. **Private-tests evidence** (T021-T024, T037-T039, T046, then T057 on the release candidate): run it in a separate session in opsmill/infrahub-private-tests, and attach the results to the PRs and to INFP-507.
+4. **Private-tests evidence** (T021-T024, T037, T038, T046, then T057 on the release candidate): run it in a separate session in opsmill/infrahub-private-tests, and attach the results to the PRs and to INFP-507.
 5. **Update the Notion design doc for the decisions made here**:
    - the rewrite modes, and the free-space measure of `if_freed`;
    - the upgrade continuing after a failed cleanup;
