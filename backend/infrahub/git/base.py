@@ -820,13 +820,29 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         try:
             if self.has_worktree(identifier=commit, timeout_seconds=timeout_seconds):
                 return False
+        except GitCommandError as exc:
+            self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
+        try:
             repo.git.worktree("add", directory, commit, kill_after_timeout=timeout_seconds)
         except GitCommandError as exc:
             if "invalid reference" in exc.stderr:
                 raise CommitNotFoundError(identifier=self.name, commit=commit) from exc
+            if GIT_CALL_TIME_LIMIT.search(exc.stderr):
+                self._remove_interrupted_worktree(repo=repo, directory=directory, timeout_seconds=timeout_seconds)
             self._raise_enriched_error_static(error=exc, name=self.name, location=self.location)
         log.debug(f"Commit worktree created {commit}", repository=self.name)
         return worktree
+
+    def _remove_interrupted_worktree(self, repo: Repo, directory: Path, timeout_seconds: float | None) -> None:
+        # Git keeps an interrupted add locked as "initializing", and only a doubled force removes a locked worktree.
+        try:
+            repo.git.worktree("remove", "-f", "-f", str(directory), kill_after_timeout=timeout_seconds)
+        except GitCommandError:
+            log.exception(
+                "Unable to remove the worktree that an interrupted add left",
+                repository=self.name,
+                directory=str(directory),
+            )
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch.

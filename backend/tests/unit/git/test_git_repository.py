@@ -37,6 +37,7 @@ from infrahub.git.base import BranchInRemote
 from infrahub.git.divergence.models import ReconciledBranch
 from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, PushRejectionReason
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
+from infrahub.git.worktree import Worktree
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -971,6 +972,81 @@ async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_l
         repository.create_commit_worktree(commit="abc", timeout_seconds=7)
 
     assert type(raised.value) is RepositoryError
+
+
+async def clone_with_a_slow_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[InfrahubRepository, str]:
+    """Clone a local remote, and return a commit whose checkout runs a smudge filter that waits one second."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    source = Repo(source_directory)
+    source.git.checkout("-b", "slow")
+    (source_directory / ".gitattributes").write_text("slow.txt filter=slow\n", encoding="utf-8")
+    (source_directory / "slow.txt").write_text("slow\n", encoding="utf-8")
+    source.index.add([".gitattributes", "slow.txt"])
+    commit = source.index.commit("slow checkout").hexsha
+    source.git.checkout("main")
+    remote_directory = tmp_path / "remote.git"
+    source.clone(str(remote_directory), bare=True)
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="local-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    with repository.get_git_repo_main().config_writer() as git_config:
+        git_config.set_value('filter "slow"', "smudge", "sleep 1; cat")
+        git_config.set_value('filter "slow"', "clean", "cat")
+    return repository, commit
+
+
+async def test_create_commit_worktree_removes_an_add_past_its_time_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree add` stopped at its time limit leaves no locked worktree, so the next call creates it."""
+    repository, commit = await clone_with_a_slow_checkout(tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    with pytest.raises(
+        RepositoryError,
+        match=r"^The command git worktree for repository local-repo did not complete within 0\.3 seconds\.$",
+    ):
+        repository.create_commit_worktree(commit=commit, timeout_seconds=0.3)
+
+    worktree = repository.create_commit_worktree(commit=commit)
+
+    assert isinstance(worktree, Worktree)
+    assert (worktree.directory / "slow.txt").read_text(encoding="utf-8") == "slow\n"
+
+
+class _WorktreeCheckMissesRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree check misses every worktree, as when another process adds one in between."""
+
+    def has_worktree(self, identifier: str, timeout_seconds: float | None = None) -> bool:
+        return False
+
+
+async def test_create_commit_worktree_keeps_a_worktree_that_already_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree add` that fails for a reason other than its time limit removes no worktree."""
+    repository, commit = await clone_with_a_slow_checkout(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    worktree = repository.create_commit_worktree(commit=commit)
+    assert isinstance(worktree, Worktree)
+    racing_repository = _WorktreeCheckMissesRepository(
+        id=repository.id,
+        name=repository.name,
+        location=repository.location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+        client=repository.client,
+    )
+
+    with pytest.raises(RepositoryError, match="already exists"):
+        racing_repository.create_commit_worktree(commit=commit, timeout_seconds=7)
+
+    assert repository.has_worktree(identifier=commit) is True
+    assert (worktree.directory / "slow.txt").read_text(encoding="utf-8") == "slow\n"
 
 
 TIME_LIMIT_SECONDS = 7.0
