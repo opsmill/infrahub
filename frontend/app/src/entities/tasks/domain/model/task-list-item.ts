@@ -1,6 +1,4 @@
-import type { TASK_STATES } from "@/entities/tasks/domain/model/task";
-
-export type TaskState = (typeof TASK_STATES)[number];
+import type { TaskState } from "@/entities/tasks/domain/model/task";
 
 export type TaskListItem = {
   id: string;

@@ -121,7 +121,11 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Badge | `Badge` | `shared/components/ui/badge.tsx` |
 | Alert | `Alert` | `shared/components/ui/alert.tsx` |
 | Pagination (one list per page) | `Pagination` — bound to the page-global `pagination` query-string parameter (`usePagination`), so only one list per page can use it | `shared/components/ui/pagination.tsx` |
-| Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table), `useCountClampedQuery` to clamp a page past the end against the server's count, and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
+| Paginated table footer, one per table | `TablePagination` — controlled (`page`, `onPageChange`); give each pager an `aria-label`. Pair with `useTablePagination({ urlKey })` (`shared/hooks/use-table-pagination.ts`, page in `${urlKey}_page`, one key per table) and `shared/utils/table-pagination.ts` (`PAGE_SIZE`, `getOffset`) | `shared/components/table/table-pagination.tsx` |
+| Card with a server-paged table | `PagedTableCard` — region labelled by its title, count badge, fixed-height body, `TablePagination`, and the loading, denied (`UnauthorizedScreen`), failed (`ErrorScreen` with "Go to first page" or "Try again"), empty (`NoDataFound`) and page-past-the-end states. Pair with `keepPreviousDataWithin(listKey, hasRows)` (`shared/api/keep-previous-data-within.ts`) as the query's `placeholderData` | `shared/components/table/paged-table-card.tsx` |
+| Page header row (title, actions) | `HeaderContainer` | `shared/components/layout/header-container.tsx` |
+| Refresh button with "Last data refresh" tooltip | `RefreshButton` — pass the `queryKeys` it invalidates | `shared/components/buttons/refresh-button.tsx` |
+| Value on a schema colour, with an optional tooltip | `ColorDisplay` — `className` adjusts its size | `shared/components/display/color-display.tsx` |
 | Keyboard shortcut display | `Kbd` | `shared/components/ui/kbd.tsx` |
 | Card surface | `Card`, `CardHeader`, `CardContent` | `@infrahub/ui` (see `design-system.md`) |
 | Modal/dialog | `Modal`, `ModalOverlay` | `@infrahub/ui` |

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { BranchGitStatusError } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
 import { getRepositoryBranchStatusRefetchInterval } from "@/entities/branch-git-status/ui/queries/get-repository-branch-status.query";
 
@@ -29,7 +30,12 @@ describe("getRepositoryBranchStatusRefetchInterval", () => {
     expect(refetchIntervalFor(undefined)).toBe(false);
   });
 
-  test("polls a syncing repository more slowly after a failed refetch", () => {
-    expect(refetchIntervalFor(syncingPage(), new Error("Network error"))).toBe(60_000);
+  test("polls a failed read every minute", () => {
+    expect(refetchIntervalFor(undefined, new Error("Network error"))).toBe(60_000);
+  });
+
+  test("stops polling once the reader is denied", () => {
+    const denied = new BranchGitStatusError("PERMISSION_DENIED", "Permission denied");
+    expect(refetchIntervalFor(syncingPage(), denied)).toBe(false);
   });
 });

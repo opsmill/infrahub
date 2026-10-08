@@ -27,13 +27,12 @@ export const IMPORT_WORKFLOWS = [
   "git-repository-pull-read-only",
   "sync-git-repo-with-origin",
 ] as const;
-export const IMPORT_FAILED_TASK_STATES = [TASK_STATE_FAILED, TASK_STATE_CRASHED] as const;
-export const IMPORT_ACTIVE_TASK_STATES = [TASK_STATE_RUNNING] as const;
-// Logs come back oldest first, so anything below the backend's 10 000-line cap can cut off the final error line.
-export const IMPORT_LOG_LIMIT = 10_000;
-
-export const MAX_VISIBLE_BANDS = 3;
-export const REPOSITORY_HEALTH_LIST_LIMIT = 50;
+// A running import is included so an older failed run isn't shown while a newer one is still going.
+export const IMPORT_TASK_STATES = [
+  TASK_STATE_RUNNING,
+  TASK_STATE_FAILED,
+  TASK_STATE_CRASHED,
+] as const;
 
 /**
  * Selects repositories whose import failed. Attribute-value filters match on substrings, so

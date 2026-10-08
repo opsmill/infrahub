@@ -1,5 +1,3 @@
 export const REPOSITORY_SYNC_REFETCH_INTERVAL_MS = 10_000;
-
-// A repository can show the import error before its import run has ended as failed, so the lookup
-// for that run is repeated a few times before the band settles on "not found".
-export const MAX_IMPORT_TASK_LOOKUPS = 6;
+// A failed poll retries at this pace so the card recovers on its own without hammering the API.
+export const REPOSITORY_ERROR_REFETCH_INTERVAL_MS = 60_000;

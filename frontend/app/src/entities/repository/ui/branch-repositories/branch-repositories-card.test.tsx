@@ -79,7 +79,7 @@ describe("BranchRepositoriesCard", () => {
       .toBeVisible();
     await expect.element(component.getByText("Git repositories")).toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(4);
-    await expect.element(component.getByText("4", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("4 repositories", { exact: true })).toBeVisible();
     await expect.element(component.getByText("In Sync").first()).toBeVisible();
     await expect.element(component.getByText("8f3c2a1")).toHaveAttribute("title", "8f3c2a1");
   });
@@ -102,6 +102,7 @@ describe("BranchRepositoriesCard", () => {
     expect(getBranchRepositoryHealth).toHaveBeenCalledWith({
       branchName: "feature",
       syncWithGit: false,
+      limit: 50,
     });
   });
 
@@ -153,7 +154,7 @@ describe("BranchRepositoriesCard", () => {
     const component = await renderCard();
 
     // THEN
-    await expect.element(component.getByText("40", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("40 repositories", { exact: true })).toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(10);
   });
 
@@ -166,7 +167,7 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("navigation", { name: "Repositories pagination" }))
+      .element(component.getByRole("navigation", { name: "Git repositories pagination" }))
       .toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(1);
     await expect
@@ -192,19 +193,43 @@ describe("BranchRepositoriesCard", () => {
     expect(requestedOffsets()).toContain(10);
   });
 
-  test("shows the last page for a page past the end, once the server's count is known", async () => {
+  test("says a page past the end doesn't exist, and goes to the last page on request", async () => {
     // GIVEN
     serve(buildBranchRepositoriesScenario("eleven"));
+    const component = await renderCard({ search: "&repositories_page=99" });
+    await expect.element(component.getByText("Page 99 doesn't exist.")).toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(0);
+    expect(requestedOffsets()).toEqual([980]);
 
     // WHEN
-    const component = await renderCard({ search: "&repositories_page=99" });
+    await component.getByRole("button", { name: "Go to last page" }).click();
 
     // THEN
     await expect
       .element(component.getByRole("button", { name: "Page 2" }))
       .toHaveAttribute("aria-current", "page");
     expect(bodyRows(component.container)).toHaveLength(1);
-    expect(requestedOffsets()).toEqual([980, 10]);
+    expect(new URL(window.location.href).searchParams.get("repositories_page")).toBe("2");
+  });
+
+  test("shows the loading rows, not an empty table, while the last page loads after a page past the end", async () => {
+    // GIVEN
+    const repositories = buildBranchRepositoriesScenario("eleven");
+    serve(repositories);
+    vi.mocked(getBranchRepositories).mockImplementation(async ({ offset, limit }) =>
+      offset === 10
+        ? new Promise(() => {})
+        : toBranchRepositoryPage(repositories, { offset, limit })
+    );
+    const component = await renderCard({ search: "&repositories_page=99" });
+    await expect.element(component.getByText("Page 99 doesn't exist.")).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Go to last page" }).click();
+
+    // THEN
+    await expect.element(component.getByText("Loading repositories")).toBeInTheDocument();
+    expect(component.container.querySelector("tbody")).toBeNull();
   });
 
   test("shows page 1 for a page below 1", async () => {
@@ -235,7 +260,7 @@ describe("BranchRepositoriesCard", () => {
     expect(component.container.querySelector("nav")).toBeNull();
     await expect
       .element(component.getByTestId("branch-repositories-table"))
-      .not.toHaveAttribute("style");
+      .not.toHaveClass("min-h-110");
   });
 
   test("shows placeholder rows and no count while loading", async () => {
@@ -252,7 +277,7 @@ describe("BranchRepositoriesCard", () => {
     await expect.element(status).toHaveTextContent("Loading repositories");
     expect(status.element().querySelectorAll(".h-10")).toHaveLength(3);
     expect(component.container.querySelector("tbody")).toBeNull();
-    expect(component.container.querySelector(".rounded-full")).toBeNull();
+    expect(component.getByText(/^\d+ repositor(y|ies)$/).query()).toBeNull();
   });
 
   test("says the user has no access, with no rows and no count", async () => {
@@ -270,7 +295,7 @@ describe("BranchRepositoriesCard", () => {
       .element(component.getByText("You don't have access to this branch's repositories"))
       .toBeVisible();
     expect(component.container.querySelector("tbody")).toBeNull();
-    expect(component.container.querySelector(".rounded-full")).toBeNull();
+    expect(component.getByText(/^\d+ repositor(y|ies)$/).query()).toBeNull();
   });
 
   test("says the repositories couldn't be loaded when the query fails", async () => {
@@ -306,19 +331,22 @@ describe("BranchRepositoriesCard", () => {
     expect(new URL(window.location.href).searchParams.get("repositories_page")).toBeNull();
   });
 
-  test("doesn't offer the first page when the first page fails", async () => {
+  test("offers to try again when the first page fails", async () => {
     // GIVEN
-    vi.mocked(getBranchRepositories).mockRejectedValue(
+    const repositories = buildBranchRepositoriesScenario("all-clear");
+    serve(repositories);
+    vi.mocked(getBranchRepositories).mockRejectedValueOnce(
       new BranchRepositoriesError("UNKNOWN", "Something broke")
     );
-    vi.mocked(getBranchRepositoryHealth).mockReturnValue(new Promise(() => {}));
+    const component = await renderCard();
+    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
+    expect(component.getByRole("button", { name: "Go to first page" }).query()).toBeNull();
 
     // WHEN
-    const component = await renderCard();
+    await component.getByRole("button", { name: "Try again" }).click();
 
     // THEN
-    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-    expect(component.container.querySelector("button")).toBeNull();
+    await expect.poll(() => bodyRows(component.container)).toHaveLength(repositories.length);
   });
 
   test("says the repository health couldn't be checked, in place of the bands, while the table still shows", async () => {

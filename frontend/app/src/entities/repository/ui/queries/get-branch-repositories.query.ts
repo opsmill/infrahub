@@ -1,29 +1,24 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
-import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
+import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
+import { getOffset } from "@/shared/utils/table-pagination";
 
-import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
+import type { BranchRepositoryPage } from "@/entities/repository/domain/model/branch-repository";
+import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
+import { isRepositorySyncing } from "@/entities/repository/domain/rules/repository-syncing";
 import {
   type GetBranchRepositoriesParams,
   getBranchRepositories,
 } from "@/entities/repository/domain/use-cases/get-branch-repositories";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
+import {
+  REPOSITORY_ERROR_REFETCH_INTERVAL_MS,
+  REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
+} from "@/entities/repository/ui/queries/repository-polling";
 
-export interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
+interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
   isSyncing: boolean;
 }
-
-const isListParams = (
-  value: unknown
-): value is Pick<GetBranchRepositoriesParams, "branchName" | "syncWithGit"> =>
-  typeof value === "object" &&
-  value !== null &&
-  "branchName" in value &&
-  typeof value.branchName === "string" &&
-  "syncWithGit" in value &&
-  typeof value.syncWithGit === "boolean";
 
 export function getBranchRepositoriesQueryOptions({
   isSyncing,
@@ -32,28 +27,25 @@ export function getBranchRepositoriesQueryOptions({
   return queryOptions({
     queryKey: repositoryQueryKeys.branchRepositories(params),
     queryFn: () => getBranchRepositories(params),
-    retry: retryBackgroundQuery,
     // Rows still showing a sync are fetched again after the health says it ended, so they catch up.
-    refetchInterval: (query) =>
-      pollWhileHealthy(
-        isSyncing || !!query.state.data?.repositories.some(isRepositorySyncing),
-        REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
-        query
-      ),
-    // Keeps the previous page on screen while the next one loads, within one branch and list only.
-    placeholderData: (previousData, previousQuery) => {
-      const previousParams: unknown = previousQuery?.queryKey.at(-1);
-      const isSameList =
-        isListParams(previousParams) &&
-        previousParams.branchName === params.branchName &&
-        previousParams.syncWithGit === params.syncWithGit;
-
-      return isSameList ? previousData : undefined;
+    refetchInterval: ({ state }) => {
+      if (isRepositoryAccessDenied(state.error)) return false;
+      if (state.status === "error") return REPOSITORY_ERROR_REFETCH_INTERVAL_MS;
+      return isSyncing || state.data?.repositories.some(isRepositorySyncing)
+        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
+        : false;
     },
+    placeholderData: keepPreviousDataWithin(
+      repositoryQueryKeys.branchRepositoryList({
+        branchName: params.branchName,
+        syncWithGit: params.syncWithGit,
+      }),
+      (page: BranchRepositoryPage) => page.repositories.length > 0
+    ),
   });
 }
 
-export interface UseGetBranchRepositoriesParams {
+interface UseGetBranchRepositoriesParams {
   branchName: string;
   syncWithGit: boolean;
   isSyncing: boolean;
@@ -66,7 +58,11 @@ export function useGetBranchRepositories({
   pageSize,
   ...params
 }: UseGetBranchRepositoriesParams) {
-  return useCountClampedQuery({ page, pageSize }, (offset) =>
-    getBranchRepositoriesQueryOptions({ ...params, limit: pageSize, offset })
+  return useQuery(
+    getBranchRepositoriesQueryOptions({
+      ...params,
+      limit: pageSize,
+      offset: getOffset(page, pageSize),
+    })
   );
 }

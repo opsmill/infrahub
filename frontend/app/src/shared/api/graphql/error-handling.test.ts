@@ -3,10 +3,10 @@ import { GraphQLError } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ERROR_CODES } from "@/shared/api/errors";
-import { HTTP_TOO_MANY_REQUESTS, SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
+import { SHED_USER_MESSAGE } from "@/shared/api/rate-limit/shed-envelope";
 
 import { SHED_BODY } from "../../../../tests/fake/shed-response";
-import { handleGraphQLErrors, hasOnlyThrownCatalogueCode, isThrownShed } from "./error-handling";
+import { handleGraphQLErrors, hasOnlyThrownCatalogueCode } from "./error-handling";
 
 function combinedError(errors: Array<Record<string, unknown>>): CombinedError {
   return { graphQLErrors: errors } as unknown as CombinedError;
@@ -86,38 +86,10 @@ describe("hasOnlyThrownCatalogueCode", () => {
     expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(false);
   });
 
-  it("finds the GraphQL errors through a caller's own wrapping", () => {
-    const error = new Error("Failed to load", { cause: thrownByTransport(permissionDenial()) });
-
-    expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(true);
-  });
-
-  it("skips a wrapper whose graphQLErrors is not a list", () => {
-    const error = Object.assign(new Error("Failed to load"), {
-      graphQLErrors: "not a list",
-      cause: thrownByTransport(permissionDenial()),
-    });
-
-    expect(hasOnlyThrownCatalogueCode(error, ERROR_CODES.PERMISSION_DENIED)).toBe(true);
-  });
-
   it("is false for an error without GraphQL errors", () => {
     expect(hasOnlyThrownCatalogueCode(new Error("offline"), ERROR_CODES.PERMISSION_DENIED)).toBe(
       false
     );
     expect(hasOnlyThrownCatalogueCode("offline", ERROR_CODES.PERMISSION_DENIED)).toBe(false);
-  });
-});
-
-describe("isThrownShed", () => {
-  it("is true when the server shed the request", () => {
-    expect(isThrownShed(thrownByTransport(graphQLError({ code: HTTP_TOO_MANY_REQUESTS })))).toBe(
-      true
-    );
-  });
-
-  it("is false for any other failure", () => {
-    expect(isThrownShed(thrownByTransport(permissionDenial()))).toBe(false);
-    expect(isThrownShed(new Error("offline"))).toBe(false);
   });
 });

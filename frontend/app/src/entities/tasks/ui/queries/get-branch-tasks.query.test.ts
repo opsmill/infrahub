@@ -8,26 +8,38 @@ import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 const params = { branchName: "feature", offset: 0, limit: 10 };
 
-const queryIn = (status: "success" | "error") => ({ state: { status } }) as never;
+const intervalOf = (
+  refetchInterval: unknown,
+  state: { status: string; error: Error | null } = { status: "success", error: null }
+) => (typeof refetchInterval === "function" ? refetchInterval({ state }) : refetchInterval);
 
-const intervalOf = (refetchInterval: unknown, status: "success" | "error" = "success") => {
-  if (typeof refetchInterval !== "function") throw new Error("expected a refetch function");
-  return refetchInterval(queryIn(status));
-};
-
-describe("getBranchTasksQueryOptions", () => {
-  it("polls page 1 every 10 seconds", () => {
-    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval)).toBe(10_000);
+// The transport throws an Error whose cause is an error carrying the GraphQL errors.
+const permissionDenied = () =>
+  new Error("Denied", {
+    cause: Object.assign(new Error("Denied"), {
+      graphQLErrors: [
+        {
+          message: "Denied",
+          extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
+        },
+      ],
+    }),
   });
 
-  it("doesn't poll other pages", () => {
+describe("getBranchTasksQueryOptions", () => {
+  it("polls page 1 every 10 seconds, and no other page", () => {
+    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval)).toBe(10_000);
     expect(intervalOf(getBranchTasksQueryOptions({ ...params, offset: 10 }).refetchInterval)).toBe(
       false
     );
   });
 
-  it("slows the poll down once a fetch has failed", () => {
-    expect(intervalOf(getBranchTasksQueryOptions(params).refetchInterval, "error")).toBe(60_000);
+  it("retries a failed page 1 every minute, and stops once it is denied", () => {
+    const { refetchInterval } = getBranchTasksQueryOptions(params);
+    expect(intervalOf(refetchInterval, { status: "error", error: new Error("Network") })).toBe(
+      60_000
+    );
+    expect(intervalOf(refetchInterval, { status: "error", error: permissionDenied() })).toBe(false);
   });
 
   it("keys the page on the branch and its window", () => {
@@ -37,11 +49,15 @@ describe("getBranchTasksQueryOptions", () => {
   });
 
   describe("placeholder data", () => {
-    const placeholderFor = (branchName: string, previousBranchName: string) => {
+    const placeholderFor = (
+      branchName: string,
+      previousBranchName: string,
+      previousTasks: unknown[] = [{ id: "task-1" }]
+    ) => {
       const { placeholderData } = getBranchTasksQueryOptions({ ...params, branchName, offset: 10 });
       if (typeof placeholderData !== "function") throw new Error("expected a placeholder function");
       type Args = Parameters<typeof placeholderData>;
-      const previousData = { previous: true } as unknown as Args[0];
+      const previousData = { tasks: previousTasks, count: 11 } as unknown as Args[0];
       const previousQuery = {
         queryKey: tasksQueryKeys.branchList({ ...params, branchName: previousBranchName }),
       } as unknown as Args[1];
@@ -59,6 +75,12 @@ describe("getBranchTasksQueryOptions", () => {
 
       expect(placeholder).toBeUndefined();
     });
+
+    it("doesn't keep a previous page without rows, such as a page past the end", () => {
+      const { placeholder } = placeholderFor("feature", "feature", []);
+
+      expect(placeholder).toBeUndefined();
+    });
   });
 });
 
@@ -69,10 +91,9 @@ describe("getBranchFailedTaskCountQueryOptions", () => {
     );
   });
 
-  it("polls every 10 seconds, and every minute after a failed fetch", () => {
+  it("polls every 10 seconds, and stops once it is denied", () => {
     const { refetchInterval } = getBranchFailedTaskCountQueryOptions({ branchName: "feature" });
-
     expect(intervalOf(refetchInterval)).toBe(10_000);
-    expect(intervalOf(refetchInterval, "error")).toBe(60_000);
+    expect(intervalOf(refetchInterval, { status: "error", error: permissionDenied() })).toBe(false);
   });
 });

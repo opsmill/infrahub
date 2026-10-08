@@ -13,9 +13,7 @@ interface BranchRepositoryWireConnection {
   edges: ReadonlyArray<{ node?: BranchRepositoryWireNode | null } | null>;
 }
 
-export function toBranchRepository(
-  node: BranchRepositoryWireNode & { id: string }
-): BranchRepository {
+function toBranchRepository(node: BranchRepositoryWireNode & { id: string }): BranchRepository {
   const kind =
     node.__typename === READONLY_REPOSITORY_KIND ? READONLY_REPOSITORY_KIND : REPOSITORY_KIND;
 

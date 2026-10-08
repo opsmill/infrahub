@@ -37,7 +37,7 @@ export interface BranchRepositoryPage {
   count: number;
 }
 
-// Each list stops at REPOSITORY_HEALTH_LIST_LIMIT; its count is the server's total.
+// Each list stops at the requested limit; its count is the server's total.
 export interface BranchRepositoryHealth {
   importErrors: BranchRepository[];
   importErrorCount: number;
@@ -62,7 +62,7 @@ export type RepositoryImportError =
   | { status: "found"; taskId: string; message: string }
   | { status: "not-found"; taskId: string | null };
 
-export type RepositoryImportTaskLookup =
+export type RepositoryImportTask =
   | { status: "running" }
   | { status: "failed"; taskId: string }
-  | { status: "not-found" };
+  | { status: "none" };

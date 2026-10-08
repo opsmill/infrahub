@@ -1,7 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { retryBackgroundQuery } from "@/shared/api/background-query";
-
 import {
   type GetBranchGitRepositoriesParams,
   getBranchGitRepositories,
@@ -12,6 +10,5 @@ export function getBranchGitRepositoriesQueryOptions(params: GetBranchGitReposit
   return queryOptions({
     queryKey: branchGitStatusQueryKeys.repositories(params),
     queryFn: () => getBranchGitRepositories(params),
-    retry: retryBackgroundQuery,
   });
 }

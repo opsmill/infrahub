@@ -15,3 +15,7 @@ export function toBranchGitStatusError(
 
   return new BranchGitStatusError(code, message, { cause: error });
 }
+
+export function isBranchGitStatusAccessDenied(error: unknown): boolean {
+  return error instanceof BranchGitStatusError && error.code === "PERMISSION_DENIED";
+}

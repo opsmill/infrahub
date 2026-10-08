@@ -882,7 +882,8 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
       (needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+      needs.files-changed.outputs.documentation == 'true' ||
+      needs.files-changed.outputs.error_catalogue == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
@@ -1413,7 +1414,7 @@ jobs:
 
       - name: Run all benchmarks
         if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
+        uses: CodSpeedHQ/action@c4fd08a3a159bd0cc208da1e0edf32b8c47d75e5 # v5.4.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation
@@ -1422,7 +1423,7 @@ jobs:
       - name: Run non-intensive benchmarks
         if: |
           !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
-        uses: CodSpeedHQ/action@373d6868929f444bc08d901fd0eb0ad52a8875ea # v5.2.1
+        uses: CodSpeedHQ/action@c4fd08a3a159bd0cc208da1e0edf32b8c47d75e5 # v5.4.0
         with:
           token: ${{ secrets.CODSPEED_TOKEN }}
           mode: instrumentation

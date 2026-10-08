@@ -1,11 +1,11 @@
 import { Button } from "@infrahub/ui";
+import { AlertCircleIcon } from "lucide-react";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
 
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import { MAX_VISIBLE_BANDS } from "@/entities/repository/domain/model/repository";
-import { getBandKind } from "@/entities/repository/domain/rules/repository-failures";
+import { getFailureKind } from "@/entities/repository/domain/rules/repository-failures";
 import { ImportErrorBand } from "@/entities/repository/ui/branch-repositories/import-error-band";
 import { UnreachableBand } from "@/entities/repository/ui/branch-repositories/unreachable-band";
 
@@ -15,6 +15,8 @@ interface RepositoryErrorBandsProps {
   branchName: string;
   isSyncing: boolean;
 }
+
+const MAX_VISIBLE_BANDS = 3;
 
 const pluralizeRepositories = (count: number) => (count === 1 ? "repository" : "repositories");
 
@@ -36,7 +38,7 @@ export function RepositoryErrorBands({
   return (
     <>
       {visible.map((repository) =>
-        getBandKind(repository) === "import-error" ? (
+        getFailureKind(repository) === "import-error" ? (
           <ImportErrorBand
             key={repository.id}
             repository={repository}
@@ -61,5 +63,14 @@ export function RepositoryErrorBands({
         </Row>
       )}
     </>
+  );
+}
+
+export function RepositoryHealthFailedBand() {
+  return (
+    <Row role="alert" className="border-t px-4 py-2 text-danger text-xs">
+      <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
+      Repository health couldn't be checked.
+    </Row>
   );
 }

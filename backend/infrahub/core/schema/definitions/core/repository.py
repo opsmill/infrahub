@@ -251,6 +251,41 @@ core_generic_repository = GenericSchema(
             default_value=RepositorySyncStatus.UNKNOWN.value,
             order_weight=6000,
         ),
+        Attr(
+            name="last_rewrite_previous_commit",
+            kind="Text",
+            description="The commit Infrahub had imported on this branch before the last rewrite",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7600,
+        ),
+        Attr(
+            name="last_rewrite_commit",
+            kind="Text",
+            description="The commit Infrahub moved this branch onto after the last rewrite",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7700,
+        ),
+        Attr(
+            name="last_rewrite_at",
+            kind="DateTime",
+            description="When Infrahub detected the last rewrite of this branch",
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7800,
+        ),
+        Attr(
+            name="rewrite_count",
+            kind="Number",
+            description=(
+                "How many rewrites this branch has seen, including those on the default branch before this branch "
+                "was created"
+            ),
+            optional=True,
+            branch=BranchSupportType.LOCAL,
+            order_weight=7900,
+        ),
     ],
     relationships=[
         Rel(

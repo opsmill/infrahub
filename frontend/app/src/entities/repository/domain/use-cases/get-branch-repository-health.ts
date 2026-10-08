@@ -4,15 +4,16 @@ import { toBranchRepositories } from "@/entities/repository/api/branch-repositor
 import { getBranchRepositoryHealthFromApi } from "@/entities/repository/api/get-branch-repository-health-from-api";
 import type { BranchRepositoryHealth } from "@/entities/repository/domain/model/branch-repository";
 import {
-  REPOSITORY_HEALTH_LIST_LIMIT,
   REPOSITORY_OPERATIONAL_ERRORS,
   REPOSITORY_SYNC_STATUS_ERROR_VALUE,
   REPOSITORY_SYNC_STATUS_SYNCING,
 } from "@/entities/repository/domain/model/repository";
+import { toBranchRepositoriesError } from "@/entities/repository/domain/rules/branch-repositories-error";
 import { getRepositoryListKind } from "@/entities/repository/domain/rules/get-repository-list-kind";
 
 export interface GetBranchRepositoryHealthParams extends BranchContextParams {
   syncWithGit: boolean;
+  limit: number;
 }
 
 export type GetBranchRepositoryHealth = (
@@ -22,6 +23,7 @@ export type GetBranchRepositoryHealth = (
 export const getBranchRepositoryHealth: GetBranchRepositoryHealth = async ({
   branchName,
   syncWithGit,
+  limit,
 }) => {
   const data = await getBranchRepositoryHealthFromApi({
     branchName,
@@ -29,7 +31,9 @@ export const getBranchRepositoryHealth: GetBranchRepositoryHealth = async ({
     importErrorStatuses: [REPOSITORY_SYNC_STATUS_ERROR_VALUE],
     unreachableStatuses: [...REPOSITORY_OPERATIONAL_ERRORS],
     syncingStatuses: [REPOSITORY_SYNC_STATUS_SYNCING],
-    limit: REPOSITORY_HEALTH_LIST_LIMIT,
+    limit,
+  }).catch((error: unknown) => {
+    throw toBranchRepositoriesError(error);
   });
 
   return {

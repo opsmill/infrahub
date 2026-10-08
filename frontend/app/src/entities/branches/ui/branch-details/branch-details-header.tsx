@@ -1,12 +1,12 @@
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
+import { HeaderContainer } from "@/shared/components/layout/header-container";
 
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
-import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 

@@ -83,7 +83,7 @@ describe("BranchTasksCard", () => {
       .toBeVisible();
     await expect.element(component.getByText("Tasks", { exact: true })).toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(10);
-    await expect.element(component.getByText("12", { exact: true }).first()).toBeVisible();
+    await expect.element(component.getByText("12 tasks", { exact: true })).toBeVisible();
     await expect.element(component.getByRole("link", { name: "1 failed" })).toBeVisible();
   });
 
@@ -95,7 +95,7 @@ describe("BranchTasksCard", () => {
     const component = await renderCard();
 
     // THEN
-    await expect.element(component.getByText("3", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("3 tasks", { exact: true })).toBeVisible();
     expect(component.container.textContent).not.toContain("failed");
     expect(component.container.querySelector("nav")).toBeNull();
   });
@@ -170,7 +170,7 @@ describe("BranchTasksCard", () => {
     // THEN
     await expect.element(component.getByText("Task 1")).toBeVisible();
     await expect.element(component.getByText("Task 2")).toBeVisible();
-    await expect.element(component.getByText("2", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("2 tasks", { exact: true })).toBeVisible();
     expect(cellText(component.container, 0, 3)).toBe("CoreRepository");
   });
 
@@ -236,7 +236,7 @@ describe("BranchTasksCard", () => {
     await expect.element(status).toHaveTextContent("Loading tasks");
     expect(status.element().querySelectorAll(".h-10")).toHaveLength(3);
     expect(component.container.querySelector("tbody")).toBeNull();
-    expect(component.container.querySelector(".rounded-full")).toBeNull();
+    expect(component.getByText(/^\d+ tasks?$/).query()).toBeNull();
   });
 
   test("explains what will appear when no task has run", async () => {
@@ -311,23 +311,26 @@ describe("BranchTasksCard", () => {
     // THEN
     await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
     expect(new URL(window.location.href).searchParams.get("tasks_page")).toBe("2");
-    expect(getBranchTasks).toHaveBeenLastCalledWith({
-      branchName: "feature",
-      offset: 10,
-      limit: 10,
-    });
+    expect(getBranchTasks).toHaveBeenLastCalledWith(
+      { branchName: "feature", offset: 10, limit: 10 },
+      { silenceErrors: true }
+    );
     expect(getTaskCount).toHaveBeenCalledWith(
       { branchName: "feature", state: ["FAILED"] },
       { silenceErrors: true }
     );
   });
 
-  test("shows the last page for a page past the end, once the server's count is known", async () => {
+  test("says a page past the end doesn't exist, and goes to the last page on request", async () => {
     // GIVEN
     serve(generateTasks(12));
+    const component = await renderCard("&tasks_page=99");
+    await expect.element(component.getByText("Page 99 doesn't exist.")).toBeVisible();
+    expect(bodyRows(component.container)).toHaveLength(0);
+    expect(requestedOffsets()).toEqual([980]);
 
     // WHEN
-    const component = await renderCard("&tasks_page=99");
+    await component.getByRole("button", { name: "Go to last page" }).click();
 
     // THEN
     await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
@@ -335,7 +338,7 @@ describe("BranchTasksCard", () => {
     await expect
       .element(component.getByRole("button", { name: "Page 2" }))
       .toHaveAttribute("aria-current", "page");
-    expect(requestedOffsets()).toEqual([980, 10]);
+    expect(new URL(window.location.href).searchParams.get("tasks_page")).toBe("2");
   });
 
   test("shows page 1 for a page below 1", async () => {

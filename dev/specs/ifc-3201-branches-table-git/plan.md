@@ -69,7 +69,7 @@ The first implementation (2026-09-30) fanned each branch out to one row per repo
 
 **VII. Simplicity & Maintainability, in detail:**
 
-- **Reuse first**: `GitStatePill`, `LinkPill`, `Tooltip`, `TableCell`, `TableColumnHeaderSimple`, `Spinner`, the background-query retry and poll helpers, and the Proposed changes cell's "+N more" pattern.
+- **Reuse first**: `GitStatePill`, `LinkPill`, `Tooltip`, `TableCell`, `TableColumnHeaderSimple`, `Spinner`, the repository polling intervals, and the Proposed changes cell's "+N more" pattern.
 - **One owner for the data**: the hook fetches, the rule derives, the row view-model carries, the cells render. No derivation in `.tsx`.
 - **Own queries, not flags**: the entity reads its own two documents instead of adding flags to #10779's branch repositories query or lifting #10658's status files.
 

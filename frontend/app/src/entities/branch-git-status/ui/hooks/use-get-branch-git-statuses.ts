@@ -4,10 +4,7 @@ import type {
   BranchGitRepository,
   BranchGitRepositoryPage,
 } from "@/entities/branch-git-status/domain/model/branch-git-repository";
-import {
-  type BranchGitStatus,
-  BranchGitStatusError,
-} from "@/entities/branch-git-status/domain/model/branch-git-status";
+import type { BranchGitStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import type { RepositoryBranchStatusPage } from "@/entities/branch-git-status/domain/model/repository-branch-status";
 import { getUnknownSyncStatus } from "@/entities/branch-git-status/domain/rules/get-unknown-sync-status";
 import {
@@ -15,6 +12,7 @@ import {
   type RepositoryStatusFetch,
   summarizeBranchGitStatuses,
 } from "@/entities/branch-git-status/domain/rules/summarize-branch-git-statuses";
+import { isBranchGitStatusAccessDenied } from "@/entities/branch-git-status/domain/rules/to-branch-git-status-error";
 import { getBranchGitRepositoriesQueryOptions } from "@/entities/branch-git-status/ui/queries/get-branch-git-repositories.query";
 import { getRepositoryBranchStatusQueryOptions } from "@/entities/branch-git-status/ui/queries/get-repository-branch-status.query";
 import {
@@ -25,10 +23,6 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const REPOSITORY_LIST_LIMIT = 500;
 const BRANCH_STATUS_LIST_LIMIT = 500;
-
-function isDenied(error: Error): boolean {
-  return error instanceof BranchGitStatusError && error.code === "PERMISSION_DENIED";
-}
 
 // Data first: a failed background refetch keeps the list that was already loaded.
 function getRepositoryListFailure(
@@ -43,7 +37,7 @@ function getRepositoryListFailure(
     };
   }
   if (!list.error) return { status: "pending" };
-  if (isDenied(list.error)) return { status: "denied" };
+  if (isBranchGitStatusAccessDenied(list.error)) return { status: "denied" };
   return { status: "error", message: list.error.message };
 }
 
@@ -55,7 +49,7 @@ function toRepositoryStatusFetch(
     return { status: "ok", repository, rows: result.data.rows, count: result.data.count };
   }
   if (!result?.error) return { status: "pending", repository };
-  if (isDenied(result.error)) return { status: "denied", repository };
+  if (isBranchGitStatusAccessDenied(result.error)) return { status: "denied", repository };
   return { status: "error", repository, message: result.error.message };
 }
 

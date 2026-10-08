@@ -10,6 +10,8 @@
 
 ## Seed
 
+`utilities/branch_details_scenarios/` seeds a local stack with `scn-*` branches for most of these states. Its README lists which branch shows which state, and which states it can't seed. To seed by hand instead:
+
 1. Create branch `bdr-demo` with Sync with Git on.
 2. Break an import on it: push a commit to the read-write repository's `bdr-demo` Git branch with an invalid `.infrahub.yml` (for example a duplicated transform name), then wait for the periodic sync, or run "Import current commit" from the repository page on `bdr-demo`.
 3. Point a second repository at an unreachable location or wrong credentials so its `operational_status` becomes `error-cred`/`error-connection`.

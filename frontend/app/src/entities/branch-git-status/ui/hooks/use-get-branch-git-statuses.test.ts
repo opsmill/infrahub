@@ -26,10 +26,7 @@ const REPOSITORIES: BranchGitRepositoryPage = {
 };
 
 const renderStatuses = async (branchNames = ["primary", "feature"]) => {
-  // A query with its own retry policy retries at once, so a test doesn't wait on the backoff.
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false, retryDelay: 0 } },
-  });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client: queryClient }, children);
   const rendered = await renderHook(() => useGetBranchGitStatuses(branchNames), { wrapper });

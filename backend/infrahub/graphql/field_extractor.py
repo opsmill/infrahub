@@ -1,69 +1,80 @@
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, Protocol
 
 from graphql import (
     FieldNode,
+    FragmentDefinitionNode,
     FragmentSpreadNode,
-    GraphQLResolveInfo,
     InlineFragmentNode,
     SelectionSetNode,
 )
 
 
+class GraphQLFieldExtractionInfo(Protocol):
+    """The parts of a GraphQL resolve info that field extraction reads."""
+
+    @property
+    def field_nodes(self) -> Sequence[FieldNode]: ...
+
+    @property
+    def fragments(self) -> Mapping[str, FragmentDefinitionNode]: ...
+
+
 class GraphQLFieldExtractor:
     """Class to extract fields from a GraphQL selection set."""
 
-    def __init__(self, info: GraphQLResolveInfo) -> None:
+    def __init__(self, info: GraphQLFieldExtractionInfo) -> None:
         self.info = info
         self.fragments = info.fragments
 
     def get_fields(self) -> dict[str, Any]:
-        """Extract fields from the GraphQL selection set."""
-        fields = self._extract_fields(selection_set=self.info.field_nodes[0].selection_set)
-        return fields or {}
+        """Extract the union of the fields requested across every node sharing the response key.
 
-    def _extract_fields(self, selection_set: SelectionSetNode | None) -> dict[str, dict] | None:
-        """This function extract all the requested fields in a tree of Dict from a SelectionSetNode.
+        A response key selected more than once (the same root field repeated as siblings) is
+        resolved once with every node in ``field_nodes``, so all of their selections are merged.
+        """
+        fields: dict[str, Any] = {}
+        for field_node in self.info.field_nodes:
+            self._merge_fields(target=fields, source=self._extract_fields(field_node.selection_set) or {})
+        return fields
 
-        The goal of this function is to limit the fields that we need to query from the backend.
+    def _extract_fields(self, selection_set: SelectionSetNode | None) -> dict[str, Any] | None:
+        """Collect the union of every field a selection set requests, as a tree of nested dicts.
 
-        Currently the function support Fields and InlineFragments but in a combined tree where the fragments are merged together
-        This implementation may seam counter intuitive but in the current implementation
-        it's better to have slightly more information at time passed to the query manager.
+        The goal is to limit the fields we read from the backend. A field's sub-selection becomes a
+        nested dict; a leaf field maps to ``None``. Fragment spreads and inline fragments contribute
+        their own selections, recursively and to any depth.
 
-        In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
+        Inline fragments are collected across every branch without resolving their type condition:
+        the extraction runs before the concrete type is known, so it deliberately over-collects
+        rather than risk under-fetching for an interface or union field.
         """
         if not selection_set:
             return None
 
-        fields: dict[str, dict | Any] = {}
+        fields: dict[str, Any] = {}
         for node in selection_set.selections:
-            sub_selection_set = getattr(node, "selection_set", None)
             if isinstance(node, FieldNode):
-                value = self._extract_fields(sub_selection_set)
-                if node.name.value not in fields:
-                    fields[node.name.value] = value
-                elif isinstance(fields[node.name.value], dict) and isinstance(value, dict):
-                    fields[node.name.value].update(value)
-
+                self._merge_fields(target=fields, source={node.name.value: self._extract_fields(node.selection_set)})
             elif isinstance(node, InlineFragmentNode):
-                for sub_node in node.selection_set.selections:
-                    sub_sub_selection_set = getattr(sub_node, "selection_set", None)
-                    value = self._extract_fields(sub_sub_selection_set)
-                    sub_node_name = getattr(sub_node, "name", "")
-                    sub_node_name_value = getattr(sub_node_name, "value", "")
-                    if sub_node_name_value not in fields:
-                        fields[sub_node_name_value] = self._extract_fields(sub_sub_selection_set)
-                    elif isinstance(fields[sub_node_name_value], dict) and isinstance(value, dict):
-                        fields[sub_node_name_value].update(value)
-            elif isinstance(node, FragmentSpreadNode):
-                if node.name.value in self.info.fragments and (
-                    fragment_fields := self._extract_fields(self.info.fragments[node.name.value].selection_set)
-                ):
-                    fields.update(fragment_fields)
+                self._merge_fields(target=fields, source=self._extract_fields(node.selection_set) or {})
+            elif isinstance(node, FragmentSpreadNode) and node.name.value in self.info.fragments:
+                fragment = self.info.fragments[node.name.value]
+                self._merge_fields(target=fields, source=self._extract_fields(fragment.selection_set) or {})
 
         return fields
 
+    @classmethod
+    def _merge_fields(cls, target: dict[str, Any], source: dict[str, Any]) -> None:
+        """Merge ``source`` into ``target`` in place, taking the union of overlapping sub-selections."""
+        for name, value in source.items():
+            existing = target.get(name)
+            if isinstance(existing, dict) and isinstance(value, dict):
+                cls._merge_fields(target=existing, source=value)
+            elif name not in target or existing is None:
+                target[name] = value
 
-def extract_graphql_fields(info: GraphQLResolveInfo) -> dict[str, Any]:
+
+def extract_graphql_fields(info: GraphQLFieldExtractionInfo) -> dict[str, Any]:
     graphql_extractor = GraphQLFieldExtractor(info=info)
     return graphql_extractor.get_fields()

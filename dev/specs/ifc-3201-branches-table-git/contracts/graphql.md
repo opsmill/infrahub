@@ -28,7 +28,7 @@ query GET_BRANCH_GIT_REPOSITORIES($limit: Int!, $offset: Int!) {
 | Query key | `branchGitStatusQueryKeys.repositories(params)`, that is `["branch-git-status", "repositories", { limit, offset }]` |
 | Mapping | `toBranchGitRepositoryPage`: `kind` from `__typename`, `isReadOnly` for `CoreReadOnlyRepository` |
 | Cut list | `count > repositories.length`: every row reads "Could not load repositories" |
-| Retry | `retryBackgroundQuery` (`shared/api/background-query.ts`): up to 2 retries, none on `PERMISSION_DENIED` or a load-shed response |
+| Retry | none: the app query client turns retries off |
 
 ## 2. Status, once per repository
 
@@ -55,8 +55,8 @@ query GET_REPOSITORY_BRANCH_STATUS($id: String!, $limit: Int!) {
 | Variables | `{ id: <repository id>, limit: 500 }` (use-case params `{ repositoryId, limit }`) |
 | Query key | `branchGitStatusQueryKeys.repositoryBranchStatus(params)`, that is `["branch-git-status", "repository-branch-status", { repositoryId, limit }]` |
 | Row set | read/write repositories: branches with Sync with Git on; read-only repositories: every branch; merged, deleting and global branches excluded |
-| Freshness | `staleTime: 60_000`; `refetchInterval` through `pollWhileHealthy`: every 10 s while any row of that repository is `syncing`, six times slower after a failed refetch, none after a permission denial |
-| Retry | `retryBackgroundQuery`, as above |
+| Freshness | `staleTime: 60_000`; `refetchInterval`: every 10 s while any row of that repository is `syncing`, every 60 s after a failed read, none after a permission denial |
+| Retry | none |
 | Requests | 1 + R per page load (R = number of repositories), none when more branches load on scroll |
 
 Branch creation, deletion, merge, rebase and the list's reload button invalidate `branchGitStatusQueryKeys.all`.

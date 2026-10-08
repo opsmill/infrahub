@@ -1,6 +1,5 @@
 import type React from "react";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
@@ -11,6 +10,7 @@ import { TASK_STATE_CRASHED, TASK_STATE_FAILED } from "@/entities/tasks/domain/m
 import type { TaskListItem } from "@/entities/tasks/domain/model/task-list-item";
 import { getTaskRelatedLabel } from "@/entities/tasks/domain/rules/get-task-related-label";
 import { getWorkflowLabel } from "@/entities/tasks/domain/rules/get-workflow-label";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 import { getLogBadge } from "@/entities/tasks/ui/task-display";
 
 interface TasksTableProps {
@@ -60,7 +60,7 @@ function TaskRow({ task, relatedNames, emptyRelatedLabel }: TaskRowProps) {
     <tr className={classNames("h-10 border-b last:border-b-0", isFailed && "bg-danger-surface")}>
       <td className="px-3">
         <Link
-          to={constructPath(`/tasks/${task.id}`)}
+          to={getTaskDetailsUrl(task.id)}
           title={task.title}
           className="block truncate rounded-none leading-10"
         >

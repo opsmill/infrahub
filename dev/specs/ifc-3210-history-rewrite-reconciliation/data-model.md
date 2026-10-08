@@ -20,7 +20,7 @@ Declared in `backend/infrahub/core/schema/definitions/core/repository.py`, on th
 |---|---|---|---|---|---|
 | `last_rewrite_previous_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub had imported on this branch before the reconciliation. |
 | `last_rewrite_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub reconciled onto. |
-| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When the reconciliation completed. |
+| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When Infrahub detected the rewrite: the sync writes it while it collects the branch, before the import. |
 | `rewrite_count` | `Number` | yes | none | `LOCAL` | How many reconciliations are visible on this branch, cumulative. See "What LOCAL does not do" below: a branch inherits the count of the branch it forked from. |
 
 Order weights place them after `sync_status` and before the relationships, so the repository form
@@ -113,24 +113,33 @@ A `StrEnum` in `backend/infrahub/git/divergence/models.py`.
 |---|---|
 | `UNCHANGED` | The remote head equals the imported commit. |
 | `FAST_FORWARD` | The imported commit is an ancestor of the remote head. |
-| `LOCAL_AHEAD` | The remote head is an ancestor of the imported commit. The local copy holds commits the remote does not. |
-| `REWRITE` | Neither commit is an ancestor of the other, and the tracking target did not change. |
-| `RETARGET` | Neither commit is an ancestor of the other, and the tracking target changed. |
+| `REWRITE` | The remote head does not contain the imported commit, and the tracking target did not change. |
+| `RETARGET` | The remote head does not contain the imported commit, and the tracking target changed. |
 | `REMOTE_ABSENT` | The remote carries no such ref any more. |
 
 It is an enum and not a boolean because Principle III requires that `REWRITE` and `RETARGET` cannot
 collapse into each other at a call site.
 
-**`LOCAL_AHEAD` is load-bearing, not a completeness exercise.** A branch left ahead of its remote is
-a state the product reaches today: after a rejected push the local branch sits ahead of `origin/`,
-`compare_local_remote` flags it every cycle, and `pull` returns `True` with no change. Without this
-member, "neither is an ancestor" would swallow that case, classify it `REWRITE`, and reset the
-branch onto the remote — discarding the very commit PR #10465 exists to protect. `LOCAL_AHEAD`
-resets nothing and records nothing, so the current behaviour is preserved exactly.
+**A remote head behind the imported commit means the remote was rewound.** Every write of the
+graph commit records a commit the remote already carries. `create_locally` records straight after
+a clone. `pull` records a commit the fetch brought in. `reset_to_commit` records the SHA it
+pinned. The synchronisation's new-branch path pushes first, and a rejected push raises into
+`failed_imports` before the record is reached. `merge` pushes before it records and resets the
+worktree when either step fails. The read-only paths record what they read from the remote. `merge`
+skips the push when its caller passes `push_remote=False`, and records all the same. Only a test
+passes it today, and `rebase` forwards it, so the audit holds for the product while that parameter
+has no production caller. No
+path leaves the graph holding a commit the remote never had, so a remote head that is an ancestor
+of the imported commit means a force push, or a ref moved backwards. That discards content exactly
+as a rewrite does, so it classifies `REWRITE`, or `RETARGET` when the tracking target changed.
 
-It also closes a documented defect on its own: `dev/knowledge/backend/git-integration.md` lists "a
-branch left ahead of its remote is re-reported every cycle" under Known limitations. A branch
-classified `LOCAL_AHEAD` needs no pull, so the once-a-minute log line stops.
+The worktree comparison reaches the same conclusion for the same reason, so a worktree ahead of
+its remote is reset onto it. The graph comparison still decides the record and the worktree
+comparison still decides the reset; what changed is that neither leaves a rewind alone.
+
+That also closes a documented defect: `dev/knowledge/backend/git-integration.md` lists "a branch
+left ahead of its remote is re-reported every cycle" under Known limitations. The reset moves the
+branch onto the remote head, so the once-a-minute log line stops.
 
 ### `RefDivergence`
 
@@ -146,22 +155,27 @@ A frozen dataclass. What one classification decided, for one branch.
 
 Validation:
 
-- `REWRITE`, `RETARGET` and `LOCAL_AHEAD` all require both commits to be set.
 - A branch with no imported commit can only be `UNCHANGED` or `FAST_FORWARD`.
-- A `None` `remote_head` can only be `REMOTE_ABSENT`, or `UNCHANGED` when the branch was never
-  imported either.
+- A branch with no remote head can only be `REMOTE_ABSENT` or `UNCHANGED`.
+- `UNCHANGED` holds exactly when the two commits match, counting a branch absent from both sides.
+  Every other classification requires them to differ.
+
+The third rule carries the other two further than they reach on their own. `REWRITE` and `RETARGET`
+need both commits set, because a missing one cannot differ from anything, and a branch whose remote
+head is gone is `REMOTE_ABSENT` rather than `UNCHANGED` once it has been imported.
 
 ### `ReconciledBranch`
 
 A frozen dataclass. One branch a synchronisation cycle advanced, and the commit it advanced to.
-This is what the widened broadcast carries and what the recorder consumes.
+`RepositorySyncer.sync` returns these on its `SyncOutcome`, and the recorder consumes them. The
+broadcast is built from them but carries `BranchCommitPair`, which holds no divergence.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `infrahub_branch_name` | `str` | The Infrahub branch. |
-| `infrahub_branch_id` | `str` | The branch UUID, not the database element id. A worker missing the worktree creates it under whatever it is given. |
+| `infrahub_branch_name` | `str` | The Infrahub branch whose commit the cycle wrote. On a staging repository it is the branch the trunk maps onto, not the staging branch that receives the objects, so the broadcast converges the trunk worktree and the recorder writes on the branch the classification compared. |
+| `infrahub_branch_id` | `str` | The UUID of that branch, not the database element id. A worker missing the worktree creates it under whatever it is given. |
 | `commit` | `str` | The commit the cycle pinned. |
-| `divergence` | `RefDivergence \| None` | Set when the branch was reconciled from a rewrite, `None` for an ordinary fast-forward. |
+| `divergence` | `RefDivergence \| None` | How the remote head compares to the commit the graph records, whatever the classification. `None` when the cycle had no graph commits to compare against, as in the add flow. |
 
 ---
 
@@ -175,17 +189,23 @@ In `backend/infrahub/message_bus/messages/refresh_git_fetch.py`. One new optiona
 |---|---|---|---|
 | `branches` | `tuple[BranchCommitPair, ...] \| None` | new, optional | Every branch this message converges, with the commit each is pinned to. |
 
-`BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`.
+`BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`. `commit` is
+optional, and an empty one tells the worker to pull that branch instead of resetting it. The periodic
+cycle sends the trunk that way when it cannot read the trunk's commit. It must have a default: the
+message body leaves out every field that is empty, so a required `commit` fails to parse on the
+worker that receives it.
 
 The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay, and a coalesced
 message still populates them from its first pair. The first two are required, so a message that
 left them empty could not be constructed by a worker running the previous code. Five emission sites
 use them and are untouched by this epic. The handler prefers `branches` when present and falls back
-to the single-branch fields otherwise.
+to the single-branch fields otherwise. A message that sets `branches` lists at least one pair, and
+the model rejects one whose first pair differs from the single-branch fields, so a worker on the
+previous code converges the branch the list starts with.
 
-Under one lock acquisition and one fetch, the handler resets each pair in turn. This is why the
-list is coalesced rather than sent as N messages: the repository lock is contended by merges and
-by other synchronisations.
+Under one lock acquisition and one fetch, the handler resets, or pulls, each pair in turn. This is
+why the list is coalesced rather than sent as N messages: the repository lock is contended by merges
+and by other synchronisations.
 
 ---
 
@@ -255,4 +275,4 @@ marker would then survive its full hour and suppress the next genuine rewrite of
 | `internal_status` | Unrelated to reconciliation. |
 | `commit` on any kind | The reconciled commit is recorded the way every other commit is. |
 | `NodeMutationOrigin` | No new member. Not because the trigger builders would need changing, they match `live` explicitly and ignore a new value for free, but because the SDK mutation that writes the record always stamps `live`. See `research.md` R6. |
-| The SDK (`python_sdk`) | The recorder writes through the SDK node API, so no submodule change and no second PR. |
+| The SDK client (`python_sdk`) | The recorder writes through the SDK node API, so no SDK method changes. The generated `infrahub_sdk/protocols.py` still gains the four attributes, so one SDK PR lands first and the submodule pointer follows it. |

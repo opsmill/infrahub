@@ -1,6 +1,7 @@
 import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
@@ -15,11 +16,11 @@ import { QSP } from "@/shared/config/qsp";
 import { SEARCH_ANY_FILTER } from "@/entities/nodes/filters/domain/model/filter";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 import { useGetTaskList } from "@/entities/tasks/ui/queries/get-task-list.query";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 import { TaskFilters } from "@/entities/tasks/ui/task-filters";
 import { getStateBadge } from "@/entities/tasks/ui/task-item-details";
 
@@ -105,7 +106,7 @@ export function TaskItems({ relatedNodeId }: TaskItemsProps) {
 
   const getUrl = (id: string) => {
     if (!relatedNodeId) {
-      return constructPath(`/tasks/${id}`);
+      return getTaskDetailsUrl(id);
     }
 
     // pathname already ends in /tasks (parent route is the tasks tab); append /:taskId

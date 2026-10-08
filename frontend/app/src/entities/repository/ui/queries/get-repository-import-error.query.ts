@@ -1,90 +1,72 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, skipToken, useQuery } from "@tanstack/react-query";
 
-import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
+import { ERROR_CODES } from "@/shared/api/errors";
+import { hasOnlyThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
 
-import type {
-  RepositoryImportError,
-  RepositoryImportTaskLookup,
-} from "@/entities/repository/domain/model/branch-repository";
+import type { RepositoryImportError } from "@/entities/repository/domain/model/branch-repository";
+import { getImportTaskErrorMessage } from "@/entities/repository/domain/use-cases/get-import-task-error-message";
 import {
-  type GetRepositoryImportTaskParams,
-  getImportTaskErrorMessage,
-  getRepositoryImportTask,
-} from "@/entities/repository/domain/use-cases/get-repository-import-error";
+  type GetLatestRepositoryImportTaskParams,
+  getLatestRepositoryImportTask,
+} from "@/entities/repository/domain/use-cases/get-latest-repository-import-task";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
-  MAX_IMPORT_TASK_LOOKUPS,
+  REPOSITORY_ERROR_REFETCH_INTERVAL_MS,
   REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
 } from "@/entities/repository/ui/queries/repository-polling";
 
-export interface GetRepositoryImportTaskQueryParams extends GetRepositoryImportTaskParams {
+// Logs come back oldest first, so anything below the backend's 10 000-line cap can cut off the final error line.
+const IMPORT_LOG_LIMIT = 10_000;
+
+interface GetLatestRepositoryImportTaskQueryParams extends GetLatestRepositoryImportTaskParams {
   isSyncing: boolean;
 }
 
-// Only consecutive "nothing found" answers count against the lookup budget: a running import is
-// expected to end as a failed run, so it is polled for as long as it runs.
-interface RepositoryImportTaskLookupResult {
-  lookup: RepositoryImportTaskLookup;
-  notFoundCount: number;
-}
-
-export function getRepositoryImportTaskQueryOptions({
+export function getLatestRepositoryImportTaskQueryOptions({
   isSyncing,
   ...params
-}: GetRepositoryImportTaskQueryParams) {
+}: GetLatestRepositoryImportTaskQueryParams) {
   return queryOptions({
-    queryKey: repositoryQueryKeys.importTask(params),
-    queryFn: async ({ client, queryKey }): Promise<RepositoryImportTaskLookupResult> => {
-      const lookup = await getRepositoryImportTask(params);
-      const previous = client.getQueryData<RepositoryImportTaskLookupResult>(queryKey);
-      const notFoundCount = lookup.status === "not-found" ? (previous?.notFoundCount ?? 0) + 1 : 0;
-      return { lookup, notFoundCount };
-    },
-    retry: retryBackgroundQuery,
-    refetchInterval: (query) => {
-      const { data, status } = query.state;
-      const isStillLookingForTask =
-        status === "error" ||
-        data?.lookup.status === "running" ||
-        (data?.lookup.status === "not-found" && data.notFoundCount < MAX_IMPORT_TASK_LOOKUPS);
-
-      return pollWhileHealthy(
-        isSyncing || isStillLookingForTask,
-        REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
-        query
-      );
+    queryKey: repositoryQueryKeys.latestImportTask(params),
+    queryFn: () => getLatestRepositoryImportTask(params),
+    // A run can still be ending as failed after the repository already shows the import error.
+    refetchInterval: ({ state }) => {
+      if (hasOnlyThrownCatalogueCode(state.error, ERROR_CODES.PERMISSION_DENIED)) return false;
+      if (state.status === "error") return REPOSITORY_ERROR_REFETCH_INTERVAL_MS;
+      return isSyncing || state.data?.status === "running"
+        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
+        : false;
     },
   });
 }
 
 // A finished task's log doesn't change, so it is fetched once per task.
-export function getImportTaskErrorMessageQueryOptions(taskId: string | null | undefined) {
+export function getImportTaskErrorMessageQueryOptions({ taskId }: { taskId: string | undefined }) {
   return queryOptions({
-    queryKey: repositoryQueryKeys.importLog(taskId ?? ""),
-    queryFn: () => getImportTaskErrorMessage(taskId ?? ""),
-    enabled: !!taskId,
+    queryKey: repositoryQueryKeys.importLog({ taskId: taskId ?? "" }),
+    queryFn: taskId
+      ? () => getImportTaskErrorMessage({ taskId, logLimit: IMPORT_LOG_LIMIT })
+      : skipToken,
     staleTime: Number.POSITIVE_INFINITY,
-    retry: retryBackgroundQuery,
   });
 }
 
 // A failed lookup reads as "details not found", so the band stays up whatever happens here.
 export function useGetRepositoryImportError(
-  params: GetRepositoryImportTaskQueryParams
+  params: GetLatestRepositoryImportTaskQueryParams
 ): RepositoryImportError | undefined {
-  const task = useQuery(getRepositoryImportTaskQueryOptions(params));
-  const lookup = task.data?.lookup;
-  const taskId = lookup?.status === "failed" ? lookup.taskId : undefined;
-  const log = useQuery(getImportTaskErrorMessageQueryOptions(taskId));
+  const { data: task, isError } = useQuery(getLatestRepositoryImportTaskQueryOptions(params));
+  const taskId = task?.status === "failed" ? task.taskId : undefined;
+  const log = useQuery(getImportTaskErrorMessageQueryOptions({ taskId }));
 
-  if (!lookup) return task.isError ? { status: "not-found", taskId: null } : undefined;
-  if (lookup.status === "running") return undefined;
-  if (lookup.status === "not-found") return { status: "not-found", taskId: null };
+  if (!task) return isError ? { status: "not-found", taskId: null } : undefined;
+  if (task.status === "running") return undefined;
+  if (task.status === "none") return { status: "not-found", taskId: null };
   if (log.data === undefined) {
-    return log.isError ? { status: "not-found", taskId: lookup.taskId } : undefined;
+    return log.isError ? { status: "not-found", taskId: task.taskId } : undefined;
   }
 
   return log.data === null
-    ? { status: "not-found", taskId: lookup.taskId }
-    : { status: "found", taskId: lookup.taskId, message: log.data };
+    ? { status: "not-found", taskId: task.taskId }
+    : { status: "found", taskId: task.taskId, message: log.data };
 }

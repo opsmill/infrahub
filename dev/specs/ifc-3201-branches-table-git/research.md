@@ -30,9 +30,9 @@ Each line names the decision and what replaced it. The full reasoning is in the 
 
 ## R9 — Polling
 
-**Decision**: each repository's status query refreshes every 10 s while one of its rows has `sync_status = syncing`, and stops when no row is syncing (`entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusRefetchInterval`, through `shared/api/background-query.ts::pollWhileHealthy`). Status queries have a 60 s stale time.
+**Decision**: each repository's status query refreshes every 10 s while one of its rows has `sync_status = syncing`, and stops when no row is syncing (`entities/branch-git-status/ui/queries/get-repository-branch-status.query.ts::getRepositoryBranchStatusRefetchInterval`). Status queries have a 60 s stale time.
 
-**Rationale**: FR-014 asks for the cadence the branch details page already uses (`REPOSITORY_SYNC_REFETCH_INTERVAL_MS`). Only a repository that is syncing polls. `pollWhileHealthy` slows a failing poll down and stops it after a permission denial.
+**Rationale**: FR-014 asks for the cadence the branch details page already uses (`REPOSITORY_SYNC_REFETCH_INTERVAL_MS`). Only a repository that is syncing polls. A failed read polls every minute (`REPOSITORY_ERROR_REFETCH_INTERVAL_MS`) and a permission denial stops polling, as on the branch details page. Queries do not retry: the app query client turns retries off.
 
 ## R10 — Pending, denied and error rendering
 

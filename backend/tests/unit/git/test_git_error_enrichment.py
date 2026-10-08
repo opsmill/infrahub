@@ -182,6 +182,22 @@ ENRICHMENT_CASES = [
         expected=RepositoryError,
     ),
     EnrichmentCase(
+        name="pull_of_a_diverged_branch",
+        stderr="hint: You have divergent branches and need to specify how to reconcile them.\n"
+        "fatal: Need to specify how to reconcile divergent branches.",
+        expected=RepositoryError,
+        command=["git", "pull", "-v", "--", "origin", "branch01"],
+        message="Unable to pull repository net-repo, its local history and the remote history have diverged.",
+    ),
+    EnrichmentCase(
+        name="pull_with_unmerged_files",
+        stderr="error: Pulling is not possible because you have unmerged files.\n"
+        "fatal: Exiting because of an unresolved conflict.",
+        expected=RepositoryError,
+        command=["git", "pull", "-v", "--", "origin", "branch01"],
+        message="Unable to pull repository net-repo, there are conflicts that must be resolved.",
+    ),
+    EnrichmentCase(
         name="unclassified_error_falls_through",
         stderr="fatal: something entirely unexpected happened",
         expected=RepositoryError,

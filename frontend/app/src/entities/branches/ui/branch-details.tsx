@@ -37,20 +37,20 @@ export const BranchDetails = ({ branchName }: BranchDetailsProps) => {
       <BranchAttributes branch={branch} />
 
       {!branch.is_default && (
-        <BranchRepositoriesCard branchName={branch.name} syncWithGit={!!branch.sync_with_git} />
-      )}
+        <>
+          <BranchRepositoriesCard branchName={branch.name} syncWithGit={!!branch.sync_with_git} />
 
-      {!branch.is_default && (
-        <Row className="flex-wrap">
-          <BranchMergeButton branch={branch} />
-          <BranchProposeChangeButton branch={branch} />
-          <BranchRebaseButton branch={branch} />
-          <BranchValidateButton branch={branch} />
-          <BranchDeleteButton branch={branch} />
-        </Row>
-      )}
+          <Row className="flex-wrap">
+            <BranchMergeButton branch={branch} />
+            <BranchProposeChangeButton branch={branch} />
+            <BranchRebaseButton branch={branch} />
+            <BranchValidateButton branch={branch} />
+            <BranchDeleteButton branch={branch} />
+          </Row>
 
-      {!branch.is_default && <BranchTasksCard branchName={branch.name} />}
+          <BranchTasksCard branchName={branch.name} />
+        </>
+      )}
     </Col>
   );
 };

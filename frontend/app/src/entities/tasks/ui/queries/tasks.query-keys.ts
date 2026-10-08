@@ -9,6 +9,8 @@ export const tasksQueryKeys = {
   isRunning: (branch: string) => [...tasksQueryKeys.all, "is-task-running", branch] as const,
   list: (filters?: GetTaskListParams) => [...tasksQueryKeys.all, filters] as const,
   count: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "count"] as const,
+  branchListOnBranch: (params: Pick<GetBranchTasksParams, "branchName">) =>
+    [...tasksQueryKeys.all, "branch-list", params] as const,
   branchList: (params: GetBranchTasksParams) =>
     [...tasksQueryKeys.all, "branch-list", params] as const,
   homepage: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "homepage"] as const,

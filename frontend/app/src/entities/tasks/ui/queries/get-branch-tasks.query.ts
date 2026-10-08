@@ -1,9 +1,12 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
-import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
+import { ERROR_CODES } from "@/shared/api/errors";
+import { hasOnlyThrownCatalogueCode } from "@/shared/api/graphql/error-handling";
+import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
+import { getOffset } from "@/shared/utils/table-pagination";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
+import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import {
   type GetBranchTasksParams,
   getBranchTasks,
@@ -13,28 +16,38 @@ import { getTaskCountQueryOptions } from "@/entities/tasks/ui/queries/get-task-c
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 const BRANCH_TASKS_REFETCH_INTERVAL_MS = 10_000;
+// A failed poll retries at this pace so the card recovers on its own without hammering the API.
+const BRANCH_TASKS_ERROR_REFETCH_INTERVAL_MS = 60_000;
+
+const pollTasks = (state: { status: string; error: Error | null }): number | false => {
+  if (hasOnlyThrownCatalogueCode(state.error, ERROR_CODES.PERMISSION_DENIED)) return false;
+  return state.status === "error"
+    ? BRANCH_TASKS_ERROR_REFETCH_INTERVAL_MS
+    : BRANCH_TASKS_REFETCH_INTERVAL_MS;
+};
 
 export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
   return queryOptions({
     queryKey: tasksQueryKeys.branchList(params),
-    queryFn: () => getBranchTasks(params),
-    retry: retryBackgroundQuery,
-    refetchInterval: (query) =>
-      pollWhileHealthy(params.offset === 0, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
-    placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
+    queryFn: () => getBranchTasks(params, { silenceErrors: true }),
+    // Only the first page gets new tasks as they start.
+    refetchInterval: ({ state }) => (params.offset === 0 ? pollTasks(state) : false),
+    placeholderData: keepPreviousDataWithin(
+      tasksQueryKeys.branchListOnBranch({ branchName: params.branchName }),
+      (page: TaskListPage) => page.tasks.length > 0
+    ),
   });
 }
 
-export interface UseGetBranchTasksParams {
+interface UseGetBranchTasksParams {
   branchName: string;
   page: number;
   pageSize: number;
 }
 
 export function useGetBranchTasks({ branchName, page, pageSize }: UseGetBranchTasksParams) {
-  return useCountClampedQuery({ page, pageSize }, (offset) =>
-    getBranchTasksQueryOptions({ branchName, offset, limit: pageSize })
+  return useQuery(
+    getBranchTasksQueryOptions({ branchName, offset: getOffset(page, pageSize), limit: pageSize })
   );
 }
 
@@ -45,8 +58,7 @@ export function getBranchFailedTaskCountQueryOptions({ branchName }: { branchNam
   return queryOptions({
     ...getTaskCountQueryOptions(params),
     queryFn: () => getTaskCount(params, { silenceErrors: true }),
-    retry: retryBackgroundQuery,
-    refetchInterval: (query) => pollWhileHealthy(true, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
+    refetchInterval: ({ state }) => pollTasks(state),
   });
 }
 

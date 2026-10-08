@@ -1,6 +1,6 @@
 # Branch details: repositories and tasks — design handoff
 
-Published page: https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX (private until shared from its Share menu)
+Published page: <https://claude.ai/artifact/REc7PuP1rDKRarH9G9V3wX> (private until shared from its Share menu)
 
 Design branch (backup, no PR): `ple-design-branch-details-repos`. Live prototype on that branch:
 `/_proto/branch-details?dj.variant=object&dj.rev=6`.
@@ -15,6 +15,18 @@ Someone merged a branch from the branch page while a generator had failed on it,
 came out stale. Today the only way to catch that is to open each repository page and then the
 Tasks page, one by one. People merge from the branch page without a proposed change, so the
 proposed change's checks never run.
+
+From the brief (`00-brief.md` on the design branch):
+
+- **Who uses the page:** an engineer who pushed changes to a Git repository tracked by Infrahub,
+  or edited data on a branch, and now merges that branch from the UI without a proposed change.
+  The page is used on a desktop only.
+- **Riskiest assumption:** that the frontend can tie each task to a repository. Import tasks are
+  tagged with the repository ID. Generator tasks reach a repository only through
+  `GeneratorDefinition.repository`, and artifact tasks are tagged only with the target node.
+- **Out of scope:** merges from CI, the SDK, `infrahubctl` or GraphQL; a backend readiness query;
+  merges through a proposed change; permission-aware action buttons; the Data, Files, Artifacts
+  and Schema tabs.
 
 ## 2. The proposal: Object layout, rev 6
 
@@ -40,22 +52,21 @@ The branch details page uses the same layers, cards and colours as the object de
   to that task's details page, where the logs are. It has loading, empty and "results didn't load"
   states.
 
-Screenshots (`shots/`):
+States the design covers. The screenshots of each state are on the published page above, and in
+`.design/branch-details-repos/shots/` on the design branch:
 
-| State | File |
-|---|---|
-| Import error + failed generator (worst case) | `object-incident.png` |
-| Import error only | `object-import-error.png` |
-| Failed generator only | `object-generator-failed.png` |
-| Remote unreachable | `object-unreachable.png` |
-| Import and generators running | `object-running.png` |
-| 40 repositories, 5 import errors (both tables paginate) | `object-many-errors.png` |
-| Task query failed | `object-tasks-unknown.png` |
-| Everything passed | `object-all-clear.png` |
-| No Git counterpart | `object-no-repos.png` |
-| Loading | `object-loading.png` |
-| No permission on repositories | `object-denied.png` |
-| Today's page (baseline) | `current.png` |
+- import error and failed generator together (worst case);
+- import error only;
+- failed generator only;
+- remote unreachable;
+- import and generators running;
+- 40 repositories with 5 import errors (both tables paginate);
+- task query failed;
+- everything passed;
+- no Git counterpart;
+- loading;
+- no permission on repositories;
+- today's page (baseline).
 
 ## 3. What we rejected, and why
 
@@ -73,7 +84,8 @@ Screenshots (`shots/`):
 
 ## 4. Decisions
 
-The full log is in `03-decisions.md`. These are the ones reviewers will want to argue with:
+The full log is `03-decisions.md` on the design branch. These are the ones reviewers will want to
+argue with:
 
 | Decision | Reason |
 |---|---|
@@ -83,6 +95,8 @@ The full log is in `03-decisions.md`. These are the ones reviewers will want to 
 | `operational_status` errors warn in their own amber band. | The field exists and nothing shows it. The shown commit may be stale when the remote can't be reached. |
 | Tasks aren't expandable: the title links to `/tasks/<id>` (round 6). | The task page already shows the logs, so a second log viewer isn't needed. |
 | Inline buttons instead of an Actions menu (round 6). | They match today's page, and the owner asked for them. |
+| Git state comes from `sync_status` only, not from task state. | IFC-3199 and IFC-3200: a task can succeed while the import failed. |
+| Failing repositories sort first. | A repository in Import Error on page 3 would be invisible. |
 | Tables paginate at 10 rows with a fixed height. | 40 repositories or 55 tasks must not push the actions off screen. The pattern comes from IFC-3130's branch list. |
 
 ## 5. Open questions
@@ -138,8 +152,26 @@ Every revision stays live on the design branch:
 Reasoning over time: `git log -p ple-design-branch-details-repos -- .design/branch-details-repos/`.
 Code over time: `git diff <sha1>..<sha2> -- frontend/app/src/pages/_proto/`.
 
-Files: `00-brief.md`, `01-system.md`, `02-directions.md`, `03-decisions.md`, `04-review.md`
-(the gate is clean), and `shots/`.
+The full design history is on the design branch, in `.design/branch-details-repos/`: the brief
+(`00-brief.md`), the design system inventory (`01-system.md`), the directions (`02-directions.md`),
+the decision log (`03-decisions.md`), the review (`04-review.md`) and the screenshots (`shots/`).
+
+## 8. Design review outcome
+
+The review of rev 5 (`04-review.md` on the design branch) ended with every finding fixed or
+accepted with a reason. Rev 6 is rev 5 with those fixes:
+
+- **Fixed:**
+  - hit areas of the row menu buttons, task title links and "Open in Tasks" extended to 40px;
+  - branch description and `BranchStatusBadge` restored in the header;
+  - loading state shows skeleton rows and no count;
+  - without repository permission, branch tasks still show and only repository tasks are hidden;
+  - an empty Tasks card shows an empty state.
+- **Accepted:**
+  - `CopyToClipboardButton` has no accessible name (shared component, listed in section 6);
+  - at phone width the tab row and tables scroll sideways, because the page is used on a desktop
+    only;
+  - dark mode was not reviewed, because the design branch has no theme support (section 6).
 
 ---
 
@@ -155,7 +187,7 @@ router block goes to production.
 | `v-object.tsx` | The branch Details tab (`src/pages/branches/…` outlet) | Column: `BranchAttributes` (real) → repositories card → branch actions → tasks card. Replace `fakeMerge` and the toasts with the real `BranchMergeButton`, `BranchRebaseButton`, validate and delete actions. |
 | `git-repositories-card.tsx` | `src/entities/repository/ui/branch-repositories/` (or IFC-3200's card, see open question 2) | Keep the row, the Git state pill, the bands and the pagination. Drop the non-object header variant. |
 | `data.ts`: `GIT_STATE`, `OPERATIONAL_ERROR`, `rank()` | `src/entities/repository/domain/model` and `domain/rules` | Pure functions: unit test them. `rank` should become server-side ordering if the repository query supports it. |
-| `data.ts`: scenarios (`buildData`) | Test fixtures for the card and tasks table | One fixture per scenario in the screenshot table. They're the test matrix. |
+| `data.ts`: scenarios (`buildData`) | Test fixtures for the card and tasks table | One fixture per state in section 2. They're the test matrix. |
 | `tasks-table.tsx` | `src/entities/tasks/ui/branch-tasks-table.tsx` | The link goes to `constructPath(\`/tasks/${id}\`)`. Server-side pagination (`limit`/`offset`, `count`) instead of slicing. |
 | `table-pagination.tsx` | Nothing; use IFC-3130's `shared/components/table/table-pagination.tsx` | The copy exists only because IFC-3130 isn't on this branch. |
 | `shared.tsx` (`Attributes`) | Nothing; use the real `BranchAttributes` | A replica for the prototype. |
