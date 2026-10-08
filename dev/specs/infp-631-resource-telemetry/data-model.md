@@ -68,7 +68,7 @@ task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentD
 
 ## Per-process reading (transits the cache, not part of the payload)
 
-Read by each process on its main loop every 10 seconds and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
+Read by each process every 10 seconds, on a separate thread its main loop starts, and written into `workers:resources:{component}:worker:{WORKER_IDENTITY}` by its liveness heartbeat, alongside the active key and with the same expiry:
 
 | Field | Type | Source |
 |-------|------|--------|

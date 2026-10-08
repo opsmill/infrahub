@@ -17,4 +17,4 @@ async def trigger_branch_refresh(service: InfrahubServices) -> None:
 
 
 async def trigger_resource_refresh(service: InfrahubServices) -> None:
-    service.component.refresh_resources()
+    await service.component.refresh_resources()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import threading
 from typing import TYPE_CHECKING, Any
@@ -47,11 +48,11 @@ log = get_logger()
 
 
 class LatestResourceReading:
-    """This process's latest CPU and memory reading, taken on the main loop and stored by the heartbeat.
+    """This process's latest CPU and memory reading, taken on a separate thread and stored by the heartbeat.
 
     The heartbeat runs on its own thread and may only write to the cache, so the reading is
-    taken elsewhere and handed over here. If a long task blocks the main loop, the heartbeat
-    keeps storing the last reading.
+    taken elsewhere and handed over here. The main loop starts each reading, so if a long task
+    blocks the main loop, the heartbeat keeps storing the last reading.
     """
 
     def __init__(self) -> None:
@@ -219,12 +220,17 @@ class InfrahubComponent:
         The recurring refresh runs on the ``WorkerHeartbeat`` thread; this is for the one-off writes
         at startup, before that thread exists.
         """
-        self.refresh_resources()
+        await self.refresh_resources()
         await refresh_worker_heartbeat(cache=self.cache, component_type=self.component_type)
 
-    def refresh_resources(self) -> None:
-        """Read this process's CPU and memory figures and hand them to the heartbeat to store."""
-        LATEST_RESOURCE_READING.publish(self._read_own_resources())
+    async def refresh_resources(self) -> None:
+        """Read this process's CPU and memory figures on a separate thread and hand them to the heartbeat to store.
+
+        Reading the limit files and the machine's figures waits on the operating system, so it runs
+        off the main loop, where it would hold up requests and flows.
+        """
+        reading = await asyncio.to_thread(self._read_own_resources)
+        LATEST_RESOURCE_READING.publish(reading)
 
     def _read_own_resources(self) -> WorkerResourceReading:
         """Read this process's CPU and memory figures, trying again if the read fails.

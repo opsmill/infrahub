@@ -40,8 +40,9 @@ writes the limit it puts on a container, and `psutil` for the whole machine.
   its default, 0, is reported as `null`. The other database figures are the ones Neo4j already
   reported.
 
-**Carry the reading through the liveness heartbeat.** Every 10 seconds the main loop reads the
-figures and hands them to the heartbeat thread through a locked slot in memory. Every 5 seconds the
+**Carry the reading through the liveness heartbeat.** Every 10 seconds the main loop starts a read
+of the figures on a separate thread, so that a slow read cannot hold up requests and flows, and hands
+the reading to the heartbeat thread through a locked slot in memory. Every 5 seconds the
 heartbeat writes the latest reading to the cache next to its "alive" key, with the same 15-second
 expiry. Once a day the report reads every reading back from the cache. Each reading carries the
 container's name, which is never sent, so readings from the same container can be grouped. The name

@@ -82,8 +82,9 @@ between them. Their `total` and `active` count processes the same way `workers` 
 unchanged: `server.total + task_workers.total` equals `workers.total`, except for a process that
 stopped about two hours earlier and is only remembered by its presence key.
 
-Each API server and task-worker process reports its own figures through the cache. The main loop
-reads the limits every 10 seconds and puts the reading in a shared slot in memory. The heartbeat
+Each API server and task-worker process reports its own figures through the cache. Every 10 seconds
+the main loop starts a read of the limits on a separate thread, so that a slow read never holds up
+requests and flows, and puts the reading in a shared slot in memory. The heartbeat
 thread, which only writes to the cache so that a busy main loop never stalls it, copies the latest
 reading into the cache every 5 seconds next to its "alive" key, with the same 15-second expiry.
 Once a day the report reads those entries. The database figures come from Neo4j itself when the
@@ -93,14 +94,17 @@ report runs.
 flowchart LR
     limits["Container limits<br/>cgroup files + psutil<br/>ProcessResources"]
     subgraph process["One Infrahub process: API server or task worker"]
-        main["Main loop<br/>limits every 10 s<br/>refresh_resources()"]
+        main["Main loop<br/>starts a read every 10 s<br/>refresh_resources()"]
+        reader["Separate thread<br/>reads the limits"]
         slot["Shared slot<br/>latest reading, with a lock<br/>LatestResourceReading"]
         beat["Heartbeat thread<br/>every 5 s, cache writes only<br/>WorkerHeartbeat"]
+        main -->|start| reader
+        reader -->|reading| main
         main -->|publish| slot
         slot -->|latest| beat
     end
     cache[("Cache<br/>read by the daily report<br/>workers:resources:*")]
-    limits -->|read every 10 s| main
+    limits -->|read every 10 s| reader
     beat -->|alive key + reading, 15 s| cache
 ```
 
@@ -185,7 +189,7 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/resources.py` | Reads a process's CPU and memory limits and the machine's figures |
-| `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 10-second schedule that reads the figures on the main loop |
+| `backend/infrahub/services/scheduler.py`, `backend/infrahub/tasks/recurring.py` | The 10-second schedule on the main loop that starts each read of the figures on a separate thread |
 | `backend/infrahub/services/heartbeat.py` | The heartbeat thread that copies the latest reading into the cache every 5 seconds |
 | `backend/infrahub/services/component.py` | Stores each process's CPU and memory reading next to its heartbeat |
 | `backend/infrahub/telemetry/models.py` | Payload schema |
