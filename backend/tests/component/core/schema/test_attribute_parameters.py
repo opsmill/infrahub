@@ -722,10 +722,17 @@ class TestNumberPoolAllocationScopeParameters:
             assert parameters.allocation_scope == case.expected_scope
 
 
+@dataclass(frozen=True)
+class SchemaApiScopeCase:
+    name: str
+    scope_parameters: dict[str, Any]
+    expected_scope: list[str] | None
+
+
 ALLOCATION_SCOPE_CASES = [
-    pytest.param({"allocation_scope": ["site"]}, ["site"], id="scoped"),
-    pytest.param({}, None, id="absent"),
-    pytest.param({"allocation_scope": []}, [], id="empty"),
+    SchemaApiScopeCase(name="scoped", scope_parameters={"allocation_scope": ["site"]}, expected_scope=["site"]),
+    SchemaApiScopeCase(name="absent", scope_parameters={}, expected_scope=None),
+    SchemaApiScopeCase(name="empty", scope_parameters={"allocation_scope": []}, expected_scope=[]),
 ]
 
 
@@ -755,15 +762,14 @@ def _scoped_number_pool_payload(scope_parameters: dict[str, Any]) -> dict[str, A
     }
 
 
-@pytest.mark.parametrize(("scope_parameters", "expected_scope"), ALLOCATION_SCOPE_CASES)
+@pytest.mark.parametrize("case", ALLOCATION_SCOPE_CASES, ids=lambda case: case.name)
 async def test_number_pool_allocation_scope_round_trips_through_schema_api(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
-    scope_parameters: dict[str, Any],
-    expected_scope: list[str] | None,
+    case: SchemaApiScopeCase,
 ) -> None:
-    submitted = SchemaLoadAPI.model_validate(_scoped_number_pool_payload(scope_parameters))
+    submitted = SchemaLoadAPI.model_validate(_scoped_number_pool_payload(case.scope_parameters))
     await load_schema(db=db, schema=submitted.internal_schema, update_db=True)
 
     reloaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
@@ -771,4 +777,4 @@ async def test_number_pool_allocation_scope_round_trips_through_schema_api(
 
     number = next(attribute for attribute in read.attributes if attribute.name == "number")
     read_scope = number.model_dump()["parameters"]["allocation_scope"]
-    assert read_scope == expected_scope
+    assert read_scope == case.expected_scope
