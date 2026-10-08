@@ -122,14 +122,12 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         new_commit = None
         if data.commit and data.commit.value:
             new_commit = data.commit.value
-        new_ref = None
-        if data.ref and data.ref.value:
-            new_ref = data.ref.value
 
         obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
         obj = cast("CoreReadOnlyRepository", obj)
 
-        target_changed = bool(new_commit and new_commit != current_commit) or bool(new_ref and new_ref != current_ref)
+        # A cleared commit is a change too, because the repository then follows the head of its ref.
+        target_changed = obj.commit.value != current_commit or obj.ref.value != current_ref
         if not target_changed:
             return obj, result
 

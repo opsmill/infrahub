@@ -310,6 +310,12 @@ READ_ONLY_REPOINT_TEST_CASES: list[ReadOnlyRepointTestCase] = [
         expected_ref="main",
         expected_commit=REPINNED_COMMIT,
     ),
+    ReadOnlyRepointTestCase(
+        name="the_pinned_commit_cleared",
+        update="commit: { value: null }",
+        expected_ref="main",
+        expected_commit=None,
+    ),
 ]
 
 

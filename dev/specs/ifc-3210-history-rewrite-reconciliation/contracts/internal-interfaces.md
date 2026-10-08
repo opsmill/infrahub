@@ -602,7 +602,7 @@ different mutations submit it:
 |---|---|---|
 | `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
 | `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
-| `InfrahubRepositoryMutation.mutate_update`, `commit` changed | deliberate re-pin | true |
+| `InfrahubRepositoryMutation.mutate_update`, `commit` changed or cleared | deliberate re-pin, or a return to the head of `ref` | true |
 
 `mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
 `GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change. So the flow **must** read

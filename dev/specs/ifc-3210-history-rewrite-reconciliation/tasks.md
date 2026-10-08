@@ -610,8 +610,9 @@ read-write repository's configured default branch. Neither writes a record.
       `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
       when `CoreReadOnlyRepository.ref` changes **or when only `commit` changes**. It already
       computes both comparisons. SC-007 covers re-pointing to "a different branch, tag or commit",
-      so leaving the commit-only case out records a false rewrite. Read-only repositories write no
-      cache marker.
+      so leaving the commit-only case out records a false rewrite. Clearing a pinned `commit` is a
+      change too, because the repository then follows the head of `ref`. Read-only repositories
+      write no cache marker.
 - [x] T079 [US6] Add the `default_branch` comparison for `CoreRepository`, and write the marker
       for the new git branch. The comparison lives in `mutate_update_object`, which the update and
       every upsert path call inside the transaction, so the marker lands before the commit.
