@@ -11,11 +11,21 @@ from tests.helpers.agnostic_edges import attribute_edges
 from .helpers import (
     allocated_rows,
     create_ticket,
+    execute,
     is_reserved_edges,
     new_pool,
     open_is_reserved_edges,
     update_ticket,
 )
+
+POOL_ALLOCATED = """
+query PoolAllocated($pool_id: String!) {
+    InfrahubResourcePoolAllocated(pool_id: $pool_id, resource_id: $pool_id) {
+        count
+        edges { node { id branch display_label provenance } }
+    }
+}
+"""
 
 REMOVE_ALLOCATED_VALUES = """
 MATCH (:Node { uuid: $pool_id })-[reserved:IS_RESERVED]->(:Attribute)
@@ -205,3 +215,19 @@ class TestProvenanceAcrossBranches:
         assert await allocated_rows(db=db, branch=main_branch, pool=pool) == sorted(
             [(ticket["id"], branch.name, 3004, "allocated"), (ticket["id"], "main", 3000, "allocated")]
         )
+
+    async def test_the_in_use_list_reports_the_provenance_of_each_row(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool, ticket, branch = await self._allocated_on_main_and_provided_on_a_branch(
+            db=db, main_branch=main_branch, name="graphql-rows", start=3100
+        )
+
+        data = await execute(db=db, branch=main_branch, source=POOL_ALLOCATED, variables={"pool_id": pool.id})
+
+        assert data
+        assert data["InfrahubResourcePoolAllocated"]["count"] == 2
+        assert sorted(
+            (edge["node"]["id"], edge["node"]["branch"], edge["node"]["display_label"], edge["node"]["provenance"])
+            for edge in data["InfrahubResourcePoolAllocated"]["edges"]
+        ) == sorted([(ticket["id"], branch.name, "3104", "PROVIDED"), (ticket["id"], "main", "3100", "ALLOCATED")])

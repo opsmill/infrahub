@@ -12707,6 +12707,18 @@ type PoolAllocatedNode {
   identifier: String
   """The node kind"""
   kind: String!
+  """
+  Whether the number pool allocated the value the branch holds or a user provided it; null for IP pools
+  """
+  provenance: PoolRecordProvenance
+}
+
+"""
+What a number pool's record says about one value the attribute holds: the pool allocated it or a user provided it.
+"""
+enum PoolRecordProvenance {
+  ALLOCATED
+  PROVIDED
 }
 
 type PoolUtilization {

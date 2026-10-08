@@ -16,3 +16,5 @@ BranchRelativePermissionDecision = Enum.from_enum(permission_constants.BranchRel
 InfrahubBranchStatus = Enum.from_enum(BranchStatus)
 
 InfrahubOrderDirection = Enum.from_enum(OrderDirection)
+
+PoolRecordProvenance = Enum.from_enum(constants.PoolRecordProvenance)
