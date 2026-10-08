@@ -1,7 +1,7 @@
 import React from "react";
 
 import { QSP } from "@/shared/config/qsp";
-import { getPageUrlKey } from "@/shared/utils/table-pagination";
+import { toPageUrlKey } from "@/shared/utils/table-pagination";
 
 export interface FilterScope {
   filterKey: string;
@@ -22,7 +22,7 @@ const GLOBAL_FILTER_SCOPE: FilterScope = {
 const FilterScopeContext = React.createContext<FilterScope | null>(null);
 
 export interface FilterScopeProviderProps {
-  urlKey: string;
+  urlPrefix: string;
   children?: React.ReactNode;
 }
 
@@ -30,11 +30,11 @@ export interface FilterScopeProviderProps {
  * Gives one surface its own filter, order and page url keys, so that it can narrow the conditions
  * it offers and trust that nothing it cannot honour arrives on them.
  */
-export function FilterScopeProvider({ urlKey, children }: FilterScopeProviderProps) {
+export function FilterScopeProvider({ urlPrefix, children }: FilterScopeProviderProps) {
   const scope: FilterScope = {
-    filterKey: `${urlKey}_${QSP.FILTER}`,
-    sortKey: `${urlKey}_${QSP.SORT}`,
-    pageKey: getPageUrlKey(urlKey),
+    filterKey: `${urlPrefix}_${QSP.FILTER}`,
+    sortKey: `${urlPrefix}_${QSP.SORT}`,
+    pageKey: toPageUrlKey(urlPrefix),
   };
 
   return <FilterScopeContext value={scope}>{children}</FilterScopeContext>;

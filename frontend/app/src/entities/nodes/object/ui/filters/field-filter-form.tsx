@@ -34,7 +34,11 @@ export function FieldFilterForm({ definition, filterConditions, onSuccess }: Fie
       );
     case "relationship":
       return (
-        <RelationshipFilterForm relationshipSchema={definition.schema} onSuccess={onSuccess} />
+        <RelationshipFilterForm
+          relationshipSchema={definition.schema}
+          filterConditions={filterConditions}
+          onSuccess={onSuccess}
+        />
       );
     case "metadata-date":
       return <DateMetadataFilterForm definition={definition} onSuccess={onSuccess} />;

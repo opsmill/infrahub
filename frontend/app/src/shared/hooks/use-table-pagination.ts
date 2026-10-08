@@ -1,10 +1,10 @@
 import { parseAsInteger, useQueryStates } from "nuqs";
 import { useEffect } from "react";
 
-import { getOffset, getPageUrlKey, PAGE_SIZE, toPageNumber } from "@/shared/utils/table-pagination";
+import { getOffset, PAGE_SIZE, toPageNumber, toPageUrlKey } from "@/shared/utils/table-pagination";
 
 export interface UseTablePaginationOptions {
-  urlKey: string;
+  urlPrefix: string;
 }
 
 export interface TablePaginationState {
@@ -14,42 +14,42 @@ export interface TablePaginationState {
   setPage: (page: number) => void;
 }
 
-const mountedUrlKeys = new Map<string, number>();
+const mountedUrlPrefixes = new Map<string, number>();
 
-function useUniqueUrlKey(urlKey: string) {
+function useUniqueUrlPrefix(urlPrefix: string) {
   useEffect(() => {
     if (!import.meta.env.DEV) {
       return;
     }
 
-    const mountCount = (mountedUrlKeys.get(urlKey) ?? 0) + 1;
+    const mountCount = (mountedUrlPrefixes.get(urlPrefix) ?? 0) + 1;
 
-    mountedUrlKeys.set(urlKey, mountCount);
+    mountedUrlPrefixes.set(urlPrefix, mountCount);
 
     if (mountCount > 1) {
       console.warn(
-        `useTablePagination: urlKey "${urlKey}" is already used by another mounted table. Give each table its own key, or they will page together.`
+        `useTablePagination: urlPrefix "${urlPrefix}" is already used by another mounted table. Give each table its own key, or they will page together.`
       );
     }
 
     return () => {
-      const remaining = (mountedUrlKeys.get(urlKey) ?? 1) - 1;
+      const remaining = (mountedUrlPrefixes.get(urlPrefix) ?? 1) - 1;
 
       if (remaining > 0) {
-        mountedUrlKeys.set(urlKey, remaining);
+        mountedUrlPrefixes.set(urlPrefix, remaining);
       } else {
-        mountedUrlKeys.delete(urlKey);
+        mountedUrlPrefixes.delete(urlPrefix);
       }
     };
-  }, [urlKey]);
+  }, [urlPrefix]);
 }
 
-export function useTablePagination({ urlKey }: UseTablePaginationOptions): TablePaginationState {
-  useUniqueUrlKey(urlKey);
+export function useTablePagination({ urlPrefix }: UseTablePaginationOptions): TablePaginationState {
+  useUniqueUrlPrefix(urlPrefix);
 
   const [params, setParams] = useQueryStates(
     { page: parseAsInteger.withDefault(1) },
-    { urlKeys: { page: getPageUrlKey(urlKey) } }
+    { urlKeys: { page: toPageUrlKey(urlPrefix) } }
   );
 
   const page = toPageNumber(params.page);

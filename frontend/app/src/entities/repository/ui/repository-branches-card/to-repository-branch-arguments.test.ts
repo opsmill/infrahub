@@ -70,7 +70,7 @@ describe("toRepositoryBranchArguments", () => {
     expect(toRepositoryBranchArguments([], [])).toEqual({});
   });
 
-  it("maps a name fragment and a status onto the arguments the contract takes", () => {
+  it("maps a name fragment and a status onto the arguments the query takes", () => {
     // GIVEN
     const filters: Filter[] = [
       { name: "name__value", value: "release" },
@@ -91,7 +91,7 @@ describe("toRepositoryBranchArguments", () => {
   it.each([
     ["an emptiness filter", { name: "name__isnull", value: true }],
     ["a multi-value filter", { name: "name__values", value: ["main", "staging"] }],
-    ["a field the contract cannot narrow on", { name: "description__value", value: "anything" }],
+    ["a field the query cannot narrow on", { name: "description__value", value: "anything" }],
   ])("does not count %s the request cannot apply as active", (_label, filter) => {
     // GIVEN a filter that reached the url from somewhere this card's controls cannot produce
     const filters: Filter[] = [filter];

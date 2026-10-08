@@ -59,7 +59,6 @@ describe("ObjectDetailsCard", () => {
       <ObjectDetailsCard
         title="On this branch"
         caption="main"
-        testId="repository-branch-details"
         objectSchema={schemaWithCommit}
         objectData={objectData}
         permission={permission}
@@ -90,7 +89,6 @@ describe("ObjectDetailsCard", () => {
     const component = await render(
       <>
         <ObjectDetailsCard
-          testId="repository-details"
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}
@@ -98,7 +96,6 @@ describe("ObjectDetailsCard", () => {
         <ObjectDetailsCard
           title="On this branch"
           caption="main"
-          testId="repository-branch-details"
           objectSchema={schemaWithCommit}
           objectData={objectData}
           permission={permission}

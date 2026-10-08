@@ -8,7 +8,7 @@ import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { getRepositoryBranchStatusFromApi } from "@/entities/repository/api/get-repository-branch-status-from-api";
 import {
-  BRANCHES_URL_KEY,
+  BRANCHES_URL_PREFIX,
   RepositoryBranchesCard,
 } from "@/entities/repository/ui/repository-branches-card/repository-branches-card";
 import { RepositoryBranchesEmpty } from "@/entities/repository/ui/repository-branches-card/repository-branches-empty";
@@ -222,7 +222,7 @@ describe("RepositoryBranchesCard", () => {
     // GIVEN the last page of a set larger than one page, holding fewer rows than a full page
     const count = 45;
     const lastPage = getTotalPages(count, PAGE_SIZE);
-    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=${lastPage}`);
+    window.history.replaceState(null, "", `?${BRANCHES_URL_PREFIX}_page=${lastPage}`);
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPayloadBefore({ count })));
 
     // WHEN
@@ -389,7 +389,7 @@ describe("RepositoryBranchesCard", () => {
     window.history.replaceState(
       null,
       "",
-      `?${BRANCHES_URL_KEY}_page=${getTotalPages(count, PAGE_SIZE) + 1}`
+      `?${BRANCHES_URL_PREFIX}_page=${getTotalPages(count, PAGE_SIZE) + 1}`
     );
     apiMock.mockResolvedValue(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })));
 
@@ -422,13 +422,15 @@ describe("RepositoryBranchesCard", () => {
 
     // WHEN a wider set is asked for at a page only that wider set has, and has not answered yet
     apiMock.mockImplementation(() => new Promise(() => {}));
-    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=3`);
+    window.history.replaceState(null, "", `?${BRANCHES_URL_PREFIX}_page=3`);
     await component.rerender(
       <RepositoryBranchesCard repositoryId={REPOSITORY_ID} schema={repositorySchema} />
     );
 
     // THEN the one-page count left over from the narrow set must not rewrite that page to 1
-    expect(new URLSearchParams(window.location.search).get(`${BRANCHES_URL_KEY}_page`)).toBe("3");
+    expect(new URLSearchParams(window.location.search).get(`${BRANCHES_URL_PREFIX}_page`)).toBe(
+      "3"
+    );
   });
 
   it("falls back to the last real page when the url asks for one past the end", async () => {
@@ -436,7 +438,7 @@ describe("RepositoryBranchesCard", () => {
     const count = 45;
     const lastPage = getTotalPages(count, PAGE_SIZE);
     const lastPagePayload = generateRepositoryBranchStatusPayloadBefore({ count });
-    window.history.replaceState(null, "", `?${BRANCHES_URL_KEY}_page=${lastPage + 1}`);
+    window.history.replaceState(null, "", `?${BRANCHES_URL_PREFIX}_page=${lastPage + 1}`);
     apiMock
       .mockResolvedValueOnce(toApiResult(generateRepositoryBranchStatusPage({ rows: [], count })))
       .mockResolvedValue(toApiResult(lastPagePayload));
@@ -682,7 +684,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  it("offers no filter condition the contract is unable to narrow on", async () => {
+  it("offers no filter condition the query is unable to narrow on", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))
@@ -806,7 +808,7 @@ describe("RepositoryBranchesCard", () => {
 
     // THEN
     const params = new URLSearchParams(window.location.search);
-    expect(params.get(`${BRANCHES_URL_KEY}_${QSP.FILTER}`)).toContain("status__value");
+    expect(params.get(`${BRANCHES_URL_PREFIX}_${QSP.FILTER}`)).toContain("status__value");
     expect(params.get(QSP.FILTER)).toBeNull();
   });
 
@@ -957,7 +959,7 @@ describe("RepositoryBranchesCard", () => {
     ).toHaveLength(0);
   });
 
-  it("offers only the two timestamps the contract is able to order by", async () => {
+  it("offers only the two timestamps the query can order by", async () => {
     // GIVEN
     apiMock.mockResolvedValue(
       toApiResult(generateRepositoryBranchStatusPayloadBefore({ count: 45 }))

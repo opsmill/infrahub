@@ -11,7 +11,6 @@ import { useTablePagination } from "@/shared/hooks/use-table-pagination";
 import { formatNumberDisplay } from "@/shared/utils/number";
 import { clampPage, getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { FilterScopeProvider } from "@/entities/nodes/filters/ui/filter-scope-context";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { useSort } from "@/entities/nodes/sort/ui/hooks/use-sort";
@@ -43,7 +42,7 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 
 /** Scopes this card's page, filters and order so no other table can read or overwrite them. */
-export const BRANCHES_URL_KEY = "branches";
+export const BRANCHES_URL_PREFIX = "branches";
 
 interface RepositoryBranchesBodyProps {
   schema: ModelSchema;
@@ -78,26 +77,9 @@ function RepositoryBranchesBody({
     return <ErrorScreen className="flex-none py-12" message={BRANCHES_LOAD_FAILED} />;
   }
 
-  const columns = getRepositoryBranchesColumns(schema);
-
-  if (isPending || !data) {
-    return (
-      <div className="overflow-x-auto">
-        <DataTable
-          columns={columns}
-          data={[]}
-          gridTemplateColumns={branchesGridTemplateColumns}
-          isLoading
-          semanticTable
-          skeletonRowCount={PAGE_SIZE}
-          skeletonShowSelection={false}
-        />
-      </div>
-    );
-  }
-
+  const isLoading = isPending || !data;
   // A short last page would otherwise shrink the card and move everything below it.
-  const hasMultiplePages = data.count > PAGE_SIZE;
+  const hasMultiplePages = (data?.count ?? 0) > PAGE_SIZE;
 
   return (
     <>
@@ -106,21 +88,24 @@ function RepositoryBranchesBody({
         style={hasMultiplePages ? { minHeight: (PAGE_SIZE + 1) * CELL_HEIGHT_PX } : undefined}
       >
         <DataTable
-          columns={columns}
-          data={data.rows}
+          columns={getRepositoryBranchesColumns(schema)}
+          data={data?.rows ?? []}
           gridTemplateColumns={branchesGridTemplateColumns}
+          isLoading={isLoading}
           renderEmpty={() => (
             <RepositoryBranchesEmpty
               hasFilters={hasFilters}
-              isPagePastTheEnd={data.count > 0}
+              isPagePastTheEnd={(data?.count ?? 0) > 0}
               listsEveryBranch={isOfKind(READONLY_REPOSITORY_KIND, schema)}
             />
           )}
           semanticTable
+          skeletonRowCount={PAGE_SIZE}
+          skeletonShowSelection={false}
         />
       </div>
 
-      {data.count > 0 && (
+      {!isLoading && data.count > 0 && (
         <TablePagination
           onPageChange={onPageChange}
           page={page}
@@ -142,14 +127,14 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
   const title = isOfKind(READONLY_REPOSITORY_KIND, schema)
     ? READ_ONLY_BRANCHES_TITLE
     : BRANCHES_TITLE;
-  const { page, setPage, pageSize, offset } = useTablePagination({ urlKey: BRANCHES_URL_KEY });
+  const { page, setPage, pageSize, offset } = useTablePagination({
+    urlPrefix: BRANCHES_URL_PREFIX,
+  });
   const [filters] = useFilters();
   const { appliedSort } = useSort(BRANCH_ROW_SORT_SCHEMA);
 
   const queryArguments = toRepositoryBranchArguments(filters, appliedSort);
-  const querySignature = JSON.stringify(queryArguments);
 
-  const { currentBranch } = useCurrentBranch();
   const { data, error, isPending, isPlaceholderData } = useGetRepositoryBranchStatus({
     id: repositoryId,
     limit: pageSize,
@@ -183,9 +168,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
 
       <RepositoryBranchesToolbar />
 
-      <RepositoryBranchesCardBoundary
-        resetKeys={[repositoryId, currentBranch.name, currentPage, querySignature]}
-      >
+      <RepositoryBranchesCardBoundary resetKeys={[data]}>
         <RepositoryBranchesBody
           data={data}
           error={error}
@@ -202,7 +185,7 @@ function RepositoryBranchesCardInScope({ repositoryId, schema }: RepositoryBranc
 
 export function RepositoryBranchesCard(props: RepositoryBranchesCardProps) {
   return (
-    <FilterScopeProvider urlKey={BRANCHES_URL_KEY}>
+    <FilterScopeProvider urlPrefix={BRANCHES_URL_PREFIX}>
       <RepositoryBranchesCardInScope {...props} />
     </FilterScopeProvider>
   );

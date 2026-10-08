@@ -7,9 +7,9 @@ import { BRANCHES_LOAD_FAILED } from "@/entities/repository/ui/repository-branch
 
 interface RepositoryBranchesCardBoundaryProps {
   children: ReactNode;
-  // The query inputs behind the rendered rows: a failure caused by one row's data can only clear
-  // once a different row set is asked for, so re-rendering the same page must stay failed.
-  resetKeys: Array<string | number>;
+  // A failure caused by one row's data can only clear once a different row set arrives, so these
+  // are the rows themselves rather than the inputs that asked for them.
+  resetKeys: unknown[];
 }
 
 export function RepositoryBranchesCardBoundary({

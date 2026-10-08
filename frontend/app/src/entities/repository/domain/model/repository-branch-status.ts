@@ -64,7 +64,7 @@ export function mapRepositoryBranchStatusRow(
   node: RepositoryBranchStatusWireNode
 ): RepositoryBranchStatusRow {
   return {
-    // The contract guarantees one row per branch, so the branch name is a sound row key.
+    // The query guarantees one row per branch, so the branch name is a sound row key.
     id: node.name.value,
     __typename: REPOSITORY_BRANCH_STATUS_TYPENAME,
     name: node.name.value,

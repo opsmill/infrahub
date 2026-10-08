@@ -17,7 +17,6 @@ interface ObjectDetailsCardProps {
   title?: string;
   /** A second line beneath the title, included in the card's accessible name. */
   caption?: string;
-  testId?: string;
 }
 
 export function ObjectDetailsCard({
@@ -28,7 +27,6 @@ export function ObjectDetailsCard({
   excludeRelationships,
   title = "Details",
   caption,
-  testId = "object-details",
 }: ObjectDetailsCardProps) {
   const id = React.useId();
   const titleId = `${id}-title`;
@@ -41,7 +39,7 @@ export function ObjectDetailsCard({
       className={className}
       role="region"
       aria-labelledby={caption ? `${titleId} ${captionId}` : titleId}
-      data-testid={testId}
+      data-testid="object-details"
     >
       <CardHeader className="flex justify-between">
         <div>

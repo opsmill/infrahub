@@ -197,7 +197,7 @@ describe("useSort", () => {
     });
     const hook = await renderHook(() => useSort(schema), {
       wrapper: ({ children }) =>
-        wrapper({ children: FilterScopeProvider({ urlKey: "branches", children }) }),
+        wrapper({ children: FilterScopeProvider({ urlPrefix: "branches", children }) }),
     });
 
     // WHEN

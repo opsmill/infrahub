@@ -31,7 +31,6 @@ export function RepositoryObjectDetails({
     <>
       {hasFields(repositoryWide) && (
         <ObjectDetailsCard
-          testId="repository-details"
           objectSchema={{ ...objectSchema, ...repositoryWide }}
           objectData={objectData}
           permission={permission}
@@ -42,7 +41,6 @@ export function RepositoryObjectDetails({
         <ObjectDetailsCard
           title="On this branch"
           caption={currentBranch.name}
-          testId="repository-branch-details"
           objectSchema={{ ...objectSchema, ...branchScoped }}
           objectData={objectData}
           permission={permission}

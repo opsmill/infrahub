@@ -351,7 +351,11 @@ function ColumnHeaderMenu({
         placement="bottom start"
       >
         {isRelationshipSchema(columnSchema) ? (
-          <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closeFilterForm} />
+          <RelationshipFilterForm
+            relationshipSchema={columnSchema}
+            filterConditions={filterConditions}
+            onSuccess={closeFilterForm}
+          />
         ) : (
           <AttributeFilterForm
             attributeSchema={columnSchema}

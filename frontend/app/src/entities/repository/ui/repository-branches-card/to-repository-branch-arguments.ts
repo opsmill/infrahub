@@ -44,7 +44,7 @@ function toStatusArguments(filters: Filter[]): RepositoryBranchArguments {
   return isFilterableBranchStatus(status) ? { status__value: status } : {};
 }
 
-// The contract rejects an order naming both timestamps, so only the first sort key reaches the
+// The query rejects an order naming both timestamps, so only the first sort key reaches the
 // request — it is the one that decides the order on screen, the rest only break its ties.
 function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
   const primary = sorts.find(
@@ -60,7 +60,7 @@ function toOrderArgument(sorts: Sort[]): RepositoryBranchArguments {
   return { order: { node_metadata: nodeMetadata } };
 }
 
-/** Every filter the toolbar can produce that the contract is able to apply, plus the order. */
+/** Every filter the toolbar can produce that the query is able to apply, plus the order. */
 export function toRepositoryBranchArguments(
   filters: Filter[],
   sorts: Sort[]
@@ -74,7 +74,7 @@ export function toRepositoryBranchArguments(
 
 /**
  * Whether the row set the server answered with was narrowed by anything the user asked for. Derived
- * from the arguments themselves, so a filter the contract has no argument for cannot make an empty
+ * from the arguments themselves, so a filter the query has no argument for cannot make an empty
  * result claim it was filtered.
  */
 export function hasRepositoryBranchFilters(filters: Filter[]): boolean {

@@ -25,7 +25,7 @@ function findAttribute(schema: ModelSchema, name: string): AttributeSchema | und
 function getSyncStatusColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
-  // Disabled because nothing in this column's menu could be honoured: the contract orders by branch
+  // Disabled because nothing in this column's menu could be honoured: the query orders by branch
   // node metadata alone, and this card offers no sync-status filter.
   return columnHelper.display({
     id: "sync_status",
@@ -41,7 +41,7 @@ function getSyncStatusColumn(
 function getCommitColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
-  // Disabled: the contract can neither order nor filter by a commit.
+  // Disabled: the query can neither order nor filter by a commit.
   return columnHelper.display({
     id: "commit",
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,
@@ -56,7 +56,7 @@ function getCommitColumn(
 function getRefColumn(
   columnSchema: AttributeSchema
 ): ColumnDef<RepositoryBranchStatusRow, unknown> {
-  // Disabled: the contract can neither order nor filter by a ref.
+  // Disabled: the query can neither order nor filter by a ref.
   return columnHelper.display({
     id: "ref",
     header: () => <TableColumnHeader columnSchema={columnSchema} isDisabled role="columnheader" />,

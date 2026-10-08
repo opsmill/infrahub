@@ -9,7 +9,7 @@ import {
 } from "@/entities/repository/domain/use-cases/get-repository-branch-status";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
-function getRepositoryBranchStatusQueryOption(params: GetRepositoryBranchStatusParams) {
+function getRepositoryBranchStatusQueryOptions(params: GetRepositoryBranchStatusParams) {
   return queryOptions({
     queryKey: repositoryQueryKeys.branchStatus(params),
     queryFn: () => getRepositoryBranchStatus(params),
@@ -33,6 +33,6 @@ export function useGetRepositoryBranchStatus(
   const { currentBranch } = useCurrentBranch();
 
   return useQuery(
-    getRepositoryBranchStatusQueryOption({ ...params, branchName: currentBranch.name })
+    getRepositoryBranchStatusQueryOptions({ ...params, branchName: currentBranch.name })
   );
 }
