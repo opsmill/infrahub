@@ -97,9 +97,3 @@ recorded in the spec's Assumptions, and the form A versus form B choice recorded
   rule, listed for confirmation.
 - FR-031: on a scoped pool the lock per pool and division replaces the mutation-level pool lock; an
   unscoped pool keeps the pool-level lock. No option is left open.
-- FR-006: a pool's `allocation_scope` cannot be modified after the pool is created, for every pool
-  type, for now; an update or upsert sending another value is refused naming the pool and the
-  identical value is a no-op. The PRD's FR-006 and the Notion PRD's FR-018 amendment ("set, change
-  and clear are one attribute update with zero data movement") are departed from; the spec lists it
-  for confirmation. User Story 7 becomes "create a new scoped pool, attach every node, delete the
-  per-site pools". User decision of 2026-10-08.

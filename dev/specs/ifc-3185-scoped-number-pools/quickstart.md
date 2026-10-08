@@ -115,9 +115,7 @@ its scope; a direct update of the pool's scope is refused with the default-branc
 ## Scenario 5 — refusals and the rename rewrite (User Story 5, FR-009, FR-010, FR-024, FR-032, SC-008)
 
 `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
-(the refused entries at creation, each naming the entry; the `unique: true` attribute and the
-generic case; a changed or cleared scope on an existing pool refused naming the pool, the
-identical scope re-sent accepted),
+(the refused entries, each naming the entry; the `unique: true` attribute and the generic case),
 `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py` (optional,
 removed, cardinality many, the pool's attribute made unique → refused naming the pool; a field that
 never existed on the branch → accepted),
@@ -139,10 +137,9 @@ default branch reports `allocation_scope: ["site", "pod"]` with two-entry divisi
 
 ## Scenario 7 — consolidation (User Story 7)
 
-P_A and P_B each handed out 1–10; a new pool P is created over 1–100 with scope `["site"]` (the
-scope of an existing pool cannot be changed); each of the twenty nodes is attached with one
-`<Kind>Update` sending `value` and `from_pool: {id: <P>}` → P reports A 10/100 and B 10/100, next in
-A and in B is 11, P_A and P_B track nothing and are deleted.
+P_A scoped by site; each of the ten site-B nodes attached with one `<Kind>Update` sending `value`
+and `from_pool: {id: <P_A>}` → A 10/100, B 10/100, next in B is 11, P_B tracks nothing and is
+deleted.
 
 ## Scenario 8 — measurement (User Story 8, SC-005, SC-006)
 

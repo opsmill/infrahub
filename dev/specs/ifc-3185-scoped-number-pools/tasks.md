@@ -20,7 +20,7 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 | [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | #10917 | A | `allocation_scope` on the pool and in the attribute parameters |
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | #10911 | documents | This spec directory, consistent with the tickets, and the GraphQL contract of the three number-pool queries; the bottom of the stack once #10917 has merged |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | #10932 | B | The three queries over a fixed dataset, so the frontend can build |
-| [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | new | D3 (validator) | A scope that cannot divide the pool is refused at creation; a change to the scope of an existing pool is refused |
+| [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | new | D3 (validator) | A scope that cannot divide the pool is refused at save |
 | [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks a scoped field is refused; a rename of a scoped field rewrites the scope entry |
 | [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | new | C, D1 | Allocation within the writer's division |
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | new | D3 (size check) | The attribute-add size check compares against the largest division |
@@ -82,8 +82,7 @@ of the generated files after it.
       (`TestNumberPoolAllocationScope`, on the ticket schema of that folder's `helpers.py`): create
       a pool with `allocation_scope: {value: ["site"]}` and read it back; create without it and
       read `null`; update with `{value: null}` clears it. (Validation is not wired yet; this pins
-      the round trip and the empty/null equivalence, User Story 1 scenario 1. The third test is
-      rewritten by T098 to assert the refusal of a cleared scope, FR-006.)
+      the round trip and the empty/null equivalence, User Story 1 scenario 1.)
 
 **Checkpoint**: A merges. The SDK models come from
 [infrahub-sdk-python#1402](https://github.com/opsmill/infrahub-sdk-python/pull/1402); the
@@ -229,11 +228,10 @@ no published field; the only later visible change is the fixed dataset giving wa
 
 ## IFC-3348: Refuse a pool allocation scope that cannot divide the pool
 
-**Delivers**: the scope validator and its wiring into the pool creation mutations (User Story 5
-scenario 1, FR-009, FR-013, FR-020), the refusal of a changed scope on an existing pool (User
-Story 2 scenario 7, FR-006, FR-014), plus the pure parts of `pools/scope.py` that every later
-ticket imports. It lands before scoped allocation so that the division resolver only meets scopes
-the validator accepted.
+**Delivers**: the scope validator and its wiring into the pool mutations (User Story 5 scenario 1,
+FR-009, FR-013, FR-020), plus the pure parts of `pools/scope.py` that every later ticket imports.
+It lands before scoped allocation so that the division resolver only meets scopes the validator
+accepted.
 
 **Depends on**: IFC-3347. **Blocks**: IFC-3349, IFC-3351, IFC-3353.
 
@@ -258,16 +256,14 @@ the validator accepted.
       required `pod`.
 - [ ] T054 [P] [US5] Component tests in
       `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
-      (extend T010's file): each refused entry through `CoreNumberPoolCreate` and the creating
-      `CoreNumberPoolUpsert`; a valid scope through create and the creating upsert; a scope naming
-      a field that exists only on branch `b1` is refused at creation on `b1` and on the default
-      branch naming the entry; a pool with the same scope is created from any branch once the
-      field is merged into the default branch; a pool re-sent whole with its identical scope from
-      a branch forked before the field reached the default branch is accepted as a no-op; a scope
-      on a pool whose attribute is `unique: true` is refused naming the attribute; a scope change
-      on a `pool_type: Schema` pool is refused with the message of the scope contract, of the same
-      form as the shorthand refusal in `test_schema_pools.py`. The changed-scope refusals on a
-      user-created pool are T098's.
+      (extend T010's file): each refused entry through `CoreNumberPoolCreate` and `CoreNumberPoolUpdate`; a
+      valid scope through create, update and upsert; a scope naming a field that exists only on
+      branch `b1` is refused on `b1` and on the default branch naming the entry; the same scope
+      saves from any branch once the field is merged into the default branch; a pool re-sent whole
+      from a branch forked before the field reached the default branch saves; a scope on a pool
+      whose attribute is `unique: true` is refused naming the attribute; a scope change on a
+      `pool_type: Schema` pool is refused with the message of the scope contract, of the same form
+      as the shorthand refusal in `test_schema_pools.py`.
 - [ ] T057 [US5] Add `ScopeValidator(schema_branch)` to `backend/infrahub/pools/scope.py` with
       `validate(kind, attribute_name, scope) -> tuple[str, ...]`: calls
       `SchemaBranch.validate_schema_path(allowed_path_types=SchemaElementPathType.ATTR |
@@ -283,29 +279,15 @@ the validator accepted.
       division of a node is then read from the generic's fields (T040).
 - [ ] T058 [US5] Wire it into
       `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation`:
-      `mutate_create`, and the upsert path when it creates, validate the payload's
-      `allocation_scope` against the default branch's schema,
+      `mutate_create` and `mutate_update` validate whenever the payload carries `allocation_scope`,
+      against the default branch's schema,
       `registry.schema.get_schema_branch(name=registry.default_branch)`, whatever branch the
-      mutation runs on; `mutate_update` does not validate (T098 governs an existing pool) and
-      refuses any change on a `pool_type == Schema` pool with the scope contract's message, inside
-      `_refuse_unsupported_writes`, adding a `SCHEMA_POOL_SCOPE_REFUSED` constant built on
-      `SCHEMA_POOL_EDIT_HINT` beside the two existing ones in `number_pools/common.py`.
-- [ ] T098 [US2] Refuse a change to the scope of an existing pool (FR-006, FR-014): in
-      `InfrahubNumberPoolMutation.mutate_update`, and in the upsert path when the pool exists,
-      compare the submitted `allocation_scope` (normalised, `__value` stripped) with the stored
-      value; an identical value is a no-op and is not validated again; a different value, an empty
-      list on a scoped pool or `null` raises `ValidationError({"allocation_scope": …})` with the
-      message of `contracts/graphql-pool-scope.md` naming the pool (`SCOPE_CHANGE_REFUSED` constant
-      in `number_pools/common.py`), before any field is written. Change
-      `test_update_with_null_clears_the_scope` in
-      `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
-      (shipped by #10917) to assert that refusal, and add: a different list refused, `[]` on a
-      scoped pool refused, the identical list re-sent through update and through upsert accepted
-      with the scope and the records unchanged, the same through the upsert that creates accepted
-      (User Story 2 scenario 7).
+      mutation runs on; `mutate_update` refuses any change on a `pool_type == Schema` pool with the
+      scope contract's message, inside `_refuse_unsupported_writes`, adding a
+      `SCHEMA_POOL_SCOPE_REFUSED` constant built on `SCHEMA_POOL_EDIT_HINT` beside the two existing
+      ones in `number_pools/common.py`.
 
-**Checkpoint**: every pool-creation refusal of User Story 5 scenario 1 ships, and the scope of an
-existing pool cannot be changed.
+**Checkpoint**: every pool-save refusal of User Story 5 scenario 1 ships.
 
 ---
 
@@ -486,11 +468,10 @@ allocation path, on one branch and on two.
       result.
 - [ ] T039 [P] [US2] Functional tests in
       `backend/tests/functional/pools/test_numberpool_scoped_allocation.py` through GraphQL: the
-      User Story 2 scenarios 1, 2, 3, 8, 9, 10 (a composite uniqueness constraint on site plus
+      User Story 2 scenarios 1, 2, 3, 7, 8, 9, 10 (a composite uniqueness constraint on site plus
       the attribute refuses a duplicate within site A and accepts a number held only in site C,
-      the pool refusing nothing) and 11 (two devices in site A holding the same number attached
-      to a pool created with scope `["site"]`: both accepted, and the next allocation in A skips
-      that number once) of `spec.md` (scenario 7, the immutable scope, is T098's);
+      the pool refusing nothing) and 11 (a scope set on a pool already holding one number twice
+      within site A: accepted, and the next allocation in A skips that number once) of `spec.md`;
       fifty concurrent creates in site A
       yield fifty distinct numbers and fifty in A plus fifty in B yield 1–50 twice (FR-004); two
       writers in different divisions hold different lock keys and allocate in parallel, two writers
@@ -790,21 +771,18 @@ SC-010 and SC-011 hold.
 
 ## IFC-3357: Consolidate per-site pools into one scoped pool through attach
 
-**Delivers**: User Story 7. The operator creates a new pool with the scope and the ranges, attaches
-each node of each per-site pool with one `<Kind>Update` that sends `value` and `from_pool` (the
-attach of part 2), then deletes the per-site pools; the scope of an existing pool cannot be
-changed (FR-006) and no bulk attach mutation exists.
+**Delivers**: User Story 7. The operator attaches each node with one `<Kind>Update` that sends
+`value` and `from_pool` (the attach of part 2); no bulk attach mutation exists.
 
 **Depends on**: IFC-3349, IFC-3329. **Blocks**: IFC-3356 (the consolidation procedure in the docs).
 
 - [ ] T074 [US7] Add the consolidation scenario to
       `backend/tests/functional/pools/test_numberpool_scoped_allocation.py`: P_A and P_B each handed
-      out 1–10 to the devices of site A and site B; create P over 1–100 with scope `["site"]`;
-      attach each of the twenty devices with one `<Kind>Update` sending `value` and `from_pool:
-      {id: <P>}` → `InfrahubNumberPoolDivisions` on P reports A 10 of 100 and B 10 of 100, the next
-      allocation in A and in B from P returns 11, P_A and P_B track no number and are deleted, P's
-      records are unchanged after the deletions; a write sending `from_pool` without `value` on a
-      number no pool tracks is refused.
+      out 1–10; scope P_A by site; attach each of the ten site-B nodes with one `<Kind>Update`
+      sending `value` and `from_pool: {id: <P_A>}` → `InfrahubNumberPoolDivisions` on P_A reports A
+      10 of 100 and B 10 of 100, the next allocation in B returns 11, P_B tracks no number and is
+      deleted, P_A's records are unchanged after the deletion; a write sending `from_pool` without
+      `value` on a number no pool tracks is refused.
 
 ---
 
@@ -874,9 +852,8 @@ fragments.
 the merge of `feature-number-pools-1.12` into the release branch.
 
 - [ ] T079 [P] Changelog fragments in `changelog/` (use the `creating-changelog-entries` skill), the
-      nine rows of the spec's "Behaviour changes for the changelog": scoped allocation,
-      per-division utilization and the lock per pool and division (feature); the scope of an
-      existing pool can no longer be changed or cleared (changed behaviour);
+      eight rows of the spec's "Behaviour changes for the changelog": scoped allocation,
+      per-division utilization and the lock per pool and division (feature);
       `parameters.allocation_scope`, fixed with the attribute (feature); the three dedicated
       number-pool queries (feature); the description notes on the generic resource-pool queries
       (changed description); the pool-save refusals, the `unique: true` and generic cases included
@@ -891,11 +868,10 @@ the merge of `feature-number-pools-1.12` into the release branch.
       generated snippet `docs/docs/snippets/attribute-kind-params.mdx` lists only parameters with
       `update: validate_constraint`; run `uv run invoke docs.lint`.
 - [ ] T089 [P] User docs: a "Replace a pool per site with one scoped pool" procedure in
-      `docs/docs/resource-manager/allocate-number.mdx`: create a new pool with the scope and the
-      ranges the per-site pools covered (the scope of an existing pool cannot be changed), attach
-      each node with one `<Kind>Update` sending `value` and `from_pool` naming the new pool, delete
-      the per-site pools; with a Python SDK example that loops over the nodes, since no bulk attach
-      mutation exists.
+      `docs/docs/resource-manager/allocate-number.mdx`: scope the kept pool, widen its ranges,
+      attach each node with one `<Kind>Update` sending `value` and `from_pool`, delete the other
+      pools; with a Python SDK example that loops over the nodes, since no bulk attach mutation
+      exists.
 - [ ] T081 [P] Knowledge: in `dev/knowledge/backend/database-schema.md`, beside the Resource Pool
       Reservations section, describe the division read (entries in force per branch, the per-entry
       union, the shared visibility rule, the anchor order kept) in a few lines; no spec or ticket
@@ -1015,7 +991,7 @@ which both change `resource_manager.py`, from colliding.
 | Within a ticket | In parallel |
 |---|---|
 | IFC-3347 | T093 and T097 beside each other, after T025 |
-| IFC-3348 | T028, T053, T054 before T057 and T091; T098 after T058 |
+| IFC-3348 | T028, T053, T054 before T057 and T091 |
 | IFC-3349 | T096 first; T036, T037, T038, T039 before T040; T030 and T031 beside T029; T092 after T040 |
 | IFC-3329 | T012, T014, T015, T034, T047, T085 to T087 before T016; T033 beside T016 |
 | IFC-3352 | T063, T064, T065, T094 before T066; T095 after T066 |
@@ -1029,7 +1005,7 @@ which both change `resource_manager.py`, from colliding.
 | IFC-3346 | 0 | 0 |
 | IFC-3334 | 6 (T005 to T010) | 6 |
 | IFC-3347 | 14 (T001 to T004, T011, T013, T017, T018, T022 to T025, T093, T097) | 12 |
-| IFC-3348 | 8 (T027, T028, T053, T054, T057, T058, T091, T098) | 0 |
+| IFC-3348 | 7 (T027, T028, T053, T054, T057, T058, T091) | 0 |
 | IFC-3352 | 8 (T063 to T068, T094, T095) | 0 |
 | IFC-3349 | 16 (T029 to T032, T036 to T045, T092, T096) | 0 |
 | IFC-3353 | 4 (T046, T048, T056, T061) | 0 |
@@ -1039,4 +1015,4 @@ which both change `resource_manager.py`, from colliding.
 | IFC-3355 | 4 (T075 to T078) | 0 |
 | IFC-3354 | 2 (T069, T070) | 0 |
 | IFC-3356 | 9 (T079 to T084, T088 to T090) | 1 |
-| Total | 99 (98 live, T016a obsolete) | 19 |
+| Total | 98 (97 live, T016a obsolete) | 19 |
