@@ -26,6 +26,7 @@ if TYPE_CHECKING:
 
     from pydantic import BaseModel
 
+    from infrahub.git.writeback.models import HoldReceipt
     from infrahub.message_bus.types import KVTTL
     from infrahub.services.adapters.cache import InfrahubCache
 
@@ -542,6 +543,59 @@ async def test_admit_reads_the_state_again_then_admits_when_it_stays_unreadable(
     )
 
 
+class FirstHoldFailsState(InMemoryDeliveryState):
+    """The in-memory delivery state, where the first hold of one repository raises."""
+
+    def __init__(self, *, failing_repository_id: str) -> None:
+        super().__init__(
+            clock=FixedClock(now=NOW), repository_names={repository_id: repository_id for repository_id in REPOSITORIES}
+        )
+        self.failing_repository_id: str | None = failing_repository_id
+
+    async def hold(self, *, repository_id: str, held: HeldRegeneration) -> HoldReceipt | None:
+        if repository_id == self.failing_repository_id:
+            self.failing_repository_id = None
+            self.failures["hold"] = [STATE_ERROR]
+        return await super().hold(repository_id=repository_id, held=held)
+
+
+async def test_a_retry_after_a_partial_hold_refreshes_the_holds_written_before_the_failure() -> None:
+    state = FirstHoldFailsState(failing_repository_id=REPOSITORY_Y)
+    for repository_id in (REPOSITORY_X, REPOSITORY_Y):
+        await state.enqueue(
+            repository_id=repository_id,
+            entry=PendingMerge(
+                entry_id=f"{repository_id}-merge",
+                source_branch="feature",
+                source_git_branch="feature",
+                source_commit=COMMIT,
+                merged_at=NOW,
+            ),
+            widen=False,
+        )
+    state.calls.clear()
+    cache = MemoryCache()
+    sleep = RecordedSleep()
+
+    admitted = await _barrier(state=state, cache=cache, sleep=sleep).admit(
+        branch=DEFAULT_BRANCH, candidates=[ARTIFACT_X, ARTIFACT_Y], releasing=None
+    )
+
+    assert admitted == []
+    assert state.calls == ["pending_repository_ids", "hold", "hold", "pending_repository_ids", "hold", "hold"]
+    assert sleep.delays == [2]
+    assert _held_by_repository(state) == {
+        REPOSITORY_X: _held_artifacts(("artifact-x", 2), next_hold_seq=3),
+        REPOSITORY_Y: _held_artifacts(("artifact-y", 1)),
+        REPOSITORY_Z: HeldRegeneration(),
+    }
+    assert _cached_requests(cache) == {
+        _key(repository_id=REPOSITORY_X, hold_seq=1, definition_id="artifact-x"): ARTIFACT_X.request,
+        _key(repository_id=REPOSITORY_X, hold_seq=2, definition_id="artifact-x"): ARTIFACT_X.request,
+        _key(repository_id=REPOSITORY_Y, hold_seq=1, definition_id="artifact-y"): ARTIFACT_Y.request,
+    }
+
+
 def _terminals_marker(*, hold_seq: int) -> HeldWiden:
     return HeldWiden(scope="terminals", reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED, hold_seq=hold_seq)
 
@@ -560,7 +614,7 @@ async def test_hold_widen_on_another_branch_holds_nothing_without_a_read() -> No
     state = await _state(queued=(REPOSITORY_X,))
 
     holders = await _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep()).hold_widen(
-        branch="feature", widen=_terminals_marker(hold_seq=0), releasing=None
+        branch="feature", scope="terminals", reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED, releasing=None
     )
 
     assert holders == []
@@ -615,7 +669,10 @@ async def test_hold_widen_holds_the_marker_under_each_pending_repository(test_ca
     sleep = RecordedSleep()
 
     holders = await _barrier(state=state, cache=cache, sleep=sleep).hold_widen(
-        branch=DEFAULT_BRANCH, widen=_terminals_marker(hold_seq=0), releasing=test_case.releasing
+        branch=DEFAULT_BRANCH,
+        scope="terminals",
+        reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED,
+        releasing=test_case.releasing,
     )
 
     assert holders == test_case.expected_holders
@@ -686,7 +743,10 @@ async def test_hold_widen_reads_the_state_again_then_holds_nothing_when_it_stays
 
     with capture_logs() as records:
         holders = await _barrier(state=state, cache=MemoryCache(), sleep=sleep).hold_widen(
-            branch=DEFAULT_BRANCH, widen=_terminals_marker(hold_seq=0), releasing=None
+            branch=DEFAULT_BRANCH,
+            scope="terminals",
+            reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED,
+            releasing=None,
         )
 
     assert holders == test_case.expected_holders

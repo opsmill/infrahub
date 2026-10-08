@@ -1,27 +1,31 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
 from infrahub.git.writeback.constants import BARRIER_STATE_READ_DELAYS_SECONDS, BARRIER_STATE_READ_RETRIES
-from infrahub.git.writeback.models import HeldRegeneration
+from infrahub.git.writeback.models import HeldRegeneration, HeldWiden
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Sequence
 
-    from infrahub.git.writeback.models import HeldWiden, HoldReceipt
+    from infrahub.core.constants import FullRegenerationReason
+    from infrahub.git.writeback.models import HoldReceipt
     from infrahub.git.writeback.ports import DeliveryStatePort
     from infrahub.services.adapters.cache import InfrahubCache
 
 log = get_logger()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class OwnedRegeneration[RequestT: BaseModel]:
-    """One candidate of the barrier: what to hold, the repository that owns it, and the request to dispatch."""
+    """One candidate of the barrier: what to hold, the repository that owns it, and the request to dispatch.
+
+    Candidates compare by identity, so a lookup never compares their requests field by field.
+    """
 
     repository_id: str | None
     """None when the owner is not known, which holds the candidate under every pending repository."""
@@ -92,8 +96,8 @@ class NarrowedHoldCache:
 class RegenerationBarrier:
     """Hold the regeneration that a repository owns while its merges wait for their push, and admit the rest.
 
-    It never raises: when the delivery state cannot be read after the retries, it admits every candidate and
-    holds no marker.
+    It never raises: when the delivery state cannot be read or updated after the retries, it admits every
+    candidate, or returns no holder of a marker. The holds written before the failure stay.
     """
 
     def __init__(
@@ -127,26 +131,40 @@ class RegenerationBarrier:
             attempt=lambda: self._partition(candidates=candidates, releasing=releasing),
             fallback=list(candidates),
             branch=branch,
-            gave_up="Could not read the delivery state; dispatching every candidate without a hold",
+            gave_up=(
+                "Could not read or update the delivery state; dispatching every candidate, "
+                "and the holds written before the failure stay"
+            ),
             repository_ids=sorted(
                 {candidate.repository_id for candidate in candidates if candidate.repository_id is not None}
             ),
         )
 
-    async def hold_widen(self, *, branch: str, widen: HeldWiden, releasing: str | None) -> list[str]:
-        """Hold the marker under each pending repository except `releasing`, and return the sorted ids that hold it.
+    async def hold_widen(
+        self,
+        *,
+        branch: str,
+        scope: Literal["all", "terminals"],
+        reason: FullRegenerationReason,
+        releasing: str | None,
+    ) -> list[str]:
+        """Hold a marker under each pending repository except `releasing`, and return the sorted ids that hold it.
 
         A blanket regeneration excludes the returned repositories, because the release of each marker regenerates them.
         """
         if branch != self.default_branch_name:
             return []
+        widen = HeldWiden(scope=scope, reason=reason, hold_seq=0)
         return await self._with_retries(
             attempt=lambda: self._hold_widen(widen=widen, releasing=releasing),
             fallback=[],
             branch=branch,
-            gave_up="Could not read the delivery state; regenerating every repository without a hold",
-            scope=widen.scope,
-            reason=widen.reason,
+            gave_up=(
+                "Could not read or update the delivery state; regenerating every repository, "
+                "and the markers held before the failure stay"
+            ),
+            scope=scope,
+            reason=reason,
         )
 
     async def _with_retries[ResultT](
@@ -168,7 +186,9 @@ class RegenerationBarrier:
                 if delay is None:
                     log.exception(gave_up, branch=branch, **context)
                     return fallback
-                log.warning("Could not read the delivery state; reading it again", branch=branch, exc_info=True)
+                log.warning(
+                    "Could not read or update the delivery state; trying again", branch=branch, exc_info=True, **context
+                )
                 await self.sleep(delay)
 
     async def _hold_widen(self, *, widen: HeldWiden, releasing: str | None) -> list[str]:
@@ -216,8 +236,11 @@ class RegenerationBarrier:
     async def _keep_narrowed(
         self, *, repository_id: str, receipt: HoldReceipt, candidates: Sequence[OwnedRegeneration[BaseModel]]
     ) -> None:
-        try:
-            for identifier, owned in _narrowed_by_identifier(candidates=candidates).items():
+        for identifier, holders in _candidates_by_identifier(candidates=candidates).items():
+            try:
+                owned = _joined(candidates=holders)
+                if owned is None:
+                    continue
                 previous_seq = receipt.previous_seqs.get(identifier)
                 if previous_seq is None:
                     await self.narrowed.put(
@@ -235,14 +258,15 @@ class RegenerationBarrier:
                         request=owned.request,
                         union=owned.union,
                     )
-        # The items are held already, and a missing entry only widens their release.
-        except Exception:
-            log.warning(
-                "Could not keep the narrowed held requests; their release dispatches the held items unnarrowed",
-                repository_id=repository_id,
-                hold_seq=receipt.hold_seq,
-                exc_info=True,
-            )
+            # The item is held already, and a missing entry only widens its release.
+            except Exception:
+                log.warning(
+                    "Could not keep the narrowed held request; its release dispatches the held item unnarrowed",
+                    repository_id=repository_id,
+                    hold_seq=receipt.hold_seq,
+                    identifier=identifier,
+                    exc_info=True,
+                )
 
 
 def _combined(*, candidates: Sequence[OwnedRegeneration[BaseModel]]) -> HeldRegeneration:
@@ -252,23 +276,24 @@ def _combined(*, candidates: Sequence[OwnedRegeneration[BaseModel]]) -> HeldRege
     return combined
 
 
-def _narrowed_by_identifier(
+def _candidates_by_identifier(
     *, candidates: Sequence[OwnedRegeneration[BaseModel]]
-) -> dict[str, OwnedRegeneration[BaseModel]]:
-    """Join the requests of the candidates that hold the same item; an item whose requests cannot be joined keeps none."""
-    narrowed: dict[str, OwnedRegeneration[BaseModel] | None] = {}
+) -> dict[str, list[OwnedRegeneration[BaseModel]]]:
+    by_identifier: dict[str, list[OwnedRegeneration[BaseModel]]] = {}
     for candidate in candidates:
         held = candidate.held
         identifiers = [item.identifier for item in (*held.artifact_definitions, *held.generator_definitions)]
         identifiers.extend(attribute.identifier for attribute in held.python_attributes)
         for identifier in identifiers:
-            if identifier not in narrowed:
-                narrowed[identifier] = candidate
-                continue
-            earlier = narrowed[identifier]
-            narrowed[identifier] = (
-                None
-                if earlier is None or candidate.union is None
-                else replace(candidate, request=candidate.union(earlier.request, candidate.request))
-            )
-    return {identifier: owned for identifier, owned in narrowed.items() if owned is not None}
+            by_identifier.setdefault(identifier, []).append(candidate)
+    return by_identifier
+
+
+def _joined(*, candidates: Sequence[OwnedRegeneration[BaseModel]]) -> OwnedRegeneration[BaseModel] | None:
+    """Join the requests of the candidates that hold one item, or return None when they cannot be joined."""
+    joined, *others = candidates
+    for candidate in others:
+        if candidate.union is None:
+            return None
+        joined = replace(candidate, request=candidate.union(joined.request, candidate.request))
+    return joined

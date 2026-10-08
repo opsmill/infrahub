@@ -87,7 +87,6 @@ from infrahub.git.constants import (
 from infrahub.git.merge_readiness import RemoteHeadsMergeCheck
 from infrahub.git.remote_refs import GitRemoteHeadReader
 from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
-from infrahub.git.writeback.models import HeldWiden
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
@@ -754,7 +753,8 @@ async def post_process_branch_merge(
         else:
             held = await barrier.hold_widen(
                 branch=target_branch,
-                widen=HeldWiden(scope="all", reason=FullRegenerationReason.FEATURE_DISABLED, hold_seq=0),
+                scope="all",
+                reason=FullRegenerationReason.FEATURE_DISABLED,
                 releasing=None,
             )
             await submit_full_regeneration(
