@@ -91,22 +91,24 @@ The phase review (six agents) and two later reviews of the pull request (cubic, 
 - The duplicate provenance enum (shared enum, above).
 - The stale descriptions and example figures of `contracts/graphql-number-pool-queries.md`, and the equality rule of `data-model.md`.
 
-Open findings:
+The findings of the two pull request reviews are fixed, one commit each:
 
-| File | Finding |
-|------|---------|
-| `backend/infrahub/pools/number_pool_mock.py` | A range's size ignores the values the attribute excludes, while the pool's size subtracts them |
-| `backend/infrahub/pools/scope.py` | The refusal message of an entry calls `json.dumps` without `default=repr`, so an entry that is not JSON-serializable raises `TypeError` |
-| `backend/infrahub/pools/scope.py` | `Division.key` encodes with `ensure_ascii=False`, so a lone surrogate in a `JSON` value raises `UnicodeEncodeError`; the key is also recomputed on every comparison |
-| `backend/tests/component/core/resource_manager/test_number_pool_scope.py` | The fixture creates all four pools for each case; the case could carry the scope and call the `scoped_pool` helper directly |
-| `backend/tests/component/core/schema/test_attribute_parameters.py` | `(read_scope or None) == expected_scope` accepts two outcomes |
-| `backend/tests/component/graphql/queries/test_number_pool_surface.py`, `test_attribute_parameters.py` | Parametrized cases are tuples instead of dataclasses with a `name` field |
+| Commit | Finding |
+|--------|---------|
+| `5b92b5469c` | A stored scope entry that cannot be written as JSON raised `TypeError` instead of `ValidationError` |
+| `3267062b03` | `Division.key` raised `UnicodeEncodeError` on a `JSON` value holding a lone surrogate; the key is now ASCII JSON, and ASCII values keep the same key |
+| `8f7a6520e7` | `Division.key` was recomputed on every comparison |
+| `e3673697e1` | In the fixed dataset, a range's size counted the values the attribute excludes |
+| `2ead696d1c` | The scoped pool smoke test created all four pools for each case |
+| `910af2e2d4` | The schema API scope test accepted either `null` or `[]`; an absent scope reads back as `null`, an empty one as `[]` |
+| `c43f73c89b`, `759bd19efc` | Parametrized cases were tuples instead of dataclasses with a `name` field |
+
+Suites touched by these commits, from `backend/`: `uv run pytest tests/unit/graphql/test_number_pool_surface_contract.py tests/unit/pools tests/component/graphql/queries/test_number_pool_surface.py tests/component/core/resource_manager tests/component/core/schema/test_attribute_parameters.py tests/component/graphql/resource_manager/number_pools -p no:cacheprovider -q -n 4` at 2026-10-08T21:52:36Z: `380 passed, 2 xfailed, 80 warnings in 115.33s (0:01:55)`.
 
 Kept by design: the fixed dataset answers for any `pool_id` (IFC-3347, deleted by T027), and an unknown or repeated division path gets the one message the contract defines.
 
 ## Suggested next steps
 
-1. Fix the open findings above.
-2. Rebase PR #10950 on the head of PR #10932 and align it with the spec (see the IFC-3348 discussion).
-3. T045: the SDK commit that `python_sdk` points at must reach `infrahub-develop` before the feature branch merges into the release branch.
-4. Continue with Phase 2 (T006 to T010).
+1. Rebase PR #10950 on the head of PR #10932 and align it with the spec (see the IFC-3348 discussion).
+2. T045: the SDK commit that `python_sdk` points at must reach `infrahub-develop` before the feature branch merges into the release branch.
+3. Continue with Phase 2 (T006 to T010).
