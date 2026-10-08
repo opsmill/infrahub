@@ -32,7 +32,6 @@ from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     RepositoryCredentialsError,
-    RepositoryDivergentHistoryError,
     RepositoryError,
     RepositoryPermissionError,
 )
@@ -1284,18 +1283,12 @@ async def _merge_into_the_trunk(
     )
 
 
-def _refused_merge_message(
-    tracked: TrackedBranchRepository, branch_name: str, local_commit: str, graph_commit: str, remote_head: str
-) -> str:
-    message = (
-        f"Unable to merge {tracked.branch_name} into main in the Git repository {tracked.name}. "
-        f"The remote history of {branch_name} does not contain the local commit {local_commit}. "
-        f"Infrahub records {graph_commit} for {branch_name}, not the remote head {remote_head}. "
-        "The branch is merged in Infrahub and not in Git. "
-        f"To finish the merge, merge {tracked.branch_name} into main in the Git repository. "
-        "The next synchronization imports the result."
-    )
-    return rf"^{re.escape(message)}$"
+def _refusal_log_lines(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == SYNC_LOGGER and record.levelno == logging.ERROR and "was refused" in record.getMessage()
+    ]
 
 
 async def _rewrite_record(
@@ -1612,70 +1605,82 @@ class TestRewrittenBranchSynchronisation(TestInfrahubApp):
         client: InfrahubClient,
         gogs_server: GogsServer,
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Merging the discarded branch would put the commits the rewrite removed back on the remote trunk."""
         tracked = await tracked_branch_repository("refused-source-merge-repo", "refused-source-merge-branch")
         rewritten = _rewrite_the_branch(container=gogs_server.container, tracked=tracked)
         trunk = await client.branch.get(branch_name=registry.default_branch)
 
-        with pytest.raises(
-            RepositoryDivergentHistoryError,
-            match=_refused_merge_message(
-                tracked=tracked,
-                branch_name=tracked.branch_name,
-                local_commit=tracked.imported_commit,
-                graph_commit=tracked.imported_commit,
-                remote_head=rewritten,
-            ),
-        ):
-            await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
+        with caplog.at_level(logging.ERROR, logger=SYNC_LOGGER):
+            state = await merge_git_repository(
+                model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id), return_state=True
+            )
 
+        assert state.is_failed()
+        assert state.message == f"The delivery to repository {tracked.name} ended with the outcome unreplayable."
+        delivery = await _delivery_state(db=db, repository_id=tracked.node_id)
+        [entry] = delivery.queue.entries
+        refusal = (
+            f"The remote branch {tracked.branch_name} of repository {tracked.name} is at {rewritten}, which does "
+            f"not contain the commit {tracked.imported_commit} of the merge {entry.entry_id} of branch "
+            f"{tracked.branch_name}, so nothing was pushed."
+        )
+        assert (delivery.status, delivery.cause, delivery.error, entry.source_commit) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.SOURCE_DISCARDED,
+            refusal,
+            tracked.imported_commit,
+        )
+        assert _refusal_log_lines(caplog=caplog) == [
+            f"The delivery to repository {tracked.name} was refused: {refusal} The branches are merged in Infrahub, "
+            "and their merges wait in the push queue of the repository. Abandon the push queue to clear it."
+        ]
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == tracked.trunk_commit
         assert gogs_branches_containing(gogs_server.container, tracked.name, tracked.imported_commit) == []
         clone = await _open_clone(client=client, tracked=tracked)
         assert clone.get_commit_value(branch_name=tracked.branch_name, remote=False) == tracked.imported_commit
 
-    async def test_a_merge_onto_a_trunk_rewritten_since_the_last_cycle_waits_for_the_next_cycle(
+    async def test_a_merge_onto_a_trunk_rewritten_since_the_last_cycle_waits_in_the_push_queue(
         self,
         db: InfrahubDatabase,
         client: InfrahubClient,
         gogs_server: GogsServer,
         tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Merging onto the discarded trunk would push it again, so nothing moves until the cycle records the rewrite."""
+        """Merging onto the discarded trunk would push it again, so nothing moves and the merge waits for a user."""
         tracked = await tracked_branch_repository("deferred-trunk-merge-repo", "deferred-trunk-merge-branch")
         imported = await _advance_and_import_the_trunk(container=gogs_server.container, tracked=tracked)
         rewritten = _rewrite_the_trunk(container=gogs_server.container, tracked=tracked)
         trunk = await client.branch.get(branch_name=registry.default_branch)
         model = await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id)
-        with pytest.raises(
-            RepositoryDivergentHistoryError,
-            match=_refused_merge_message(
-                tracked=tracked, branch_name="main", local_commit=imported, graph_commit=imported, remote_head=rewritten
-            ),
-        ):
-            await merge_git_repository(model=model)
 
+        with caplog.at_level(logging.ERROR, logger=SYNC_LOGGER):
+            state = await merge_git_repository(model=model, return_state=True)
+
+        assert state.is_failed()
+        assert state.message == f"The delivery to repository {tracked.name} ended with the outcome unreplayable."
+        refusal = (
+            f"The remote branch main of repository {tracked.name} is at {rewritten}, which does not contain the "
+            f"commit {imported} that Infrahub records, so nothing was pushed."
+        )
+        delivery = await _delivery_state(db=db, repository_id=tracked.node_id)
+        assert (delivery.status, delivery.cause, delivery.error) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.DESTINATION_REWRITTEN,
+            refusal,
+        )
+        assert [entry.source_commit for entry in delivery.queue.entries] == [tracked.imported_commit]
+        assert _refusal_log_lines(caplog=caplog) == [
+            f"The delivery to repository {tracked.name} was refused: {refusal} The branches are merged in Infrahub, "
+            "and their merges wait in the push queue of the repository. Abandon the push queue to clear it."
+        ]
         assert gogs_repo_branch_commit(gogs_server.container, tracked.name, "main") == rewritten
-        clone = await _open_clone(client=client, tracked=tracked)
-        assert str(clone.get_git_repo_worktree(identifier="main").head.commit) == imported
         on_trunk: CoreRepository = await NodeManager.get_one(
             db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
         )
         assert on_trunk.commit.value == imported
-
-        await sync_remote_repositories()
-
-        previous_commit, commit, _, rewrite_count = await _rewrite_record(
-            db=db, tracked=tracked, branch_name=registry.default_branch
-        )
-        assert (previous_commit, commit, rewrite_count) == (imported, rewritten, 1)
-
-        await merge_git_repository(model=await _merge_into_the_trunk(db=db, tracked=tracked, trunk_id=trunk.id))
-
-        merged = gogs_repo_branch_commit(gogs_server.container, tracked.name, "main")
-        assert gogs_commit_parents(gogs_server.container, tracked.name, merged) == [rewritten, tracked.imported_commit]
-        assert gogs_branches_containing(gogs_server.container, tracked.name, imported) == []
 
     async def test_a_merge_on_a_worker_behind_a_reconciled_trunk_resets_the_trunk_and_merges(
         self,
