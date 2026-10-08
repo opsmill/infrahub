@@ -51,8 +51,8 @@ export const BRANCH_ROW_FILTER_DEFINITIONS_BY_NAME: Record<string, FilterDefinit
     ])
   );
 
-// `name__value` and `status__value` are the only two arguments the query takes, so an emptiness
-// condition would leave the request unfiltered while the tag claimed otherwise.
+// Branch name and branch status are the only two fields this card filters on, so an emptiness
+// condition would leave the request unnarrowed while the tag claimed otherwise.
 export const BRANCH_ROW_FILTER_CONDITIONS: readonly FilterCondition[] = [FILTER_CONDITION.CONTAINS];
 
 // The query orders by branch node metadata only, so the schema the sort UI reads declares no

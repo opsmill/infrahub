@@ -9,6 +9,7 @@ import { render } from "../../../../tests/components/render";
 import { generateNodeAttributeWithMetadata } from "../../../../tests/fake/node";
 import { generatePermission } from "../../../../tests/fake/permission";
 import {
+  BRANCH_NAMES_BEFORE,
   generateRepositoryBranchStatusPayloadAfter,
   generateRepositoryBranchStatusPayloadBefore,
 } from "../../../../tests/fake/repository";
@@ -19,7 +20,7 @@ vi.mock("@/entities/repository/api/get-repository-branch-status-from-api");
 
 // A cell that throws while rendering a row is the failure a rejected query cannot reproduce. It
 // throws for one branch only, so a row set without that branch is a recovery rather than a retry.
-const POISONED_BRANCH = "feature-auth";
+const [, POISONED_BRANCH] = BRANCH_NAMES_BEFORE;
 
 vi.mock("@/entities/repository/ui/repository-branches-card/cells/branch-name-cell", () => ({
   BranchNameCell: ({ name }: { name: string }) => {
