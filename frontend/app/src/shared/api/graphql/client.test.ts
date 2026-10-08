@@ -68,6 +68,27 @@ describe("graphqlClient — endpoint targeting", () => {
     );
   });
 
+  it("returns integers above 2^53 as exact strings when the operation asks for it", async () => {
+    // GIVEN
+    const body = '{"data":{"end":9223372036854775807,"start":1}}';
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve(
+        new Response(body, { status: 200, headers: { "Content-Type": "application/json" } })
+      )
+    );
+
+    // WHEN
+    const exact = await graphqlClient.query({
+      query: PING,
+      context: { keepLargeIntegersExact: true },
+    });
+    const rounded = await graphqlClient.query({ query: PING });
+
+    // THEN
+    expect(exact.data).toEqual({ end: "9223372036854775807", start: 1 });
+    expect(rounded.data).toEqual({ end: Number("9223372036854775807"), start: 1 });
+  });
+
   it("stamps X-Priority: high on every operation", async () => {
     // WHEN
     await graphqlClient.query({ query: PING });

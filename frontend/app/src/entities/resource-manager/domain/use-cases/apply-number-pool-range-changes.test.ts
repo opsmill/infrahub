@@ -24,9 +24,9 @@ const serverRefusal = (message: string) =>
 
 const changes: RangeChanges = {
   deletes: ["r-old"],
-  smaller: [{ id: "r-1", start: 1, end: 15, weight: null }],
-  larger: [{ id: "r-2", start: 16, end: 30, weight: 5 }],
-  creates: [{ start: 100, end: 200, weight: null }],
+  smaller: [{ id: "r-1", start: 1n, end: 15n, weight: null }],
+  larger: [{ id: "r-2", start: 16n, end: 30n, weight: 5 }],
+  creates: [{ start: 100n, end: 200n, weight: null }],
 };
 
 describe("applyNumberPoolRangeChanges", () => {
@@ -65,11 +65,11 @@ describe("applyNumberPoolRangeChanges", () => {
     expect(createMock).toHaveBeenCalledWith({
       branchName: "main",
       poolId: "pool-1",
-      range: { start: 100, end: 200, weight: null },
+      range: { start: 100n, end: 200n, weight: null },
     });
     expect(updateMock).toHaveBeenCalledWith({
       branchName: "main",
-      range: { id: "r-1", start: 1, end: 15, weight: null },
+      range: { id: "r-1", start: 1n, end: 15n, weight: null },
     });
     expect(deleteMock).toHaveBeenCalledWith({ branchName: "main", id: "r-old" });
   });

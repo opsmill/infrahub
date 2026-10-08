@@ -11,8 +11,8 @@ function toStoredRange(range: RangeNode): StoredRange {
 
   return {
     id: range.id,
-    start: Number(range.start?.value),
-    end: Number(range.end?.value),
+    start: BigInt(String(range.start?.value)),
+    end: BigInt(String(range.end?.value)),
     weight: weight === null || weight === undefined ? null : Number(weight),
   };
 }

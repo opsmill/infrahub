@@ -56,7 +56,7 @@ const storedPool: NumberPoolForEditing = {
   nodeAttribute: "speed",
   allocationScope: [],
   poolType: "User",
-  ranges: [{ id: "range-1", start: 100, end: 199, weight: 10 }],
+  ranges: [{ id: "range-1", start: 100n, end: 199n, weight: 10 }],
 };
 
 const RANGE_REFUSED = "Range 300-399 overlaps another range";
@@ -150,8 +150,8 @@ describe("NumberPoolForm", () => {
         smaller: [],
         larger: [],
         creates: [
-          { start: 100, end: 199, weight: 10 },
-          { start: 300, end: 399, weight: null },
+          { start: 100n, end: 199n, weight: 10 },
+          { start: 300n, end: 399n, weight: null },
         ],
       },
     });
@@ -284,7 +284,7 @@ describe("NumberPoolForm", () => {
         deletes: [],
         smaller: [],
         larger: [],
-        creates: [{ start: 300, end: 399, weight: null }],
+        creates: [{ start: 300n, end: 399n, weight: null }],
       },
     });
   });
@@ -350,7 +350,7 @@ describe("NumberPoolForm", () => {
         deletes: [],
         smaller: [],
         larger: [],
-        creates: [{ start: 300, end: 399, weight: null }],
+        creates: [{ start: 300n, end: 399n, weight: null }],
       },
     });
   });
@@ -359,9 +359,9 @@ describe("NumberPoolForm", () => {
     const poolWithRanges: NumberPoolForEditing = {
       ...storedPool,
       ranges: [
-        { id: "range-3", start: 600, end: 699, weight: null },
-        { id: "range-2", start: 300, end: 399, weight: null },
-        { id: "range-1", start: 100, end: 199, weight: 10 },
+        { id: "range-3", start: 600n, end: 699n, weight: null },
+        { id: "range-2", start: 300n, end: 399n, weight: null },
+        { id: "range-1", start: 100n, end: 199n, weight: 10 },
       ],
     };
     const currentObject = { id: "pool-1" } as NonNullable<
@@ -413,6 +413,28 @@ describe("NumberPoolForm", () => {
       expect(applyRangeChanges).not.toHaveBeenCalled();
     });
 
+    test("loads a range ending above 2^53 exactly and saves it unchanged without a range call", async () => {
+      // GIVEN
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue({
+        ...storedPool,
+        ranges: [{ id: "range-1", start: 1n, end: 9223372036854775807n, weight: null }],
+      });
+      const component = await render(
+        <NumberPoolForm currentObject={currentObject} onSuccess={onSuccess} />
+      );
+      await expect
+        .element(component.getByRole("textbox", { name: "End, range 1" }))
+        .toHaveValue("9223372036854775807");
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => onSuccess).toHaveBeenCalled();
+      expect(component.getByRole("alert").elements()).toHaveLength(0);
+      expect(applyRangeChanges).not.toHaveBeenCalled();
+    });
+
     test("sends only the changed ranges, grouped as removals, smaller, larger and additions", async () => {
       // GIVEN
       const component = await renderEditForm();
@@ -434,9 +456,9 @@ describe("NumberPoolForm", () => {
         poolId: "pool-1",
         changes: {
           deletes: ["range-3"],
-          smaller: [{ id: "range-1", start: 100, end: 150, weight: 10 }],
-          larger: [{ id: "range-2", start: 300, end: 450, weight: null }],
-          creates: [{ start: 800, end: 899, weight: null }],
+          smaller: [{ id: "range-1", start: 100n, end: 150n, weight: 10 }],
+          larger: [{ id: "range-2", start: 300n, end: 450n, weight: null }],
+          creates: [{ start: 800n, end: 899n, weight: null }],
         },
       });
     });
@@ -460,7 +482,7 @@ describe("NumberPoolForm", () => {
         poolId: "pool-1",
         changes: {
           deletes: [],
-          smaller: [{ id: "range-1", start: 100, end: 199, weight: 10 }],
+          smaller: [{ id: "range-1", start: 100n, end: 199n, weight: 10 }],
           larger: [],
           creates: [],
         },
@@ -480,8 +502,8 @@ describe("NumberPoolForm", () => {
         .mockResolvedValue({
           ...poolWithRanges,
           ranges: [
-            { id: "range-2", start: 300, end: 399, weight: null },
-            { id: "range-1", start: 100, end: 199, weight: 20 },
+            { id: "range-2", start: 300n, end: 399n, weight: null },
+            { id: "range-1", start: 100n, end: 199n, weight: 20 },
           ],
         });
       return component;
@@ -533,7 +555,7 @@ describe("NumberPoolForm", () => {
           deletes: [],
           smaller: [],
           larger: [],
-          creates: [{ start: 800, end: 899, weight: null }],
+          creates: [{ start: 800n, end: 899n, weight: null }],
         },
       });
     });
@@ -588,7 +610,7 @@ describe("NumberPoolForm", () => {
     const schemaPool: NumberPoolForEditing = {
       ...storedPool,
       poolType: "Schema",
-      ranges: [{ id: "range-1", start: 1000, end: 1999, weight: null }],
+      ranges: [{ id: "range-1", start: 1000n, end: 1999n, weight: null }],
     };
     const currentObject = { id: "pool-1" } as NonNullable<
       Parameters<typeof NumberPoolForm>[0]["currentObject"]

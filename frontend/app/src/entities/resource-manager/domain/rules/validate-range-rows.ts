@@ -11,19 +11,22 @@ export interface RangeLimits {
   max?: number | null;
 }
 
-export function parseWholeNumber(value: string): number | null {
+export function parseWholeNumber(value: string): bigint | null {
   const trimmed = value.trim();
-  if (!/^-?\d+$/.test(trimmed)) return null;
-
-  const parsed = Number(trimmed);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  return /^-?\d+$/.test(trimmed) ? BigInt(trimmed) : null;
 }
 
-export function formatRange(start: number, end: number): string {
+export function parseWeight(value: string): number | null {
+  const parsed = parseWholeNumber(value);
+  if (parsed === null || parsed < 0n || parsed > BigInt(Number.MAX_SAFE_INTEGER)) return null;
+  return Number(parsed);
+}
+
+export function formatRange(start: bigint, end: bigint): string {
   return `${formatNumberDisplay(start)} – ${formatNumberDisplay(end)}`;
 }
 
-function parseBounds(row: RangeRow): { start: number; end: number } | null {
+function parseBounds(row: RangeRow): { start: bigint; end: bigint } | null {
   const start = parseWholeNumber(row.start);
   const end = parseWholeNumber(row.end);
   if (start === null || end === null || end < start) return null;
@@ -50,9 +53,8 @@ function getRowErrors(row: RangeRow): RangeRowErrors {
     errors.end = "Must not be lower than start";
   }
 
-  if (row.weight.trim() !== "") {
-    const weight = parseWholeNumber(row.weight);
-    if (weight === null || weight < 0) errors.weight = "Whole number of 0 or more";
+  if (row.weight.trim() !== "" && parseWeight(row.weight) === null) {
+    errors.weight = "Whole number of 0 or more";
   }
 
   return errors;
@@ -94,14 +96,15 @@ export function getRangeClipHint(
   const bounds = parseBounds(row);
   if (!bounds) return null;
 
-  const min = limits.min ?? Number.NEGATIVE_INFINITY;
-  const max = limits.max ?? Number.POSITIVE_INFINITY;
-  if (bounds.start >= min && bounds.end <= max) return null;
+  const lowest = limits.min == null ? bounds.start : BigInt(limits.min);
+  const highest = limits.max == null ? bounds.end : BigInt(limits.max);
+  const start = bounds.start > lowest ? bounds.start : lowest;
+  const end = bounds.end < highest ? bounds.end : highest;
+  if (start === bounds.start && end === bounds.end) return null;
 
-  if (bounds.end < min || bounds.start > max) {
+  if (start > end) {
     return `Outside the ${limits.attribute} limits, so no number can come from it`;
   }
 
-  const clipped = formatRange(Math.max(bounds.start, min), Math.min(bounds.end, max));
-  return `Clipped to ${clipped} by the ${limits.attribute} limits`;
+  return `Clipped to ${formatRange(start, end)} by the ${limits.attribute} limits`;
 }

@@ -33,7 +33,12 @@ export function updateNumberPoolRangeFromApi({
 }: UpdateNumberPoolRangeFromApiParams) {
   return graphqlClient.mutate({
     mutation: UPDATE_NUMBER_POOL_RANGE,
-    variables: { id: range.id, start: range.start, end: range.end, weight: range.weight },
+    variables: {
+      id: range.id,
+      start: String(range.start),
+      end: String(range.end),
+      weight: range.weight,
+    },
     // Callers display the refusal, so the global toast is suppressed.
     context: {
       branch: branchName,

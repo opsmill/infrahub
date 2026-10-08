@@ -65,6 +65,7 @@ export function getNumberPoolForEditingFromApi({
     variables: { poolId },
     context: {
       branch: branchName,
+      keepLargeIntegersExact: true,
     },
   });
 }

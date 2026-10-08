@@ -43,21 +43,34 @@ describe("toNumberPoolForEditing", () => {
       allocationScope: ["site"],
       poolType: "User",
       ranges: [
-        { id: "r-1", start: 100, end: 199, weight: 10 },
-        { id: "r-2", start: -5, end: 5, weight: null },
+        { id: "r-1", start: 100n, end: 199n, weight: 10 },
+        { id: "r-2", start: -5n, end: 5n, weight: null },
       ],
     });
   });
 
-  it("converts bounds and weight sent as strings to numbers", () => {
+  it("converts bounds and weight sent as strings", () => {
     // GIVEN a range whose BigInt values arrive as strings
     const node = poolNode({ ranges: { edges: [rangeNode("r-1", "1", "4094", "0")] } });
 
     // WHEN mapped
     const pool = toNumberPoolForEditing(node);
 
-    // THEN the range holds numbers, and a zero weight stays zero
-    expect(pool.ranges).toEqual([{ id: "r-1", start: 1, end: 4094, weight: 0 }]);
+    // THEN the bounds are whole numbers, and a zero weight stays zero
+    expect(pool.ranges).toEqual([{ id: "r-1", start: 1n, end: 4094n, weight: 0 }]);
+  });
+
+  it("keeps a bound above 2^53 exact", () => {
+    // GIVEN a range ending at the largest 64-bit integer, which the API returns as a string
+    const node = poolNode({
+      ranges: { edges: [rangeNode("r-1", 1, "9223372036854775807", null)] },
+    });
+
+    // WHEN mapped
+    const pool = toNumberPoolForEditing(node);
+
+    // THEN the end is the exact value
+    expect(pool.ranges[0]?.end).toBe(9223372036854775807n);
   });
 
   it("maps a schema-defined pool", () => {

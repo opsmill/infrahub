@@ -5,10 +5,18 @@ import type {
   RangeUpdate,
   StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
-import { parseWholeNumber } from "@/entities/resource-manager/domain/rules/validate-range-rows";
+import {
+  parseWeight,
+  parseWholeNumber,
+} from "@/entities/resource-manager/domain/rules/validate-range-rows";
+
+function compareStart(a: StoredRange, b: StoredRange): number {
+  if (a.start === b.start) return 0;
+  return a.start < b.start ? -1 : 1;
+}
 
 export function sortStoredRanges(ranges: StoredRange[]): StoredRange[] {
-  return [...ranges].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || a.start - b.start);
+  return [...ranges].sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0) || compareStart(a, b));
 }
 
 export function toRangeRows(ranges: StoredRange[]): RangeRow[] {
@@ -28,11 +36,11 @@ function toRangeInput(row: RangeRow): RangeInput {
   return {
     start: parseWholeNumber(row.start)!,
     end: parseWholeNumber(row.end)!,
-    weight: row.weight.trim() === "" ? null : parseWholeNumber(row.weight),
+    weight: row.weight.trim() === "" ? null : parseWeight(row.weight),
   };
 }
 
-function overlaps(a: { start: number; end: number }, b: { start: number; end: number }): boolean {
+function overlaps(a: RangeInput, b: RangeInput): boolean {
   return a.start <= b.end && b.start <= a.end;
 }
 

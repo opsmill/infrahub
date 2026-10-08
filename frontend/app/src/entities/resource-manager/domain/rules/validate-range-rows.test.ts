@@ -29,7 +29,7 @@ describe("validateRangeRows", () => {
     expect(errors).toEqual({ 0: { start: "Required", end: "Required" } });
   });
 
-  it.each(["1e3", "1.0", "abc", "1 000", "9007199254740993"])("rejects %s as a bound", (value) => {
+  it.each(["1e3", "1.0", "abc", "1 000"])("rejects %s as a bound", (value) => {
     // GIVEN
     const rows = [row(value, value)];
 
@@ -38,6 +38,36 @@ describe("validateRangeRows", () => {
 
     // THEN
     expect(errors).toEqual({ 0: { start: "Whole number", end: "Whole number" } });
+  });
+
+  it("accepts a bound above 2^53", () => {
+    // GIVEN
+    const rows = [row("1", "9223372036854775807")];
+
+    // WHEN
+    const errors = validateRangeRows(rows);
+
+    // THEN
+    expect(errors).toEqual({});
+  });
+
+  it("compares bounds above 2^53 exactly", () => {
+    // GIVEN two ranges that a JavaScript number would round to the same value
+    const rows = [
+      row("9007199254740992", "9007199254740992"),
+      row("9007199254740993", "9007199254740993"),
+      row("9223372036854775806", "9223372036854775807"),
+      row("9223372036854775807", "9223372036854775807"),
+    ];
+
+    // WHEN
+    const errors = validateRangeRows(rows);
+
+    // THEN only the ranges that share a number overlap, and the bound is shown exactly
+    expect(errors).toEqual({
+      2: { row: "Overlaps 9,223,372,036,854,775,807 – 9,223,372,036,854,775,807" },
+      3: { row: "Overlaps 9,223,372,036,854,775,806 – 9,223,372,036,854,775,807" },
+    });
   });
 
   it("accepts negative bounds and surrounding spaces", () => {
@@ -62,7 +92,7 @@ describe("validateRangeRows", () => {
     expect(errors).toEqual({ 0: { end: "Must not be lower than start" } });
   });
 
-  it.each(["-1", "1.5", "x"])("rejects %s as a weight", (weight) => {
+  it.each(["-1", "1.5", "x", "9007199254740993"])("rejects %s as a weight", (weight) => {
     // GIVEN
     const rows = [row("1", "10", weight)];
 
@@ -178,6 +208,17 @@ describe("getRangeClipHint", () => {
 
     // THEN
     expect(hint).toBe("Clipped to 1 – 10,000 by the asn limits");
+  });
+
+  it("compares a bound above 2^53 with the limits exactly", () => {
+    // GIVEN
+    const range = row("1", "9223372036854775807");
+
+    // WHEN
+    const hint = getRangeClipHint(range, { attribute: "asn", min: 0, max: 4_294_967_295 });
+
+    // THEN
+    expect(hint).toBe("Clipped to 1 – 4,294,967,295 by the asn limits");
   });
 
   it("states that no number can come from a row entirely outside the limits", () => {

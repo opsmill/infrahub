@@ -259,8 +259,8 @@ describe("ReadOnlyRangesField", () => {
   test("lists the ranges as text by weight then start, with no input", async () => {
     // GIVEN
     const ranges = [
-      { id: "range-2", start: 5000, end: 5999, weight: null },
-      { id: "range-1", start: 1000, end: 1999, weight: 10 },
+      { id: "range-2", start: 5000n, end: 5999n, weight: null },
+      { id: "range-1", start: 1000n, end: 1999n, weight: 10 },
     ];
 
     // WHEN
@@ -274,9 +274,22 @@ describe("ReadOnlyRangesField", () => {
     expect(component.getByRole("button", { name: "Add range" }).elements()).toHaveLength(0);
   });
 
+  test("shows a bound above 2^53 exactly", async () => {
+    // GIVEN
+    const ranges = [{ id: "range-1", start: 1n, end: 9223372036854775807n, weight: null }];
+
+    // WHEN
+    const component = await render(<ReadOnlyRangesField ranges={ranges} />);
+
+    // THEN
+    await expect
+      .element(component.getByRole("listitem"))
+      .toHaveTextContent("1 – 9,223,372,036,854,775,807");
+  });
+
   test("says the ranges are changed in the schema on the default branch", async () => {
     // GIVEN
-    const ranges = [{ id: "range-1", start: 1, end: 10, weight: null }];
+    const ranges = [{ id: "range-1", start: 1n, end: 10n, weight: null }];
 
     // WHEN
     const component = await render(<ReadOnlyRangesField ranges={ranges} />);

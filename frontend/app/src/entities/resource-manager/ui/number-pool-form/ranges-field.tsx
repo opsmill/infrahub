@@ -204,7 +204,7 @@ export function ReadOnlyRangesField({ ranges }: ReadOnlyRangesFieldProps) {
 function describeLimits(limits?: RangeLimits | null): string {
   const { attribute, min, max } = limits ?? {};
   if (min == null || max == null) return "";
-  return ` ${attribute} accepts ${formatRange(min, max)}.`;
+  return ` ${attribute} accepts ${formatRange(BigInt(min), BigInt(max))}.`;
 }
 
 function RangesHeader({ description }: { description: ReactNode }) {

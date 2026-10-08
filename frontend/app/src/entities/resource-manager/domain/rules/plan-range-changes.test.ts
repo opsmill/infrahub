@@ -15,13 +15,13 @@ import {
 
 const stored = (
   id: string,
-  start: number,
-  end: number,
+  start: number | bigint,
+  end: number | bigint,
   weight: number | null = null
 ): StoredRange => ({
   id,
-  start,
-  end,
+  start: BigInt(start),
+  end: BigInt(end),
   weight,
 });
 
@@ -60,6 +60,20 @@ describe("sortStoredRanges", () => {
 
     // THEN
     expect(sorted.map((range) => range.id)).toEqual(["empty", "zero"]);
+  });
+
+  it("orders starts above 2^53 exactly", () => {
+    // GIVEN
+    const ranges = [
+      stored("b", 9007199254740993n, 9007199254740993n),
+      stored("a", 9007199254740992n, 9007199254740992n),
+    ];
+
+    // WHEN
+    const sorted = sortStoredRanges(ranges);
+
+    // THEN
+    expect(sorted.map((range) => range.id)).toEqual(["a", "b"]);
   });
 
   it("does not change the given list", () => {
@@ -112,8 +126,8 @@ describe("diffRanges", () => {
       smaller: [],
       larger: [],
       creates: [
-        { start: 1, end: 10, weight: null },
-        { start: 20, end: 30, weight: 3 },
+        { start: 1n, end: 10n, weight: null },
+        { start: 20n, end: 30n, weight: 3 },
       ],
     });
   });
@@ -129,7 +143,7 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: [],
-      smaller: [{ id: "a", start: 1, end: 10, weight: null }],
+      smaller: [{ id: "a", start: 1n, end: 10n, weight: null }],
       larger: [],
       creates: [],
     });
@@ -146,8 +160,8 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: [],
-      smaller: [{ id: "b", start: 16, end: 20, weight: null }],
-      larger: [{ id: "a", start: 1, end: 15, weight: null }],
+      smaller: [{ id: "b", start: 16n, end: 20n, weight: null }],
+      larger: [{ id: "a", start: 1n, end: 15n, weight: null }],
       creates: [],
     });
   });
@@ -161,7 +175,7 @@ describe("diffRanges", () => {
     const changes = diffRanges(ranges, rows);
 
     // THEN
-    expect(changes.larger).toEqual([{ id: "a", start: 5, end: 15, weight: 2 }]);
+    expect(changes.larger).toEqual([{ id: "a", start: 5n, end: 15n, weight: 2 }]);
   });
 
   it("sends a larger update after the larger update that frees its new bounds", () => {
@@ -174,8 +188,8 @@ describe("diffRanges", () => {
 
     // THEN
     expect(changes.larger).toEqual([
-      { id: "b", start: 21, end: 30, weight: null },
-      { id: "a", start: 11, end: 20, weight: null },
+      { id: "b", start: 21n, end: 30n, weight: null },
+      { id: "a", start: 11n, end: 20n, weight: null },
     ]);
   });
 
@@ -199,7 +213,31 @@ describe("diffRanges", () => {
     const changes = diffRanges([], rows);
 
     // THEN
-    expect(changes.creates).toEqual([{ start: 1, end: 10, weight: null }]);
+    expect(changes.creates).toEqual([{ start: 1n, end: 10n, weight: null }]);
+  });
+
+  it("returns no changes for an unchanged range ending above 2^53", () => {
+    // GIVEN
+    const ranges = [stored("a", 1, 9223372036854775807n)];
+    const rows = toRangeRows(ranges);
+
+    // WHEN
+    const changes = diffRanges(ranges, rows);
+
+    // THEN
+    expect(hasRangeChanges(changes)).toBe(false);
+  });
+
+  it("updates a range whose end above 2^53 changes by one", () => {
+    // GIVEN two ends that a JavaScript number would round to the same value
+    const ranges = [stored("a", 1, 9007199254740992n)];
+    const rows = [row("1", "9007199254740993", "", "a")];
+
+    // WHEN
+    const changes = diffRanges(ranges, rows);
+
+    // THEN
+    expect(changes.larger).toEqual([{ id: "a", start: 1n, end: 9007199254740993n, weight: null }]);
   });
 
   it("groups deletes, smaller, larger and creates together", () => {
@@ -213,9 +251,9 @@ describe("diffRanges", () => {
     // THEN
     expect(changes).toEqual({
       deletes: ["c"],
-      smaller: [{ id: "a", start: 10, end: 90, weight: null }],
-      larger: [{ id: "b", start: 150, end: 300, weight: null }],
-      creates: [{ start: 600, end: 700, weight: null }],
+      smaller: [{ id: "a", start: 10n, end: 90n, weight: null }],
+      larger: [{ id: "b", start: 150n, end: 300n, weight: null }],
+      creates: [{ start: 600n, end: 700n, weight: null }],
     });
   });
 });
@@ -231,6 +269,18 @@ describe("matchRowsToStored", () => {
 
     // THEN
     expect(matched).toEqual([row("1", "10", "7", "a")]);
+  });
+
+  it("links a row to a stored range only when a bound above 2^53 is equal", () => {
+    // GIVEN
+    const ranges = [stored("a", 1, 9007199254740992n), stored("b", 1, 9007199254740993n)];
+    const rows = [row("1", "9007199254740993")];
+
+    // WHEN
+    const matched = matchRowsToStored(rows, ranges);
+
+    // THEN
+    expect(matched).toEqual([row("1", "9007199254740993", "", "b")]);
   });
 
   it("does not link a stored range that is already linked", () => {

@@ -38,7 +38,7 @@ export function createNumberPoolRangeFromApi({
 }: CreateNumberPoolRangeFromApiParams) {
   return graphqlClient.mutate({
     mutation: CREATE_NUMBER_POOL_RANGE,
-    variables: { poolId, start: range.start, end: range.end, weight: range.weight },
+    variables: { poolId, start: String(range.start), end: String(range.end), weight: range.weight },
     // Callers display the refusal, so the global toast is suppressed.
     context: {
       branch: branchName,

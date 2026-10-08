@@ -11,8 +11,8 @@ export const EMPTY_RANGE_ROW: RangeRow = { start: "", end: "", weight: "" };
 
 export interface StoredRange {
   id: string;
-  start: number;
-  end: number;
+  start: bigint;
+  end: bigint;
   weight: number | null;
 }
 
