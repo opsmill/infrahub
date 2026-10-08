@@ -342,6 +342,7 @@ async def test_a_staging_repository_merges_with_no_queue_entry(
             destination_branch=default_branch.name,
             destination_branch_id=str(default_branch.get_uuid()),
             repository_kind=InfrahubKind.REPOSITORY,
+            source_commit=SOURCE_COMMIT,
         )
     ]
     assert (await store.read(repository_id=repository.id)).queue == DeliveryQueue()
@@ -417,12 +418,16 @@ async def test_a_failed_read_of_the_content_still_submits_the_merge_flow_of_ever
                 destination_branch=default_branch.name,
                 destination_branch_id=str(default_branch.get_uuid()),
                 repository_kind=InfrahubKind.REPOSITORY,
+                source_commit=commit,
                 pending_merge=None,
                 pending_merge_enqueued=False,
             ),
             [f"infrahub.app/node/{repository.id}", "infrahub.app/repository-delivery"],
         )
-        for name, repository in (("changed-repository", changed), ("unchanged-repository", unchanged))
+        for name, repository, commit in (
+            ("changed-repository", changed, SOURCE_COMMIT),
+            ("unchanged-repository", unchanged, TRUNK_COMMIT),
+        )
     ]
     assert log_lines(caplog, logger_name=DISPATCHER_LOGGER, level=logging.ERROR) == [
         f"Unable to read which repositories the merge of branch {SOURCE_BRANCH} changes; "
