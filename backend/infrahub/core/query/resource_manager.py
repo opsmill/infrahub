@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
-from infrahub.core.constants import NULL_VALUE, InfrahubKind, RelationshipStatus
+from infrahub.core.constants import NULL_VALUE, InfrahubKind, PoolRecordProvenance, RelationshipStatus
 from infrahub.core.query import Query, QueryInitKwargs, QueryResult, QueryType
 from infrahub.core.query.vertex_metadata import stamp_vertex_metadata
 
@@ -13,13 +12,6 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-class PoolRecordProvenance(StrEnum):
-    """Whether the pool allocated a value or a user provided it."""
-
-    ALLOCATED = "allocated"
-    PROVIDED = "provided"
 
 
 @dataclass(frozen=True)

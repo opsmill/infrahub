@@ -14,9 +14,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PoolRecordProvenance
 from infrahub.core.initialization import create_branch
-from infrahub.core.query.resource_manager import NumberPoolGetAllocated, PoolRecordProvenance
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter

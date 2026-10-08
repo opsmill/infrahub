@@ -22,6 +22,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
     MetadataOptions,
+    PoolRecordProvenance,
 )
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
@@ -34,7 +35,6 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError

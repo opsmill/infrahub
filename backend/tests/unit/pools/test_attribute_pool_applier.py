@@ -7,9 +7,8 @@ import pytest
 
 from infrahub.core.attribute import Integer
 from infrahub.core.branch import Branch
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, PoolRecordProvenance
 from infrahub.core.node import Node
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
