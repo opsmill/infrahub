@@ -1,6 +1,6 @@
 import type { DeliveryFailureCause } from "@/entities/repository/domain/model/delivery-state";
 
-// The fixed texts of the push section live here, so a change of wording touches one file.
+// The fixed texts of the push section and its menu items live here, so a change of wording touches one file.
 export const DELIVERY_TEXTS = {
   title: "Push to remote",
   status: "Status",
@@ -11,6 +11,9 @@ export const DELIVERY_TEXTS = {
   nothingPending: "Nothing pending",
   importsPaused:
     "Imports from the remote default branch are paused until the pending pushes clear.",
+  retry: "Retry push",
+  retryStarted: "Retry of the pending pushes started.",
+  retryFailed: "Error retrying the pending pushes:",
 } as const;
 
 export const REQUIRED_ACTION_BY_CAUSE: Record<DeliveryFailureCause, string> = {

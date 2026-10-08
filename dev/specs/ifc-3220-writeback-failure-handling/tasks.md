@@ -394,7 +394,7 @@ SC-002, SC-007.
       `block_commit_worktree`: no second push, the queue clears by observation.
 - [ ] T058 [US2] Add `test_concurrent_attempts` to the same module: a first attempt and a manual retry run
       one after the other, and the second does nothing.
-- [ ] T059 [P] [US2] Write the retry mutation in the three-file pattern:
+- [X] T059 [P] [US2] Write the retry mutation in the three-file pattern:
       `frontend/app/src/entities/repository/api/retry-delivery-from-api.ts`,
       `frontend/app/src/entities/repository/domain/use-cases/retry-delivery.ts`,
       `frontend/app/src/entities/repository/ui/queries/retry-delivery.mutation.ts`, sent with the
