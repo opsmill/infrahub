@@ -8,6 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { checkRemoteRefsFromApi } from "@/entities/repository/api/check-remote-refs-from-api";
 import { getRemoteCheckTaskFromApi } from "@/entities/repository/api/get-remote-check-task-from-api";
 import { getRepositoryCommitsFromApi } from "@/entities/repository/api/get-repository-commits-from-api";
+import { CHECK_REMOTE_REFS_MUTATION_KEY } from "@/entities/repository/ui/queries/check-remote-refs.mutation";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import type { RepositoryRemoteCheck } from "@/entities/repository/ui/repository-check-remote-button";
 
@@ -161,8 +162,10 @@ describe("Check remote now in the commit log", () => {
 
     // THEN
     await expect.element(checkButton).toHaveFocus();
-    // A press that got through would call the API on a later tick, so give it one before asserting.
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // A press that got through adds the mutation synchronously, before the API is called.
+    expect(
+      queryClient.getMutationCache().findAll({ mutationKey: CHECK_REMOTE_REFS_MUTATION_KEY })
+    ).toHaveLength(0);
     expect(checkRemoteRefsApiMock).not.toHaveBeenCalled();
   });
 
