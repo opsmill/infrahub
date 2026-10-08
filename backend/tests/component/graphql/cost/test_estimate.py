@@ -238,6 +238,26 @@ query {
 }
 """
 
+FILTERED_CAR_OF_PERSON_QUERY = """
+query {
+    TestPerson(name__value: "Ann") {
+        edges {
+            node {
+                cars(name__value: "ann-3") { edges { node { name { value } owner { node { name { value } } } } } }
+            }
+        }
+    }
+}
+"""
+
+REPORT_FIELD_ESTIMATES_QUERY = """
+query ($q: String!, $variables: GenericScalar) {
+    InfrahubGraphQLQueryReport(query: $q, variables: $variables) {
+        cost_estimate { mode fields { path source worst_case_is_bound expected { nodes } } }
+    }
+}
+"""
+
 REPORT_COST_ESTIMATE_QUERY = """
 query ($q: String!, $variables: GenericScalar) {
     InfrahubGraphQLQueryReport(query: $q, variables: $variables) { cost_estimate { mode } }
@@ -291,20 +311,28 @@ def post_query(
     headers: dict[str, str],
     variables: dict[str, Any] | None = None,
     branch: str | None = None,
+    at: Timestamp | None = None,
 ) -> dict[str, Any]:
     response = client.post(
         f"/graphql/{branch}" if branch else "/graphql",
         json={"query": query, "variables": variables or {}},
         headers=headers,
+        params={"at": at.to_string()} if at is not None else None,
     )
     assert response.status_code == 200
     return response.json()
 
 
 def post_with_details(
-    client: TestClient, query: str, variables: dict[str, Any] | None = None, branch: str | None = None
+    client: TestClient,
+    query: str,
+    variables: dict[str, Any] | None = None,
+    branch: str | None = None,
+    at: Timestamp | None = None,
 ) -> dict[str, Any]:
-    payload = post_query(client=client, query=query, headers=QUERY_COST_HEADERS, variables=variables, branch=branch)
+    payload = post_query(
+        client=client, query=query, headers=QUERY_COST_HEADERS, variables=variables, branch=branch, at=at
+    )
     assert "errors" not in payload
     return payload["extensions"]["query_cost"]
 
@@ -506,6 +534,62 @@ async def test_first_step_counts_the_branch_of_the_request(
     assert (branch_cars["estimate"]["source"], branch_cars["estimate"]["expected"]["nodes"]) == ("counted", 12)
     assert branch_cars["actual"]["nodes"] == 12
     assert [field["estimate"]["worst_case_is_bound"] for field in on_branch["fields"]] == [False, False, False]
+
+
+async def test_first_step_counts_the_time_of_the_request(
+    db: InfrahubDatabase, counting_client: TestClient, car_fleet_with_statistics: dict[str, Node]
+) -> None:
+    before_new_cars = Timestamp()
+    for index in range(2):
+        await _create_car(db=db, kind="TestGazCar", name=f"ben-later-{index}", owner=car_fleet_with_statistics["Ben"])
+    variables = {"name": "Ben"}
+
+    with counting_client:
+        now = post_with_details(client=counting_client, query=CARS_OF_PERSON_QUERY, variables=variables)
+        earlier = post_with_details(
+            client=counting_client, query=CARS_OF_PERSON_QUERY, variables=variables, at=before_new_cars
+        )
+        report = post_query(
+            client=counting_client,
+            query=REPORT_FIELD_ESTIMATES_QUERY,
+            headers=ADMIN_HEADERS,
+            variables={"q": CARS_OF_PERSON_QUERY, "variables": variables},
+            at=before_new_cars,
+        )
+
+    now_cars = fields_by_path(query_cost=now)["TestPerson/cars"]
+    earlier_cars = fields_by_path(query_cost=earlier)["TestPerson/cars"]
+    assert (now_cars["estimate"]["expected"]["nodes"], now_cars["actual"]["nodes"]) == (8, 8)
+    assert (
+        earlier_cars["estimate"]["source"],
+        earlier_cars["estimate"]["expected"]["nodes"],
+        earlier_cars["actual"]["nodes"],
+    ) == ("counted", 6, 6)
+    assert [field["estimate"]["worst_case_is_bound"] for field in earlier["fields"]] == [False, False, False]
+    assert "errors" not in report
+    assert [
+        (field["path"], field["source"], field["expected"]["nodes"], field["worst_case_is_bound"])
+        for field in report["data"]["InfrahubGraphQLQueryReport"]["cost_estimate"]["fields"]
+    ] == [
+        ("TestPerson", "COUNTED", 1, False),
+        ("TestPerson/cars", "COUNTED", 6, False),
+        ("TestPerson/cars/owner", "STATISTICS", 6, False),
+    ]
+
+
+async def test_first_step_counts_the_peers_that_match_the_filters_of_the_relationship_field(
+    counting_client: TestClient, car_fleet_with_statistics: dict[str, Node]
+) -> None:
+    with counting_client:
+        query_cost = post_with_details(client=counting_client, query=FILTERED_CAR_OF_PERSON_QUERY)
+
+    cars = fields_by_path(query_cost=query_cost)["TestPerson/cars"]
+    assert (
+        cars["estimate"]["source"],
+        cars["estimate"]["expected"]["nodes"],
+        cars["estimate"]["worst_case"]["nodes"],
+        cars["actual"]["nodes"],
+    ) == ("counted", 1, 1, 1)
 
 
 @dataclass

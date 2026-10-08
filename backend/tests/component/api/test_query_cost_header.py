@@ -6,12 +6,14 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.graphql.cost.tasks import refresh_query_cost_statistics
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
     from httpx import Response
 
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.cache import MemoryCache
 
 QUERY_COST_HEADER = {"X-Infrahub-Query-Cost": "details"}
 
@@ -66,6 +68,10 @@ def assert_same_data_with_details_only_on_request(without_header: Response, with
     cars = with_header.json()["data"]["TestPerson"]["edges"][0]["node"]["cars"]["edges"]
     assert sorted(car["node"]["name"]["value"] for car in cars) == ["bolt", "volt"]
     assert actual_counts_by_path(payload=with_header.json()) == EXPECTED_ACTUAL_COUNTS
+    query_cost = with_header.json()["extensions"]["query_cost"]
+    assert query_cost["estimate_mode"] == "counted_first_step"
+    # One query counts the person and one its cars, and each returns its counts in one row.
+    assert query_cost["estimate_queries"] == {"queries": 2, "database_rows": 2}
 
 
 async def test_get_stored_query_returns_the_details_only_with_the_header(
@@ -88,3 +94,25 @@ async def test_post_stored_query_returns_the_details_only_with_the_header(
         with_header = client.post("/api/query/cars_of_person", json=payload, headers=admin_headers | QUERY_COST_HEADER)
 
     assert_same_data_with_details_only_on_request(without_header=without_header, with_header=with_header)
+
+
+async def test_stored_query_estimate_counts_the_first_step_and_uses_the_statistics_below_it(
+    client: TestClient, admin_headers: dict[str, str], cars_of_person_query: Node, memory_cache: MemoryCache
+) -> None:
+    await refresh_query_cost_statistics()
+
+    with client:
+        response = client.get("/api/query/cars_of_person?person=John", headers=admin_headers | QUERY_COST_HEADER)
+
+    assert response.status_code == 200
+    query_cost = response.json()["extensions"]["query_cost"]
+    assert query_cost["estimate_mode"] == "counted_first_step"
+    assert query_cost["statistics"] is not None
+    assert {
+        field["path"]: (field["estimate"]["source"], field["estimate"]["expected"]["nodes"], field["actual"]["nodes"])
+        for field in query_cost["fields"]
+    } == {
+        "TestPerson": ("counted", 1, 1),
+        "TestPerson/cars": ("counted", 2, 2),
+        "TestPerson/cars/owner": ("statistics", 2, 2),
+    }
