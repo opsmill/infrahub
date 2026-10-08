@@ -1,7 +1,7 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
-import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/is-any-repository-syncing";
+import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/repository-syncing";
 import {
   type GetBranchRepositoryHealthParams,
   getBranchRepositoryHealth,

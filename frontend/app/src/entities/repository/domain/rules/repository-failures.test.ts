@@ -6,7 +6,6 @@ import {
   OPERATIONAL_STATUS,
   SYNC_STATUS,
 } from "../../../../../tests/fake/branch-repositories";
-import { isAnyRepositorySyncing } from "./is-any-repository-syncing";
 import {
   countUnlistedFailures,
   getFailingRepositories,
@@ -146,16 +145,5 @@ describe("getFailureKind", () => {
   it("returns import-error or unreachable", () => {
     expect(getFailureKind(importError("a"))).toBe("import-error");
     expect(getFailureKind(unreachable("a"))).toBe("unreachable");
-  });
-});
-
-describe("isAnyRepositorySyncing", () => {
-  it("is true while the server counts a syncing repository", () => {
-    expect(isAnyRepositorySyncing(generateBranchRepositoryHealth({ syncingCount: 1 }))).toBe(true);
-  });
-
-  it("is false when none is syncing, or before the health has loaded", () => {
-    expect(isAnyRepositorySyncing(generateBranchRepositoryHealth())).toBe(false);
-    expect(isAnyRepositorySyncing(undefined)).toBe(false);
   });
 });

@@ -11,11 +11,11 @@ import {
   BranchRepositoriesError,
   type BranchRepositoryPage,
 } from "@/entities/repository/domain/model/branch-repository";
-import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/is-any-repository-syncing";
 import {
   countUnlistedFailures,
   getFailingRepositories,
 } from "@/entities/repository/domain/rules/repository-failures";
+import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/repository-syncing";
 import {
   BranchRepositoriesDenied,
   BranchRepositoriesFailed,

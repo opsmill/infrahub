@@ -4,7 +4,7 @@ import { keepPreviousDataWithin } from "@/shared/api/keep-previous-data-within";
 import { getOffset } from "@/shared/utils/table-pagination";
 
 import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
-import { isRepositorySyncing } from "@/entities/repository/domain/rules/is-repository-syncing";
+import { isRepositorySyncing } from "@/entities/repository/domain/rules/repository-syncing";
 import {
   type GetBranchRepositoriesParams,
   getBranchRepositories,
