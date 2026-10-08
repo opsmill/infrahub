@@ -38,6 +38,8 @@ const refusedPush: RepositoryPushState = {
       merged_at: "2026-10-02T10:20:00.000000+00:00",
     },
   ],
+  queueVersion: 2,
+  lastAbandonment: null,
 };
 
 describe("RepositoryPushToRemoteCard", () => {
@@ -154,6 +156,8 @@ describe("RepositoryPushToRemoteCard", () => {
       causeLabel: null,
       error: null,
       pendingMerges: [],
+      queueVersion: 0,
+      lastAbandonment: null,
     });
 
     // WHEN

@@ -29,6 +29,8 @@ const refusedPush: RepositoryPushState = {
   causeLabel: "Push refused by the remote",
   error: null,
   pendingMerges: [],
+  queueVersion: 0,
+  lastAbandonment: null,
 };
 
 const nothingPending: RepositoryPushState = {
@@ -39,6 +41,8 @@ const nothingPending: RepositoryPushState = {
   causeLabel: null,
   error: null,
   pendingMerges: [],
+  queueVersion: 0,
+  lastAbandonment: null,
 };
 
 const mockDeliveryState = (state: RepositoryPushState | undefined) => {
