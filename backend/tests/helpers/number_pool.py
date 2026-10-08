@@ -15,7 +15,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -153,6 +153,24 @@ SCOPED_SITE = NodeSchema(
     attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
 )
 
+SCOPED_RACK = NodeSchema(
+    name="Rack",
+    namespace="Scope",
+    label="Rack",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+)
+
+SCOPED_LINK = NodeSchema(
+    name="Link",
+    namespace="Scope",
+    label="Link",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+)
+
 # The pooled number is not unique: a uniqueness constraint would make every value taken kind-wide and
 # hide whether a pool keeps the same number apart across scopes.
 SCOPED_DEVICE = NodeSchema(
@@ -163,7 +181,9 @@ SCOPED_DEVICE = NodeSchema(
     display_label="{{ name__value }}",
     attributes=[
         AttributeSchema(name="name", kind="Text", unique=True),
-        AttributeSchema(name="number", kind="Number", optional=True),
+        AttributeSchema(name="vlan_id", kind="Number", optional=True),
+        AttributeSchema(name="role", kind="Text", optional=False),
+        AttributeSchema(name="tags", kind="List", optional=False),
     ],
     relationships=[
         RelationshipSchema(
@@ -173,7 +193,53 @@ SCOPED_DEVICE = NodeSchema(
             cardinality=RelationshipCardinality.ONE,
             optional=False,
         ),
+        RelationshipSchema(
+            name="rack",
+            peer="ScopeRack",
+            identifier="scope_device__rack",
+            cardinality=RelationshipCardinality.ONE,
+            optional=True,
+        ),
+        RelationshipSchema(
+            name="links",
+            peer="ScopeLink",
+            identifier="scope_device__links",
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+        ),
     ],
 )
 
-SCOPED_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_DEVICE])
+SCOPED_HOLDER = GenericSchema(
+    name="Holder",
+    namespace="Scope",
+    label="Holder",
+    human_friendly_id=["name__value"],
+    display_label="{{ name__value }}",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="vlan_id", kind="Number", optional=True),
+    ],
+    relationships=[
+        RelationshipSchema(
+            name="site",
+            peer="ScopeSite",
+            identifier="scope_holder__site",
+            cardinality=RelationshipCardinality.ONE,
+            optional=False,
+        ),
+    ],
+)
+
+# The pod attribute is declared on the implementing kind only, so it cannot divide a pool bound to the generic.
+SCOPED_POD_HOLDER = NodeSchema(
+    name="PodHolder",
+    namespace="Scope",
+    label="Pod Holder",
+    inherit_from=["ScopeHolder"],
+    attributes=[AttributeSchema(name="pod", kind="Text", optional=False)],
+)
+
+SCOPED_POOL_SCHEMA = SchemaRoot(
+    generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_DEVICE, SCOPED_POD_HOLDER]
+)
