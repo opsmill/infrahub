@@ -47,7 +47,7 @@ class DeclaredPythonAttributes(Protocol):
 
 @dataclass(frozen=True)
 class AnalyzedRead:
-    """What one transform query reads, whether its root is restricted to a single object, and its repository."""
+    """What one transform query reads, whether its root is restricted to a single object, and the repository of its transform."""
 
     read_set: TransformReadSet
     pinned: bool
@@ -97,7 +97,7 @@ class SchemaDeclaredPythonAttributes:
 
 
 class GatheredPythonReadSets:
-    """The reads, mapped from the transform queries the gather resolved and analyzed, with the repository of each.
+    """The reads, mapped from the transform queries the gather resolved and analyzed, with the repository of each transform.
 
     Every query is mapped the same way the schema-scoped backfill maps it, so both sides agree on
     what a query reads. A root that is not restricted to a single object is carried as a separate

@@ -151,11 +151,15 @@ class PythonTargetResolver(Protocol):
     async def resolve(self, *, changes: Iterable[MergeChange], branch: str) -> list[AffectedTarget]: ...
 
     def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
-        """Return the id of the repository whose transform computes the attribute, or None when it is not known."""
+        """Return the id of the repository whose transform computes the attribute, or None when it is not known.
+
+        It is None until a resolution on the branch has loaded the read sets, and a None holds the target under
+        every pending repository.
+        """
 
 
 class PythonTargetRequest(BaseModel):
-    """One Python computed attribute target, in the form that the barrier holds and its cache keeps."""
+    """One Python computed attribute target, as a model so that the narrowed-hold cache can store it."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -641,10 +645,11 @@ async def _resolve_python_targets(
     branch: str,
     schema_branch: SchemaBranch,
 ) -> list[AffectedTarget]:
-    """The affected Python targets that the barrier admits, or every declared one widened when the resolution fails.
+    """The Python targets that the barrier admits, from the resolution or, when it fails, every declared one over its whole kind.
 
     Never raises: this is the only family that reads the database, and the four are submitted
-    together. A target whose repository waits for a delivery is held, whether it was narrowed or widened.
+    together. A target whose repository waits for a delivery is held, and a target with no known
+    repository is held under every pending one.
     """
     if not changes:
         # Targets come only from the changes, and the schema half is the backfill's. The read-set

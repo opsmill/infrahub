@@ -243,7 +243,11 @@ class IndexedPythonTargetResolver:
         )
 
     def owner_of(self, *, kind: str, attribute_name: str, branch: str) -> str | None:
-        """Return the repository of the attribute, from the read sets that a resolution on the branch loaded."""
+        """Return the repository of the attribute, from the read sets that a resolution on the branch loaded.
+
+        It is None until such a resolution has loaded the read sets, and a None holds the target under every
+        pending repository.
+        """
         return next(
             (
                 read_set.repository_id
