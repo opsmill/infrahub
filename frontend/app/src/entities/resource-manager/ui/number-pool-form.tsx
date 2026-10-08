@@ -1,4 +1,5 @@
 import { Button } from "@infrahub/ui";
+import { useState } from "react";
 import { type FieldValues, useForm, useWatch } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
@@ -52,19 +53,21 @@ function toFieldValue(value: string) {
 
 export const NumberPoolForm = ({ currentObject, ...props }: NumberPoolFormProps) => {
   const poolId = typeof currentObject?.id === "string" ? currentObject.id : "";
-  const { data: initialPool, isFetchedAfterMount } = useGetNumberPoolForEditing(
+  const [mountedAt] = useState(() => Date.now());
+  const { data, dataUpdatedAt, isFetchedAfterMount } = useGetNumberPoolForEditing(
     { poolId },
     { enabled: !!poolId, refetchOnMount: "always" }
   );
+  // The rows are diffed against the stored ranges on save, so they must start from a read made after opening, not the cache.
+  const initialPool = dataUpdatedAt >= mountedAt ? data : undefined;
 
   if (!poolId) return <NumberPoolFormContent {...props} />;
-  // The rows are diffed against the stored ranges on save, so they must start from a fresh read, not the cache.
-  if (!isFetchedAfterMount) return <LoadingIndicator className="p-4" />;
-  if (!initialPool) {
+  if (initialPool) return <NumberPoolFormContent initialPool={initialPool} {...props} />;
+  if (isFetchedAfterMount) {
     return <Alert type={ALERT_TYPES.ERROR} message="Unable to load the number pool" />;
   }
 
-  return <NumberPoolFormContent initialPool={initialPool} {...props} />;
+  return <LoadingIndicator className="p-4" />;
 };
 
 interface NumberPoolFormContentProps extends Omit<NumberPoolFormProps, "currentObject"> {
@@ -76,7 +79,7 @@ const NumberPoolFormContent = ({
   onSuccess,
   onCancel,
 }: NumberPoolFormContentProps) => {
-  const { poolId, rangeSaveError, save } = useSaveNumberPool({ initialPool, onSuccess });
+  const { poolId, saveError, save } = useSaveNumberPool({ initialPool, onSuccess });
   const isSchemaPool = initialPool?.poolType === "Schema";
   const { data: storedPool } = useGetNumberPoolForEditing(
     { poolId: poolId ?? "" },
@@ -117,7 +120,7 @@ const NumberPoolFormContent = ({
           <AllocatesBlock variant="input" />
         )}
 
-        {rangeSaveError && <Alert type={ALERT_TYPES.ERROR} message={rangeSaveError} />}
+        {saveError && <Alert type={ALERT_TYPES.ERROR} message={saveError} />}
         {isSchemaPool ? (
           <ReadOnlyRangesField ranges={storedPool?.ranges ?? initialPool.ranges} />
         ) : (

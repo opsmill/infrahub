@@ -30,6 +30,8 @@ import {
 import { useApplyNumberPoolRangeChangesMutation } from "@/entities/resource-manager/ui/queries/apply-number-pool-range-changes.mutation";
 import { getNumberPoolForEditingQueryOptions } from "@/entities/resource-manager/ui/queries/get-number-pool-for-editing.query";
 
+const POOL_UNREADABLE_MESSAGE = "The number pool could not be read. It may have been deleted.";
+
 interface UseSaveNumberPoolParams {
   initialPool?: NumberPoolForEditing;
   onSuccess?: ObjectFormProps["onSuccess"];
@@ -51,7 +53,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
   const applyRangeChanges = useApplyNumberPoolRangeChangesMutation();
 
   const [createdPoolId, setCreatedPoolId] = useState<string | null>(null);
-  const [rangeSaveError, setRangeSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [knownRangeIds, setKnownRangeIds] = useState<ReadonlySet<string>>(
     () => new Set(initialPool?.ranges.map(({ id }) => id))
   );
@@ -79,7 +81,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
         : { errorMessage: null };
 
     if (errorMessage === null) {
-      setRangeSaveError(null);
+      setSaveError(null);
       toast(createElement(Alert, { type: ALERT_TYPES.SUCCESS, message: successMessage }), {
         toastId: "alert-success-number-pool-save",
       });
@@ -87,7 +89,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
       return null;
     }
 
-    setRangeSaveError(errorMessage);
+    setSaveError(errorMessage);
     // Rows left unlinked here are linked on the next save, which reads the stored ranges again.
     const refreshed = await fetchStoredPool(pool.id).catch(() => null);
     const keptRows = refreshed ? matchRowsToStored(rows, refreshed.ranges) : rows;
@@ -121,7 +123,12 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
 
   async function updatePool(id: string, data: FieldValues): Promise<RangeRow[] | null> {
     const { [RANGES_FIELD]: rows, name, description } = data;
-    const stored = await fetchStoredPool(id);
+    const stored = await fetchStoredPool(id).catch(() => null);
+    if (!stored) {
+      setSaveError(POOL_UNREADABLE_MESSAGE);
+      return null;
+    }
+
     const changedFields = getCreateMutationFromFormDataOnly(
       { name, description },
       toPoolFields(stored)
@@ -151,5 +158,5 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
     return keptRows ? { resetTo: { ...data, [RANGES_FIELD]: keptRows } } : undefined;
   }
 
-  return { poolId, rangeSaveError, save };
+  return { poolId, saveError, save };
 }

@@ -62,6 +62,7 @@ const storedPool: NumberPoolForEditing = {
 
 const RANGE_REFUSED = "Range 300-399 overlaps another range";
 const RANGE_MISSING = "Unable to find the range range-3";
+const POOL_UNREADABLE = "The number pool could not be read. It may have been deleted.";
 
 describe("NumberPoolForm", () => {
   const initialNodeSchemas = store.get(nodeSchemasAtom);
@@ -444,6 +445,41 @@ describe("NumberPoolForm", () => {
         .element(component.getByRole("textbox", { name: "End" }).first())
         .toHaveValue("150");
       expect(component.getByText("Unable to load the number pool").elements()).toHaveLength(0);
+    });
+
+    test("shows the load error instead of the cached rows when the first read after opening fails", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      await component.rerender(<div />);
+      vi.mocked(getNumberPoolForEditing).mockRejectedValue(new Error("network down"));
+
+      // WHEN
+      await component.rerender(<NumberPoolForm currentObject={currentObject} />);
+
+      // THEN
+      await expect.element(component.getByText("Unable to load the number pool")).toBeVisible();
+      expect(component.getByRole("textbox", { name: "Start" }).elements()).toHaveLength(0);
+    });
+
+    test("keeps the form open with the rows as typed and reports a pool that can no longer be read when saving", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+      await component.getByRole("textbox", { name: "End" }).first().fill("150");
+      vi.mocked(getNumberPoolForEditing).mockRejectedValue(
+        new Error("Number pool pool-1 not found")
+      );
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.element(component.getByText(POOL_UNREADABLE)).toBeVisible();
+      await expect
+        .element(component.getByRole("textbox", { name: "End" }).first())
+        .toHaveValue("150");
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(updatePool).not.toHaveBeenCalled();
+      expect(applyRangeChanges).not.toHaveBeenCalled();
     });
 
     test("keeps a range added elsewhere after the form loaded when saving", async () => {
