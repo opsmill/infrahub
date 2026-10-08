@@ -70,6 +70,23 @@ describe("copyTextToClipboard", () => {
     expect(isCopied).toBe(false);
   });
 
+  test("reports a failure when the browser does not support execCommand", async () => {
+    // GIVEN
+    vi.stubGlobal("isSecureContext", false);
+    // An own property shadows Document.prototype.execCommand for this test only.
+    Object.defineProperty(document, "execCommand", { value: undefined, configurable: true });
+
+    try {
+      // WHEN
+      const isCopied = await copyTextToClipboard("abc1234");
+
+      // THEN
+      expect(isCopied).toBe(false);
+    } finally {
+      Reflect.deleteProperty(document, "execCommand");
+    }
+  });
+
   test("leaves no copied text behind in the document", async () => {
     // GIVEN
     vi.stubGlobal("isSecureContext", false);

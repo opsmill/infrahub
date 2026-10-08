@@ -209,6 +209,12 @@ export function getConditionNotice({
       };
     case RepositoryGitCondition.ORPHANED:
       return { tone: "warning", message: "The imported commit could not be found on the remote." };
+    case RepositoryGitCondition.REF_MISSING:
+      return {
+        tone: "warning",
+        message:
+          "The tracked ref no longer exists on the remote. The imported commit is still the one in use.",
+      };
     case RepositoryGitCondition.BEHIND:
       return pending_count === null
         ? null

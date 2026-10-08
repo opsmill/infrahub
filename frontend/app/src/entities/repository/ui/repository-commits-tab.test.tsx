@@ -56,9 +56,9 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     expect(apiMock).toHaveBeenCalledWith(expect.objectContaining({ repositoryId: "repo-1" }));
-    const tab = component.getByRole("link", { name: "Commits 2 pending import" });
+    const tab = component.getByRole("link", { name: "Commits 3 pending import" });
     await expect.element(tab).toBeVisible();
-    await expect.element(tab.getByText("2")).toBeVisible();
+    await expect.element(tab.getByText("3")).toBeVisible();
   });
 
   test("shows 0 when the branch is in sync", async () => {
@@ -133,7 +133,7 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
       .toBeVisible();
   });
 
@@ -155,9 +155,9 @@ describe("RepositoryCommitsTab", () => {
 
     // THEN
     await expect
-      .element(component.getByRole("link", { name: "Commits 2 pending import" }))
+      .element(component.getByRole("link", { name: "Commits 3 pending import" }))
       .toBeVisible();
-    await expect.element(component.getByText("2 commits pending import")).toBeVisible();
+    await expect.element(component.getByText("3 commits pending import")).toBeVisible();
     expect(apiMock).toHaveBeenCalledTimes(1);
   });
 });

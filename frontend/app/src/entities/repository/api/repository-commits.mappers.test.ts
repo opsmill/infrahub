@@ -23,7 +23,7 @@ describe("mapToRepositoryCommitLog", () => {
     // THEN
     expect(log.condition).toBe(RepositoryGitCondition.BEHIND);
     expect(log.imported_commit).toBe(fullHash(BEHIND_IMPORTED));
-    expect(log.pending_count).toBe(2);
+    expect(log.pending_count).toBe(3);
     expect(log.commits).toHaveLength(response.edges.length);
     expect(log.commits[0]).toEqual({
       hash: fullHash(BEHIND_HEAD),
