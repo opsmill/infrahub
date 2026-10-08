@@ -203,9 +203,9 @@ failed fetch does.
 
 ### Two checks keep a merge on the commits the graph imported
 
-A merge does not move a worktree from the remote: it builds on the local destination and merges the
-local source ref. Two checks keep it on the commits the graph imported. Only the first one holds a
-merge after a plain push and keeps the branch open:
+The Git merge reaches the remote after the graph merge, from the commits the graph records. Two
+checks keep it on the commits the graph imported. Only the first one holds a merge after a plain push
+and keeps the branch open:
 
 - Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the
   trunk with `git ls-remote` and compares them with the commits the graph records
@@ -224,42 +224,26 @@ merge after a plain push and keeps the branch open:
   commit, as after a failed first clone, the check reads the source branch only, and the dispatcher
   runs no Git merge for it: there is nothing to push. A value that is set but is not a full commit
   id is unknown, so the full check runs.
-- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches the heads of the remote
-  branches, with no tags because a tag moved on the remote would fail the fetch, then compares the
-  local source ref and the local trunk worktree with their remote heads. A fetch that fails says how
-  to finish the merge in Git. The source graph commit comes in the merge model
-  (`GitRepositoryMerge`), read when the merge was dispatched, because the source branch can be
-  deleted before the Git merge runs. `merge_git_repository` reads the destination graph commit under
-  the repository lock, because an earlier Git merge can move the trunk after the dispatch. Each
-  branch is compared with its graph commit, also when the clone holds the remote head:
-  - A graph commit equal to the remote head: a clone behind, ahead (the remote was rewound) or
-    diverged moves onto that head, because only this clone is stale.
-  - Ahead or diverged, with a graph commit that differs: the merge is refused, because the rewrite is
-    not recorded yet.
-  - A trunk on or behind its remote head, with a graph commit that differs: the merge is refused. On
-    an older trunk the remote would reject the push. On a head the graph never imported, the record
-    of the merge commit would hide that head from the next cycle. A plain push to the trunk that
-    lands between the two checks ends here.
-  - A source on or behind its remote head, with a graph commit that differs: the source moves onto
-    the graph commit when the remote history holds it, forward or back, so the merge holds what the
-    graph merged. The commits after it stay on the source branch and do not reach the trunk, and a
-    warning says so, because the branch is merged in Infrahub already and a refusal cannot help.
-  - A source that this clone does not hold, as on a worker whose sync has not created it yet: the
-    guard creates it at the graph commit when the remote history holds that commit, and refuses the
-    merge otherwise.
-  - Known risk: a source whose graph commit is missing, or no longer in the remote history, is merged
-    as it is, and can differ from what the graph merged.
+- In the delivery of the Git merge (`git/writeback/service.py::RepositoryWritebackService`), the
+  attempt fetches, then checks each queued merge against the remote before it replays the merges by
+  commit onto the remote head of the trunk. The source commit comes in the queue entry, read when the
+  merge was dispatched, because the source branch can be deleted before the delivery runs. The commit
+  that the graph records for the trunk is read under the repository lock, because an earlier delivery
+  can move it after the dispatch.
+  - A trunk whose remote history does not contain the recorded commit is refused with the cause
+    `destination-rewritten`, and a source commit that its remote branch no longer contains with the
+    cause `source-discarded`. Nothing is pushed: a replay would put the discarded commits back on the
+    remote.
+  - A trunk whose remote head moved ahead of the recorded commit is not refused: the delivery merges
+    onto that head, records the result and imports it, so the next cycle does not miss that head.
 
-  A refusal raises `RepositoryDivergentHistoryError`. It comes after the graph merge: the branch is
-  merged in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user
-  to finish the merge in Git.
+  A refusal comes after the graph merge: the branch is merged in Infrahub, the merge stays in the
+  push queue of the repository, and the repository records the cause. The run fails, and its log
+  says what the user can do.
 
-> **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
-> the guard refused: the user finishes it in Git. The delivery queue specified in
-> `dev/specs/ifc-3220-writeback-failure-handling/` does not recover it either. After a rewrite of the
-> source or of the trunk, it only marks such a delivery as one it cannot replay. After a plain push
-> to the trunk between the two checks, it specifies no recovery at all. Update this section when
-> either lands.
+> **Volatile section.** The retry and abandon actions of the push queue land with the rest of
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Until then, nothing runs a refused delivery again.
+> Update this section when they land.
 
 ## Repository state and branch support
 
@@ -373,8 +357,8 @@ upstream silently reclassifies an error to the generic fallthrough.
 **Per-ref push rejections bypass it** (see above): they arrive on the push result, and `push()` types
 them itself. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-A diverged history gets a message of its own, never a conflict. The merge guard raises
-`RepositoryDivergentHistoryError` itself. The classifier has no entry for git's "Need to specify how
+A diverged history gets a message of its own, never a conflict: the delivery checks the ancestry of
+each commit before it merges. The classifier has no entry for git's "Need to specify how
 to reconcile divergent branches", because only `git pull` writes that text and no path runs it. Only
 "you have unmerged files", which is a conflict git observed, is reported as one.
 

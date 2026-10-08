@@ -150,14 +150,6 @@ class RepositoryPermissionError(RepositoryError):
         )
 
 
-class RepositoryDivergentHistoryError(RepositoryError):
-    def __init__(self, identifier: str, message: str | None = None) -> None:
-        super().__init__(
-            identifier=identifier,
-            message=message or f"The local history of repository {identifier} and its remote history have diverged.",
-        )
-
-
 class RepositoryPushRejectedError(RepositoryError):
     """Raised when the remote refuses a pushed ref; ``remote_message`` holds the remote's own ``remote:`` lines."""
 
