@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -78,6 +79,70 @@ query NumberPoolAllocations(
   }
 }
 """
+
+
+@dataclass(frozen=True)
+class RefusalCase:
+    name: str
+    query: str
+    variables: dict[str, Any]
+    message: str
+
+
+REFUSAL_CASES = [
+    RefusalCase(
+        name="utilization-scoped-pool-without-division",
+        query=UTILIZATION_QUERY,
+        variables={"pool_id": SCOPED_POOL_ID},
+        message=f"The pool {SCOPED_POOL_ID} has an allocation scope; give a division with a value for every "
+        "element to read its utilization",
+    ),
+    RefusalCase(
+        name="utilization-division-on-unscoped-pool",
+        query=UTILIZATION_QUERY,
+        variables={"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
+        message="The pool mock-unscoped has no allocation scope; the division filter cannot be applied",
+    ),
+    RefusalCase(
+        name="allocations-unknown-range",
+        query=ALLOCATIONS_QUERY,
+        variables={"pool_id": UNSCOPED_POOL_ID, "range_id": FIRST_RANGE},
+        message=f"The range {FIRST_RANGE} does not belong to the pool {UNSCOPED_POOL_ID}",
+    ),
+    RefusalCase(
+        name="division-on-unscoped-pool",
+        query=ALLOCATIONS_QUERY,
+        variables={"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
+        message="The pool mock-unscoped has no allocation scope; the division filter cannot be applied",
+    ),
+    RefusalCase(
+        name="path-not-in-scope",
+        query=ALLOCATIONS_QUERY,
+        variables={"pool_id": SCOPED_POOL_ID, "division": [{"path": "role", "value": "leaf"}]},
+        message='The division entry "role" is not an element of the pool\'s allocation scope',
+    ),
+    RefusalCase(
+        name="duplicate-path",
+        query=ALLOCATIONS_QUERY,
+        variables={
+            "pool_id": SCOPED_POOL_ID,
+            "division": [{"path": "site", "value": SITE_A}, {"path": "site", "value": SITE_B}],
+        },
+        message='The division entry "site" is not an element of the pool\'s allocation scope',
+    ),
+    RefusalCase(
+        name="negative-offset",
+        query=ALLOCATIONS_QUERY,
+        variables={"pool_id": SCOPED_POOL_ID, "offset": -1},
+        message="offset must be 0 or greater",
+    ),
+    RefusalCase(
+        name="negative-limit",
+        query=ALLOCATIONS_QUERY,
+        variables={"pool_id": SCOPED_POOL_ID, "limit": -1},
+        message="limit must be 0 or greater",
+    ),
+]
 
 
 class TestNumberPoolSurface:
@@ -255,64 +320,6 @@ class TestNumberPoolSurface:
             (7, "branch1", "ALLOCATED", "1 - 50"),
         ]
 
-    @pytest.mark.parametrize(
-        ("query", "variables", "message"),
-        [
-            pytest.param(
-                UTILIZATION_QUERY,
-                {"pool_id": SCOPED_POOL_ID},
-                f"The pool {SCOPED_POOL_ID} has an allocation scope; give a division with a value for every "
-                "element to read its utilization",
-                id="utilization-scoped-pool-without-division",
-            ),
-            pytest.param(
-                UTILIZATION_QUERY,
-                {"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
-                "The pool mock-unscoped has no allocation scope; the division filter cannot be applied",
-                id="utilization-division-on-unscoped-pool",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {"pool_id": UNSCOPED_POOL_ID, "range_id": FIRST_RANGE},
-                f"The range {FIRST_RANGE} does not belong to the pool {UNSCOPED_POOL_ID}",
-                id="allocations-unknown-range",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {"pool_id": UNSCOPED_POOL_ID, "division": [{"path": "site", "value": SITE_A}]},
-                "The pool mock-unscoped has no allocation scope; the division filter cannot be applied",
-                id="division-on-unscoped-pool",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {"pool_id": SCOPED_POOL_ID, "division": [{"path": "role", "value": "leaf"}]},
-                'The division entry "role" is not an element of the pool\'s allocation scope',
-                id="path-not-in-scope",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {
-                    "pool_id": SCOPED_POOL_ID,
-                    "division": [{"path": "site", "value": SITE_A}, {"path": "site", "value": SITE_B}],
-                },
-                'The division entry "site" is not an element of the pool\'s allocation scope',
-                id="duplicate-path",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {"pool_id": SCOPED_POOL_ID, "offset": -1},
-                "offset must be 0 or greater",
-                id="negative-offset",
-            ),
-            pytest.param(
-                ALLOCATIONS_QUERY,
-                {"pool_id": SCOPED_POOL_ID, "limit": -1},
-                "limit must be 0 or greater",
-                id="negative-limit",
-            ),
-        ],
-    )
-    async def test_refusals(
-        self, gql_params: GraphqlParams, query: str, variables: dict[str, Any], message: str
-    ) -> None:
-        assert await self._error(gql_params, query, **variables) == message
+    @pytest.mark.parametrize("case", REFUSAL_CASES, ids=[case.name for case in REFUSAL_CASES])
+    async def test_refusals(self, gql_params: GraphqlParams, case: RefusalCase) -> None:
+        assert await self._error(gql_params, case.query, **case.variables) == case.message
