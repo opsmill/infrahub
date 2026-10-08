@@ -32,8 +32,9 @@ changes; one SDK type regeneration.
 | entry not defined on the kind in that branch's schema | refused at schema load, naming the entry |
 | a declared scope on a `unique: true` attribute | refused at schema load, naming the attribute |
 | entry not declared on the generic the attribute is inherited from | refused at schema load, naming the generic |
-| `allocation_scope` set, changed or cleared on an existing attribute, on any branch | refused by the schema-update validation: the field ships with `update: NOT_SUPPORTED` (#10917), so a declared scope is fixed when the attribute is declared |
-| a field the declared scope names is renamed, the declaration carrying the new name in the same load | accepted; the schema-created pool's entry is rewritten by the rename's migration (FR-032) |
+| scope changed on the default branch | the schema-created pool's `allocation_scope` is updated on load; no data moves |
+| scope changed on another branch | validated there; the pool follows when the branch merges |
+| a field the declared scope names is renamed | refused at schema load, naming the field and the pool: remove the entry from the declaration, rename, then declare the scope with the new name (FR-032) |
 | scoped field made optional, removed, or made cardinality many while a pool names it, or the pool's attribute made `unique: true` while the pool carries a scope | refused at schema load, naming the pool |
 
 ## Generated contract changes
@@ -50,13 +51,13 @@ changes; one SDK type regeneration.
 
 | Change | Constraint identifier | Checker |
 |---|---|---|
-| `allocation_scope` on the parameters | none: `update: NOT_SUPPORTED`, so the schema-update validation refuses any change to the field; entry validity is a schema-load validation | — |
+| `allocation_scope` on the parameters | none (`update: ALLOWED`; #10917 shipped `NOT_SUPPORTED`, switched by IFC-3351); entry validity is a schema-load validation | — |
 | a scoped attribute's `optional` | `attribute.optional.update` | `ScopedPoolDependencyChecker` (new), beside the existing optional checker |
 | a scoped relationship's `optional` / `cardinality` | `relationship.optional.update`, `relationship.cardinality.update` | same |
 | a scoped field removed | `node.attribute.remove`, `node.relationship.remove` (new constraint entries beside the existing migrations) | same |
 | the pool's own attribute made `unique: true` while the pool carries a scope | `attribute.unique.update` | same, beside the existing uniqueness checker |
-| a scoped attribute renamed | `attribute.name.update` (existing migration) | no refusal; the migration rewrites the entry in every pool that names the field (FR-032) |
-| a scoped relationship renamed | `relationship.name.update` (new migration entry; the relationship's `name` is `update: allowed` today and has no migration) | same rewrite |
+| a scoped attribute renamed | `attribute.name.update` (existing migration name, added to the validator map so the migration also yields a constraint) | `ScopedPoolDependencyChecker`, refusing naming the field and the pools (FR-032) |
+| a scoped relationship renamed | `relationship.name.update` (new constraint: the relationship's `name` moves from `update: allowed` to `validate_constraint`) | same |
 | a scoped number-pool attribute added to a populated kind | `node.attribute.add` | `NodeAttributeAddChecker`, size against the largest division |
 
 ## Ordering of the two repositories

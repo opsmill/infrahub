@@ -108,20 +108,20 @@ is returned, and an unknown `pool_id` is refused.
 ## Scenario 4 — scope in the schema (User Story 4, FR-012, FR-013)
 
 `backend/tests/component/pools/test_schema_number_pool_scope.py`: `vlan_id` with ranges 100–200 and
-`allocation_scope: ["site"]`; two sites both receive 100; a reload that changes or clears the
-declaration is refused by the schema-update validation (`update: NOT_SUPPORTED`) and the pool keeps
-its scope; a direct update of the pool's scope is refused with the default-branch message.
+`allocation_scope: ["site"]`; two sites both receive 100; clearing the scope on the default branch
+and reloading makes the next allocation 102; a direct update of the pool's scope is refused with the
+default-branch message.
 
-## Scenario 5 — refusals and the rename rewrite (User Story 5, FR-009, FR-010, FR-024, FR-032, SC-008)
+## Scenario 5 — refusals (User Story 5, FR-009, FR-010, FR-024, FR-032, SC-008)
 
 `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
 (the refused entries, each naming the entry; the `unique: true` attribute and the generic case),
 `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py` (optional,
 removed, cardinality many, the pool's attribute made unique → refused naming the pool; a field that
 never existed on the branch → accepted),
-`backend/tests/component/core/constraint_validators/test_scoped_field_rename.py` (a renamed
-scoped field rewrites the entry of the user-created and the schema-created pool; on a branch, at
-merge) and `backend/tests/component/graphql/queries/test_number_pool_surface.py` (an IP pool as
+`backend/tests/component/core/constraint_validators/test_scoped_field_rename.py` (a rename of a
+scoped field refused naming the field and the user-created and schema-created pools; accepted once
+the entry is removed from the scopes) and `backend/tests/component/graphql/queries/test_number_pool_surface.py` (an IP pool as
 `pool_id`, a range of another pool, a division filter on an unscoped pool, a path not in force, a
 duplicate path). `backend/tests/integration_docker/test_number_pool_scope_schema_load.py` runs the
 removal case through the schema-load API.

@@ -333,20 +333,25 @@ existed" clause).
 on the branch being loaded. Pools per kind are few, so a Python filter beats a `CONTAINS` over a
 list attribute's stored value.
 
-A rename is not refused: the rename's schema migration (`attribute.name.update`, existing;
-`relationship.name.update`, added for this, since the relationship's `name` is `update: allowed`
-and has no migration today) uses the same lookup and rewrites the entry in `allocation_scope` of
-every pool that names the field, user-created or schema-created, as a data write of the migration
-(FR-032). A schema-declared scope carries the new name in the same load; the schema-update
-validation accepts that one change to a `NOT_SUPPORTED` field when it matches a rename in the same
-diff. The pool is branch-agnostic, so the write runs when the renaming branch merges into the
-default branch; until then the branch's reads ignore the stored entry (FR-008). Proposed rule,
-listed in the spec's deviations for confirmation.
+A rename of a field a scope names is refused by the same checker (FR-032), naming the field and
+every pool that names it, user-created or schema-created, with a message telling the author to
+remove the entry from the scopes, rename, then set the scope with the new name. The checker looks
+the pools up by the field's previous name, taken from the previous schema by the attribute or
+relationship id, since that is the name the stored scopes hold. Neither rename name is a key of
+`CONSTRAINT_VALIDATOR_MAP` today: `attribute.name.update` exists as a migration (the attribute's
+`name` is `MIGRATION_REQUIRED`), so adding the key to the map is enough, as for the two removal
+names; the relationship's `name` is `UpdateSupport.ALLOWED` in `core/schema/definitions/internal.py`
+and yields neither a migration nor a constraint, so it becomes `VALIDATE_CONSTRAINT` (the generated
+`relationship_schema.py` regenerated) and `relationship.name.update` is added to the map. The
+pool's own `node_attribute` has the same exposure to a rename today and is outside this epic.
+
+**Rationale for the refusal**: a stored scope is data the system never rewrites; the operator
+changes it through the pool (or the declaration) in two explicit steps. Decided on 2026-10-08.
 
 **Alternatives**: a pure schema-branch check (cannot see pools, which are data); a Cypher filter on
-the list value (format-dependent); refusing a rename while a pool names the field (forces the
-operator to clear and re-set the scope around every rename, with a window in which the pool
-allocates coarser).
+the list value (format-dependent); rewriting the scope entries during the rename's schema
+migration (a system write to pool data, with a branch rule to invent for the branch-agnostic pool;
+rejected on 2026-10-08).
 
 ### D9 — The attribute-add size check compares against the largest division
 
@@ -356,23 +361,22 @@ from `NumberPoolDivisions` rather than the kind's total count.
 
 **Rationale**: a scoped pool legitimately serves more nodes than its size.
 
-### D10 — Schema-declared scope is written at pool creation and fixed afterwards
+### D10 — Schema-declared scope is reconciled from the default branch, like the bounds
 
 **Decision**: `NumberPoolParameters.allocation_scope: list[str] | None = None`, with `update`
-support `NOT_SUPPORTED`, as #10917 shipped it: a schema load that sets, changes or clears the
-field on an existing attribute is refused by the schema-update validation, on every branch, so a
-declared scope is fixed when the attribute is declared (FR-012; the rename of a field it names is
-the one accepted change, D8). FR-009's entry rules run in `_validate_number_pool_parameters` on the
-branch being loaded. `SchemaNumberPoolUpserter` writes the scope at pool creation;
-`SchemaNumberPoolSynchronizer._update_pool_from_schema` does not copy it, since the declaration
-cannot change. `InfrahubNumberPoolMutation.mutate_update` refuses a scope change on a
-`pool_type == Schema` pool with the existing default-branch message (FR-013). The Notion PRD's
-FR-018 amendment ("set, change and clear are one attribute update") holds for user-created pools
-only; the spec lists the departure for confirmation.
+support `ALLOWED` (changing it moves no data, FR-006); #10917 shipped the field as
+`NOT_SUPPORTED` and IFC-3351 switches it, so that a schema load that sets, changes or clears the
+declaration passes the schema-update validation. FR-009's entry rules run in
+`_validate_number_pool_parameters` on the branch being loaded. `SchemaNumberPoolUpserter` writes
+the scope at creation; `SchemaNumberPoolSynchronizer._update_pool_from_schema` copies it from the
+default-branch schema as it copies the bounds. `InfrahubNumberPoolMutation.mutate_update` refuses a
+scope change on a `pool_type == Schema` pool with the existing default-branch message (FR-013).
+This is the Notion PRD's FR-018 amendment ("set, change and clear are one attribute update"),
+applied to the schema declaration as to the pool. Decided on 2026-10-08.
 
-**Alternatives**: `update: ALLOWED` with the synchronizer copying the scope from the default-branch
-schema as it copies the bounds (the behaviour the PRD implies; not what shipped, and a change to
-the published parameters contract).
+**Alternatives**: keeping `NOT_SUPPORTED` as shipped, the declaration fixed with the attribute
+(rejected on 2026-10-08: it departs from the PRD and leaves no way to change a schema-created
+pool's scope).
 
 The SDK, OpenAPI and frontend REST models are not introspected from the Pydantic class:
 `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` lists the parameter fields by
@@ -427,10 +431,10 @@ D1 DivisionResolver.division_of + scoped records fragment +         (depends on 
 D2 NumberPoolDivisions + scoped allocated rows + real reads        (depends on B, C,    ├ parallel
    in the three queries                                              D3's entries_in_force)
 D3 scope write path: ScopeEntry, DivisionKey, entries_in_force,     (depends on A)       │
-   ScopeValidator in the mutation, schema-pool refusal, the
-   upserter write, schema-load validation, attribute-add size check
+   ScopeValidator in the mutation, schema-pool refusal,
+   upserter/synchronizer, schema-load validation, attribute-add size check
 D4 ScopedPoolDependencyChecker + PoolsReferencingField + the        (depends on A)       ┘
-   rename rewrite
+   rename refusal
 E  mock removal: delete number_pool_mock.py, real-data test         (depends on D2)
 F  measurement, docs, changelog                                     (depends on D1, E)
 ```

@@ -21,7 +21,7 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | #10911 | documents | This spec directory, consistent with the tickets, and the GraphQL contract of the three number-pool queries; the bottom of the stack once #10917 has merged |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | #10932 | B | The three queries over a fixed dataset, so the frontend can build |
 | [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | new | D3 (validator) | A scope that cannot divide the pool is refused at save |
-| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks a scoped field is refused; a rename of a scoped field rewrites the scope entry |
+| [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | new | D4 | A schema change that breaks or renames a scoped field is refused |
 | [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | new | C, D1 | Allocation within the writer's division |
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | new | D3 (size check) | The attribute-add size check compares against the largest division |
 | [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | new | D3 (schema) | The scope declared on a number-pool attribute in the schema |
@@ -60,9 +60,9 @@ of the generated files after it.
 - [X] T006 [P] Add `allocation_scope: list[str] | None = Field(default=None, …,
       json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value})` to
       `backend/infrahub/core/schema/attribute_parameters.py::NumberPoolParameters` with the same
-      description as T005 and "same notation as uniqueness constraints". A declared scope is fixed
-      with the attribute: a schema load that sets, changes or clears it on an existing attribute
-      is refused by the schema-update validation (FR-012).
+      description as T005 and "same notation as uniqueness constraints". Shipped with
+      `NOT_SUPPORTED`; IFC-3351 (T098) switches it to `ALLOWED` so that a default-branch schema
+      load that changes the declaration updates the pool (FR-012).
 - [X] T007 [P] Add the `List` field to the hand-maintained
       `tasks/backend.py::SdkSchemaGenerator.number_pool_parameters_fields` (the generated SDK,
       OpenAPI and REST models are not introspected from the Pydantic class).
@@ -296,9 +296,10 @@ accepted.
 **Delivers**: the dependency checker over existing pools (User Story 5 scenarios 2 and 3, FR-010;
 change set D4): a schema load that makes a scoped entry optional, absent or cardinality many, or
 that makes the pool's own attribute `unique: true` while the pool carries a scope, is refused
-naming the pool. Also the rename rewrite (User Story 5 scenario 4, FR-032): renaming a field a
-scope names rewrites the entry in every pool that names it, during the rename's schema migration.
-It needs nothing from allocation or reads and runs in parallel with IFC-3348 and IFC-3349.
+naming the pool. Also the rename refusal (User Story 5 scenario 4, FR-032): a schema load that
+renames a field a pool's `allocation_scope` or a declared `parameters.allocation_scope` names is
+refused naming the field and every dependent pool; no stored scope is rewritten. It needs nothing
+from allocation or reads and runs in parallel with IFC-3348 and IFC-3349.
 
 **Depends on**: IFC-3334. **Blocks**: IFC-3354.
 
@@ -348,32 +349,32 @@ It needs nothing from allocation or reads and runs in parallel with IFC-3348 and
 - [ ] T094 [P] [US5] Component tests in
       `backend/tests/component/core/constraint_validators/test_scoped_field_rename.py`: a
       user-created pool scoped by `["site", "role"]` and a schema-created pool declaring
-      `allocation_scope: ["site"]`; a load on the default branch renaming the attribute `role` to
-      `function` rewrites the user-created pool's scope to `["site", "function"]`; a load renaming
-      the relationship `site` to `location`, carrying `allocation_scope: ["location"]` on the
-      declaration, is accepted and both pools read back `location` in place of `site`; the pools'
-      records are unchanged and the next allocation per location continues the per-site sequence;
-      a load that changes the declared scope without a rename is refused by the schema-update
-      validation; the rename made on branch `b1` leaves the pools unchanged until `b1` merges, and
-      on `b1` the reads ignore the stored entry (FR-008); a pool on an unrelated kind is not
-      rewritten.
-- [ ] T095 [US5] Rewrite scope entries on rename (FR-032): in
-      `backend/infrahub/core/migrations/schema/attribute_name_update.py::AttributeNameUpdateMigration`
-      (`attribute.name.update`), after the rename queries, load the pools with
-      `PoolsReferencingField.get(kind, previous_name, branch)` and write the new name into each
-      pool's `allocation_scope` at the entry's position (a data write of the migration, on the
-      branch the migration runs on; the pool is branch-agnostic, so the write made at merge into
-      the default branch is the one that lands). Add a `relationship.name.update` migration entry
-      in `backend/infrahub/core/migrations/__init__.py::MIGRATION_MAP` doing the same for a renamed
-      relationship, since the relationship's `name` is `update: allowed` and has no migration
-      today; the relationship rename moves no data. In
-      `backend/infrahub/core/models.py::SchemaUpdateValidationResult`, accept a change to
-      `parameters.allocation_scope` (`update: NOT_SUPPORTED`) when the same diff renames a field
-      the previous value names and the new value is the previous value with that entry renamed;
-      every other change to the field stays refused.
+      `allocation_scope: ["site"]`; a load renaming the attribute `role` to `function` is refused
+      naming `role` and the user-created pool; a load renaming the relationship `site` to
+      `location` is refused naming `site` and both pools, and the message tells the author to
+      remove the entry from the scopes first, rename, then set the scope with the new name; the
+      pools, their scopes and their records are unchanged after each refusal; after the entry is
+      removed from both scopes the same rename is accepted, and the scope with the new name is
+      accepted afterwards; a rename on a kind no pool scopes is unaffected; a rename on branch
+      `b1` is refused there too, since the checker runs on the branch being loaded.
+- [ ] T095 [US5] Refuse the rename of a scoped field (FR-032) with `ScopedPoolDependencyChecker`
+      (T067), which looks the pools up by the field's previous name, taken from the previous schema
+      by the attribute or relationship id, and raises `ValueError` naming the field and each pool
+      with the message of the contract. Wiring, verified against `CONSTRAINT_VALIDATOR_MAP` on
+      `feature-number-pools-1.12`, where neither rename name is a key: for an attribute rename,
+      add `attribute.name.update` to the map (the attribute's `name` is `MIGRATION_REQUIRED`, so
+      the diff yields the migration of that name and
+      `SchemaUpdateValidationResult.add_validator_for_migration` turns it into a constraint, as it
+      does for the two removal names); for a relationship rename, set the `name` field of the
+      relationship schema in `backend/infrahub/core/schema/definitions/internal.py` from
+      `UpdateSupport.ALLOWED` to `UpdateSupport.VALIDATE_CONSTRAINT`, regenerate
+      `backend/infrahub/core/schema/generated/relationship_schema.py` with `uv run invoke
+      backend.generate`, and add `relationship.name.update` to the map, since an `ALLOWED` field
+      yields neither a migration nor a constraint. Both keys map to the new checker directly (no
+      existing checker on them). The `allocation_scope` of the pools is never rewritten.
 
-**Checkpoint**: every schema-load refusal of User Story 5 ships and names the pool; a rename
-rewrites the scope entries.
+**Checkpoint**: every schema-load refusal of User Story 5 ships and names the pool, the rename of a
+scoped field included.
 
 ---
 
@@ -557,16 +558,16 @@ IFC-3349 when it has merged; otherwise introduces it and IFC-3349 adopts it. **B
 ## IFC-3351: Declare the allocation scope on a number-pool attribute in the schema
 
 **Delivers**: User Story 4 (FR-012, FR-013): the schema-created pool carries the declared scope, a
-schema load that sets, changes or clears the declaration on an existing attribute is refused
-(`update: NOT_SUPPORTED`, as shipped by IFC-3334), and an invalid declared entry refuses the load.
+default-branch schema load that changes the declaration updates the pool (the parameters field
+switched from the shipped `NOT_SUPPORTED` to `ALLOWED`), and an invalid declared entry refuses the
+load.
 
 **Depends on**: IFC-3348 (the validator), IFC-3349 (the allocation assertions). **Blocks**: IFC-3354.
 
 - [ ] T055 [P] [US4] Component tests in `backend/tests/component/pools/test_schema_number_pool_scope.py`:
       `vlan_id` with ranges 100–200 and scope `["site"]` → the created pool reads back the scope and
-      two sites both receive 100; a reload that clears or changes the declared scope, on the
-      default branch and on `b1`, is refused by the schema-update validation naming the parameter
-      path, the pool keeps `["site"]` and the next allocation in a site holding 100 is 101; a direct
+      two sites both receive 100; clearing the scope on the default branch and reloading → next
+      allocation 102; a scope declared on `b1` only does not change the pool until merge; a direct
       `CoreNumberPoolUpdate` of the scope is refused with the default-branch message; a declaration
       naming an optional field, a many relationship, a related-node path or an unknown field is
       refused at load naming the entry; a declaration on a `unique: true` number-pool attribute is
@@ -575,10 +576,19 @@ schema load that sets, changes or clears the declaration on an existing attribut
       the generic.
 - [ ] T059 [US4] Write the schema-declared scope onto the pool:
       `backend/infrahub/pools/schema_number_pool_upserter.py::SchemaNumberPoolUpserter.upsert_number_pool`
-      sets `allocation_scope` from the parameters at creation.
+      sets `allocation_scope` from the parameters at creation;
       `backend/infrahub/pools/schema_number_pool_synchronizer.py::SchemaNumberPoolSynchronizer._update_pool_from_schema`
-      is not changed: a declared scope cannot change (`update: NOT_SUPPORTED`), so there is nothing
-      to copy; the rename rewrite of IFC-3352 (T095) is the only later write to the pool's scope.
+      copies it from the default-branch schema when it differs, as it does the bounds.
+- [ ] T098 [US4] Switch `NumberPoolParameters.allocation_scope` in
+      `backend/infrahub/core/schema/attribute_parameters.py` from
+      `json_schema_extra={"update": UpdateSupport.NOT_SUPPORTED.value}` (shipped by #10917) to
+      `UpdateSupport.ALLOWED.value`, so that a schema load that sets, changes or clears the
+      declaration on an existing attribute passes the schema-update validation and reaches the
+      synchronizer (FR-012). Extend `backend/tests/component/core/schema/test_attribute_parameters.py`
+      with the update of `allocation_scope` on an existing number-pool attribute accepted through
+      the schema API and read back (the deferred case of the implementation report), and run
+      `uv run pytest backend/tests/unit/core/schema/test_write_json_schema.py`; the write JSON
+      schema and the OpenAPI schema do not change (`update` support is not exported).
 - [ ] T060 [US4] Call `ScopeValidator` from
       `backend/infrahub/core/schema/schema_branch.py::SchemaBranch._validate_number_pool_parameters`
       with `self` as the schema branch when `parameters.allocation_scope` is set.
@@ -854,11 +864,11 @@ the merge of `feature-number-pools-1.12` into the release branch.
 - [ ] T079 [P] Changelog fragments in `changelog/` (use the `creating-changelog-entries` skill), the
       eight rows of the spec's "Behaviour changes for the changelog": scoped allocation,
       per-division utilization and the lock per pool and division (feature);
-      `parameters.allocation_scope`, fixed with the attribute (feature); the three dedicated
-      number-pool queries (feature); the description notes on the generic resource-pool queries
-      (changed description); the pool-save refusals, the `unique: true` and generic cases included
-      (new refusal); the schema-load refusal naming the pool, the `unique: true` case included (new
-      refusal); a rename of a scoped field rewriting the scope entries (changed behaviour); the
+      `parameters.allocation_scope`, following the default-branch declaration (feature); the three
+      dedicated number-pool queries (feature); the description notes on the generic resource-pool
+      queries (changed description); the pool-save refusals, the `unique: true` and generic cases
+      included (new refusal); the schema-load refusal naming the pool, the `unique: true` case
+      included (new refusal); the schema load renaming a scoped field refused (new refusal); the
       allocation lists no longer showing a deleting branch's values (changed behaviour, from the
       allocated read moving onto the shared fragment).
 - [ ] T080 [P] User docs: a "Scope a pool" section in `docs/docs/resource-manager/allocate-number.mdx`
@@ -994,7 +1004,8 @@ which both change `resource_manager.py`, from colliding.
 | IFC-3348 | T028, T053, T054 before T057 and T091 |
 | IFC-3349 | T096 first; T036, T037, T038, T039 before T040; T030 and T031 beside T029; T092 after T040 |
 | IFC-3329 | T012, T014, T015, T034, T047, T085 to T087 before T016; T033 beside T016 |
-| IFC-3352 | T063, T064, T065, T094 before T066; T095 after T066 |
+| IFC-3351 | T055 before T059, T060 and T098 |
+| IFC-3352 | T063, T064, T065, T094 before T066; T095 after T067 |
 | IFC-3353 | T046, T056 before T048 |
 | IFC-3356 | T079, T080, T081, T089 |
 
@@ -1009,10 +1020,10 @@ which both change `resource_manager.py`, from colliding.
 | IFC-3352 | 8 (T063 to T068, T094, T095) | 0 |
 | IFC-3349 | 16 (T029 to T032, T036 to T045, T092, T096) | 0 |
 | IFC-3353 | 4 (T046, T048, T056, T061) | 0 |
-| IFC-3351 | 4 (T055, T059, T060, T062) | 0 |
+| IFC-3351 | 5 (T055, T059, T060, T062, T098) | 0 |
 | IFC-3329 | 23 (T012, T014 to T016, T016a obsolete, T019 to T021, T026, T033 to T035, T047, T049 to T052, T071 to T073, T085 to T087) | 0 |
 | IFC-3357 | 1 (T074) | 0 |
 | IFC-3355 | 4 (T075 to T078) | 0 |
 | IFC-3354 | 2 (T069, T070) | 0 |
 | IFC-3356 | 9 (T079 to T084, T088 to T090) | 1 |
-| Total | 98 (97 live, T016a obsolete) | 19 |
+| Total | 99 (98 live, T016a obsolete) | 19 |

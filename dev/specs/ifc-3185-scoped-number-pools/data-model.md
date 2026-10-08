@@ -40,11 +40,10 @@ generic). Refused naming the attribute: any scope on a pool whose target attribu
 
 | Field | Type | Default | Update support | Notes |
 |---|---|---|---|---|
-| `allocation_scope` | `list[str] \| None` | `None` | `NOT_SUPPORTED` (as shipped by #10917) | Same notation and rules as on the pool; validated at load against the branch being loaded. A schema load that sets, changes or clears it on an existing attribute is refused by the schema-update validation; the rename of a field it names is the one accepted change (FR-032) |
+| `allocation_scope` | `list[str] \| None` | `None` | `ALLOWED` (#10917 shipped `NOT_SUPPORTED`; IFC-3351 switches it) | Same notation and rules as on the pool; validated at load against the branch being loaded |
 
-Written onto the schema-created pool at creation by `SchemaNumberPoolUpserter`.
-`SchemaNumberPoolSynchronizer` does not copy it: the declaration cannot change, so the pool's
-`allocation_scope` changes only when the rename migration rewrites an entry (FR-032).
+Reconciled onto the schema-created pool from the default-branch schema by
+`SchemaNumberPoolSynchronizer`; written at creation by `SchemaNumberPoolUpserter`.
 
 ---
 
@@ -167,9 +166,8 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 | Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters`, against the schema being loaded | same | the entry; the attribute; the generic |
 | Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
 | Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`, and for the constraint that makes an attribute unique; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field; a field declared on a generic is checked on the generic | refused when a pool names the field, or when the pool's own attribute becomes `unique: true` while the pool carries a scope | the pool |
+| Schema load renaming a scoped field | the same checker, registered for `attribute.name.update` (a migration name turned into a constraint by `add_validator_for_migration`) and `relationship.name.update` (the relationship's `name` switched to `VALIDATE_CONSTRAINT`); the pools looked up by the previous name | refused when a pool's `allocation_scope` or a declared `parameters.allocation_scope` names the field (FR-032); no stored scope is rewritten | the field and the pools, with the two-step instruction (remove the entry, rename, set the scope with the new name) |
 | Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
-| Schema load renaming a scoped field | the rename migration (`attribute.name.update`, existing; `relationship.name.update`, added) with `PoolsReferencingField` | no refusal: the entry is rewritten in `allocation_scope` of every pool that names the field, user-created or schema-created, as a data write of the migration; on a branch the write runs when the branch merges into the default branch (FR-032, proposed) | — |
-| Schema load changing a declared `allocation_scope` | the schema-update validation (`update: NOT_SUPPORTED`) | refused on an existing attribute, except the rename above | the parameter path (existing message) |
 | The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path, and on the utilization query a value for every path in force | the pool, the range, the entry (messages in the contract) |
 
 ### Pools-referencing-field lookup

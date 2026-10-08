@@ -88,12 +88,13 @@ recorded in the spec's Assumptions, and the form A versus form B choice recorded
   live branch (FR-007 union), the same rows the `division` filter returns; `used_default_branch`
   counts those values held on the default branch. The contract example of Site C reads
   `used_default_branch` 1, `used_branches` 0. User decision of 2026-10-08.
-- FR-012: `NumberPoolParameters.allocation_scope` ships with `update: NOT_SUPPORTED` (#10917), so a
-  schema load cannot set, change or clear a declared scope on an existing attribute; the PRD's
-  FR-012 and the Notion PRD's FR-018 amendment imply otherwise, and the spec lists the departure
-  for confirmation.
-- FR-032 (new): renaming a field a scope names rewrites the entry of every pool that names it,
-  during the rename's schema migration; a rename on a branch rewrites the pools at merge. Proposed
-  rule, listed for confirmation.
+- FR-012: `NumberPoolParameters.allocation_scope` becomes `update: ALLOWED` (#10917 shipped
+  `NOT_SUPPORTED`; IFC-3351 switches it), so a default-branch schema load that changes the declared
+  scope updates the pool, as the PRD's FR-012 and the Notion PRD's FR-018 amendment say. The pool's
+  own scope stays mutable through the pool mutations. User decision of 2026-10-08.
+- FR-032 (new): a schema load that renames a field a scope names, in a pool's `allocation_scope`
+  or in a declared `parameters.allocation_scope`, is refused naming the field and every dependent
+  pool; the author removes the entry, renames, then sets the scope with the new name. No stored
+  scope is rewritten by the system. User decision of 2026-10-08.
 - FR-031: on a scoped pool the lock per pool and division replaces the mutation-level pool lock; an
   unscoped pool keeps the pool-level lock. No option is left open.
