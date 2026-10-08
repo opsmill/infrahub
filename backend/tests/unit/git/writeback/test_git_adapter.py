@@ -110,6 +110,13 @@ def corrupt_object_store(repo: Repo) -> None:
     pack.write_bytes(content[:12] + bytes(len(content) - 32) + content[-20:])
 
 
+def comparison_failed(clone: DeliveryClone) -> str:
+    return (
+        rf"^Unable to compare the commit {clone.trunk} against {clone.feature} in the clone of repository "
+        rf"{REPOSITORY_NAME} on this worker\.$"
+    )
+
+
 def test_a_commit_is_its_own_ancestor(clone: DeliveryClone) -> None:
     assert build_adapter(repository=clone.repository).is_ancestor(ancestor=clone.trunk, descendant=clone.trunk) is True
 
@@ -135,8 +142,23 @@ def test_a_commit_missing_from_the_clone_answers_no(clone: DeliveryClone) -> Non
 def test_a_corrupt_object_store_raises_instead_of_answering(clone: DeliveryClone) -> None:
     corrupt_object_store(repo=clone.repository.get_git_repo_main())
 
-    with pytest.raises(RepositoryError, match=rf"^Unable to read {clone.trunk} from the object database: "):
+    with pytest.raises(RepositoryError, match=comparison_failed(clone=clone)):
         build_adapter(repository=clone.repository).is_ancestor(ancestor=clone.trunk, descendant=clone.feature)
+
+
+def test_an_unreadable_object_store_raises_with_no_path_of_the_worker(clone: DeliveryClone) -> None:
+    main = clone.repository.get_git_repo_main()
+    main.git.repack("-a", "-d")
+    pack = next(Path(main.git_dir, "objects", "pack").glob("*.pack"))
+    pack.chmod(0o000)
+
+    try:
+        with pytest.raises(RepositoryError, match=comparison_failed(clone=clone)) as error:
+            build_adapter(repository=clone.repository).is_ancestor(ancestor=clone.trunk, descendant=clone.feature)
+    finally:
+        pack.chmod(0o644)
+
+    assert str(pack) in str(error.value.__cause__)
 
 
 def test_a_replay_merges_each_commit_with_a_merge_commit_of_its_own(clone: DeliveryClone) -> None:
