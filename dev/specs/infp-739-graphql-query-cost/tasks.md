@@ -171,7 +171,7 @@ Requirements: FR-009, FR-011, FR-016, and critique finding E4.
     - `publish` writes every kind key before the pointer
     - it deletes the keys of the previous version
     - it deletes keys already stored under the version it writes (E4)
-    - the snapshot holder loads a version once and reloads only when the pointer's version changes
+    - the snapshot holder loads a version once and reloads only when the pointer changes (a new version, or the same version number written by another refresh)
     - a missing kind key makes the holder read the pointer once more, then treat that kind as without statistics
     - no pointer means no snapshot
 - [X] T018 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_refresh.py`. Build persons owning 0, 1, 3 and 10 cars on `car_person_schema_generics`, with two concrete car kinds, plus:
@@ -240,7 +240,7 @@ Requirements: FR-004, FR-005, FR-007, FR-008, FR-012, FR-013, FR-014, FR-017, SC
 - [X] T026 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_tree.py` on queries over `car_person_schema_generics`. Check:
     - paths are equal to those the recorder computes for the same response
     - fields with the same path are merged (E2)
-- [ ] T027 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_estimate.py`. Refresh the statistics first, then run queries with the header:
+- [X] T027 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_estimate.py`. Refresh the statistics first, then run queries with the header:
     - every field has both an estimate and actual counts (FR-004)
     - two concrete car kinds under one generic with very different peer counts are counted for each concrete kind (FR-005)
     - a branch that adds cars to the target person gives counted figures that match the branch (FR-013)
@@ -268,13 +268,13 @@ Requirements: FR-004, FR-005, FR-007, FR-008, FR-012, FR-013, FR-014, FR-017, SC
     - mark `ancestors`/`descendants` as hierarchical (no statistics)
     - narrow the parent kinds (`parent_kinds`) of the fields selected inside an inline fragment; the fragment does not change which nodes the field returns, so `concrete_kinds` stays whole
     - set `selects_nodes` (false for a field that selects only `count`) and `max_matching_nodes` (the IDs given, or one for a single-target filter)
-- [ ] T030 [US1] Add the first-step queries to `backend/infrahub/graphql/cost/queries.py`:
+- [X] T030 [US1] Add the first-step queries to `backend/infrahub/graphql/cost/queries.py`:
     - `FirstStepNodesQuery`: built on the filter logic of `infrahub.core.query.node::NodeGetListQuery`, for one top-level field with its filters, `limit` and `offset`, on the request's branch and `at`. It returns one row for each concrete kind, with the count, up to `query_size_limit` IDs, and the current label counts of the kinds in the tree, in one query.
     - `FirstStepPeerCountQuery`: a subclass of `RelationshipGetPeerQuery` with the same filters and active-edge rules. For each concrete peer kind it returns the paths, the distinct peers and the largest number of top-level nodes that reach one peer.
-- [ ] T031 [US1] Create `backend/infrahub/graphql/cost/first_step.py` with `FirstStepCounter(db, branch, at)`. Its `count(tree) -> FirstStepCounts` runs inside `resolving_field(ESTIMATE_FIELD_PATH)`: one `FirstStepNodesQuery` for each top-level field, then one `FirstStepPeerCountQuery` for each relationship field directly under it. A top-level field that matches more than `query_size_limit` nodes is not counted below its own count. Add `read_label_counts(kinds)`, which uses `KindLabelCountQuery` in statistics-only mode.
+- [X] T031 [US1] Create `backend/infrahub/graphql/cost/first_step.py` with `FirstStepCounter(db, branch, at)`. Its `count(tree) -> FirstStepCounts` runs inside `resolving_field(ESTIMATE_FIELD_PATH)`: one `FirstStepNodesQuery` for each top-level field, then one `FirstStepPeerCountQuery` for each relationship field directly under it. A top-level field that matches more than `query_size_limit` nodes is not counted below its own count. Add `read_label_counts(kinds)`, which uses `KindLabelCountQuery` in statistics-only mode.
 - [X] T032 [US1] Create `backend/infrahub/graphql/cost/estimator.py` with a pure function `estimate(tree, snapshot, first_step, label_counts, reads_main_now) -> QueryEstimate`, implementing research D10. It has no I/O and no imports from `infrahub.database`. `FirstStepCounts` and its value types are in `backend/infrahub/graphql/cost/models.py` (`data-model.md`, "First-step counts").
-- [ ] T033 [US1] Create `backend/infrahub/graphql/cost/service.py` with `QueryCostEstimator(db, branch, at, schema_branch, store, snapshot_holder)`. Its method `estimate(analyzer, schema, variable_values: dict | None) -> QueryEstimate` builds the tree, then either counts the first step (`variable_values` given) or reads label counts (statistics-only), then loads the snapshot and calls `estimator.estimate`.
-- [ ] T034 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request` and `backend/infrahub/api/query.py::execute_query`:
+- [X] T033 [US1] Create `backend/infrahub/graphql/cost/service.py` with `QueryCostEstimator(db, branch, at, schema_branch, store, snapshot_holder)`. Its method `estimate(analyzer, schema, variable_values: dict | None) -> QueryEstimate` builds the tree, then either counts the first step (`variable_values` given) or reads label counts (statistics-only), then loads the snapshot and calls `estimator.estimate`.
+- [X] T034 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request` and `backend/infrahub/api/query.py::execute_query`:
     - after the permission check and inside `activate_recorder`, call `QueryCostEstimator.estimate(...)` with the request's variables (always given on these endpoints; research D9)
     - pass the result to `build_query_cost_details` in place of `None`
     - use one `StatisticsSnapshotHolder` for each process

@@ -199,6 +199,32 @@ async def test_holder_loads_a_version_once_and_reloads_when_the_pointer_moves() 
     ]
 
 
+async def test_holder_reloads_a_version_number_that_another_refresh_wrote() -> None:
+    holder = StatisticsSnapshotHolder()
+    first_store = StatisticsStore(cache=RecordingCache())
+    await _publish(store=first_store, kinds=[PERSON, ELECTRIC_CAR])
+    first = await holder.get(store=first_store)
+    # An emptied cache starts again at version 1.
+    second_cache = RecordingCache()
+    second_store = StatisticsStore(cache=second_cache)
+    await second_store.publish(
+        kinds=[PERSON], branch="main", computed_at=datetime(2026, 10, 9, 4, 17, 2, tzinfo=UTC), schema_hash="5b2d"
+    )
+    second_cache.calls.clear()
+
+    second = await holder.get(store=second_store)
+
+    assert first is not None
+    assert second is not None
+    assert (first.pointer.version, second.pointer.version) == (1, 1)
+    assert second.pointer.computed_at == datetime(2026, 10, 9, 4, 17, 2, tzinfo=UTC)
+    assert second.kinds == {"TestPerson": PERSON}
+    assert second_cache.calls == [
+        CacheCall(operation="get", keys=(POINTER_KEY,)),
+        CacheCall(operation="get_values", keys=("graphql_cost:statistics:v1:kind:TestPerson",)),
+    ]
+
+
 async def test_holder_loads_a_version_once_for_concurrent_requests() -> None:
     cache = YieldingCache()
     store = StatisticsStore(cache=cache)

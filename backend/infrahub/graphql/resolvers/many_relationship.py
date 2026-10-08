@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from graphql import GraphQLResolveInfo
@@ -27,6 +28,15 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
 
     from ..initialization import GraphqlContext
+
+
+def build_peer_filters(field_name: str, arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the peer filters that the argument values of a relationship field of cardinality many apply."""
+    return {
+        f"{field_name}__{key}": value
+        for key, value in arguments.items()
+        if ("__" in key and value) or key in ["id", "ids"]
+    }
 
 
 class ManyRelationshipResolver:
@@ -128,11 +138,7 @@ class ManyRelationshipResolver:
             mapped_name = RELATIONS_PROPERTY_MAP[key]
             node_fields[mapped_name] = value
 
-        filters = {
-            f"{info.field_name}__{key}": value
-            for key, value in kwargs.items()
-            if ("__" in key and value) or key in ["id", "ids"]
-        }
+        filters = build_peer_filters(field_name=info.field_name, arguments=kwargs)
 
         response: dict[str, Any] = {"edges": [], "count": None}
 

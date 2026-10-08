@@ -46,6 +46,7 @@ from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedErro
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.cost.details import build_query_cost_details, query_cost_details_requested
 from infrahub.graphql.cost.recorder import QueryCostRecorder, activate_recorder
+from infrahub.graphql.cost.request_estimate import build_query_cost_estimator, estimate_request_cost
 from infrahub.graphql.error_formatter import format_graphql_errors
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
@@ -75,6 +76,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.graphql.cost.models import QueryEstimate
 
     from .auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 
@@ -268,6 +270,22 @@ class InfrahubGraphQLApp:
                 )
                 raise
 
+            cost_estimate: QueryEstimate | None = None
+            if cost_recorder is not None:
+                cost_estimate = await estimate_request_cost(
+                    estimator=build_query_cost_estimator(
+                        db=db,
+                        branch=branch,
+                        at=graphql_params.context.at if graphql_params.context.at is not None else Timestamp(),
+                        reads_current_time=at is None,
+                        schema_branch=schema_branch,
+                        cache=request.app.state.service.cache,
+                    ),
+                    analyzer=analyzed_query,
+                    schema=graphql_params.schema,
+                    variable_values=variable_values or {},
+                )
+
             if operation_name == "IntrospectionQuery":
                 nbr_object_in_schema = len(graphql_params.schema.type_map)
                 self.logger.debug(
@@ -305,7 +323,9 @@ class InfrahubGraphQLApp:
             response["errors"] = format_graphql_errors(list(result.errors))
         if cost_recorder is not None:
             response["extensions"] = {
-                "query_cost": build_query_cost_details(estimate=None, recorder=cost_recorder).model_dump(mode="json")
+                "query_cost": build_query_cost_details(estimate=cost_estimate, recorder=cost_recorder).model_dump(
+                    mode="json"
+                )
             }
 
         json_response = JSONResponse(

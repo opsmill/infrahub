@@ -69,7 +69,7 @@ Each decision below states what was chosen, why, and what else was considered. T
 
 ## D6. Copy of the statistics in each process
 
-- **Decision**: each process keeps the last version it loaded in memory. A request that needs an estimate reads the pointer key (one cache read). When the version differs from the copy, the process loads the kind keys of that version with one `get_values` call. Requests without the header and report calls without the estimate field read nothing.
+- **Decision**: each process keeps the last version it loaded in memory. A request that needs an estimate reads the pointer key (one cache read). When the pointer differs from the copy's, the process loads the kind keys of that version with one `get_values` call. The whole pointer is compared, not only the version number, because a cache that was emptied numbers the versions from 1 again. Requests without the header and report calls without the estimate field read nothing.
 - **Rationale**: requests only read the statistics (FR-016). The pointer read keeps every process on the latest version without a message to every process.
 - **Alternatives considered**: a `refresh.registry.*` message to every process (more moving parts for data that changes once a day); reading every kind key on every request (more cache traffic).
 
@@ -103,9 +103,16 @@ Each decision below states what was chosen, why, and what else was considered. T
     - On the report, the first step is counted only when the `variables` argument is given. An empty object counts as given, which is how a caller asks for counting on a query that declares no variables. Without the argument, the whole estimate is "statistics only" (FR-006), and no counting query runs.
     - Given values that do not match the declared types return the graphql-core coercion error.
 - **Queries**:
-    - one query for each top-level field: it applies the field's filters, `limit` and `offset` on the request's branch and `at` time (FR-013), and returns for each concrete kind the number of matching nodes and up to `query_size_limit` of their IDs, in one row for each kind. It also returns the current label count of each kind in the query (FR-017).
+    - one query for each top-level field: it applies the field's filters, `limit` and `offset` on the request's branch and `at` time (FR-013), and returns for each concrete kind the number of matching nodes and up to `query_size_limit` of their IDs, in one row. It also returns the current label count of each kind under that field (FR-017). It is built on `NodeGetListQuery`, so it applies the same filters and order as the resolver.
     - one query for each relationship field directly under a top-level field: it counts the peers of those IDs for each concrete peer kind, the number of distinct peers, and the largest number of top-level nodes that reach one peer. It is built on `RelationshipGetPeerQuery`, so it applies the same filters and active-edge rules as the resolver.
 - **Limit**: when a top-level field matches more than `query_size_limit` nodes, its node count is still counted, and the relationship fields under it use statistics, with the source "statistics".
+- **Fields not counted**: [CLAUDE RECOMMENDED – based on the resolvers reading these fields with other queries than `NodeGetListQuery` and `RelationshipGetPeerQuery`] these fields use statistics, with the source "statistics":
+    - a top-level field filtered by `hfid`, which the resolver reads with `NodeGetByHFIDQuery`; one query reads the current label counts of its kinds instead
+    - `ancestors` and `descendants`, which have no statistics anyway
+    - a relationship field with `include_descendants: true`, whose resolver adds the descendants of each parent
+- **No estimate**: [CLAUDE RECOMMENDED – based on the requirement that a request with the header returns the same `data` and `errors` as without it] when the estimate cannot be computed, the request runs as usual and its cost details carry no estimate (see [contracts/cost-details-header.md](contracts/cost-details-header.md)):
+    - the variables do not match their declared types, or the `offset` or `limit` of a top-level field is negative: execution returns that error to the client
+    - reading the statistics or a counting query fails, for example because the cache cannot be reached: the server logs the failure with its traceback
 - **Statistics only**: one query reads the current label counts. No other database query runs.
 - **Rationale**: this meets SC-003 (at most one extra query for the top-level node and one for each relationship field directly under it). Variables are coerced with graphql-core `get_variable_values` and `get_argument_values` (`graphql.execution.values`), so the counted filters match what execution uses. Tying the report's mode to the `variables` argument matches FR-006 literally, and lets a caller get a statistics-only estimate, with no counting query, for any query.
 - **Alternative considered**: counting whenever every declared variable has a value, so that a query with no variables is always counted. Rejected by the critique (E1), because FR-006 expects a report call without variables to be "statistics only".

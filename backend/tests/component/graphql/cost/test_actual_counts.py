@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
     from infrahub.core.node import Node
+    from tests.adapters.cache import MemoryCache
 
 PERSONS_CARS_OWNERS_QUERY = """
 query {
@@ -132,7 +133,7 @@ async def test_details_leave_the_data_unchanged(counting_client: TestClient, car
 
 
 async def test_details_count_the_nodes_and_resolver_calls_of_each_field(
-    counting_client: TestClient, car_fleet: dict[str, Node]
+    memory_cache: MemoryCache, counting_client: TestClient, car_fleet: dict[str, Node]
 ) -> None:
     with counting_client:
         payload = post_query(client=counting_client, query=PERSONS_CARS_OWNERS_QUERY, headers=QUERY_COST_HEADERS)
@@ -145,9 +146,10 @@ async def test_details_count_the_nodes_and_resolver_calls_of_each_field(
         "source": None,
         "reason": "no statistics",
     }
-    assert query_cost["estimate_mode"] == "statistics_only"
+    assert query_cost["estimate_mode"] == "counted_first_step"
     assert query_cost["statistics"] is None
-    assert query_cost["estimate_queries"] == {"queries": 0, "database_rows": 0}
+    # One query counts the persons and one their cars, and each returns its counts in one row.
+    assert query_cost["estimate_queries"] == {"queries": 2, "database_rows": 2}
     assert [
         {key: value for key, value in field.items() if key != "actual"}
         | {"nodes": field["actual"]["nodes"], "resolver_calls": field["actual"]["resolver_calls"]}

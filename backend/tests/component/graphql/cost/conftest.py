@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.graphql.cost.request_estimate import get_statistics_snapshot_holder
 from infrahub.workers.dependencies import build_database
 from tests.component.graphql.cost.helpers import CARS_BY_PERSON
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
@@ -19,6 +20,14 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
+
+
+@pytest.fixture(autouse=True)
+def fresh_statistics_snapshot_holder() -> Generator[None, None, None]:
+    """Leave out of each test the statistics that another test loaded into the process."""
+    get_statistics_snapshot_holder.cache_clear()
+    yield
+    get_statistics_snapshot_holder.cache_clear()
 
 
 @pytest.fixture

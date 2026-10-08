@@ -5,13 +5,42 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import NODE_KIND_REGEX
+from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.core.order import OrderModel
 from infrahub.core.query import Query, QueryType
+from infrahub.core.query.node import NodeGetListQuery
+from infrahub.core.query.relationship import RelationshipGetPeerQuery
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Sequence
 
     from infrahub.core.constants import RelationshipDirection
+    from infrahub.core.schema import NodeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
+
+
+def _label_count_subquery(kinds: Sequence[str], params: dict[str, Any]) -> str:
+    """Return the branches of a union that yields one `label_kind` and `label_total` row for each kind.
+
+    A label cannot be a query parameter, so each kind is written into the query text as a label, and only names
+    shaped like a schema kind are accepted.
+
+    Raises:
+        ValueError: When no kind is given, or a kind is not shaped like a schema kind.
+
+    """
+    if not kinds:
+        raise ValueError("Counting kind labels needs at least one kind")
+    invalid_kinds = sorted(kind for kind in kinds if not re.fullmatch(NODE_KIND_REGEX, kind))
+    if invalid_kinds:
+        raise ValueError(f"Only kind names can be used as labels, not: {', '.join(invalid_kinds)}")
+    label_counts: list[str] = []
+    for index, kind in enumerate(sorted(set(kinds))):
+        params[f"label_kind_{index}"] = kind
+        label_counts.append(
+            f"MATCH (labelled:`{kind}`) RETURN $label_kind_{index} AS label_kind, count(labelled) AS label_total"
+        )
+    return "\nUNION ALL\n".join(label_counts)
 
 
 @dataclass(frozen=True)
@@ -21,36 +50,25 @@ class KindLabelCountQueryResult:
 
 
 class KindLabelCountQuery(Query):
-    """Count the vertices that carry each kind label, deleted vertices and vertices of every branch included.
-
-    A label cannot be a query parameter, so each kind is written into the query text as a label, and the
-    constructor accepts only names shaped like a schema kind.
-    """
+    """Count the vertices that carry each kind label, deleted vertices and vertices of every branch included."""
 
     name = "graphql-cost-kind-label-count"
     type = QueryType.READ
     insert_return = False
 
     def __init__(self, kinds: Sequence[str], **kwargs: Any) -> None:
-        if not kinds:
-            raise ValueError("Counting kind labels needs at least one kind")
-        invalid_kinds = sorted(kind for kind in kinds if not re.fullmatch(NODE_KIND_REGEX, kind))
-        if invalid_kinds:
-            raise ValueError(f"Only kind names can be used as labels, not: {', '.join(invalid_kinds)}")
         self.kinds = sorted(set(kinds))
+        # One row comes back for each kind, so a limit of that many rows runs the query once instead of in pages.
+        kwargs["limit"] = len(self.kinds)
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        label_counts: list[str] = []
-        for index, kind in enumerate(self.kinds):
-            self.params[f"kind_{index}"] = kind
-            label_counts.append(f"MATCH (n:`{kind}`) RETURN $kind_{index} AS kind, count(n) AS total")
         query = """
         CALL () {
             %(label_counts)s
         }
-        RETURN kind, total
-        """ % {"label_counts": "\nUNION ALL\n".join(label_counts)}
+        RETURN label_kind AS kind, label_total AS total
+        """ % {"label_counts": _label_count_subquery(kinds=self.kinds, params=self.params)}
         self.add_to_query(query)
         self.return_labels = ["kind", "total"]
         self.order_by = ["kind"]
@@ -194,3 +212,182 @@ class RelationshipSideDegreeQuery(Query):
         if result is None:
             return
         yield from result.get_as_list_of_type("degrees", RelationshipSideDegreeQueryResult)
+
+
+@dataclass(frozen=True)
+class FirstStepKindNodesQueryResult:
+    kind: str
+    """Concrete kind of the nodes."""
+
+    node_count: int
+    node_ids: list[str]
+    """IDs of the nodes, at most the ID limit of the query."""
+
+
+@dataclass(frozen=True)
+class FirstStepLabelCountQueryResult:
+    kind: str
+    count: int
+
+
+@dataclass(frozen=True)
+class FirstStepNodesQueryResult:
+    kinds: tuple[FirstStepKindNodesQueryResult, ...]
+    """One entry for each concrete kind with nodes."""
+
+    label_counts: tuple[FirstStepLabelCountQueryResult, ...]
+
+
+class FirstStepNodesQuery(NodeGetListQuery):
+    """Count the nodes that a top-level field returns, for each concrete kind, with their IDs.
+
+    The nodes are matched with the filters, order, offset and limit of the list query of the field, and the
+    current label count of each given kind comes back in the same result.
+    """
+
+    name = "graphql-cost-first-step-nodes"
+    insert_return = False
+
+    def __init__(
+        self,
+        schema: NodeSchema,
+        filters: dict[str, Any] | None,
+        partial_match: bool,
+        order: OrderModel | None,
+        node_offset: int | None,
+        node_limit: int | None,
+        id_limit: int,
+        label_count_kinds: Sequence[str],
+        **kwargs: Any,
+    ) -> None:
+        """Prepare the count of the nodes of a top-level field.
+
+        Args:
+            node_offset: Offset of the field; None or 0 for no offset.
+            node_limit: Limit of the field; None or 0 for no limit, as the list query reads it.
+            id_limit: Most node IDs returned for each kind.
+            label_count_kinds: Kinds whose current label count is returned; empty for none.
+
+        """
+        kwargs.pop("limit", None)
+        kwargs.pop("offset", None)
+        self.node_offset = node_offset or 0
+        self.node_limit = node_limit or None
+        self.id_limit = id_limit
+        self.label_count_kinds = sorted(set(label_count_kinds))
+        # Without an offset or a limit, the order does not change which nodes are counted.
+        has_window = bool(self.node_offset or self.node_limit)
+        super().__init__(
+            schema=schema,
+            filters=filters,
+            partial_match=partial_match,
+            order=order if has_window else OrderModel(disable=True),
+            **kwargs,
+        )
+        # The counts come back in one row, and a set limit makes the query run once instead of in pages.
+        self.limit = 1
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        await super().query_init(db=db, **kwargs)
+        if self.node_offset or self.node_limit:
+            self.params["first_step_offset"] = self.node_offset
+            window = "WITH %(variables)s ORDER BY %(order)s SKIP $first_step_offset" % {
+                "variables": ", ".join(self._get_tracked_variables()),
+                "order": ", ".join(self.order_by or ["n.uuid"]),
+            }
+            if self.node_limit:
+                self.params["first_step_limit"] = self.node_limit
+                window += " LIMIT $first_step_limit"
+            self.add_to_query(window)
+        self.order_by = []
+
+        self.params["first_step_id_limit"] = self.id_limit
+        query = """
+        WITH n.kind AS kind, n.uuid AS node_id
+        WITH kind, count(node_id) AS node_count, collect(node_id)[..$first_step_id_limit] AS node_ids
+        WITH collect({kind: kind, node_count: node_count, node_ids: node_ids}) AS kinds
+        """
+        self.add_to_query(query)
+        if self.label_count_kinds:
+            label_counts_query = """
+            CALL () {
+                CALL () {
+                    %(label_counts)s
+                }
+                RETURN collect({kind: label_kind, count: label_total}) AS label_counts
+            }
+            """ % {"label_counts": _label_count_subquery(kinds=self.label_count_kinds, params=self.params)}
+            self.add_to_query(label_counts_query)
+        else:
+            self.add_to_query("WITH kinds, [] AS label_counts")
+        self.add_to_query("RETURN kinds, label_counts")
+        self.return_labels = ["kinds", "label_counts"]
+
+    def get_data(self) -> FirstStepNodesQueryResult:
+        result = self.get_result()
+        if result is None:
+            return FirstStepNodesQueryResult(kinds=(), label_counts=())
+        return FirstStepNodesQueryResult(
+            kinds=tuple(result.get_as_list_of_type("kinds", FirstStepKindNodesQueryResult)),
+            label_counts=tuple(result.get_as_list_of_type("label_counts", FirstStepLabelCountQueryResult)),
+        )
+
+
+@dataclass(frozen=True)
+class FirstStepPeerCountQueryResult:
+    peer_kind: str
+    """Concrete kind of the peers."""
+
+    paths: int
+    """Pairs of a source node and one of its peers of this kind."""
+
+    distinct_peers: int
+    max_parents: int
+    """Largest number of source nodes that reach one peer of this kind."""
+
+
+class FirstStepPeerCountQuery(RelationshipGetPeerQuery):
+    """Count, for each concrete peer kind, the peers that a relationship field returns for the given source nodes.
+
+    The peers are matched with the filters and the active-edge rule of the peer query of the field, without its
+    offset and limit.
+    """
+
+    name = "graphql-cost-first-step-peer-count"
+    insert_return = False
+
+    def __init__(
+        self, source_ids: Sequence[str], schema: RelationshipSchema, filters: dict[str, Any], **kwargs: Any
+    ) -> None:
+        kwargs.pop("limit", None)
+        kwargs.pop("offset", None)
+        super().__init__(
+            source_ids=list(source_ids),
+            schema=schema,
+            filters=filters,
+            rel_type=DatabaseEdgeType.IS_RELATED.value,
+            requested_order=OrderModel(disable=True),
+            # The counts come back in one row, and a set limit makes the query run once instead of in pages.
+            limit=1,
+            **kwargs,
+        )
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:
+        await super().query_init(db=db, **kwargs)
+        self.order_by = []
+        query = """
+        WITH DISTINCT source_node.uuid AS source_id, peer.uuid AS peer_id, peer.kind AS peer_kind
+        WITH peer_kind, peer_id, count(source_id) AS parents
+        WITH peer_kind, sum(parents) AS paths, count(peer_id) AS distinct_peers, max(parents) AS max_parents
+        RETURN collect({
+            peer_kind: peer_kind, paths: paths, distinct_peers: distinct_peers, max_parents: max_parents
+        }) AS peer_counts
+        """
+        self.add_to_query(query)
+        self.return_labels = ["peer_counts"]
+
+    def get_data(self) -> Generator[FirstStepPeerCountQueryResult, None, None]:
+        result = self.get_result()
+        if result is None:
+            return
+        yield from result.get_as_list_of_type("peer_counts", FirstStepPeerCountQueryResult)

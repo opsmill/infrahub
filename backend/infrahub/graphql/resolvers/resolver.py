@@ -29,6 +29,8 @@ from ..parser import extract_selection
 from ..permissions import get_permissions
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from graphql import GraphQLOutputType, GraphQLResolveInfo
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
@@ -193,6 +195,14 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
     return parent[info.field_name]
 
 
+def build_node_list_filters(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the node filters that the argument values of a top-level field apply."""
+    filters = {
+        key: value for key, value in arguments.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
+    }
+    return _transform_metadata_day_filters(filters)
+
+
 def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
     """Transform metadata datetime filters with 00:00:00 time into day range filters.
 
@@ -291,10 +301,7 @@ async def _resolve_paginated_list(
     graphql_context: GraphqlContext = info.context
     async with graphql_context.db.start_session(read_only=True) as db:
         response: dict[str, Any] = {"edges": []}
-        filters = {
-            key: value for key, value in kwargs.items() if ("__" in key and value is not None) or key in ("ids", "hfid")
-        }
-        filters = _transform_metadata_day_filters(filters)
+        filters = build_node_list_filters(arguments=kwargs)
 
         edges: dict[str, Any] = fields.get("edges", {})
         node_fields = edges.get("node", {})

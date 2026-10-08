@@ -72,7 +72,7 @@ class StatisticsStore:
 
 
 class StatisticsSnapshotHolder:
-    """The statistics version a process loaded last, reloaded only when the pointer names another version."""
+    """The statistics version a process loaded last, reloaded only when the pointer changes."""
 
     def __init__(self) -> None:
         self._snapshot: StatisticsSnapshot | None = None
@@ -81,19 +81,21 @@ class StatisticsSnapshotHolder:
     async def get(self, store: StatisticsStore) -> StatisticsSnapshot | None:
         """Return the statistics of the version the pointer names, or None when no version exists.
 
-        A kind whose key is missing makes the holder read the pointer once more, because a refresh deletes the
-        keys of a version once it has moved the pointer; a kind still missing after that has no statistics.
+        The whole pointer is compared with the one loaded, because a cache that was emptied numbers the versions
+        from 1 again. A kind whose key is missing makes the holder read the pointer once more, because a refresh
+        deletes the keys of a version once it has moved the pointer; a kind still missing after that has no
+        statistics.
         """
         pointer = await store.read_pointer()
         if pointer is None:
             return None
         snapshot = self._snapshot
-        if snapshot is not None and snapshot.pointer.version == pointer.version:
+        if snapshot is not None and snapshot.pointer == pointer:
             return snapshot
 
         async with self._load_lock:
             snapshot = self._snapshot
-            if snapshot is None or snapshot.pointer.version != pointer.version:
+            if snapshot is None or snapshot.pointer != pointer:
                 snapshot = await self._load(store=store, pointer=pointer)
                 self._snapshot = snapshot
             return snapshot
