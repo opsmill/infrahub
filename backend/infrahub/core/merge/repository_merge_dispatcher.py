@@ -2,13 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from neo4j.exceptions import DriverError, Neo4jError
-from redis.exceptions import RedisError
-
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.exceptions import DatabaseError, DeliveryStateUnavailableError, QueryTimeoutError
 from infrahub.git.commit_id import readable_commit
 from infrahub.git.merge_readiness import GitMergeTarget, nothing_to_merge_in_git
 from infrahub.git.models import GitRepositoryMerge
@@ -28,16 +24,6 @@ if TYPE_CHECKING:
     from infrahub.git.writeback.ports import DeliveryStatePort
     from infrahub.log import InfrahubLogger
     from infrahub.services.adapters.workflow import InfrahubWorkflow
-
-# The store raises these while its database or the cache of its lock does not answer, which a later try can fix.
-ENQUEUE_ERRORS: tuple[type[Exception], ...] = (
-    DeliveryStateUnavailableError,
-    DatabaseError,
-    QueryTimeoutError,
-    DriverError,
-    Neo4jError,
-    RedisError,
-)
 
 
 class RepositoryMergeDispatcher:
@@ -96,47 +82,18 @@ class RepositoryMergeDispatcher:
             await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
 
     async def merge_core_repositories(self, *, context: InfrahubContext) -> None:
-        repos = [repo for repo, _ in await list_shared_core_repositories(db=self.db, source_branch=self.source_branch)]
-        pending_merges = (
-            await read_pending_merges(
-                db=self.db,
-                source_branch=self.source_branch,
-                default_branch=self.destination_branch,
-                repository_ids=[
-                    repo.id for repo in repos if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value
-                ],
-            )
-            if self.source_branch.sync_with_git
-            else {}
+        repos = [
+            repo
+            for repo, _ in await list_shared_core_repositories(db=self.db, source_branch=self.source_branch)
+            if repo.internal_status.value == RepositoryInternalStatus.STAGING.value or self.source_branch.sync_with_git
+        ]
+        pending_merges = await self._read_pending_merges(
+            repository_ids=[
+                repo.id for repo in repos if repo.internal_status.value == RepositoryInternalStatus.ACTIVE.value
+            ]
         )
 
         for repo in repos:
-            if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-                model = GitRepositoryMerge(
-                    repository_id=repo.id,
-                    repository_name=repo.name.value,
-                    internal_status=repo.internal_status.value,
-                    source_branch=self.source_branch.name,
-                    destination_branch=self.destination_branch.name,
-                    destination_branch_id=str(self.destination_branch.get_uuid()),
-                    repository_kind=InfrahubKind.REPOSITORY,
-                    source_commit=readable_commit(repo.commit.value),
-                )
-                await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
-                continue
-
-            if not self.source_branch.sync_with_git:
-                continue
-
-            pending_merge = pending_merges.get(repo.id)
-            if pending_merge is None:
-                self.log.info(
-                    f"The merge of branch {self.source_branch.name} changes no content of repository "
-                    f"{repo.name.value}, so nothing is pushed to its remote."
-                )
-                continue
-
-            enqueued = await self._enqueue(repository_id=repo.id, repository_name=repo.name.value, entry=pending_merge)
             model = GitRepositoryMerge(
                 repository_id=repo.id,
                 repository_name=repo.name.value,
@@ -147,9 +104,23 @@ class RepositoryMergeDispatcher:
                 repository_kind=InfrahubKind.REPOSITORY,
                 # The Git merge can run after the source branch is deleted, so it gets the source commit from here.
                 source_commit=readable_commit(repo.commit.value),
-                pending_merge=pending_merge,
-                pending_merge_enqueued=enqueued,
             )
+            if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
+                await self.workflow.submit_workflow(workflow=GIT_REPOSITORIES_MERGE, parameters={"model": model})
+                continue
+
+            if pending_merges is not None:
+                pending_merge = pending_merges.get(repo.id)
+                if pending_merge is None:
+                    self.log.info(
+                        f"The merge of branch {self.source_branch.name} changes no content of repository "
+                        f"{repo.name.value}, so nothing is pushed to its remote."
+                    )
+                    continue
+                enqueued = await self._enqueue(
+                    repository_id=repo.id, repository_name=repo.name.value, entry=pending_merge
+                )
+                model = model.model_copy(update={"pending_merge": pending_merge, "pending_merge_enqueued": enqueued})
             await self.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_MERGE,
                 context=context,
@@ -157,13 +128,31 @@ class RepositoryMergeDispatcher:
                 tags=delivery_run_tags(repository_id=repo.id),
             )
 
+    async def _read_pending_merges(self, *, repository_ids: list[str]) -> dict[str, PendingMerge] | None:
+        """Return the new queue entry of each repository whose content the merge changes, or None when the read fails."""
+        try:
+            return await read_pending_merges(
+                db=self.db,
+                source_branch=self.source_branch,
+                default_branch=self.destination_branch,
+                repository_ids=repository_ids,
+            )
+        except Exception:
+            # The graph merge is done, so the merge flow of each repository still runs and reads the content itself.
+            self.log.exception(
+                f"Unable to read which repositories the merge of branch {self.source_branch.name} changes; "
+                "the merge flow of each repository reads it again."
+            )
+            return None
+
     async def _enqueue(self, *, repository_id: str, repository_name: str, entry: PendingMerge) -> bool:
-        """Queue the merge for its push to the remote, and return whether one of the tries returned."""
+        """Queue the merge for its push to the remote, and return whether a try succeeded."""
         retry_delays = iter(ENQUEUE_RETRY_DELAYS_SECONDS[:ENQUEUE_RETRIES])
         while True:
             try:
                 await self.state.enqueue(repository_id=repository_id, entry=entry, widen=False)
-            except ENQUEUE_ERRORS:
+            except Exception:
+                # The graph merge is done, so no failure may stop the merge flow, which queues the entry again.
                 delay = next(retry_delays, None)
                 if delay is None:
                     self.log.exception(
