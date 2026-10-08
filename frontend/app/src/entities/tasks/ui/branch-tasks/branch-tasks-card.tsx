@@ -15,14 +15,14 @@ import {
 import { getTasksPageUrl } from "@/entities/tasks/ui/routing/task-urls";
 import { TasksTable } from "@/entities/tasks/ui/tasks-table/tasks-table";
 
-const TASKS_URL_KEY = "tasks";
+const TASKS_URL_PREFIX = "tasks";
 
 interface BranchTasksCardProps {
   branchName: string;
 }
 
 export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
-  const { page, setPage, pageSize } = useTablePagination({ urlKey: TASKS_URL_KEY });
+  const { page, setPage, pageSize } = useTablePagination({ urlPrefix: TASKS_URL_PREFIX });
   const query = useGetBranchTasks({ branchName, page, pageSize });
   const { data: failedCount } = useGetBranchFailedTaskCount({ branchName });
 

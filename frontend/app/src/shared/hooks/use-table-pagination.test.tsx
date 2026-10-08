@@ -5,11 +5,11 @@ import { PAGE_SIZE } from "@/shared/utils/table-pagination";
 import { render } from "../../../tests/components/render";
 import { useTablePagination } from "./use-table-pagination";
 
-const Probe = ({ urlKey }: { urlKey: string }) => {
-  const { page, pageSize, offset, setPage } = useTablePagination({ urlKey });
+const Probe = ({ urlPrefix }: { urlPrefix: string }) => {
+  const { page, pageSize, offset, setPage } = useTablePagination({ urlPrefix });
 
   return (
-    <section aria-label={urlKey}>
+    <section aria-label={urlPrefix}>
       <p>{`page ${page}`}</p>
       <p>{`size ${pageSize}`}</p>
       <p>{`offset ${offset}`}</p>
@@ -33,10 +33,10 @@ describe("useTablePagination", () => {
 
   it("starts on the first page at the fixed size", async () => {
     // GIVEN
-    const urlKey = "branches";
+    const urlPrefix = "branches";
 
     // WHEN
-    const component = await render(<Probe urlKey={urlKey} />);
+    const component = await render(<Probe urlPrefix={urlPrefix} />);
 
     // THEN
     await expect.element(component.getByText("page 1")).toBeVisible();
@@ -46,7 +46,7 @@ describe("useTablePagination", () => {
 
   it("derives the offset from the page it moves to", async () => {
     // GIVEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // WHEN
     await component.getByRole("button", { name: "Next" }).click();
@@ -58,7 +58,7 @@ describe("useTablePagination", () => {
 
   it("carries the page in the url under its own key", async () => {
     // GIVEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // WHEN
     await component.getByRole("button", { name: "Next" }).click();
@@ -72,7 +72,7 @@ describe("useTablePagination", () => {
     window.history.replaceState(null, "", `${window.location.pathname}?branches_page=3`);
 
     // WHEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // THEN
     await expect.element(component.getByText("page 3")).toBeVisible();
@@ -84,7 +84,7 @@ describe("useTablePagination", () => {
     window.history.replaceState(null, "", `${window.location.pathname}?branches_page=0`);
 
     // WHEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // THEN
     await expect.element(component.getByText("page 1")).toBeVisible();
@@ -96,7 +96,7 @@ describe("useTablePagination", () => {
     window.history.replaceState(null, "", `${window.location.pathname}?branches_page=not-a-page`);
 
     // WHEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // THEN
     await expect.element(component.getByText("page 1")).toBeVisible();
@@ -105,7 +105,7 @@ describe("useTablePagination", () => {
 
   it("keeps the page size out of the url", async () => {
     // GIVEN
-    const component = await render(<Probe urlKey="branches" />);
+    const component = await render(<Probe urlPrefix="branches" />);
 
     // WHEN
     await component.getByRole("button", { name: "Next" }).click();
@@ -119,8 +119,8 @@ describe("useTablePagination", () => {
     // GIVEN
     const component = await render(
       <>
-        <Probe urlKey="branches" />
-        <Probe urlKey="artifacts" />
+        <Probe urlPrefix="branches" />
+        <Probe urlPrefix="artifacts" />
       </>
     );
     const branches = component.getByRole("region", { name: "branches" });

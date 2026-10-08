@@ -2,6 +2,7 @@ import type { GetBranchRepositoriesParams } from "@/entities/repository/domain/u
 import type { GetBranchRepositoryHealthParams } from "@/entities/repository/domain/use-cases/get-branch-repository-health";
 import type { GetImportTaskErrorMessageParams } from "@/entities/repository/domain/use-cases/get-import-task-error-message";
 import type { GetLatestRepositoryImportTaskParams } from "@/entities/repository/domain/use-cases/get-latest-repository-import-task";
+import type { GetRepositoryBranchStatusParams } from "@/entities/repository/domain/use-cases/get-repository-branch-status";
 import type { GetRepositoryNamesParams } from "@/entities/repository/domain/use-cases/get-repository-names";
 
 export const repositoryQueryKeys = {
@@ -21,4 +22,6 @@ export const repositoryQueryKeys = {
     [...repositoryQueryKeys.all, "names", params] as const,
   names: (params: GetRepositoryNamesParams) =>
     [...repositoryQueryKeys.all, "names", params] as const,
+  branchStatus: (params: GetRepositoryBranchStatusParams) =>
+    [...repositoryQueryKeys.all, "branch-status", params] as const,
 };

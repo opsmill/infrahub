@@ -15,7 +15,7 @@ import {
 import { useGetBranchRepositories } from "@/entities/repository/ui/queries/get-branch-repositories.query";
 import { useGetBranchRepositoryHealth } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 
-const REPOSITORIES_URL_KEY = "repositories";
+const REPOSITORIES_URL_PREFIX = "repositories";
 
 interface BranchRepositoriesCardProps {
   branchName: string;
@@ -23,7 +23,7 @@ interface BranchRepositoriesCardProps {
 }
 
 export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchRepositoriesCardProps) {
-  const { page, setPage, pageSize } = useTablePagination({ urlKey: REPOSITORIES_URL_KEY });
+  const { page, setPage, pageSize } = useTablePagination({ urlPrefix: REPOSITORIES_URL_PREFIX });
   const { data: health, isError: isHealthError } = useGetBranchRepositoryHealth({
     branchName,
     syncWithGit,
