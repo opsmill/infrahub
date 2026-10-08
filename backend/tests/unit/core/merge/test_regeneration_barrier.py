@@ -10,14 +10,35 @@ from infrahub_sdk import Config, InfrahubClient
 from structlog.testing import capture_logs
 
 from infrahub.core.constants import FullRegenerationReason, RepositoryDeliveryStatus
+from infrahub.core.merge.python_target_resolution import IndexedPythonTargetResolver, PythonAttributeReadSet
+from infrahub.core.merge.python_target_sources import UnavailablePythonTargetResolver
+from infrahub.core.merge.recompute_coalescing import (
+    PYTHON_COMPUTED_ATTRIBUTE,
+    SELF_FILTER,
+    AffectedTarget,
+    CoalescedRecomputeBuilder,
+    CoalescedRecomputeSubmitter,
+    MergeChange,
+    MergeRecomputeCoordinator,
+    PythonTargetRequest,
+    ReaderLookup,
+    owned_python_target,
+    whole_kind_python_target,
+)
 from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, OwnedRegeneration, RegenerationBarrier
 from infrahub.core.merge.selective_regen.definition_selector.artifact_selector import ArtifactSelector
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
+from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.schema.schema_branch_computed import TransformReadSet
+from infrahub.events.models import EventBranchContext, EventContext
 from infrahub.exceptions import DatabaseError, DeliveryStateUnavailableError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
-from infrahub.git.writeback.models import HeldItem, HeldRegeneration, HeldWiden, PendingMerge
+from infrahub.git.writeback.models import HeldItem, HeldPythonAttribute, HeldRegeneration, HeldWiden, PendingMerge
 from tests.adapters.cache import MemoryCache, UnreachableCache
+from tests.adapters.python_target_sources import RecordingSubscriberSource, StaticPythonReadSetSource
+from tests.adapters.workflow import WorkflowRecorder
+from tests.helpers.merge_recompute.dataset import build_chain_schema_with_a_python_attribute, chain_kind
 from tests.helpers.selective_regen import NoImpactResolver
 from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
@@ -26,6 +47,7 @@ if TYPE_CHECKING:
 
     from pydantic import BaseModel
 
+    from infrahub.core.merge.recompute_coalescing import PythonTargetResolver
     from infrahub.git.writeback.models import HoldReceipt
     from infrahub.message_bus.types import KVTTL
     from infrahub.services.adapters.cache import InfrahubCache
@@ -764,3 +786,211 @@ async def test_hold_widen_reads_the_state_again_then_holds_nothing_when_it_stays
     assert [record["log_level"] for record in records if record["log_level"] == "warning"] == ["warning"] * len(
         test_case.expected_delays
     )
+
+
+PYTHON_KIND = chain_kind(1)
+PROBE_ID = "probe-1"
+PROBE_READS = TransformReadSet(read_kinds=frozenset({PYTHON_KIND}), read_fields={PYTHON_KIND: frozenset({"name"})})
+PROBE_CREATED = MergeChange(node_id=PROBE_ID, kind=PYTHON_KIND, action="created")
+
+
+def _python_schema_branch() -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=build_chain_schema_with_a_python_attribute(levels=3))
+    schema_branch.process()
+    return schema_branch
+
+
+def _python_read_set(*, attribute_name: str, repository_id: str, pinned: bool = True) -> PythonAttributeReadSet:
+    return PythonAttributeReadSet(
+        kind=PYTHON_KIND,
+        attribute_name=attribute_name,
+        read_set=PROBE_READS,
+        pinned=pinned,
+        repository_id=repository_id,
+    )
+
+
+def _indexed_resolver(*read_sets: PythonAttributeReadSet) -> IndexedPythonTargetResolver:
+    return IndexedPythonTargetResolver(
+        read_set_source=StaticPythonReadSetSource(read_sets=list(read_sets)),
+        subscriber_source=RecordingSubscriberSource(subscribers={}),
+    )
+
+
+def _narrowed_target(*, attribute_name: str, node_ids: frozenset[str] = frozenset({PROBE_ID})) -> AffectedTarget:
+    return AffectedTarget(
+        family=PYTHON_COMPUTED_ATTRIBUTE,
+        target_kind=PYTHON_KIND,
+        attribute_name=attribute_name,
+        reads_across_relationship=False,
+        reader_lookups=frozenset(
+            {ReaderLookup(source_kind=PYTHON_KIND, filter_key=SELF_FILTER, source_node_ids=node_ids)}
+        ),
+    )
+
+
+def _held_python(attribute_name: str) -> HeldRegeneration:
+    return HeldRegeneration(
+        next_hold_seq=2,
+        python_attributes=(HeldPythonAttribute(kind=PYTHON_KIND, attribute=attribute_name, hold_seq=1),),
+    )
+
+
+def _python_key(*, repository_id: str, attribute_name: str) -> str:
+    return _key(repository_id=repository_id, hold_seq=1, definition_id=f"{PYTHON_KIND}.{attribute_name}")
+
+
+def _cached_python_requests(cache: MemoryCache) -> dict[str, PythonTargetRequest]:
+    return {key: PythonTargetRequest.model_validate_json(value) for key, value in cache.storage.items()}
+
+
+@dataclass
+class PythonFamilyTestCase:
+    name: str
+    resolver: Callable[[], PythonTargetResolver]
+    expected_submitted: list[tuple[str | None, tuple[str, ...], bool]]
+    """The attribute, the node ids and the whole-kind flag of each Python submission."""
+    expected_calls: list[str]
+    branch: str = DEFAULT_BRANCH
+    queued: tuple[str, ...] = (REPOSITORY_X,)
+    expected_held: dict[str, HeldRegeneration] = field(default_factory=dict)
+    expected_cached: dict[str, PythonTargetRequest] = field(default_factory=dict)
+
+
+PYTHON_FAMILY_TEST_CASES: list[PythonFamilyTestCase] = [
+    PythonFamilyTestCase(
+        name="a_resolved_target_of_a_pending_repository_is_held",
+        resolver=lambda: _indexed_resolver(
+            _python_read_set(attribute_name="digest", repository_id=REPOSITORY_X),
+            _python_read_set(attribute_name="label", repository_id=REPOSITORY_Y),
+        ),
+        expected_submitted=[("label", (PROBE_ID,), False)],
+        expected_calls=["pending_repository_ids", "hold"],
+        expected_held={REPOSITORY_X: _held_python("digest")},
+        expected_cached={
+            _python_key(repository_id=REPOSITORY_X, attribute_name="digest"): PythonTargetRequest(
+                target=_narrowed_target(attribute_name="digest")
+            )
+        },
+    ),
+    PythonFamilyTestCase(
+        name="a_target_widened_by_an_unpinned_query_of_a_pending_repository_is_held",
+        resolver=lambda: _indexed_resolver(
+            _python_read_set(attribute_name="digest", repository_id=REPOSITORY_X, pinned=False),
+            _python_read_set(attribute_name="label", repository_id=REPOSITORY_Y),
+        ),
+        expected_submitted=[("label", (PROBE_ID,), False)],
+        expected_calls=["pending_repository_ids", "hold"],
+        expected_held={REPOSITORY_X: _held_python("digest")},
+        expected_cached={
+            _python_key(repository_id=REPOSITORY_X, attribute_name="digest"): PythonTargetRequest(
+                target=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest")
+            )
+        },
+    ),
+    PythonFamilyTestCase(
+        name="a_target_widened_by_a_failed_resolution_is_held_under_every_pending_repository",
+        resolver=UnavailablePythonTargetResolver,
+        queued=(REPOSITORY_X, REPOSITORY_Z),
+        expected_submitted=[],
+        expected_calls=["pending_repository_ids", "hold", "hold"],
+        expected_held={REPOSITORY_X: _held_python("digest"), REPOSITORY_Z: _held_python("digest")},
+        expected_cached={
+            _python_key(repository_id=repository_id, attribute_name="digest"): PythonTargetRequest(
+                target=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest")
+            )
+            for repository_id in (REPOSITORY_X, REPOSITORY_Z)
+        },
+    ),
+    PythonFamilyTestCase(
+        name="a_rebase_admits_every_target_without_a_read",
+        resolver=lambda: _indexed_resolver(
+            _python_read_set(attribute_name="digest", repository_id=REPOSITORY_X),
+            _python_read_set(attribute_name="label", repository_id=REPOSITORY_Y),
+        ),
+        branch="feature",
+        expected_submitted=[("digest", (PROBE_ID,), False), ("label", (PROBE_ID,), False)],
+        expected_calls=[],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in PYTHON_FAMILY_TEST_CASES])
+async def test_the_coalesced_recompute_holds_the_python_targets_of_each_pending_repository(
+    test_case: PythonFamilyTestCase,
+) -> None:
+    state = await _state(queued=test_case.queued)
+    cache = MemoryCache()
+    sleep = RecordedSleep()
+    coordinator = MergeRecomputeCoordinator(
+        builder=CoalescedRecomputeBuilder(schema_branch=_python_schema_branch()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=test_case.resolver(),
+        barrier=_barrier(state=state, cache=cache, sleep=sleep),
+    )
+
+    submissions = await coordinator.run(
+        changes=[PROBE_CREATED],
+        branch=test_case.branch,
+        context=EventContext(branch=EventBranchContext(name=test_case.branch), account_id=""),
+    )
+
+    assert [
+        (submission.attribute_name, submission.node_ids, submission.whole_kind)
+        for submission in submissions
+        if submission.family == PYTHON_COMPUTED_ATTRIBUTE
+    ] == test_case.expected_submitted
+    assert state.calls == test_case.expected_calls
+    assert _held_by_repository(state) == {
+        repository_id: test_case.expected_held.get(repository_id, HeldRegeneration()) for repository_id in REPOSITORIES
+    }
+    assert _cached_python_requests(cache) == test_case.expected_cached
+    assert sleep.delays == []
+
+
+@dataclass
+class RepeatedPythonHoldTestCase:
+    name: str
+    first: AffectedTarget
+    second: AffectedTarget
+    expected_released: AffectedTarget
+
+
+REPEATED_PYTHON_HOLD_TEST_CASES: list[RepeatedPythonHoldTestCase] = [
+    RepeatedPythonHoldTestCase(
+        name="two_narrowed_holds_release_the_nodes_of_both",
+        first=_narrowed_target(attribute_name="digest", node_ids=frozenset({"probe-1"})),
+        second=_narrowed_target(attribute_name="digest", node_ids=frozenset({"probe-2"})),
+        expected_released=_narrowed_target(attribute_name="digest", node_ids=frozenset({"probe-1", "probe-2"})),
+    ),
+    RepeatedPythonHoldTestCase(
+        name="a_whole_kind_hold_after_a_narrowed_one_releases_the_whole_kind",
+        first=_narrowed_target(attribute_name="digest"),
+        second=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest"),
+        expected_released=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest"),
+    ),
+    RepeatedPythonHoldTestCase(
+        name="a_narrowed_hold_after_a_whole_kind_one_releases_the_whole_kind",
+        first=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest"),
+        second=_narrowed_target(attribute_name="digest"),
+        expected_released=whole_kind_python_target(kind=PYTHON_KIND, attribute_name="digest"),
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in REPEATED_PYTHON_HOLD_TEST_CASES])
+async def test_a_repeated_hold_of_a_python_attribute_keeps_the_union_of_its_targets(
+    test_case: RepeatedPythonHoldTestCase,
+) -> None:
+    state = await _state(queued=(REPOSITORY_X,))
+    barrier = _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep())
+
+    for target in (test_case.first, test_case.second):
+        candidate = owned_python_target(target=target, attribute_name="digest", repository_id=REPOSITORY_X)
+        assert await barrier.admit(branch=DEFAULT_BRANCH, candidates=[candidate], releasing=None) == []
+
+    released = await barrier.narrowed.get(
+        repository_id=REPOSITORY_X, hold_seq=2, identifier=f"{PYTHON_KIND}.digest", model=PythonTargetRequest
+    )
+    assert released == PythonTargetRequest(target=test_case.expected_released)

@@ -145,6 +145,12 @@ async def build_branch_merge_orchestrator(
         event_service=event_service,
         default_branch=destination_branch,
         python_resolver=await build_python_target_resolver(db=db),
+        barrier=await build_regeneration_barrier(
+            state=WritebackIntentStore(
+                db=db, lock_registry=lock.registry, default_branch=destination_branch, clock=partial(datetime.now, UTC)
+            ),
+            default_branch_name=destination_branch.name,
+        ),
         logger=logger,
     )
 
@@ -180,6 +186,17 @@ async def build_regeneration_barrier(*, state: DeliveryStatePort, default_branch
         ),
         default_branch_name=default_branch_name,
         sleep=asyncio.sleep,
+    )
+
+
+async def build_default_branch_barrier(*, db: InfrahubDatabase) -> RegenerationBarrier:
+    """Wire the barrier with a delivery state that reads through `db`."""
+    default_branch = registry.get_branch_from_registry()
+    return await build_regeneration_barrier(
+        state=WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        ),
+        default_branch_name=default_branch.name,
     )
 
 

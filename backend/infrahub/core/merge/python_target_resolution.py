@@ -26,6 +26,7 @@ from .recompute_coalescing import (
     ChangeSignature,
     ReaderLookup,
     group_ids_by_signature,
+    whole_kind_python_target,
 )
 
 log = get_logger()
@@ -219,15 +220,7 @@ class IndexedPythonTargetResolver:
                 target_ids.update(ref.id for ref in refs if ref.kind == accumulator.kind)
 
         if whole_kind:
-            return AffectedTarget(
-                family=PYTHON_COMPUTED_ATTRIBUTE,
-                target_kind=accumulator.kind,
-                attribute_name=accumulator.attribute_name,
-                reads_across_relationship=False,
-                reader_lookups=frozenset(),
-                precise=False,
-                whole_kind=True,
-            )
+            return whole_kind_python_target(kind=accumulator.kind, attribute_name=accumulator.attribute_name)
 
         if not target_ids:
             return None
