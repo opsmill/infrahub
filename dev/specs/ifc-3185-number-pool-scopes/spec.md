@@ -223,7 +223,7 @@ A schema author who changes a field that a pool's scope references is refused wh
 - A scope element given by name resolves within the pool's kind, where attribute names and relationship names are unique together.
 - Infrahub treats a schema change as a rename when the loaded schema carries the element's id with the new name; the stored readable name is refreshed from the default branch's schema whenever that schema is loaded, so that a rename cannot leave a stale name behind.
 - The frontend work (pool form, pool page) is tracked in IFC-3363 and is out of scope here. The backend contract must expose everything that page needs.
-- The SDK pull requests named in Jira IFC-3356 (infrahub-sdk-python #1371 and #1402) are merged on the SDK's `pmi-number-pool-range-protocols` branch and carry `allocation_scope` as a list of strings in the generated schema models; the `python_sdk` submodule of this branch does not point at them yet.
+- The SDK pull requests named in Jira IFC-3356 (infrahub-sdk-python #1371 and #1402) are merged on the SDK's `pmi-number-pool-range-protocols` branch and carry `allocation_scope` as a list of strings in the generated schema models; PR #10949 points the `python_sdk` submodule at SDK commit `1bd89c8`, which carries them, and that commit is not in the SDK's `infrahub-develop` yet.
 - The documentation pages for scoping a pool and reading it with the dedicated queries belong to this feature, in the resource-manager section of the user documentation.
 
 ## Out of scope

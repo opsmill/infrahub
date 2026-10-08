@@ -109,7 +109,6 @@ backend/infrahub/
 
 backend/tests/
 ├── unit/pools/test_scope.py                          # NEW: resolver rules, division values, division key
-├── unit/pools/test_number_pool_mock.py               # PR #10932: updated to the contract, deleted with the mock
 ├── unit/core/validators/test_number_pool_scope_checker.py   # NEW: the checker's decision table
 ├── unit/core/test_resource_manager_query.py          # NEW: unscoped rendering of the shared fragment
 ├── unit/graphql/test_number_pool_surface_contract.py # PR #10932: SDL snapshot
@@ -160,7 +159,7 @@ docs/docs/resource-manager/
 - `NumberPoolGetAllocated` gains the filters `division` (subset of elements allowed), range bounds, branch name and provenance, projects `coalesce(ir.provenance, "allocated")`, and keeps its default rendering for the existing callers (`NumberUtilizationGetter`, `resolve_number_pool_allocation`). The resolver resolves holders in batches per branch.
 - The component tests of the divisions and allocations resolvers assert the number of database queries with `backend/tests/helpers/db_query_counter.py`, so that a per-row lookup cannot slip in.
 - `NumberUtilizationGetter` (`backend/infrahub/pools/number.py`) takes an optional division and keeps measuring the `EffectiveSpace` of `backend/infrahub/pools/number_ranges.py`; the per-range figures come from `range_figures` as today.
-- The three resolvers of `backend/infrahub/graphql/queries/number_pool.py` read the database per `contracts/graphql-number-pool-queries.md`, and `backend/infrahub/pools/number_pool_mock.py` with `backend/tests/unit/pools/test_number_pool_mock.py` are deleted.
+- The three resolvers of `backend/infrahub/graphql/queries/number_pool.py` read the database per `contracts/graphql-number-pool-queries.md`, and `backend/infrahub/pools/number_pool_mock.py` is deleted.
 
 ### Declared scope and schema checker
 
