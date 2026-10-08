@@ -82,6 +82,7 @@ class HeldWorkflow:
     workflow: WorkflowDefinition
     context: InfrahubContext | EventContext | None
     parameters: dict[str, Any]
+    priority: WorkflowPriority | None
 
 
 class HoldingWorkflowExecution(WorkflowLocalExecution):
@@ -115,8 +116,12 @@ class HoldingWorkflowExecution(WorkflowLocalExecution):
             return await super().submit_workflow(
                 workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
             )
-        self.held.append(HeldWorkflow(workflow=workflow, context=context, parameters=dict(parameters or {})))
+        self.held.append(
+            HeldWorkflow(workflow=workflow, context=context, parameters=dict(parameters or {}), priority=priority)
+        )
         return WorkflowInfo(id=uuid.uuid4())
 
     async def run(self, held: HeldWorkflow) -> None:
-        await self.execute_workflow(workflow=held.workflow, context=held.context, parameters=held.parameters)
+        await self.execute_workflow(
+            workflow=held.workflow, context=held.context, parameters=held.parameters, priority=held.priority
+        )
