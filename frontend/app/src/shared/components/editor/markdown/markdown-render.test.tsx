@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { ThemeProvider } from "@/entities/config/ui/theme-provider";
+
 import { render } from "../../../../../tests/components/render";
 import { MarkdownRender } from "./markdown-render";
 
@@ -57,7 +59,11 @@ describe("MarkdownRender Component", () => {
     const markdownText = "```mermaid\ngraph TD;\n  A-->B;\n```";
 
     // WHEN
-    const component = await render(<MarkdownRender markdownText={markdownText} />);
+    const component = await render(
+      <ThemeProvider>
+        <MarkdownRender markdownText={markdownText} />
+      </ThemeProvider>
+    );
 
     // THEN
     await expect
@@ -70,7 +76,11 @@ describe("MarkdownRender Component", () => {
     const markdownText = "```mermaid\ngraph TD;\n  A-->B;\n```";
 
     // WHEN
-    const component = await render(<MarkdownRender markdownText={markdownText} />);
+    const component = await render(
+      <ThemeProvider>
+        <MarkdownRender markdownText={markdownText} />
+      </ThemeProvider>
+    );
 
     // THEN
     await expect.element(component.getByRole("button", { name: "Zoom in" })).toBeVisible();
@@ -81,7 +91,11 @@ describe("MarkdownRender Component", () => {
     const markdownText = "```mermaid\nnotadiagramtype\n```";
 
     // WHEN
-    const component = await render(<MarkdownRender markdownText={markdownText} />);
+    const component = await render(
+      <ThemeProvider>
+        <MarkdownRender markdownText={markdownText} />
+      </ThemeProvider>
+    );
 
     // THEN
     await expect

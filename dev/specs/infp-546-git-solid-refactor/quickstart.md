@@ -110,7 +110,7 @@ In tests:
 class FakeRepo:
     name = "fake"
     id = "fake-id"
-    default_branch = "main"
+    # no default_branch: IFC-3105 removes it from the read-only surface
     async def get_file_content(self, commit: str, file_path: str) -> str:
         return "{{ greeting }}"
     # ...other read-side methods stubbed as needed
@@ -134,7 +134,9 @@ from infrahub.git.integrator import InfrahubRepositoryIntegrator
 @pytest.mark.asyncio
 async def test_import_schema_files_impl(tmp_path, fake_sdk_client) -> None:
     integrator = InfrahubRepositoryIntegrator(
-        name="repo", id="r1", default_branch_name="main",
+        name="repo", id="r1",
+        default_branch="main",                      # required after IFC-3105, was default_branch_name
+        internal_status=RepositoryInternalStatus.ACTIVE,  # also required after IFC-3105
         client=fake_sdk_client,                     # injected, no global patch
         location=str(tmp_path),                     # ...etc
     )
@@ -163,15 +165,28 @@ The expanded suite covers the six scenario families from FR-001:
 
 Each file is one scenario family; failing one does not block the others. The suite is gated in CI for merges to `develop`.
 
-## Inject a non-default branch name in a test *(after Story 6)*
+## Inject a non-default trunk in a test *(after IFC-3105, not after Story 6)*
 
 ```python
 repo = InfrahubRepository(
     name="repo", id="r1",
-    default_branch_name="trunk",   # injected, no patching of registry.default_branch
+    default_branch="trunk",        # required field, nothing to patch
+    internal_status=RepositoryInternalStatus.ACTIVE,
     # ... other required fields
 )
 assert repo.default_branch == "trunk"
 ```
 
-The fallback to `registry.default_branch` still works when `default_branch_name` is omitted — no existing caller has to change.
+**There is no fallback.** IFC-3105 (`dev/specs/ifc-3105-honour-default-branch/`) deleted the optional
+`default_branch_name` field and the `default_branch` property that fell back to
+`registry.default_branch`, and made both fields above required on the read-write kind. Omitting either
+raises `pydantic.ValidationError` at construction, which is the point: an optional value with a silent
+global fallback is what caused the defect that feature fixes.
+
+Two consequences for tests written against this spec:
+
+- The earlier claim that "no existing caller has to change" does not hold. Every direct construction
+  supplies both values, or goes through `InfrahubRepository.init`/`.new`, which resolve them from the
+  graph and therefore need a client that can answer.
+- `InfrahubReadOnlyRepository` has **no** `default_branch` attribute at all. Do not construct one with
+  it and do not assert on it.

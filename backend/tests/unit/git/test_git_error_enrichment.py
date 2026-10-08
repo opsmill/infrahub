@@ -182,6 +182,14 @@ ENRICHMENT_CASES = [
         expected=RepositoryError,
     ),
     EnrichmentCase(
+        name="pull_with_unmerged_files",
+        stderr="error: Pulling is not possible because you have unmerged files.\n"
+        "fatal: Exiting because of an unresolved conflict.",
+        expected=RepositoryError,
+        command=["git", "pull", "-v", "--", "origin", "branch01"],
+        message="Unable to pull repository net-repo, there are conflicts that must be resolved.",
+    ),
+    EnrichmentCase(
         name="unclassified_error_falls_through",
         stderr="fatal: something entirely unexpected happened",
         expected=RepositoryError,

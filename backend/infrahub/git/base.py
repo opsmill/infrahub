@@ -2,24 +2,19 @@ from __future__ import annotations
 
 import contextlib
 import shutil
-import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 from uuid import UUID  # noqa: TC003
 
-import git
 from git import BadName, Blob, Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 from git.refs.remote import RemoteReference
 from infrahub_sdk import InfrahubClient  # noqa: TC002
 from prefect import Flow, Task
-from prefect.logging import get_run_logger
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic import ValidationError as PydanticValidationError
 
 from infrahub import config
-from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind, RepositoryOperationalStatus, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
@@ -34,13 +29,9 @@ from infrahub.exceptions import (
     RepositoryInvalidFileSystemError,
     RepositoryPermissionError,
 )
-from infrahub.git.constants import (
-    BRANCHES_DIRECTORY_NAME,
-    COMMITS_DIRECTORY_NAME,
-    TEMPORARY_DIRECTORY_NAME,
-    WRITE_ACCESS_PROBE_REF,
-)
+from infrahub.git.constants import BRANCHES_DIRECTORY_NAME, COMMITS_DIRECTORY_NAME, TEMPORARY_DIRECTORY_NAME
 from infrahub.git.directory import get_repositories_directory, initialize_repositories_directory
+from infrahub.git.divergence.gateway import GitAncestryGateway
 from infrahub.git.utils import branch_name_in_import_sync_branches
 from infrahub.git.worktree import Worktree
 from infrahub.log import get_logger
@@ -184,11 +175,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     id: UUID = Field(..., description="Internal UUID of the repository")
     name: str = Field(..., description="Primary name of the repository")
-    default_branch_name: str | None = Field(None, description="Default branch to use when pulling the repository")
     type: str | None = None
-    location: str | None = Field(None, description="Location of the remote repository")
+    location: str | None = Field(default=None, description="Location of the remote repository")
     has_origin: bool = Field(
-        False, description="Flag to indicate if a remote repository (named origin) is present in the config."
+        default=False, description="Flag to indicate if a remote repository (named origin) is present in the config."
     )
 
     client: InfrahubClient | None = Field(
@@ -196,12 +186,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         description="Infrahub Client, used to query the Repository and Branch information in the graph and to update the commit.",
     )
 
-    cache_repo: Repo | None = Field(None, description="Internal cache of the GitPython Repo object")
-    is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
+    cache_repo: Repo | None = Field(default=None, description="Internal cache of the GitPython Repo object")
+    is_read_only: bool = Field(default=False, description="If true, changes will not be synced to remote")
 
-    internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
-    reinitialized: bool = Field(False, description="Re-clone is needed because the local directory was missing")
-    infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
+    reinitialized: bool = Field(default=False, description="Re-clone is needed because the local directory was missing")
+    infrahub_branch_name: str | None = Field(
+        default=None, description="Infrahub branch on which to sync the remote repository"
+    )
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
     def get_client(self) -> InfrahubClient:
@@ -216,13 +207,24 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return self.client
 
-    @property
-    def default_branch(self) -> str:
-        return self.default_branch_name or registry.default_branch
-
     @abstractmethod
     async def resolve_checkout_ref(self) -> str:
         """Return the git ref the primary clone has to be checked out on, reading it from the graph if needed."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _get_mapped_remote_branch(self, branch_name: str) -> str:
+        """Return the remote branch an Infrahub branch name corresponds to on this repository."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _get_mapped_target_branch(self, branch_name: str) -> str:
+        """Return the Infrahub branch a remote branch name corresponds to for this repository."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        """Return the identifier locating a branch's worktree on disk."""
         raise NotImplementedError()
 
     @property
@@ -417,7 +419,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return True
 
     async def create_locally(
-        self, checkout_ref: str | None = None, infrahub_branch_name: str | None = None, update_commit_value: bool = True
+        self, checkout_ref: str, infrahub_branch_name: str | None, update_commit_value: bool = True
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
@@ -426,7 +428,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             False if the directory was already present.
 
         Raises:
-            RepositoryError: When the repository has no remote location configured.
+            RepositoryError: When the repository has no remote location configured, or when the
+                cloned commit has to be recorded but no Infrahub branch was named to record it on.
 
         """
         initialize_repositories_directory()
@@ -453,9 +456,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         try:
             repo = Repo.clone_from(self.location, self.directory_default)
-            repo.git.checkout(checkout_ref or self.default_branch)
+            repo.git.checkout(checkout_ref)
         except GitCommandError as exc:
-            await self._raise_enriched_error(error=exc, branch_name=checkout_ref or self.default_branch)
+            await self._raise_enriched_error(error=exc, branch_name=checkout_ref)
 
         self.has_origin = True
 
@@ -464,7 +467,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         commit = str(repo.head.commit)
         self.create_commit_worktree(commit=commit)
         if update_commit_value:
-            await self.update_commit_value(branch_name=infrahub_branch_name or self.default_branch, commit=commit)
+            if infrahub_branch_name is None:
+                raise RepositoryError(
+                    identifier=self.name,
+                    message=f"Unable to record the commit of repository {self.name} without an Infrahub branch.",
+                )
+            await self.update_commit_value(branch_name=infrahub_branch_name, commit=commit)
 
         return True
 
@@ -610,6 +618,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()
 
+    def get_commit_for_infrahub_branch(self, branch_name: str, remote: bool = False) -> str:
+        """Return the commit tracked for an Infrahub branch name.
+
+        `get_commit_value` takes a branch as the remote names it. A caller holding an Infrahub branch
+        has to map it first, because the remote has no branch named after Infrahub's default branch
+        when this repository's default branch differs.
+        """
+        return self.get_commit_value(branch_name=self._get_mapped_remote_branch(branch_name=branch_name), remote=remote)
+
     def has_conflicting_changes(self, target_branch: str, source_branch: str) -> bool:
         """Check if merging source_branch into target_branch would produce conflicts.
 
@@ -697,6 +714,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
+        return await self._create_local_branch(branch_name=branch_name, branch_id=branch_id)
+
+    async def _create_local_branch(self, branch_name: str, branch_id: str | None = None) -> bool:
+        """Create a branch and its worktree in this clone only, whatever the repository does on creation."""
         repo = self.get_git_repo_main()
 
         # Check if the branch already exists locally, if it does do nothing
@@ -849,6 +870,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         filtered_branches = {}
         skipped_branch_names = []
+        always_imported = {registry.default_branch, self._get_mapped_remote_branch(registry.default_branch)}
 
         for short_name, branch_data in branches.items():
             branch = None
@@ -857,7 +879,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 branch = registry.get_branch_from_registry(branch=short_name)
 
             branch_exists_import_sync_condition = branch and (
-                branch.name not in {registry.default_branch, self.default_branch}
+                branch.name not in always_imported
                 and not branch.sync_with_git
                 and not branch_name_in_import_sync_branches(branch_short_name=short_name)
             )
@@ -909,56 +931,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return sorted(new_branches), sorted(updated_branches)
 
-    def validate_remote_branch(self, branch_name: str) -> bool:
-        """Process a remote branch to validate that we can use it safely.
-
-        - Make sure that the branch name won't conflict with infrahub's default branch
-        - Make sure that a representation of the branch can be created in the database
-        - Warn (but do not block) when the branch would conflict with the default branch on merge
-        """
-        if branch_name == registry.default_branch and branch_name != self.default_branch:
-            # If the default branch of Infrahub and the git repository differs we map the repository
-            # default branch to that of Infrahub. In that scenario we can't import a branch from the
-            # repository if it matches the default branch of Infrahub
-            log.warning("Ignoring import of mismatched default branch", branch=branch_name, repository=self.name)
-            return False
-
-        try:
-            # Check if the branch can be created in the database
-            Branch(name=branch_name)
-        except PydanticValidationError as e:
-            log.warning(
-                "Git branch failed validation.", branch_name=branch_name, errors=[error["msg"] for error in e.errors()]
-            )
-            return False
-
-        # Surface a warning when the branch conflicts with the default branch so users
-        # know a future merge will be rejected, but still allow the import to proceed.
-        try:
-            has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
-        except GitCommandError as exc:
-            log.error(
-                "Unable to determine merge conflicts for branch",
-                branch=branch_name,
-                repository=self.name,
-                error=str(exc),
-            )
-            return True
-
-        if has_conflicts:
-            get_run_logger().warning(
-                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
-                "the merge will be rejected until the conflict is resolved upstream"
-            )
-
-        return True
-
-    def _resolve_worktree_identifier(self, branch_name: str) -> str:
-        """Map a branch name to the identifier used to locate its worktree on disk."""
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
-            return "main"
-        return branch_name
-
     def _get_branch_worktree(self, branch_name: str) -> Repo | None:
         """Return the existing worktree for a branch, or None when it has none yet."""
         identifier = self._resolve_worktree_identifier(branch_name)
@@ -968,9 +940,20 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return None
 
     async def _create_branch_worktree(self, branch_name: str, branch_id: str) -> Repo:
-        """Create the branch in git and return its freshly created worktree."""
-        await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+        """Create the branch in this clone and return its freshly created worktree.
+
+        It never pushes: a worker that only converges must not re-create a branch the remote deleted.
+        """
+        await self._create_local_branch(branch_name=branch_name, branch_id=branch_id)
         return self.get_git_repo_worktree(identifier=branch_name)
+
+    def _get_ancestry_gateway(self) -> GitAncestryGateway:
+        return GitAncestryGateway(repository_name=self.name, repo=self.get_git_repo_main())
+
+    def _leads_to_remote_head(self, local_head: str, remote_head: str) -> bool:
+        return local_head == remote_head or self._get_ancestry_gateway().is_ancestor(
+            ancestor_commit=local_head, descendant_commit=remote_head
+        )
 
     async def pull(
         self,
@@ -979,10 +962,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         create_if_missing: bool = False,
         update_commit_value: bool = True,
     ) -> bool | str:
-        """Pull the latest update from the remote repository on a given branch.
+        """Bring the worktree of a branch onto the remote head of that branch.
+
+        A worktree that leads to the remote head is fast-forwarded. Any other worktree is hard-reset onto
+        the remote head and loses the commits only it holds. The reset honours ``update_commit_value`` the
+        same way the fast-forward does, writes no rewrite record and emits no event.
 
         Raises:
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+            RepositoryError: When git cannot fetch the branch, compare the two heads or move the worktree.
 
         """
         if not self.has_origin:
@@ -990,9 +978,30 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         repo = self._get_branch_worktree(branch_name)
         if repo is not None:
+            remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
             try:
                 commit_before = str(repo.head.commit)
-                repo.remotes.origin.pull(self._get_mapped_remote_branch(branch_name=branch_name))
+                # The leading plus lets the remote-tracking ref follow a remote that was rewritten.
+                repo.remotes.origin.fetch(f"+refs/heads/{remote_branch}:refs/remotes/origin/{remote_branch}")
+                remote_head = str(repo.commit(f"refs/remotes/origin/{remote_branch}"))
+            except GitCommandError as exc:
+                await self._raise_enriched_error(error=exc, branch_name=branch_name)
+
+            if not self._leads_to_remote_head(local_head=commit_before, remote_head=remote_head):
+                await self.reset_to_commit(
+                    branch_name=branch_name, commit=remote_head, update_commit_value=update_commit_value
+                )
+                log.info(
+                    f"Reset branch {branch_name} onto the remote head {remote_head}, "
+                    f"its worktree at {commit_before} does not lead to it",
+                    repository=self.name,
+                    branch=branch_name,
+                )
+                return remote_head
+
+            try:
+                # The head was fetched above, so a second fetch could only land on a later one.
+                repo.git.merge("--ff-only", remote_head)
             except GitCommandError as exc:
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
@@ -1002,8 +1011,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
             self.create_commit_worktree(commit=commit_after)
         elif create_if_missing and branch_id:
-            # create_branch_in_git already syncs any matching remote branch, and a local-only
-            # branch has no upstream ref to pull from, so skip the fast-forward here.
+            # A new branch already starts at its remote tip, and a local-only one has nothing to pull.
             repo = await self._create_branch_worktree(branch_name, branch_id)
             commit_after = str(repo.head.commit)
         else:
@@ -1124,56 +1132,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return path
 
-    @classmethod
-    def check_connectivity(cls, name: str, url: str, require_write: bool = False) -> None:
-        """Validate that the remote is reachable and the credentials suffice.
-
-        ``ls-remote`` only exercises the read-gated ``upload-pack`` service, so a read-write
-        repository whose credentials can read but not push still passes. When ``require_write``
-        is set the write-access probe is run in addition, so a missing push permission is caught
-        at connect time rather than at the first branch creation or merge.
-        """
-        # Use a neutral working directory so git doesn't discover a .git pointer
-        # from the process CWD (e.g. worktree builds where /source/.git is a
-        # pointer file referencing a host path absent from a container).
-        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
-        try:
-            cmd.ls_remote("--tags", url)
-        except GitCommandError as exc:
-            cls._raise_enriched_error_static(name=name, location=url, error=exc)
-
-        if require_write:
-            cls._check_write_access(name=name, url=url)
-
-    @classmethod
-    def _check_write_access(cls, name: str, url: str) -> None:
-        """Confirm the credentials can push, not only read.
-
-        Authorization to ``receive-pack`` is checked before refs are advertised, so a dry-run
-        delete of a throwaway ref reaches the write-gated service while ``--dry-run`` sends no
-        ref update and no pack. The remote is never mutated, even when the probe ref happens to
-        exist on it. ``git push`` needs a repository to run from - unlike ``ls-remote`` - so the
-        probe runs from a throwaway ``git init``-ed directory.
-
-        Raises:
-            RepositoryPermissionError: When the credentials authenticate but are not allowed to push.
-            RepositoryCredentialsError: When the push service rejects the credentials.
-            RepositoryConnectionError: When the remote is unreachable.
-            RepositoryError: For any other git failure.
-
-        """
-        with tempfile.TemporaryDirectory() as probe_dir:
-            cmd = git.cmd.Git(working_dir=probe_dir)
-            try:
-                cmd.init()
-                cmd.push("--dry-run", "--porcelain", "--delete", url, f"refs/heads/{WRITE_ACCESS_PROBE_REF}")
-            except GitCommandError as exc:
-                cls._raise_enriched_error_static(name=name, location=url, error=exc, is_write_operation=True)
-
     async def _raise_enriched_error(self, error: GitCommandError, branch_name: str | None = None) -> NoReturn:
         try:
             self._raise_enriched_error_static(
-                error=error, name=self.name, location=self.location, branch_name=branch_name or self.default_branch
+                error=error, name=self.name, location=self.location, branch_name=branch_name
             )
         except RepositoryError as exc:
             status_by_error: dict[type[RepositoryError], RepositoryOperationalStatus] = {
@@ -1247,6 +1209,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             raise RepositoryConnectionError(identifier=name) from error
 
         if "error: pathspec" in error.stderr:
+            if branch_name is None:
+                raise RepositoryError(
+                    identifier=name,
+                    message=f"The requested branch isn't a valid branch for the repository {name} at {location}.",
+                ) from error
             raise RepositoryInvalidBranchError(identifier=name, branch_name=branch_name, location=location) from error
 
         if "reset" in (error.command or []) and "Could not parse object" in error.stderr:
@@ -1271,10 +1238,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 identifier=name, message=f"Unable to correctly lookup credentials for repository {name} ({location})."
             ) from error
 
-        if any(err in error.stderr for err in ("Need to specify how to reconcile", "because you have unmerged files")):
+        target = f"the branch {branch_name} for repository {name}" if branch_name else f"repository {name}"
+        if "because you have unmerged files" in error.stderr:
             raise RepositoryError(
                 identifier=name,
-                message=f"Unable to pull the branch {branch_name} for repository {name}, there are conflicts that must be resolved.",
+                message=f"Unable to pull {target}, there are conflicts that must be resolved.",
             ) from error
 
         stderr = error.stderr.lower()
@@ -1292,18 +1260,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             raise RepositoryPermissionError(identifier=name) from error
 
         raise RepositoryError(identifier=name, message=error.stderr) from error
-
-    def _get_mapped_remote_branch(self, branch_name: str) -> str:
-        """Returns the remote branch for Git Repositories."""
-        if branch_name != self.default_branch and branch_name == registry.default_branch:
-            return self.default_branch
-        return branch_name
-
-    def _get_mapped_target_branch(self, branch_name: str) -> str:
-        """Returns the target branch within Infrahub."""
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
-            return registry.default_branch
-        return branch_name
 
     def get_changed_files(self, first_commit: str, second_commit: str | None = None) -> RepoChangedFiles:
         """Return the changes between two commits in this repo.

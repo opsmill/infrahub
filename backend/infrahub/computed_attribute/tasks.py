@@ -4,6 +4,7 @@ from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
+from infrahub_sdk.template.exceptions import JinjaTemplateError
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -376,6 +377,7 @@ async def process_transform(
         repository_id=transform.repository_id,
         name=transform.repository_name,
         repository_kind=transform.repository_typename,
+        infrahub_branch_name=branch_name,
         commit=transform.repository_commit,
     )
 
@@ -454,21 +456,18 @@ async def trigger_update_python_computed_attributes(
     ):
         return
 
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-    object_ids = [node.id for node in nodes]
-
-    if not object_ids:
-        return
-
-    chunk_size = get_submission_chunk_size()
-    for chunk in chunked(object_ids, chunk_size):
-        await get_workflow().submit_workflow(
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    workflow = get_workflow()
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
             context=context,
             parameters={
                 "branch_name": branch_name,
                 "node_kind": computed_attribute_kind,
-                "object_ids": chunk,
+                "object_ids": node_ids,
                 "computed_attribute_name": computed_attribute_name,
                 "computed_attribute_kind": computed_attribute_kind,
                 "context": context,
@@ -496,11 +495,11 @@ async def process_jinja2(
     object_ids: list[str] | None = None,
     recompute_depth: int = 0,
 ) -> None:
-    """Recompute a single Jinja2 computed attribute in response to a node mutation.
+    """Recompute a Jinja2 computed attribute on one node (``object_id``) or on a set of nodes (``object_ids``).
 
-    The live trigger passes a single ``object_id``; the coalesced merge/rebase recompute passes
-    the union of changed node ids in ``object_ids``. ``computed_attribute_kind`` differs from
-    ``node_kind`` when the dependency crosses a relationship.
+    Passing ``object_ids`` makes it a coalesced pass (writes stamped ``recompute``), as the merge and
+    rebase recompute, the chained recompute and a whole-kind backfill do. ``computed_attribute_kind``
+    differs from ``node_kind`` when the dependency crosses a relationship.
     """
     log = get_run_logger()
     client = get_client()
@@ -555,7 +554,11 @@ async def process_jinja2(
             log.debug("No nodes found that requires updates")
 
         for node in found:
-            value = await jinja_template.render(variables=node.variables)
+            try:
+                value = await jinja_template.render(variables=node.variables)
+            except JinjaTemplateError as exc:
+                log.warning(f"Skipping recompute of '{attribute.name}' for node {node.node_id}: template raised {exc}")
+                continue
             if value != node.computed_attribute_value:
                 writes.append(AttributeValueWrite(node_id=node.node_id, field=attribute.name, value=value))
 
@@ -585,20 +588,23 @@ async def trigger_update_jinja2_computed_attributes(
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
-    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node_id in node_batch:
-            await workflow.submit_workflow(
-                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-                context=context,
-                parameters={
-                    "branch_name": branch_name,
-                    "computed_attribute_name": computed_attribute_name,
-                    "computed_attribute_kind": computed_attribute_kind,
-                    "node_kind": computed_attribute_kind,
-                    "object_id": node_id,
-                    "context": context,
-                },
-            )
+    async for node_ids in node_query.fetch_all_chunked(
+        client=client, branch_name=branch_name, chunk_size=get_submission_chunk_size()
+    ):
+        await workflow.submit_workflow(
+            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "node_kind": computed_attribute_kind,
+                "object_ids": node_ids,
+                "context": context,
+            },
+            # Must be a creation tag: in-flow tag updates drop tags added mid-run.
+            tags=[WorkflowTag.BRANCH.render(identifier=branch_name)],
+        )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")

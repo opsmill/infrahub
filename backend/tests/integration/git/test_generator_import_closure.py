@@ -11,6 +11,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.repository import get_initialized_repo
 from tests.constants import TestKind
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -95,11 +96,12 @@ class TestGeneratorImportClosure(TestInfrahubApp):
             repository_id=repository_id,
             name="car-dealership",
             repository_kind=InfrahubKind.REPOSITORY,
+            infrahub_branch_name="main",
         )
         assert isinstance(repo, InfrahubRepository)
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         # Drift the stored closure away from the worktree while leaving every other

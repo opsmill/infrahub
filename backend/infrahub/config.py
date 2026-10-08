@@ -373,6 +373,10 @@ class StorageSettings(BaseSettings):
     local: FileSystemStorageSettings = FileSystemStorageSettings()
     s3: S3StorageSettings = S3StorageSettings()
     max_file_size: int = Field(default=50, ge=1, description="Maximum file size in MB for file uploads")
+    verify_artifact_checksum: bool = Field(
+        default=True,
+        description="Refuse to serve an artifact file that does not match the checksum recorded for the artifact",
+    )
 
 
 class DatabaseSettings(BaseSettings):
@@ -1177,10 +1181,6 @@ class AnalyticsSettings(BaseSettings):
 class ExperimentalFeaturesSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_EXPERIMENTAL_")
     graphql_enums: bool = False
-    dark_theme: bool = Field(
-        default=False,
-        description="Offer the dark theme in the web interface. Alpha: some surfaces still render incorrectly.",
-    )
     value_db_index: bool = Field(
         default=False,
         deprecated="This setting has no effect and will be removed in a future version.",

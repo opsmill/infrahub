@@ -5,12 +5,13 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from infrahub_sdk.protocols import CoreTransformJinja2, CoreTransformPython
 
-from infrahub.core.constants import InfrahubKind
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import load_schema
 from tests.integration.proposed_change.artifact_regen_harness import ArtifactRegenGateHarness
 
@@ -77,7 +78,8 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             db=db,
             name=git_repo.name,
             description="test repository",
-            location="git@github.com:mock/test.git",
+            location=git_repo.path,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
         )
         await repo_node.save(db=db)
 
@@ -86,10 +88,11 @@ class TestArtifactRegenE2E(ArtifactRegenGateHarness):
             name=git_repo.name,
             location=git_repo.path,
             client=client,
+            infrahub_branch_name="main",
         )
 
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
 
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]

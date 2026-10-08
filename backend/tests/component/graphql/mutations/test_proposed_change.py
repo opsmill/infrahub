@@ -1,6 +1,8 @@
+from pathlib import Path
 from unittest.mock import ANY, call, patch
 from uuid import uuid4
 
+import pytest
 from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
@@ -12,10 +14,17 @@ from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import CheckType, GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.constants import (
+    CheckType,
+    GlobalPermissions,
+    InfrahubKind,
+    PermissionDecision,
+    RepositoryInternalStatus,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreProposedChange, CoreRepository
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -31,6 +40,7 @@ from infrahub.workflows.initialization import setup_deployments, setup_worker_po
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator
 from tests.helpers.dependency_override import override_dependency
+from tests.helpers.git import LocalRemote, install_remote_helper
 from tests.helpers.graphql import graphql, graphql_mutation
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -706,6 +716,157 @@ class TestMergeProposedChangeUnexpectedFailure(TestInfrahubApp):
             assert refreshed_pc.get_attribute("state").value.value == ProposedChangeState.OPEN.value
             branch = await Branch.get_by_name(db=db, name=branch_name)
             assert branch.status == BranchStatus.OPEN
+
+
+class TestMergeProposedChangeHeldByGit(TestInfrahubApp):
+    """A merge that the check of the remote heads refuses fails with that refusal and leaves the branch open."""
+
+    TRUNK_COMMIT = "a" * 40
+    BRANCH_COMMIT = "b" * 40
+
+    async def open_proposed_change(
+        self, db: InfrahubDatabase, branch_name: str, repository_name: str, location: str, trunk_commit: str
+    ) -> Node:
+        """Open a proposed change on a branch that changed one repository, as the sync records them."""
+        repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await repository.new(
+            db=db,
+            name=repository_name,
+            location=location,
+            commit=trunk_commit,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+        )
+        await repository.save(db=db)
+        branch = await create_branch(branch_name=branch_name, db=db)
+        branch.sync_with_git = True
+        await branch.save(db=db)
+        on_branch = await NodeManager.get_one(
+            db=db, id=repository.id, kind=CoreRepository, branch=branch, raise_on_error=True
+        )
+        on_branch.commit.value = self.BRANCH_COMMIT
+        await on_branch.save(db=db)
+        proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+        await proposed_change.new(
+            db=db, name=f"pc-{branch_name}", destination_branch="main", source_branch=branch_name, state="open"
+        )
+        await proposed_change.save(db=db)
+        return proposed_change
+
+    async def merge(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        session_admin: AccountSession,
+        dependency_provider: Provider,
+        proposed_change: Node,
+    ) -> list[str]:
+        """Merge the proposed change through the mutation, and return the error messages."""
+        with override_dependency(build_client, lambda: client, dependency_provider=dependency_provider):
+            cache = MemoryCache()
+            message_bus = BusRecorder()
+            service = await InfrahubServices.new(
+                database=db,
+                message_bus=message_bus,
+                workflow=WorkflowLocalExecution(),
+                cache=cache,
+                client=client,
+                component=InfrahubComponent(
+                    cache=cache, db=db, message_bus=message_bus, component_type=ComponentType.NONE
+                ),
+            )
+            async with get_client(sync_client=False) as prefect_client:
+                await setup_worker_pools(client=prefect_client)
+                await setup_deployments(prefect_client)
+
+            update_status = await graphql_mutation(
+                query=UPDATE_PROPOSED_CHANGE,
+                db=db,
+                variables={"proposed_change": proposed_change.id, "state": "merged"},
+                account_session=session_admin,
+                service=service,
+            )
+        return [error.message for error in update_status.errors or []]
+
+    async def assert_still_open(self, db: InfrahubDatabase, proposed_change: Node, branch_name: str) -> None:
+        refreshed = await NodeManager.get_one(
+            db=db, id=proposed_change.id, kind=CoreProposedChange, raise_on_error=True
+        )
+        assert refreshed.state.value.value == ProposedChangeState.OPEN.value
+        assert (await Branch.get_by_name(db=db, name=branch_name)).status == BranchStatus.OPEN
+
+    async def test_a_remote_head_infrahub_has_not_recorded_fails_the_merge_with_the_refusal(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        register_core_models_schema: None,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        tmp_path: Path,
+    ) -> None:
+        branch_name = "held-by-a-remote-head"
+        remote = LocalRemote.create(directory=tmp_path / "remote", trunk="main", branches=[])
+        remote_head = remote.commit(branch_name=branch_name, files={"held.txt": "held\n"})
+        proposed_change = await self.open_proposed_change(
+            db=db,
+            branch_name=branch_name,
+            repository_name="held-repo",
+            location=str(remote.directory),
+            trunk_commit=str(remote.repo.commit("main")),
+        )
+
+        errors = await self.merge(
+            db=db,
+            client=client,
+            session_admin=session_admin,
+            dependency_provider=dependency_provider,
+            proposed_change=proposed_change,
+        )
+
+        assert errors == [
+            f"Unable to merge branch {branch_name}, because Infrahub has not recorded the latest commit of branch "
+            f"{branch_name} of repository held-repo ({remote_head} on the remote, {self.BRANCH_COMMIT} in Infrahub). "
+            "Merge again after Infrahub records the latest commit of that branch."
+        ]
+        await self.assert_still_open(db=db, proposed_change=proposed_change, branch_name=branch_name)
+
+    async def test_a_remote_that_refuses_the_credentials_fails_the_merge_with_the_refusal(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        register_core_models_schema: None,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        branch_name = "held-by-the-credentials"
+        location = install_remote_helper(
+            tmp_path, monkeypatch, script="echo \"fatal: Authentication failed for 'fake://nowhere/'\" >&2\nexit 128"
+        )
+        proposed_change = await self.open_proposed_change(
+            db=db,
+            branch_name=branch_name,
+            repository_name="refused-repo",
+            location=location,
+            trunk_commit=self.TRUNK_COMMIT,
+        )
+
+        errors = await self.merge(
+            db=db,
+            client=client,
+            session_admin=session_admin,
+            dependency_provider=dependency_provider,
+            proposed_change=proposed_change,
+        )
+
+        assert errors == [
+            f"Unable to merge branch {branch_name}, because Infrahub cannot read the remote of a repository with its "
+            "credentials. Authentication failed for refused-repo, please validate the credentials. The Git merge "
+            "would fail the same way, after the merge in Infrahub. Fix the credentials, then merge again."
+        ]
+        await self.assert_still_open(db=db, proposed_change=proposed_change, branch_name=branch_name)
 
 
 async def test_create_thread(

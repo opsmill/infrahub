@@ -2,13 +2,16 @@ from prefect import flow
 
 from infrahub import lock
 from infrahub.core.constants import RepositoryOperationalStatus
+from infrahub.core.registry import registry
 from infrahub.exceptions import (
     RepositoryConnectionError,
     RepositoryCredentialsError,
     RepositoryError,
     RepositoryPermissionError,
 )
-from infrahub.git.repository import InfrahubRepository, get_initialized_repo
+from infrahub.git.convergence import InitializedRepositoryLoader, WorktreeConverger
+from infrahub.git.remote_refs import ensure_branch_exists, ensure_write_access, list_remote_refs
+from infrahub.git.repository import get_initialized_repo
 from infrahub.log import get_logger
 from infrahub.message_bus import messages
 from infrahub.message_bus.messages.git_repository_connectivity import (
@@ -30,10 +33,20 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
     )
 
     try:
-        InfrahubRepository.check_connectivity(
-            name=message.repository_name, url=message.repository_location, require_write=message.requires_write
-        )
+        refs = list_remote_refs(name=message.repository_name, url=message.repository_location)
+        if message.default_branch is not None:
+            ensure_branch_exists(
+                refs,
+                branch_name=message.default_branch,
+                repository_name=message.repository_name,
+                location=message.repository_location,
+            )
+        if message.requires_write:
+            ensure_write_access(name=message.repository_name, url=message.repository_location)
     except RepositoryError as exc:
+        log.exception(
+            "Repository connectivity, branch or write-access check failed", repository=message.repository_name
+        )
         response_data.success = False
         response_data.message = exc.message
         response_data.operational_status = {
@@ -52,36 +65,12 @@ async def connectivity(message: messages.GitRepositoryConnectivity) -> None:
 
 @flow(name="refresh-git-fetch", flow_run_name="Fetch git repository {message.repository_name} on " + WORKER_IDENTITY)
 async def fetch(message: messages.RefreshGitFetch) -> None:
-    if message.meta and message.meta.initiator_id == WORKER_IDENTITY:
-        log.info("Ignoring git fetch request originating from self", worker=WORKER_IDENTITY)
-        return
-
-    repo = await get_initialized_repo(
-        client=get_client(),
-        repository_id=message.repository_id,
-        name=message.repository_name,
-        repository_kind=message.repository_kind,
+    converger = WorktreeConverger(
+        lock_registry=lock.registry,
+        loader=InitializedRepositoryLoader(client_provider=get_client),
+        worker_identity=WORKER_IDENTITY,
     )
-
-    # Hold the repo lock so the hard reset doesn't interleave with other git
-    # operations on the same on-disk tree (merges, syncs, branch creation).
-    async with lock.registry.get(name=message.repository_name, namespace="repository"):
-        await repo.fetch()
-        if message.commit:
-            await repo.reset_to_commit(
-                branch_name=message.infrahub_branch_name,
-                commit=message.commit,
-                branch_id=message.infrahub_branch_id,
-                create_if_missing=True,
-                update_commit_value=False,
-            )
-        else:
-            await repo.pull(
-                branch_name=message.infrahub_branch_name,
-                branch_id=message.infrahub_branch_id,
-                create_if_missing=True,
-                update_commit_value=False,
-            )
+    await converger.converge(message)
 
 
 @flow(
@@ -94,5 +83,8 @@ async def branch_deleted(message: messages.RefreshGitRepositoryBranchDeleted) ->
         repository_id=message.repository_id,
         name=message.repository_name,
         repository_kind=message.repository_kind,
+        # The branch this message names has just been deleted, so the repository node can only be
+        # read on the default branch.
+        infrahub_branch_name=registry.default_branch,
     )
     await repo.delete_local_branch(branch_name=message.branch_name)

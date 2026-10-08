@@ -8,6 +8,7 @@ from typing import Any, AsyncIterator, Generator
 import pytest
 
 from infrahub.computed_attribute import tasks
+from infrahub.computed_attribute.graphql_queries.queries import ComputedAttributeNodeIDQuery
 from infrahub.computed_attribute.tasks import (
     _partition_transform_results,
     process_transform,
@@ -31,6 +32,7 @@ TRANSFORM_NAME = "transform_a"
 STALE_TRANSFORM_NAME = "transform_the_branch_renamed"
 
 UNCONFIGURED_ATTRIBUTE = "no_transform_named"
+CAR_ID_LISTING_QUERY = ComputedAttributeNodeIDQuery(kind=CAR_KIND).render_query()
 
 # The shape the API answers with when no transform matches the filter.
 NO_TRANSFORM_FOUND: dict[str, Any] = {"CoreTransformPython": {"edges": []}}
@@ -110,25 +112,30 @@ def test_partition_transform_results_handles_empty() -> None:
     assert _partition_transform_results([]) == ([], [])
 
 
+@dataclass(frozen=True)
+class _ClientConfig:
+    pagination_size: int = 50
+
+
 class _RecordingClient:
-    """An SDK client stand-in that answers the transform fetch and records every kind it lists."""
+    """An SDK client stand-in that answers the transform fetch and records every kind it lists the ids of."""
 
     def __init__(
         self, transform_response: dict[str, Any], by_transform: dict[str, dict[str, Any]] | None = None
     ) -> None:
         self._transform_response = transform_response
         self._by_transform = by_transform or {}
+        self.config = _ClientConfig()
         self.request_context: Any = None
         self.fetched_branches: list[str] = []
         self.listed_kinds: list[str] = []
 
     async def execute_graphql(self, query: str, variables: dict[str, Any], branch_name: str) -> dict[str, Any]:
+        if query == CAR_ID_LISTING_QUERY:
+            self.listed_kinds.append(CAR_KIND)
+            return {CAR_KIND: {"edges": []}}
         self.fetched_branches.append(branch_name)
         return self._by_transform.get(variables.get("transform_name", ""), self._transform_response)
-
-    async def all(self, kind: str, branch: str) -> list[object]:
-        self.listed_kinds.append(kind)
-        return []
 
 
 @dataclass

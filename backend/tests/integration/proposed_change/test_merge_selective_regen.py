@@ -35,6 +35,7 @@ from infrahub.workflows.catalogue import (
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.diff_summary import node_diff
 from tests.helpers.file_repo import FileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
 from tests.helpers.workflow_override import override_workflow
@@ -151,13 +152,17 @@ class _MergeSelectiveRegenBase(TestInfrahubApp):
         sources_dir = git_sources_dir / self.__class__.__name__
         git_repo = FileRepo(name="artifact-regen-e2e", sources_directory=sources_dir)
         repo_node = await Node.init(schema=InfrahubKind.REPOSITORY, db=db)
-        await repo_node.new(
-            db=db, name=git_repo.name, description="test repository", location="git@github.com:mock/test.git"
-        )
+        await repo_node.new(db=db, name=git_repo.name, description="test repository", location=git_repo.path)
         await repo_node.save(db=db)
-        repo = await InfrahubRepository.new(id=repo_node.id, name=git_repo.name, location=git_repo.path, client=client)
+        repo = await InfrahubRepository.new(
+            id=repo_node.id,
+            name=git_repo.name,
+            location=git_repo.path,
+            client=client,
+            infrahub_branch_name="main",
+        )
         commit = repo.get_commit_value(branch_name="main")
-        config_file = await repo.get_repository_config(branch_name="main", commit=commit)  # type: ignore[call-overload]
+        config_file = await call_in_flow(lambda: repo.get_repository_config(branch_name="main", commit=commit))
         assert config_file
         await repo.import_all_graphql_query(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]
         await repo.import_jinja2_transforms(branch_name="main", commit=commit, config_file=config_file)  # type: ignore[call-overload]

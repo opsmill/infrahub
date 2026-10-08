@@ -2,11 +2,21 @@ from dataclasses import dataclass
 from uuid import uuid4
 
 import pytest
+from infrahub_sdk.branch import BranchData, BranchStatus
 
-from infrahub.core.constants import RepositoryInternalStatus
+from infrahub.core.constants import RepositoryInternalStatus, RepositorySyncStatus, Severity, ValidatorConclusion
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
-from infrahub.git.tasks import format_check_log_entry, resolve_initial_import_branch
+from infrahub.git.divergence.models import ReconciledBranch
+from infrahub.git.tasks import (
+    ImportStatusOutcome,
+    build_cycle_fetch_message,
+    evaluate_import_status,
+    format_check_log_entry,
+    resolve_initial_import_branch,
+    select_writable_branch_commits,
+)
+from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 
 
 @dataclass
@@ -39,12 +49,12 @@ def test_resolve_initial_import_branch_uses_git_default(
         id=uuid4(),
         name="test-repository",
         location="git@github.com:mock/test-repository.git",
-        default_branch_name="production",
+        default_branch="production",
         has_origin=True,
         cache_repo=None,
         is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE.value,
-        infrahub_branch_name=None,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
         reinitialized=case.reinitialized,
     )
 
@@ -107,3 +117,189 @@ def test_format_check_log_entry_produces_single_line_per_entry() -> None:
 
     assert "\n" not in rendered
     assert rendered.count("[ERROR]") == 1
+
+
+@dataclass(frozen=True, kw_only=True)
+class ImportStatusCase:
+    name: str
+    sync_status: str | None
+    internal_status: str
+
+
+PASSING_IMPORT_STATUS_CASES = [
+    ImportStatusCase(
+        name="not_written_on_branch", sync_status=None, internal_status=RepositoryInternalStatus.ACTIVE.value
+    ),
+    ImportStatusCase(
+        name="in_sync",
+        sync_status=RepositorySyncStatus.IN_SYNC.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="syncing",
+        sync_status=RepositorySyncStatus.SYNCING.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="unknown",
+        sync_status=RepositorySyncStatus.UNKNOWN.value,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+    ),
+    ImportStatusCase(
+        name="inactive_after_import_error",
+        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=RepositoryInternalStatus.INACTIVE.value,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", PASSING_IMPORT_STATUS_CASES, ids=[case.name for case in PASSING_IMPORT_STATUS_CASES])
+def test_evaluate_import_status_passes_without_import_error(case: ImportStatusCase) -> None:
+    outcome = evaluate_import_status(
+        sync_status=case.sync_status,
+        internal_status=case.internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+    )
+
+    assert outcome == ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+
+
+@pytest.mark.parametrize(
+    "internal_status", [RepositoryInternalStatus.ACTIVE.value, RepositoryInternalStatus.STAGING.value]
+)
+def test_evaluate_import_status_fails_on_import_error(internal_status: str) -> None:
+    outcome = evaluate_import_status(
+        sync_status=RepositorySyncStatus.ERROR_IMPORT.value,
+        internal_status=internal_status,
+        repository_name="dealership-car",
+        branch_name="remove-ca",
+    )
+
+    assert outcome == ImportStatusOutcome(
+        conclusion=ValidatorConclusion.FAILURE,
+        severity=Severity.CRITICAL,
+        message=(
+            "The last import of the objects from repository 'dealership-car' on branch 'remove-ca' failed, so the "
+            "objects registered for this repository do not match the content of the branch. Merging would apply "
+            "the rest of the branch without them. Review the latest 'Import objects' task for this repository, "
+            "resolve the cause and run the checks again."
+        ),
+    )
+
+
+def listed_branch(name: str, status: BranchStatus) -> BranchData:
+    return BranchData(
+        id=f"{name}-id",
+        name=name,
+        sync_with_git=True,
+        is_default=name == "main",
+        has_schema_changes=False,
+        status=status,
+        branched_from="2024-01-01T00:00:00Z",
+    )
+
+
+def test_only_a_branch_that_can_still_record_a_commit_keeps_its_commit() -> None:
+    """A branch that rejects a commit would otherwise be selected for one on every sync cycle."""
+    statuses = {
+        "main": BranchStatus.OPEN,
+        "open": BranchStatus.OPEN,
+        "upgrade-rebase-needed": BranchStatus.NEED_UPGRADE_REBASE,
+        "rebase-needed": BranchStatus.NEED_REBASE,
+        "merging": BranchStatus.MERGING,
+        "merge-failed": BranchStatus.MERGE_FAILED,
+        "merged": BranchStatus.MERGED,
+        "deleting": BranchStatus.DELETING,
+    }
+    branch_commits: dict[str, str | None] = {name: f"commit-{name}" for name in [*statuses, "unlisted"]}
+    branches = {name: listed_branch(name=name, status=status) for name, status in statuses.items()}
+
+    assert select_writable_branch_commits(branch_commits=branch_commits, branches=branches) == {
+        "main": "commit-main",
+        "open": "commit-open",
+        "upgrade-rebase-needed": "commit-upgrade-rebase-needed",
+    }
+
+
+TRUNK_COMMIT = "a" * 40
+FEATURE_COMMIT = "b" * 40
+TRUNK = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=TRUNK_COMMIT)
+TRUNK_TO_PULL = BranchCommitPair(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=None)
+FEATURE = BranchCommitPair(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+
+
+@dataclass
+class CycleMessageCase:
+    name: str
+    trunk_commit: str | None
+    reconciled: list[ReconciledBranch]
+    expected_single_branch: tuple[str, str, str | None]
+    expected_branches: tuple[BranchCommitPair, ...]
+
+
+CYCLE_MESSAGE_CASES = [
+    # A cycle that advanced nothing still lists the trunk, which is what heals a worker that missed a message.
+    CycleMessageCase(
+        name="idle_cycle_lists_the_trunk",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK,),
+    ),
+    CycleMessageCase(
+        name="an_advanced_branch_follows_the_unchanged_trunk",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+        ],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK, FEATURE),
+    ),
+    CycleMessageCase(
+        name="an_advanced_trunk_is_listed_once",
+        trunk_commit=TRUNK_COMMIT,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT),
+            ReconciledBranch(infrahub_branch_name="main", infrahub_branch_id="main-id", commit=TRUNK_COMMIT),
+        ],
+        expected_single_branch=("main", "main-id", TRUNK_COMMIT),
+        expected_branches=(TRUNK, FEATURE),
+    ),
+    CycleMessageCase(
+        name="without_a_trunk_commit_the_workers_pull_the_trunk",
+        trunk_commit=None,
+        reconciled=[],
+        expected_single_branch=("main", "main-id", None),
+        expected_branches=(TRUNK_TO_PULL,),
+    ),
+    CycleMessageCase(
+        name="without_a_trunk_commit_the_trunk_is_still_pulled_before_the_advanced_branch",
+        trunk_commit=None,
+        reconciled=[
+            ReconciledBranch(infrahub_branch_name="feature", infrahub_branch_id="feature-id", commit=FEATURE_COMMIT)
+        ],
+        expected_single_branch=("main", "main-id", None),
+        expected_branches=(TRUNK_TO_PULL, FEATURE),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CYCLE_MESSAGE_CASES, ids=[case.name for case in CYCLE_MESSAGE_CASES])
+def test_the_cycle_message_lists_the_trunk_first_then_every_advanced_branch(
+    case: CycleMessageCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(registry, "_default_branch", "main")
+
+    message = build_cycle_fetch_message(
+        location="https://git.example.com/repo.git",
+        repository_id="repository-id",
+        repository_name="repo",
+        repository_kind="CoreRepository",
+        default_branch_id="main-id",
+        trunk_commit=case.trunk_commit,
+        reconciled=case.reconciled,
+    )
+
+    assert (message.infrahub_branch_name, message.infrahub_branch_id, message.commit) == case.expected_single_branch
+    assert message.branches == case.expected_branches

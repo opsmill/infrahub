@@ -1,0 +1,101 @@
+# GraphQL surface of the rewrite record
+#
+# Governance: "Ask First" under AGENTS.md. This is a GraphQL schema modification. It needs a
+# maintainer's sign-off before implementation.
+#
+# Nothing here is hand-written into schema/schema.graphql. The four attributes are declared in
+# backend/infrahub/core/schema/definitions/core/repository.py and the GraphQL types below are
+# generated from them. This file states the contract the generated schema must satisfy.
+
+# --- Read surface -------------------------------------------------------------------------------
+#
+# The four attributes appear on every repository node kind, because they are declared on the
+# generic: CoreGenericRepository, CoreRepository and CoreReadOnlyRepository.
+#
+# They are branch-local, so a query returns the value for the branch the query names. There is no
+# cross-branch read here. INFP-671 owns that surface.
+
+type CoreGenericRepository {
+  # ... existing fields ...
+
+  "The commit Infrahub had imported on this branch before the last rewrite."
+  last_rewrite_previous_commit: TextAttribute
+
+  "The commit Infrahub moved this branch onto after the last rewrite."
+  last_rewrite_commit: TextAttribute
+
+  "When Infrahub detected the last rewrite of this branch."
+  last_rewrite_at: TextAttribute
+
+  "How many rewrites this branch has seen, including those on the default branch before this branch was created; see data-model.md."
+  rewrite_count: NumberAttribute
+}
+
+# --- Example read -------------------------------------------------------------------------------
+
+query RepositoryRewriteRecord($repository_id: ID!) {
+  CoreGenericRepository(ids: [$repository_id]) {
+    edges {
+      node {
+        id
+        name { value }
+        commit { value }
+        last_rewrite_previous_commit { value }
+        last_rewrite_commit { value }
+        last_rewrite_at { value }
+        rewrite_count { value }
+      }
+    }
+  }
+}
+
+# --- Write surface ------------------------------------------------------------------------------
+#
+# The recorder is the sole writer. It uses the generated update mutation for the repository kind on
+# the target Infrahub branch, which the SDK node API builds from the node's own kind and sends with
+# the changed fields only. No new mutation is introduced, and no new permission is introduced:
+# the values are readable by anyone who can read the repository.
+#
+# Type conventions in this codebase:
+#   - a query filter variable uses ID!
+#   - a mutation data variable uses String!
+#   - a number attribute uses BigInt!
+
+mutation RecordRepositoryRewrite(
+  $repository_id: String!
+  $previous_commit: String!
+  $commit: String!
+  $rewritten_at: String!
+  $count: BigInt!
+) {
+  CoreRepositoryUpdate(
+    data: {
+      id: $repository_id
+      last_rewrite_previous_commit: { value: $previous_commit }
+      last_rewrite_commit: { value: $commit }
+      last_rewrite_at: { value: $rewritten_at }
+      rewrite_count: { value: $count }
+    }
+  ) {
+    ok
+  }
+}
+
+# --- Contract assertions ------------------------------------------------------------------------
+#
+# C1. The four fields are present on all three repository node kinds.
+# C2. All four are nullable. A repository whose default branch was never reconciled returns null
+#     for each on every branch that has not itself been reconciled.
+# C3. A write on one branch is not visible on another branch that already existed when the write
+#     happened. LOCAL isolates writes, diffs and merges.
+# C4. A branch created AFTER a reconciliation of the branch it forked from reads that branch's four
+#     values, because the branch read path falls back to the origin branch as of branched_from.
+#     This is inheritance, not isolation, and it is the same behaviour the `commit` attribute
+#     beside them already has. It applies to a REBASED branch too: Branch.rebase moves
+#     branched_from forward, so a rebased branch starts reading the default branch's later record.
+#     See data-model.md, "What LOCAL does not do".
+# C5. They never appear in a branch diff and never appear in a proposed change, because they are
+#     declared BranchSupportType.LOCAL. A branch-safety test asserts this rather than inferring it
+#     from the declaration.
+# C6. Merging a branch that carries a record does not carry that record onto the destination.
+# C7. No new permission gates them. Read access follows read access to the repository.

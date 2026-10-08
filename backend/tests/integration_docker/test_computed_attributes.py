@@ -599,18 +599,18 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         assert runs_for_the_merge == 1
 
     async def test_rebase_recomputes_replayed_devices_in_one_dispatch(self, client: InfrahubClient) -> None:
-        """A rebase replays the destination's created devices on the branch, in one dispatch.
+        """A rebase replays the devices the branch created onto the new base, in one dispatch.
 
-        The branch reads the destination's values through its new fork point, so the recompute
-        writes nothing. What the coalescing changes is the dispatch: one flow for the replayed
-        batch instead of one per replayed node, on the user branch rather than the destination.
+        The branch already computed their values, so the recompute writes nothing. What the
+        coalescing changes is the dispatch: one flow for the replayed batch instead of one per
+        replayed node, on the user branch rather than the destination.
         """
         site = await client.get(kind="LocationSite", hfid=["sth"])
         branch = await client.branch.create(branch_name="coalesced-python-rebase")
 
         expected = [f"swe-sth-router-{instance}" for instance in REBASE_DEVICE_INSTANCES]
         device_ids = [
-            await create_device_and_wait(client, site=site, instance=instance, expected=name)
+            await create_device_and_wait(client, site=site, instance=instance, expected=name, branch=branch.name)
             for instance, name in zip(REBASE_DEVICE_INSTANCES, expected, strict=True)
         ]
 

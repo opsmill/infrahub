@@ -21,6 +21,8 @@ from infrahub.workflows.catalogue import PROFILE_REFRESH_MULTIPLE
 from .main import InfrahubMutationMixin, InfrahubMutationOptions
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.branch import Branch
@@ -30,6 +32,8 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 log = get_logger()
+
+PROFILE_PEER_RELATIONSHIP_NAMES = ("related_nodes", "related_templates")
 
 
 class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
@@ -105,17 +109,16 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
             )
 
     @classmethod
-    async def _get_profile_related_node_ids(cls, db: InfrahubDatabase, obj: Node) -> set[str]:
-        related_nodes = []
-        related_nodes.extend(await obj.related_nodes.get_relationships(db=db))  # type: ignore[attr-defined]
-
-        if hasattr(obj, "related_templates"):
-            related_nodes.extend(await obj.related_templates.get_relationships(db=db))  # type: ignore[attr-defined]
-
-        if related_nodes:
-            related_node_ids = {rel.peer_id for rel in related_nodes}
-        else:
-            related_node_ids = set()
+    async def _get_profile_related_node_ids(
+        cls, db: InfrahubDatabase, obj: Node, rel_names: Sequence[str] = PROFILE_PEER_RELATIONSHIP_NAMES
+    ) -> set[str]:
+        related_node_ids: set[str] = set()
+        for rel_name in rel_names:
+            if rel_name not in obj.get_schema().relationship_names:
+                continue
+            for rel in await obj.get_relationship(name=rel_name).get_relationships(db=db):
+                if rel.peer_id:
+                    related_node_ids.add(rel.peer_id)
         return related_node_ids
 
     @classmethod
@@ -155,13 +158,15 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
         cls._validate_no_resource_pools_in_data(data)
 
         workflow_service = info.context.active_service.workflow
-        original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+        # Only a payload with these relationships can remove peers, and a read of all peers is slow on a large profile.
+        rel_names = [rel_name for rel_name in PROFILE_PEER_RELATIONSHIP_NAMES if rel_name in data]
+        original_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
         obj, mutation = await super()._call_mutate_update(
             info=info, data=data, branch=branch, db=db, obj=obj, skip_uniqueness_check=skip_uniqueness_check
         )
 
-        updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj)
+        updated_related_node_ids = await cls._get_profile_related_node_ids(db=db, obj=obj, rel_names=rel_names)
 
         # Handle nodes removed from related_nodes - these need explicit refresh
         # since the async automation won't find them in the profile's related_nodes after the change.

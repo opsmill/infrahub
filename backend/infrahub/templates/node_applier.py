@@ -108,8 +108,7 @@ class NodeTemplateApplier:
             if attr.value is None:
                 continue
 
-            # source_id is dynamically set by NodePropertyMixin._init_node_property_mixin hence the type hint ignore
-            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}  # type: ignore[attr-defined]
+            field_data: dict[str, Any] = {"value": attr.value, "source": attr.source_id or template.id}
             if attr.is_from_profile:
                 field_data["is_from_profile"] = True
             fields[attr_name] = field_data
