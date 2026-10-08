@@ -18,11 +18,15 @@ import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 
+type FormValues = Record<string, any>;
+
+/** Returning values resets the form to them instead of to the submitted values. */
+type ResettingSubmitHandler = (
+  v: FormValues
+) => FormValues | undefined | Promise<FormValues | undefined>;
+
 export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  /** Returning values resets the form to them instead of to the submitted values. */
-  onSubmit?: (
-    v: Record<string, any>
-  ) => void | Record<string, any> | Promise<void | Record<string, any>>;
+  onSubmit?: ((v: FormValues) => void) | ResettingSubmitHandler;
   onCancel?: () => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
