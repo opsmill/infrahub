@@ -46,9 +46,10 @@ class TestTemplateWithNumberPool:
         await admin_page.get_by_label("Name *").fill("module capacity pool")
         await admin_page.get_by_label("Node *").click()
         await admin_page.get_by_role("option", name="Patch Panel Infra").click()
-        await expect(admin_page.get_by_label("Number Attribute *")).to_contain_text("Module Capacity")
-        await admin_page.get_by_label("Start range *").fill("100")
-        await admin_page.get_by_label("End range *").fill("200")
+        await admin_page.get_by_label("Attribute *", exact=True).click()
+        await admin_page.get_by_role("option", name="Module Capacity").click()
+        await admin_page.get_by_role("textbox", name="Start", exact=True).fill("100")
+        await admin_page.get_by_role("textbox", name="End", exact=True).fill("200")
         await admin_page.get_by_role("button", name="Save").click()
         await expect(admin_page.get_by_text("Number pool created")).to_be_visible()
 
