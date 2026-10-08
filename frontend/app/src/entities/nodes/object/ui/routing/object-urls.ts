@@ -1,4 +1,9 @@
+import { jsonToGraphQLQuery } from "json-to-graphql-query";
+
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+import { QSP } from "@/shared/config/qsp";
 
 import { IP_ADDRESS_GENERIC } from "@/entities/ipam/ip-addresses/domain/model/ip-address";
 import { IP_NAMESPACE_GENERIC } from "@/entities/ipam/ip-namespaces/domain/model/ip-namespace";
@@ -9,12 +14,12 @@ import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/
 import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getSchema } from "@/entities/schema/domain/use-cases/get-schema";
 
-export const getObjectDetailsUrl = (
+export function getObjectDetailsUrl(
   objectKind: string,
   objectId?: string,
   overrideParams?: overrideQueryParams[],
   tabSegment?: string
-) => {
+) {
   const tab = tabSegment ? `/${tabSegment}` : "";
   const { schema } = getSchema(objectKind);
   if (!schema) {
@@ -48,4 +53,31 @@ export const getObjectDetailsUrl = (
 
   const path = objectId ? `/objects/${objectKind}/${objectId}${tab}` : `/objects/${objectKind}`;
   return constructPath(path, overrideParams);
-};
+}
+
+export function getObjectTasksUrl(objectId: string) {
+  return constructPath(`/tasks?${QSP.FILTER}=[{"name":"node__value","value":"${objectId}"}]`);
+}
+
+export function getObjectGraphqlSandboxUrl(objectKind: string, objectId: string) {
+  return constructPath("/graphql", [
+    {
+      name: "query",
+      value: jsonToGraphQLQuery(
+        {
+          query: {
+            [objectKind]: {
+              __args: { ids: [objectId] },
+              edges: { node: nodeCoreFragment },
+            },
+          },
+        },
+        { pretty: true }
+      ),
+    },
+  ]);
+}
+
+export function getDocumentationUrl(documentation: string) {
+  return documentation.startsWith("http") ? documentation : `${INFRAHUB_DOC_LOCAL}${documentation}`;
+}

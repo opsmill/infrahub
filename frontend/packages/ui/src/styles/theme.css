@@ -246,8 +246,8 @@
   --panel: linear-gradient(
     180deg,
     #211f1d 0,
-    #0b0a09 160px,
-    #0b0a09 calc(100% - 160px),
+    #141414 160px,
+    #141414 calc(100% - 160px),
     #211f1d 100%
   );
   --panel-shadow: 0 0 #0000;
