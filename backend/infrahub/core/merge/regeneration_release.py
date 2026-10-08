@@ -1,29 +1,29 @@
-"""Release the regeneration held for a repository once its pending merges reached the remote."""
+"""Release the regeneration held for a repository once its pending merges left the queue, delivered or abandoned."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, assert_never
 
 from infrahub_sdk.protocols import CoreTransformPython
 
 from infrahub.computed_attribute.recompute_resolution import RecomputeResolver
 from infrahub.core.constants import FullRegenerationReason
 from infrahub.exceptions import ServiceUnavailableError
-from infrahub.generators.models import RequestGeneratorDefinitionRun
-from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 
 from .python_target_sources import DeclaredAttribute
 from .recompute_coalescing import PYTHON_COMPUTED_ATTRIBUTE, AffectedTarget, CoalescedRecompute
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Collection
+    from collections.abc import Awaitable, Callable, Collection, Iterable
 
     from infrahub_sdk.client import InfrahubClient
+    from pydantic import BaseModel
 
     from infrahub.context import InfrahubContext
     from infrahub.core.schema.manager import SchemaManager
-    from infrahub.generators.models import ProposedChangeGeneratorDefinition
+    from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
+    from infrahub.git.models import RequestArtifactDefinitionGenerate
     from infrahub.git.writeback.models import HeldItem, HeldRegeneration
     from infrahub.message_bus.types import ProposedChangeArtifactDefinition
 
@@ -102,7 +102,7 @@ class HeldDefinitionResolver:
 
 
 class HeldRegenerationReleaser:
-    """Dispatch the regeneration held for a repository, once the merges that it waited for reached the remote.
+    """Dispatch the regeneration held for a repository, once its merges left the queue, delivered or abandoned.
 
     A held item takes its narrowing from the request kept at its hold, and every other field from its
     definition as it is now, because the delivery's import can change the definition after the hold.
@@ -127,18 +127,28 @@ class HeldRegenerationReleaser:
     async def release(
         self, *, repository_id: str, held: HeldRegeneration, renew: Callable[[], Awaitable[None]]
     ) -> None:
-        """Dispatch the items of the window, and call `renew` after each dispatch.
+        """Dispatch the items of the window, and call `renew` after each awaited step.
 
-        It changes no delivery state, so after a failed dispatch every item of the window stays held.
+        It changes no delivery state of the released repository, so after a failed dispatch every item of the
+        window stays held. Its dispatches pass the barrier, which can hold work of other pending repositories.
 
         Raises:
-            ServiceUnavailableError: A recompute of a Python computed attribute could not be submitted.
+            ServiceUnavailableError: The submission of a Python recompute was skipped.
+            Exception: Any error of a submission, a dispatch or a definition read propagates.
 
         """
-        widen = held.widen
-        if widen is not None and widen.scope == "all":
-            await self._release_repository(repository_id=repository_id, reason=widen.reason, renew=renew)
-            return
+        terminals_reason: FullRegenerationReason | None = None
+        if held.widen is not None:
+            match held.widen.scope:
+                case "all":
+                    await self._release_repository(
+                        repository_id=repository_id, held=held, reason=held.widen.reason, renew=renew
+                    )
+                    return
+                case "terminals":
+                    terminals_reason = held.widen.reason
+                case _:
+                    assert_never(held.widen.scope)
 
         artifacts = await self.definitions.artifact_requests(
             branch=self.default_branch_name, ids=[item.id for item in held.artifact_definitions]
@@ -153,6 +163,7 @@ class HeldRegenerationReleaser:
         if unresolved:
             await self._release_repository(
                 repository_id=repository_id,
+                held=held,
                 reason=FullRegenerationReason.HELD_SET_UNRESOLVED,
                 renew=renew,
                 unresolved_ids=unresolved,
@@ -160,15 +171,20 @@ class HeldRegenerationReleaser:
             return
 
         generator_runs = [
-            await self._generator_run(repository_id=repository_id, item=item, unnarrowed=generators[item.id])
+            await self._narrowed_request(
+                repository_id=repository_id,
+                item=item,
+                unnarrowed=generators[item.id],
+                narrowing={"target_members"},
+            )
             for item in held.generator_definitions
         ]
         artifact_generates: list[RequestArtifactDefinitionGenerate] = []
-        if widen is not None:
+        if terminals_reason is not None:
             log.info(
                 "Regenerating every artifact definition of the repository to release its held regeneration",
                 repository_id=repository_id,
-                reason=widen.reason,
+                reason=terminals_reason,
             )
             await self.dispatcher.submit_repository_regeneration(
                 context=self.context,
@@ -179,7 +195,12 @@ class HeldRegenerationReleaser:
             await renew()
         else:
             artifact_generates = [
-                await self._artifact_generate(repository_id=repository_id, item=item, unnarrowed=artifacts[item.id])
+                await self._narrowed_request(
+                    repository_id=repository_id,
+                    item=item,
+                    unnarrowed=artifacts[item.id],
+                    narrowing={"members", "limit"},
+                )
                 for item in held.artifact_definitions
             ]
 
@@ -193,14 +214,15 @@ class HeldRegenerationReleaser:
                 renew=renew,
             )
 
-        for attribute in held.python_attributes:
-            await self._recompute_whole_kind(kind=attribute.kind, attribute_name=attribute.attribute)
-            await renew()
+        await self._recompute_whole_kinds(
+            attributes=[(attribute.kind, attribute.attribute) for attribute in held.python_attributes], renew=renew
+        )
 
     async def _release_repository(
         self,
         *,
         repository_id: str,
+        held: HeldRegeneration,
         reason: FullRegenerationReason,
         renew: Callable[[], Awaitable[None]],
         **log_context: object,
@@ -215,58 +237,52 @@ class HeldRegenerationReleaser:
             context=self.context, target_branch=self.default_branch_name, repository_id=repository_id, scope="all"
         )
         await renew()
-        for attribute in await self.definitions.python_attributes(
-            branch=self.default_branch_name, repository_id=repository_id
-        ):
-            await self._recompute_whole_kind(kind=attribute.kind, attribute_name=attribute.attribute_name)
-            await renew()
+        owned = await self.definitions.python_attributes(branch=self.default_branch_name, repository_id=repository_id)
+        # A held attribute whose owner was unknown at its hold is not in the owned list.
+        await self._recompute_whole_kinds(
+            attributes=[
+                *((attribute.kind, attribute.attribute_name) for attribute in owned),
+                *((attribute.kind, attribute.attribute) for attribute in held.python_attributes),
+            ],
+            renew=renew,
+        )
 
-    async def _artifact_generate(
-        self, *, repository_id: str, item: HeldItem, unnarrowed: RequestArtifactDefinitionGenerate
-    ) -> RequestArtifactDefinitionGenerate:
+    async def _narrowed_request[RequestT: BaseModel](
+        self, *, repository_id: str, item: HeldItem, unnarrowed: RequestT, narrowing: set[str]
+    ) -> RequestT:
+        """Copy the `narrowing` fields of the request kept at the hold onto the request built now."""
         kept = await self.narrowed.get(
-            repository_id=repository_id,
-            hold_seq=item.hold_seq,
-            identifier=item.identifier,
-            model=RequestArtifactDefinitionGenerate,
+            repository_id=repository_id, hold_seq=item.hold_seq, identifier=item.identifier, model=type(unnarrowed)
         )
         if kept is None:
             return unnarrowed
-        return unnarrowed.model_copy(update={"members": kept.members, "limit": kept.limit})
+        return unnarrowed.model_copy(update=kept.model_dump(include=narrowing))
 
-    async def _generator_run(
-        self, *, repository_id: str, item: HeldItem, unnarrowed: RequestGeneratorDefinitionRun
-    ) -> RequestGeneratorDefinitionRun:
-        kept = await self.narrowed.get(
-            repository_id=repository_id,
-            hold_seq=item.hold_seq,
-            identifier=item.identifier,
-            model=RequestGeneratorDefinitionRun,
+    async def _recompute_whole_kinds(
+        self, *, attributes: Iterable[tuple[str, str]], renew: Callable[[], Awaitable[None]]
+    ) -> None:
+        targets = frozenset(
+            AffectedTarget(
+                family=PYTHON_COMPUTED_ATTRIBUTE,
+                target_kind=kind,
+                attribute_name=attribute_name,
+                reads_across_relationship=False,
+                reader_lookups=frozenset(),
+                precise=False,
+                whole_kind=True,
+            )
+            for kind, attribute_name in attributes
         )
-        if kept is None:
-            return unnarrowed
-        return unnarrowed.model_copy(update={"target_members": kept.target_members})
-
-    async def _recompute_whole_kind(self, *, kind: str, attribute_name: str) -> None:
-        coalesced = CoalescedRecompute(
-            branch=self.default_branch_name,
-            targets=frozenset(
-                {
-                    AffectedTarget(
-                        family=PYTHON_COMPUTED_ATTRIBUTE,
-                        target_kind=kind,
-                        attribute_name=attribute_name,
-                        reads_across_relationship=False,
-                        reader_lookups=frozenset(),
-                        precise=False,
-                        whole_kind=True,
-                    )
-                }
-            ),
-        )
+        if not targets:
+            return
+        coalesced = CoalescedRecompute(branch=self.default_branch_name, targets=targets)
+        planned = self.python_submitter.plan(coalesced)
         submitted = await self.python_submitter.submit(coalesced=coalesced, context=self.context.to_event_context())
         # A failed submission is only logged and skipped, so without this check the held attribute is never recomputed.
-        if submitted != self.python_submitter.plan(coalesced):
+        skipped = [submission for submission in planned if submission not in submitted]
+        if skipped:
+            names = ", ".join(f"{submission.target_kind}.{submission.attribute_name}" for submission in skipped)
             raise ServiceUnavailableError(
-                message=f"The recompute of the Python computed attribute {kind}.{attribute_name} could not be submitted."
+                message=f"The recompute of the Python computed attributes {names} could not be submitted."
             )
+        await renew()

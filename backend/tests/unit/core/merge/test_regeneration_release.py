@@ -66,6 +66,7 @@ CONTEXT = InfrahubContext(
 )
 CAR_DESCRIPTION = DeclaredAttribute(kind="TestCar", attribute_name="description")
 PERSON_SUMMARY = DeclaredAttribute(kind="TestPerson", attribute_name="summary")
+LOCATION_NAME = DeclaredAttribute(kind="TestLocation", attribute_name="name")
 FULL_RELEASE_EVENT = "Regenerating every definition of the repository to release its held regeneration"
 TERMINALS_RELEASE_EVENT = "Regenerating every artifact definition of the repository to release its held regeneration"
 
@@ -96,13 +97,19 @@ def _generator_run(
 
 
 def _artifact_generate(
-    *, definition_id: str, repository_id: str = REPOSITORY_X, name: str | None = None, members: tuple[str, ...] = ()
+    *,
+    definition_id: str,
+    repository_id: str = REPOSITORY_X,
+    name: str | None = None,
+    members: tuple[str, ...] = (),
+    limit: tuple[str, ...] = (),
 ) -> RequestArtifactDefinitionGenerate:
     return RequestArtifactDefinitionGenerate(
         branch=DEFAULT_BRANCH,
         artifact_definition_id=definition_id,
         artifact_definition_name=name or definition_id,
         members=list(members),
+        limit=list(limit),
         repository_id=repository_id,
     )
 
@@ -338,12 +345,14 @@ NARROWING_TEST_CASES: list[NarrowingTestCase] = [
     NarrowingTestCase(
         name="a_kept_request_gives_its_narrowing_to_the_definition_as_it_is_now",
         kept_artifact=_artifact_generate(
-            definition_id="ad-x", name="ad-x-before-the-import", members=("member-1", "member-2")
+            definition_id="ad-x", name="ad-x-before-the-import", members=("member-1", "member-2"), limit=("limit-1",)
         ),
         kept_generator_run=_generator_run(
             definition_id="gd-x", file_path="before_the_import.py", target_members=("target-1",)
         ),
-        expected_artifact=_artifact_generate(definition_id="ad-x", members=("member-1", "member-2")),
+        expected_artifact=_artifact_generate(
+            definition_id="ad-x", members=("member-1", "member-2"), limit=("limit-1",)
+        ),
         expected_generator_run=_generator_run(definition_id="gd-x", target_members=("target-1",)),
     ),
     NarrowingTestCase(
@@ -434,6 +443,9 @@ class FullReleaseTestCase:
     name: str
     held: HeldRegeneration
     expected_record: dict[str, Any]
+    expected_python_recomputes: list[DeclaredAttribute] = field(
+        default_factory=lambda: [CAR_DESCRIPTION, PERSON_SUMMARY]
+    )
 
 
 FULL_RELEASE_TEST_CASES: list[FullReleaseTestCase] = [
@@ -466,6 +478,23 @@ FULL_RELEASE_TEST_CASES: list[FullReleaseTestCase] = [
             "reason": FullRegenerationReason.UNHELD_FOLLOW_UP,
         },
     ),
+    FullReleaseTestCase(
+        name="a_held_python_attribute_that_the_repository_does_not_own_is_recomputed_once_too",
+        held=HeldRegeneration(
+            python_attributes=(
+                HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=1),
+                HeldPythonAttribute(kind="TestLocation", attribute="name", hold_seq=2),
+            ),
+            widen=HeldWiden(scope="all", reason=FullRegenerationReason.UNHELD_FOLLOW_UP, hold_seq=3),
+        ),
+        expected_record={
+            "event": FULL_RELEASE_EVENT,
+            "log_level": "info",
+            "repository_id": REPOSITORY_X,
+            "reason": FullRegenerationReason.UNHELD_FOLLOW_UP,
+        },
+        expected_python_recomputes=[CAR_DESCRIPTION, LOCATION_NAME, PERSON_SUMMARY],
+    ),
 ]
 
 
@@ -491,10 +520,9 @@ async def test_a_full_release_regenerates_every_definition_and_python_attribute_
     assert _calls(recorder) == [
         ARTIFACT_TRIGGER_OF_X,
         GENERATOR_TRIGGER_OF_X,
-        _python_recompute(CAR_DESCRIPTION),
-        _python_recompute(PERSON_SUMMARY),
+        *(_python_recompute(attribute) for attribute in test_case.expected_python_recomputes),
     ]
-    assert renew.after_calls == [2, 3, 4]
+    assert renew.after_calls == [2, 2 + len(test_case.expected_python_recomputes)]
     assert records == [test_case.expected_record]
 
 
@@ -642,7 +670,7 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
             python_attributes=(HeldPythonAttribute(kind="TestCar", attribute="description", hold_seq=1),)
         ),
         error=ServiceUnavailableError,
-        match=r"^The recompute of the Python computed attribute TestCar\.description could not be submitted\.$",
+        match=r"^The recompute of the Python computed attributes TestCar\.description could not be submitted\.$",
         expected_calls=[_python_recompute(CAR_DESCRIPTION)],
     ),
 ]
