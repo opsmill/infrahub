@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.exceptions import ServerNotReachableError
 
 from infrahub.core.constants import FullRegenerationReason, RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
 from infrahub.exceptions import (
@@ -16,6 +17,7 @@ from infrahub.exceptions import (
     DeliveryStateUnavailableError,
     RepositoryConnectionError,
     RepositoryCredentialsError,
+    ValidationError,
 )
 from infrahub.git.writeback.models import (
     AbandonmentRecord,
@@ -397,11 +399,11 @@ async def test_a_replay_that_would_restore_discarded_commits_is_refused(rig: Rig
 async def test_no_recorded_commit_skips_the_destination_check_and_owes_an_import(rig: Rig) -> None:
     await rig.queue(_merge())
     rig.git.graph_commit = None
-    rig.git.remote_heads["main"] = REWRITE
+    rig.git.remote_heads["main"] = UPSTREAM
 
     result = await rig.deliver()
 
-    delivered = f"{REWRITE}+{FEATURE}"
+    delivered = f"{UPSTREAM}+{FEATURE}"
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DELIVERED, commit=delivered)
     assert rig.git.pushed == [delivered]
     assert rig.git.imported == [delivered]
@@ -501,6 +503,83 @@ async def test_push_failure_resets_to_the_recorded_commit_and_records_the_cause(
     assert rig.intent.error == case.failure.message
 
 
+async def test_failed_read_of_the_recorded_commit_is_retried_as_a_failed_record(rig: Rig) -> None:
+    entry = _merge()
+    await rig.queue(entry)
+    rig.git.failures["recorded_commit"] = [ServerNotReachableError(address="http://infrahub-server:8000")]
+    message = "The record step of the delivery failed with ServerNotReachableError."
+
+    with pytest.raises(RetryableDeliveryError, match=rf"^{re.escape(message)}$") as raised:
+        await rig.deliver()
+
+    assert raised.value.failure == DeliveryFailure(
+        cause=RepositoryDeliveryFailureCause.RECORD_FAILED, retryable=True, message=message
+    )
+    assert rig.git.calls == ["fetch", "remote_head", "recorded_commit"]
+    assert rig.intent.queue.entries == (entry,)
+    assert rig.intent.status == RepositoryDeliveryStatus.PENDING
+    assert rig.intent.cause == RepositoryDeliveryFailureCause.RECORD_FAILED
+    assert rig.intent.error == message
+
+
+@dataclass
+class UnrecordedFailureCase:
+    name: str
+    git_failures: dict[str, list[Exception]]
+    conflicting_commits: frozenset[str]
+    error_line: str
+
+
+UNRECORDED_FAILURE_CASES: list[UnrecordedFailureCase] = [
+    UnrecordedFailureCase(
+        name="refused_push",
+        git_failures={"push": [RepositoryCredentialsError(identifier="net-repo")]},
+        conflicting_commits=frozenset(),
+        error_line=(
+            "The push step of the delivery to repository net-repo failed: Authentication failed for net-repo, "
+            "please validate the credentials."
+        ),
+    ),
+    UnrecordedFailureCase(
+        name="replay_conflict",
+        git_failures={},
+        conflicting_commits=frozenset({FEATURE}),
+        error_line=(
+            f"The delivery to repository net-repo was refused: The merge merge-1 of branch add-vlan at commit "
+            f"{FEATURE} conflicts with the remote branch main of repository net-repo at {TRUNK}, so nothing was "
+            "pushed."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in UNRECORDED_FAILURE_CASES])
+async def test_failure_is_logged_before_a_failed_record_of_it_stops_the_attempt(
+    rig: Rig, case: UnrecordedFailureCase, caplog: pytest.LogCaptureFixture
+) -> None:
+    await rig.queue(_merge())
+    rig.git.failures.update({method: list(errors) for method, errors in case.git_failures.items()})
+    rig.git.conflicting_commits.update(case.conflicting_commits)
+    rig.state.failures["record_failure"] = [
+        DeliveryStateUnavailableError(repository_id=REPOSITORY.id, acquire_seconds=10)
+    ]
+
+    with (
+        caplog.at_level(logging.ERROR, logger=RUN_LOGGER),
+        pytest.raises(
+            RetryableDeliveryError,
+            match=(
+                r"^The lock of the delivery state of repository repository-1 was not acquired within 10 seconds; "
+                r"try again\.$"
+            ),
+        ),
+    ):
+        await rig.deliver()
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [case.error_line]
+    assert rig.state.calls[-1] == "record_failure"
+
+
 async def test_import_is_owed_before_the_commit_is_recorded(rig: Rig) -> None:
     await rig.queue(_merge())
     rig.git.remote_heads["main"] = UPSTREAM
@@ -543,6 +622,28 @@ async def test_crash_between_the_owed_import_and_the_record_leaves_the_import_to
     assert rig.git.imported == [delivered]
     assert rig.intent.queue.import_owed_commit is None
     assert rig.intent.queue.entries == ()
+
+
+async def test_failed_record_resets_the_worktree_and_keeps_the_pushed_merge_queued(rig: Rig) -> None:
+    entry = _merge()
+    await rig.queue(entry)
+    rig.git.remote_heads["main"] = UPSTREAM
+    rig.git.failures["record"] = [DatabaseError(message="Unable to connect to the database")]
+
+    result = await rig.deliver(final_attempt=True)
+
+    delivered = f"{UPSTREAM}+{FEATURE}"
+    failure = DeliveryFailure(
+        cause=RepositoryDeliveryFailureCause.RECORD_FAILED, retryable=True, message="Unable to connect to the database"
+    )
+    assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.FAILED, commit=delivered, failure=failure)
+    assert rig.git.calls[-2:] == ["record", "reset"]
+    assert rig.git.head == TRUNK
+    assert rig.git.pushed == [delivered]
+    assert rig.git.recorded == []
+    assert "settle_delivery" not in rig.state.calls
+    assert rig.intent.queue.entries == (entry,)
+    assert rig.intent.cause == RepositoryDeliveryFailureCause.RECORD_FAILED
 
 
 @dataclass
@@ -591,6 +692,82 @@ async def test_queue_that_grew_during_the_import_keeps_the_import_owed(rig: Rig)
     assert rig.intent.queue.import_owed_commit == delivered
     assert rig.intent.queue.entries == (OTHER_MERGE,)
     assert rig.intent.status == RepositoryDeliveryStatus.PENDING
+
+
+@dataclass
+class ImportFailureCase:
+    name: str
+    error: Exception
+    final_attempt: bool
+    failure: DeliveryFailure
+
+
+IMPORT_FAILURE_CASES: list[ImportFailureCase] = [
+    ImportFailureCase(
+        name="interrupted_import_on_the_final_attempt",
+        error=DatabaseError(message="Unable to connect to the database"),
+        final_attempt=True,
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED,
+            retryable=True,
+            message="Unable to connect to the database",
+        ),
+    ),
+    ImportFailureCase(
+        name="invalid_content_before_the_final_attempt",
+        error=ValidationError(input_value="The artifact definition net-config has no target group."),
+        final_attempt=False,
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.IMPORT_FAILED,
+            retryable=False,
+            message="The artifact definition net-config has no target group.",
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in IMPORT_FAILURE_CASES])
+async def test_final_import_failure_keeps_the_import_owed_and_the_merge_queued(
+    rig: Rig, case: ImportFailureCase
+) -> None:
+    entry = _merge()
+    await rig.queue(entry)
+    rig.git.remote_heads["main"] = UPSTREAM
+    rig.git.failures["import_at"] = [case.error]
+
+    result = await rig.deliver(final_attempt=case.final_attempt)
+
+    delivered = f"{UPSTREAM}+{FEATURE}"
+    assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.FAILED, commit=delivered, failure=case.failure)
+    assert rig.git.pushed == [delivered]
+    assert rig.git.recorded == [delivered]
+    assert rig.git.imported == []
+    assert "settle_delivery" not in rig.state.calls
+    assert rig.intent.queue.import_owed_commit == delivered
+    assert rig.intent.queue.entries == (entry,)
+    assert rig.intent.status == RepositoryDeliveryStatus.ACTION_REQUIRED
+    assert rig.intent.cause == case.failure.cause
+    assert rig.intent.error == case.failure.message
+
+
+async def test_failed_broadcast_still_delivers_and_names_the_repository(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    await rig.queue(_merge())
+    rig.git.failures["broadcast"] = [RuntimeError("The message bus is not reachable.")]
+
+    with caplog.at_level(logging.WARNING, logger=RUN_LOGGER):
+        result = await rig.deliver()
+
+    delivered = f"{TRUNK}+{FEATURE}"
+    assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DELIVERED, commit=delivered)
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING] == [
+        f"Failed to ask the workers to fetch {delivered} for repository net-repo."
+    ]
+    assert rig.git.broadcasts == []
+    assert rig.intent.queue.entries == ()
+    assert rig.intent.status == RepositoryDeliveryStatus.NONE
+    assert rig.intent.last_delivered_commit == delivered
 
 
 async def test_settle_runs_under_the_lock_and_leases_only_holds_up_to_the_snapshot(rig: Rig) -> None:
@@ -721,6 +898,31 @@ async def test_failed_release_on_the_final_attempt_fails_and_keeps_the_items_hel
     assert rig.intent.held.release_leases == (
         ReleaseLease(lease_id="lease-1", expires_at=NOW, artifact_definitions=(held,)),
     )
+
+
+async def test_failed_release_on_the_final_attempt_asks_for_no_action_when_a_merge_joined_after_the_settle(
+    rig: Rig,
+) -> None:
+    await rig.queue(_merge())
+    await rig.hold("definition-1")
+    rig.releaser.failures.append(RuntimeError("dispatch failed"))
+
+    async def merge_other_branch() -> None:
+        await rig.queue(OTHER_MERGE)
+
+    rig.releaser.before = merge_other_branch
+
+    result = await rig.deliver(final_attempt=True)
+
+    message = "The release step of the delivery failed with RuntimeError."
+    assert result == DeliveryAttemptResult(
+        outcome=DeliveryOutcome.FAILED,
+        commit=f"{TRUNK}+{FEATURE}",
+        failure=DeliveryFailure(cause=None, retryable=True, message=message),
+    )
+    assert rig.intent.queue.entries == (OTHER_MERGE,)
+    assert rig.intent.status == RepositoryDeliveryStatus.PENDING
+    assert rig.intent.error == message
 
 
 @dataclass
