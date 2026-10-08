@@ -51,7 +51,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeRecomputeCoordinator,
 )
 from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
-from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
+from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_blanket_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.selective_regen.generator_output import (
     GeneratorCascadeOutput,
@@ -716,14 +716,13 @@ async def post_process_branch_merge(
                 releasing=None,
             )
         else:
-            held = await barrier.hold_widen(
-                branch=target_branch,
-                scope="all",
+            await submit_blanket_regeneration(
+                workflow=get_workflow(),
+                barrier=barrier,
+                context=context,
+                target_branch=target_branch,
                 reason=FullRegenerationReason.FEATURE_DISABLED,
                 releasing=None,
-            )
-            await submit_full_regeneration(
-                workflow=get_workflow(), context=context, target_branch=target_branch, exclude_repository_ids=held
             )
 
         if not config.SETTINGS.main.diff_update_after_merge:

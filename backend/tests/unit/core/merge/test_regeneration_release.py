@@ -180,12 +180,33 @@ class ReselectingPlanner(MergeSelectiveRegeneration):
         ]
 
 
-class FailingSubmitRecorder(WorkflowRecorder):
-    """Record each call, and raise on every submission of one workflow."""
+class FailingWorkflowRecorder(WorkflowRecorder):
+    """Record each call, and raise on every submission or run of one workflow."""
 
     def __init__(self, *, failing: WorkflowDefinition) -> None:
         super().__init__()
         self.failing = failing
+
+    async def execute_workflow(  # noqa: PLR0913, PLR0917
+        self,
+        workflow: WorkflowDefinition,
+        expected_return: type | None = None,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> Any:
+        result = await super().execute_workflow(
+            workflow,
+            expected_return=expected_return,
+            context=context,
+            parameters=parameters,
+            tags=tags,
+            priority=priority,
+        )
+        if workflow == self.failing:
+            raise RuntimeError(f"Could not run {workflow.name}")
+        return result
 
     async def submit_workflow(
         self,
@@ -371,8 +392,41 @@ async def test_a_held_definition_is_released_with_the_narrowing_kept_at_its_hold
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": test_case.expected_generator_run}),
         ("submit", REQUEST_ARTIFACT_DEFINITION_GENERATE, {"model": test_case.expected_artifact}),
     ]
-    assert renew.after_calls == [2]
+    assert renew.after_calls == [1, 2]
     assert records == []
+
+
+async def test_a_definition_held_twice_is_released_with_the_members_of_both_holds() -> None:
+    state = await _delivery_state(REPOSITORY_X)
+    recorder = WorkflowRecorder()
+    renew = RecordedRenewals(recorder=recorder)
+    releaser = _releaser(
+        recorder=recorder,
+        definitions=FakeHeldDefinitions(artifacts=[_artifact_generate(definition_id="ad-x")]),
+        state=state,
+        narrowed=_narrowed(),
+    )
+    for members in (("member-2",), ("member-1",)):
+        await releaser.dispatcher.dispatch_requests(
+            context=CONTEXT,
+            target_branch=DEFAULT_BRANCH,
+            generator_runs=[],
+            artifact_generates=[_artifact_generate(definition_id="ad-x", members=members)],
+            releasing=None,
+            renew=None,
+        )
+    assert recorder.calls == []
+
+    await releaser.release(repository_id=REPOSITORY_X, held=state.intents[REPOSITORY_X].held, renew=renew)
+
+    assert _calls(recorder) == [
+        (
+            "submit",
+            REQUEST_ARTIFACT_DEFINITION_GENERATE,
+            {"model": _artifact_generate(definition_id="ad-x", members=("member-1", "member-2"))},
+        )
+    ]
+    assert renew.after_calls == [1]
 
 
 @dataclass
@@ -504,7 +558,7 @@ async def test_a_marker_of_scope_terminals_still_releases_the_held_generators_an
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
         _python_recompute(CAR_DESCRIPTION),
     ]
-    assert renew.after_calls == [1, 2, 3]
+    assert renew.after_calls == [1, 2, 2, 3]
 
 
 async def test_the_released_repository_dispatches_its_work_while_another_pending_repository_holds() -> None:
@@ -542,7 +596,7 @@ async def test_the_released_repository_dispatches_its_work_while_another_pending
             {"model": _artifact_generate(definition_id="ad-x-reselected")},
         ),
     ]
-    assert renew.after_calls == [3]
+    assert renew.after_calls == [1, 3]
     assert state.calls == ["pending_repository_ids", "pending_repository_ids", "hold"]
     assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == {
         REPOSITORY_X: HeldRegeneration(),
@@ -596,7 +650,7 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
 
 @pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DISPATCH_FAILURE_TEST_CASES])
 async def test_a_failed_dispatch_raises_before_the_lease_is_renewed(test_case: DispatchFailureTestCase) -> None:
-    recorder = FailingSubmitRecorder(failing=test_case.failing)
+    recorder = FailingWorkflowRecorder(failing=test_case.failing)
     renew = RecordedRenewals(recorder=recorder)
     releaser = _releaser(
         recorder=recorder,
@@ -610,3 +664,39 @@ async def test_a_failed_dispatch_raises_before_the_lease_is_renewed(test_case: D
 
     assert _calls(recorder) == test_case.expected_calls
     assert renew.after_calls == []
+
+
+async def test_a_failed_generator_run_regenerates_every_terminal_and_does_not_raise() -> None:
+    state = await _delivery_state(REPOSITORY_X, REPOSITORY_Y)
+    recorder = FailingWorkflowRecorder(failing=REQUEST_GENERATOR_DEFINITION_RUN)
+    renew = RecordedRenewals(recorder=recorder)
+    releaser = _releaser(
+        recorder=recorder,
+        definitions=FakeHeldDefinitions(generators=[_generator_run(definition_id="gd-x")]),
+        state=state,
+        narrowed=_narrowed(),
+    )
+
+    await releaser.release(
+        repository_id=REPOSITORY_X,
+        held=HeldRegeneration(generator_definitions=(HeldItem(id="gd-x", hold_seq=1),)),
+        renew=renew,
+    )
+
+    assert _calls(recorder) == [
+        ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
+        (
+            "submit",
+            TRIGGER_ARTIFACT_DEFINITION_GENERATE,
+            {"branch": DEFAULT_BRANCH, "exclude_repository_ids": [REPOSITORY_Y]},
+        ),
+    ]
+    assert renew.after_calls == [1, 2]
+    assert state.calls == ["pending_repository_ids", "pending_repository_ids", "hold"]
+    assert {repository_id: intent.held for repository_id, intent in state.intents.items()} == {
+        REPOSITORY_X: HeldRegeneration(),
+        REPOSITORY_Y: HeldRegeneration(
+            next_hold_seq=2,
+            widen=HeldWiden(scope="terminals", reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED, hold_seq=1),
+        ),
+    }
