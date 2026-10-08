@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from infrahub.core.query.resource_manager import PoolRecordProvenance
+from infrahub.core.constants import PoolRecordProvenance
 from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:

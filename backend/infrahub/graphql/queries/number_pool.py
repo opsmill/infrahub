@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from graphene import BigInt, Enum, Field, Float, InputObjectType, Int, List, NonNull, ObjectType, String
 
-from infrahub.core.query.resource_manager import PoolRecordProvenance
+from infrahub.core.constants import PoolRecordProvenance
 from infrahub.pools.number_pool_mock import (
     DivisionFilterEntry,
     MockAllocations,
