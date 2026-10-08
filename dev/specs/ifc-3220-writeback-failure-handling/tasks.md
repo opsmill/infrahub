@@ -325,7 +325,7 @@ SC-002, SC-007.
       verbatim, the commit unchanged.
 - [ ] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
       recorded, the remote updated, the broadcast sent.
-- [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
+- [X] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
       branch forked before the trunk moved queues nothing (US1 #7); a staging repository queues
       nothing; a clone with no `origin` fails the attempt, records no commit and keeps the queue; a
       failed enqueue of one repository still submits the others; an enqueue that fails once and then

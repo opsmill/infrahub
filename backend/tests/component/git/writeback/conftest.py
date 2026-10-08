@@ -87,23 +87,7 @@ class StoreUnderTest:
         return await self.store.read(repository_id=self.repository_id)
 
     async def attribute_writes(self) -> dict[str, AttributeWrite]:
-        node = await NodeManager.get_one(
-            db=self.db,
-            id=self.repository_id,
-            kind=InfrahubKind.REPOSITORY,
-            branch=self.branch,
-            include_metadata=MetadataQueryOptions(
-                attribute_level=MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY
-            ),
-            raise_on_error=True,
-        )
-        return {
-            name: AttributeWrite(
-                updated_at=node.get_attribute(name=name)._get_updated_at(),
-                updated_by=node.get_attribute(name=name)._get_updated_by(),
-            )
-            for name in DELIVERY_ATTRIBUTES
-        }
+        return await read_attribute_writes(db=self.db, branch=self.branch, repository_id=self.repository_id)
 
     @asynccontextmanager
     async def expect_transition(self, *, saved: set[str], user_id: str = SYSTEM_USER_ID) -> AsyncIterator[None]:
@@ -122,6 +106,25 @@ class StoreUnderTest:
             (self.lock_name, LockAction.ACQUIRE),
             (self.lock_name, LockAction.RELEASE),
         ]
+
+
+async def read_attribute_writes(db: InfrahubDatabase, branch: Branch, repository_id: str) -> dict[str, AttributeWrite]:
+    """Return when and by whom each delivery attribute of the repository was last written."""
+    node = await NodeManager.get_one(
+        db=db,
+        id=repository_id,
+        kind=InfrahubKind.REPOSITORY,
+        branch=branch,
+        include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.UPDATED_AT | MetadataOptions.UPDATED_BY),
+        raise_on_error=True,
+    )
+    return {
+        name: AttributeWrite(
+            updated_at=node.get_attribute(name=name)._get_updated_at(),
+            updated_by=node.get_attribute(name=name)._get_updated_by(),
+        )
+        for name in DELIVERY_ATTRIBUTES
+    }
 
 
 async def create_repository(db: InfrahubDatabase, branch: Branch, name: str) -> Node:
