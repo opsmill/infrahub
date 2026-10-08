@@ -998,7 +998,7 @@ async def test_a_repeated_hold_of_a_python_attribute_keeps_the_union_of_its_targ
     barrier = _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep())
 
     for target in (test_case.first, test_case.second):
-        candidate = owned_python_target(target=target, attribute_name="digest", repository_id=REPOSITORY_X)
+        candidate = owned_python_target(target=target, repository_id=REPOSITORY_X)
         assert await barrier.admit(branch=DEFAULT_BRANCH, candidates=[candidate], releasing=None) == []
 
     released = await barrier.narrowed.get(
