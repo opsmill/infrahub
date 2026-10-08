@@ -113,7 +113,7 @@ from .sync import (
 )
 from .sync_status import BranchImportVerdict, RepositoryBranchSyncStatusReader, classify_branch_import
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
-from .writeback.content import read_pending_merges
+from .writeback.content import read_pending_merge_of_commit, read_pending_merges
 from .writeback.factory import build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
 from .writeback.service import RepositoryWritebackService
@@ -1114,18 +1114,29 @@ async def _read_unqueued_merge(db: InfrahubDatabase, model: GitRepositoryMerge) 
     """Build the queue entry that the submission did not carry, or return None when the merge changes no content.
 
     Raises:
-        BranchNotFoundError: The source branch no longer exists.
+        BranchNotFoundError: The source branch no longer exists, and the submission carries no source commit.
 
     """
     log = get_run_logger()
-    source_branch = await registry.get_branch(db=db, branch=model.source_branch)
-    pending_merges = await read_pending_merges(
-        db=db,
-        source_branch=source_branch,
-        default_branch=await registry.get_branch(db=db),
-        repository_ids=[model.repository_id],
-    )
-    entry = pending_merges.get(model.repository_id)
+    default_branch = await registry.get_branch(db=db)
+    try:
+        source_branch = await registry.get_branch(db=db, branch=model.source_branch)
+    except BranchNotFoundError:
+        if model.source_commit is None:
+            raise
+        # The branch can be deleted before this runs, so the submission carries the commit that it held.
+        entry = await read_pending_merge_of_commit(
+            db=db,
+            source_branch_name=model.source_branch,
+            source_commit=model.source_commit,
+            default_branch=default_branch,
+            repository_id=model.repository_id,
+        )
+    else:
+        pending_merges = await read_pending_merges(
+            db=db, source_branch=source_branch, default_branch=default_branch, repository_ids=[model.repository_id]
+        )
+        entry = pending_merges.get(model.repository_id)
     if entry is None:
         log.info(
             f"The merge of branch {model.source_branch} changes no content of repository {model.repository_name}, "
