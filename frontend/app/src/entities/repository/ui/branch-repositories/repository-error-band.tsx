@@ -41,10 +41,10 @@ export function RepositoryErrorBand({
     <Row
       className={classNames("items-start gap-2.5 border-t px-4 py-3", band)}
       data-testid="repository-error-band"
-      role="status"
     >
       <Icon className={classNames("mt-0.5 size-4 shrink-0", icon)} aria-hidden />
-      <div className="min-w-0 flex-1">
+      {/* The live region leaves out the link, so an update doesn't re-announce a control. */}
+      <div className="min-w-0 flex-1" role="status">
         <div className={classNames("font-semibold text-sm", text)}>
           <span className="break-all">{repositoryName}</span> — {problem}
         </div>

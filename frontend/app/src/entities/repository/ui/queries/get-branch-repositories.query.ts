@@ -11,7 +11,10 @@ import {
   getBranchRepositories,
 } from "@/entities/repository/domain/use-cases/get-branch-repositories";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
+import {
+  REPOSITORY_ERROR_REFETCH_INTERVAL_MS,
+  REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
+} from "@/entities/repository/ui/queries/repository-polling";
 
 interface GetBranchRepositoriesQueryParams extends GetBranchRepositoriesParams {
   isSyncing: boolean;
@@ -25,11 +28,13 @@ export function getBranchRepositoriesQueryOptions({
     queryKey: repositoryQueryKeys.branchRepositories(params),
     queryFn: () => getBranchRepositories(params),
     // Rows still showing a sync are fetched again after the health says it ended, so they catch up.
-    refetchInterval: (query) =>
-      !isRepositoryAccessDenied(query.state.error) &&
-      (isSyncing || !!query.state.data?.repositories.some(isRepositorySyncing))
+    refetchInterval: ({ state }) => {
+      if (isRepositoryAccessDenied(state.error)) return false;
+      if (state.status === "error") return REPOSITORY_ERROR_REFETCH_INTERVAL_MS;
+      return isSyncing || state.data?.repositories.some(isRepositorySyncing)
         ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
-        : false,
+        : false;
+    },
     placeholderData: keepPreviousDataWithin(
       repositoryQueryKeys.branchRepositoryList({
         branchName: params.branchName,

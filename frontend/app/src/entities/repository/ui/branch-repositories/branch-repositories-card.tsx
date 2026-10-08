@@ -28,7 +28,8 @@ export function BranchRepositoriesCard({ branchName, syncWithGit }: BranchReposi
     branchName,
     syncWithGit,
   });
-  const isSyncing = isAnyRepositorySyncing(health);
+  // A failed health refetch keeps its last data, which can no longer say whether a sync is running.
+  const isSyncing = !isHealthError && isAnyRepositorySyncing(health);
   const query = useGetBranchRepositories({
     branchName,
     syncWithGit,

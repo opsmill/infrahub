@@ -29,7 +29,7 @@ describe("getBranchRepositoriesQueryOptions", () => {
     expect(pageRefetchIntervalFor(false, undefined)).toBe(false);
   });
 
-  it("stops polling once the user is denied, and keeps polling after any other failure", () => {
+  it("stops polling once the user is denied, and retries any other failure every minute", () => {
     const { refetchInterval } = getBranchRepositoriesQueryOptions({
       ...pageParams,
       isSyncing: true,
@@ -42,7 +42,7 @@ describe("getBranchRepositoriesQueryOptions", () => {
       >[0]);
 
     expect(intervalAfter(new BranchRepositoriesError("PERMISSION_DENIED", "Denied"))).toBe(false);
-    expect(intervalAfter(new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(10_000);
+    expect(intervalAfter(new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(60_000);
   });
 
   it("fetches the page again after the sync ends while its rows still show it", () => {
