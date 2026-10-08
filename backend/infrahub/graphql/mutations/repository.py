@@ -310,44 +310,9 @@ class RepositoryDeliveryRetry(Mutation):
         data: RepositoryDeliveryRetryInput,
     ) -> Self:
         graphql_context: GraphqlContext = info.context
-        branch = graphql_context.branch
-        # The default-branch permission checker acts only on requests that name the default branch.
-        if branch.name != registry.default_branch:
-            raise ValidationError(
-                f"Send this request on the default branch {registry.default_branch}; the pending pushes live there."
-            )
-
-        schema = registry.get_node_schema(name=InfrahubKind.REPOSITORY, branch=branch.name, duplicate=False)
-        for permission in (
-            define_object_permission_from_branch(
-                schema=schema, action=PermissionAction.UPDATE, branch_name=branch.name
-            ),
-            define_global_permission_from_branch(
-                permission=GlobalPermissions.MANAGE_REPOSITORIES, branch_name=branch.name
-            ),
-            define_global_permission_from_branch(
-                permission=GlobalPermissions.EDIT_DEFAULT_BRANCH, branch_name=branch.name
-            ),
-        ):
-            graphql_context.active_permissions.raise_for_permission(permission=permission)
-
-        repo = await NodeManager.get_one_by_id_or_default_filter(
-            db=graphql_context.db, kind=CoreGenericRepository, id=str(data.id), branch=branch
-        )
+        _check_delivery_permissions(graphql_context=graphql_context)
+        repo, _ = await _read_pending_delivery(graphql_context=graphql_context, repository_id=str(data.id))
         repository_name = repo.name.value
-        if repo.get_kind() != InfrahubKind.REPOSITORY:
-            raise ValidationError(f"Repository {repository_name} is read-only and never pushes to its remote.")
-        if repo.internal_status.value == RepositoryInternalStatus.STAGING.value:
-            raise ValidationError(
-                f"Repository {repository_name} is staging; its changes are pushed when its proposed change merges."
-            )
-
-        store = WritebackIntentStore(
-            db=graphql_context.db, lock_registry=lock.registry, default_branch=branch, clock=partial(datetime.now, UTC)
-        )
-        intent = await store.read(repository_id=repo.id)
-        if not intent.queue.entries:
-            raise NothingPendingError(repository_name=repository_name)
 
         workflow = await graphql_context.active_service.workflow.submit_workflow(
             workflow=GIT_REPOSITORY_DELIVERY_RETRY,
@@ -367,6 +332,7 @@ def _check_delivery_permissions(graphql_context: GraphqlContext) -> None:
 
     """
     branch = graphql_context.branch
+    # The default-branch permission checker acts only on requests that name the default branch.
     if branch.name != registry.default_branch:
         raise ValidationError(
             f"Send this request on the default branch {registry.default_branch}; the pending pushes live there."
