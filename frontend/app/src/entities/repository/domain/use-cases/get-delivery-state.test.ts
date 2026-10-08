@@ -21,6 +21,7 @@ const repositoryNode = (overrides: Partial<RepositoryNode> = {}): RepositoryNode
   delivery_failure_cause: null,
   delivery_error: null,
   delivery_queue: null,
+  delivery_last_abandonment: null,
   ...overrides,
 });
 
@@ -45,6 +46,8 @@ describe("getDeliveryState", () => {
       causeLabel: null,
       error: null,
       pendingMerges: [],
+      queueVersion: 0,
+      lastAbandonment: null,
     });
   });
 
@@ -104,6 +107,58 @@ describe("getDeliveryState", () => {
           merged_at: firstMerge.merged_at,
         },
       ],
+      queueVersion: 2,
+      lastAbandonment: null,
+    });
+  });
+
+  it("maps the last abandonment with the abandoned merges and the dropped import", async () => {
+    // GIVEN
+    const abandonedMerge = {
+      entry_id: "entry-1",
+      source_branch: "feature-a",
+      source_git_branch: "feature-a",
+      source_commit: "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+      merged_at: "2026-10-02T09:14:03.120000+00:00",
+      delete_source_git_branch: false,
+    };
+    mockRepository(
+      repositoryNode({
+        delivery_queue: { value: { format: 1, version: 3, entries: [] } },
+        delivery_last_abandonment: {
+          value: {
+            format: 1,
+            abandoned_at: "2026-10-03T08:00:00.000000+00:00",
+            account_id: "account-1",
+            account_name: "admin",
+            queue_version: 2,
+            recorded_commit: "9daeafb9864cf43055ae93beb0afd6c7d144bfa4",
+            import_owed_commit: "9daeafb9864cf43055ae93beb0afd6c7d144bfa4",
+            entries: [abandonedMerge],
+          },
+        },
+      })
+    );
+
+    // WHEN
+    const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+
+    // THEN
+    expect(state).toMatchObject({ status: "none", pendingMerges: [], queueVersion: 3 });
+    expect(state.lastAbandonment).toEqual({
+      format: 1,
+      abandoned_at: "2026-10-03T08:00:00.000000+00:00",
+      account_name: "admin",
+      recorded_commit: "9daeafb9864cf43055ae93beb0afd6c7d144bfa4",
+      import_owed_commit: "9daeafb9864cf43055ae93beb0afd6c7d144bfa4",
+      entries: [
+        {
+          entry_id: "entry-1",
+          source_branch: "feature-a",
+          source_commit: abandonedMerge.source_commit,
+          merged_at: abandonedMerge.merged_at,
+        },
+      ],
     });
   });
 
@@ -137,5 +192,18 @@ describe("getDeliveryState", () => {
 
     // THEN
     await expect(result).rejects.toThrow("Cannot read the pending pushes of this repository.");
+  });
+
+  it("fails with a readable message when the last abandonment cannot be read", async () => {
+    // GIVEN
+    mockRepository(
+      repositoryNode({ delivery_last_abandonment: { value: { format: 2, entries: [] } } })
+    );
+
+    // WHEN
+    const result = getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+
+    // THEN
+    await expect(result).rejects.toThrow("Cannot read the last abandonment of this repository.");
   });
 });

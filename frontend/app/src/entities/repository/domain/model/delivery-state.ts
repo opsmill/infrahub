@@ -33,8 +33,22 @@ export type PendingMerge = z.infer<typeof PendingMergeSchema>;
 
 export const DeliveryQueueSchema = z.object({
   format: z.literal(1),
+  version: z.number(),
   entries: z.array(PendingMergeSchema),
 });
+
+export const AbandonmentRecordSchema = z.object({
+  format: z.literal(1),
+  abandoned_at: z.string(),
+  account_name: z.string(),
+  /** The commit that the default branch kept. */
+  recorded_commit: z.string(),
+  /** An import that was still owed and was dropped with the pending merges. */
+  import_owed_commit: z.string().nullish(),
+  entries: z.array(PendingMergeSchema),
+});
+
+export type AbandonmentRecord = z.infer<typeof AbandonmentRecordSchema>;
 
 /** The push state of a repository, as the default branch holds it. */
 export interface DeliveryState {
@@ -48,4 +62,7 @@ export interface DeliveryState {
   error: string | null;
   /** In merge order. */
   pendingMerges: PendingMerge[];
+  /** The version of the pending merges; an abandonment names it, so the backend refuses it once they change. */
+  queueVersion: number;
+  lastAbandonment: AbandonmentRecord | null;
 }
