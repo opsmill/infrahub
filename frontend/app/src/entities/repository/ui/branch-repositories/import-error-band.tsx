@@ -1,14 +1,10 @@
-import { AlertCircleIcon } from "lucide-react";
-
-import { Row } from "@/shared/components/container";
-import { Link } from "@/shared/components/ui/link";
-
 import { getBranchQsp } from "@/entities/branches/ui/routing/branch-urls";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
 import type {
   BranchRepository,
   RepositoryImportError,
 } from "@/entities/repository/domain/model/branch-repository";
+import { RepositoryErrorBand } from "@/entities/repository/ui/branch-repositories/repository-error-band";
 import { useGetRepositoryImportError } from "@/entities/repository/ui/queries/get-repository-import-error.query";
 import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
@@ -26,21 +22,30 @@ export function ImportErrorBand({ repository, branchName, isSyncing }: ImportErr
   });
 
   return (
-    <Row
-      className="items-start gap-2.5 border-danger/30 border-t bg-danger-surface px-4 py-3"
-      data-testid="repository-error-band"
-      role="status"
+    <RepositoryErrorBand
+      tone="danger"
+      repositoryName={repository.name}
+      problem="import failed"
+      action={getImportErrorAction(importError, repository, branchName)}
     >
-      <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div className="font-semibold text-danger-strong text-sm">
-          <span className="break-all">{repository.name}</span> — import failed
-        </div>
-        <ImportErrorDetails importError={importError} />
-      </div>
-      <ImportErrorLink importError={importError} repository={repository} branchName={branchName} />
-    </Row>
+      <ImportErrorDetails importError={importError} />
+    </RepositoryErrorBand>
   );
+}
+
+function getImportErrorAction(
+  importError: RepositoryImportError | undefined,
+  repository: BranchRepository,
+  branchName: string
+) {
+  if (!importError) return;
+  if (importError.taskId) {
+    return { to: getTaskDetailsUrl(importError.taskId), label: "View task log →" };
+  }
+  return {
+    to: getObjectDetailsUrl(repository.kind, repository.id, [getBranchQsp(branchName)]),
+    label: "Open repository",
+  };
 }
 
 function ImportErrorDetails({ importError }: { importError: RepositoryImportError | undefined }) {
@@ -60,34 +65,5 @@ function ImportErrorDetails({ importError }: { importError: RepositoryImportErro
     <p className="whitespace-pre-wrap break-words font-mono text-danger-strong text-xs leading-relaxed">
       {importError.message}
     </p>
-  );
-}
-
-interface ImportErrorLinkProps {
-  importError: RepositoryImportError | undefined;
-  repository: BranchRepository;
-  branchName: string;
-}
-
-function ImportErrorLink({ importError, repository, branchName }: ImportErrorLinkProps) {
-  if (!importError) return null;
-
-  const linkClassName = "shrink-0 px-2 py-1 font-medium text-danger-strong text-xs";
-
-  if (importError.taskId) {
-    return (
-      <Link to={getTaskDetailsUrl(importError.taskId)} className={linkClassName}>
-        View task log →
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      to={getObjectDetailsUrl(repository.kind, repository.id, [getBranchQsp(branchName)])}
-      className={linkClassName}
-    >
-      Open repository
-    </Link>
   );
 }
