@@ -1,6 +1,6 @@
 import { Button, Spinner } from "@infrahub/ui";
 
-import { Col, Row } from "@/shared/components/container";
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -23,7 +23,7 @@ import {
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
-  RepositoryCommitsRefreshButton,
+  RepositoryCommitsToolbar,
 } from "@/entities/repository/ui/repository-commits-header";
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
@@ -77,9 +77,9 @@ export function RepositoryCommitsManager({
       case "failed":
         return (
           <Col className="h-full gap-0">
-            <Row className="p-2">
-              <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
-            </Row>
+            <Col className="p-2">
+              <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck} />
+            </Col>
             <ErrorScreen message={withoutPages.error.message} />
           </Col>
         );

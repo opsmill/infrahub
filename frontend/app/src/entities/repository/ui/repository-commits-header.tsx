@@ -1,4 +1,5 @@
 import { TriangleAlertIcon } from "lucide-react";
+import type React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -21,12 +22,15 @@ export interface RepositoryCommitsRefreshButtonProps {
   repositoryId: string;
 }
 
-export interface RepositoryCommitsHeaderProps
-  extends RepositoryCommitsLogProps,
-    RepositoryCommitsRefreshButtonProps {
+export interface RepositoryCommitsToolbarProps extends RepositoryCommitsRefreshButtonProps {
   /** Null where the repository has no remote check: a read-write repository. */
   remoteCheck: RepositoryRemoteCheck | null;
+  children?: React.ReactNode;
 }
+
+export interface RepositoryCommitsHeaderProps
+  extends RepositoryCommitsLogProps,
+    Omit<RepositoryCommitsToolbarProps, "children"> {}
 
 export function RepositoryCommitsHeader({
   log,
@@ -35,23 +39,33 @@ export function RepositoryCommitsHeader({
 }: RepositoryCommitsHeaderProps) {
   return (
     <Col className="gap-1.5 p-2">
-      <Row className="items-center gap-2">
-        <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
+      <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck}>
         <FreshnessLine log={log} />
-        {remoteCheck && (
-          <Row className="ml-auto">
-            <RepositoryCheckRemoteButton repositoryId={repositoryId} {...remoteCheck} />
-          </Row>
-        )}
-      </Row>
+      </RepositoryCommitsToolbar>
       <ConditionNotice log={log} />
     </Col>
   );
 }
 
-export function RepositoryCommitsRefreshButton({
+export function RepositoryCommitsToolbar({
   repositoryId,
-}: RepositoryCommitsRefreshButtonProps) {
+  remoteCheck,
+  children,
+}: RepositoryCommitsToolbarProps) {
+  return (
+    <Row className="items-center gap-2">
+      <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
+      {children}
+      {remoteCheck && (
+        <Row className="ml-auto">
+          <RepositoryCheckRemoteButton repositoryId={repositoryId} {...remoteCheck} />
+        </Row>
+      )}
+    </Row>
+  );
+}
+
+function RepositoryCommitsRefreshButton({ repositoryId }: RepositoryCommitsRefreshButtonProps) {
   const { currentBranch } = useCurrentBranch();
 
   return (

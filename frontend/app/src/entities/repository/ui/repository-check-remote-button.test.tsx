@@ -101,6 +101,18 @@ describe("RepositoryCheckRemoteButton", () => {
     expect(component.getByRole("button", CHECK_BUTTON).query()).toBeNull();
   });
 
+  test("is offered when the commit log failed to load", async () => {
+    // GIVEN
+    commitsApiMock.mockRejectedValue(new Error("No worker answered"));
+
+    // WHEN
+    const component = await renderCommitLog();
+
+    // THEN
+    await expect.element(component.getByText("No worker answered")).toBeVisible();
+    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
+  });
+
   test("explains why it is disabled without permission to update the repository", async () => {
     // GIVEN
     const component = await renderCommitLog(
