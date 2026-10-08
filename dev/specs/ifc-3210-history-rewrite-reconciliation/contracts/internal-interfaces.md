@@ -607,6 +607,8 @@ different mutations submit it:
 `_call_mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
 `GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change, after the update transaction
 commits, because a workflow submitted before the commit still runs when the transaction rolls back.
+That order holds when the method opens the transaction itself, as it does for every GraphQL request;
+a caller that hands in its own transaction commits after the submission.
 It reads the old `ref` and `commit` from the database, not from the node it receives, because a
 retried update hands back the node an earlier attempt already changed. So the flow **must** read
 `target_changed` from its own model and must never infer it from the fact that it is running. The

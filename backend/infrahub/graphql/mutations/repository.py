@@ -126,7 +126,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         """Update the repository, and pull and import the new target of a re-pointed read-only repository.
 
         The workflows start only after the update commits, because a submitted workflow still runs when the
-        transaction rolls back.
+        transaction rolls back. This holds only when the database handed in is not already a transaction.
         """
         if obj.get_kind() != InfrahubKind.READONLYREPOSITORY:
             return await super()._call_mutate_update(

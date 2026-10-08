@@ -184,7 +184,9 @@ trunk and records no rewrite.
 
 A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
 submits the pull and the import of the last commit with `target_changed` set, after the transaction
-commits: a workflow submitted before the commit still runs when the transaction rolls back.
+commits: a workflow submitted before the commit still runs when the transaction rolls back. This
+holds because the update opens and commits its own transaction, as every GraphQL request does. A
+caller that already holds a transaction commits it after the submission.
 
 ## Cloning and the repository lock
 
