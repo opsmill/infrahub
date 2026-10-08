@@ -99,7 +99,8 @@ class RepositoryWritebackService:
 
         Args:
             final_attempt: No automatic retry follows, so a failure that a retry could fix is final.
-            manual: A user asked for this attempt.
+            manual: A user asked for this attempt. An automatic attempt queues `entry`, then returns deferred when the
+                retry of another attempt is due later.
             entry: A merge to queue before the attempt, because the branch merge could not queue it.
             retry_delay: The wait before the automatic retry that follows when this attempt fails, which sets when the
                 recorded retry is due.
@@ -119,6 +120,16 @@ class RepositoryWritebackService:
         try:
             if entry is not None:
                 await self._enqueue(entry=entry, attempt=attempt)
+            if not manual:
+                retry_due_at = (await self.state.read(repository_id=self.repository.id)).progress.retry_due_at
+                if retry_due_at is not None and retry_due_at > self.clock():
+                    # The waiting retry snapshots the queue when it starts, so it also delivers the merge queued above.
+                    log.info(
+                        "Left the queue of repository %s to the retry that is due at %s.",
+                        self.repository.name,
+                        retry_due_at,
+                    )
+                    return DeliveryAttemptResult(outcome=DeliveryOutcome.DEFERRED)
             return await self._deliver_queue(attempt=attempt)
         except _AttemptStoppedError as stopped:
             return stopped.result

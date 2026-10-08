@@ -499,7 +499,7 @@ T081 to T084 are not.
 - [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
       `task_run.run_count`. Record `retry_due_at` before each wait.
-- [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
+- [X] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
       retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
 - [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
@@ -509,7 +509,7 @@ T081 to T084 are not.
       `read_flow_runs` call, and wire it in `build_recovery_check`. The check queries the
       orchestrator only when every other condition of a trigger holds, and submits nothing when the
       query raises (R20, contracts section 7).
-- [ ] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
+- [X] T080 [US4] Write `backend/tests/unit/git/writeback/test_retry_and_recovery.py`, with a fake
       `DeliveryRunQuery` in `backend/tests/unit/git/writeback/fakes.py`: the retry condition per cause,
       `final_attempt`, the deferred chain, the recovery check for a stale delivery (each of the five
       conditions, the free lock included) and for uncovered held work behind an empty queue, no
@@ -521,7 +521,6 @@ T081 to T084 are not.
       no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
       fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
       `PENDING`, with `limit=1`.
-      Every case is written except the deferred chain, which waits for T078.
 - [ ] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
       attempt, open it, short delays through `with_options`.

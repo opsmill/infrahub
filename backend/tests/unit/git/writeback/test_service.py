@@ -207,7 +207,7 @@ async def test_nothing_pending_does_nothing(rig: Rig) -> None:
     result = await rig.deliver()
 
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.NOTHING_PENDING)
-    assert rig.state.calls == ["start_attempt"]
+    assert rig.state.calls == ["read", "start_attempt"]
     assert rig.git.calls == []
     assert rig.releaser.releases == []
 
@@ -221,6 +221,7 @@ async def test_entry_is_queued_before_the_snapshot_and_delivered(rig: Rig) -> No
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DELIVERED, commit=delivered)
     assert rig.state.calls == [
         "enqueue",
+        "read",
         "start_attempt",
         "progress",
         "progress",
@@ -836,7 +837,7 @@ async def test_held_only_run_under_a_live_lease_does_nothing(rig: Rig) -> None:
     result = await rig.deliver()
 
     assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.NOTHING_PENDING)
-    assert rig.state.calls == ["start_attempt"]
+    assert rig.state.calls == ["read", "start_attempt"]
     assert rig.git.calls == []
     assert rig.releaser.releases == []
     assert rig.intent.held == before

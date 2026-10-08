@@ -261,7 +261,9 @@ disagree.
   live lease belongs to a release that still runs. The one exception is an `expire_lease` call
   that failed (`research.md` R10, rule 4).
 - When `manual` is `False` and a retry of another chain is due in the future, it returns
-  `deferred` at once (one chain per repository).
+  `deferred` at once (one chain per repository). It reads the state for this check after step 0
+  and before the repository lock. A chain's own retry starts at or after its recorded due time, so
+  it does not defer.
 - It never raises for a classified failure that is final: it records it and returns `failed` or
   `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
   re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.

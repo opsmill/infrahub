@@ -609,11 +609,14 @@ The import of R4 step 11 has no bound. It is not a Git command, and the local Gi
 FR-027 covers it instead: while it runs, it holds the repository lock, so the delivery is not stale
 (R20, condition 4), and the recovery check starts no second attempt.
 
-**One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. A
-run of `merge_git_repository` whose first attempt finds a retry already due in the future returns
-at once, after its enqueue of R4 step 0 when it has one: that chain snapshots the queue at its next
-attempt and delivers the new entry too. A manual retry never returns early, because a user asked
-for it now. A chain that wakes after a manual retry delivered finds nothing and does nothing.
+**One retry chain per repository.** Before it waits, a retryable failure stores `retry_due_at`. An
+automatic attempt (`manual=False`) that finds a retry already due in the future returns `deferred`
+at once, after its enqueue of R4 step 0 when it has one and before the repository lock: that chain
+snapshots the queue at its next attempt and delivers the new entry too. The check has no "first
+attempt" condition. A chain's own retry starts at or after its recorded due time, because the due
+time is taken before the task waits, so that retry never defers. A manual retry never returns
+early, because a user asked for it now. A chain that wakes after a manual retry delivered finds
+nothing and does nothing.
 
 **Status while waiting**: `pending`, with the last cause and message, so a user sees "pending, last
 attempt failed: remote unreachable".
