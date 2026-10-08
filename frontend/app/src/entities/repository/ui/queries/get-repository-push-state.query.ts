@@ -2,7 +2,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import type { BranchContextParams } from "@/shared/api/types";
 
-import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
+import { useDefaultBranch } from "@/entities/branches/ui/hooks/use-default-branch";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
 import {
@@ -29,8 +29,7 @@ function getRepositoryPushStateQueryOptions(params: GetRepositoryPushStateParams
 export function useGetRepositoryPushState(
   params: Omit<GetRepositoryPushStateParams, keyof BranchContextParams>
 ) {
-  const { data: branches } = useGetBranches();
-  const defaultBranch = branches?.find((branch) => branch.is_default);
+  const defaultBranch = useDefaultBranch();
 
   return useQuery({
     ...getRepositoryPushStateQueryOptions({ ...params, branchName: defaultBranch?.name ?? "" }),

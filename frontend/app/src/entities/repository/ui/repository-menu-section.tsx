@@ -9,10 +9,15 @@ import { Link } from "@/shared/components/ui/link";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
+import { REPOSITORY_KIND } from "@/entities/repository/domain/model/repository";
+import { getPushActions } from "@/entities/repository/domain/rules/get-push-actions";
 import { isReadOnlyRepository } from "@/entities/repository/domain/rules/is-read-only-repository";
+import { useGetRepositoryPushState } from "@/entities/repository/ui/queries/get-repository-push-state.query";
 import { useImportCurrentCommitMutation } from "@/entities/repository/ui/queries/import-current-commit.mutation";
 import { useReimportLastCommitMutation } from "@/entities/repository/ui/queries/reimport-last-commit.mutation";
+import { useRetryDeliveryMutation } from "@/entities/repository/ui/queries/retry-delivery.mutation";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
+import { isOfKind } from "@/entities/schema/domain/rules/is-of-kind";
 import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 interface RepositoryMenuSectionProps {
@@ -33,21 +38,7 @@ export function RepositoryMenuSection({
 
   const { mutate: reimportLastCommit } = useReimportLastCommitMutation({
     onSuccess: async (result) => {
-      const message = result.taskId ? (
-        <>
-          Import from remote started.
-          <br />
-          <Link
-            to={getTaskDetailsUrl(result.taskId)}
-            className="inline-flex items-center gap-1 underline"
-          >
-            View task <ArrowUpRightIcon className="size-3.5" />
-          </Link>
-        </>
-      ) : (
-        'Import from remote started. You can view its status on the "Tasks" tab.'
-      );
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+      toastTaskStarted("Import from remote started.", result.taskId);
       await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
     },
     onError: (error) => {
@@ -59,21 +50,7 @@ export function RepositoryMenuSection({
 
   const { mutate: importCurrentCommit } = useImportCurrentCommitMutation({
     onSuccess: async (result) => {
-      const message = result.taskId ? (
-        <>
-          Import of current commit started.
-          <br />
-          <Link
-            to={getTaskDetailsUrl(result.taskId)}
-            className="inline-flex items-center gap-1 underline"
-          >
-            View task <ArrowUpRightIcon className="size-3.5" />
-          </Link>
-        </>
-      ) : (
-        'Import of current commit started. You can view its status on the "Tasks" tab.'
-      );
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
+      toastTaskStarted("Import of current commit started.", result.taskId);
       await queryClient.invalidateQueries({
         queryKey: objectQueryKeys.all,
       });
@@ -109,6 +86,67 @@ export function RepositoryMenuSection({
         <Icon icon="mdi:reload" />
         Reimport current commit
       </MenuItem>
+
+      {isOfKind(REPOSITORY_KIND, objectSchema) && (
+        <RepositoryDeliveryMenuItems
+          repositoryId={repositoryId}
+          isUpdateAllowed={isUpdateAllowed}
+        />
+      )}
     </MenuSection>
   );
+}
+
+interface RepositoryDeliveryMenuItemsProps {
+  repositoryId: string;
+  isUpdateAllowed: boolean;
+}
+
+function RepositoryDeliveryMenuItems({
+  repositoryId,
+  isUpdateAllowed,
+}: RepositoryDeliveryMenuItemsProps) {
+  const { data: state } = useGetRepositoryPushState({ repositoryId });
+  // Until the state loads, nothing is known to be pending.
+  const { canRetry } = getPushActions(state?.status ?? "none");
+
+  const { mutate: retryDelivery } = useRetryDeliveryMutation({
+    onSuccess: async (result) => {
+      toastTaskStarted("Retry of the pending pushes started.", result.taskId);
+      await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+    },
+    onError: (error) => {
+      toast(
+        <Alert
+          type={ALERT_TYPES.ERROR}
+          message={`Error retrying the pending pushes: ${error.message}`}
+        />
+      );
+    },
+  });
+
+  return (
+    <MenuItem
+      isDisabled={!isUpdateAllowed || !canRetry}
+      onAction={() => retryDelivery({ repositoryId })}
+    >
+      <Icon icon="mdi:upload" />
+      Retry push
+    </MenuItem>
+  );
+}
+
+function toastTaskStarted(startedMessage: string, taskId?: string) {
+  const message = taskId ? (
+    <>
+      {startedMessage}
+      <br />
+      <Link to={getTaskDetailsUrl(taskId)} className="inline-flex items-center gap-1 underline">
+        View task <ArrowUpRightIcon className="size-3.5" />
+      </Link>
+    </>
+  ) : (
+    `${startedMessage} You can view its status on the "Tasks" tab.`
+  );
+  toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 }
