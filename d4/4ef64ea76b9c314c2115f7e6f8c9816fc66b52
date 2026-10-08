@@ -1,0 +1,39 @@
+backend/infrahub/services/component.py
+  s_131c69042d4e58::t_74fb2d08e2c1f4 254
+  s_131c69042d4e58::t_673de8d40dd47d 15-20,234-235,250-253,255
+backend/tests/component/telemetry/test_resources.py
+  s_131c69042d4e58::t_f7583904cbe805 47-48
+  s_131c69042d4e58::t_68f9fd723ce760 12,54-63,439-460,464,466,470-471,479,499
+backend/infrahub/telemetry/resources.py
+  s_131c69042d4e58::t_c0a2046f79d642 56-58,75-77,428-436,439
+backend/infrahub/telemetry/tasks.py
+  s_131c69042d4e58::t_9cd8446abe371d 136,139-140,146
+backend/tests/unit/telemetry/test_tasks.py
+  s_131c69042d4e58::t_3b93706f5c906a 91,94-102,121
+dev/specs/infp-631-resource-telemetry/data-model.md
+  s_131c69042d4e58::t_43f2f36cd3671d 75,81,99-101,104
+dev/specs/infp-631-resource-telemetry/quickstart.md
+  s_131c69042d4e58::t_15f6229fb93f87 34-35
+dev/specs/infp-631-resource-telemetry/research.md
+  s_131c69042d4e58::t_732b2effb3991c 114,116
+dev/specs/infp-631-resource-telemetry/spec.md
+  s_131c69042d4e58::t_18acb603c1953c 55,74
+dev/specs/infp-631-resource-telemetry/tasks.md
+  s_131c69042d4e58::t_ab1295b6900733 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d44ef64ea76b9c314c2115f7e6f8c9816fc66b52",
+  "prompts": {},
+  "sessions": {
+    "s_131c69042d4e58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27139e14-b3da-4440-b781-9d3c90307ac7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Saltaferis Dimitrios <d.saltaferis@gmail.com>"
+    }
+  }
+}
