@@ -17,11 +17,11 @@ Everything else (root fields, arguments, defaults, ordering, pagination, holder 
 ## SDL
 
 ```graphql
-"""One element of a pool's allocation scope."""
+"""One attribute or relationship of a pool's allocation scope."""
 type NumberPoolScopeElement {
   """The schema element id of the attribute or relationship, on the default branch."""
   id: String!
-  """The element's name, as currently declared on the default branch."""
+  """The attribute or relationship name, as currently declared on the default branch."""
   name: String!
 }
 
@@ -86,14 +86,14 @@ type NumberPoolDivisions {
   """The pool's allocation scope, in scope order."""
   allocation_scope: [NumberPoolScopeElement!]!
   """
-  Every division holding at least one value the pool tracks on any live branch, the division of
-  each holder read on the request's branch, ordered by utilization descending then by display_label.
+  Every division that holds at least one value the pool tracks on any live branch. Each holder's
+  division is read on the request's branch. Ordered by utilization descending, then by display_label.
   Empty for an unscoped pool.
   """
   divisions: [NumberPoolDivision!]!
 }
 
-"""One division: a tuple of values of the scope."""
+"""One combination of values of the allocation scope, with its own number space."""
 type NumberPoolDivision {
   """The entries' display labels joined with " / "."""
   display_label: String!
@@ -103,31 +103,31 @@ type NumberPoolDivision {
   figures: NumberPoolUtilizationFigures!
 }
 
-"""The value one scope element takes in a division."""
+"""One attribute or relationship of the allocation scope and the value a division holds for it."""
 type NumberPoolDivisionEntry {
-  """The schema element id of the scope element."""
+  """The schema element id of the attribute or relationship."""
   id: String!
-  """The scope element's name ("site", "role")."""
+  """The name of the scope attribute or relationship."""
   path: String!
   """
-  Relationship element: the peer's id. Attribute element: the value as text. A holder holding
-  nothing for the element: an empty string.
+  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the
+  holder has no value for it.
   """
   value: String!
   """
-  Relationship element: the peer's display label, read on any branch, falling back to the peer's id
-  when the peer cannot be read. Attribute element: the value as text.
+  For a relationship, the peer's display label read on any branch, or the peer's id when the peer
+  cannot be read. For an attribute, the value as text.
   """
   display_label: String!
-  """Relationship element: the peer's kind when the peer can be read. Otherwise null."""
+  """For a relationship, the peer's kind when the peer can be read. Null otherwise."""
   peer_kind: String
 }
 
-"""One entry of a division filter. Mirrors NumberPoolDivisionEntry."""
+"""One attribute or relationship of the allocation scope and the value the requested division holds for it."""
 input NumberPoolDivisionEntryInput {
-  """A scope element's name."""
+  """The name of the scope attribute or relationship."""
   path: String!
-  """Relationship element: the peer's id. Attribute element: the value as text."""
+  """For a relationship, the peer's id. For an attribute, the value as text."""
   value: String!
 }
 
@@ -139,7 +139,7 @@ type NumberPoolAllocations {
   allocations: [NumberPoolAllocation!]!
 }
 
-"""One tracked number as held on one branch: one row per (record, branch-resolved value)."""
+"""One tracked number as held on one branch. A number held on several branches gives one row per branch."""
 type NumberPoolAllocation {
   """The number held."""
   value: BigInt!

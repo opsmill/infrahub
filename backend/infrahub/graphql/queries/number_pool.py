@@ -61,14 +61,18 @@ class NumberPoolUtilizationFigures(ObjectType):
 
 class NumberPoolScopeElement(ObjectType):
     class Meta:
-        description = "One element of a pool's allocation scope."
+        description = "One attribute or relationship of a pool's allocation scope."
 
     id = Field(
         String,
         required=True,
         description="The schema element id of the attribute or relationship, on the default branch.",
     )
-    name = Field(String, required=True, description="The element's name, as currently declared on the default branch.")
+    name = Field(
+        String,
+        required=True,
+        description="The attribute or relationship name, as currently declared on the default branch.",
+    )
 
 
 class NumberPoolRangeUtilization(ObjectType):
@@ -133,46 +137,46 @@ class NumberPoolUtilization(ObjectType):
 
 class NumberPoolDivisionEntry(ObjectType):
     class Meta:
-        description = "The value one scope element takes in a division."
+        description = "One attribute or relationship of the allocation scope and the value a division holds for it."
 
-    id = Field(String, required=True, description="The schema element id of the scope element.")
-    path = Field(String, required=True, description='The scope element\'s name ("site", "role").')
+    id = Field(String, required=True, description="The schema element id of the attribute or relationship.")
+    path = Field(String, required=True, description="The name of the scope attribute or relationship.")
     value = Field(
         String,
         required=True,
         description=(
-            "Relationship element: the peer's id. Attribute element: the value as text. A holder holding nothing "
-            "for the element: an empty string."
+            "For a relationship, the peer's id. For an attribute, the value as text. An empty string when the "
+            "holder has no value for it."
         ),
     )
     display_label = Field(
         String,
         required=True,
         description=(
-            "Relationship element: the peer's display label, read on any branch, falling back to the peer's id "
-            "when the peer cannot be read. Attribute element: the value as text."
+            "For a relationship, the peer's display label read on any branch, or the peer's id when the peer "
+            "cannot be read. For an attribute, the value as text."
         ),
     )
     peer_kind = Field(
         String,
         required=False,
-        description="Relationship element: the peer's kind when the peer can be read. Otherwise null.",
+        description="For a relationship, the peer's kind when the peer can be read. Null otherwise.",
     )
 
 
 class NumberPoolDivisionEntryInput(InputObjectType):
     class Meta:
-        description = "One entry of a division filter. Mirrors NumberPoolDivisionEntry."
+        description = (
+            "One attribute or relationship of the allocation scope and the value the requested division holds for it."
+        )
 
-    path = String(required=True, description="A scope element's name.")
-    value = String(
-        required=True, description="Relationship element: the peer's id. Attribute element: the value as text."
-    )
+    path = String(required=True, description="The name of the scope attribute or relationship.")
+    value = String(required=True, description="For a relationship, the peer's id. For an attribute, the value as text.")
 
 
 class NumberPoolDivision(ObjectType):
     class Meta:
-        description = "One division: a tuple of values of the scope."
+        description = "One combination of values of the allocation scope, with its own number space."
 
     display_label = Field(
         String,
@@ -205,8 +209,8 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division holding at least one value the pool tracks on any live branch, the division of each "
-            "holder read on the request's branch, ordered by utilization descending then by display_label. "
+            "Every division that holds at least one value the pool tracks on any live branch. Each holder's "
+            "division is read on the request's branch. Ordered by utilization descending, then by display_label. "
             "Empty for an unscoped pool."
         ),
     )
@@ -241,7 +245,9 @@ class NumberPoolRangeRef(ObjectType):
 
 class NumberPoolAllocation(ObjectType):
     class Meta:
-        description = "One tracked number as held on one branch: one row per (record, branch-resolved value)."
+        description = (
+            "One tracked number as held on one branch. A number held on several branches gives one row per branch."
+        )
 
     value = Field(BigInt, required=True, description="The number held.")
     branch = Field(String, required=True, description="The branch on which the holder's attribute holds this value.")
