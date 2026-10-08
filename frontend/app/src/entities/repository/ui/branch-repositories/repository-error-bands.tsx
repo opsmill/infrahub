@@ -1,4 +1,5 @@
 import { Button } from "@infrahub/ui";
+import { AlertCircleIcon } from "lucide-react";
 import React from "react";
 
 import { Row } from "@/shared/components/container";
@@ -62,5 +63,14 @@ export function RepositoryErrorBands({
         </Row>
       )}
     </>
+  );
+}
+
+export function RepositoryHealthFailedBand() {
+  return (
+    <Row role="alert" className="border-t px-4 py-2 text-danger text-xs">
+      <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
+      Repository health couldn't be checked.
+    </Row>
   );
 }

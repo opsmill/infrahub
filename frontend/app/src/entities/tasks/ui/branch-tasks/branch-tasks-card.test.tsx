@@ -83,7 +83,7 @@ describe("BranchTasksCard", () => {
       .toBeVisible();
     await expect.element(component.getByText("Tasks", { exact: true })).toBeVisible();
     expect(bodyRows(component.container)).toHaveLength(10);
-    await expect.element(component.getByText("12", { exact: true }).first()).toBeVisible();
+    await expect.element(component.getByText("12 tasks", { exact: true })).toBeVisible();
     await expect.element(component.getByRole("link", { name: "1 failed" })).toBeVisible();
   });
 
@@ -95,7 +95,7 @@ describe("BranchTasksCard", () => {
     const component = await renderCard();
 
     // THEN
-    await expect.element(component.getByText("3", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("3 tasks", { exact: true })).toBeVisible();
     expect(component.container.textContent).not.toContain("failed");
     expect(component.container.querySelector("nav")).toBeNull();
   });
@@ -170,7 +170,7 @@ describe("BranchTasksCard", () => {
     // THEN
     await expect.element(component.getByText("Task 1")).toBeVisible();
     await expect.element(component.getByText("Task 2")).toBeVisible();
-    await expect.element(component.getByText("2", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("2 tasks", { exact: true })).toBeVisible();
     expect(cellText(component.container, 0, 3)).toBe("CoreRepository");
   });
 
@@ -236,7 +236,7 @@ describe("BranchTasksCard", () => {
     await expect.element(status).toHaveTextContent("Loading tasks");
     expect(status.element().querySelectorAll(".h-10")).toHaveLength(3);
     expect(component.container.querySelector("tbody")).toBeNull();
-    expect(component.container.querySelector(".rounded-full")).toBeNull();
+    expect(component.getByText(/^\d+ tasks?$/).query()).toBeNull();
   });
 
   test("explains what will appear when no task has run", async () => {

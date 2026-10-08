@@ -1,22 +1,13 @@
-import { Card, CardHeader, LinkButton, Tooltip } from "@infrahub/ui";
+import { LinkButton, Tooltip } from "@infrahub/ui";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { CELL_HEIGHT_PX } from "@/shared/components/table/style";
-import { TablePageOutOfRange } from "@/shared/components/table/table-page-out-of-range";
-import { TablePagination } from "@/shared/components/table/table-pagination";
-import { Badge } from "@/shared/components/ui/badge";
+import { PagedTableCard } from "@/shared/components/table/paged-table-card";
 import { useTablePagination } from "@/shared/hooks/use-table-pagination";
-import { getTotalPages, PAGE_SIZE } from "@/shared/utils/table-pagination";
 
 import { useGetRepositoryNames } from "@/entities/repository/ui/queries/get-repository-names.query";
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
 import type { TaskListPage } from "@/entities/tasks/domain/model/task-list-item";
 import { getRelatedNodeIds } from "@/entities/tasks/domain/rules/get-related-node-ids";
-import {
-  BranchTasksFailed,
-  BranchTasksLoading,
-  BranchTasksNone,
-} from "@/entities/tasks/ui/branch-tasks/branch-tasks-states";
 import {
   useGetBranchFailedTaskCount,
   useGetBranchTasks,
@@ -36,104 +27,46 @@ export function BranchTasksCard({ branchName }: BranchTasksCardProps) {
   const { data: failedCount } = useGetBranchFailedTaskCount({ branchName });
 
   return (
-    <Card className="overflow-hidden" data-testid="branch-tasks-card">
-      <CardHeader className="flex items-center gap-2">
-        <h2>Tasks</h2>
-        {query.data && (
-          <Badge variant="blue" className="rounded-full font-normal tabular-nums">
-            {query.data.count}
-          </Badge>
-        )}
-        {!!failedCount && (
-          <Tooltip message="Failed tasks on this branch, including runs retried since.">
-            <LinkButton
-              href={getTasksPageUrl(branchName, [
-                { name: "state__value", value: TASK_STATE_FAILED },
-              ])}
-              variant="ghost"
-              size="xs"
-              className="font-normal text-danger text-xs tabular-nums"
-            >
-              {failedCount} failed
-            </LinkButton>
-          </Tooltip>
-        )}
-        <LinkButton
-          href={getTasksPageUrl(branchName, [])}
-          variant="ghost"
-          size="xs"
-          className="ml-auto text-xs"
-        >
-          Open in Tasks <ExternalLinkIcon className="size-3" aria-hidden />
-        </LinkButton>
-      </CardHeader>
-
-      <BranchTasksBody
-        data={query.data}
-        isPending={query.isPending}
-        isPlaceholderData={query.isPlaceholderData}
-        branchName={branchName}
-        page={page}
-        onPageChange={setPage}
-      />
-    </Card>
-  );
-}
-
-interface BranchTasksBodyProps {
-  data: TaskListPage | undefined;
-  isPending: boolean;
-  isPlaceholderData: boolean;
-  branchName: string;
-  page: number;
-  onPageChange: (page: number) => void;
-}
-
-function BranchTasksBody({
-  data,
-  isPending,
-  isPlaceholderData,
-  branchName,
-  page,
-  onPageChange,
-}: BranchTasksBodyProps) {
-  if (isPending) return <BranchTasksLoading />;
-  // A failed page past the first has no pager to leave it, as the count came with the page.
-  if (!data) {
-    return <BranchTasksFailed onGoToFirstPage={page > 1 ? () => onPageChange(1) : undefined} />;
-  }
-  if (data.count === 0) return <BranchTasksNone />;
-
-  const lastPage = getTotalPages(data.count, PAGE_SIZE);
-  // Placeholder rows carry the previous page's count, which can't tell whether this page exists.
-  if (page > lastPage && !isPlaceholderData) {
-    return <TablePageOutOfRange page={page} lastPage={lastPage} onPageChange={onPageChange} />;
-  }
-
-  // A short last page would otherwise shrink the card and move everything below it.
-  const hasMultiplePages = data.count > PAGE_SIZE;
-
-  return (
-    <>
-      <div
-        className="overflow-x-auto"
-        data-testid="tasks-table"
-        style={hasMultiplePages ? { minHeight: (PAGE_SIZE + 1) * CELL_HEIGHT_PX } : undefined}
-      >
-        <BranchTasksTable data={data} branchName={branchName} />
-      </div>
-
-      {hasMultiplePages && (
-        <TablePagination
-          className="border-t"
-          aria-label="Tasks pagination"
-          page={page}
-          pageSize={PAGE_SIZE}
-          totalCount={data.count}
-          onPageChange={onPageChange}
-        />
-      )}
-    </>
+    <PagedTableCard
+      title="Tasks"
+      itemName={{ one: "task", other: "tasks" }}
+      query={query}
+      page={page}
+      pageSize={pageSize}
+      onPageChange={setPage}
+      headerActions={
+        <>
+          {!!failedCount && (
+            <Tooltip message="Failed tasks on this branch, including runs retried since.">
+              <LinkButton
+                href={getTasksPageUrl(branchName, [
+                  { name: "state__value", value: TASK_STATE_FAILED },
+                ])}
+                variant="ghost"
+                size="xs"
+                className="font-normal text-danger text-xs tabular-nums"
+              >
+                {failedCount} failed
+              </LinkButton>
+            </Tooltip>
+          )}
+          <LinkButton
+            href={getTasksPageUrl(branchName, [])}
+            variant="ghost"
+            size="xs"
+            className="ml-auto text-xs"
+          >
+            Open in Tasks <ExternalLinkIcon className="size-3" aria-hidden />
+          </LinkButton>
+        </>
+      }
+      failedMessage="Task results didn't load."
+      emptyTitle="No tasks"
+      emptyMessage="No tasks have run on this branch yet. Imports, generators and validations appear here as they run."
+      renderTable={(data) => <BranchTasksTable data={data} branchName={branchName} />}
+      tableTestId="tasks-table"
+      data-testid="branch-tasks-card"
+    />
   );
 }
 
