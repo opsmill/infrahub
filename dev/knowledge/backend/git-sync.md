@@ -3,9 +3,10 @@
 > Part of: `dev/knowledge/backend/` | Related: [Architecture](architecture.md)
 
 How Infrahub maps and imports branches from external git repositories, how the sync flow reads the
-per-branch state of each repository, and how git errors surface. Read this before reasoning about
-which remote branches get imported, how many queries a sync run costs, or why a git failure carries
-(or lacks) a message - the logic is split across several methods and is easy to mis-trace.
+per-branch state of each repository, and how git and import errors surface. Read this before
+reasoning about which remote branches get imported, how many queries a sync run costs, or why a git
+failure carries (or lacks) a message - the logic is split across several methods and is easy to
+mis-trace.
 
 ## The repository object and where its default branch comes from
 
@@ -59,9 +60,17 @@ The read-write kind implements the mapping described below; the read-only kind r
   fetch. Its remote-tracking ref is read before the fetch and compared after it. A branch absent from
   that earlier read counts as moved, because it was pushed after this clone's last fetch. A worker
   with no clone makes one before the read, so its first sync does not see the branch as new.
-- `RepositorySyncer.sync` returns a `SyncReport` of the skipped, imported and advanced branches. When
-  a branch fails, it raises `RepositoryBranchesFailedError` carrying the same report, so a caller can
-  still report the skipped branches before re-raising.
+- `RepositorySyncer.sync` returns a `SyncOutcome`: a `SyncReport` of the skipped, imported and
+  advanced branches, the branches it advanced with their commits, and the branches that failed. A
+  failed branch does not raise there. Its callers report the skipped branches, then raise
+  `RepositoryBranchesFailedError` carrying the outcome through `git/sync.py::raise_if_branches_failed`.
+- The periodic cycle catches that error, sends the fetch message, and raises nothing further. A
+  failed configured default branch is logged at error level and recorded as `error-import` on the
+  branch the trunk imports into, because a trunk failure while it is collected writes no status of
+  its own. The failure of any other branch is logged at info level.
+- The cycle wraps each repository in its own `try` (`git/tasks.py::sync_remote_repository` is the
+  per-repository step), so one repository that raises is logged and the cycle continues with the
+  next one.
 - The operator-facing record of the skip is a warning in the flow run's log, emitted through
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
@@ -172,6 +181,67 @@ is present with a value of `None`. A branch whose `internal_status` does not res
 chunk loop, rather than one per repository-and-branch pair inside it. A failing chunk raises rather
 than being caught, so the read never returns a `RepositoryData` that silently omits branches.
 
+## Rewritten history
+
+`InfrahubRepository.collect_pending_imports` compares each branch twice. Keep the two comparisons
+apart, because they drive different outcomes:
+
+- **The commit the graph records against the remote head** says what happened to the branch:
+  unchanged, fast-forward, rewrite or gone from the remote (`git/divergence/`). The classifier also
+  knows a re-target, but the sync is never told that a tracking target changed, so it never produces
+  one ([Known limitations](git-integration.md#known-limitations)). The commits are read once per
+  cycle by `get_repositories_commit_per_branch` and passed down through the sync flows.
+- **This worker's worktree head against the remote head** says whether the clone moves. The sync
+  moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
+  remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
+  to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
+  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
+  pushes before it records the commit, and resets the destination worktree when either step fails.
+  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
+  commit there, and the sync reset then discards it
+  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
+  already on the remote head stays there. When the graph records another commit, the sync resets the
+  worktree onto the same commit, which records it, and imports the branch again: a pull would move
+  nothing, so it would record nothing.
+
+A worker whose graph already holds the remote head can still hold the discarded history on disk. It
+resets and logs the reconciliation, and its classification stays unchanged.
+
+The sync considers the branches whose local head differs from the remote, and also the local
+branches whose graph commit differs from the remote head. Only branches that can still record a
+commit take part in the second comparison. A branch that needs a rebase, is being merged, failed a
+merge, is merged or is being deleted rejects the commit, and so does a branch Infrahub no longer
+lists, so it would be selected again on every cycle. `git/branch_status.py::accepts_commit_write`
+holds that rule for both comparisons. A commit write the graph still refuses, because the status
+changed after the listing, fails that branch alone. The sync classifies a branch new to this worker too,
+because the graph can hold a commit that another worker imported and the remote has since discarded.
+A graph commit that is empty or not a full commit id counts as none, so the branch classifies as a
+fast-forward and records a real commit. When git cannot read its object store, a new branch is still
+created, but a branch this worker holds fails before its worktree moves. Each reset that discards a
+commit, from the worktree or from the graph, logs one line with the branch, the discarded commit and
+the commit that replaced it. A plain fast-forward logs nothing. The add flow passes no graph
+commits, so it classifies nothing.
+
+### The rewrite record
+
+A rewrite is also recorded on the repository, in four `LOCAL` attributes of the repository generic:
+`last_rewrite_previous_commit`, `last_rewrite_commit`, `last_rewrite_at` and `rewrite_count`.
+`HistoryRewriteRecorder` (`git/divergence/recorder.py`) is the only writer. It writes only when the
+graph comparison classifies the branch as a rewrite, so a worker that only resets its own stale
+worktree records nothing.
+
+- **Record right after the commit write, in the same hold of the repository lock.** After the import
+  the next cycle already reads the new commit as unchanged, so a later record never happens.
+- **A failed record fails its branch alone, at step `record`, and keeps its import queued.** The
+  graph already holds the new commit, so no later cycle selects the branch again to import it, and
+  that rewrite stays unrecorded. The import still runs, so the failure leaves `sync_status` alone. On
+  the default branch it is logged at error level, and the run fails although the import converged.
+- **A failed record is logged once, where it is caught, the way a failed import is.** The store
+  chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised, such as a lost connection.
+- **The count is what the branch reads, not what it did.** A branch-local read falls back to the
+  origin branch, so a branch created after a trunk record reads that record and counts on from it.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning
@@ -192,6 +262,70 @@ The check before the lock still raises on a broken copy rather than replacing it
 
 The lock is reentrant per context, so a caller that already holds it for a wider critical section
 pays nothing extra.
+
+## Import failures
+
+A branch import is built by `build_import_plan` and applied by `apply_import_plan`. Each runs inside
+the same boundary, `_import_failure_boundary` on the integrator; the apply step does not run when the
+build step fails, so a failure is handled once. Every import goes through these two
+methods: the add and sync flows, the scheduled sync of a new clone, the import-objects flow, and the
+read-only flows through `import_objects_from_files`.
+
+- **What the boundary does.** On any failure it sets the branch to `ERROR_IMPORT`, logs the failure
+  once to the flow run's log, and raises `RepositoryImportError`
+  (`backend/infrahub/git/import_errors.py`). `RepositoryConnectionError` and
+  `RepositoryCredentialsError` also set the branch being imported to `ERROR_IMPORT`, but they are not
+  logged or converted: they pass through unchanged and still stop the repository's sync.
+  A failed `ERROR_IMPORT` write is logged and does not replace the import failure. The boundary
+  ends after the last import step: setting the branch to `IN_SYNC` and sending `CommitUpdatedEvent`
+  run outside it, so their failure cannot mark a fully imported branch as `ERROR_IMPORT`.
+- **Expected and unrecognised failures.** `describe_import_error` is the single function that maps an
+  exception to a readable message. A failure it recognises is logged at error level without a
+  traceback. A failure it does not recognise is logged once with its traceback, which is the signal
+  that the function needs a new entry. Both become `RepositoryImportError`. To make a new error
+  type expected, add a `case` to that function and nothing else. The SDK `Error` base class is
+  deliberately not mapped, because it also covers connection errors.
+- **One log entry per failure.** The error entry carries `repository`, `branch`, `step` (`import`)
+  and `reason` as log record fields for log shippers and alert rules. `raise_if_branches_failed`
+  logs its warning with the same fields only for branches that failed before the import (step
+  `collection`), so each failure appears once in the task log.
+- **Naming the `.infrahub.yml` entry.** The mapping function only receives the exception, so the
+  loops over `.infrahub.yml` entries, in the build and in the apply step, wrap their body in
+  `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
+  and the message is prefixed with the notes, for example
+  `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
+  A schema entry is labelled `Schema '<path>'` only when the path does not exist or names a
+  directory without a schema file; errors in a schema file's content have no label, because they
+  already name the file. The build
+  loops that import Python modules (checks, Python transforms, generators) also pass the worktree
+  directory to `import_entry`, so a syntax error names its file relative to the repository root.
+  The file can be a helper module, not the entry's own file.
+  Do not log inside an import step and then re-raise: the boundary logs, and a second entry
+  duplicates the failure.
+- **No Prefect traceback.** The import steps are plain methods, not `@task`s. An exception leaving a
+  task is logged by Prefect with its traceback before the boundary can convert it. When
+  `RepositoryImportError` or `RepositoryBranchesFailedError` leaves a flow, Prefect also writes a
+  record with the traceback. Both types are registered with `@suppress_traceback_in_logs`, so the
+  filter on the Prefect run loggers drops that record (see [Webhooks](webhooks.md) for the
+  mechanism). The filter matches the exact type, so each class is registered on its own. Prefect's
+  `Finished in state Failed(...)` entry has no traceback and stays.
+- **A failure stays on its branch.** Containment does not rely on the boundary converting every
+  failure. `import_branch` (`backend/infrahub/git/sync.py`) builds and applies one branch under the
+  repository lock and returns any failure instead of raising it, including one raised outside the
+  boundary such as a lock error, which it logs once with its traceback. Only
+  `RepositoryConnectionError` and `RepositoryCredentialsError` are re-raised, so only the branch
+  being imported is set to `ERROR_IMPORT`: recording them on every remaining branch would leave
+  those statuses in place until a new commit or a manual re-import. `RepositorySyncer.sync` records
+  a failed branch and continues with the next one. `RepositoryAdder.add` returns a failed
+  default-branch import. For an active repository, `add_git_repository` still syncs the other
+  branches and sends `RefreshGitFetch` before it fails with that error; for a repository that is
+  not active, it syncs no other branch and fails with that error at once.
+  `bootstrap_local_repository` returns the repository when the default-branch import fails, so the
+  scheduled sync continues with its other branches; it returns `None` when the clone fails or when
+  that import raises a connection or credential error.
+- **Calling an import step directly.** The steps write to the run logger, which Prefect provides only
+  inside a flow or task run. A test that calls one directly wraps the call in a flow
+  (`tests/helpers/flow.py::call_in_flow`).
 
 ## Git error surfacing
 

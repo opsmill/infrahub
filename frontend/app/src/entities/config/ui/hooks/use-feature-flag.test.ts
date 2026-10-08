@@ -12,10 +12,10 @@ describe("useFeatureFlag", () => {
 
   it("returns true when the backend enables the flag", async () => {
     // GIVEN
-    useConfigMock.mockReturnValue({ experimental_features: { dark_theme: true } } as Config);
+    useConfigMock.mockReturnValue({ experimental_features: { graphql_enums: true } } as Config);
 
     // WHEN
-    const { result } = await renderHook(() => useFeatureFlag("dark_theme"));
+    const { result } = await renderHook(() => useFeatureFlag("graphql_enums"));
 
     // THEN
     expect(result.current).toBe(true);
@@ -23,10 +23,10 @@ describe("useFeatureFlag", () => {
 
   it("returns false when the backend disables the flag", async () => {
     // GIVEN
-    useConfigMock.mockReturnValue({ experimental_features: { dark_theme: false } } as Config);
+    useConfigMock.mockReturnValue({ experimental_features: { graphql_enums: false } } as Config);
 
     // WHEN
-    const { result } = await renderHook(() => useFeatureFlag("dark_theme"));
+    const { result } = await renderHook(() => useFeatureFlag("graphql_enums"));
 
     // THEN
     expect(result.current).toBe(false);
@@ -37,7 +37,7 @@ describe("useFeatureFlag", () => {
     useConfigMock.mockReturnValue({ experimental_features: {} } as Config);
 
     // WHEN
-    const { result } = await renderHook(() => useFeatureFlag("dark_theme"));
+    const { result } = await renderHook(() => useFeatureFlag("graphql_enums"));
 
     // THEN
     expect(result.current).toBe(false);
@@ -45,7 +45,7 @@ describe("useFeatureFlag", () => {
 
   it("reads only the flag it is asked for", async () => {
     // GIVEN
-    useConfigMock.mockReturnValue({ experimental_features: { dark_theme: true } } as Config);
+    useConfigMock.mockReturnValue({ experimental_features: { value_db_index: true } } as Config);
 
     // WHEN
     const { result } = await renderHook(() => useFeatureFlag("graphql_enums"));

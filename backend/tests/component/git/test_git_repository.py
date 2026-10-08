@@ -44,16 +44,20 @@ from infrahub.git.integrator import (
     CheckDefinitionInformation,
 )
 from infrahub.git.models import GitRepositoryMerge, RequestArtifactGenerate
-from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer
+from infrahub.git.repository import ImportStep
+from infrahub.git.sync import RepositoryFileImporter, RepositorySyncer, SyncOutcome
 from infrahub.git.tasks import merge_git_repository
 from infrahub.git.worktree import Worktree
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
 from tests.adapters.event import MemoryInfrahubEvent
+from tests.adapters.lock import LockTimeline, RecordingImporter
+from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
+from tests.helpers.flow import call_in_flow
 from tests.helpers.git import build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
@@ -492,7 +496,7 @@ async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubReposit
     assert response == commit
 
 
-async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
+async def test_pull_of_a_diverged_branch_names_a_divergent_history(git_repo_06: InfrahubRepository) -> None:
     repo = git_repo_06
     await repo.fetch()
 
@@ -505,7 +509,11 @@ async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
     with pytest.raises(RepositoryError) as exc:
         await repo.pull(branch_name=branch_name)
 
-    assert "there are conflicts that must be resolved" in str(exc.value)
+    assert exc.value.message == (
+        f"Unable to pull the branch {branch_name} for repository {repo.name}, "
+        "its local history and the remote history have diverged."
+    )
+    assert "conflict" not in exc.value.message.lower()
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository) -> None:
@@ -670,16 +678,20 @@ async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> 
     assert str(response) == str(commit_after)
 
 
-async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> None:
-    syncer = RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter())
-    await syncer.sync(repo, staging_branch=staging_branch)
+async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> SyncOutcome:
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RepositoryFileImporter(),
+        recorder=build_in_memory_recorder(),
+    )
+    return await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
 
 
 async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
     repo = git_repo_02
-    await _sync(repo)
+    outcome = await _sync(repo)
 
-    assert True
+    assert outcome.failed == ()
 
 
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
@@ -720,8 +732,9 @@ async def test_sync_new_branch(
             "infrahub.git.integrator.InfrahubRepositoryIntegrator.apply_import_plan", new_callable=AsyncMock
         ) as mock_apply,
     ):
-        await _sync(repo)
+        outcome = await _sync(repo)
         mock_apply.assert_awaited()
+    assert outcome.failed == ()
     worktrees = repo.get_worktrees()
 
     assert repo.get_commit_value(branch_name=branch.name) == commit
@@ -746,32 +759,44 @@ async def test_sync_updated_branch(
             "infrahub.git.integrator.InfrahubRepositoryIntegrator.apply_import_plan", new_callable=AsyncMock
         ) as mock_apply,
     ):
-        await _sync(repo)
+        outcome = await _sync(repo)
         mock_apply.assert_awaited()
+    assert outcome.failed == ()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_sync_continues_after_branch_pull_failure(
+async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
     prefect_test_fixture: None, git_repo_07: InfrahubRepository, mock_branch_all: AsyncMock
 ) -> None:
-    """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
+    """A branch whose collection fails is returned as failed, and the remaining branches still advance."""
     repo = git_repo_07
 
     for branch_name in ["branch01", "branch02"]:
         branch = Branch(name=branch_name, uuid=uuid4())
         registry.branch[branch.name] = branch
 
+    # The diverged branch01 is reset onto its remote head, which then fails to get a commit worktree.
+    blocked_commit = repo.get_commit_value(branch_name="branch01", remote=True)
+    (repo.directory_commits / blocked_commit).mkdir()
+    (repo.directory_commits / blocked_commit / "blocker.txt").write_text("blocking worktree creation\n")
+
     remote_commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
     assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)
 
-    # A branch failure surfaces as an error once all branches have been processed.
-    expected_prefix = re.escape(
-        f"Unable to synchronize the following branches of repository {repo.name}: branch01 (step=collection):"
+    # The importer reads nothing, so only the collection of branch01 can fail.
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RecordingImporter(LockTimeline()),
+        recorder=build_in_memory_recorder(),
     )
-    with pytest.raises(RepositoryError, match=expected_prefix):
-        await _sync(repo)
+    outcome = await syncer.sync(repo)
 
+    assert [(failed.branch_name, failed.step) for failed in outcome.failed] == [("branch01", ImportStep.COLLECTION)]
+    assert [(branch.infrahub_branch_name, branch.commit) for branch in outcome.reconciled] == [
+        ("branch02", str(remote_commit_branch02))
+    ]
+    assert outcome.report.imported_branches == ("branch02",)
     assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
 
 

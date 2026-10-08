@@ -68,8 +68,21 @@ After mutating git state, the initiating worker resolves a concrete SHA and send
 `RefreshGitFetch` carrying it (six emission sites in `git/tasks.py`, covering repository add
 read-write and read-only, periodic sync, branch create, read-only pull, and merge). Every other
 worker takes the same repository lock, fetches, and then either hard-resets onto the pinned SHA or,
-when no SHA was supplied, pulls (the `fetch` handler in `message_bus/operations/git/repository.py`).
-A worker ignores its own broadcast by comparing `meta.initiator_id` against `WORKER_IDENTITY`.
+when no SHA was supplied, pulls (`git/convergence.py::WorktreeConverger`, which the `fetch` handler
+in `message_bus/operations/git/repository.py` builds). A worker ignores its own broadcast by
+comparing `meta.initiator_id` against `WORKER_IDENTITY`. A worker that lacks the branch creates its
+worktree in its own clone only and never pushes it, so a branch deleted on the remote after the sync
+does not come back.
+
+The periodic sync sends one message per repository per cycle. Its `branches` list starts with the
+trunk, on every cycle, and then names every other branch the cycle advanced, each with its pinned
+commit. The trunk is listed at its local head even when its import failed; any other branch whose
+import failed is not listed. The receiving worker resets each entry inside one lock hold and after
+one fetch, and a branch it cannot reset is logged and skipped. The single-branch fields repeat the
+first entry, so a worker on older code still converges the trunk. The message is sent even when a
+branch of the cycle failed. Listing the trunk on an idle cycle is what brings back a worker that
+missed an earlier message. When the cycle cannot read the trunk's commit, the trunk entry carries no
+commit, and every worker pulls the trunk instead of resetting it.
 
 Pinning a SHA rather than a branch name is deliberate: the remote may advance between the
 initiating worker's operation and a receiving worker's fetch, and a pull would land that worker
@@ -101,8 +114,8 @@ guarantees which of the two flows the scheduler reaches first.
 
 > **Volatile section.** The intended fix for this ordering gap is a persisted writeback state,
 > recorded before the merge workflow is submitted, that holds regeneration for repository-owned
-> definitions until that repository's commit on the destination branch is final. Update this section
-> when that lands.
+> definitions until that repository's commit on the destination branch is final. It is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 ## Pushing back to the remote
 
@@ -121,29 +134,34 @@ while the merge still reported success; sending HEAD is what closed that gap.
 
 ### The writeback direction has no reconciliation
 
-The pull direction has the once-a-minute loop. The push direction has nothing equivalent, and three
-properties compound:
+The pull direction has the once-a-minute loop. The push direction has nothing equivalent.
 
-- `InfrahubRepository.merge` writes the new commit to the graph **before** pushing (the
-  `update_commit_value` call precedes the `push` call), so a rejected push leaves the graph naming a
-  commit the remote never received.
-- Nothing ever re-pushes. `push()` is reachable only from branch creation and `merge()`; the periodic
-  sync only pulls.
-- Re-running the merge no-ops. `merge()` returns `False` when `commit_after == commit_before`,
-  computed from local git state, and `merge_git_repository` ignores the return value, so once the
-  local merge has happened a re-triggered merge never reaches `push()`.
+`InfrahubRepository.merge` merges into the destination worktree, pushes, and only then creates the
+commit worktree and writes the new commit to the graph. A rejected push therefore records nothing.
+After a rejected push, and after a failure to record a pushed commit, `merge` tries to reset the
+destination worktree to its pre-merge commit. The reset is best-effort: it never raises, so the
+original failure propagates unmasked.
 
-A merge commit created this way also exists on exactly one worker's disk: the `RefreshGitFetch`
-broadcast is sent after `merge()` returns, so a failed push aborts the flow before any other worker
-hears about it. With `git.use_explicit_merge_commit` at its default of `False` the merge
-fast-forwards where it can and the resulting SHA is the source commit, which the remote already has.
-When the destination has diverged, or when that setting is enabled, git creates a real merge commit
-whose SHA embeds a timestamp and is therefore not reproducible.
+- When the reset succeeds, a re-run of the merge re-derives it instead of finding nothing to merge.
+  After a failed record, the reset leaves the worktree behind the remote, and the periodic sync then
+  resets the worktree onto the pushed commit and records it.
+- When the reset fails, `merge` logs the failure and says that manual reconciliation may be
+  required. The worktree can stay on a merge commit that the graph does not record, and a re-run can
+  then find nothing to merge, until the next sync resets the worktree onto the remote head.
 
-> **Volatile section.** The intended fix reorders this so the push precedes the graph write and the
-> destination worktree is reset on failure, which makes the discarded merge commit harmless and lets
-> any worker re-derive the merge from `(source_branch, source_commit, dest_branch)`. Update this
-> section when that lands.
+What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
+`merge()`, the periodic sync only reads from the remote, and `merge_git_repository` has no retry. A rejected push
+stays undelivered until a later merge into the same destination, and nothing on the repository
+records that it failed: the only trace is the failed flow run.
+
+With `git.use_explicit_merge_commit` at its default of `False` the merge fast-forwards where it can
+and the resulting SHA is the source commit, which the remote already has. When the destination has
+diverged, or when that setting is enabled, git creates a real merge commit whose SHA embeds a
+timestamp and is therefore not reproducible. A reset that succeeds discards it, so a later attempt
+re-derives the merge from `(source_branch, source_commit, dest_branch)` on any worker.
+
+> **Volatile section.** A delivery queue with retry and abandon actions is specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 `push_info.summary`, not by raising `GitCommandError`, so `push()` inspects `push_info.flags` and
@@ -178,6 +196,21 @@ the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = 
 attribute never appears in a branch diff or a proposed change, and can never produce a merge
 conflict. That is why nobody has ever had to resolve a conflict on `sync_status`.
 
+`sync_status` still never diffs or conflicts, but it is no longer invisible on a proposed change:
+the repository validator fails the pipeline when the source branch recorded `error-import`.
+
+Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
+isolated, so a branch that never imported a repository reads the value its base branch held at
+`branched_from`, frozen there: a branch created while the default
+branch was in `error-import` keeps reading `error-import` after the default branch recovers, until
+it is rebased. The import check therefore only counts a value the source branch wrote
+(`git/sync_status.py::RepositoryBranchSyncStatusReader`), recognised by the attribute's `updated_at`
+being at or after `branched_from`; an inherited value is older and passes.
+
+The comparison must be `>=`, not `>`. A rebase (`RebaseBranchQuery`) sets `from` on every live edge
+of the branch to the rebase time and moves `branched_from` to that same time, so a value the branch
+wrote before the rebase ends up with `updated_at == branched_from`.
+
 AGNOSTIC buys conflict-freedom but **not** invisibility: agnostic nodes do reach the diff, forced
 to `DiffAction.UPDATED` because a globally-stored node has no created/deleted distinction on a branch
 (`core/diff/query_parser.py`). New per-branch operational state belongs on the repository node as a
@@ -188,8 +221,8 @@ LOCAL attribute, not on a related node.
 A repository being validated inside a proposed change carries `internal_status` of `staging`
 (`InfrahubRepository.internal_status`, a required field read from the node). The staging branch is resolved per sync
 from `RepositoryData.get_staging_branch` (`git/models.py`), which scans `branch_info` for the entry
-whose `internal_status` is `staging`. `InfrahubRepository._collect_staging_imports` pairs that branch
-with the repository's trunk.
+whose `internal_status` is `staging`. `InfrahubRepository.collect_pending_imports` pairs that branch
+with the repository's trunk: it advances the trunk worktree and imports its commit into the staging branch.
 
 ## Deleting a repository is destructive
 
@@ -214,23 +247,23 @@ error and an HTTP failure surfaces only as text from the libcurl remote helper. 
 substrings are stable user-facing git and curl strings, but they are still strings: a wording change
 upstream silently reclassifies an error to the generic fallthrough.
 
-Two gaps to know about:
+One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
+`push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-- **Per-ref push rejections bypass it** (see above); they arrive on `push_info.summary`. Transport-level
-  push failures do reach it, because those raise `GitCommandError`.
-- **Divergence is misreported as conflict.** The workers configure no `pull.rebase` or `pull.ff`
-  (`workers/infrahub_async.py::set_git_global_config`), so a branch whose remote history was rewritten
-  fails `git pull` with "Need to specify how to reconcile divergent branches", which the classifier
-  maps to "there are conflicts that must be resolved". There is no conflict. A user acting on that
-  message will look for a merge conflict that does not exist.
+A diverged pull gets a message of its own. The workers configure no `pull.rebase` or `pull.ff`
+(`workers/infrahub_async.py::set_git_global_config`), so `git pull` on a branch whose remote history
+was rewritten fails with "Need to specify how to reconcile divergent branches". The classifier reports
+that as a local history and a remote history that have diverged, never as a conflict. Only "you have
+unmerged files", which is a conflict git observed, is reported as one.
 
-`InfrahubRepositoryBase.compare_local_remote` cannot tell the two situations apart in the first place:
-it compares only `remote_branches[b].commit != local_branches[b].commit`, so a fast-forward and a
-rewritten history are indistinguishable and both are reported as "New commit detected".
+The periodic sync does not reach that failure for a rewritten branch. `compare_local_remote` compares
+heads by equality only, but the sync collector then classifies each branch by ancestry and resets a
+branch worktree that does not lead to the remote head. [Git Sync](git-sync.md#rewritten-history)
+describes how.
 
-> **Volatile section.** A planned fix adds divergence detection here, and reconciles a rewritten
-> branch by hard-resetting to the remote and broadcasting, rather than failing. Update this section
-> when that lands.
+> **Volatile section.** `InfrahubRepositoryBase.pull` still raises on a diverged branch, so a worker
+> that advances a branch outside the sync collector does not reset it yet. No record of a rewrite is
+> stored. Update this section when those land.
 
 ## Known limitations
 
@@ -239,7 +272,10 @@ rewritten history are indistinguishable and both are reported as "New commit det
   reconciles branches already imported under the old mapping. The commit recorded against Infrahub's
   default branch changes to the new trunk's history, and a previously imported branch of that name is
   left orphaned. `get_initialized_repo` is also cached for 30s, so an edit is served stale for up to
-  that long; this is consistent with the lack of reconciliation rather than a separate bug.
+  that long; this is consistent with the lack of reconciliation rather than a separate bug. The sync
+  is never told that the tracking target changed, so it never classifies a branch as re-targeted. When
+  the old trunk commit is not an ancestor of the new trunk, it classifies the edit as a rewrite and
+  logs the trunk as reconciled.
 - **A skipped branch is re-evaluated every cycle.** A remote branch named like Infrahub's default, on
   a repository whose trunk is something else, is never created locally by the sync, so every sync
   usually skips it again and the process log repeats once a minute. The exception is a clone whose
@@ -247,10 +283,6 @@ rewritten history are indistinguishable and both are reported as "New commit det
   logged, until it moves. The operator-facing warning is gated separately, and a
   push to that branch can go unreported when more than one worker runs; both are covered in
   [Git Sync](git-sync.md#branch-import-and-mapping).
-- **A branch left ahead of its remote is re-reported every cycle too.** After a failed push the local
-  branch sits ahead of `origin/`, so `compare_local_remote` flags it as updated, `pull()` returns
-  `True` with no change, and "An update was detected but the commit remained the same after `pull()`"
-  is logged once a minute.
 - **`CommitUpdatedEvent` is emitted but has no subscribers.** It is sent from
   `InfrahubRepositoryIntegrator.apply_import_plan` and no `EventTrigger` anywhere lists
   `infrahub.repository.update_commit` in its events set. It is not a working signal; wiring anything
