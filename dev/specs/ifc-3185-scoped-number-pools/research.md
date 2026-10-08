@@ -118,21 +118,26 @@ declared on the generic itself, and an entry only some implementing kinds declar
 naming the generic; an entry the reference schema does not define on the kind is refused naming
 the entry.
 
-Both callers use it: `InfrahubNumberPoolMutation` on create, update and upsert against the default
-branch's schema, whatever branch the mutation runs on, on every save that carries
-`allocation_scope` (FR-009); and `SchemaBranch._validate_number_pool_parameters` against the schema
-being loaded (FR-012), since the declaration travels with the fields it names. The default branch
-is the reference at pool save because the pool and its scope are branch-agnostic while the kind's
-schema is branch-aware: a field that exists only on a branch enters a scope once it is merged, and
-a pool re-sent whole from any branch validates against the same schema, so no exemption for an
-unchanged scope is needed.
+Both callers use it: `InfrahubNumberPoolMutation` at creation (`mutate_create`, and the upsert that
+creates) against the default branch's schema, whatever branch the mutation runs on (FR-009); and
+`SchemaBranch._validate_number_pool_parameters` against the schema being loaded (FR-012), since the
+declaration travels with the fields it names. The default branch is the reference at pool creation
+because the pool and its scope are branch-agnostic while the kind's schema is branch-aware: a field
+that exists only on a branch enters a scope once it is merged. After creation the scope is
+immutable (FR-006): `mutate_update` and the upsert of an existing pool compare the submitted
+`allocation_scope` with the stored one, accept the identical value as a no-op without validating it
+again, and refuse any other value (an empty list on a scoped pool and `null` included) naming the
+pool; a schema-created pool keeps its existing default-branch message. Rescoping goes through a new
+pool and attach (User Story 7).
 
 **Rationale**: the uniqueness-constraint flags are almost the FR-009 rules; the delta is small and
 local. One component for both surfaces is what FR-009 and FR-012 ask for ("the same rules").
 
 **Alternatives**: a new `SchemaElementPathType` flag for "required attribute" (touches a shared enum
 for one caller); duplicating the checks in the mutation and the schema validator (two drifting
-copies).
+copies); a mutable scope validated on every save, as the PRD's FR-006 and the Notion PRD's FR-018
+amendment describe (rejected on 2026-10-08, for now: the stored scope is fixed at creation, so no
+re-validation on update and no "unchanged scope" exemption is needed).
 
 ### D3 — The division is derived inside the records fragment, per entry, as a union over branches with the same visibility rule the value read uses
 
@@ -339,14 +344,16 @@ and has no migration today) uses the same lookup and rewrites the entry in `allo
 every pool that names the field, user-created or schema-created, as a data write of the migration
 (FR-032). A schema-declared scope carries the new name in the same load; the schema-update
 validation accepts that one change to a `NOT_SUPPORTED` field when it matches a rename in the same
-diff. The pool is branch-agnostic, so the write runs when the renaming branch merges into the
-default branch; until then the branch's reads ignore the stored entry (FR-008). Proposed rule,
-listed in the spec's deviations for confirmation.
+diff. This rewrite is the only way a stored scope changes (FR-006). The pool is branch-agnostic, so
+the write runs when the renaming branch merges into the default branch; until then the branch's
+schema does not define the stored entry, reads there ignore it (FR-008) and allocation on that
+branch is coarser until the merge. Proposed rule, listed in the spec's deviations for
+confirmation together with that gap.
 
 **Alternatives**: a pure schema-branch check (cannot see pools, which are data); a Cypher filter on
-the list value (format-dependent); refusing a rename while a pool names the field (forces the
-operator to clear and re-set the scope around every rename, with a window in which the pool
-allocates coarser).
+the list value (format-dependent); refusing a rename while a pool names the field (with an
+immutable scope, FR-006, the operator would have to recreate the pool and attach every node around
+every rename).
 
 ### D9 — The attribute-add size check compares against the largest division
 
@@ -366,9 +373,10 @@ the one accepted change, D8). FR-009's entry rules run in `_validate_number_pool
 branch being loaded. `SchemaNumberPoolUpserter` writes the scope at pool creation;
 `SchemaNumberPoolSynchronizer._update_pool_from_schema` does not copy it, since the declaration
 cannot change. `InfrahubNumberPoolMutation.mutate_update` refuses a scope change on a
-`pool_type == Schema` pool with the existing default-branch message (FR-013). The Notion PRD's
-FR-018 amendment ("set, change and clear are one attribute update") holds for user-created pools
-only; the spec lists the departure for confirmation.
+`pool_type == Schema` pool with the existing default-branch message (FR-013). User-created pools
+follow the same rule since 2026-10-08: the scope is fixed at creation for every pool type (FR-006);
+the spec lists the departure from the Notion PRD's FR-018 amendment ("set, change and clear are
+one attribute update") for confirmation, marked "for now".
 
 **Alternatives**: `update: ALLOWED` with the synchronizer copying the scope from the default-branch
 schema as it copies the bounds (the behaviour the PRD implies; not what shipped, and a change to

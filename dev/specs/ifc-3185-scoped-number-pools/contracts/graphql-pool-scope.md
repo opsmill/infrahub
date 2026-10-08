@@ -33,20 +33,23 @@ input CoreNumberPoolUpsertInput { allocation_scope: ListAttributeUpdate }
 
 The input types are the generated list-attribute inputs every `List` attribute already uses.
 
+The scope is set when the pool is created and cannot be changed afterwards (FR-006).
+
 | Input | Meaning |
 |---|---|
 | omitted | create: unscoped; update: unchanged |
-| `{value: []}` | unscoped |
-| `{value: null}` on update | clears the scope |
-| `{value: ["site"]}` | scoped by the `site` relationship |
-| `{value: ["site", "role__value"]}` | scoped by `site` and the `role` attribute; stored as `["site", "role"]` |
+| `{value: []}` at creation | unscoped |
+| `{value: ["site"]}` at creation | scoped by the `site` relationship |
+| `{value: ["site", "role__value"]}` at creation | scoped by `site` and the `role` attribute; stored as `["site", "role"]` |
+| the stored value re-sent on update or upsert of an existing pool | accepted as a no-op (clients re-send every field); not validated again |
+| any other value on update or upsert of an existing pool, `{value: []}` on a scoped pool and `{value: null}` included | refused with a `ValidationError` on the `allocation_scope` field: `allocation_scope can't be changed on pool <pool name>: create a pool with the new scope and attach the numbers to it` |
 
-## Validation (default branch's schema)
+## Validation (default branch's schema, at creation)
 
 The scope is validated against the default branch's schema, whatever branch the mutation runs on,
-on every create, update or upsert that carries `allocation_scope`. A field that exists only on a
-branch enters a scope once it is merged; a pool re-sent whole from any branch validates against the
-same schema. Refused with a `ValidationError` on the `allocation_scope` field:
+at creation: `CoreNumberPoolCreate` and the upsert that creates. A field that exists only on a
+branch enters a scope once it is merged. Refused with a `ValidationError` on the `allocation_scope`
+field:
 
 | Entry | Reason given |
 |---|---|
@@ -62,7 +65,9 @@ same schema. Refused with a `ValidationError` on the `allocation_scope` field:
 
 On a pool whose `pool_type` is `Schema`, any change to `allocation_scope` is refused with a message
 of the same form as the existing refusal of a shorthand write on such a pool: `allocation_scope
-can't be updated on schema defined pools, update the schema in the default branch instead`.
+can't be updated on schema defined pools, update the schema in the default branch instead`. On a
+user-created pool the change is refused with the message of the inputs table. On both, the
+identical value re-sent is a no-op.
 
 ## Examples
 
@@ -83,8 +88,11 @@ mutation {
 the range from it. Ranges are otherwise written through `CoreNumberPoolRange*`.
 
 ```graphql
-mutation { CoreNumberPoolUpdate(data: {id: "…", allocation_scope: {value: null}}) { ok } }
+mutation { CoreNumberPoolUpdate(data: {id: "…", name: {value: "VLAN per site, renamed"}, allocation_scope: {value: ["site"]}}) { ok } }
 ```
+
+The second mutation re-sends the stored scope and is accepted as a no-op on that field;
+`allocation_scope: {value: null}` or `{value: ["site", "role"]}` on the same pool is refused.
 
 ## Generated artefacts touched
 

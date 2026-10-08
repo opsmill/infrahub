@@ -25,12 +25,15 @@ A string naming one field of the pool's `node` kind:
 | Relationship, cardinality one, required | `site` | `site` | the peer's `uuid` |
 | Attribute, required, scalar kind | `role` or `role__value` | `role` | the attribute's value (enum unwrapped) |
 
-Refused at save, naming the entry: an optional field; a many relationship; a path into a related
-node (`site__name__value`); an attribute of list or JSON kind; the pool's own `node_attribute`; a
-duplicate entry; an entry the default branch's schema does not define on the kind; when the pool's
-attribute is inherited from a generic, an entry not declared on the generic itself (named with the
-generic). Refused naming the attribute: any scope on a pool whose target attribute is
-`unique: true`.
+Refused at creation, naming the entry: an optional field; a many relationship; a path into a
+related node (`site__name__value`); an attribute of list or JSON kind; the pool's own
+`node_attribute`; a duplicate entry; an entry the default branch's schema does not define on the
+kind; when the pool's attribute is inherited from a generic, an entry not declared on the generic
+itself (named with the generic). Refused naming the attribute: any scope on a pool whose target
+attribute is `unique: true`. Refused naming the pool: an update or upsert of an existing pool that
+sends a different `allocation_scope`, an empty list on a scoped pool or `null`; the identical
+value is a no-op (FR-006). The rename rewrite (FR-032) is the only later write to the stored
+value.
 
 ---
 
@@ -163,9 +166,9 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 
 | Surface | Component | Rule | Error names |
 |---|---|---|---|
-| Pool create / update / upsert | `pools/scope.py::ScopeValidator` against the default branch's schema, whatever branch the mutation runs on, on every save that carries `allocation_scope` | FR-009 and the local rules in §1; the required check covers relationships locally; the `unique: true` and generic rules | the entry; the attribute; the generic |
+| Pool creation (`CoreNumberPoolCreate`, the upsert that creates) | `pools/scope.py::ScopeValidator` against the default branch's schema, whatever branch the mutation runs on | FR-009 and the local rules in §1; the required check covers relationships locally; the `unique: true` and generic rules | the entry; the attribute; the generic |
 | Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters`, against the schema being loaded | same | the entry; the attribute; the generic |
-| Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
+| Pool update or upsert of an existing pool | `InfrahubNumberPoolMutation.mutate_update`, comparing the submitted `allocation_scope` with the stored one | a different value, an empty list on a scoped pool or `null` is refused; the identical value is a no-op and is not validated again (FR-006) | the pool; on a schema-created pool the default-branch schema (existing message) |
 | Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`, and for the constraint that makes an attribute unique; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field; a field declared on a generic is checked on the generic | refused when a pool names the field, or when the pool's own attribute becomes `unique: true` while the pool carries a scope | the pool |
 | Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
 | Schema load renaming a scoped field | the rename migration (`attribute.name.update`, existing; `relationship.name.update`, added) with `PoolsReferencingField` | no refusal: the entry is rewritten in `allocation_scope` of every pool that names the field, user-created or schema-created, as a data write of the migration; on a branch the write runs when the branch merges into the default branch (FR-032, proposed) | — |
@@ -182,14 +185,18 @@ a generic the kind inherits from, filters in Python on `allocation_scope` and `n
 
 ## 6. State and transitions
 
-The pool has no new state machine. Scope changes are plain attribute writes:
+The pool has no new state machine. The scope is written once, when the pool is created, and the
+rename rewrite is the only later write to it (FR-006, FR-032):
 
 | Transition | Data moved | Next read |
 |---|---|---|
-| unscoped → scoped | none | each record counts in the divisions its holder occupies |
-| scoped → wider scope | none | numbers taken under the finer division become free |
-| scoped → narrower scope | none | more numbers appear taken |
-| scoped → unscoped | none | every record counts pool-wide, as today |
+| created unscoped | none | every record counts pool-wide, as today |
+| created scoped | none | each record counts in the divisions its holder occupies |
+| a scoped field renamed (system rewrite of the entry) | none | the same divisions under the new field name |
+| any other change to the stored scope | refused | unchanged |
+
+An operator who needs another scope creates a pool with it and attaches the nodes to the new pool
+(User Story 7).
 
 ---
 
