@@ -1,18 +1,18 @@
 # Branch details scenarios (infp-671)
 
 Seeds a local Infrahub with `scn-*` branches, Git repositories and tasks, so every state of the
-branch details page can be tried by hand. Everything it creates is named `scn-*`.
+branch details page can be tried by hand. Everything it creates is named `scn-*`. The feature's
+spec is in `dev/specs/infp-671-branch-details-repos/`.
 
 ```bash
-cd dev/specs/infp-671-branch-details-repos/scenarios
+cd utilities/branch_details_scenarios
 uv run --no-project seed.py up                     # create or complete the seed (idempotent)
 uv run --no-project seed.py up --with-unreachable  # also add unreachable repositories (global: every branch shows them)
 uv run --no-project seed.py up --with-unreachable --many-branches  # also add 11 scn-b-NN branches (QA seed)
 uv run --no-project seed.py status                 # sync_status per branch, operational_status, task states
 uv run --no-project seed.py down                   # delete every scn- branch and repository, stop the local servers
-PLAYWRIGHT_MODULE=/path/to/frontend/app/node_modules/playwright/index.js \
-  SCN_UNREACHABLE=1 node verify.mjs /tmp/scn-shots  # screenshots + checks (SCN_UNREACHABLE=1 after --with-unreachable,
-                                                    # SCN_MANY_BRANCHES=1 after --many-branches)
+node verify.mjs                                    # screenshots + checks, written to ./screenshots (git-ignored)
+SCN_UNREACHABLE=1 SCN_MANY_BRANCHES=1 node verify.mjs  # after up --with-unreachable --many-branches
 ```
 
 `up` converges: run without `--with-unreachable` and it removes the unreachable repositories again;
@@ -21,6 +21,9 @@ longer wants. `--many-branches N` adds `N` branches instead of 11. When `up` has
 and the unreachable repositories exist, it deletes them first and adds them back at the end:
 Infrahub can't push a new branch to them, which would fail that branch's "Create branch in Git
 Repositories" task.
+
+`verify.mjs` loads Playwright from `frontend/app/node_modules` (run `pnpm install` there first), or
+from `PLAYWRIGHT_MODULE`. Pass a directory as its first argument to write the screenshots elsewhere.
 
 Environment overrides: `INFRAHUB_ADDRESS`, `INFRAHUB_USERNAME`, `INFRAHUB_PASSWORD`, `SCN_STATE_DIR`,
 `SCN_GIT_HOST`, `SCN_GIT_BIND`, `SCN_TIMEOUT`, `FRONTEND_URL`.

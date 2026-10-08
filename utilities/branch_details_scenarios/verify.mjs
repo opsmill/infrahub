@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const playwrightModule =
   process.env.PLAYWRIGHT_MODULE ??
-  resolve(here, "../../../../frontend/app/node_modules/playwright/index.js");
+  resolve(here, "../../frontend/app/node_modules/playwright/index.js");
 const { chromium } = createRequire(import.meta.url)(playwrightModule);
 
 const base = (process.env.FRONTEND_URL ?? "http://localhost:8080").replace(/\/$/, "");
