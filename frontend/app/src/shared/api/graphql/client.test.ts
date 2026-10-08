@@ -89,6 +89,30 @@ describe("graphqlClient — endpoint targeting", () => {
     expect(rounded.data).toEqual({ end: Number("9223372036854775807"), start: 1 });
   });
 
+  it("returns integers above 2^53 as exact strings when a mutation asks for it", async () => {
+    // GIVEN
+    const body = '{"data":{"end":9223372036854775807}}';
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve(
+        new Response(body, { status: 200, headers: { "Content-Type": "application/json" } })
+      )
+    );
+    const UPDATE = gql`
+      mutation Update {
+        __typename
+      }
+    `;
+
+    // WHEN
+    const result = await graphqlClient.mutate({
+      mutation: UPDATE,
+      context: { keepLargeIntegersExact: true },
+    });
+
+    // THEN
+    expect(result.data).toEqual({ end: "9223372036854775807" });
+  });
+
   it("stamps X-Priority: high on every operation", async () => {
     // WHEN
     await graphqlClient.query({ query: PING });
