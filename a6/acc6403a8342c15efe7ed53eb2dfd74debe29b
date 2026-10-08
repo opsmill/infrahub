@@ -1,0 +1,19 @@
+python_sdk
+  s_d6ad2ec8129b89::t_afa6b5c6540b75 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a6acc6403a8342c15efe7ed53eb2dfd74debe29b",
+  "prompts": {},
+  "sessions": {
+    "s_d6ad2ec8129b89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3ca15535-51a7-4962-9595-7a940892537e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
