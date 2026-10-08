@@ -30,6 +30,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.sync import (
     RepositoryBranchesFailedError,
     RepositoryFileImporter,
@@ -43,6 +44,7 @@ from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from infrahub.workers.dependencies import build_message_bus, clear_singletons
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
+from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
 from tests.conftest import TestHelper
@@ -476,7 +478,10 @@ class TestSkippedBranchTaskLog(TestInfrahubApp):
         )
 
         outcome = await RepositorySyncer(
-            lock_registry=lock.registry, importer=RepositoryFileImporter(), recorder=build_in_memory_recorder()
+            lock_registry=lock.registry,
+            importer=RepositoryFileImporter(),
+            recorder=build_in_memory_recorder(),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
         ).sync(repo)
 
         assert outcome == SyncOutcome(
@@ -934,6 +939,7 @@ class TestSynchronisationCycleFailures(TestInfrahubApp):
             lock_registry=lock.registry,
             importer=RepositoryFileImporter(),
             recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
+            retarget_markers=RetargetMarkers(cache=MemoryCache()),
         )
 
         @flow(name="test-sync-a-trunk-whose-rewrite-record-fails")

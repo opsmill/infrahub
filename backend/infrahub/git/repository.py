@@ -49,6 +49,7 @@ if TYPE_CHECKING:
 
     from infrahub.git.divergence.models import RefDivergence
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+    from infrahub.git.divergence.suppression import RetargetMarkers
 
 log = get_run_logger()
 
@@ -368,6 +369,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         staging_branch: str | None = None,
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
+        retarget_markers: RetargetMarkers | None = None,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -387,6 +389,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 already matches the remote is left alone even when the graph records another commit.
             recorder: Records each rewrite the classification finds, right after the branch's new
                 commit is written. Without it no rewrite is recorded.
+            retarget_markers: Tell a deliberate change of the default branch apart from a rewrite of
+                the trunk. A marker that applied to this cycle is cleared when the collection ends with
+                the trunk on the remote head of the default branch. Without them, every lineage break of
+                the trunk is a rewrite.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -394,6 +400,54 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError: When a branch or commit update against the database fails.
 
         """
+        trunk_retargeted = False
+        if graph_commits is not None and retarget_markers is not None:
+            trunk_retargeted = await retarget_markers.is_retargeted(
+                repository_id=str(self.id), target=self.default_branch
+            )
+
+        collected = await self._collect_pending_imports(
+            staging_branch=staging_branch,
+            graph_commits=graph_commits,
+            recorder=recorder,
+            trunk_retargeted=trunk_retargeted,
+        )
+
+        # A marker written after the read is left alone here, and the next cycle reads it.
+        if (
+            trunk_retargeted
+            and graph_commits is not None
+            and retarget_markers is not None
+            and self._trunk_is_on_remote_head(graph_commits=graph_commits, collected=collected)
+        ):
+            # This also sweeps a marker no branch needed, which would hide a genuine trunk rewrite until it expires.
+            await retarget_markers.clear(repository_id=str(self.id), target=self.default_branch)
+        return collected
+
+    def _trunk_is_on_remote_head(self, graph_commits: Mapping[str, str | None], collected: CollectedImports) -> bool:
+        """Whether the trunk records the remote head of the default branch once the collection ends.
+
+        A trunk that failed, an inactive repository, or a default branch the remote does not hold yet
+        leaves the trunk on another commit.
+        """
+        if not self.has_origin:
+            return False
+        remote_head = self._get_remote_tracking_commit(self.default_branch)
+        if remote_head is None:
+            return False
+        trunk_commit = graph_commits.get(registry.default_branch)
+        for reconciled in collected.reconciled:
+            if reconciled.infrahub_branch_name == registry.default_branch:
+                trunk_commit = reconciled.commit
+        return trunk_commit == remote_head
+
+    async def _collect_pending_imports(
+        self,
+        staging_branch: str | None,
+        graph_commits: Mapping[str, str | None] | None,
+        recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
+    ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
         # The remote-tracking ref still holds the previous fetch's head, which is what tells a skipped
@@ -450,6 +504,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         remote_head=remote_heads.get(branch_name),
                         graph_commits=graph_commits,
                         recorder=recorder,
+                        trunk_retargeted=trunk_retargeted,
                     )
 
             for branch_name in updated_branches:
@@ -461,6 +516,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         graph_commits=graph_commits,
                         graph_branches=graph_branches,
                         recorder=recorder,
+                        trunk_retargeted=trunk_retargeted,
                     )
 
         elif staging_branch:
@@ -471,6 +527,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
                 recorder=recorder,
+                trunk_retargeted=trunk_retargeted,
                 import_branch=staging_branch,
                 git_branch_name=self.default_branch,
             )
@@ -503,6 +560,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         remote_head: str | None,
         graph_commits: Mapping[str, str | None] | None,
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
     ) -> None:
         """Create a branch this worker does not hold yet and queue its import.
 
@@ -517,7 +575,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         try:
             # Another worker may have imported a history the remote has since discarded.
             divergence = self._classify_against_graph(
-                branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+                branch_name=branch_name,
+                remote_head=remote_head,
+                graph_commits=graph_commits,
+                trunk_retargeted=trunk_retargeted,
             )
         except RepositoryError as exc:
             # The classification only names a discarded history, so it must not keep the branch from being created.
@@ -581,6 +642,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
         import_branch: str | None = None,
         git_branch_name: str | None = None,
     ) -> None:
@@ -603,6 +665,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 graph_commits=graph_commits,
                 graph_branches=graph_branches,
                 recorder=recorder,
+                trunk_retargeted=trunk_retargeted,
                 git_branch_name=git_branch_name,
             )
         # The graph can refuse the commit for a status the branch listing did not show yet, such as a merge.
@@ -632,6 +695,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         graph_branches: dict[str, BranchData],
         recorder: HistoryRewriteRecorder | None,
+        trunk_retargeted: bool,
         git_branch_name: str | None = None,
     ) -> None:
         """Bring the worktree of a branch onto the remote head and queue its import into ``import_branch``.
@@ -648,7 +712,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         branch_id = self._get_branch_id(infrahub_branch=advanced_branch, graph_branches=graph_branches)
         remote_head = remote_heads.get(branch_name)
         divergence = self._classify_against_graph(
-            branch_name=branch_name, remote_head=remote_head, graph_commits=graph_commits
+            branch_name=branch_name,
+            remote_head=remote_head,
+            graph_commits=graph_commits,
+            trunk_retargeted=trunk_retargeted,
         )
         commit = await self._advance_branch(branch_name=branch_name, remote_head=remote_head, divergence=divergence)
         if commit is not None:
@@ -741,7 +808,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return behind
 
     def _classify_against_graph(
-        self, branch_name: str, remote_head: str | None, graph_commits: Mapping[str, str | None] | None
+        self,
+        branch_name: str,
+        remote_head: str | None,
+        graph_commits: Mapping[str, str | None] | None,
+        trunk_retargeted: bool,
     ) -> RefDivergence | None:
         if graph_commits is None:
             return None
@@ -751,7 +822,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             infrahub_branch_name=infrahub_branch,
             imported_commit=graph_commits.get(infrahub_branch),
             remote_head=remote_head,
-            target_changed=False,
+            # A change of the default branch is the only re-point, and it only moves what feeds the trunk.
+            target_changed=trunk_retargeted and infrahub_branch == registry.default_branch,
         )
 
     def _get_branch_id(self, infrahub_branch: str, graph_branches: dict[str, BranchData]) -> str:

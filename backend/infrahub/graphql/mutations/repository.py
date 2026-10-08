@@ -13,6 +13,7 @@ from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
 from infrahub.exceptions import ValidationError
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -121,15 +122,13 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
         new_commit = None
         if data.commit and data.commit.value:
             new_commit = data.commit.value
-        new_ref = None
-        if data.ref and data.ref.value:
-            new_ref = data.ref.value
 
         obj, result = await super().mutate_update(info, data, branch, database=graphql_context.db, node=repo_node)
         obj = cast("CoreReadOnlyRepository", obj)
 
-        send_update_message = (new_commit and new_commit != current_commit) or (new_ref and new_ref != current_ref)
-        if not send_update_message:
+        # A cleared commit is a change too, because the repository then follows the head of its ref.
+        target_changed = obj.commit.value != current_commit or obj.ref.value != current_ref
+        if not target_changed:
             return obj, result
 
         log.info(
@@ -147,6 +146,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             commit=new_commit,
             infrahub_branch_name=branch.name,
             infrahub_branch_id=str(branch.get_uuid()),
+            target_changed=target_changed,
         )
         git_read_only_repo_import_commit_model = GitReadOnlyRepositoryImportCommit(
             repository_id=obj.id,
@@ -154,6 +154,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
             repository_kind=obj.get_kind(),
             infrahub_branch_name=branch.name,
             ref=str(obj.ref.value),
+            target_changed=target_changed,
         )
         if graphql_context.service:
             await graphql_context.service.workflow.submit_workflow(
@@ -167,6 +168,44 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
                 parameters={"model": git_read_only_repo_import_commit_model},
             )
         return obj, result
+
+    @classmethod
+    async def mutate_update_object(
+        cls,
+        db: InfrahubDatabase,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+        obj: Node,
+        skip_uniqueness_check: bool = False,
+    ) -> Node:
+        """Update the repository, and mark a change of the default branch of a read-write repository.
+
+        The marker is written before the transaction commits, so no sync reads the new default branch without
+        it. Without the marker, the next sync reports the switch to another git branch as a trunk rewrite.
+        """
+        if obj.get_kind() != InfrahubKind.REPOSITORY:
+            return await super().mutate_update_object(
+                db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+            )
+
+        # Read from the database, because a retried update hands back the node an earlier attempt changed.
+        stored = await NodeManager.get_one(
+            db=db, id=obj.get_id(), kind=InfrahubKind.REPOSITORY, branch=branch, raise_on_error=True
+        )
+        current_default_branch = stored.get_attribute("default_branch").value
+
+        obj = await super().mutate_update_object(
+            db=db, info=info, data=data, branch=branch, obj=obj, skip_uniqueness_check=skip_uniqueness_check
+        )
+
+        new_default_branch = obj.get_attribute("default_branch").value
+        if new_default_branch != current_default_branch:
+            graphql_context: GraphqlContext = info.context
+            await RetargetMarkers(cache=graphql_context.active_service.cache).mark(
+                repository_id=obj.get_id(), target=str(new_default_branch)
+            )
+        return obj
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:

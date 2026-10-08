@@ -19,7 +19,9 @@ from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.models import ReconciledBranch, RefClassification, RefDivergence, RewriteRecord
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
+from tests.adapters.cache import MemoryCache
 from tests.adapters.repository_record_store import (
     FailingRepositoryRecordStore,
     InMemoryRepositoryRecordStore,
@@ -768,3 +770,374 @@ async def test_a_record_that_fails_is_logged_once_with_the_reason_of_its_cause(
     ]
     logged_error = failure_logs[0].exc_info[1] if failure_logs[0].exc_info else None
     assert logged_error is (test_case.cause if test_case.keeps_traceback else None)
+
+
+class CountingCache(MemoryCache):
+    """Counts the reads, so a test can check how often a cycle asks the cache."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.reads = 0
+
+    async def get(self, key: str) -> str | None:
+        self.reads += 1
+        return await super().get(key)
+
+
+class CacheWrittenDuringTheCycle(MemoryCache):
+    """Applies a pending write right after the first read, as an edit that lands while a cycle runs does."""
+
+    def __init__(self, pending: dict[str, str]) -> None:
+        super().__init__()
+        self.pending = pending
+
+    async def get(self, key: str) -> str | None:
+        value = await super().get(key)
+        self.storage.update(self.pending)
+        self.pending = {}
+        return value
+
+
+@dataclass(frozen=True)
+class RePointedTrunk:
+    tracked: TrackedRepository
+    discarded_commit: str
+    """The trunk commit the graph records, which the newly tracked branch does not contain."""
+
+    @property
+    def new_head(self) -> str:
+        return self.tracked.imported_commits[TRACKED]
+
+    def graph_commits(self, **overrides: str) -> dict[str, str | None]:
+        return self.tracked.graph_commits(**{"main": self.discarded_commit, **overrides})
+
+    def retarget(self, classification: RefClassification, imported_commit: str, commit: str) -> PendingObjectImport:
+        return PendingObjectImport(
+            infrahub_branch_name="main",
+            commit=commit,
+            on_default_branch=True,
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="main",
+                infrahub_branch_id="main-id",
+                commit=commit,
+                divergence=RefDivergence(
+                    branch_name=TRACKED,
+                    infrahub_branch_name="main",
+                    imported_commit=imported_commit,
+                    remote_head=commit,
+                    classification=classification,
+                ),
+            ),
+        )
+
+
+async def re_point_the_trunk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, branches: tuple[str, ...] = (TRACKED,)
+) -> RePointedTrunk:
+    """Make the tracked branch the default branch, after the trunk the graph records moved past it."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=branches)
+    discarded_commit = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.repository.default_branch = TRACKED
+    return RePointedTrunk(tracked=tracked, discarded_commit=discarded_commit)
+
+
+async def marked(tracked: TrackedRepository, target: str) -> RetargetMarkers:
+    markers = RetargetMarkers(cache=MemoryCache())
+    await markers.mark(repository_id=str(tracked.repository.id), target=target)
+    return markers
+
+
+async def is_marked(markers: RetargetMarkers, tracked: TrackedRepository, target: str) -> bool:
+    return await markers.is_retargeted(repository_id=str(tracked.repository.id), target=target)
+
+
+async def test_a_trunk_re_pointed_on_purpose_is_reset_records_nothing_and_clears_its_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        re_pointed.retarget(
+            RefClassification.RETARGET, imported_commit=re_pointed.discarded_commit, commit=re_pointed.new_head
+        )
+    ]
+    assert re_pointed.tracked.client.recorded_commits == [("main", re_pointed.new_head)]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
+async def test_a_trunk_re_pointed_without_a_marker_is_recorded_as_a_rewrite(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    store = InMemoryRepositoryRecordStore()
+
+    await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
+    )
+
+    assert store.written == [
+        written_record(
+            re_pointed.tracked,
+            branch_name="main",
+            previous_commit=re_pointed.discarded_commit,
+            commit=re_pointed.new_head,
+        )
+    ]
+
+
+async def test_a_marker_suppresses_one_cycle_so_a_later_rewrite_of_the_trunk_is_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+    rewritten = re_pointed.tracked.remote.commit(
+        branch_name=TRACKED, files={"data.txt": "feature rewritten\n"}, amend=True
+    )
+
+    await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(main=re_pointed.new_head),
+        recorder=recorder(store),
+        retarget_markers=markers,
+    )
+
+    assert store.written == [
+        written_record(re_pointed.tracked, branch_name="main", previous_commit=re_pointed.new_head, commit=rewritten)
+    ]
+
+
+async def test_a_re_pointed_trunk_does_not_hide_a_rewrite_of_another_branch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch, branches=(TRACKED, OTHER))
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    rewritten = re_pointed.tracked.remote.commit(branch_name=OTHER, files={"data.txt": "other rewritten\n"}, amend=True)
+
+    await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert store.written == [
+        written_record(
+            re_pointed.tracked,
+            branch_name=OTHER,
+            previous_commit=re_pointed.tracked.imported_commits[OTHER],
+            commit=rewritten,
+        )
+    ]
+
+
+async def test_a_re_pointed_trunk_that_fails_keeps_its_marker_for_the_next_cycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    re_pointed.tracked.client.rejecting_branches = frozenset({"main"})
+
+    failed = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert failed.failed_imports == [
+        FailedImport(
+            branch_name=TRACKED,
+            step=ImportStep.COLLECTION,
+            reason=(
+                "An error occurred while executing the GraphQL Query None, "
+                "[{'message': 'Branch main must be rebased before any updates can be made'}]"
+            ),
+            on_default_branch=True,
+        )
+    ]
+    assert await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+    re_pointed.tracked.client.rejecting_branches = frozenset()
+    retried = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert retried.failed_imports == []
+    assert retried.imports == [
+        re_pointed.retarget(
+            RefClassification.RETARGET, imported_commit=re_pointed.discarded_commit, commit=re_pointed.new_head
+        )
+    ]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
+async def test_a_marker_no_branch_needed_is_swept_so_a_later_rewrite_of_the_trunk_is_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A re-point that moves no commit, such as a renamed remote branch, selects no branch at all."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(tracked, target="main")
+    store = InMemoryRepositoryRecordStore()
+
+    idle = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert idle.imports == []
+    assert not await is_marked(markers, tracked, target="main")
+
+    rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert store.written == [
+        written_record(tracked, branch_name="main", previous_commit=tracked.trunk_commit, commit=rewritten)
+    ]
+
+
+async def test_a_marker_for_another_target_is_left_for_the_cycle_that_synchronises_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The default branch changed after this cycle read it, so this cycle still synchronises the old one."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    rewritten = tracked.remote.commit(branch_name="main", files={"data.txt": "main rewritten\n"}, amend=True)
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert store.written == [
+        written_record(tracked, branch_name="main", previous_commit=tracked.trunk_commit, commit=rewritten)
+    ]
+    assert await is_marked(markers, tracked, target=TRACKED)
+
+
+async def test_an_inactive_repository_keeps_its_marker_for_the_cycle_that_synchronises_the_trunk(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The cycle of an inactive repository leaves the trunk on the commit of the old default branch."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.INACTIVE
+
+    idle = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert idle.imports == []
+    assert await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.ACTIVE
+    active = await re_pointed.tracked.repository.collect_pending_imports(
+        graph_commits=re_pointed.graph_commits(), recorder=recorder(store), retarget_markers=markers
+    )
+
+    assert active.imports == [
+        re_pointed.retarget(
+            RefClassification.RETARGET, imported_commit=re_pointed.discarded_commit, commit=re_pointed.new_head
+        )
+    ]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
+async def test_a_re_pointed_trunk_of_a_staging_repository_records_nothing_and_clears_its_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The objects go to the staging branch, but the commit the classification compared is the trunk's."""
+    re_pointed = await re_point_the_trunk(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    re_pointed.tracked.repository.internal_status = RepositoryInternalStatus.STAGING
+    markers = await marked(re_pointed.tracked, target=TRACKED)
+    store = InMemoryRepositoryRecordStore()
+
+    collected = await re_pointed.tracked.repository.collect_pending_imports(
+        staging_branch=STAGING,
+        graph_commits=re_pointed.graph_commits(),
+        recorder=recorder(store),
+        retarget_markers=markers,
+    )
+
+    assert collected.failed_imports == []
+    assert collected.imports == [
+        PendingObjectImport(
+            infrahub_branch_name=STAGING,
+            commit=re_pointed.new_head,
+            git_branch_name=TRACKED,
+            on_default_branch=True,
+            reconciled=ReconciledBranch(
+                infrahub_branch_name="main",
+                infrahub_branch_id="main-id",
+                commit=re_pointed.new_head,
+                divergence=RefDivergence(
+                    branch_name=TRACKED,
+                    infrahub_branch_name="main",
+                    imported_commit=re_pointed.discarded_commit,
+                    remote_head=re_pointed.new_head,
+                    classification=RefClassification.RETARGET,
+                ),
+            ),
+        )
+    ]
+    assert store.written == []
+    assert not await is_marked(markers, re_pointed.tracked, target=TRACKED)
+
+
+async def test_a_default_branch_the_remote_does_not_hold_yet_keeps_its_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    tracked.repository.default_branch = "release"
+    markers = await marked(tracked, target="release")
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=markers,
+    )
+
+    assert await is_marked(markers, tracked, target="release")
+
+
+async def test_a_cycle_without_a_marker_reads_the_cache_once(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    cache = CountingCache()
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=RetargetMarkers(cache=cache),
+    )
+
+    assert cache.reads == 1
+
+
+async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The trunk is already on the remote head, so a sweep of this cycle would delete the new marker."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    edit = MemoryCache()
+    await RetargetMarkers(cache=edit).mark(repository_id=str(tracked.repository.id), target="main")
+    markers = RetargetMarkers(cache=CacheWrittenDuringTheCycle(pending=edit.storage))
+
+    await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(),
+        recorder=recorder(InMemoryRepositoryRecordStore()),
+        retarget_markers=markers,
+    )
+
+    assert await is_marked(markers, tracked, target="main")

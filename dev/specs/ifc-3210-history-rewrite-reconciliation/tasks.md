@@ -601,21 +601,24 @@ read-write repository's configured default branch. Neither writes a record.
 
 **Maps to**: FR-002, SC-007.
 
-- [ ] T077 [US6] Write the suppression marker's read and write in
+- [x] T077 [US6] Write the suppression marker's read and write in
       `backend/infrahub/git/divergence/suppression.py`, per [data-model.md](data-model.md),
-      "Cache key". Reading and deleting are separate steps: the delete happens only after the
-      commit write for that branch succeeds.
-- [ ] T078 [US6] Set the in-band `target_changed` flag from
+      "Cache key". Reading and deleting are separate steps: the read leaves the marker in place,
+      and the sync clears it after the collection, once the trunk records the remote head of the
+      branch the marker names.
+- [x] T078 [US6] Set the in-band `target_changed` flag from
       `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`
       when `CoreReadOnlyRepository.ref` changes **or when only `commit` changes**. It already
       computes both comparisons. SC-007 covers re-pointing to "a different branch, tag or commit",
-      so leaving the commit-only case out records a false rewrite. Read-only repositories write no
-      cache marker.
-- [ ] T079 [US6] Add the `default_branch` comparison to the same method for `CoreRepository`, and
-      write the marker for Infrahub's default branch. **This comparison does not exist yet**: the
-      method returns to `super().mutate_update` immediately for any kind other than read-only, so
-      the comparison goes before that early return.
-- [ ] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
+      so leaving the commit-only case out records a false rewrite. Clearing a pinned `commit` is a
+      change too, because the repository then follows the head of `ref`. Read-only repositories
+      write no cache marker.
+- [x] T079 [US6] Add the `default_branch` comparison for `CoreRepository`, and write the marker
+      for the new git branch. The comparison lives in `mutate_update_object`, which the update and
+      every upsert path call inside the transaction, so the marker lands before the commit.
+      `mutate_update` returns to `super().mutate_update` immediately for any kind other than
+      read-only, and an upsert never calls it, so it cannot hold the comparison.
+- [x] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
       explicit `target_changed` flag to `GitRepositoryPullReadOnly` and
       `GitReadOnlyRepositoryImportCommit`, set from the comparison the mutation already computes.
       That removes the marker from the read-only path entirely, with no expiry and no timing
@@ -624,36 +627,45 @@ read-write repository's configured default branch. Neither writes a record.
       is no such workflow: `GIT_REPOSITORIES_SYNC` is one cron flow over every repository, with
       `concurrency_limit=1` and `CANCEL_NEW`. The widened candidate set of T016 is what makes it
       readable, within one cycle.
-- [ ] T081 [US6] Sweep any marker still held for a repository when the cycle finishes with it. A
+- [x] T081 [US6] Sweep any marker still held for a repository when the cycle finishes with it. A
       re-point can leave the graph commit and the worktree both equal to the remote head, so the
       branch enters no candidate set and nothing reads the marker. Left in place it would turn a
-      genuine trunk rewrite into a `RETARGET` for the rest of its hour: reset, no record, no trunk
-      webhook. The sweep bounds every marker to one cycle.
-- [ ] T082 [US6] Read the marker at classification time, and delete it only after the commit write
-      for that branch succeeds, in the two components that call the
-      detector: `collect_pending_imports` reads the cache marker for read-write, and the read-only
-      detection point of T072 reads the in-band flag from its workflow model. Pass either as
-      `target_changed`. The recorder must **not** read the cache: it
-      returns early on any classification other than `REWRITE`, so a marker read there would never
-      be consumed on a `RETARGET` and would go on to suppress the next genuine rewrite.
-- [ ] T083 [P] [US6] Unit-test the suppression in
-      `backend/tests/unit/git/divergence/test_suppression.py`: a present marker yields
-      `target_changed` true and is gone afterwards, and an absent marker yields false. Both
-      directions are asserted, so the behaviour is stated rather than assumed. Assert the marker is
-      consumed exactly once, which is what stops it suppressing a later genuine rewrite.
-- [ ] T084 [US6] Component-test both re-point paths in
+      genuine trunk rewrite into a `RETARGET` until it expires: reset, no record, no trunk
+      webhook. The sweep bounds every marker to the first cycle that puts the trunk on the remote
+      head of the branch the marker names.
+- [ ] T082 [US6] Read the marker at classification time, and clear it after the collection once the
+      trunk records the remote head of the branch the marker names, in the two components that
+      call the detector: `collect_pending_imports` reads the cache marker for read-write, and the
+      read-only detection point of T072 reads the in-band flag from its workflow model. Pass either
+      as `target_changed`. The recorder must **not** read the cache: it returns early on any
+      classification other than `REWRITE`, so a marker read there would never be cleared on a
+      `RETARGET` and would go on to suppress the next genuine rewrite.
+      The read-write half is done. The read-only half belongs to T072, which reads the flag that
+      T078 and T080 put on the workflow models.
+- [x] T083 [P] [US6] Unit-test the suppression in
+      `backend/tests/unit/git/divergence/test_suppression.py`: a present marker that names the git
+      branch the cycle synchronises yields `target_changed` true, and reading it leaves it in place.
+      An absent marker yields false. Both directions are asserted, so the behaviour is stated rather
+      than assumed. Assert the marker is cleared once a cycle leaves the trunk on the remote head of
+      the branch it names, which is what stops it suppressing a later genuine rewrite.
+- [x] T084 [US6] Component-test both re-point paths in
       `backend/tests/component/graphql/mutations/test_repository.py`: a `CoreRepository`
       `default_branch` edit writes the cache marker before the workflows are submitted, and a
       read-only `ref` or `commit` change sets `target_changed` on the workflow model and writes no
       marker.
-- [ ] T085 [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
+- [x] T085 [US6] Add a **multi-cycle** live-remote test for a `default_branch` edit: change the
       configured default branch, then run several synchronisation cycles. Assert that no record is
       written and no trunk event fires on **any** cycle, not only the first. One cycle passes while
       the bug is present: the marker suppresses cycle 1, and cycles 2 onward are what record a false
       rewrite and fire a false trunk webhook once a minute.
+      The test asserts the record on every cycle. The trunk event part waits for IFC-3285, which adds
+      the trunk signal, so the test cannot assert it yet. The recorder sends that signal, so no record
+      already means no signal.
 - [ ] T086 [US6] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, beside the other live-remote tests:
       changing the tracked ref to a different branch records nothing.
+      This test lands with T072. Before the read-only detection exists, nothing can record a
+      rewrite on that path, so the test passes whatever the flag says.
 
 **Checkpoint**: SC-007 holds. Routine re-pointing produces no noise.
 

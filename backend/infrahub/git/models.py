@@ -125,6 +125,9 @@ class GitRepositoryPullReadOnly(BaseModel):
     commit: str | None = Field(None, description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class GitRepositoryMerge(BaseModel):
@@ -167,6 +170,9 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     repository_kind: str = Field(..., description="The type of repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     ref: str = Field(..., description="The ref of the repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class GitDiffNamesOnly(BaseModel):

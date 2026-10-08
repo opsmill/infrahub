@@ -1641,3 +1641,32 @@ class TestReadOnlyRepositoryMerge(TestInfrahubApp):
             db=db, id=node.id, kind=InfrahubKind.READONLYREPOSITORY, raise_on_error=True
         )
         assert (on_trunk.ref.value, on_trunk.commit.value) == ("v2", v2_commit)
+
+    async def test_a_default_branch_edit_records_nothing_however_many_cycles_run(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        tracked_branch_repository: Callable[[str, str], Awaitable[TrackedBranchRepository]],
+    ) -> None:
+        """The new default branch does not hold the trunk commit the graph records.
+
+        The first cycle clears the marker once the trunk records the new head, so every later cycle must find the
+        graph already on it.
+        """
+        tracked = await tracked_branch_repository("retargeted-repo", "retargeted-branch")
+        await _advance_and_import_the_trunk(gogs_server.container, tracked)
+        repository = await client.get(kind=InfrahubKind.REPOSITORY, id=tracked.node_id)
+        repository.default_branch.value = tracked.branch_name
+        await repository.save()
+
+        records = []
+        for _ in range(3):
+            await sync_remote_repositories()
+            records.append(await _rewrite_record(db=db, tracked=tracked, branch_name=registry.default_branch))
+
+        assert records == [(None, None, None, None)] * 3
+        trunk: CoreRepository = await NodeManager.get_one(
+            db=db, id=tracked.node_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+        )
+        assert trunk.commit.value == tracked.imported_commit
