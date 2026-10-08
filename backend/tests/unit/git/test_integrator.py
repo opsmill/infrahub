@@ -284,8 +284,7 @@ class TestImportFilePaths:
             )
         ]
         assert caplog.messages == [
-            f"Unable to delete 1 object(s) no longer defined in the repository: "
-            f"Unable to delete 1 unused member(s) of the tracking group: {REFUSED_OBJECT_ID} ({REFUSAL_REASON})"
+            f"Unable to delete 1 object(s) no longer defined in the repository: {REFUSED_OBJECT_ID} ({REFUSAL_REASON})"
         ]
 
     async def test_interrupted_cleanup_fails_the_phase(self, git_repo_01: InfrahubRepository) -> None:

@@ -1820,9 +1820,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 )
         # The refused objects stay in the tracking group, so the next import retries them.
         except TrackingGroupCleanupError as exc:
+            failures = "; ".join(f"{node_id} ({reason})" for node_id, reason in exc.failures.items())
             log.warning(
                 f"Unable to delete {len(exc.failures)} {object_type.value}(s) no longer "
-                f"defined in the repository: {exc}"
+                f"defined in the repository: {failures}"
             )
 
     async def import_objects(
