@@ -566,8 +566,8 @@ classification can tell them apart.
       recorder on a `REWRITE`. Perform no reset (FR-009).
       **Take `target_changed` from the model, never from the fact that this flow is running.** Two
       mutations submit it: `ReadOnlyRepositoryImportLastCommit` for an ordinary pick-up, and
-      `InfrahubRepositoryMutation.mutate_update` on every `ref` or `commit` change, which is a
-      deliberate re-point. See the table in
+      `InfrahubRepositoryMutation._call_mutate_update` on every `ref` or `commit` change by an
+      update or an upsert, which is a deliberate re-point. See the table in
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 7.
       **The in-band flag in Phase 9 is a prerequisite for this task**, not a follow-up. Landing the
       classification first records a false rewrite on every read-only re-point.
@@ -613,11 +613,12 @@ read-write repository's configured default branch. Neither writes a record.
       so leaving the commit-only case out records a false rewrite. Clearing a pinned `commit` is a
       change too, because the repository then follows the head of `ref`. Read-only repositories
       write no cache marker.
+      The comparison and the submission live in `_call_mutate_update` instead, which the update
+      and every upsert path call, so the workflows start after the transaction commits.
 - [x] T079 [US6] Add the `default_branch` comparison for `CoreRepository`, and write the marker
       for the new git branch. The comparison lives in `mutate_update_object`, which the update and
       every upsert path call inside the transaction, so the marker lands before the commit.
-      `mutate_update` returns to `super().mutate_update` immediately for any kind other than
-      read-only, and an upsert never calls it, so it cannot hold the comparison.
+      An upsert never calls `mutate_update`, so it cannot hold the comparison.
 - [x] T080 [US6] Carry the read-only re-target **in band** instead of through the cache: add an
       explicit `target_changed` flag to `GitRepositoryPullReadOnly` and
       `GitReadOnlyRepositoryImportCommit`, set from the comparison the mutation already computes.

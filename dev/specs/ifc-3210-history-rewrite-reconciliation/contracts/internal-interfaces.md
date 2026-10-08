@@ -589,10 +589,10 @@ moved" signal from `_detect_movements`.
 ### Which mutation carries a rewrite, and it is not the update one
 
 A force-pushed branch changes neither `ref` nor `commit` on the node, and
-`InfrahubRepositoryMutation.mutate_update` submits its workflows **only** when one of those
-changes. So a genuine rewrite never reaches that path at all, and anything routed through it would
-always arrive with `target_changed` true — classifying every read-only rewrite as a `RETARGET` and
-recording nothing.
+`InfrahubRepositoryMutation._call_mutate_update`, which the update and every upsert path call,
+submits its workflows **only** when one of those changes. So a genuine rewrite never reaches that
+path at all, and anything routed through it would always arrive with `target_changed` true —
+classifying every read-only rewrite as a `RETARGET` and recording nothing.
 
 The path a rewrite takes is `import_read_only_repository_last_commit`, so that is where the
 detection belongs. **That flow does not tell you whether anything was re-pointed**, because two
@@ -601,16 +601,23 @@ different mutations submit it:
 | Submitted by | Meaning | `target_changed` |
 |---|---|---|
 | `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
-| `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
-| `InfrahubRepositoryMutation.mutate_update`, `commit` changed or cleared | deliberate re-pin, or a return to the head of `ref` | true |
+| `InfrahubRepositoryMutation._call_mutate_update`, `ref` changed | deliberate re-point | true |
+| `InfrahubRepositoryMutation._call_mutate_update`, `commit` changed or cleared | deliberate re-pin, or a return to the head of `ref` | true |
 
-`mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
+`_call_mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
 `GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change. So the flow **must** read
 `target_changed` from its own model and must never infer it from the fact that it is running. The
 flag is set by whichever mutation submitted the work.
 
 That also fixes the phase order: the in-band flag ships **with** the classification, not after it.
 A classification that lands first would treat every re-point as a rewrite.
+
+The method submits after the update transaction commits, because a workflow submitted before the
+commit still runs when the transaction rolls back. That order holds when the method opens the
+transaction itself, as it does for every GraphQL request; a caller that hands in its own
+transaction commits after the submission. The method reads the old `ref` and `commit` from the
+database, not from the node it receives, because a retried update hands back the node an earlier
+attempt already changed.
 
 ### Which commit is the "imported" one here
 
@@ -630,7 +637,7 @@ Reading inside the lock costs one query on a path that already holds the lock, a
 read-then-increment of the count atomic with respect to another run.
 
 There is no race with the concurrent `pull_read_only` to avoid here. That flow is submitted by
-`mutate_update`, which is the re-point path and always arrives with `target_changed` true, so it
+`_call_mutate_update`, which is the re-point path and always arrives with `target_changed` true, so it
 never records.
 
 ### Contract, either way
@@ -737,8 +744,7 @@ time to live.
 
 ### Where the read-write writer compares
 
-`InfrahubRepositoryMutation.mutate_update` returns to `super().mutate_update` immediately for any
-kind other than `CoreReadOnlyRepository`, and an upsert never calls it. The comparison of the old
+An upsert never calls `InfrahubRepositoryMutation.mutate_update`. The comparison of the old
 and new `default_branch` therefore lives in `mutate_update_object`, which the update and every
 upsert path call inside the transaction. It reads the old value from the database rather than from
 the node, because a retried update hands back the node an earlier attempt already changed.

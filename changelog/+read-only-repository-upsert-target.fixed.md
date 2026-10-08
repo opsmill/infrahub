@@ -1,0 +1,1 @@
+Fixed a read-only repository that stayed on its old commit when its `ref` or `commit` changed through an upsert, for example with `infrahubctl object load` or the SDK `save(allow_upsert=True)`: the upsert now pulls and imports the new target, as an update does.

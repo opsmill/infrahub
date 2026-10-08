@@ -182,8 +182,11 @@ trunk and records no rewrite.
   inactive repository, or a default branch the remote does not hold yet keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
 
-A read-only repository uses no marker. Its update mutation sets `target_changed` on the workflow
-models it submits.
+A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
+submits the pull and the import of the last commit with `target_changed` set, after the transaction
+commits: a workflow submitted before the commit still runs when the transaction rolls back. This
+holds because the update opens and commits its own transaction, as every GraphQL request does. A
+caller that already holds a transaction commits it after the submission.
 
 ## Cloning and the repository lock
 
