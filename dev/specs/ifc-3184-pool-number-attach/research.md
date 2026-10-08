@@ -93,8 +93,10 @@ because nothing closes one; it becomes load-bearing the moment detach and re-poo
 
 ### D1 — Re-anchor `IS_RESERVED` to the `Attribute` vertex
 
-**Decision**: the edge becomes `(:CoreNumberPool)-[:IS_RESERVED {…, provenance}]->(:Attribute)`,
+**Decision**: the edge becomes `(:CoreNumberPool)-[:IS_RESERVED {…, allocated_values}]->(:Attribute)`,
 branch-agnostic as now. What it reserves is resolved forward through `HAS_VALUE`, per branch.
+*(The single `provenance` label first chosen here was replaced by the `allocated_values` list on
+2026-10-07, because one label cannot be true on two branches that hold different values; see FR-026.)*
 
 **Rationale** (the PRD's argument, verified):
 

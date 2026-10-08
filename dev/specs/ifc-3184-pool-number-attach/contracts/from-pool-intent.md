@@ -44,8 +44,8 @@ One intent:
 
 | Intent | Meaning |
 |---|---|
-| `ALLOCATE` | Pool picks the next free number; record created with `provenance=allocated` |
-| `ATTACH` | Keep the provided number; record created with `provenance=provided` |
+| `ALLOCATE` | Pool picks the next free number; the record lists it in `allocated_values` |
+| `ATTACH` | Keep the provided number; the record is created with an empty `allocated_values` when the pool does not hold one yet |
 | `DETACH` | End the record; the number on the object is unchanged |
 | `NO_OP` | Nothing to do |
 | `REFUSE` | The refusal: `from_pool` alone over a number it would overwrite (rows 10 and 12) |
@@ -66,12 +66,12 @@ is an allocation. `RE_POOL_ATTACH`, `RE_POOL_ALLOCATE` and `DISCARD_AND_ALLOCATE
 | # | `value` | `from_pool` | Currently tracked by | Current value | Intent |
 |---|---|---|---|---|---|
 | 1 | present, non-null | `P` | nothing | any | `ATTACH` |
-| 2 | present, non-null | `P` | `P` | equal to provided | `ATTACH` — the write to the database leaves the record unchanged, including an `allocated` provenance, because the attribute already holds that value on the branch (revised 2026-10-05) |
-| 3 | present, non-null | `P` | `P` | different | `ATTACH` — the record is already anchored on the attribute, so no new record is written; the value write plus a `provenance` update to `provided` is all that is needed |
+| 2 | present, non-null | `P` | `P` | equal to provided | `ATTACH` — the record is left unchanged; the row keeps its label, which is read from `allocated_values` against the value the branch holds (revised 2026-10-07) |
+| 3 | present, non-null | `P` | `P` | different | `ATTACH` — the record is already anchored on the attribute, so nothing is written to it; the value write is all that is needed, and the row reads `provided` unless `P` allocated that number before (revised 2026-10-07) |
 | 4 | present, non-null | `B` | `A` | any | `ATTACH` — writing B's record ends A's |
 | 5 | present, non-null | absent | anything | any | Ordinary value write. Ledger untouched, whether or not a pool tracks the attribute (FR-022, FR-031) |
 | 6 | present, **null** | `P` | nothing | any | `ALLOCATE` |
-| 7 | present, **null** | `P` | `P` | any | `ALLOCATE` — take the next number from `P`, which may be the number the attribute already holds; no new IS_RESERVED edge unless the pool or provenance changes |
+| 7 | present, **null** | `P` | `P` | any | `ALLOCATE` — `P` returns the number it already reserved for the object without allocating, so the record is not written and the row keeps its label; when `P` holds no reservation it allocates, and the record is closed and recreated with the new number appended to `allocated_values` (revised 2026-10-07) |
 | 8 | present, **null** | `B` | `A` | any | `ALLOCATE` — writing B's record ends A's |
 | 9 | absent | `P` | nothing | schema default | `ALLOCATE` — allocation overwrites the default |
 | 10 | absent | `P` | nothing | **non-default** | **`REFUSE`** |
