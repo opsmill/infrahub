@@ -72,12 +72,24 @@ def _describe_push_rejection(summary: str) -> str:
     return summary
 
 
-def _push_rejection_reason(flags: int) -> PushRejectionReason:
+# The reasons that the remote's Git, depending on its version, gives when it cannot lock or update the ref, as when
+# another push changed the ref first.
+GIT_REF_UPDATE_FAILURES = (
+    "failed to lock",
+    "failed to update ref",
+    "reference already exists",
+    "incorrect old value provided",
+)
+
+
+def _push_rejection_reason(push_info: PushInfo) -> PushRejectionReason:
     # The remote itself refuses a ref with "[remote rejected]", while Git refuses a non-fast-forward with
     # "[rejected]" before it sends anything.
-    if flags & PushInfo.REMOTE_REJECTED:
+    if push_info.flags & PushInfo.REMOTE_REJECTED:
+        if any(failure in push_info.summary for failure in GIT_REF_UPDATE_FAILURES):
+            return PushRejectionReason.REF_UPDATE_FAILED
         return PushRejectionReason.POLICY
-    if flags & PushInfo.REJECTED:
+    if push_info.flags & PushInfo.REJECTED:
         return PushRejectionReason.NON_FAST_FORWARD
     return PushRejectionReason.UNKNOWN
 
@@ -1024,7 +1036,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             if push_info.flags & push_info.ERROR:
                 raise RepositoryPushRejectedError(
                     identifier=self.name,
-                    reason=_push_rejection_reason(flags=push_info.flags),
+                    reason=_push_rejection_reason(push_info=push_info),
                     remote_message="\n".join(progress.remote_lines),
                     message=(
                         f"Unable to push the branch {remote_branch} to the remote for repository {self.name}: "

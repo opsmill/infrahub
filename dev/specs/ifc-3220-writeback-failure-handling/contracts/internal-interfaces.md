@@ -516,7 +516,7 @@ Contract:
 
 | Component | Change |
 |---|---|
-| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags and the joined `remote:` lines. Message wording unchanged. |
+| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags, and from the summary for Git's wording of a ref it cannot lock or update, and the joined `remote:` lines. Message wording unchanged. |
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
 | `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. `create_commit_worktree` raises `RepositoryError` for a failed `worktree list` too, through `_raise_enriched_error_static`. After a `worktree add` stopped by its time limit, it removes the worktree that Git keeps locked as "initializing" (`git worktree remove -f -f`, best effort), and after any other failure it removes nothing. `delete_remote_branch` types its errors as `push` does (`is_write_operation=True`) and never writes the operational status. |
 | `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |

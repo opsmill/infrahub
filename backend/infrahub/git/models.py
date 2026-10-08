@@ -11,10 +11,11 @@ from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
 
 
 class PushRejectionReason(StrEnum):
-    """Why a ref update was refused, as the flags of the push result report it."""
+    """Why a ref update was refused, as the flags and the summary of the push result report it."""
 
     POLICY = "policy"
     NON_FAST_FORWARD = "non-fast-forward"
+    REF_UPDATE_FAILED = "ref-update-failed"
     UNKNOWN = "unknown"
 
 

@@ -106,7 +106,8 @@ Parts A and B of the plan.
       keep `ERROR_CONNECTION`.
 - [X] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
       `RemoteProgress` and a `timeout` argument as `kill_after_timeout`; derive the reason of a
-      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`; raise
+      per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`, and from the summary
+      for Git's wording of a ref it cannot lock or update (`ref-update-failed`, research.md R5); raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the
       message of `_describe_push_rejection`. Keep "push never writes `operational_status`".
 - [X] T010 Give `InfrahubRepositoryBase.fetch` in `backend/infrahub/git/base.py` an optional

@@ -329,7 +329,7 @@ unless stated otherwise.
 | `DeliveryAttemptResult` | frozen dataclass | `outcome`, `commit: str \| None`, `failure: DeliveryFailure \| None` | The service's return value. |
 | `Actor` | frozen dataclass | `account_id`, `account_name` | Who requested an abandonment. |
 | `HoldReceipt` | frozen dataclass | `hold_seq: int`, `previous_seqs: Mapping[str, int]` | What `hold` did: the new sequence, and the previous sequence of every refreshed item, for the cache union. |
-| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `unknown` | Carried on `RepositoryPushRejectedError`, from the `PushInfo` flags. |
+| `PushRejectionReason` | `StrEnum`, in `git/models.py` | `policy`, `non-fast-forward`, `ref-update-failed`, `unknown` | Carried on `RepositoryPushRejectedError`, from the `PushInfo` flags, and from the summary for Git's wording of a ref it cannot lock or update (`research.md` R5). |
 | `OwnedRegeneration` | frozen dataclass, in `core/merge/regeneration_barrier.py` | `repository_id: str \| None`, `held: HeldRegeneration`, `request: RequestT` | One barrier candidate: what to hold, who owns it, and the narrowed request to dispatch if admitted. |
 
 ### New exceptions

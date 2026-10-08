@@ -507,7 +507,8 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | fetch, push | `RepositoryCredentialsError` | `credentials` | no |
 | fetch | `RepositoryError` for a clone with no `origin` (R3) | `unclassified` | no. An automatic retry runs on the same worker and fails again. The message names the repository and says that the clone on this worker has no `origin`. It names no path. |
 | push | `RepositoryPermissionError` | `permission` | no |
-| push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`) | `permission` | no |
+| push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`, any other summary) | `permission` | no |
+| push | `RepositoryPushRejectedError`, reason `ref-update-failed` (`REMOTE_REJECTED`, with Git's wording for a ref it cannot lock or update) | `remote-advanced` | yes. Another push changed or locked the ref, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
@@ -525,6 +526,13 @@ matches no marker of `_describe_push_rejection`, so a text match would call it `
 flags classify it as `REMOTE_REJECTED`. `RepositoryPushRejectedError` subclasses `RepositoryError`,
 so every existing `except RepositoryError` keeps working, and its message keeps today's wording,
 which `test_git_live_remote.py` asserts.
+
+**A ref that the remote cannot lock or update.** The remote's Git also sends `[remote rejected]` when
+it cannot lock or update the ref, as when another push changed the ref first. That is not a policy.
+The wording of the summary depends on the Git version of the remote: "failed to lock", "failed to
+update ref", "reference already exists" or "incorrect old value provided". The push reads these
+words from the summary and gives the reason `ref-update-failed`, which is retried. Every other
+`[remote rejected]` stays `policy`.
 
 **Why two new subtypes.** A certificate failure and "Repository not found" are
 `RepositoryConnectionError` today, told apart only by their message. Retrying either is pointless.

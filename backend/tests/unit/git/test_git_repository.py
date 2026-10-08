@@ -754,6 +754,30 @@ PUSH_REJECTION_CASES = [
         ),
     ),
     PushRejectionCase(
+        # The lines that Git 2.56 sends when the ref is locked, as by another push that changes it first.
+        name="ref_locked_on_the_remote",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_REJECTED,
+        summary="[remote rejected] (reference already exists)\n",
+        stderr_lines=[
+            "remote: error: cannot lock ref 'refs/heads/main': Unable to create '/srv/git/net/repo.git/./refs/heads/"
+            "main.lock': File exists.",
+            "remote: ",
+            "remote: Another git process seems to be running in this repository, or the lock file may be stale",
+            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
+        ],
+        reason=PushRejectionReason.REF_UPDATE_FAILED,
+        remote_message=(
+            "remote: error: cannot lock ref 'refs/heads/main': Unable to create '/srv/git/net/repo.git/./refs/heads/"
+            "main.lock': File exists.\n"
+            "remote:\n"
+            "remote: Another git process seems to be running in this repository, or the lock file may be stale"
+        ),
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote rejected] (reference already exists)"
+        ),
+    ),
+    PushRejectionCase(
         name="remote_failure",
         flags=PushInfo.ERROR | PushInfo.REMOTE_FAILURE,
         summary="[remote failure] (remote failed to report status)\n",
@@ -773,7 +797,7 @@ PUSH_REJECTION_CASES = [
 
 @pytest.mark.parametrize("case", PUSH_REJECTION_CASES, ids=lambda c: c.name)
 async def test_push_rejection_carries_the_reason_and_the_remote_lines(case: PushRejectionCase, tmp_path: Path) -> None:
-    """A rejected ref raises a typed error with its reason from the flags and the remote's lines, and writes no status."""
+    """A rejected ref raises a typed error with its reason from the push result and the remote's lines, and writes no status."""
     remote = Remote(repo=Repo.init(tmp_path / "local"), name="origin")
     push_info = PushInfo(
         flags=case.flags, local_ref=None, remote_ref_string="refs/heads/main", remote=remote, summary=case.summary
