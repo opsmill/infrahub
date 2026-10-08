@@ -1146,7 +1146,7 @@ async def deliver_pending_merges(
     name="git-repository-delivery-retry",
     flow_run_name="Retry the delivery of the pending merges of repository {model.repository_name}",
 )
-async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
+async def retry_repository_delivery(model: GitRepositoryDeliveryRetry, context: InfrahubContext) -> State:
     log = get_run_logger()
     await add_tags(branches=[registry.default_branch], nodes=[model.repository_id])
 
@@ -1158,7 +1158,7 @@ async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
     )
     database = await get_database()
     async with database.start_session() as db:
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=model.manual, entry=None)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
