@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getImportTaskLogsFromApi } from "@/entities/repository/api/get-import-task-logs-from-api";
-import { IMPORT_LOG_LIMIT } from "@/entities/repository/domain/model/repository";
 import { getImportTaskErrorMessage } from "@/entities/repository/domain/use-cases/get-import-task-error-message";
 
 vi.mock("@/entities/repository/api/get-import-task-logs-from-api");
@@ -19,13 +18,13 @@ describe("getImportTaskErrorMessage", () => {
     ]);
 
     // WHEN
-    const message = await getImportTaskErrorMessage({ taskId: "task-1" });
+    const message = await getImportTaskErrorMessage({ taskId: "task-1", logLimit: 10_000 });
 
     // THEN
     expect(message).toBe("Unable to load the schema");
     expect(getImportTaskLogsFromApi).toHaveBeenCalledWith({
       taskId: "task-1",
-      logLimit: IMPORT_LOG_LIMIT,
+      logLimit: 10_000,
     });
   });
 
@@ -36,7 +35,9 @@ describe("getImportTaskErrorMessage", () => {
     ]);
 
     // WHEN / THEN
-    await expect(getImportTaskErrorMessage({ taskId: "task-1" })).resolves.toBeNull();
+    await expect(
+      getImportTaskErrorMessage({ taskId: "task-1", logLimit: 10_000 })
+    ).resolves.toBeNull();
   });
 
   it("rejects when the api fails, so the failure isn't read as a log with no error line", async () => {
@@ -45,6 +46,8 @@ describe("getImportTaskErrorMessage", () => {
     vi.mocked(getImportTaskLogsFromApi).mockRejectedValue(error);
 
     // WHEN / THEN
-    await expect(getImportTaskErrorMessage({ taskId: "task-1" })).rejects.toBe(error);
+    await expect(getImportTaskErrorMessage({ taskId: "task-1", logLimit: 10_000 })).rejects.toBe(
+      error
+    );
   });
 });

@@ -31,8 +31,6 @@ export const IMPORT_TASK_STATES = [
   TASK_STATE_FAILED,
   TASK_STATE_CRASHED,
 ] as const;
-// Logs come back oldest first, so anything below the backend's 10 000-line cap can cut off the final error line.
-export const IMPORT_LOG_LIMIT = 10_000;
 
 /**
  * Selects repositories whose import failed. Attribute-value filters match on substrings, so

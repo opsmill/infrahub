@@ -15,7 +15,7 @@ export const repositoryQueryKeys = {
     [...repositoryQueryKeys.all, "branch-health", params] as const,
   latestImportTask: (params: GetLatestRepositoryImportTaskParams) =>
     [...repositoryQueryKeys.all, "latest-import-task", params] as const,
-  importLog: (params: GetImportTaskErrorMessageParams) =>
+  importLog: (params: Pick<GetImportTaskErrorMessageParams, "taskId">) =>
     [...repositoryQueryKeys.all, "import-log", params] as const,
   namesOnBranch: (params: Pick<GetRepositoryNamesParams, "branchName">) =>
     [...repositoryQueryKeys.all, "names", params] as const,

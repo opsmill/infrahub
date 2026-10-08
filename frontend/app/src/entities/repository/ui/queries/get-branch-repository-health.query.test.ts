@@ -6,6 +6,7 @@ import { getBranchRepositoryHealthQueryOptions } from "@/entities/repository/ui/
 import { generateBranchRepositoryHealth } from "../../../../../tests/fake/branch-repositories";
 
 const refetchIntervalFor = (syncingCount: number | undefined, error: Error | null = null) => {
+  const status = error ? "error" : "success";
   const { refetchInterval } = getBranchRepositoryHealthQueryOptions({
     branchName: "feature",
     syncWithGit: true,
@@ -13,7 +14,7 @@ const refetchIntervalFor = (syncingCount: number | undefined, error: Error | nul
   if (typeof refetchInterval !== "function") throw new Error("refetchInterval must be a function");
   const data =
     syncingCount === undefined ? undefined : generateBranchRepositoryHealth({ syncingCount });
-  return refetchInterval({ state: { data, error } } as unknown as Parameters<
+  return refetchInterval({ state: { data, error, status } } as unknown as Parameters<
     typeof refetchInterval
   >[0]);
 };
@@ -28,8 +29,11 @@ describe("getBranchRepositoryHealthQueryOptions", () => {
     expect(refetchIntervalFor(undefined)).toBe(false);
   });
 
-  it("keeps polling after a failed check during a sync, and stops once the user is denied", () => {
-    expect(refetchIntervalFor(2, new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(10_000);
+  it("retries a failed check every minute, even with nothing syncing, and stops once denied", () => {
+    expect(refetchIntervalFor(undefined, new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(
+      60_000
+    );
+    expect(refetchIntervalFor(2, new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(60_000);
     expect(refetchIntervalFor(2, new BranchRepositoriesError("PERMISSION_DENIED", "Denied"))).toBe(
       false
     );

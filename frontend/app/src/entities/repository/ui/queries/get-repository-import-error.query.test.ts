@@ -14,6 +14,19 @@ import {
 vi.mock("@/entities/repository/domain/use-cases/get-import-task-error-message");
 vi.mock("@/entities/repository/domain/use-cases/get-latest-repository-import-task");
 
+// The transport throws an Error whose cause is an error carrying the GraphQL errors.
+const permissionDenied = () =>
+  new Error("Denied", {
+    cause: Object.assign(new Error("Denied"), {
+      graphQLErrors: [
+        {
+          message: "Denied",
+          extensions: { code: "PERMISSION_DENIED", http_status: 403, data: {} },
+        },
+      ],
+    }),
+  });
+
 const params = { branchName: "feature", repositoryId: "repo-1" };
 
 const taskRefetchIntervalFor = (isSyncing: boolean, state: Partial<Query["state"]>) => {
@@ -47,7 +60,19 @@ describe("getLatestRepositoryImportTaskQueryOptions", () => {
       false
     );
     expect(taskRefetchIntervalFor(false, { data: { status: "none" } })).toBe(false);
-    expect(taskRefetchIntervalFor(false, { status: "error", data: undefined })).toBe(false);
+  });
+
+  it("retries a failed lookup every minute, and stops once it is denied", () => {
+    expect(
+      taskRefetchIntervalFor(false, {
+        status: "error",
+        data: undefined,
+        error: new Error("Network"),
+      })
+    ).toBe(60_000);
+    expect(
+      taskRefetchIntervalFor(true, { status: "error", data: undefined, error: permissionDenied() })
+    ).toBe(false);
   });
 });
 
@@ -85,7 +110,7 @@ describe("useGetRepositoryImportError", () => {
     await expect
       .poll(() => result.current)
       .toEqual({ status: "found", taskId: "task-1", message: "Unable to load the schema" });
-    expect(getImportTaskErrorMessage).toHaveBeenCalledWith({ taskId: "task-1" });
+    expect(getImportTaskErrorMessage).toHaveBeenCalledWith({ taskId: "task-1", logLimit: 10_000 });
   });
 
   it("reads a failed log fetch as details not found, then shows the error once a refetch succeeds", async () => {

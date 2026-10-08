@@ -7,7 +7,10 @@ import {
   getBranchRepositoryHealth,
 } from "@/entities/repository/domain/use-cases/get-branch-repository-health";
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
-import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
+import {
+  REPOSITORY_ERROR_REFETCH_INTERVAL_MS,
+  REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
+} from "@/entities/repository/ui/queries/repository-polling";
 
 // Each failing list stops here; the server's total still counts the rest.
 const REPOSITORY_HEALTH_LIST_LIMIT = 50;
@@ -22,10 +25,11 @@ export function getBranchRepositoryHealthQueryOptions(
   return queryOptions({
     queryKey: repositoryQueryKeys.branchHealth(params),
     queryFn: () => getBranchRepositoryHealth(params),
-    refetchInterval: (query) =>
-      !isRepositoryAccessDenied(query.state.error) && isAnyRepositorySyncing(query.state.data)
-        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
-        : false,
+    refetchInterval: ({ state }) => {
+      if (isRepositoryAccessDenied(state.error)) return false;
+      if (state.status === "error") return REPOSITORY_ERROR_REFETCH_INTERVAL_MS;
+      return isAnyRepositorySyncing(state.data) ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS : false;
+    },
   });
 }
 
