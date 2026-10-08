@@ -11,6 +11,13 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _hash_property(value: Any) -> int:
+    """Hash a vertex or edge property, which the graph may store as a list."""
+    if isinstance(value, list):
+        return hash(tuple(value))
+    return hash(value)
+
+
 @dataclass
 class DbNode:
     db_id: str
@@ -21,7 +28,7 @@ class DbNode:
         cumulative_hash = hash(frozenset(self.labels))
         for k, v in self.properties.items():
             cumulative_hash += hash(k)
-            cumulative_hash += hash(v)
+            cumulative_hash += _hash_property(v)
         return hash(cumulative_hash)
 
 
@@ -38,7 +45,7 @@ class DbEdge:
         cumulative_hash = 0
         for k, v in self.properties.items():
             cumulative_hash += hash(k)
-            cumulative_hash += hash(v)
+            cumulative_hash += _hash_property(v)
         return hash(f"{labels_hash}:{cumulative_hash}")
 
 
