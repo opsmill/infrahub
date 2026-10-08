@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from graphene import BigInt, Boolean, DateTime, Enum, Field, Int, List, NonNull, ObjectType, String
 from graphene.types.generic import GenericScalar
@@ -123,9 +123,12 @@ async def resolve_graphql_query_cost_estimate(
         branch=graphql_context.branch,
     )
 
-    variables = analyzed.variables
-    if variables is not None and not isinstance(variables, dict):
-        raise GraphQLError("The variables argument must be an object that maps each variable name to its value.")
+    variable_values: dict[str, Any] | None = None
+    if analyzed.variables is not None:
+        if not isinstance(analyzed.variables, dict):
+            raise GraphQLError("The variables argument must be an object that maps each variable name to its value.")
+        # The keys of a GraphQL object value are names, so converting them to strings changes no key.
+        variable_values = {str(name): value for name, value in analyzed.variables.items()}
 
     request = graphql_context.request
     estimator = build_query_cost_estimator(
@@ -137,7 +140,7 @@ async def resolve_graphql_query_cost_estimate(
         schema_branch=analyzed.schema_branch,
         cache=graphql_context.active_service.cache,
     )
-    query_estimate = await estimator.estimate(analyzer=analyzer, schema=info.schema, variable_values=variables)
+    query_estimate = await estimator.estimate(analyzer=analyzer, schema=info.schema, variable_values=variable_values)
     return _describe_query_estimate(query_estimate=query_estimate)
 
 
