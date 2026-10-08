@@ -8,9 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub.core.constants import (
     RelationshipCardinality,  # noqa: TC001  (pydantic field type, needs a runtime import)
 )
+from infrahub.graphql.cost.constants import QUERY_COST_HEADER, QUERY_COST_HEADER_VALUE
 from infrahub.graphql.cost.models import EstimateMode, EstimateReason, EstimateSource
 
 if TYPE_CHECKING:
+    from starlette.datastructures import Headers
+
     from infrahub.graphql.cost.models import (
         CostFigures,
         FieldDescription,
@@ -75,6 +78,11 @@ class QueryCostDetails(BaseModel):
     fields: list[QueryCostField]
     estimate_queries: QueryCostTotals
     unattributed: QueryCostTotals
+
+
+def query_cost_details_requested(headers: Headers) -> bool:
+    """Tell whether a request asks for the cost details; the header value is compared without case."""
+    return headers.get(QUERY_COST_HEADER, "").lower() == QUERY_COST_HEADER_VALUE
 
 
 def build_query_cost_details(estimate: QueryEstimate | None, recorder: QueryCostRecorder) -> QueryCostDetails:

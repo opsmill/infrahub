@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import pytest
+from starlette.datastructures import Headers
 
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.graphql.cost.constants import ESTIMATE_FIELD_PATH
-from infrahub.graphql.cost.details import build_query_cost_details
+from infrahub.graphql.cost.details import build_query_cost_details, query_cost_details_requested
 from infrahub.graphql.cost.models import (
     CostFigures,
     EstimateMode,
@@ -299,3 +301,26 @@ def test_details_reject_rows_recorded_for_a_field_without_a_resolver_call() -> N
         match=r"^Database rows were recorded for the field 'TestPerson/cars' without a resolver call$",
     ):
         build_query_cost_details(estimate=None, recorder=recorder)
+
+
+@dataclass
+class DetailsRequestedTestCase:
+    name: str
+    headers: dict[str, str]
+    expected: bool
+
+
+DETAILS_REQUESTED_TEST_CASES: list[DetailsRequestedTestCase] = [
+    DetailsRequestedTestCase(name="details_value", headers={"X-Infrahub-Query-Cost": "details"}, expected=True),
+    DetailsRequestedTestCase(
+        name="value_compared_without_case", headers={"x-infrahub-query-cost": "DeTaiLs"}, expected=True
+    ),
+    DetailsRequestedTestCase(name="other_value", headers={"X-Infrahub-Query-Cost": "summary"}, expected=False),
+    DetailsRequestedTestCase(name="empty_value", headers={"X-Infrahub-Query-Cost": ""}, expected=False),
+    DetailsRequestedTestCase(name="header_absent", headers={"X-Infrahub-Admission": "details"}, expected=False),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in DETAILS_REQUESTED_TEST_CASES])
+def test_query_cost_details_requested(test_case: DetailsRequestedTestCase) -> None:
+    assert query_cost_details_requested(headers=Headers(headers=test_case.headers)) is test_case.expected
