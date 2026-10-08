@@ -61,9 +61,10 @@ After a refusal: a row without `rangeId` whose bounds equal a stored range not a
 `schema` is the node or generic schema of the selected kind. Every attribute and relationship of the kind itself, with `unavailableReason` when:
 
 - the field is optional;
-- the attribute kind is List or JSON;
 - the relationship has cardinality many;
 - the attribute is `nodeAttribute` ("This is the attribute the pool allocates").
+
+List and JSON attributes are candidates like any other attribute ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-004). Paths into a related node are not listed, because only the kind's own fields are. A field already in the scope is left out of the picker, so it cannot be chosen twice. When `nodeAttribute` is `unique: true`, the scope picker does not use the candidates: it cannot add fields and explains why ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-006).
 
 ## State transitions of the form
 

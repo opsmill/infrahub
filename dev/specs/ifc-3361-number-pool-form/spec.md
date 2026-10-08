@@ -58,7 +58,7 @@ An operator opens an existing user-created pool to add a range, remove one, resi
 
 ### User Story 3 - Set the allocation scope when creating a pool (Priority: P2)
 
-When creating a pool, the engineer can choose fields of the node kind that divide the pool's number space (for example one sequence per device). Only required fields can be chosen. Fields that cannot be used are listed with the reason.
+When creating a pool, the engineer can choose fields of the node kind that divide the pool's number space (for example one sequence per device). Only required fields can be chosen. Fields that cannot be used are listed with the reason. A pool whose attribute is unique cannot be scoped.
 
 **Why this priority**: The allocation scope can only be set at creation from this form; it is a smaller audience than ranges, and the server-side behaviour for scoped allocation is still being delivered ([IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349)).
 
@@ -66,10 +66,11 @@ When creating a pool, the engineer can choose fields of the node kind that divid
 
 **Acceptance Scenarios**:
 
-1. **Given** the create form with a node kind selected, **When** the user opens the scope picker, **Then** the kind's own fields are listed; required fields can be chosen; optional, list and JSON fields, relationships of cardinality many and the attribute the pool allocates are listed but cannot be chosen, each with the reason.
+1. **Given** the create form with a node kind selected, **When** the user opens the scope picker, **Then** the kind's own fields are listed; required fields can be chosen, List and JSON attributes included; optional fields, relationships of cardinality many and the attribute the pool allocates are listed but cannot be chosen, each with the reason.
 2. **Given** the user has chosen one or more scope fields, **When** they change the node kind, **Then** the chosen scope is cleared.
 3. **Given** a pool created with a scope, **When** the user opens its edit form, **Then** the scope is displayed as badges, in the same place and layout as the create form, with no controls.
 4. **Given** the user selects no scope, **Then** the pool is created without a scope.
+5. **Given** the create form, **When** the user selects an attribute that is `unique: true`, **Then** any chosen scope is cleared, the scope picker cannot add fields, and it explains that a unique attribute cannot repeat its numbers per scope.
 
 ---
 
@@ -95,7 +96,7 @@ Some pools are created from the schema. Their ranges can be changed only by chan
 - A save that moves two ranges past each other (for example 1–10 and 11–20 becoming 1–15 and 16–20) may be refused part way by the server; the form reports it as in Story 2, scenario 4. Accepted for this version.
 - Removing a range from which numbers are already allocated is allowed without a warning; numbers already assigned stay on their objects.
 - The create form submits the pool first; if the pool is created but a range is then refused, the form switches to editing that pool (FR-015), so a second save does not create a duplicate pool.
-- When the selected attribute is unique on its own and a scope is chosen, the scope picker shows a warning that numbers cannot repeat across scopes, as in the prototype; saving is still allowed.
+- When the selected attribute is `unique: true`, the pool cannot be scoped: selecting that attribute clears any chosen scope, and the scope picker cannot add fields and explains why ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-006). This replaces the non-blocking warning of the prototype.
 - A node kind with no required fields shows an empty scope picker with an explanation.
 - Another user changes the pool's ranges while the form is open: the save is applied against the server's current state; a refused call (for example deleting a range that no longer exists) is handled as in FR-009. Accepted for this version.
 - A network failure in the middle of a save is handled like a refusal (FR-009), with a generic message.
@@ -113,18 +114,18 @@ Some pools are created from the schema. Their ranges can be changed only by chan
 - **FR-007**: The edit form MUST display node kind, attribute and allocation scope as read-only text and badges, in the same layout and position as the inputs of the create form.
 - **FR-008**: On save, the edit form MUST apply only the differences between the stored ranges and the form: remove deleted ranges, update changed ranges, add new ranges. It MUST apply them in this order: removals, then ranges that become smaller, then ranges that become larger, then additions. A range becomes smaller when its new bounds stay inside its old bounds, including a change of weight only; any other change of bounds makes it larger.
 - **FR-009**: When the server refuses any part of a save (create or edit), the form MUST stay open, show the server message once, stop applying further changes, reload the stored ranges, keep every row as the user typed it (rows already applied are linked to their stored range), and a second save MUST apply only the remaining differences.
-- **FR-010**: The scope picker MUST list only the fields of the selected node kind itself, whether the kind is a node or a generic (no field of a related node), allow only required fields to be chosen, and show the reason next to each field that cannot be chosen (optional, list, JSON, the attribute the pool allocates). Chosen fields MUST be stored as bare field names (for example `site`, `role`). Changing the attribute MUST remove it from the chosen scope.
+- **FR-010**: The scope picker MUST list only the fields of the selected node kind itself, whether the kind is a node or a generic (no field of a related node), allow only required fields to be chosen, List and JSON attributes included, and show the reason next to each field that cannot be chosen (optional, the attribute the pool allocates); a field already chosen MUST NOT be offered again ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-004). The create form MUST send chosen fields as bare field names (for example `site`, `role`), which the server accepts ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-003). When the pool is read, each scope element MUST be accepted either as a name or as an object with an `id` and a `name`, and displayed by its name ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-002, FR-018). Changing the attribute MUST remove it from the chosen scope. When the selected attribute is `unique: true`, the scope picker MUST NOT let the user add fields, MUST explain why, and selecting that attribute MUST clear the chosen scope ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-006).
 - **FR-011**: Changing the node kind in the create form MUST clear the chosen attribute and scope.
 - **FR-012**: For a pool defined in the schema, the edit form MUST display the ranges as read-only text with a note that they are changed in the schema on the default branch.
 - **FR-013**: The forms MUST NOT show the deprecated single start and end range fields.
 - **FR-014**: The existing end-to-end tests that use the single start and end range fields MUST be updated to the new form, and one end-to-end test MUST create a pool with several ranges and then edit it.
 - **FR-015**: When the server refuses a range after the pool was created, the create form MUST switch to editing the created pool and then behave as FR-009, so a second save does not create a second pool.
-- **FR-016**: The scope picker MUST treat a relationship of cardinality many as a field that cannot be chosen, with the reason.
+- **FR-016**: The scope picker MUST treat a relationship of cardinality many as a field that cannot be chosen, with the reason ([scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-004).
 - **FR-017**: Range rows MUST be listed on load by weight (highest first) then by start; rows added by the user MUST be appended at the end, and rows MUST NOT reorder while the user types.
 
 ### Key Entities
 
-- **Number pool**: name, description, node kind, number attribute, allocation scope (list of field names of the node kind), pool type (user-created or defined in the schema), ranges.
+- **Number pool**: name, description, node kind, number attribute, allocation scope (ordered list of fields of the node kind, sent as field names and read as names or as `{id, name}` objects), pool type (user-created or defined in the schema), ranges.
 - **Number pool range**: start, end, optional weight; belongs to one pool. Ranges of one pool cannot overlap. Higher weight is used first; no weight means lowest priority.
 
 ## Success Criteria *(mandatory)*
@@ -138,10 +139,10 @@ Some pools are created from the schema. Their ranges can be changed only by chan
 
 ## Assumptions
 
-- The allocation scope is stored as a list of field names in the notation of uniqueness constraints; the server does not validate it on this branch ([IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) in review), so the form applies the "required fields only" rule itself.
+- The scope rules come from the [scope spec](../ifc-3185-number-pool-scopes/spec.md): FR-002 (each element stored as the schema element's id and name), FR-003 (creation accepts the name), FR-004 (required attributes of any kind, List and JSON included, or required relationships of cardinality one; no optional field, path, the pool's own attribute or duplicate), FR-006 (no scope when the attribute is unique) and FR-018 (reads return `{id, name}` objects). The server on this branch does not apply these rules yet and still returns plain names, so the form applies the rules itself and reads both shapes.
 - FR-016 and FR-017 were decided during clarification without a user question: FR-016 follows the uniqueness-constraint notation that the scope reuses, which addresses a relationship of cardinality one; FR-017 keeps the prototype's ordering (weight, then start) without moving rows during typing. FR-016 is confirmed against the backend: uniqueness constraints accept a relationship only when it has cardinality one and is required (`backend/infrahub/core/schema/schema_branch.py`, `validate_uniqueness_constraints`).
 - Ranges are saved one by one after the pool; the server has no all-or-nothing save for a pool and its ranges.
-- The allocation scope cannot be changed after creation from this form, although the server accepts an update (decision by Paul Leménager, 2026-10-08).
+- The allocation scope cannot be changed after creation from this form (decision by Paul Leménager, 2026-10-08); the [scope spec](../ifc-3185-number-pool-scopes/spec.md) FR-007 makes the server refuse such a change.
 - The pool details page, usage figures and allocations list from the prototype are out of scope ([IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329), [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347)).
 - No warning is shown when a range from which numbers were allocated is removed (decision by Paul Leménager, 2026-10-08).
 - A pool with a single range is shown as one row; users of the former single start and end fields see the same values in that row.

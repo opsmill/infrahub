@@ -29,8 +29,8 @@ Each decision was checked in the code of this branch. Code is cited by module an
 
 ## R5. Scope candidates
 
-- **Decision**: list only the fields of the selected node kind. A field can be chosen when it is a required attribute whose kind is not List or JSON and is not the pool's own attribute, or a required relationship of cardinality one. Store bare field names.
-- **Rationale**: `backend/infrahub/core/schema/schema_branch.py::validate_uniqueness_constraints` accepts attributes with a property and required relationships of cardinality one; `dev/specs/ifc-3185-scoped-number-pools/data-model.md` refuses optional fields, cardinality-many relationships, paths into related nodes, List/JSON attributes, the pool's own attribute and duplicates, and stores bare names. The server does not enforce this on this branch (IFC-3348 in review), so the form is the only check for now.
+- **Decision**: list only the fields of the selected node kind. A field can be chosen when it is a required attribute of any kind, List and JSON included, that is not the pool's own attribute, or a required relationship of cardinality one, and is not already in the scope. No field can be chosen when the pool's attribute is `unique: true`. Send bare field names on create; read each stored element as a name or as an `{id, name}` object.
+- **Rationale**: the [scope spec](../ifc-3185-number-pool-scopes/spec.md) supersedes `dev/specs/ifc-3185-scoped-number-pools/` where they differ. FR-004 allows any attribute kind and refuses optional fields, cardinality-many relationships, paths into related nodes, the pool's own attribute and duplicates; FR-006 refuses a scope on a unique attribute; FR-003 accepts names on creation; FR-002 and FR-018 store and return `{id, name}` objects. The server on this branch still declares `allocation_scope` as a list of strings and does not apply these rules, so the form is the only check for now and reads both shapes.
 - **Alternatives considered**: free-text scope entry (no validation); allowing `site__name` paths (refused by IFC-3185).
 
 ## R6. Row value shape
