@@ -12,6 +12,8 @@ from prefect.utilities.annotations import quote
 
 from infrahub import lock
 from infrahub.core.constants import ComputedAttributeKind, MutationAction
+from infrahub.core.merge.builder import build_default_branch_barrier
+from infrahub.core.merge.recompute_coalescing import owned_python_target, whole_kind_python_target
 from infrahub.core.query_group.subscribers import fetch_subscriber_refs
 from infrahub.core.recompute.bulk_write import AttributeValueWrite
 from infrahub.core.recompute.dispatch import build_bulk_recompute_dispatcher
@@ -800,7 +802,27 @@ async def computed_attribute_setup_python(
                     f"Skipping {skipped.ref.kind}.{skipped.ref.attribute_name} on {branch_name}: {skipped.reason}"
                 )
 
-            for ref in report.selected:
+            owners = {
+                (
+                    trigger.computed_attribute.computed_attribute.kind,
+                    trigger.computed_attribute.computed_attribute.attribute.name,
+                ): trigger.computed_attribute.repository_id
+                for trigger in triggers_python
+                if trigger.branch == branch_name
+            }
+            candidates = [
+                owned_python_target(
+                    target=whole_kind_python_target(kind=ref.kind, attribute_name=ref.attribute_name),
+                    attribute_name=ref.attribute_name,
+                    repository_id=owners.get((ref.kind, ref.attribute_name)),
+                )
+                for ref in report.selected
+            ]
+            barrier = await build_default_branch_barrier(db=db)
+            admitted = await barrier.admit(branch=branch_name, candidates=candidates, releasing=None)
+            for ref, candidate in zip(report.selected, candidates, strict=True):
+                if candidate not in admitted:
+                    continue
                 await get_workflow().submit_workflow(
                     workflow=TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
                     context=context,

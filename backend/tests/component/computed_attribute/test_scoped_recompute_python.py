@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING
 
 import pytest
 
+from infrahub import lock
 from infrahub.computed_attribute.tasks import computed_attribute_setup_python
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
@@ -11,6 +14,8 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema
 from infrahub.events.schema_action import ChangedElementsPayload
+from infrahub.git.writeback.models import HeldPythonAttribute, HeldRegeneration, PendingMerge
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workflows.catalogue import TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
 from tests.component.computed_attribute._base import (
     CAR_PERSON_PYTHON_SCHEMA,
@@ -143,3 +148,88 @@ class TestScopedRecomputePython(ScopedRecomputeTestBase):
             "computed_desc_python",
             "computed_desc_python_opaque",
         }
+
+
+class TestScopedRecomputePythonOfAPendingRepository(ScopedRecomputeTestBase):
+    """A repository whose merges wait for their push holds the recompute of the attributes its transforms compute."""
+
+    WORKFLOW = TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES
+
+    @pytest.fixture(scope="class")
+    async def delivery_state(self, db: InfrahubDatabase, default_branch: Branch) -> WritebackIntentStore:
+        return WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+        )
+
+    @pytest.fixture(scope="class")
+    async def pending_repository_id(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        client: InfrahubClient,
+        admin_account: CoreAccount,
+        delivery_state: WritebackIntentStore,
+    ) -> str:
+        """Compute one attribute with a read-only repository, and the other with a repository that waits for its push."""
+        await create_transform01(db=db, branch_name=default_branch.name)
+
+        query_opaque = await Node.init(db=db, schema=InfrahubKind.GRAPHQLQUERY)
+        await query_opaque.new(
+            db=db,
+            name="query_opaque",
+            query="query { TestCar { edges { node { display_label } } } }",
+            models=["TestCar"],
+        )
+        await query_opaque.save(db=db)
+
+        pending_repository = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
+        await pending_repository.new(db=db, name="pending-repository", location="pending-location", commit="commit02")
+        await pending_repository.save(db=db)
+
+        transform_opaque = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+        await transform_opaque.new(
+            db=db,
+            name="transform_opaque",
+            file_path="transform.py",
+            class_name="Transform",
+            query=query_opaque,
+            repository=pending_repository,
+        )
+        await transform_opaque.save(db=db)
+
+        await load_schema(db=db, schema=CAR_PERSON_PYTHON_SCHEMA, update_db=True)
+        await delivery_state.enqueue(
+            repository_id=pending_repository.id,
+            entry=PendingMerge(
+                entry_id="pending-merge",
+                source_branch="feature",
+                source_git_branch="feature",
+                source_commit="0123456789abcdef0123456789abcdef01234567",
+                merged_at=datetime.now(UTC),
+            ),
+            widen=False,
+        )
+        return pending_repository.id
+
+    async def test_the_attribute_of_the_pending_repository_waits_for_its_delivery(
+        self,
+        pending_repository_id: str,
+        delivery_state: WritebackIntentStore,
+        workflow_recorder: WorkflowRecorder,
+        default_branch: Branch,
+        admin_account: CoreAccount,
+    ) -> None:
+        await computed_attribute_setup_python(
+            context=self._context(admin_account, default_branch),
+            branch_name=default_branch.name,
+            changed_elements=ChangedElementsPayload(changed_fields={"TestCar": ["name"]}),
+        )
+
+        assert self._submitted_attribute_names(workflow_recorder) == {"computed_desc_python"}
+        intent = await delivery_state.read(repository_id=pending_repository_id)
+        assert intent.held == HeldRegeneration(
+            next_hold_seq=2,
+            python_attributes=(
+                HeldPythonAttribute(kind="TestCar", attribute="computed_desc_python_opaque", hold_seq=1),
+            ),
+        )
