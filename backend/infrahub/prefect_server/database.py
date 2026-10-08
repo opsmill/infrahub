@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from prefect.server.database import PrefectDBInterface, provide_database_interface
 from prefect.server.events.schemas.events import ReceivedEvent
 from prefect.server.events.storage import INTERACTIVE_PAGE_SIZE
 from prefect.server.events.storage.database import raw_count_events, read_events
@@ -11,6 +12,11 @@ from .models import InfrahubDatabaseVersion
 if TYPE_CHECKING:
     from prefect.server.events.filters import EventFilter
     from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def get_prefect_database() -> PrefectDBInterface:
+    """Resolve the database interface on the event loop, since FastAPI runs a sync dependency in a worker thread."""
+    return provide_database_interface()
 
 
 async def query_events(
