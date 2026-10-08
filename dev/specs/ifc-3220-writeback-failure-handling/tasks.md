@@ -317,13 +317,13 @@ SC-002, SC-007.
 
 ### Tests
 
-- [ ] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
+- [X] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
       git-synced Infrahub branch whose repository file differs from the default branch, on
       `protected_branch_dataset`. Reuse `rejected_push_to_main`.
-- [ ] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
+- [X] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
       (US1 #1 to #3): one entry, `action-required`, cause `permission`, the hook's `remote:` line
       verbatim, the commit unchanged.
-- [ ] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
+- [X] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
       recorded, the remote updated, the broadcast sent.
 - [X] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
       branch forked before the trunk moved queues nothing (US1 #7); a staging repository queues
@@ -621,10 +621,10 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-020, FR-021, FR-022, SC-007.
 
-- [ ] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
+- [X] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
       force-push the source branch, retry, cause `source-discarded`, the remote never holds the
       discarded commit.
-- [ ] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
+- [X] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
       retry, cause `destination-rewritten`, nothing pushed.
 - [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
