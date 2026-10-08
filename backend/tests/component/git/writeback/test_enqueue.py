@@ -32,7 +32,7 @@ from infrahub.exceptions import DeliveryStateUnavailableError
 from infrahub.git.models import GitRepositoryMerge
 from infrahub.git.tasks import merge_git_repository
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
-from infrahub.git.writeback.models import DeliveryQueue, HeldRegeneration, HeldWiden
+from infrahub.git.writeback.models import DeliveryFailure, DeliveryQueue, HeldRegeneration, HeldWiden
 from infrahub.git.writeback.store import STATE_LOCK_NAMESPACE, WritebackIntentStore
 from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -345,6 +345,59 @@ async def test_a_staging_repository_merges_with_no_queue_entry(
         )
     ]
     assert (await store.read(repository_id=repository.id)).queue == DeliveryQueue()
+
+
+async def test_a_merge_is_queued_behind_a_delivery_that_waits_for_an_action_and_its_merge_flow_is_submitted(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    repository = await create_repository_node(db=db, branch=default_branch, name=REPOSITORY_NAME)
+    source_branch = await fork_source_branch(db=db)
+    await set_values(db=db, branch=source_branch, repository_id=repository.id, commit=SOURCE_COMMIT)
+    store = build_store(db=db, default_branch=default_branch)
+    earlier = pending_merge(entry_id=str(uuid4()), source_git_branch="earlier-feature")
+    await store.enqueue(repository_id=repository.id, entry=earlier, widen=False)
+    await store.record_failure(
+        repository_id=repository.id,
+        failure=DeliveryFailure(
+            cause=RepositoryDeliveryFailureCause.PERMISSION, retryable=False, message="remote: Permission denied"
+        ),
+        final=True,
+        retry_due_at=None,
+    )
+    sleep = RecordingSleep()
+
+    workflow = await dispatch_merge(
+        db=db, source_branch=source_branch, default_branch=default_branch, state=store, sleep=sleep
+    )
+
+    (model,) = submitted_merges(workflow)
+    entry = model.pending_merge
+    assert entry is not None
+    assert model == GitRepositoryMerge(
+        repository_id=repository.id,
+        repository_name=REPOSITORY_NAME,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        source_branch=SOURCE_BRANCH,
+        destination_branch=default_branch.name,
+        destination_branch_id=str(default_branch.get_uuid()),
+        repository_kind=InfrahubKind.REPOSITORY,
+        pending_merge=entry,
+        pending_merge_enqueued=True,
+    )
+    assert (entry.source_branch, entry.source_git_branch, entry.source_commit, entry.delete_source_git_branch) == (
+        SOURCE_BRANCH,
+        SOURCE_BRANCH,
+        SOURCE_COMMIT,
+        False,
+    )
+    assert sleep.delays == []
+    intent = await store.read(repository_id=repository.id)
+    assert (intent.status, intent.cause, intent.error, intent.queue.entries) == (
+        RepositoryDeliveryStatus.PENDING,
+        RepositoryDeliveryFailureCause.PERMISSION,
+        "remote: Permission denied",
+        (earlier, entry),
+    )
 
 
 async def test_a_failed_enqueue_of_one_repository_still_submits_the_merge_of_the_others(
