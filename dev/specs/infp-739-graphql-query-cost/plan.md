@@ -88,7 +88,7 @@ dev/specs/infp-739-graphql-query-cost/
 ```text
 backend/infrahub/graphql/cost/            # new package, empty __init__.py
 ├── constants.py          # header name and value, cache keys, number of listed nodes (20)
-├── models.py             # frozen dataclasses: statistics, histogram, tree, estimate, actual counts
+├── models.py             # frozen dataclasses: statistics, histogram, tree, first-step counts, estimate, actual counts
 ├── histogram.py          # builds a RelationshipSideStatistics from per-node peer counts, chunk by chunk
 ├── statistics_store.py   # cache layout (pointer + one key per kind), in-process snapshot
 ├── queries.py            # label counts, kind node IDs, refresh degree chunk, first-step nodes, first-step peers

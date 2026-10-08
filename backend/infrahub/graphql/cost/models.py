@@ -162,7 +162,13 @@ class CostTreeField:
 
     kind: str
     concrete_kinds: tuple[str, ...]
-    """The kind itself, or the concrete kinds behind a generic, narrowed by inline fragments."""
+    """The kind itself, or the concrete kinds behind a generic."""
+
+    parent_kinds: tuple[str, ...]
+    """Concrete kinds of the parent nodes the field is selected on, narrowed by the inline fragments around it.
+
+    Empty for a top-level field.
+    """
 
     relationship: RelationshipRef | None
     """None for a top-level field."""
@@ -171,8 +177,15 @@ class CostTreeField:
     selected_attribute_count: int
     selected_cardinality_one_count: int
     selects_count: bool
+    selects_nodes: bool
+    """False for a field of cardinality many that selects only its count, which reads no node."""
+
     id_only: bool
     """A cardinality-one field that selects only the id of its peer, which reads nothing."""
+
+    max_matching_nodes: int | None
+    """For a top-level field, the most nodes its filters can match: the number of IDs given, or one when the
+    filters pin a single node; None when the filters set no such bound, and for every other field."""
 
     arguments: dict[str, Any]
     """Coerced argument values of the field."""
@@ -182,8 +195,14 @@ class CostTreeField:
     def __post_init__(self) -> None:
         if self.relationship is None and self.cardinality != RelationshipCardinality.MANY:
             raise ValueError(f"The top-level field '{self.path}' must have cardinality many")
+        if self.relationship is None and self.parent_kinds:
+            raise ValueError(f"The top-level field '{self.path}' has no parent kinds")
+        if self.relationship is not None and self.max_matching_nodes is not None:
+            raise ValueError(f"Only a top-level field can bound its matching nodes: '{self.path}'")
         if self.selects_count and self.cardinality != RelationshipCardinality.MANY:
             raise ValueError(f"Only a field of cardinality many can select count: '{self.path}'")
+        if not self.selects_nodes and (self.cardinality != RelationshipCardinality.MANY or self.children):
+            raise ValueError(f"Only a field of cardinality many without children can skip its nodes: '{self.path}'")
         if self.id_only and self.cardinality != RelationshipCardinality.ONE:
             raise ValueError(f"Only a field of cardinality one can select only its id: '{self.path}'")
 
@@ -227,3 +246,68 @@ class QueryEstimate:
 
     estimates: Mapping[str, FieldEstimate]
     """Estimate of each field by path, in the order of the estimation tree."""
+
+
+@dataclass(frozen=True, slots=True)
+class FirstStepKindCount:
+    kind: str
+    node_count: int
+    """Nodes of this concrete kind that the top-level field returns, after its filters, offset and limit."""
+
+    node_ids: tuple[str, ...]
+    """IDs of those nodes, at most the query size limit of them."""
+
+    def __post_init__(self) -> None:
+        if self.node_count < 0 or len(self.node_ids) > self.node_count:
+            raise ValueError(
+                f"{self.kind} has {len(self.node_ids)} node IDs for a count of {self.node_count}, "
+                "the count must be at least the number of IDs"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class FirstStepTopLevelCount:
+    kinds: tuple[FirstStepKindCount, ...]
+    """One entry for each concrete kind of the field that has nodes."""
+
+    exceeds_size_limit: bool
+    """The field returns more nodes than the query size limit, so no field under it is counted."""
+
+
+@dataclass(frozen=True, slots=True)
+class FirstStepPeerCount:
+    peer_kind: str
+    paths: int
+    """Pairs of a top-level node and one of its peers of this concrete kind, read with the filters of the field
+    but without its offset and limit."""
+
+    distinct_peers: int
+    max_parents: int
+    """Largest number of top-level nodes that reach one peer of this kind."""
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.max_parents <= self.paths or not 0 <= self.distinct_peers <= self.paths:
+            raise ValueError(
+                f"Inconsistent peer counts for {self.peer_kind}: paths={self.paths}, "
+                f"distinct_peers={self.distinct_peers}, max_parents={self.max_parents}"
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class FirstStepCounts:
+    """Counts read on the branch and at the time of the request, for the first step of a query.
+
+    The first step is the top-level fields and the relationship fields directly under them. Everything
+    below it is estimated from the statistics.
+    """
+
+    top_level: Mapping[str, FirstStepTopLevelCount]
+    """Counts of each top-level field, by path."""
+
+    relationships: Mapping[str, tuple[FirstStepPeerCount, ...]]
+    """Counts of each relationship field directly under a counted top-level field, by path, one entry for each
+    concrete peer kind. Only the top-level nodes of the parent kinds of the field are counted, and a field under
+    a top-level field that exceeds the size limit has no entry."""
+
+    label_counts: Mapping[str, int]
+    """Current label count of each kind in the query, read by the same queries."""

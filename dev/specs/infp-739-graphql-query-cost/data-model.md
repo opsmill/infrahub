@@ -88,13 +88,16 @@ Built from `GraphQLQueryNode` (the analyzer tree) and the coerced argument value
 | --- | --- | --- |
 | `path` | string | Response keys from the top-level field joined by `/`, without `edges`, `node` and list indexes (research D4). |
 | `kind` | string | Peer kind of the field, or the kind of a top-level field. |
-| `concrete_kinds` | list of strings | `kind` itself, or the concrete kinds behind a generic. An inline fragment narrows it. |
+| `concrete_kinds` | list of strings | `kind` itself, or the concrete kinds behind a generic. |
+| `parent_kinds` | list of strings | Concrete kinds of the parent nodes the field is selected on. An inline fragment around the field narrows them. The fragment does not change which nodes the field returns, so it does not narrow `concrete_kinds`. Empty for a top-level field. |
 | `relationship` | `RelationshipRef` or none | None for a top-level field. |
 | `cardinality` | `one` or `many` | `many` for a top-level field. |
 | `selected_attribute_count` | integer | Attributes selected on the peer, used by the rows model. |
 | `selected_cardinality_one_count` | integer | Cardinality-one relationships selected on the peer, used by the rows model. |
 | `selects_count` | boolean | `count` is selected on a many-cardinality field. |
+| `selects_nodes` | boolean | False for a many-cardinality field that selects only `count`: its resolver returns before it reads a node. |
 | `id_only` | boolean | A cardinality-one field that selects only `node { id }`; it reads nothing. |
+| `max_matching_nodes` | integer or none | For a top-level field: the number of IDs given, or 1 when the filters pin one node (the analyzer's single-target check). None otherwise. |
 | `arguments` | map | Coerced argument values (filters, `limit`, `offset`, `ids`). |
 | `children` | list of `CostTreeField` | |
 
@@ -104,6 +107,24 @@ Tree rules (critique E2):
 
 - Fields with the same path are merged into one `CostTreeField`, the way graphql-core merges selections with the same response key, for example a field selected directly and through a fragment.
 - Root fields that do not map to a schema kind, such as `InfrahubSearchAnywhere` or `InfrahubGraphQLQueryReport`, have no tree field and no entry in the cost details.
+- Nothing below `ancestors` and `descendants` is in the tree. Those fields have no statistics, and the fields recorded below them are listed from the actual counts.
+- A field whose alias is `edges` or `node` gets the path of its parent, as the recorded paths do. The estimate adds its figures to the entry of that path.
+
+## First-step counts (inside one request)
+
+`FirstStepCounts` (frozen) holds what the counted first step reads on the request's branch and `at` time. It is defined in `models.py`, so that the estimator imports nothing from the code that runs the queries. `None` in its place means a statistics-only estimate.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `top_level` | map of path to `FirstStepTopLevelCount` | One entry for each counted top-level field. |
+| `relationships` | map of path to list of `FirstStepPeerCount` | One entry for each relationship field directly under a counted top-level field, with one item for each concrete peer kind. Only the top-level nodes of the field's `parent_kinds` are counted, with the field's filters and without its `offset` and `limit`. A field under a top-level field that exceeds `query_size_limit` has no entry. |
+| `label_counts` | map of kind to integer | Current label count of each kind in the query, read by the same queries. |
+
+`FirstStepTopLevelCount`: `kinds` (one `FirstStepKindCount` for each concrete kind with nodes) and `exceeds_size_limit` (the field returns more than `query_size_limit` nodes, so nothing under it is counted).
+
+`FirstStepKindCount`: `kind`, `node_count` (after the filters, `offset` and `limit`) and `node_ids` (at most `query_size_limit` of them).
+
+`FirstStepPeerCount`: `peer_kind`, `paths` (pairs of a top-level node and one of its peers of that kind), `distinct_peers` and `max_parents` (the largest number of top-level nodes that reach one peer).
 
 ## Estimate and actual counts
 

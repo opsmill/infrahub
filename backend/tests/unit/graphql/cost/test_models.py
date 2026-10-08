@@ -452,9 +452,33 @@ class InvalidTreeFieldCase:
     name: str
     relationship: RelationshipRef | None
     cardinality: RelationshipCardinality
-    selects_count: bool
-    id_only: bool
     expected_message: str
+    parent_kinds: tuple[str, ...] = ()
+    selects_count: bool = False
+    selects_nodes: bool = True
+    id_only: bool = False
+    max_matching_nodes: int | None = None
+    children: tuple[CostTreeField, ...] = ()
+
+
+OWNER_LEAF = CostTreeField(
+    path="TestPerson/cars/owner",
+    kind="TestPerson",
+    concrete_kinds=("TestPerson",),
+    parent_kinds=("TestCar",),
+    relationship=RelationshipRef(
+        identifier="testcar__testperson", direction=RelationshipDirection.OUTBOUND, name="owner", hierarchical=False
+    ),
+    cardinality=RelationshipCardinality.ONE,
+    selected_attribute_count=0,
+    selected_cardinality_one_count=0,
+    selects_count=False,
+    selects_nodes=True,
+    id_only=True,
+    max_matching_nodes=None,
+    arguments={},
+    children=(),
+)
 
 
 INVALID_TREE_FIELD_CASES: list[InvalidTreeFieldCase] = [
@@ -462,23 +486,49 @@ INVALID_TREE_FIELD_CASES: list[InvalidTreeFieldCase] = [
         name="top_level_field_with_cardinality_one",
         relationship=None,
         cardinality=RelationshipCardinality.ONE,
-        selects_count=False,
-        id_only=False,
         expected_message=r"^The top-level field 'TestPerson' must have cardinality many$",
+    ),
+    InvalidTreeFieldCase(
+        name="top_level_field_with_parent_kinds",
+        relationship=None,
+        cardinality=RelationshipCardinality.MANY,
+        parent_kinds=("TestCar",),
+        expected_message=r"^The top-level field 'TestPerson' has no parent kinds$",
+    ),
+    InvalidTreeFieldCase(
+        name="relationship_field_bounding_its_matching_nodes",
+        relationship=CARS_RELATIONSHIP,
+        cardinality=RelationshipCardinality.MANY,
+        parent_kinds=("TestPerson",),
+        max_matching_nodes=1,
+        expected_message=r"^Only a top-level field can bound its matching nodes: 'TestPerson'$",
     ),
     InvalidTreeFieldCase(
         name="count_on_cardinality_one",
         relationship=CARS_RELATIONSHIP,
         cardinality=RelationshipCardinality.ONE,
         selects_count=True,
-        id_only=False,
         expected_message=r"^Only a field of cardinality many can select count: 'TestPerson'$",
+    ),
+    InvalidTreeFieldCase(
+        name="no_nodes_on_cardinality_one",
+        relationship=CARS_RELATIONSHIP,
+        cardinality=RelationshipCardinality.ONE,
+        selects_nodes=False,
+        expected_message=r"^Only a field of cardinality many without children can skip its nodes: 'TestPerson'$",
+    ),
+    InvalidTreeFieldCase(
+        name="no_nodes_with_children",
+        relationship=CARS_RELATIONSHIP,
+        cardinality=RelationshipCardinality.MANY,
+        selects_nodes=False,
+        children=(OWNER_LEAF,),
+        expected_message=r"^Only a field of cardinality many without children can skip its nodes: 'TestPerson'$",
     ),
     InvalidTreeFieldCase(
         name="id_only_on_cardinality_many",
         relationship=CARS_RELATIONSHIP,
         cardinality=RelationshipCardinality.MANY,
-        selects_count=False,
         id_only=True,
         expected_message=r"^Only a field of cardinality one can select only its id: 'TestPerson'$",
     ),
@@ -495,12 +545,15 @@ def test_cost_tree_field_rejects_impossible_selections(test_case: InvalidTreeFie
             path="TestPerson",
             kind="TestPerson",
             concrete_kinds=("TestPerson",),
+            parent_kinds=test_case.parent_kinds,
             relationship=test_case.relationship,
             cardinality=test_case.cardinality,
             selected_attribute_count=1,
             selected_cardinality_one_count=0,
             selects_count=test_case.selects_count,
+            selects_nodes=test_case.selects_nodes,
             id_only=test_case.id_only,
+            max_matching_nodes=test_case.max_matching_nodes,
             arguments={},
-            children=(),
+            children=test_case.children,
         )

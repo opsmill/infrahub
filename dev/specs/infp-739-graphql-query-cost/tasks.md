@@ -223,10 +223,11 @@ Requirements: FR-004, FR-005, FR-007, FR-008, FR-012, FR-013, FR-014, FR-017, SC
 
 ### Tests for part C
 
-- [ ] T025 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_estimator.py`, with dataclass test cases and hand-built snapshots. Check:
+- [X] T025 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_estimator.py`, with dataclass test cases and hand-built snapshots. Check:
     - expected nodes = paths × mean; cardinality-one fields use the share of nodes with a peer
     - expected paths are split by `peers_by_kind` (FR-005, FR-008)
-    - the worst-case bound equals the largest value found by brute force over every assignment on small degree sequences, including a query from many nodes to one node and back out (FR-008)
+    - the worst-case bound equals the largest value found by brute force over every assignment of paths to nodes on small degree sequences, and over every way to give 4 cars to 3 persons for a query from many nodes to one node and back out (FR-008)
+    - with 3, 2 and 1 cars, the bound for that query (15) is above the largest value (14), because it keeps only the largest number of paths that reach one node
     - when a histogram is missing, the worst case is the product of the maximum peers at each step
     - `worst_case ≥ expected` for each figure (FR-007)
     - label scaling: `active_count × current label count ÷ label_count` (FR-017)
@@ -236,7 +237,7 @@ Requirements: FR-004, FR-005, FR-007, FR-008, FR-012, FR-013, FR-014, FR-017, SC
     - a nested `limit` caps the peers of each parent
     - the rows model of research D10, for each resolver path, including a cardinality-one field that selects only `id` (0 rows)
     - `worst_case_is_bound` is false on a branch other than main or with an `at` time
-- [ ] T026 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_tree.py` on queries over `car_person_schema_generics`. Check:
+- [X] T026 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_tree.py` on queries over `car_person_schema_generics`. Check:
     - paths are equal to those the recorder computes for the same response
     - fields with the same path are merged (E2)
 - [ ] T027 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_estimate.py`. Refresh the statistics first, then run queries with the header:
@@ -253,24 +254,25 @@ Requirements: FR-004, FR-005, FR-007, FR-008, FR-012, FR-013, FR-014, FR-017, SC
 
 ### Implementation for part C
 
-- [ ] T028 [US1] In `backend/infrahub/graphql/analyzer.py`, change `GraphQLQueryNode` and `_populate_field_node`:
+- [X] T028 [US1] In `backend/infrahub/graphql/analyzer.py`, change `GraphQLQueryNode` and `_populate_field_node`:
     - keep the response key (the alias, or the field name)
     - keep the `RelationshipSchema` already looked up for relationship fields, which is discarded today
     - mark whether `count` is selected under a many-cardinality field
     - keep every existing output the same; `backend/tests/component/graphql/test_query_analyzer.py` must still pass
-- [ ] T029 [US1] Create `backend/infrahub/graphql/cost/tree.py` with `build_cost_tree(analyzer, schema, schema_branch, variable_values: dict | None) -> list[CostTreeField]`:
+- [X] T029 [US1] Create `backend/infrahub/graphql/cost/tree.py` with `build_cost_tree(analyzer, schema, schema_branch, variable_values: dict | None) -> list[CostTreeField]`:
     - coerce variables with `graphql.execution.values.get_variable_values` and arguments with `get_argument_values`
     - merge fields with the same path
     - skip root fields that do not map to a kind
     - count the selected attributes and cardinality-one relationships
     - set `id_only`
     - mark `ancestors`/`descendants` as hierarchical (no statistics)
-    - narrow `concrete_kinds` under inline fragments
+    - narrow the parent kinds (`parent_kinds`) of the fields selected inside an inline fragment; the fragment does not change which nodes the field returns, so `concrete_kinds` stays whole
+    - set `selects_nodes` (false for a field that selects only `count`) and `max_matching_nodes` (the IDs given, or one for a single-target filter)
 - [ ] T030 [US1] Add the first-step queries to `backend/infrahub/graphql/cost/queries.py`:
     - `FirstStepNodesQuery`: built on the filter logic of `infrahub.core.query.node::NodeGetListQuery`, for one top-level field with its filters, `limit` and `offset`, on the request's branch and `at`. It returns one row for each concrete kind, with the count, up to `query_size_limit` IDs, and the current label counts of the kinds in the tree, in one query.
     - `FirstStepPeerCountQuery`: a subclass of `RelationshipGetPeerQuery` with the same filters and active-edge rules. For each concrete peer kind it returns the paths, the distinct peers and the largest number of top-level nodes that reach one peer.
 - [ ] T031 [US1] Create `backend/infrahub/graphql/cost/first_step.py` with `FirstStepCounter(db, branch, at)`. Its `count(tree) -> FirstStepCounts` runs inside `resolving_field(ESTIMATE_FIELD_PATH)`: one `FirstStepNodesQuery` for each top-level field, then one `FirstStepPeerCountQuery` for each relationship field directly under it. A top-level field that matches more than `query_size_limit` nodes is not counted below its own count. Add `read_label_counts(kinds)`, which uses `KindLabelCountQuery` in statistics-only mode.
-- [ ] T032 [US1] Create `backend/infrahub/graphql/cost/estimator.py` with a pure function `estimate(tree, snapshot, first_step, label_counts, reads_main_now) -> QueryEstimate`, implementing research D10. It has no I/O and no imports from `infrahub.database`.
+- [X] T032 [US1] Create `backend/infrahub/graphql/cost/estimator.py` with a pure function `estimate(tree, snapshot, first_step, label_counts, reads_main_now) -> QueryEstimate`, implementing research D10. It has no I/O and no imports from `infrahub.database`. `FirstStepCounts` and its value types are in `backend/infrahub/graphql/cost/models.py` (`data-model.md`, "First-step counts").
 - [ ] T033 [US1] Create `backend/infrahub/graphql/cost/service.py` with `QueryCostEstimator(db, branch, at, schema_branch, store, snapshot_holder)`. Its method `estimate(analyzer, schema, variable_values: dict | None) -> QueryEstimate` builds the tree, then either counts the first step (`variable_values` given) or reads label counts (statistics-only), then loads the snapshot and calls `estimator.estimate`.
 - [ ] T034 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request` and `backend/infrahub/api/query.py::execute_query`:
     - after the permission check and inside `activate_recorder`, call `QueryCostEstimator.estimate(...)` with the request's variables (always given on these endpoints; research D9)
