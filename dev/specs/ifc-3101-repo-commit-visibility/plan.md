@@ -409,7 +409,7 @@ determinism logic, no test and no documentation entry.
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
   `InfrahubReadOnlyRepositoryCheckRefs`. The commit view polls the task the mutation returned, by
-  its id, every 2 seconds until it leaves the ongoing states. Meanwhile the button is disabled and a
+  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and a
   "View task" link beside it opens that task in the repository's Tasks tab; when it ends, the commit
   log is refetched. The started task is read back from the mutation cache, so it survives the commit
   view remounting, and only on the branch it was started on. A check started from another browser

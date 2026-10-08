@@ -21,10 +21,9 @@ export const generateCheckRemoteRefsApiResult = (
   data: { InfrahubReadOnlyRepositoryCheckRefs: { ok: true, task: { id: taskId } } },
 });
 
-export const generateRemoteCheckTaskApiResult = ({
-  isOngoing,
-}: {
-  isOngoing: boolean;
-}): Awaited<ReturnType<typeof getRemoteCheckTaskFromApi>> => ({
-  data: { InfrahubTask: { count: isOngoing ? 1 : 0 } },
+/** `null` stands for a task the task manager does not list. */
+export const generateRemoteCheckTaskApiResult = (
+  state: "RUNNING" | "COMPLETED" | null
+): Awaited<ReturnType<typeof getRemoteCheckTaskFromApi>> => ({
+  data: { InfrahubTask: { edges: state === null ? [] : [{ node: { state } }] } },
 });

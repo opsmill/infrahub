@@ -84,7 +84,7 @@ describe("Check remote now in the commit log", () => {
     useBranch("test-branch");
     commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
     checkRemoteRefsApiMock.mockResolvedValue(generateCheckRemoteRefsApiResult(TASK_ID));
-    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult({ isOngoing: true }));
+    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult("RUNNING"));
   });
 
   afterEach(() => {
@@ -239,9 +239,7 @@ describe("Check remote now in the commit log", () => {
     await component.getByRole("button", CHECK_BUTTON).click();
     await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
     commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
-    remoteCheckTaskApiMock.mockResolvedValue(
-      generateRemoteCheckTaskApiResult({ isOngoing: false })
-    );
+    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult("COMPLETED"));
 
     // WHEN
     await pollCheckTaskAgain();
@@ -262,9 +260,7 @@ describe("Check remote now in the commit log", () => {
         checked_at: EARLIER_CHECKED_AT,
       })
     );
-    remoteCheckTaskApiMock.mockResolvedValue(
-      generateRemoteCheckTaskApiResult({ isOngoing: false })
-    );
+    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult("COMPLETED"));
     const component = await renderCommitLog();
     const checkButton = component.getByRole("button", CHECK_BUTTON);
     await expect.element(checkButton).toBeEnabled();
@@ -278,6 +274,31 @@ describe("Check remote now in the commit log", () => {
       .element(component.getByText(`Checked ${formatDateTime(READ_ONLY_CHECKED_AT)}`))
       .toBeVisible();
     await expect.element(checkButton).toBeEnabled();
+  });
+
+  test("stops following a started task the task manager no longer lists", async () => {
+    // GIVEN
+    commitsApiMock.mockResolvedValue(
+      generateCommitsApiResult({
+        ...generateReadOnlyCommitsResponse(),
+        checked_at: EARLIER_CHECKED_AT,
+      })
+    );
+    const component = await renderCommitLog();
+    await component.getByRole("button", CHECK_BUTTON).click();
+    await expect.element(component.getByRole("link", { name: "View task" })).toBeVisible();
+    commitsApiMock.mockResolvedValue(generateCommitsApiResult(generateReadOnlyCommitsResponse()));
+    remoteCheckTaskApiMock.mockResolvedValue(generateRemoteCheckTaskApiResult(null));
+
+    // WHEN
+    await pollCheckTaskAgain();
+
+    // THEN
+    await expect.element(component.getByRole("button", CHECK_BUTTON)).toBeEnabled();
+    expect(component.getByRole("link", { name: "View task" }).query()).toBeNull();
+    await expect
+      .element(component.getByText(`Checked ${formatDateTime(READ_ONLY_CHECKED_AT)}`))
+      .toBeVisible();
   });
 
   test("keeps the check running when one poll fails", async () => {

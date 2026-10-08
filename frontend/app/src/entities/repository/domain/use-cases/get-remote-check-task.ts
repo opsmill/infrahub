@@ -14,7 +14,9 @@ export type GetRemoteCheckTask = (
 ) => Promise<GetRemoteCheckTaskResult>;
 
 export const getRemoteCheckTask: GetRemoteCheckTask = async ({ taskId }) => {
-  const { data } = await getRemoteCheckTaskFromApi({ taskId, state: TASK_ONGOING_STATES });
+  const { data } = await getRemoteCheckTaskFromApi({ taskId });
+  const state = data.InfrahubTask.edges[0]?.node?.state;
 
-  return { isOngoing: data.InfrahubTask.count > 0 };
+  // The run exists before the mutation returns its id, so a task that is not listed was deleted.
+  return { isOngoing: TASK_ONGOING_STATES.some((ongoing) => ongoing === state) };
 };
