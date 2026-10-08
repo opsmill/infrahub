@@ -5,19 +5,17 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from infrahub.git.divergence.models import RewriteRecord
+    from infrahub.git.divergence.models import RewriteRecord, TrackedTarget
 
 
-class GraphCommitReader(Protocol):
-    """Reads the commit a repository records on one Infrahub branch.
+class TrackedTargetReader(Protocol):
+    """Reads the ref and the commit a read-only repository records on one Infrahub branch.
 
     Implementations raise RepositoryError for every failure, so the logic above them handles one
     exception type and imports no client library.
     """
 
-    async def get_commit(self, repository_id: str, infrahub_branch_name: str) -> str | None:
-        """Return the recorded commit, None when the branch records no full commit id."""
-        ...
+    async def get_target(self, repository_id: str, infrahub_branch_name: str) -> TrackedTarget: ...
 
 
 class AncestryGateway(Protocol):

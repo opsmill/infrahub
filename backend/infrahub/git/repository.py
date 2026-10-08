@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
-    from infrahub.git.divergence.protocols import GraphCommitReader
+    from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
     from infrahub.git.divergence.suppression import RetargetMarkers
 
@@ -1390,7 +1390,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
     async def update_latest_commit(
         self,
-        graph_commits: GraphCommitReader | None = None,
+        tracked_targets: TrackedTargetReader | None = None,
         recorder: HistoryRewriteRecorder | None = None,
         target_changed: bool = False,
     ) -> None:
@@ -1400,7 +1400,8 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         The commit is imported whatever the classification finds, and the local clone is never reset.
 
         Args:
-            graph_commits: Reads the commit the graph records before the import. Without it nothing is classified.
+            tracked_targets: Reads the ref and the commit the graph records before the import. Without it nothing
+                is classified.
             recorder: Records a rewrite once the new commit is written. Without it nothing is recorded.
             target_changed: Whether the ref or the commit of the repository changed on purpose.
 
@@ -1421,7 +1422,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
                 raise ValueError(f"Ref {self.ref} not found.") from err
         latest_commit = str(git_repo.commit(latest_commit))
         divergence = await self._classify_latest_commit(
-            latest_commit=latest_commit, graph_commits=graph_commits, target_changed=target_changed
+            latest_commit=latest_commit, tracked_targets=tracked_targets, target_changed=target_changed
         )
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)
         if not synced_from_remote:
@@ -1430,19 +1431,28 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
             await recorder.record(repository_id=str(self.id), divergence=divergence)
 
     async def _classify_latest_commit(
-        self, latest_commit: str, graph_commits: GraphCommitReader | None, target_changed: bool
+        self, latest_commit: str, tracked_targets: TrackedTargetReader | None, target_changed: bool
     ) -> RefDivergence | None:
-        """Classify the commit the ref resolves to against the commit the graph records, None when either cannot be read."""
-        if graph_commits is None or self.ref is None:
+        """Classify the commit the ref resolves to against the commit the graph records.
+
+        Returns None when either cannot be read, or when the repository no longer tracks this ref.
+        """
+        if tracked_targets is None or self.ref is None:
             return None
         try:
-            imported_commit = await graph_commits.get_commit(
+            target = await tracked_targets.get_target(
                 repository_id=str(self.id), infrahub_branch_name=self.infrahub_branch_name
             )
+            if target.ref != self.ref:
+                # A run submitted before a change of ref resolves the old ref, which the graph commit no longer follows.
+                log.info(
+                    "Not classifying ref %s of repository %s, which now tracks %s", self.ref, self.name, target.ref
+                )
+                return None
             return RemoteDivergenceDetector(gateway=self._get_ancestry_gateway()).classify(
                 branch_name=self.ref,
                 infrahub_branch_name=self.infrahub_branch_name,
-                imported_commit=imported_commit,
+                imported_commit=target.commit,
                 remote_head=latest_commit,
                 target_changed=target_changed,
             )

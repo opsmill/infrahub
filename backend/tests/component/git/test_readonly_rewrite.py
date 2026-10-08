@@ -16,14 +16,14 @@ from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryError
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
-from infrahub.git.divergence.store import SdkRepositoryReader
+from infrahub.git.divergence.store import SdkTrackedTargetReader
 from infrahub.git.models import GitReadOnlyRepositoryImportCommit
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import import_read_only_repository_last_commit
 from infrahub.workflows.catalogue import GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT, GIT_REPOSITORIES_PULL_READ_ONLY
 from tests.adapters.repository_record_store import (
-    FailingGraphCommitReader,
     FailingRepositoryRecordStore,
+    FailingTrackedTargetReader,
     InMemoryRepositoryRecordStore,
 )
 from tests.helpers.git import LocalRemote
@@ -243,6 +243,93 @@ class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
 
         assert await _rewrite_record(db=db, tracked=tracked) == NO_RECORD
 
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "A known window: the pin stays in the graph until the import its write submits, and an import of "
+            "the latest commit in between records a rewrite"
+        ),
+    )
+    async def test_import_latest_commit_after_a_pin_records_nothing(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The import of the pin runs before its pull, and the user asks for the latest commit right after the pull.
+
+        Each commit write submits another pull and import, so they are held too: the import that the write of
+        the pin submits has not run yet when the user asks.
+        """
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name="pin-then-import")
+        pinned = tracked.remote.repo.commit(OTHER_BRANCH).hexsha
+        repository = await client.get(kind=InfrahubKind.READONLYREPOSITORY, id=tracked.repository_id)
+        with workflow_local.hold() as held:
+            repository.commit.value = pinned
+            await repository.save()
+            for submitted in reversed(held[:2]):
+                await workflow_local.run(submitted)
+        assert (await _read_repository(db=db, tracked=tracked)).commit.value == pinned
+
+        await _import_last_commit(client=client, tracked=tracked)
+
+        assert await _rewrite_record(db=db, tracked=tracked) == NO_RECORD
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "A known window: an import of the latest commit that takes the lock before the runs of a ref change "
+            "records a rewrite"
+        ),
+    )
+    async def test_import_latest_commit_that_runs_before_a_re_point_records_nothing(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The user asks for the latest commit after the ref change, and that run takes the lock first."""
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name="click-before-re-point")
+        repository = await client.get(kind=InfrahubKind.READONLYREPOSITORY, id=tracked.repository_id)
+        with workflow_local.hold() as held:
+            repository.ref.value = OTHER_BRANCH
+            await repository.save()
+            await _import_last_commit(client=client, tracked=tracked)
+
+        *re_point, click = held
+        assert [submitted.workflow.name for submitted in re_point] == RE_POINT_WORKFLOWS
+        for submitted in [click, *re_point]:
+            await workflow_local.run(submitted)
+
+        assert await _rewrite_record(db=db, tracked=tracked) == NO_RECORD
+
+    async def test_import_latest_commit_queued_before_a_ref_change_records_nothing(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        workflow_local: HoldingWorkflowExecution,
+        tmp_path: Path,
+        git_repos_dir: Path,
+    ) -> None:
+        """The user asks for the latest commit before the ref change, and that run takes the lock last."""
+        tracked = await self._add_repository(client=client, db=db, tmp_path=tmp_path, name="click-after-re-point")
+        repository = await client.get(kind=InfrahubKind.READONLYREPOSITORY, id=tracked.repository_id)
+        with workflow_local.hold() as held:
+            await _import_last_commit(client=client, tracked=tracked)
+            repository.ref.value = OTHER_BRANCH
+            await repository.save()
+
+        click, *re_point = held
+        assert [submitted.workflow.name for submitted in re_point] == RE_POINT_WORKFLOWS
+        for submitted in [*re_point, click]:
+            await workflow_local.run(submitted)
+
+        assert await _rewrite_record(db=db, tracked=tracked) == NO_RECORD
+
     async def test_a_graph_that_cannot_be_read_still_imports_the_latest_commit(
         self, db: InfrahubDatabase, client: InfrahubClient, tmp_path: Path, git_repos_dir: Path
     ) -> None:
@@ -252,7 +339,7 @@ class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
         clone = await _open_clone(client=client, tracked=tracked)
 
         await clone.update_latest_commit(
-            graph_commits=FailingGraphCommitReader(), recorder=HistoryRewriteRecorder(store=store)
+            tracked_targets=FailingTrackedTargetReader(), recorder=HistoryRewriteRecorder(store=store)
         )
 
         assert (await _read_repository(db=db, tracked=tracked)).commit.value == rewritten
@@ -267,7 +354,7 @@ class TestReadOnlyRepositoryRewrite(TestInfrahubAppHoldingWorkflows):
 
         with pytest.raises(RepositoryError, match=rf"^The API is unreachable from {registry.default_branch}$"):
             await clone.update_latest_commit(
-                graph_commits=SdkRepositoryReader(client=client),
+                tracked_targets=SdkTrackedTargetReader(client=client),
                 recorder=HistoryRewriteRecorder(store=FailingRepositoryRecordStore()),
             )
 

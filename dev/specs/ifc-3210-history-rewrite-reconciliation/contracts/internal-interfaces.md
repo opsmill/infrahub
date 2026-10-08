@@ -636,9 +636,24 @@ for one rewrite.
 Reading inside the lock costs one query on a path that already holds the lock, and makes the
 read-then-increment of the count atomic with respect to another run.
 
-There is no race with the concurrent `pull_read_only` to avoid here. That flow is submitted by
-`_call_mutate_update`, which is the re-point path and always arrives with `target_changed` true, so it
-never records.
+The two runs of a re-point need no order between them: `_call_mutate_update` submits both with
+`target_changed` true, so neither records. A commit that a flow writes goes through the same update
+mutation, so every change of the commit, the flows' own included, submits another pull and import
+with the flag set.
+
+An import of the latest commit that a user asks for carries the flag false, and it can meet a
+re-point:
+
+- **A run that resolves the old ref classifies nothing.** It reads the `ref` the graph records,
+  with the commit, under the lock, and skips the classification when that ref is not the one in its
+  model. Without this, a run submitted before a change of `ref` compares the head of the old ref
+  with a commit of the new one and records a rewrite.
+- **Two windows still record a false rewrite, and they are accepted.** A run that takes the lock
+  after a change of `ref` commits, and before the runs of that change, compares the old commit with
+  the head of the new ref. A run that takes the lock after a pull writes a pinned commit that the
+  ref does not hold, and before the import that this write submits, compares the pin with the head
+  of the ref. Each needs a user action during a re-point, and a read-only repository never emits
+  the trunk signal (rule 5), so the cost is a wrong record and count, and no event.
 
 ### Contract, either way
 
@@ -651,9 +666,9 @@ never records.
    already takes `lock.registry.get(name=..., namespace="repository")` around
    `update_latest_commit`, so the call belongs inside that block. If the attachment point is the
    refs checker of PR #10669 instead, its `_converge` already holds the same lock.
-4. Nothing is recorded when the tracked ref or the pinned commit changed (FR-002, SC-007). The
-   in-band `target_changed` flag on the workflow model carries that. Read-only repositories do not
-   use the cache marker at all.
+4. Nothing is recorded when the tracked ref or the pinned commit changed (FR-002, SC-007), outside
+   the two windows above. The in-band `target_changed` flag on the workflow model carries that.
+   Read-only repositories do not use the cache marker at all.
 5. A read-only repository never emits the trunk signal, because it has no configured default branch.
 
 ---

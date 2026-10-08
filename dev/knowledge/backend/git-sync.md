@@ -195,6 +195,14 @@ commits: a workflow submitted before the commit still runs when the transaction 
 holds because the update opens and commits its own transaction, as every GraphQL request does. A
 caller that already holds a transaction commits it after the submission.
 
+A commit that a flow writes goes through the same update, so every change of the commit submits
+another pull and import with `target_changed` set. "Import latest commit" carries no flag, so it can
+meet a re-point. A run that resolves a `ref` the graph no longer records classifies nothing: it was
+submitted before a change of `ref`. Two windows still record a false rewrite, and they are accepted,
+because a read-only repository sends no trunk signal: a run that takes the lock after a change of
+`ref` and before the runs of that change, and a run that comes after a pull writes a pin that the ref
+does not hold and before the import that this write submits.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning

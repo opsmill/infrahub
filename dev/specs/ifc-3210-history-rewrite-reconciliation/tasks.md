@@ -571,6 +571,8 @@ classification can tell them apart.
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 7.
       **The in-band flag in Phase 9 is a prerequisite for this task**, not a follow-up. Landing the
       classification first records a false rewrite on every read-only re-point.
+      A run whose `ref` is not the `ref` the graph records classifies nothing. Two windows during a
+      re-point still record a false rewrite; contract section 7 lists them.
 - [x] T073 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
 - [x] T074 [P] [US5] Component-test the read-only classification in
