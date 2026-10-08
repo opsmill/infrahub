@@ -64,6 +64,7 @@ Backend architecture documentation in [knowledge/backend/](knowledge/backend/):
 - [testing.md](knowledge/backend/testing.md) - Testing infrastructure and patterns
 - [events.md](knowledge/backend/events.md) - Events system
 - [async-tasks.md](knowledge/backend/async-tasks.md) - Asynchronous tasks (Prefect)
+- [task-manager-retention.md](knowledge/backend/task-manager-retention.md) - Task history and event retention, task history cleanup, stuck runs
 - [message-bus.md](knowledge/backend/message-bus.md) - Message bus system
 - [api-backpressure.md](knowledge/backend/api-backpressure.md) - Priority-aware load shedding and the database-stress signal
 - [telemetry.md](knowledge/backend/telemetry.md) - Anonymous usage telemetry (categories, windowing, retention, degradation)

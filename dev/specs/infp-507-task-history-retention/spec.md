@@ -101,7 +101,7 @@ An operator sets how long task history, the activity log and the task manager's 
 
 - **Upgrade interrupted** (stopped session, timeout, crash): the cleanup keeps running or can be re-run, and a re-run continues where the first one stopped, because it commits one day at a time and logs its progress.
 - **Upgrade run against a task manager that is still the previous version** (Helm pre-upgrade): the command reports that the cleanup is not available and the upgrade continues instead of failing.
-- **Little to delete** (retention longer than most task history, or a routine upgrade after the first): the upgrade deletes what is older than the retention and skips the rewrite unless more than half of the tables' disk space is free after the deletes, whether the upgrade or the automatic cleanup deleted the runs.
+- **Little to delete** (retention longer than most task history, or a routine upgrade after the first): the upgrade deletes what is older than the retention and skips the rewrite unless more than half of the tables' disk space is free after the deletes, whether the upgrade or the automatic cleanup deleted the runs. Small tables usually pass that test, because the upgrade replaces Prefect's scheduled runs, and their rewrite takes milliseconds.
 - **Lowering the task history retention, or a Helm rollout**: the automatic cleanup deletes the old runs before any maintenance step, so the command for old runs deletes little or nothing; with the rewrite option it still rewrites the tables, so the disk space comes back.
 - **The task manager's own cleanup of old runs runs at the same time** (it is on, and runs during the upgrade): both finish and leave the same runs; neither fails.
 - **Several task-manager replicas**: only one cleanup runs at a time; the command waits and continues when another replica runs one.
@@ -229,7 +229,7 @@ Timings are indicative: they come from local benchmarks, not a production contra
 - **Q1 (blocks the release notes)**: how long the upgrade step takes on a large instance. Measured about 8.5 minutes on 25 GB and about 2 h 20 min on 100 GB, almost all of it the deletes; why 100 GB is about 4 times slower per run is not confirmed. Known instances hold about 20 to 35 GB.
 - **Deep scrolling by time**: scrolling far down a combined filter, on both supported database versions, is being measured.
 - Non-blocking: whether runs accumulate in SCHEDULED, LATE, PAUSED or CANCELLING, and whether runs legitimately stay RUNNING more than 2 days; what happens to Community instances configured above a future Enterprise-only limit.
-- **Release evidence**: the private performance tests listed in the design doc (Activities queries, concurrent paging, task history retention, the upgrade step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
+- **Release evidence**: the private performance tests (Activities queries, task history retention, the upgrade step, activity log retention, cleanups under load, database size and dead space) must pass and be attached to each part's PR and to INFP-507; PR #33 in opsmill/infrahub-private-tests lands first.
 - Delivery order: part 1 task history (User Story 1), part 2 Activities page (User Story 2), part 3 activity log retention (User Story 3), part 4 documentation with parts 1 and 3. Part 2 lands before part 3.
 
 ## Out of Scope

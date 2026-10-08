@@ -105,9 +105,8 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 ### Evidence for User Story 2 (opsmill/infrahub-private-tests)
 
-- [ ] T037 [US2] Land opsmill/infrahub-private-tests PR #33 (`TestActivityLog` in `tests/performance/test_activity_log.py`) and switch its retention override in `tests/performance/conftest.py::write_prefect_retention_override` from `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`, so the test exercises the Infrahub setting (a pre-set `PREFECT_*` variable takes precedence and would bypass it)
-- [ ] T038 [US2] Extend `tests/performance/test_activity_log.py` of opsmill/infrahub-private-tests: the same query repeated more than 5 times on one connection (no plan flip), identical results through the new filters against the previous release, the time windows, combined filters that match few events (including the rarest level with an account and a branch) against the 10 s limit, and paging by time far down a combined filter on Postgres 14 and 18 (the open deep-scrolling measurement)
-- [ ] T039 [P] [US2] Many users paging through the Activities page at the same time, recording latency percentiles and errors, in `tests/performance/test_activity_log_concurrency.py` of opsmill/infrahub-private-tests
+- [ ] T037 [US2] Land opsmill/infrahub-private-tests PR #33 (`TestActivityLog` in `tests/performance/test_activity_log.py`) and switch its retention override in `tests/performance/conftest.py::write_prefect_retention_override` from `PREFECT_SERVER_EVENTS_RETENTION_PERIOD` to `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG`, so the test exercises the Infrahub setting (a pre-set `PREFECT_*` variable takes precedence and would bypass it). In progress: PR #33's branch has `main` merged in and the switch, now `write_activity_log_retention_override`. It also runs the separate background services with `infrahub tasks background-services`, because infrahub-testcontainers 1.11.1 starts them with `prefect server services start`, which never reads the setting. For an image without that command, it keeps Prefect's variable so the test still runs against earlier releases. Left: a run of the test against an image of this feature, then the merge
+- [ ] T038 [US2] Extend `tests/performance/test_activity_log.py` of opsmill/infrahub-private-tests: the same query repeated more than 5 times on one connection (no plan flip), identical results through the new filters against the previous release, the time windows, combined filters that match few events (including the rarest level with an account and a branch) against the 10 s limit, and paging by time far down a combined filter on Postgres 18 (the open deep-scrolling measurement)
 
 **Checkpoint**: The Activities page is fast at a year of activity log; US3 may now raise the retention.
 
@@ -155,15 +154,15 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 
 ## Phase 7: Polish & cross-cutting (part 4 documentation)
 
-- [ ] T051 [P] Add `("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks")` to `tasks/docs.py::CLI_COMMANDS`, then run `uv run invoke docs.generate` to regenerate `docs/docs/reference/configuration.mdx` and `docs/docs/reference/infrahub-cli/infrahub-tasks.mdx`
-- [ ] T052 [P] Upgrade guides: the task history cleanup step, irreversible deletion and setting a longer retention before upgrading, free disk for the rewrite, expected duration (Q1), the Helm maintenance step after the rollout (stop server and task workers, run `infrahub tasks flush flow-runs --rewrite`, start them), and getting disk back after lowering a retention, in `docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx`, `community.mdx` and `enterprise.mdx`
-- [ ] T053 [P] Document the activity log retention, the own-event retention and sizing guidance (5.7 to 8.1 GiB per million stored events) in `docs/docs/deploy-manage/run-observe/activity-log.mdx`, and the task history retention, the precedence of `PREFECT_*` variables, `flush flow-runs` and the stuck-runs command with its limit in `docs/docs/deploy-manage/run-observe/tasks.mdx` (follow the `opsmill-docs-writing-infrahub-docs` skill)
-- [ ] T054 [P] Update `dev/knowledge/backend/events.md` (retention, Prefect event-type list, Activities queries) and `dev/knowledge/backend/async-tasks.md` (task history retention, cleanup job, stuck runs), each with a behaviour table
-- [ ] T055 [P] Update `dev/adr/0002-events-system.md`, whose assumption that Prefect's retention covers the audit trail no longer holds
-- [ ] T056 [P] Correct `dev/specs/telemetry-collection-infp-589/spec.md` from 90 days to the 30-day task history default
-- [ ] T057 Run the opsmill/infrahub-private-tests suites from the evidence tasks T021-T024, T037-T039 and T046 against the release candidate on Postgres 14 and 18, and attach the report to the PR and to INFP-507 as the release evidence
-- [ ] T058 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
-- [ ] T059 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
+- [X] T051 [P] Add `("infrahub.cli.tasks", "infrahub tasks", "infrahub-tasks")` to `tasks/docs.py::CLI_COMMANDS`, then run `uv run invoke docs.generate` to regenerate `docs/docs/reference/configuration.mdx` and `docs/docs/reference/infrahub-cli/infrahub-tasks.mdx`. As landed: `configuration.mdx` was already current; the new CLI page is listed in `docs/sidebars.ts`
+- [X] T052 [P] Upgrade guides: the task history cleanup step, irreversible deletion and setting a longer retention before upgrading, free disk for the rewrite, expected duration (Q1), the Helm maintenance step after the rollout (stop server and task workers, run `infrahub tasks flush flow-runs --rewrite`, start them), and getting disk back after lowering a retention, in `docs/docs/deploy-manage/maintain-upgrade/upgrade/overview.mdx`, `community.mdx` and `enterprise.mdx`. As landed: the Helm tabs run `infrahub upgrade --no-task-history-cleanup` in the server pod, because the chart's upgrade hook is off by default; the maintenance step names the requirements for the container that runs the command (Infrahub image, the server's environment with `PREFECT_API_URL`) instead of a command, until the infrahub-helm change (T050) provides one
+- [X] T053 [P] Document the activity log retention, the own-event retention and sizing guidance (5.7 to 8.1 GiB per million stored events) in `docs/docs/deploy-manage/run-observe/activity-log.mdx`, and the task history retention, the precedence of `PREFECT_*` variables, `flush flow-runs` and the stuck-runs command with its limit in `docs/docs/deploy-manage/run-observe/tasks.mdx` (follow the `opsmill-docs-writing-infrahub-docs` skill). As landed: `activity-log.mdx` also corrects the paragraph that said an `InfrahubEvent` query without `since` stops at 180 days
+- [X] T054 [P] Update `dev/knowledge/backend/events.md` (retention, Prefect event-type list, Activities queries) and `dev/knowledge/backend/async-tasks.md` (task history retention, cleanup job, stuck runs), each with a behaviour table. As landed: the mechanics (settings translation, cleanup job, stuck runs, event-type list) are in a new `dev/knowledge/backend/task-manager-retention.md`, because `async-tasks.md` is already above its size range; both files link to it
+- [X] T055 [P] Update `dev/adr/0002-events-system.md`, whose assumption that Prefect's retention covers the audit trail no longer holds. As landed: an appended, dated amendment section; the status and the decision are unchanged
+- [X] T056 [P] Correct `dev/specs/telemetry-collection-infp-589/spec.md` from 90 days to the 30-day task history default. As landed: `research.md` of the same spec repeated the figure and is corrected too
+- [ ] T057 Run the opsmill/infrahub-private-tests suites from the evidence tasks T021-T024, T037, T038 and T046 against the release candidate on Postgres 14 and 18, and attach the report to the PR and to INFP-507 as the release evidence
+- [X] T058 Run `/pre-ci` (format, lint, unit tests, `docs.validate`) and fix what it reports
+- [X] T059 Run [quickstart.md](quickstart.md) on a local Compose stack and record the results in the PR description, including the constitution deviation (unauthenticated cleanup route) for maintainer approval
 
 ---
 
@@ -172,7 +171,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - **Setup (T001-T002)**: none.
 - **Foundational (T003-T007)**: after Setup; blocks US1, US3, US4.
 - **US1 (T008-T024)**: after Foundational. T014 → T015 → T016 → T017 → T018, T019. Tests T008-T012 are written first and fail until T014-T019 land; T013 after T018. Evidence T021-T024 after T019 on a built image; the separate-container case in T021 also needs T048 (US4).
-- **US2 (T025-T039)**: independent of Foundational except T044 (US3). T025 first; T030-T033 after T025; T034 after T033; T035 after T034. Evidence T037 any time (lands PR #33), T038-T039 after T033 and T034 on a built image.
+- **US2 (T025-T038)**: independent of Foundational except T044 (US3). T025 first; T030-T033 after T025; T034 after T033; T035 after T034. Evidence T037 any time (lands PR #33), T038 after T033 and T034 on a built image.
 - **US3 (T040-T046)**: after Foundational and after US2 has merged (a longer retention with today's queries makes the page slower). T043 (filling the list) before T040 and T041 pass. Evidence T046 after T044.
 - **US4 (T047-T050)**: after Foundational; T048 before T049 and T050.
 - **Polish (T051-T059)**: T051-T056 alongside US1 and US3; T057 (evidence run on the release candidate), then T058-T059 last.
@@ -185,7 +184,7 @@ Run through the `test-dataset` workflow (`test_filter=...`) on restored backups 
 - US2 tests T026-T029 in parallel; US2 can be developed in parallel with US1 by another developer.
 - US3 tests T040, T041 and T042 in parallel.
 - Polish T051-T056 in parallel.
-- Evidence T037-T039 and T046 in parallel with the backend work once a test image exists.
+- Evidence T037, T038 and T046 in parallel with the backend work once a test image exists.
 
 ## Implementation strategy
 

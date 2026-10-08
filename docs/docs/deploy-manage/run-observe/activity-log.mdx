@@ -85,7 +85,7 @@ query IncidentEvents {
 }
 ```
 
-`since` defaults to 180 days back and `until` defaults to the current time. A query that omits `since` therefore returns only the last 180 days rather than the full history, and nothing in the response says so. Set `since` explicitly when you need events older than 180 days.
+`until` defaults to the current time. A query that omits `since` returns events as far back as the [activity log retention](#retention), including events older than 180 days when the retention is longer. Selecting `count` makes the task manager count every matching event in the time range, which takes much longer than reading one page when the range holds millions of events; leave it out when you only need the events.
 
 The filters available in the web interface map onto these parameters, and the query accepts several that the interface does not expose:
 
@@ -121,3 +121,29 @@ If you choose **View more** from the global or object-level list, a separate det
 
 ![Activity details page with children](../../media/topics/activity-logs/activity_log_global_details_children.png)
 ![Activity logs details popover](../../media/topics/activity-logs/activity_log_device_popover.png)
+
+## Retention
+
+The task manager keeps the events of the activity log for the activity log retention, 7 days by default, and deletes older events every hour, together with their related records. Deleted events cannot be recovered. The activity log and the `InfrahubEvent` query return events as far back as the retention.
+
+To keep the activity log longer, raise `task_manager.retention.activity_log` on the task manager, for example to `365d` with `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG=365d`. [Set the retention](./tasks.mdx#set-the-retention) describes the three retention settings, how to set them, and the `PREFECT_*` variables that take precedence over them. To keep events beyond the retention, for example for an audit, export them with [log forwarding](./log-forwarding/overview.mdx).
+
+The task manager also stores events for its own use, such as the state changes of task runs, in the same database. The activity log does not show them. They are kept for their own retention, `prefect_own_events`, 7 days by default, so a longer activity log retention does not keep them longer. A `prefect_own_events` value longer than `activity_log` is reduced to the `activity_log` value, with a warning in the task manager log, because the task manager deletes every event older than the activity log retention.
+
+When the task manager starts, it checks the types of the events it stores for its own use. If it stores a type that Infrahub does not know, for example one added by a newer version of the task manager's engine, it logs a warning that starts with `Task manager retention: Infrahub does not list these Prefect event types` and names each type. Events of these types are kept for the activity log retention instead of `prefect_own_events`, so they take more disk space with a long activity log retention. To have the types added to the list, open an issue on the [Infrahub GitHub repository](https://github.com/opsmill/infrahub/issues) with the warning.
+
+When you lower the activity log retention, the next hourly cleanup deletes the events older than the new value. The database files do not shrink: PostgreSQL reuses the space of the deleted events for new ones.
+
+### Plan disk space for a longer retention
+
+In OpsMill benchmarks, the task manager database used 5.7 to 8.1 GiB of disk per million stored events. To estimate the space a longer retention needs, count the events of the last 7 days and scale the count to the retention you plan:
+
+```graphql title="Number of events since a date"
+query EventsLastWeek {
+  InfrahubEvent(since: "2026-09-27T00:00:00Z") {
+    count
+  }
+}
+```
+
+For example, 200,000 events in 7 days are about 10.4 million events in a year, which need about 59 to 84 GiB of disk.

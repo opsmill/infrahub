@@ -443,6 +443,17 @@ such a call. A blip between one worker and the cache while the cleanup's worker 
 remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
 the deadlock cleanup has no equivalent.
 
+## Task history retention
+
+Prefect keeps every flow run, with its task runs, states, logs and artifacts, until something deletes it. The mechanics are in [Task Manager Retention](task-manager-retention.md).
+
+| Situation | What happens |
+|---|---|
+| A run reaches a terminal state (completed, failed, cancelled, crashed) | Prefect's hourly vacuum deletes it, with its logs and artifacts, once its end time is older than `task_manager.retention.task_history` (30 days by default) |
+| A run stays RUNNING or PENDING | Kept until the `crash-zombie-flows` automation or `infrahub tasks flush stale-runs` marks it CRASHED, which records an end time; a PENDING run that never started is never matched |
+| `infrahub tasks flush flow-runs [--rewrite]` or `infrahub upgrade` | The task manager deletes the backlog a day at a time with set-based SQL and, as the caller asks, rewrites the six task history tables to return their disk space |
+| Code reads flow runs older than the retention | They no longer exist, so anything built on flow runs, such as webhook delivery history, covers the retention at most |
+
 ## Key Locations
 
 | Component | Location |
@@ -453,6 +464,7 @@ the deadlock cleanup has no equivalent.
 | Initialization | `backend/infrahub/workflows/initialization.py` |
 | Branch tasks | `backend/infrahub/core/branch/tasks.py` |
 | Branch task purge | `backend/infrahub/task_manager/flow_run/branch_cleanup.py` |
+| Task history retention | `backend/infrahub/prefect_server/task_history.py`, `backend/infrahub/prefect_server/retention.py` |
 | Git tasks | `backend/infrahub/git/tasks.py` |
 | Schema tasks | `backend/infrahub/core/migrations/schema/tasks.py` |
 | System automations | `backend/infrahub/trigger/system.py` |
