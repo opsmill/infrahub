@@ -540,3 +540,167 @@ async def test_admit_reads_the_state_again_then_admits_when_it_stays_unreadable(
     assert [record["log_level"] for record in records if record["log_level"] == "warning"] == ["warning"] * len(
         test_case.expected_delays
     )
+
+
+def _terminals_marker(*, hold_seq: int) -> HeldWiden:
+    return HeldWiden(scope="terminals", reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED, hold_seq=hold_seq)
+
+
+def _held_markers(*repository_ids: str) -> dict[str, HeldRegeneration]:
+    """The held set of every repository, with the marker of the first hold under each of `repository_ids`."""
+    return {
+        repository_id: HeldRegeneration(next_hold_seq=2, widen=_terminals_marker(hold_seq=1))
+        if repository_id in repository_ids
+        else HeldRegeneration()
+        for repository_id in REPOSITORIES
+    }
+
+
+async def test_hold_widen_on_another_branch_holds_nothing_without_a_read() -> None:
+    state = await _state(queued=(REPOSITORY_X,))
+
+    holders = await _barrier(state=state, cache=MemoryCache(), sleep=RecordedSleep()).hold_widen(
+        branch="feature", widen=_terminals_marker(hold_seq=0), releasing=None
+    )
+
+    assert holders == []
+    assert state.calls == []
+    assert _held_by_repository(state) == _held_markers()
+
+
+@dataclass
+class HoldWidenTestCase:
+    name: str
+    expected_holders: list[str]
+    expected_calls: list[str]
+    queued: tuple[str, ...] = ()
+    settled: tuple[str, ...] = ()
+    """Pending repositories whose queue is empty, so their hold returns None."""
+    releasing: str | None = None
+
+
+HOLD_WIDEN_TEST_CASES: list[HoldWidenTestCase] = [
+    HoldWidenTestCase(
+        name="no_pending_delivery_holds_nothing_after_one_read",
+        expected_holders=[],
+        expected_calls=["pending_repository_ids"],
+    ),
+    HoldWidenTestCase(
+        name="each_pending_repository_holds_the_marker",
+        queued=(REPOSITORY_Z, REPOSITORY_X),
+        expected_holders=[REPOSITORY_X, REPOSITORY_Z],
+        expected_calls=["pending_repository_ids", "hold", "hold"],
+    ),
+    HoldWidenTestCase(
+        name="the_releasing_repository_holds_no_marker",
+        queued=(REPOSITORY_X, REPOSITORY_Z),
+        releasing=REPOSITORY_X,
+        expected_holders=[REPOSITORY_Z],
+        expected_calls=["pending_repository_ids", "hold"],
+    ),
+    HoldWidenTestCase(
+        name="a_repository_whose_hold_returns_none_is_not_returned",
+        queued=(REPOSITORY_Z,),
+        settled=(REPOSITORY_X,),
+        expected_holders=[REPOSITORY_Z],
+        expected_calls=["pending_repository_ids", "hold", "hold"],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in HOLD_WIDEN_TEST_CASES])
+async def test_hold_widen_holds_the_marker_under_each_pending_repository(test_case: HoldWidenTestCase) -> None:
+    state = await _state(queued=test_case.queued, settled=test_case.settled)
+    cache = MemoryCache()
+    sleep = RecordedSleep()
+
+    holders = await _barrier(state=state, cache=cache, sleep=sleep).hold_widen(
+        branch=DEFAULT_BRANCH, widen=_terminals_marker(hold_seq=0), releasing=test_case.releasing
+    )
+
+    assert holders == test_case.expected_holders
+    assert state.calls == test_case.expected_calls
+    assert _held_by_repository(state) == _held_markers(*test_case.expected_holders)
+    assert cache.storage == {}
+    assert sleep.delays == []
+
+
+@dataclass
+class HoldWidenFailureTestCase:
+    name: str
+    failing_method: str
+    error: Exception
+    failures: int
+    expected_holders: list[str]
+    expected_calls: list[str]
+    expected_delays: list[float]
+
+
+HOLD_WIDEN_FAILURE_TEST_CASES: list[HoldWidenFailureTestCase] = [
+    HoldWidenFailureTestCase(
+        name="a_state_error_that_clears_within_the_retries_holds_the_marker",
+        failing_method="pending_repository_ids",
+        error=STATE_ERROR,
+        failures=2,
+        expected_holders=[REPOSITORY_X],
+        expected_calls=["pending_repository_ids", "pending_repository_ids", "pending_repository_ids", "hold"],
+        expected_delays=[2, 8],
+    ),
+    HoldWidenFailureTestCase(
+        name="a_lock_timeout_that_clears_within_the_retries_holds_the_marker",
+        failing_method="hold",
+        error=LOCK_TIMEOUT,
+        failures=3,
+        expected_holders=[REPOSITORY_X],
+        expected_calls=["pending_repository_ids", "hold"] * 4,
+        expected_delays=[2, 8, 20],
+    ),
+    HoldWidenFailureTestCase(
+        name="a_state_error_that_persists_returns_no_repository_after_the_last_retry",
+        failing_method="pending_repository_ids",
+        error=STATE_ERROR,
+        failures=4,
+        expected_holders=[],
+        expected_calls=["pending_repository_ids"] * 4,
+        expected_delays=[2, 8, 20],
+    ),
+    HoldWidenFailureTestCase(
+        name="a_lock_timeout_that_persists_returns_no_repository_after_the_last_retry",
+        failing_method="hold",
+        error=LOCK_TIMEOUT,
+        failures=4,
+        expected_holders=[],
+        expected_calls=["pending_repository_ids", "hold"] * 4,
+        expected_delays=[2, 8, 20],
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in HOLD_WIDEN_FAILURE_TEST_CASES])
+async def test_hold_widen_reads_the_state_again_then_holds_nothing_when_it_stays_unreadable(
+    test_case: HoldWidenFailureTestCase,
+) -> None:
+    state = await _state(queued=(REPOSITORY_X,))
+    state.failures[test_case.failing_method] = [test_case.error] * test_case.failures
+    sleep = RecordedSleep()
+
+    with capture_logs() as records:
+        holders = await _barrier(state=state, cache=MemoryCache(), sleep=sleep).hold_widen(
+            branch=DEFAULT_BRANCH, widen=_terminals_marker(hold_seq=0), releasing=None
+        )
+
+    assert holders == test_case.expected_holders
+    assert state.calls == test_case.expected_calls
+    assert sleep.delays == test_case.expected_delays
+    assert _held_by_repository(state) == _held_markers(*test_case.expected_holders)
+    errors = [
+        (record["branch"], record["scope"], record["reason"]) for record in records if record["log_level"] == "error"
+    ]
+    assert errors == (
+        []
+        if test_case.expected_holders
+        else [(DEFAULT_BRANCH, "terminals", FullRegenerationReason.TERMINAL_SELECTION_FAILED)]
+    )
+    assert [record["log_level"] for record in records if record["log_level"] == "warning"] == ["warning"] * len(
+        test_case.expected_delays
+    )
