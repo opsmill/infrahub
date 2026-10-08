@@ -56,13 +56,13 @@ User Story 1 spans Phases 3 to 5. User Story 2 reuses the estimator from Phase 5
 
 **Purpose**: governance and the new package.
 
-- [ ] T001 Write the PR description draft in `dev/specs/infp-739-graphql-query-cost/pr-description.md`. It lists the three Ask First gates above with a link to [INFP-739](https://opsmill.atlassian.net/browse/INFP-739), the known limits from `contracts/cost-details-header.md` (rows of shared `NodeDataLoader` batches) and `plan.md` "Risks", and asks a maintainer to confirm the gates.
-- [ ] T002 Create `backend/infrahub/graphql/cost/__init__.py` (empty, per `dev/knowledge/backend/package-init-files.md`) and `backend/infrahub/graphql/cost/constants.py` with:
+- [X] T001 Write the PR description draft in `dev/specs/infp-739-graphql-query-cost/pr-description.md`. It lists the three Ask First gates above with a link to [INFP-739](https://opsmill.atlassian.net/browse/INFP-739), the known limits from `contracts/cost-details-header.md` (rows of shared `NodeDataLoader` batches) and `plan.md` "Risks", and asks a maintainer to confirm the gates.
+- [X] T002 Create `backend/infrahub/graphql/cost/__init__.py` (empty, per `dev/knowledge/backend/package-init-files.md`) and `backend/infrahub/graphql/cost/constants.py` with:
     - `QUERY_COST_HEADER = "X-Infrahub-Query-Cost"` and `QUERY_COST_HEADER_VALUE = "details"`
     - `STATISTICS_POINTER_KEY = "graphql_cost:statistics:current"` and `STATISTICS_KIND_KEY_TEMPLATE = "graphql_cost:statistics:v{version}:kind:{kind}"`
     - `TOP_NODES_LIMIT = 20`
     - `NO_STATISTICS_REASON = "no statistics"`
-    - `ESTIMATE_FIELD_PATH`, a reserved value that does not collide with a GraphQL response key (for example `"__estimate__"`)
+    - `ESTIMATE_FIELD_PATH`, a reserved value that does not collide with a GraphQL response key: `"<estimate>"`. Angle brackets cannot appear in a GraphQL name, while `"__estimate__"` is accepted as an alias.
 
 ---
 
