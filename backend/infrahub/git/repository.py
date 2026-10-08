@@ -187,6 +187,15 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return self
 
     @classmethod
+    async def from_graph(
+        cls, *, id: str | UUID, name: str, client: InfrahubClient, infrahub_branch_name: str
+    ) -> InfrahubRepository:
+        """Build the repository object without a local clone, for an operation that runs no Git command."""
+        return await cls._build(
+            id=id, name=name, client=client, infrahub_branch_name=infrahub_branch_name, location=None
+        )
+
+    @classmethod
     async def new(
         cls,
         *,

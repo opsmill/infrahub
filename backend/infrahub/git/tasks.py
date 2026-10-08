@@ -1178,7 +1178,8 @@ async def abandon_repository_delivery(model: GitRepositoryDeliveryAbandon, conte
     log = get_run_logger()
     await add_tags(nodes=[model.repository_id])
 
-    repo = await InfrahubRepository.init(
+    # The abandonment must work when the remote is gone, so it never clones it.
+    repo = await InfrahubRepository.from_graph(
         id=model.repository_id,
         name=model.repository_name,
         client=get_client(),

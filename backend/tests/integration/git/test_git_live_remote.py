@@ -1325,11 +1325,13 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         gogs_server: GogsServer,
         admin_account: CoreAccount,
         dependency_provider: Provider,
+        tmp_path: Path,
         synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
     ) -> None:
         """A merge that conflicts with the remote pushes nothing, and its abandonment records who dropped it.
 
-        The abandonment empties the queue, releases the held regeneration once and leaves the remote as it is.
+        The abandonment empties the queue, releases the held regeneration once and leaves the remote as it is. It runs
+        on a worker with no clone and makes none, so it works when the remote is gone.
         """
         repository = await synced_branch_repository("delivery-conflict-abandon")
         remote_head = commit_to_remote_branch(
@@ -1360,12 +1362,18 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == remote_head
         abandon_started = datetime.now(UTC)
+        fresh_worker = tmp_path / "fresh-worker-repositories"
+        fresh_worker.mkdir()
 
-        with override_workflow(RecordingLocalWorkflow(), dependency_provider=dependency_provider) as workflow:
+        with (
+            repositories_directory(fresh_worker),
+            override_workflow(RecordingLocalWorkflow(), dependency_provider=dependency_provider) as workflow,
+        ):
             await client.execute_graphql(
                 query=ABANDON_DELIVERY, variables={"id": repository.node_id, "queue_version": pending.queue.version}
             )
 
+        assert list(fresh_worker.iterdir()) == []
         abandoned = await _delivery_state(db=db, repository_id=repository.node_id)
         assert workflow.submitted == [
             (
