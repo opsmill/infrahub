@@ -62,6 +62,7 @@ TRUNK_COMMIT = "a" * 40
 MOVED_TRUNK_COMMIT = "c" * 40
 DISPATCHER_LOGGER = "tests.repository_merge_dispatcher"
 RUN_LOGGER = "infrahub.tasks"
+FLOW_LOGGER = "prefect.flow_runs"
 
 
 class RecordingSleep:
@@ -553,3 +554,32 @@ async def test_a_merge_flow_with_no_entry_and_no_content_queues_nothing(
     intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
     assert intent.queue == DeliveryQueue()
     assert intent.held == HeldRegeneration()
+
+
+async def test_a_merge_flow_whose_source_branch_is_gone_fails_and_says_how_to_push_the_merge_by_hand(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    cloned_repository: ClonedRepository,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    repository = cloned_repository
+    model = repository.merge_model(entry=None, enqueued=False).model_copy(update={"source_branch": "deleted-branch"})
+    expected = (
+        f"The branch deleted-branch was deleted before its merge was queued, so repository {REPOSITORY_NAME} does "
+        "not push that merge to its remote. The last commit of the branch on this worker is unknown. Merge the "
+        "branch deleted-branch into the branch main on the remote by hand."
+    )
+
+    with caplog.at_level(logging.ERROR, logger=FLOW_LOGGER):
+        state = await run_merge_flow(dependency_provider=dependency_provider, client=repository.client, model=model)
+
+    assert state.is_failed()
+    assert state.message == expected
+    assert log_lines(caplog, logger_name=FLOW_LOGGER, level=logging.ERROR) == [
+        expected,
+        f"Finished in state Failed({expected!r})",
+    ]
+    intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
+    assert intent.queue == DeliveryQueue()
