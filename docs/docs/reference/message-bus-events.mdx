@@ -15,6 +15,29 @@ For more detailed explanations on how these events are used within Infrahub, see
 ## Messages events
 <!-- markdownlint-disable MD012 -->
 <!-- vale off -->
+### Git Branch Heads
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.branch_heads.get
+<!-- vale on -->
+
+**Description**: Read the remote head of every branch of a repository from a worker's local clone.
+
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the Repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The kind of the repository | string | None |
+| **location** | The external URL of the repository | string | None |
+| **branches** | The branches whose remote heads are read | array | None |
+<!-- vale on -->
+
+<!-- vale off -->
 ### Git Commit Log
 <!-- vale on -->
 
@@ -220,6 +243,30 @@ For more detailed explanations on how these events are used within Infrahub, see
 
 
 ## Responses events
+
+<!-- vale off -->
+### Git Branch Heads
+<!-- vale on -->
+
+<!-- vale off -->
+#### Event git.branch_heads.get
+<!-- vale on -->
+**Priority**: 4
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **passed** | N/A | boolean | True |
+| **routing_key** | N/A | string | git.branch_heads.get |
+| **data.fetched_at** | N/A | N/A | None |
+| **data.unavailable_reason** | N/A | N/A | None |
+| **data.warm_up_task_id** | N/A | N/A | None |
+| **data.branches** | N/A | array | None |
+| **data.error_message** | N/A | N/A | None |
+| **errors** | N/A | array | None |
+| **initial_message** | Initial message in dict format, the primary goal of this field is to provide additional context when there is an error | N/A | None |
+<!-- vale on -->
 
 <!-- vale off -->
 ### Git Commit Log

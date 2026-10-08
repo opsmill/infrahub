@@ -82,7 +82,7 @@ class RepositoryBranchDrift(ObjectType):
     )
     tracked_commit = String()
     remote_head = String(
-        description="Latest remote commit. Null when there is no remote counterpart or the branch is not tracked."
+        description="Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE."
     )
     condition = RepositoryGitCondition(required=True)
 

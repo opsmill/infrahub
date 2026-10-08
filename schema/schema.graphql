@@ -26683,7 +26683,7 @@ type RepositoryBranchDrift {
   """
   git_ref: String
   """
-  Latest remote commit. Null when there is no remote counterpart or the branch is not tracked.
+  Latest remote commit. Null when there is no remote counterpart or when condition is UNAVAILABLE.
   """
   remote_head: String
   tracked_commit: String
