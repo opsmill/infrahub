@@ -12,14 +12,15 @@ Applies to TypeScript in `frontend/app/src/`.
 
 - Keep `gql`/`graphql()` strings and `graphqlClient.query`/`mutate` out of `ui/` and pages. The flow is `api/*-from-api.ts` → `domain/use-cases/` → `ui/queries/*.query.ts`.
 - Look up a single node with `useGetObject({ objectId, objectSchema })` and a schema from `useSchema`, not a hand-written lookup.
-- Do not import another entity's `api/`; go through its `domain/` or `ui/`. `domain/` does not import `ui/`, React, TanStack, Jotai or browser storage, and does not read global state (branch, date, schema) or a page size: `ui/` passes them in as parameters.
+- Do not import another entity's `api/`; go through its `domain/` or `ui/`. `domain/` does not import `ui/`, React, TanStack, Jotai or browser storage, and does not read global state (branch, date, schema) or a page size: `ui/` passes them in as parameters. Define list limits, visible-item caps and page sizes in `ui/`, not in `domain/model`.
 - Put `queryOptions` and `useQuery` in `ui/queries/`, never in `domain/`.
 - Do not add entity vocabulary (schema kinds, states, filter names) or entity-aware code under `shared/`.
 - Do not add an entity-root `types.ts`, `constants.ts`, `stores.ts` or `utils/`; use `domain/model`, `domain/rules`, `ui/` or `api/*.mappers.ts`.
 - Import `@urql/core` only in `shared/api/graphql/client.ts`.
 - Invalidate caches in `onSuccess`/`onSettled` inside the `.mutation.ts` hook, not at the call site, unless the file carries an `invalidation-at-callsite` comment.
 - A `useMutation` `onError` toast needs `context: { processErrorMessage: () => {} }` on the mutate call; the client already shows a toast, so users would see two.
-- Query keys take one parameters object (`[...all, "x", { id, depth }]`), not positional values.
+- Query keys take one parameters object (`[...all, "x", { id, depth }]`), not positional values. Read a previous query's params from that object by name, not by position (`queryKey[2]`).
+- Do not add retry, back-off or polling-policy helpers: queries run with `retry: false` on purpose, and `retryingFetch` already replays the requests the server sheds. Poll with a conditional `refetchInterval`.
 
 ## Branches and backend authority
 
