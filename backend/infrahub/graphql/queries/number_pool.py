@@ -85,7 +85,7 @@ class NumberPoolUtilization(ObjectType):
         )
 
     id = Field(String, required=True, description="The pool's id, as given in pool_id.")
-    display_label = Field(String, required=True, description="The pool's display label, read on the request's branch.")
+    display_label = Field(String, required=True, description="The pool's display label.")
     allocation_scope = Field(
         List(NonNull(String)),
         required=True,

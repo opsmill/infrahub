@@ -24013,7 +24013,7 @@ export type NumberPoolUtilization = {
    * and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
    */
   allocation_scope: Array<Scalars['String']['output']>;
-  /** The pool's display label, read on the request's branch. */
+  /** The pool's display label. */
   display_label: Scalars['String']['output'];
   /**
    * Figures over the pool's whole space. On a scoped pool, the figures of the division given as
