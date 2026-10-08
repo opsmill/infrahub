@@ -1,13 +1,13 @@
 # Implementation report: number pool allocation scopes, Phase 1
 
-**Status: INCOMPLETE.** Reason: three component tests brought in by the rebase fail on the new base, because the SDK submodule of `feature-number-pools-1.12` does not know `allocation_scope` (T045). Every test written or modified by this run passes.
+**Status: DONE.** Every test written or modified by this run passes, and so do the number-pool suites the phase touches.
 
 - Spec directory: `dev/specs/ifc-3185-number-pool-scopes`
 - Scope of the run: Phase 1 only (T001 to T005), as requested
-- Branch: `pmi-number-pool-scoped-pools-ifc-3185-rebased` (local, not pushed), created at `origin/feature-number-pools-1.12`
-- Base commit: `df361a06a5`
+- Branch: `pmi-number-pool-scoped-pools-ifc-3185-rebased` (local, not pushed), rebased onto `origin/number-pool-branch-provenance` (PR #10949) at the user's request, because that branch moves the `python_sdk` pointer to an SDK commit that knows `allocation_scope`
+- Base commit: `7d5429fe8d` (tip of `number-pool-branch-provenance`); the phase first ran on `df361a06a5` (`feature-number-pools-1.12`)
 - Head commit: the commit that adds this report
-- Wall-clock time: about 40 minutes, 18:20Z to 19:00Z on 2026-10-08
+- Wall-clock time: about 45 minutes, 18:20Z to 19:05Z on 2026-10-08
 
 ## Chunk ledger
 
@@ -54,11 +54,12 @@ Every checkbox from T001 to T005 is ticked `[X]`.
 | Live checks of the three queries, 61 checks | live (Docker stack) | `uv run python scratchpad/live_check.py <repo>` | 2026-10-08T18:49Z | stack `aluminumterrier` started with `INFRAHUB_IMAGE_VER=local uv run invoke dev.start --wait`; the worktree is bind-mounted on `/source` | `61/61 passed` |
 | Frontend types of the three queries | frontend type check | `pnpm codegen:graphql`, then `pnpm exec tsc --noEmit -p .` with a temporary file typing the queries | 2026-10-08T18:51Z | frontend/app, local node_modules | 185 errors, the same count as without the change; none in the temporary file; both `@ts-expect-error` lines are used |
 
-**Known failure, not caused by this phase.** `tests/component/core/schema/test_attribute_parameters.py::test_number_pool_allocation_scope_round_trips_through_schema_api[scoped|absent|empty]` comes from the PR (commit `cb99026fad`) and fails on the new base with `SchemaLoadAPI ... parameters.allocation_scope Unknown field`.
+**After the rebase onto PR #10949.** The commit SHAs above are those before the rebase; the branch `backup/ifc3185-phase1-pre-rebase` keeps them.
 
-- The SDK submodule of `feature-number-pools-1.12` points at `infrahub-develop`, which does not contain `allocation_scope`.
-- The old base of the PR pinned `d0c5d0c`, which is on the SDK branch `ifc-3334-allocation-scope`.
-- T045 fixes this: merge that SDK branch into `infrahub-develop`, then move the submodule pointer. The PR's CI will fail on these three tests until then.
+- During the rebase, only generated files conflicted (`schema/schema.graphql` and the frontend generated GraphQL files). They were regenerated once at the end.
+- The new base moves `PoolRecordProvenance` into `infrahub.core.constants`, so the dedicated queries and the fixed dataset now import it from there (`dd885665cd`).
+- Number-pool suites, run from `backend/` with `uv run pytest tests/unit/graphql/test_number_pool_surface_contract.py tests/unit/pools tests/component/graphql/queries/test_number_pool_surface.py tests/component/core/resource_manager tests/component/graphql/resource_manager tests/component/core/schema/test_attribute_parameters.py tests/component/pools -p no:cacheprovider -q -n 4` at 2026-10-08T19:00:45Z: `476 passed, 3 xfailed, 80 warnings in 146.80s`. This includes the three cases of `test_attribute_parameters.py::test_number_pool_allocation_scope_round_trips_through_schema_api`, which failed on `feature-number-pools-1.12` because its SDK submodule did not know `allocation_scope`.
+- Live checks, on a stack recreated from the rebased branch at 2026-10-08T19:02:09Z: `61/61 passed`.
 
 ## What the live checks cover
 
@@ -110,12 +111,14 @@ The review covered the commits of the phase (`86fa174f09..HEAD`) with six agents
   - The stopped stacks `stablewt`, `infrahubfix` and `pmiombieflowregeneration` were left in place.
   - The stack `aluminumterrier` is still running on port 8000.
 
+- **Rebase onto PR #10949.** At the user's request, the branch was rebased onto `number-pool-branch-provenance`, so PR #10932 now depends on #10949.
+
 ## Suggested next steps
 
-1. Fix the SDK pointer (T045): merge `ifc-3334-allocation-scope` into `infrahub-develop` on the SDK side and move the `python_sdk` pointer, either on `feature-number-pools-1.12` or in this PR.
-2. Once the user approves:
+1. Once the user approves:
    - Force-push to `pmi-number-pool-scoped-pools-ifc-3185` with `--force-with-lease` against `0008e217f7`.
-   - Change the base of PR #10932 to `feature-number-pools-1.12`.
+   - Change the base of PR #10932 to `number-pool-branch-provenance` (PR #10949).
    - Publish the new description.
+2. T045 still applies to the SDK: the commit `python_sdk` points at must reach `infrahub-develop` before the feature branch merges into the release branch.
 3. Before working in the saber-scabiosa worktree again, put its local branch back on the pushed version.
 4. Continue with Phase 2 (T006 to T010).
