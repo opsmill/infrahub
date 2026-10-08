@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -18,6 +17,7 @@ from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImpor
 from infrahub.git.sync import RepositorySyncer, import_branch
 from infrahub.lock import InfrahubLockRegistry
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.lock import FailingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.flow import call_in_flow
@@ -27,7 +27,6 @@ from tests.helpers.test_client import (
     registered_branches_async_request,
     rejected_async_request,
 )
-from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 if TYPE_CHECKING:
     from infrahub.git import InfrahubRepository
@@ -122,7 +121,7 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         importer=FailingImporter(RuntimeError("lock lost")),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=InMemoryDeliveryState(clock=FixedClock(now=datetime.now(tz=UTC)), repository_names={}),
+        state=build_idle_delivery_state(),
     )
 
     outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))

@@ -3,7 +3,6 @@ import re
 import shutil
 from collections.abc import Generator
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -55,6 +54,7 @@ from infrahub.lock import InfrahubLockRegistry
 from infrahub.utils import find_first_file_in_directory
 from infrahub.workers.dependencies import build_client, build_event_service, build_message_bus
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.lock import LockTimeline, RecordingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
@@ -64,7 +64,6 @@ from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import GraphRecordingClient, build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
-from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
@@ -743,7 +742,7 @@ async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> 
         importer=RepositoryFileImporter(),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=InMemoryDeliveryState(clock=FixedClock(now=datetime.now(tz=UTC)), repository_names={}),
+        state=build_idle_delivery_state(),
     )
     return await call_in_flow(lambda: syncer.sync(repo, staging_branch=staging_branch))
 
@@ -851,7 +850,7 @@ async def test_sync_returns_a_failed_branch_alongside_the_branches_it_advanced(
         importer=RecordingImporter(LockTimeline()),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=InMemoryDeliveryState(clock=FixedClock(now=datetime.now(tz=UTC)), repository_names={}),
+        state=build_idle_delivery_state(),
     )
     outcome = await syncer.sync(repo)
 
