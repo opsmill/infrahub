@@ -130,6 +130,8 @@ To keep the activity log longer, raise `task_manager.retention.activity_log` on 
 
 The task manager also stores events for its own use, such as the state changes of task runs, in the same database. The activity log does not show them. They are kept for their own retention, `prefect_own_events`, 7 days by default, so a longer activity log retention does not keep them longer. A `prefect_own_events` value longer than `activity_log` is reduced to the `activity_log` value, with a warning in the task manager log, because the task manager deletes every event older than the activity log retention.
 
+When the task manager starts, it checks the types of the events it stores for its own use. If it stores a type that Infrahub does not know, for example one added by a newer version of the task manager's engine, it logs a warning that starts with `Task manager retention: Infrahub does not list these Prefect event types` and names each type. Events of these types are kept for the activity log retention instead of `prefect_own_events`, so they take more disk space with a long activity log retention. To have the types added to the list, open an issue on the [Infrahub GitHub repository](https://github.com/opsmill/infrahub/issues) with the warning.
+
 When you lower the activity log retention, the next hourly cleanup deletes the events older than the new value. The database files do not shrink: PostgreSQL reuses the space of the deleted events for new ones.
 
 ### Plan disk space for a longer retention
