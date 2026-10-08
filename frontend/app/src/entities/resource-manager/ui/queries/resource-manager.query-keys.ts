@@ -15,6 +15,11 @@ export interface NumberPoolsKeysParams {
   objectKinds: Array<string>;
 }
 
+export interface NumberPoolForEditingKeysParams {
+  branchName: string;
+  poolId: string;
+}
+
 export const resourceManagerQueryKeys = {
   all: ["resource-manager"] as const,
   utilization: (params: ResourceUtilizationKeysParams) =>
@@ -36,4 +41,6 @@ export const resourceManagerQueryKeys = {
       params.atDate,
       params.objectKinds,
     ] as const,
+  numberPoolForEditing: (params: NumberPoolForEditingKeysParams) =>
+    [...resourceManagerQueryKeys.all, "number-pool-for-editing", params] as const,
 };
