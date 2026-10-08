@@ -345,7 +345,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             timeout_seconds: Passed to GitPython as ``kill_after_timeout``; ``None`` sets no limit.
 
         Returns:
-            Repo: git object of the main repository
+            Repo: git object of the worktree
 
         Raises:
             RepositoryError: When no worktree matches the provided identifier.
