@@ -375,15 +375,15 @@ SC-002, SC-007.
       catalogue entry `GIT_REPOSITORY_DELIVERY_RETRY` in `backend/infrahub/workflows/catalogue.py`.
       It calls `deliver_pending_merges` with `entry=None` and `manual=True`, or `False` when the
       recovery check submitted it, and re-checks nothing itself: `deliver` step 1 decides.
-- [ ] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
+- [X] T052 [US2] Write `InfrahubRepositoryDeliveryRetry` in
       `backend/infrahub/graphql/mutations/repository.py` and register it in
       `backend/infrahub/graphql/schema.py`: refuse off the default branch, check the three
       permissions explicitly, refuse when nothing is pending, submit with
       `tags=delivery_run_tags(repository_id)` (R20), return the task. A running
       attempt or a waiting automatic retry does not refuse it. **Gate: GraphQL and
       authorization sign-off.**
-- [ ] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
-- [ ] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
+- [X] T053 [US2] Regenerate `schema/schema.graphql` and the frontend GraphQL types.
+- [X] T054 [US2] Write `backend/tests/component/graphql/mutations/test_repository_delivery_retry.py`: off
       the default branch, each permission missing, nothing pending refused; a running attempt, a
       waiting retry, a stale `pending` and `action-required` all allowed.
 - [ ] T055 [US2] Add `test_one_retry_delivers_both` to `backend/tests/integration/git/test_git_live_remote.py`.
