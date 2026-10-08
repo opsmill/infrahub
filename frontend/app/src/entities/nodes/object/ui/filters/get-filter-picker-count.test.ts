@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
+import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
 import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
 
 import {
@@ -24,7 +25,7 @@ describe("getFilterPickerCount", () => {
     ];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(2);
@@ -38,7 +39,7 @@ describe("getFilterPickerCount", () => {
     const filters: Filter[] = [{ name: "parent__ids", value: ["some-id"] }];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(1);
@@ -53,7 +54,7 @@ describe("getFilterPickerCount", () => {
     ];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(2);
@@ -72,7 +73,7 @@ describe("getFilterPickerCount", () => {
     ];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(1);
@@ -86,7 +87,7 @@ describe("getFilterPickerCount", () => {
     const filters: Filter[] = [{ name: "namespace__value", value: "test" }];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(0);
@@ -101,7 +102,7 @@ describe("getFilterPickerCount", () => {
     ];
 
     // WHEN
-    const result = getFilterPickerCount(schema, filters);
+    const result = getFilterPickerCount(getFilterDefinitions(schema), filters);
 
     // THEN
     expect(result).toBe(0);
