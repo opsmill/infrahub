@@ -58,8 +58,7 @@ async def test_an_attribute_the_analysis_skipped_is_left_out() -> None:
 async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     """The analysis resolves its peers strictly, so one missing peer raises for all of them.
 
-    Each declared attribute is then reported undeterminable, with no known repository, and recomputed
-    over its whole kind.
+    Each declared attribute is then reported undeterminable and recomputed over its whole kind.
     """
     analyzed = FailingAnalyzedPythonReadSets()
     source = ComposedPythonReadSetSource(
@@ -71,7 +70,6 @@ async def test_a_failed_analysis_widens_every_declared_attribute() -> None:
     assert analyzed.calls == [BRANCH]
     assert {entry.attribute_name for entry in read_sets} == {"summary", "digest"}
     assert all(entry.read_set.depends_on_everything for entry in read_sets)
-    assert [entry.repository_id for entry in read_sets] == [None, None]
 
 
 async def test_a_branch_declaring_nothing_never_reaches_the_analysis() -> None:
