@@ -477,7 +477,7 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 | Port method | Built on |
 |---|---|
 | `fetch()` | `InfrahubRepositoryBase.fetch`, with `kill_after_timeout`. That method returns `False` on a clone with no `origin`. The adapter then raises `RepositoryError` and never treats it as a fetch. |
-| `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, bounded. Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
+| `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, with its time limit (R6). Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
 | `is_ancestor(ancestor, descendant)` | `git merge-base --is-ancestor`. Exit 1 means no. A missing object means no. Any other failure raises. Shared with IFC-3210 (R19). |
 | `replay(base, commits)` | `reset --hard`, then `merge` per commit, aborting on a conflict. |
 | `push()` | `InfrahubRepository.push`, extended by R5, with `kill_after_timeout`. |
@@ -608,7 +608,7 @@ command that it runs. The limit does not stop every command; see "What the limit
 | The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
 | Each local command: `rev-parse`, in `remote_head`; `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
 
-**What the limit does** (GitPython 3.1.62, checked on IFC-3312):
+**What the limit does** (GitPython 3.1.62):
 
 - **A fetch or a push past its limit is classified only after Git ends.** The fetch and the push run
   through `Remote.fetch` and `Remote.push`. When the limit passes, `AutoInterrupt._terminate` closes
@@ -617,7 +617,7 @@ command that it runs. The limit does not stop every command; see "What the limit
   `remote-unreachable`, which the chain retries. When Git then succeeds, the call returns normally.
 - **A hung fetch or push is not stopped.** A remote that accepts the connection and never answers
   keeps the fetch or the push running, with the repository lock and the worker slot, until the
-  connection ends. A test with a 2-second limit returned after 30 seconds.
+  connection ends.
 - **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
   of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
   passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
@@ -632,9 +632,10 @@ killed local command raises a `RepositoryError` that names the command and the l
 classifies it. A killed `worktree add` leaves a worktree that Git keeps locked as "initializing", so
 `create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
 other failure, it removes nothing. The deletion of a source branch is a push, so
-`delete_remote_branch` types its errors as `push` does, and past its limit it raises
-`RepositoryConnectionError`. `reset` never raises: a killed reset is logged like any failed reset,
-and the failure of the attempt still propagates. The limits live in `git/writeback/constants.py`.
+`delete_remote_branch` types its errors as `push` does. Past its limit it raises
+`RepositoryConnectionError`, but only where the watchdog can stop Git, which needs `ps` (see above).
+`reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
+still propagates. The limits live in `git/writeback/constants.py`.
 
 **A killed local command can leave a lock file.** GitPython kills with `SIGKILL`, so a killed
 `reset` or `merge` can leave `index.lock` in the destination worktree. Every later Git command in

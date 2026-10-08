@@ -81,12 +81,12 @@ the commit recorded before the merge until its next recompute.
 
 ## Phase 2: Foundational (blocking prerequisites)
 
-**Purpose**: typed failures, bounded Git commands, the state model, the schema and the store.
+**Purpose**: typed failures, time limits on Git commands, the state model, the schema and the store.
 Parts A and B of the plan.
 
 **Blocks**: every phase from 3 onwards.
 
-### Typed failures and bounded Git commands (plan part A)
+### Typed failures and time limits on Git commands (plan part A)
 
 - [X] T005 [P] Add `RepositoryPushRejectedError`, `RepositoryTLSError`, `RepositoryNotFoundError`,
       `DeliveryQueueChangedError` and `NothingPendingError` to `backend/infrahub/exceptions.py`, per
@@ -105,7 +105,7 @@ Parts A and B of the plan.
       `connectivity` in `backend/infrahub/message_bus/operations/git/repository.py`. Both subtypes
       keep `ERROR_CONNECTION`.
 - [X] T009 Change `InfrahubRepository.push` in `backend/infrahub/git/repository.py`: pass a
-      `RemoteProgress` and a `timeout` argument as `kill_after_timeout`; derive the reason of a
+      `RemoteProgress` and a `timeout_seconds` argument as `kill_after_timeout`; derive the reason of a
       per-ref rejection from `PushInfo.REMOTE_REJECTED` and `PushInfo.REJECTED`, and from the summary
       for Git's wording of a ref it cannot lock or update (`ref-update-failed`, research.md R5); raise
       `RepositoryPushRejectedError` carrying the reason and the joined `remote:` lines. Keep the

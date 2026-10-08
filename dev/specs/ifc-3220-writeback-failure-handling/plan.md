@@ -207,7 +207,7 @@ Each part is testable on its own.
 
 | Part | User story | Depends on | Gate |
 |---|---|---|---|
-| **A. Typed failures and bounded Git commands** | Foundation | nothing | none |
+| **A. Typed failures and time limits on Git commands** | Foundation | nothing | none |
 | **B. State, schema and store** | Foundation for US1 | A | schema sign-off, SDK PR |
 | **C. Queue and first attempt** | US1, some scenarios of US2, US7 #1 and #2 | B | none |
 | **D. No other import of a pending destination** | US2 #3 | C | none |

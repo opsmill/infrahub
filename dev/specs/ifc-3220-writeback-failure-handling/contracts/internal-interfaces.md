@@ -177,7 +177,8 @@ runtime image it stops no direct Git call (open point of R6):
   `PUSH_TIMEOUT_SECONDS`. A `fetch` or a `push` past its limit raises `RepositoryConnectionError`
   once Git ends, because `_raise_enriched_error_static` maps GitPython's "process killed because it
   timed out" text to it (section 10). `delete_remote_branch` is a push too: it types its errors as
-  `push` does, and past its limit it raises `RepositoryConnectionError`.
+  `push` does. Past its limit it raises `RepositoryConnectionError`, but only where GitPython's
+  watchdog can stop Git: the watchdog needs `ps`, which the runtime image does not have.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
   database. A timeout raises `RepositoryError`, with a message that names the command and the bound
