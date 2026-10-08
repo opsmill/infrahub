@@ -10,8 +10,9 @@ The surface is the one described in PR #10932, served from the database. This fi
 | `NumberPoolDivisionEntry` | `path`, `value`, `display_label`, `peer_kind` | adds `id: String!`, the schema element id of the entry | Additive |
 | Descriptions mentioning "the scope in force on the request's branch" | scope could be partial on a branch | the scope is the pool's scope on every branch; a query on a branch whose schema lacks an element is refused | Wording and one refusal (decisions 1 and 7) |
 | Division of a holder | counted under every division the holder occupies on any live branch | read on the branch the query runs on | Changed (decision 7) |
+| Enum of `NumberPoolAllocation.provenance` and of the `provenance` argument | `NumberPoolProvenance`, a type of its own | `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, with the same values `ALLOCATED` and `PROVIDED` | Breaking for a client that names the type in a query variable |
 
-Everything else (root fields, arguments, defaults, ordering, pagination, provenance enum, holder and range references) is unchanged. PR #10932 is open against another branch; it is rebased onto `feature-number-pools-1.12`, and its fixed dataset, SDL snapshot and tests are updated to this contract before the resolvers read the database.
+Everything else (root fields, arguments, defaults, ordering, pagination, holder and range references) is unchanged. PR #10932 is open against another branch; it is rebased onto `feature-number-pools-1.12`, and its fixed dataset, SDL snapshot and tests are updated to this contract before the resolvers read the database.
 
 ## SDL
 
@@ -149,7 +150,7 @@ type NumberPoolAllocation {
   """The identifier given when the number was allocated, if any."""
   identifier: String
   """ALLOCATED when the pool picked the number, PROVIDED when a user gave it."""
-  provenance: NumberPoolProvenance!
+  provenance: PoolRecordProvenance!
   """The range whose bounds hold the value."""
   range: NumberPoolRangeRef!
 }
@@ -169,8 +170,8 @@ type NumberPoolRangeRef {
   display_label: String!
 }
 
-"""How the number a tracked attribute currently holds got there."""
-enum NumberPoolProvenance {
+"""Whether the pool allocated a value or a user provided it."""
+enum PoolRecordProvenance {
   ALLOCATED
   PROVIDED
 }
@@ -197,7 +198,7 @@ type Query {
     division: [NumberPoolDivisionEntryInput!]
     range_id: String
     branch: String
-    provenance: NumberPoolProvenance
+    provenance: PoolRecordProvenance
     offset: Int
     limit: Int
   ): NumberPoolAllocations!
