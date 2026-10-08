@@ -349,6 +349,7 @@ class DeliveryRecoveryCheck:
         runs: DeliveryRunQuery,
         lock_registry: InfrahubLockRegistry,
         clock: Clock,
+        context: InfrahubContext,
     ) -> None: ...
 
     async def run(self, *, repository: RepositoryRef) -> bool: ...
@@ -360,11 +361,16 @@ bootstrap and whatever the outcome of the sync, under its own guard. It submits
 then calls `state.touch(...)`, when:
 
 - the delivery is stale (five conditions, `research.md` R20); or
-- held items that no live lease covers wait, `last_progress_at` is older than `STALE_AFTER`, and
-  no delivery run of the repository waits to start.
+- the queue is empty, held items that no live lease covers wait, `last_progress_at` is older than
+  `STALE_AFTER`, and no delivery run of the repository waits to start.
+
+The second trigger needs an empty queue. A queue with merges is the stale check's case: while it is
+`pending`, the first trigger covers it. While it is `action-required`, a submission every
+`STALE_AFTER` would retry a policy failure, which FR-004 forbids.
 
 The lock condition needs the lock registry, and the orchestrator condition needs `runs`. The check
-takes both in its constructor. It reads the state and the lock first, and calls
+takes both in its constructor. The retry flow requires a context, so the check also takes the
+system context that it submits with: the default branch and an anonymous account. It reads the state and the lock first, and calls
 `runs.has_queued_run(...)` only when every other condition of a trigger holds. It then passes the
 answer to `WritebackIntent.is_stale(now, lock_free, run_queued)`. A repository with no work to
 recover, or with recent progress, costs no orchestrator query. When `has_queued_run` raises, the
@@ -373,7 +379,8 @@ returns `False`. It returns whether it submitted. It never raises: a failure is 
 cycle checks again.
 
 `build_recovery_check` builds `PrefectDeliveryRunQuery` over
-`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`.
+`task_manager/flow_run/prefect_client.py::PrefectClientAdapter`, and the system context with
+`InfrahubContext.init(branch=<default branch>, account=AnonymousSession())`.
 
 ---
 

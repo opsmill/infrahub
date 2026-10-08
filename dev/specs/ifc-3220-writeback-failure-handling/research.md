@@ -1352,8 +1352,10 @@ because that function catches the error that a failing branch raises. The check 
 `last_progress_at`, when:
 
 - the delivery is stale; or
-- held items wait that no live release lease covers, `last_progress_at` is older than
-  `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
+- the queue is empty, held items wait that no live release lease covers, `last_progress_at` is
+  older than `STALE_AFTER`, and no delivery run of the repository waits to start (condition 5).
+  A queue with merges is left to the first trigger. While the status is `action-required`, a
+  submission would retry a policy failure every `STALE_AFTER`, which FR-004 forbids.
 
 The `touch` after a submission bounds it to one submission per `STALE_AFTER` per repository. While
 the submitted run waits to start, condition 5 also stops a second submission. A submission that

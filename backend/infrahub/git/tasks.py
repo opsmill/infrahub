@@ -22,6 +22,7 @@ from infrahub_sdk.protocols import (
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
+from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.client.schemas.objects import State
 from prefect.context import TaskRunContext
 from prefect.logging import get_run_logger
@@ -112,8 +113,9 @@ from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 from .writeback.constants import DELIVERY_RETRIES, DELIVERY_RETRY_DELAYS_SECONDS
 from .writeback.content import read_pending_merges
-from .writeback.factory import build_writeback_service
+from .writeback.factory import build_recovery_check, build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
+from .writeback.ports import RepositoryRef
 from .writeback.runs import is_retryable_delivery_failure, next_retry_delay
 from .writeback.service import RepositoryWritebackService
 
@@ -652,17 +654,26 @@ async def sync_remote_repositories() -> None:
     log = get_run_logger()
 
     branches = await client.branch.all()
-    async with db.start_session() as dbs:
+    async with db.start_session() as dbs, get_prefect_client(sync_client=False) as prefect_client:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
+        recovery = await build_recovery_check(db=dbs, prefect_client=prefect_client)
 
-    for repo_name, repository_data in repositories.items():
-        try:
-            await sync_remote_repository(
-                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
+        for repo_name, repository_data in repositories.items():
+            repository: CoreRepository = repository_data.repository
+            await recovery.run(
+                repository=RepositoryRef(
+                    id=repository_data.repository_id,
+                    name=repo_name,
+                    destination_git_branch=repository.default_branch.value,
+                )
             )
-        # One repository that fails must not stop the cycle for the repositories after it.
-        except Exception:
-            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
+            try:
+                await sync_remote_repository(
+                    repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
+                )
+            # One repository that fails must not stop the cycle for the repositories after it.
+            except Exception:
+                log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(

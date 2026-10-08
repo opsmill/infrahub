@@ -501,7 +501,7 @@ T081 to T084 are not.
       `task_run.run_count`. Record `retry_due_at` before each wait.
 - [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a
       retry of another chain is due in the future, in `backend/infrahub/git/writeback/service.py`.
-- [ ] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
+- [X] T079 [US4] Write `DeliveryRecoveryCheck` in `backend/infrahub/git/writeback/recovery.py` and run it
       from the loop of `sync_remote_repositories` in `backend/infrahub/git/tasks.py`, for every
       repository, before the bootstrap and whatever the sync outcome, under its own guard. It submits
       with `tags=delivery_run_tags(repository.id)`. Write `PrefectDeliveryRunQuery` in
