@@ -1,0 +1,29 @@
+backend/infrahub/core/migrations/graph/m076_heal_missing_attribute_rows/migration.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 466
+backend/infrahub/core/migrations/schema/node_attribute_add.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 120
+backend/tests/component/pools/test_number_pool_repository.py
+  s_0a922a91ee3351::t_1a63857dc41664 1-2,31,34,41,47-205
+  s_0a922a91ee3351::t_11cbe3d42e8de0 42,44-46
+  s_0a922a91ee3351::t_c653d086220fc5 4,6,8,11,15,20-21,24,26,28,32-33,35-38
+backend/infrahub/core/node/resource_manager/number_pool.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 6,36,59
+backend/infrahub/pools/number_pool_repository.py
+  s_0a922a91ee3351::t_c0ae6215fb86e9 191,201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f694ec63aeb9079b6fd3bbcdf41169e3b5ccc46c",
+  "prompts": {},
+  "sessions": {
+    "s_0a922a91ee3351": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e9a1dd6-0122-45ea-b55b-1aba39496ed1",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
