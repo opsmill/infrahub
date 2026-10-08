@@ -12,11 +12,11 @@ Once your changes are ready, open a [Proposed Change](../proposed-changes/overvi
 
 ## What reconciles on merge
 
-IPAM hierarchy reconciliation runs immediately after each mutation on a branch, so the branch's own prefix and address tree stays consistent while you work. When the branch merges or is rebased, Infrahub reads the diff between the two branches, identifies which prefixes and addresses changed, and reconciles only those — reassigning parent prefixes, child prefixes, and address-to-prefix associations as needed on the target branch.
+IPAM hierarchy reconciliation runs immediately after each mutation on a branch, so the branch's own prefix and address tree stays consistent while you work. When the branch merges or is rebased, Infrahub reads the diff between the two branches, identifies which prefixes and addresses changed, and reconciles only those, reassigning parent prefixes, child prefixes, and address-to-prefix associations as needed on the branch being merged into, or on the rebased branch.
 
 ## Concurrency
 
-Allocating from a resource pool is guarded by lock-based concurrency control (`InfrahubMultiLock`) on any branch — two clients requesting the next address or prefix from the same pool at the same time cannot receive the same value.
+Infrahub handles one allocation request at a time for each resource pool, on any branch and across every Infrahub worker. Two clients requesting the next address or prefix from the same pool at the same time get different values. See [Concurrent requests](../resource-manager/overview.mdx#concurrent-requests) on the Resource Manager page.
 
 Creating or updating a prefix with an explicit value is locked on any branch as well, so two clients cannot create the same prefix concurrently. Creating or updating an address with an explicit value is only locked on the default branch — on other branches, concurrent clients can create the same address value without contention.
 
