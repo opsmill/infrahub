@@ -39,7 +39,7 @@ range holding each one.
 | Term | Meaning |
 |---|---|
 | allocation scope | The pool setting: the list of fields of the pool's kind that divide its space. Stored on the pool as `allocation_scope`. |
-| scope in force | The subset of the allocation scope that the reading branch's schema defines on the kind, in scope order (FR-008). |
+| scope in force | The subset of the allocation scope that the reading branch's schema defines on the kind as a legal scope entry, in scope order (FR-008). An entry the branch does not define, or defines as optional, cardinality many or a path into a related node, is not in force there. |
 | division | One tuple of values of the scope in force, held by the holder of a tracked number. Derived at read time, never stored. |
 | holder | The node whose attribute holds a tracked number. |
 | pool's space | The values the pool can allocate: inside one of the pool's ranges, not among the attribute's `excluded_values` (single values or excluded ranges), and within the attribute's `min_value` and `max_value` when they are set. |
@@ -58,7 +58,7 @@ type NumberPoolUtilization {
   display_label: String!
   """
   Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,
-  and for a scoped pool none of whose entries the branch's schema defines.
+  and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry.
   """
   allocation_scope: [String!]!
   """
@@ -286,7 +286,7 @@ one-row-per-(record, branch-resolved value) rule.
 |---|---|---|
 | `pool_id` names no node, or a node that is not a `CoreNumberPool` | `NodeNotFoundError` | `Unable to find the node <pool_id> / CoreNumberPool in the database.` |
 | `range_id` is not a range of the pool | `ValidationError` | `The selected pool_id=<pool_id> doesn't contain the requested range_id=<range_id>` |
-| `division` given on a pool whose scope in force is empty (unscoped, or every entry unknown on the request's branch) | `ValidationError` | `The pool <pool_id> has no allocation scope in force on branch <branch>; the division filter cannot be applied` |
+| `division` given on a pool whose scope in force is empty (unscoped, or none of its entries applies on the request's branch: unknown there, or defined there as an illegal scope entry) | `ValidationError` | `The pool <pool_id> has no allocation scope in force on branch <branch>; the division filter cannot be applied` |
 | utilization only: `division` omitted on a pool whose scope in force is not empty | `ValidationError` | `The pool <pool_id> has an allocation scope in force on branch <branch>; give a division to read its utilization` |
 | utilization only: `division` omits an entry in force on the request's branch | `ValidationError` | `The division filter must give a value for every allocation scope entry in force on branch <branch>; missing: <paths>`, where `<paths>` lists the missing entries in scope order, joined with ", " |
 | a `division` entry's `path` is not in the scope in force | `ValidationError` | `The division entry '<path>' is not in the allocation scope in force on branch <branch>` |
@@ -323,7 +323,7 @@ A division's `used_default_branch` counts the division's values held on the defa
 |---|---|---|---|---|---|
 | unscoped | `[]` | pool-wide | per range | none: `count` 0, `divisions` empty, no error | refused |
 | scoped | the entries in force | the division given as `division`; refused without it (FR-011) | the division given as `division` (FR-017) | one row per division holding at least one tracked value on any live branch | accepted for paths in force; complete on the utilization query |
-| scoped, every entry unknown on the request's branch | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | refused |
+| scoped, no entry applying on the request's branch (unknown, or illegal there) | `[]` | as unscoped (FR-008) | as unscoped | as unscoped | refused |
 | no range (every range deleted) | per the rows above | `size` 0, every count and percentage 0 | `[]` | per the rows above; each division listed has `size` 0 | per the rows above |
 
 On a pool with no range, the allocations list is empty.

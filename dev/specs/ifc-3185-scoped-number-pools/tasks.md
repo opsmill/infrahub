@@ -238,11 +238,15 @@ accepted.
 - [ ] T027 [US2] Create `backend/infrahub/pools/scope.py` with `ScopeEntry`, `DivisionKey` (frozen
       dataclass: the entries and the writer's value per entry) and
       `DivisionResolver.entries_in_force(scope, schema_branch, kind)` (pure) dropping every entry
-      the branch's schema does not define on the kind, keeping scope order, carrying the
-      relationship identifier for relationship entries. `division_of` lands with IFC-3349 (T040).
+      the branch's schema does not define on the kind or defines as an illegal scope entry
+      (optional, cardinality many, a path into a related node, a list or JSON attribute, the
+      pool's own attribute: the `ScopeValidator` rules applied without raising), keeping scope
+      order, carrying the relationship identifier for relationship entries (FR-008). `division_of`
+      lands with IFC-3349 (T040).
 - [ ] T028 [P] [US2] Unit tests in `backend/tests/unit/pools/test_scope.py` for
-      `entries_in_force`: an entry the branch's schema does not define is dropped; all unknown →
-      empty tuple; order preserved; relationship entries carry the relationship identifier.
+      `entries_in_force`: an entry the branch's schema does not define is dropped; an entry defined
+      but optional, many or a related-node path on the branch is dropped; all dropped → empty
+      tuple; order preserved; relationship entries carry the relationship identifier.
 - [ ] T053 [P] [US5] Unit tests in `backend/tests/unit/pools/test_scope.py` (extend) for
       `ScopeValidator`: every refusal row of `contracts/graphql-pool-scope.md` (optional attribute,
       optional relationship, many relationship, related-node path, list kind, JSON kind, the pool's
@@ -258,9 +262,9 @@ accepted.
       `backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py`
       (extend T010's file): each refused entry through `CoreNumberPoolCreate` and `CoreNumberPoolUpdate`; a
       valid scope through create, update and upsert; a scope naming a field that exists only on
-      branch `b1` is refused on `b1` and on the default branch naming the entry; the same scope
-      saves from any branch once the field is merged into the default branch; a pool re-sent whole
-      from a branch forked before the field reached the default branch saves; a scope on a pool
+      branch `b1` saves on `b1` and is refused on the default branch naming the entry; once `b1`
+      is merged the same scope saves on the default branch too; a pool re-sent whole from a branch
+      whose schema lacks an entry is refused there and saves from a branch that has it; a scope on a pool
       whose attribute is `unique: true` is refused naming the attribute; a scope change on a
       `pool_type: Schema` pool is refused with the message of the scope contract, of the same form
       as the shorthand refusal in `test_schema_pools.py`.
@@ -280,9 +284,9 @@ accepted.
 - [ ] T058 [US5] Wire it into
       `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation`:
       `mutate_create` and `mutate_update` validate whenever the payload carries `allocation_scope`,
-      against the default branch's schema,
-      `registry.schema.get_schema_branch(name=registry.default_branch)`, whatever branch the
-      mutation runs on; `mutate_update` refuses any change on a `pool_type == Schema` pool with the
+      against the schema of the branch the mutation runs on
+      (`registry.schema.get_schema_branch(name=branch.name)`, the mutation's branch); `mutate_update`
+      refuses any change on a `pool_type == Schema` pool with the
       scope contract's message, inside `_refuse_unsupported_writes`, adding a
       `SCHEMA_POOL_SCOPE_REFUSED` constant built on `SCHEMA_POOL_EDIT_HINT` beside the two existing
       ones in `number_pools/common.py`.
@@ -310,7 +314,10 @@ from allocation or reads and runs in parallel with IFC-3348 and IFC-3349.
       `backend/tests/component/core/constraint_validators/test_scoped_pool_dependency.py`: a pool
       scoped by `site`; three loads (optional, removed, cardinality many) → three refusals naming the
       pool; a pool scoped by `["site", "pod"]` and a load on a branch forked before `pod` reached
-      the default branch, where `pod` never existed → accepted; a load that sets `unique: true` on
+      the default branch, where `pod` never existed → accepted; the scope `["site", "pod"]` saved on
+      `b1`, then a default-branch load that adds an optional `pod` to Device → accepted, `pod` stays
+      ignored on the default branch (an entry that does not apply on the loaded branch before the
+      load is not a violation, FR-010); a load that sets `unique: true` on
       the pool's own attribute while the pool carries a scope → refused naming the pool; a pool
       scoped by `site` on a generic and a load that makes `site` optional on the generic → refused
       naming the pool, while a change on a field an implementing kind declares on its own is not
@@ -824,25 +831,30 @@ No behaviour changes.
 ## IFC-3354: Verify scoped allocation and reads across branches whose schemas differ
 
 **Delivers**: User Story 6: the branch seam end to end, with two branches in every scenario:
-unknown entries dropped per read, validation against the default branch's schema from any branch,
-the full scope after merge, the scope in force reported by the dedicated queries. Defects the
+entries that do not apply on a branch ignored per read, validation against the schema of the
+branch where the pool is saved, the full scope after merge, the scope in force reported by the
+dedicated queries, and the two known limitations. Defects the
 scenarios reveal are fixed here.
 
 **Depends on**: IFC-3329, IFC-3351, IFC-3352. **Blocks**: IFC-3356.
 
 - [ ] T069 [US6] Functional tests in `backend/tests/functional/pools/test_numberpool_scoped_branch.py`
-      (`workflow_awaited_only` for the merge and the rebase): `pod` declared required on Device in
-      `b1` only; `["site", "pod"]` is refused on `b1` and on the default branch naming `pod`;
-      branch `b0` forked, then `b1` merged; `["site", "pod"]` then saves from `b0` as from the
-      default branch; the default branch allocates per site and pod and `b0` per site;
-      `InfrahubNumberPoolDivisions` on the default branch reports
-      `allocation_scope: ["site", "pod"]` with two-entry divisions and on `b0` `["site"]` with
-      one-entry divisions; a `division` filter on `pod` is accepted on the default branch and
-      refused on `b0`; after `b0` is rebased it allocates per the full scope; a node deleted on `b1`
-      but live on the default branch still counts in its division on both; the pool re-sent whole
-      from `b0` with its unchanged scope is accepted; a pool whose every entry is unknown on `b0`
-      allocates pool-wide there and the three queries report `allocation_scope: []` (User Story 6
-      scenario 3).
+      (`workflow_awaited_only` for the merge and the rebase), one per User Story 6 scenario: `pod`
+      declared required on Device in `b1` only; `["site", "pod"]` saves on `b1` and is refused on
+      the default branch naming `pod` (scenario 1); with `b1` open, `b1` allocates per site and pod
+      and the default branch per site, and `InfrahubNumberPoolDivisions` reports
+      `allocation_scope: ["site", "pod"]` with two-entry divisions on `b1` and `["site"]` with
+      one-entry divisions on the default branch, with no read failing; after `b1` merges the
+      default branch allocates per site and pod (scenario 2); a pool none of whose entries applies
+      on the reading branch (unknown there, or defined there as optional) allocates pool-wide and
+      the three queries report `allocation_scope: []` (scenario 3); `b0` forked before the merge
+      applies the full scope once rebased (scenario 4); a node deleted on `b1` but live on the
+      default branch still counts in its division on both (scenario 5); the pool re-sent unchanged
+      saves from `b1` and is refused from the default branch before the merge (scenario 6); the
+      same number received in site A and pod P1 on `b1` and in site A on the default branch, and
+      held twice in the same site and pod after the merge, is asserted as the known limitation
+      (scenario 7); `b1` deleted without merging leaves `pod` ignored on every branch with no error
+      (scenario 8).
 - [ ] T070 [US6] Extend `backend/tests/component/core/resource_manager/test_number_pool_branch_liveness.py`
       with the two lifecycle rows the spec adds: the scoped-field move on a branch (record counts in
       both divisions until merge or delete) and schema divergence (the transient double-1 under the

@@ -204,7 +204,7 @@ module, so the generic file changes in description strings only. The checker goe
 | **C. Seams** | the division threaded from the three write paths (ordinary create, template create with the applier's allocation deferred to `_process_fields_attributes`, update with `AttributePoolApplier.apply` deferred in `from_graphql`) and from the attribute-add backfill, along `AttributePoolApplier.apply` → `NumberPoolAttributeAllocator.allocate` → `CoreNumberPool.get_resource` → `NumberPoolNumberPicker.next_number` → `NumberPoolRepository.get_free` / `get_used`; `NumberUtilizationGetter` reduced to a seam over `DivisionReporter` returning one division. `DivisionKey` and `entries_in_force` come from D3's validator ticket (IFC-3348) | A, D3 (`DivisionKey`) | D1, D2 |
 | **D1. Scoped allocation** | `DivisionResolver.division_of`; `reserved_values_query(division=…, with_branch=…)`, the shared visibility constant, both anchor orders profiled, the division applied inside the fragment `NumberPoolGetFree` and `NumberPoolGetUsed` share; the lock per pool and division replacing the mutation-level pool lock on a scoped pool; the unscoped snapshot test | C | F |
 | **D2. Scoped reads** | `NumberPoolGetAllocated` on the fragment with branch and per-entry values; `NumberPoolDivisions`; the reporter's division figures over the pool and over one range; the three dedicated queries read the pool, its ranges, its rows and the reporter instead of the fixed dataset (with `NumberPoolGetAllocated` projecting provenance and filtering on the pool's space, the bounds, branch and provenance); peer display labels with the identifier fallback; range rows of the division read; the `division` filter in Cypher | B, C, D1, and IFC-3348 (`DivisionResolver.entries_in_force`) | E |
-| **D3. Scope write path** | `ScopeEntry`, `DivisionKey`, `entries_in_force`; `ScopeValidator`; the mutation validation against the default branch's schema, whatever branch the mutation runs on, on every save that carries `allocation_scope`; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back and follows the default-branch declaration (`update: ALLOWED`); `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
+| **D3. Scope write path** | `ScopeEntry`, `DivisionKey`, `entries_in_force`; `ScopeValidator`; the mutation validation against the schema of the branch where the mutation runs, on every save that carries `allocation_scope`; the schema-pool refusal; the upserter and synchronizer writes so a schema-declared scope reads back and follows the default-branch declaration (`update: ALLOWED`); `_validate_number_pool_parameters` through `ScopeValidator`; the attribute-add size check against the largest division | A (the size check also needs D2's `NumberPoolDivisions`) | — |
 | **D4. Dependency checker** | `PoolsReferencingField`; `ScopedPoolDependencyChecker` registered for the four update constraints, the two removal migrations and the two rename names (FR-032, the relationship `name` switched to `VALIDATE_CONSTRAINT`); integration-docker test | A | — |
 | **E. Mock removal** | delete `pools/number_pool_mock.py` and its call sites; the test that the three queries return the requested pool's own data and refuse an unknown `pool_id`; the SDL snapshot unchanged | D2 | F |
 | **F. Close** | SC-006 benchmark, SC-005 timed scenario, `measurements.md`; the consolidation journey through attach; user docs; knowledge entry; changelog fragments; the record of the surface decision (form A) | D1, E | ship |
@@ -397,9 +397,12 @@ diffing `schema/schema.graphql` for those types.
 - `ScopeValidator(schema_branch).validate(kind, attribute_name, scope)` → normalised entries or
   `ValidationError` naming the entry (rules in `data-model.md` §1; the required check covers
   relationships locally because `validate_schema_path` exempts `ip_namespace` on IP kinds). Called
-  by the mutation against `registry.schema.get_schema_branch(name=registry.default_branch)` on
-  every create, update or upsert that carries `allocation_scope`, whatever branch the mutation runs
-  on, and by `_validate_number_pool_parameters` (branch being loaded).
+  by the mutation against the schema of the branch the mutation runs on
+  (`registry.schema.get_schema_branch(name=branch.name)`) on every create, update or upsert that
+  carries `allocation_scope`, and by `_validate_number_pool_parameters` (branch being loaded). The
+  same rules, run by `entries_in_force` at read time, decide which entries apply on a branch
+  (FR-008): an entry the reading branch does not define, or defines as an illegal entry, is
+  ignored there.
 - `ScopedPoolDependencyChecker.check(request)` → for the changed field, `PoolsReferencingField.get`
   and a `ValueError` naming each pool that names the field. Registered in `CONSTRAINT_VALIDATOR_MAP`
   for the six names in `contracts/number-pool-parameters.md`;
@@ -453,8 +456,9 @@ diffing `schema/schema.graphql` for those types.
   entries, relationship and attribute entries, both anchor orders; the FR-001/FR-007 two-branch
   case and the fork-window case on the hop; the unknown-entry drop; the enumeration including empty
   divisions and branch-only nodes, read from the default branch with the identifier fallback; the
-  mutation refusals and the unchanged-scope round trip from a branch that lacks the entry; the
-  dependency checker's refusals, the never-existed acceptance and the rename refusal on a
+  mutation refusals on the saving branch's schema (a field only `b1` has: accepted on `b1`,
+  refused on the default branch); the dependency checker's refusals, the acceptance of a load
+  touching an entry that does not apply on the branch, and the rename refusal on a
   user-created and a schema-created pool; the schema-created pool with a scope, its reconciliation
   from the default branch and its direct-edit refusal; the attribute-add size check per
   division; `InfrahubResourcePoolAllocated` count, offset and limit and `InfrahubResourcePoolUtilization`

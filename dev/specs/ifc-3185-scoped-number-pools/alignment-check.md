@@ -98,3 +98,8 @@ recorded in the spec's Assumptions, and the form A versus form B choice recorded
   scope is rewritten by the system. User decision of 2026-10-08.
 - FR-031: on a scoped pool the lock per pool and division replaces the mutation-level pool lock; an
   unscoped pool keeps the pool-level lock. No option is left open.
+- FR-009 (validation branch), reversed on 2026-10-08 after a reviewer's comment: the scope is
+  validated against the schema of the branch where the pool is saved; every branch applies only the
+  entries its schema defines as legal scope entries (FR-008); a schema load is refused only for an
+  entry that applies on that branch (FR-010). Two known limitations are recorded in User Story 6
+  (scenarios 7 and 8). The 2026-10-07 FR-009 item above is superseded.

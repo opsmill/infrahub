@@ -33,9 +33,9 @@ changes; one SDK type regeneration.
 | a declared scope on a `unique: true` attribute | refused at schema load, naming the attribute |
 | entry not declared on the generic the attribute is inherited from | refused at schema load, naming the generic |
 | scope changed on the default branch | the schema-created pool's `allocation_scope` is updated on load; no data moves |
-| scope changed on another branch | validated there; the pool follows when the branch merges |
-| a field the declared scope names is renamed | refused at schema load, naming the field and the pool: remove the entry from the declaration, rename, then declare the scope with the new name (FR-032) |
-| scoped field made optional, removed, or made cardinality many while a pool names it, or the pool's attribute made `unique: true` while the pool carries a scope | refused at schema load, naming the pool |
+| scope changed on another branch | validated there against that branch's schema; the pool follows when the branch merges, like the bounds. A scope saved through the pool mutation applies at once on every branch where its entries are legal (FR-008); the difference is accepted |
+| a field the declared scope names is renamed, on a branch where it applies as a scope entry | refused at schema load, naming the field and the pool: remove the entry from the declaration, rename, then declare the scope with the new name (FR-032) |
+| scoped field made optional, removed, or made cardinality many while a pool names it as an entry that applies on that branch, or the pool's attribute made `unique: true` while the pool carries a scope | refused at schema load, naming the pool; an entry that does not apply on the branch before the load is not a violation (FR-010) |
 
 ## Generated contract changes
 

@@ -27,7 +27,7 @@ A string naming one field of the pool's `node` kind:
 
 Refused at save, naming the entry: an optional field; a many relationship; a path into a related
 node (`site__name__value`); an attribute of list or JSON kind; the pool's own `node_attribute`; a
-duplicate entry; an entry the default branch's schema does not define on the kind; when the pool's
+duplicate entry; an entry the saving branch's schema does not define on the kind; when the pool's
 attribute is inherited from a generic, an entry not declared on the generic itself (named with the
 generic). Refused naming the attribute: any scope on a pool whose target attribute is
 `unique: true`.
@@ -43,7 +43,10 @@ generic). Refused naming the attribute: any scope on a pool whose target attribu
 | `allocation_scope` | `list[str] \| None` | `None` | `ALLOWED` (#10917 shipped `NOT_SUPPORTED`; IFC-3351 switches it) | Same notation and rules as on the pool; validated at load against the branch being loaded |
 
 Reconciled onto the schema-created pool from the default-branch schema by
-`SchemaNumberPoolSynchronizer`; written at creation by `SchemaNumberPoolUpserter`.
+`SchemaNumberPoolSynchronizer`, like the bounds; written at creation by `SchemaNumberPoolUpserter`.
+A declaration changed on a branch reaches the pool when the branch merges, whereas a scope saved
+through the pool mutation is written at once and applies on every branch per FR-008; the
+difference is accepted, as for the bounds.
 
 ---
 
@@ -67,7 +70,9 @@ class DivisionKey:
 Produced by `pools/scope.py::DivisionResolver`:
 
 - `entries_in_force(scope, schema_branch, kind)` drops every entry the branch's schema does not
-  define on the kind (FR-008). With no entry left the pool is unscoped on that branch. The same
+  define on the kind, or defines as an illegal scope entry (optional, cardinality many, a path into
+  a related node, a list or JSON attribute, the pool's own attribute), so that only the entries
+  that apply on the branch remain (FR-008). With no entry left the pool is unscoped on that branch. The same
   function gives the three dedicated queries their `allocation_scope` and the paths a division
   filter accepts.
 - `division_of(db, node, entries)` reads the in-memory node: peer id through the relationship
@@ -162,11 +167,11 @@ Defined in [contracts/graphql-number-pool-surface.md](./contracts/graphql-number
 
 | Surface | Component | Rule | Error names |
 |---|---|---|---|
-| Pool create / update / upsert | `pools/scope.py::ScopeValidator` against the default branch's schema, whatever branch the mutation runs on, on every save that carries `allocation_scope` | FR-009 and the local rules in §1; the required check covers relationships locally; the `unique: true` and generic rules | the entry; the attribute; the generic |
+| Pool create / update / upsert | `pools/scope.py::ScopeValidator` against the schema of the branch where the mutation runs, on every save that carries `allocation_scope` | FR-009 and the local rules in §1; the required check covers relationships locally; the `unique: true` and generic rules | the entry; the attribute; the generic |
 | Schema load, number-pool attribute parameters | the same validator inside `SchemaBranch._validate_number_pool_parameters`, against the schema being loaded | same | the entry; the attribute; the generic |
 | Pool update on a schema-created pool | `InfrahubNumberPoolMutation.mutate_update` | a scope change is refused | the default-branch schema (existing message) |
-| Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`, and for the constraint that makes an attribute unique; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field; a field declared on a generic is checked on the generic | refused when a pool names the field, or when the pool's own attribute becomes `unique: true` while the pool carries a scope | the pool |
-| Schema load renaming a scoped field | the same checker, registered for `attribute.name.update` (a migration name turned into a constraint by `add_validator_for_migration`) and `relationship.name.update` (the relationship's `name` switched to `VALIDATE_CONSTRAINT`); the pools looked up by the previous name | refused when a pool's `allocation_scope` or a declared `parameters.allocation_scope` names the field (FR-032); no stored scope is rewritten | the field and the pools, with the two-step instruction (remove the entry, rename, set the scope with the new name) |
+| Schema load changing a scoped field | `core/validators/pool/scope.py::ScopedPoolDependencyChecker` registered for `attribute.optional.update`, `relationship.optional.update`, `relationship.cardinality.update`, `node.attribute.remove`, `node.relationship.remove`, and for the constraint that makes an attribute unique; reads kind and field from the schema path only, since the candidate schema no longer holds a removed field; a field declared on a generic is checked on the generic | refused when a pool names the field as an entry that applies on that branch (defined there as a legal entry before the load, FR-008), or when the pool's own attribute becomes `unique: true` while the pool carries a scope; an entry that does not apply on the branch before the load is not a violation | the pool |
+| Schema load renaming a scoped field | the same checker, registered for `attribute.name.update` (a migration name turned into a constraint by `add_validator_for_migration`) and `relationship.name.update` (the relationship's `name` switched to `VALIDATE_CONSTRAINT`); the pools looked up by the previous name | refused when a pool's `allocation_scope` or a declared `parameters.allocation_scope` names the field and the field applies on that branch as a scope entry (FR-032); no stored scope is rewritten | the field and the pools, with the two-step instruction (remove the entry, rename, set the scope with the new name) |
 | Schema load adding a scoped number-pool attribute | `NodeAttributeAddChecker` | pool size ≥ largest division's node count | existing message with the division count |
 | The three dedicated queries | `graphql/queries/number_pool.py` resolvers | `pool_id` must be a `CoreNumberPool`; `range_id` must be a range of the pool; a `division` filter needs a non-empty scope in force, paths in force, no duplicate path, and on the utilization query a value for every path in force | the pool, the range, the entry (messages in the contract) |
 

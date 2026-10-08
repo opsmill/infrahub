@@ -55,7 +55,7 @@ frozen for number pools.
 | Slice | Content | In P3 |
 |-------|---------|-------|
 | P1 | Several weighted ranges per pool, ranges declared in the schema (`dev/specs/ifc-3065-number-pool-ranges`) | Landed on this branch: the range kind and its mutations, the migration giving every existing pool one range, the shorthand mirror, allocation across the weighted ranges and the shared effective-space calculation (`backend/infrahub/pools/number_ranges.py::EffectiveSpace`). Consumed, not changed |
-| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | Attach of a provided number has landed (a `<Kind>Update` sending `value` and `from_pool`); detach has not. The consolidation journey (User Story 7) uses that attach, one node per update. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface, which lists only values of the pool's space |
+| P2 | Numbers a user gives the pool: provide, attach, detach, provenance, attribute-anchored records (`dev/specs/ifc-3184-pool-number-attach`) | Attach of a provided number has landed (a `<Kind>Update` sending `value` and `from_pool`), and so has detach (#10916, IFC-3227: a `<Kind>Update` sending `from_pool: null` ends the record of that one attribute through `NumberPoolReleaseReserved`; no bulk detach). The consolidation journey (User Story 7) uses that attach, one node per update. The provenance P2 specified for the pool queries is carried by this slice's dedicated surface, which lists only values of the pool's space |
 | P3 | `allocation_scope` on the pool and in number-pool attribute parameters; per-division allocation and utilization; the dedicated GraphQL surface | Yes |
 | Frontend | Scope on the pool form, the range view, the division view, the allocation list | No; the dedicated surface carries everything those screens need, and their migration to it is its own ticket |
 | Generic resource-pool queries | `InfrahubResourcePoolUtilization`, `InfrahubResourcePoolAllocated` and their types | Frozen for number pools: shape and meaning unchanged, descriptions gain a note |
@@ -114,7 +114,7 @@ publishes.
 | [IFC-3334](https://opsmill.atlassian.net/browse/IFC-3334) | `allocation_scope` on the pool and in the attribute parameters (#10917), merged on its own | User Story 1 scenarios 1 and 10 (the pool and parameter types); FR-014, FR-018, FR-021 |
 | [IFC-3346](https://opsmill.atlassian.net/browse/IFC-3346) | This spec directory and the written contract of the three queries; the bottom of the stack (#10911) | User Story 1; FR-015, FR-016, FR-022 to FR-030 |
 | [IFC-3347](https://opsmill.atlassian.net/browse/IFC-3347) | The three queries over a fixed dataset, so the frontend can build (#10932) | User Story 1 scenarios 2, 4 to 6, 8, 9 and 10 (the surface types) on the fixed dataset; scenarios 3 and 7 land with IFC-3329; FR-019, FR-029; SC-007, SC-009, SC-010 |
-| [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | A scope that cannot divide the pool is refused when the pool is saved, against the default branch's schema | User Story 5 scenario 1; User Story 6 scenarios 1 and 6; FR-009, FR-013, FR-020 |
+| [IFC-3348](https://opsmill.atlassian.net/browse/IFC-3348) | A scope that cannot divide the pool is refused when the pool is saved, against the schema of the branch where it is saved | User Story 5 scenario 1; User Story 6 scenarios 1 and 6; FR-009, FR-013, FR-020 |
 | [IFC-3352](https://opsmill.atlassian.net/browse/IFC-3352) | A schema change that breaks a scoped field, makes the pool's attribute unique or renames a scoped field is refused naming the pool | User Story 5 scenarios 2 to 4; FR-010, FR-032 |
 | [IFC-3349](https://opsmill.atlassian.net/browse/IFC-3349) | Allocation returns the lowest free number within the writer's division, under a lock per pool and division | User Story 2; FR-001 to FR-008, FR-031; SC-001 to SC-004 |
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | Adding a scoped attribute is refused only when a division outgrows the pool | research decision D9 |
@@ -342,24 +342,29 @@ entry a pool depends on; check every refusal names what it must.
 2. **Given** a pool scoped by `site`, **When** a schema is loaded that makes `site` optional,
    removes it, or makes it cardinality many, **Then** each load is refused and the error names the
    pool.
-3. **Given** a pool scoped by `["site", "pod"]` saved once `pod` reached the default branch's
-   schema, **When** a schema is loaded on a branch forked before `pod` reached the default branch,
-   where `pod` has never existed, **Then** the absence of `pod` there is not a violation.
+3. **Given** a pool scoped by `["site", "pod"]` saved on branch `b1`, where `pod` is a required
+   attribute of Device, **When** a schema is loaded on the default branch, where `pod` has never
+   existed, or where the load adds `pod` as an optional attribute, **Then** the load is accepted:
+   `pod` does not apply on the default branch before the load, so it is not a violation, and it
+   stays ignored there (FR-008, FR-010).
 4. **Given** a user-created pool scoped by `["site", "role"]` and a schema-created pool whose
    attribute declares `allocation_scope: ["site"]`, **When** a schema load renames the
-   relationship `site` to `location` or the attribute `role` to `function`, **Then** the load is
-   refused naming the renamed field and every pool whose scope names it, and the message tells the
-   author to remove the entry from those scopes first, rename the field, then set the scope with
-   the new name (FR-032).
+   relationship `site` to `location` or the attribute `role` to `function` on a branch where that
+   field applies as a scope entry, **Then** the load is refused naming the renamed field and every
+   pool whose scope names it, and the message tells the author to remove the entry from those
+   scopes first, rename the field, then set the scope with the new name (FR-032). On a branch where
+   the field does not apply, the rename is not refused on the pools' account.
 
 ---
 
 ### User Story 6 - Schema and pool changes travel together through branches (Priority: P3)
 
 A schema author adds a field to a kind on a branch and wants a pool scoped by it. The scope is
-accepted once the field is in the default branch's schema, whatever branch the pool is saved on.
-Allocation keeps working on every branch: a branch forked before the field reached the default
-branch ignores the entry until it is rebased, and the finer division applies there afterwards.
+accepted on that branch at once, because it is validated against the schema of the branch where it
+is saved; on the default branch the same scope is refused while the field does not exist there.
+Every branch reads the same stored scope and applies only the entries its own schema defines as
+legal scope entries: the default branch ignores the new entry until the branch merges, and the
+finer division applies there afterwards.
 
 **Why this priority**: The branch seam is what makes the feature safe in a branching system; the
 single-branch behaviour of User Stories 2 to 5 must exist before the divergence cases can be
@@ -371,25 +376,37 @@ cannot distinguish a union from an allocating-branch read.
 **Acceptance Scenarios**:
 
 1. **Given** branch `b1` whose schema declares `pod` required on Device while the default branch
-   does not, **When** scope `["site", "pod"]` is saved on `b1` or on the default branch, **Then**
-   both saves are refused naming `pod`: the scope is validated against the default branch's schema
-   (FR-009).
-2. **Given** `b1` merged, so that `pod` is in the default branch's schema, and branch `b0` forked
-   before the merge, **When** scope `["site", "pod"]` is saved on any branch, **Then** it saves;
-   **When** allocation runs on the default branch, **Then** it allocates per site and pod; on `b0`,
-   per site; and `InfrahubNumberPoolDivisions` read on the default branch reports
-   `allocation_scope: ["site", "pod"]` with two-entry divisions while on `b0` it reports `["site"]`
-   with one-entry divisions. No read fails.
-3. **Given** a scope whose every entry is unknown on the reading branch, **When** allocation and
-   the three queries run there, **Then** the pool behaves as unscoped on that branch and the
-   queries report an empty `allocation_scope`.
-4. **Given** `b0` rebased on the default branch, **When** allocation runs on `b0`, **Then** it
-   allocates per the full scope.
+   does not, **When** scope `["site", "pod"]` is saved on `b1`, **Then** it saves; **When** the
+   same scope is saved on the default branch, **Then** it is refused naming `pod`: the scope is
+   validated against the schema of the branch where it is saved (FR-009).
+2. **Given** the scope `["site", "pod"]` saved on `b1`, with `b1` still open, **When** allocation
+   runs on `b1`, **Then** it allocates per site and pod; on the default branch, per site, because
+   `pod` does not apply there; `InfrahubNumberPoolDivisions` read on `b1` reports
+   `allocation_scope: ["site", "pod"]` with two-entry divisions while on the default branch it
+   reports `["site"]` with one-entry divisions. No read fails. **When** `b1` merges, **Then** the
+   default branch allocates per site and pod.
+3. **Given** a scope none of whose entries applies on the reading branch (unknown there, or
+   defined there as an illegal scope entry), **When** allocation and the three queries run there,
+   **Then** the pool behaves as unscoped on that branch and the queries report an empty
+   `allocation_scope`.
+4. **Given** branch `b0` forked from the default branch before `b1` merged, **When** `b0` is
+   rebased on the default branch after the merge, **Then** allocation on `b0` applies the full
+   scope.
 5. **Given** a node deleted on `b1` but live on the default branch, **When** allocation runs on
    either branch, **Then** its number still counts in its division.
-6. **Given** a pool scoped by `["site", "pod"]`, **When** the whole pool is re-sent unchanged from
-   `b0`, whose schema lacks `pod`, **Then** it saves, because the default branch's schema is what
-   validates it.
+6. **Given** the pool scoped by `["site", "pod"]` saved on `b1`, **When** the whole pool is re-sent
+   unchanged from `b1`, **Then** it saves; **When** it is re-sent unchanged from the default
+   branch, whose schema lacks `pod`, **Then** it is refused naming `pod`, because the scope is
+   validated against the schema of the branch where the save happens.
+7. **Given** `b1` open with the scope `["site", "pod"]` in force there and `["site"]` in force on
+   the default branch, **When** a device in site A and pod P1 allocates on `b1` and a device in
+   site A allocates on the default branch, **Then** both can receive the same number; after `b1`
+   merges, two holders in the same site and pod hold that number. Known limitation, accepted and
+   not handled: the lock per pool and division does not prevent it, because the two writers hold
+   different division keys.
+8. **Given** `b1` deleted without merging, **When** the pool scoped by `["site", "pod"]` is read on
+   any branch, **Then** `pod` is ignored everywhere, with no cleanup and no warning. Known
+   limitation, accepted and not handled for now.
 
 ---
 
@@ -453,16 +470,24 @@ spec directory.
   The record occupies A and C until `b1` merges or is deleted, and the allocation list returns its
   rows under a filter on A and under a filter on C. A collision in C is the uniqueness constraint's
   to refuse, if one exists.
-- A scope names a field only `b1`'s schema has: refused naming the entry, on `b1` as on any other
-  branch, until the field reaches the default branch's schema (FR-009). Once it has, the scope
-  saves from any branch; a branch forked before the field reached the default branch ignores the
-  entry (FR-008) until it is rebased.
-- Transient divergence while a branch forked before a scoped field reached the default branch is
-  open: the default branch (scope in force `["site", "pod"]`) and `b0` (`["site"]`) can each hand 1
-  to a site-A device at the same moment. Under the full definition those are different divisions;
-  under the coarser reading they are the same. Accepted as the price of ignoring unknown entries;
+- A scope names a field only `b1`'s schema has: saved on `b1`, it is accepted; saved on the default
+  branch, it is refused naming the entry until the field reaches that branch (FR-009). Every branch
+  reads the same stored scope, and a branch whose schema does not define the entry, or defines it
+  as an illegal scope entry, ignores it (FR-008) until the field reaches it by merge or rebase.
+- Divergence while a branch is open: `b1` (scope in force `["site", "pod"]`) and the default branch
+  (`["site"]`) can each hand 1 to a site-A device at the same moment. Under the full definition
+  those are different divisions; under the coarser reading they are the same. The divergence lasts
+  as long as the branch is open, and after the merge two holders in the same site and pod can hold
+  the same number. Accepted as the price of ignoring entries that do not apply, and not handled;
   the lock per pool and division does not prevent it, because the two writers hold different
-  division keys.
+  division keys (User Story 6, scenario 7).
+- A branch is deleted without merging after a scope naming one of its fields was saved there: the
+  scope keeps an entry that no branch defines. It is ignored everywhere (FR-008), with no cleanup
+  and no warning. Known limitation, not handled for now (User Story 6, scenario 8).
+- A number is detached from the pool (a `<Kind>Update` sending `from_pool: null`, part 2): its
+  record ends, the allocations query no longer lists it, it counts in no figure, and the next
+  allocation in its division can return it. One attribute per update; consolidation (User Story 7)
+  needs no detach.
 - The pool's attribute is inherited from a generic: every scope entry is a required cardinality-one
   field declared on the generic itself; an entry only some implementing kinds declare is refused
   naming the generic (FR-009). The division of a node is read from the generic's fields.
@@ -543,27 +568,33 @@ specification adds.
 - **FR-007**: A record's division MUST be resolved as a union over every live branch: the record
   counts in every division its holder occupies on any non-deleting branch at the read time.
   *(PRD FR-007; User Story 2, scenario 5; User Story 6, scenario 5)*
-- **FR-008**: A scope entry that the reading branch's schema does not define MUST be ignored for
-  that read, for allocation and for the three dedicated queries alike, and MUST NOT fail the read.
-  With every entry unknown the pool behaves unscoped on that branch. This is how a branch forked
-  before an entry reached the default branch's schema copes until it is rebased. *(PRD FR-008; User
+- **FR-008**: A scope entry applies on a branch when that branch's schema defines it on the kind as
+  a legal scope entry (FR-009's rules). An entry that the reading branch's schema does not define,
+  or defines as an illegal scope entry (optional, cardinality many, a path into a related node, a
+  list or JSON attribute, the pool's own attribute), MUST be ignored for that read, for allocation
+  and for the three dedicated queries alike, and MUST NOT fail the read. With no entry applying the
+  pool behaves unscoped on that branch. This is how a branch whose schema differs from the one the
+  scope was saved on copes, until a merge or a rebase brings the field to it. *(PRD FR-008; User
   Story 6, scenarios 2 and 3)*
 - **FR-009**: A scope entry MUST be either a relationship of cardinality one or an attribute, and
   MUST be required on the kind. A scope naming an optional field, a many relationship, or a path
   into a related node MUST be refused when the pool is saved, and the error MUST name the entry.
-  Validation runs against the default branch's schema, whatever branch the mutation runs on, on
-  every save that carries `allocation_scope`: a field that exists only on a branch cannot enter a
-  scope until it is merged, and a pool re-sent whole from any branch validates against the same
-  schema. A scope on a pool whose target attribute is `unique: true` MUST be refused naming the
-  attribute. When the pool's attribute is inherited from a generic, every entry MUST be a required
-  cardinality-one field declared on the generic itself; an entry only some implementing kinds
-  declare MUST be refused naming the generic. *(PRD FR-009; Notion PRD FR-015 generic case, FR-017
-  carve-out, Notion PRD open question 2; User Story 5, scenario 1; User Story 6, scenarios 1 and 6)*
-- **FR-010**: A schema load MUST be refused when it would make a scope entry that exists in that
-  branch's schema optional, absent, or cardinality many while a pool depends on it, or make the
-  pool's target attribute `unique: true` while the pool carries a scope, and the error MUST name
-  the pool. An entry that never existed on that branch is not a violation. *(PRD FR-010; User Story
-  5, scenarios 2 and 3)*
+  Validation runs against the schema of the branch where the save happens, on every save that
+  carries `allocation_scope`: a field that exists on that branch can enter a scope there, and the
+  stored scope, read by every branch, applies on each branch per FR-008. A scope on a pool whose
+  target attribute is `unique: true` MUST be refused naming the attribute. When the pool's
+  attribute is inherited from a generic, every entry MUST be a required cardinality-one field
+  declared on the generic itself; an entry only some implementing kinds declare MUST be refused
+  naming the generic. *(PRD FR-009; Notion PRD FR-015 generic case, FR-017 carve-out, Notion PRD
+  open question 2, resolved to the saving branch; User Story 5, scenario 1; User Story 6, scenarios
+  1 and 6)*
+- **FR-010**: A schema load MUST be refused when it would make a scope entry that applies on that
+  branch (defined there as a legal entry before the load) optional, absent, or cardinality many
+  while a pool depends on it, or make the pool's target attribute `unique: true` while the pool
+  carries a scope, and the error MUST name the pool. An entry that does not apply on that branch
+  before the load is not a violation: a scope saved on `b1` as `["site", "pod"]` while the default
+  branch later adds an optional `pod` to Device loads on the default branch, and `pod` stays
+  ignored there (FR-008). *(PRD FR-010; User Story 5, scenarios 2 and 3)*
 
 #### Reporting
 
@@ -696,7 +727,8 @@ specification adds.
   entry naming the pool's own number-pool attribute, and an attribute whose value is not a single
   comparable scalar (list or JSON kinds) MUST be refused at save naming the entry.
 - **FR-021**: The scope MUST be stored on the pool as a branch-agnostic attribute, like the pool. No
-  per-branch copy of the scope exists; FR-008 is how a branch that cannot resolve an entry copes.
+  per-branch copy of the scope exists; FR-008 is how a branch whose schema does not define an entry
+  as a legal scope entry copes.
 
 #### The allocation lock
 
@@ -716,8 +748,10 @@ specification adds.
   schema-update validation, naming the renamed field and every dependent pool, and the message
   MUST tell the author to remove the entry from those scopes first, rename the field, then set the
   scope with the new name. The system never rewrites a stored scope. The refusal runs on the
-  branch being loaded, with the dependency checker of FR-010. *(Notion PRD Mechanism "Shared
-  lookup", which names rename as a caller; User Story 5, scenario 4)*
+  branch being loaded, with the dependency checker of FR-010, and only when the renamed field
+  applies on that branch as a scope entry (FR-008); a rename of a field that does not apply there
+  is not refused on the pools' account. *(Notion PRD Mechanism "Shared lookup", which names rename
+  as a caller; User Story 5, scenario 4)*
 
 ### Key Entities *(include if feature involves data)*
 
@@ -837,9 +871,10 @@ Using the repository's "ask first" list.
   deleting-branch exclusion; each record carries a provenance, absent meaning allocated; a record
   is closed once no branch reaches its attribute vertex, through the branch-agnostic retirement
   queries; a `<Kind>Update` sending `value` and `from_pool` attaches a provided number to a pool
-  (User Story 7 uses it, one node per update). Detach (`from_pool: null`) is accepted by the
-  GraphQL schema and does nothing yet. The records lookup does not yet resolve each record to its
-  holder; the division hop adds that resolution inside the same subquery.
+  (User Story 7 uses it, one node per update); a `<Kind>Update` sending `from_pool: null` detaches
+  that attribute's number, ending its record through `NumberPoolReleaseReserved` (#10916), one
+  attribute per update. The records lookup does not yet resolve each record to its holder; the
+  division hop adds that resolution inside the same subquery.
 - The scope-path notation is the one uniqueness constraints already use, parsed by the same code.
 - The writer's division is read from the node as it will be saved. On create through the ordinary
   path relationships are applied before attributes; on create through a template and on update the
@@ -869,10 +904,15 @@ Using the repository's "ask first" list.
 - Allocation locks on the pool and the writer's division on a scoped pool, and on the pool alone on
   an unscoped pool (FR-031). The division key is the normalised tuple of the writer's entry values;
   the key is taken once the division is resolved.
-- A scope is validated against the default branch's schema at pool save (Notion PRD open question
-  2, resolved to its suggested default): the pool is branch-agnostic and the schema is branch-aware,
-  so the one schema every branch descends from is the reference. At schema load the declaration is
-  validated against the schema being loaded, since it travels with the fields it names.
+- A scope is validated against the schema of the branch where the pool is saved (Notion PRD open
+  question 2 suggested the default branch; a reviewer asked to keep branch support for the feature,
+  and the user accepted): the pool stays branch-agnostic, so every branch reads the same scope and
+  applies only the entries its own schema defines as legal (FR-008). At schema load the declaration
+  is validated against the schema being loaded, since it travels with the fields it names.
+- A schema-declared scope reaches the schema-created pool from the default branch's declaration
+  only, like the bounds (research D10): a declaration changed on `b1` reaches the pool when `b1`
+  merges. This differs from a scope saved through the pool mutation, which is written at once and
+  applies on every branch per FR-008; the difference is accepted, as it is for the bounds.
 - Data mocks are acceptable on the feature branch: the contract change set ships the three
   queries over a fixed in-memory dataset so the frontend can build against the final shapes with
   plausible data, and the dataset is removed before the slice ships (FR-019).
@@ -914,8 +954,18 @@ None. Decided:
   FR-031). Decided on 2026-10-07.
 - A scope on a pool serving a generic names only fields declared on the generic (PRD FR-015).
   Decided on 2026-10-07.
-- A scope is validated against the default branch's schema at pool save (Notion PRD open question
-  2). Decided on 2026-10-07.
+- A scope is validated against the schema of the branch where the pool is saved, and each branch
+  applies only the entries its schema defines as legal scope entries (FR-008, FR-009, FR-010).
+  Notion PRD open question 2 suggested the default branch, which was decided on 2026-10-07 and
+  replaced on 2026-10-08 after a reviewer's comment that validating against the default branch
+  gives up branch support for the feature. Two known limitations are accepted: the divergence
+  while a branch is open can leave two holders of one number in the same division after the
+  merge, and a branch deleted without merging can leave an entry no branch defines (User Story 6,
+  scenarios 7 and 8).
+- A schema-declared scope is reconciled onto the schema-created pool from the default branch's
+  declaration, like the bounds; a declaration changed on a branch reaches the pool at merge. The
+  difference with a scope saved through the pool mutation, which applies at once, is accepted.
+  Decided on 2026-10-08.
 - A schema load that renames a field a scope names is refused naming the field and the pools; no
   stored scope is rewritten by the system (FR-032). Decided on 2026-10-08.
 - A pool's scope can be set, changed or cleared through the pool mutations, and a schema-declared
@@ -935,6 +985,7 @@ resolved here. Documents: the [Notion PRD](https://app.notion.com/p/opsmill/Numb
 | Base PRD | FR-011 (headline) | The utilization headline of a scoped pool reports the fullest division | No figure reports the fullest division by default: utilization is read for one division at a time, and the fullest division is the first row of the divisions list (FR-011). Changed by the user on 2026-10-07 |
 | Notion PRD | Open question 1 (provenance in the pool query) | Asks whether the generic pool query carries provenance in v1 | Provenance is carried by the dedicated `InfrahubNumberPoolAllocations`; a value outside the pool's space is not listed and counts in no figure; the generic queries are frozen (FR-028, FR-029) |
 | Notion PRD | Validation at pool save (Mechanism) | Refuses optional fields, many relationships, paths into a related node, a scope on a `unique` attribute and an entry not satisfied by the generic | Also refuses a list or JSON attribute, a duplicate entry and the pool's own number-pool attribute (FR-020). Additions, each a refusal |
+| Notion PRD | Open question 2 (which branch's schema validates scope paths at pool save) | Suggests the default branch's schema | The schema of the branch where the pool is saved (FR-009); every branch reads the same stored scope and applies only the entries its schema defines as legal (FR-008); a schema load is refused only for an entry that applies on that branch (FR-010). Decided on 2026-10-08 after a reviewer's comment; two known limitations recorded (User Story 6, scenarios 7 and 8) |
 | Base PRD | FR-010 | A schema load that makes a scoped entry optional, absent or many is refused | Also refuses a schema load that makes the pool's attribute `unique: true` while the pool carries a scope (FR-010), and a schema load that renames a field a scope names (FR-032; the Notion PRD's Mechanism "Shared lookup" names rename as a caller of the lookup without saying what a rename does). Additions, each a refusal |
 | Notion PRD | "Slicing and shipping": P3 is independent of P1 and P2 | P3 needs nothing from P1 or P2 once FR-016 is narrowed to allocation | P3 depends on P1 (the range kind, `EffectiveSpace`, range rows on the surface) and on P2 (attach for User Story 7, provenance on the allocation rows, FR-028); the surface does not ship without them |
 
@@ -953,7 +1004,7 @@ resolved here. Documents: the [Notion PRD](https://app.notion.com/p/opsmill/Numb
 | P3 PRD open question 2 (occupancy threshold) | SC-006; Assumptions |
 | P3 PRD open question 3 (enum or dropdown entries) | FR-020; Assumptions |
 | Notion PRD open question 1 (provenance in the pool query) | FR-028, FR-029; Deviations table |
-| Notion PRD open question 2 (which branch's schema validates scope paths) | FR-009; Assumptions; Open points |
+| Notion PRD open question 2 (which branch's schema validates scope paths) | FR-008, FR-009, FR-010; Assumptions; Open points; Deviations table |
 | Key entities | Key Entities, plus the division, the utilization figures, the allocation row and the dedicated surface |
 | Implementation Decisions, Testing Decisions | Carried verbatim into the plan phase; not reopened here |
 | User's delivery constraint | Delivery order, User Story 1, FR-018, FR-019, SC-007, SC-010, SC-011 |
