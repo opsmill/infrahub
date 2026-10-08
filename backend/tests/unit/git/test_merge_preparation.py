@@ -6,14 +6,18 @@ import logging
 import re
 import shutil
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
+from infrahub_sdk.exceptions import Error as SdkError
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
+from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryDivergentHistoryError, RepositoryError
+from infrahub.git.models import GitRepositoryMerge
+from infrahub.git.tasks import _read_destination_commit
 from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
 
 if TYPE_CHECKING:
@@ -482,6 +486,37 @@ async def test_a_fetch_that_fails_says_how_to_finish_the_merge(merge_clone: Merg
         await merge_clone.prepare()
 
     assert merge_clone.heads() == merge_clone.local_heads
+
+
+class UnreadableNodeClient(GraphRecordingClient):
+    """An SDK client whose every read of a node fails with an SDK error that carries no message."""
+
+    async def get(self, *args: Any, **kwargs: Any) -> Any:
+        raise SdkError
+
+
+async def test_a_trunk_commit_the_api_cannot_read_says_how_to_finish_the_merge(merge_clone: MergeClone) -> None:
+    """The read runs after the merge in Infrahub, and an SDK error can carry no message."""
+    model = GitRepositoryMerge(
+        repository_id="repository-id",
+        repository_name=REPOSITORY_NAME,
+        internal_status=RepositoryInternalStatus.ACTIVE.value,
+        source_branch=SOURCE,
+        destination_branch=DESTINATION,
+        destination_branch_id="main-id",
+        repository_kind=InfrahubKind.REPOSITORY,
+    )
+    message = (
+        f"Unable to merge {SOURCE} into {DESTINATION} in the Git repository {REPOSITORY_NAME}. Infrahub cannot read "
+        f"the commit it records for {DESTINATION} (Error). The branch is merged in Infrahub and not in Git. To finish "
+        f"the merge, merge {SOURCE} into {DESTINATION} in the Git repository. The next synchronization imports the "
+        "result."
+    )
+
+    with pytest.raises(RepositoryError, match=rf"^{re.escape(message)}$"):
+        await _read_destination_commit(
+            client=UnreadableNodeClient(branch_names=()), repo=merge_clone.repository, model=model
+        )
 
 
 async def test_a_refused_branch_keeps_the_other_branch_where_it_is(merge_clone: MergeClone) -> None:

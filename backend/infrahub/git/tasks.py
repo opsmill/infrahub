@@ -1009,7 +1009,7 @@ async def _read_destination_commit(
                 dest_branch=model.destination_branch,
                 reason=(
                     f"Infrahub cannot read the commit it records for {model.destination_branch} "
-                    f"({exc.message.rstrip('.')})."
+                    f"({(exc.message or type(exc).__name__).rstrip('.')})."
                 ),
             ),
         ) from exc
