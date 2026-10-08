@@ -8462,7 +8462,75 @@ String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
 
+type GraphQLQueryCostEstimate {
+  fields: [GraphQLQueryFieldCostEstimate!]!
+  mode: GraphQLQueryCostEstimateMode!
+  """Null when no statistics exist yet."""
+  statistics: GraphQLQueryCostStatistics
+}
+
+"""How the figures of the cost estimate were obtained."""
+enum GraphQLQueryCostEstimateMode {
+  """
+  The variables argument was given: the top-level nodes and the fields directly under them were counted.
+  """
+  COUNTED_FIRST_STEP
+  """
+  The variables argument was not given: every figure comes from the statistics, and no counting query ran.
+  """
+  STATISTICS_ONLY
+}
+
+type GraphQLQueryCostFigures {
+  database_rows: BigInt!
+  nodes: BigInt!
+  resolver_calls: BigInt!
+}
+
+"""
+Where the figures of one field come from: counted on the request's branch and time, or the statistics.
+"""
+enum GraphQLQueryCostSource {
+  COUNTED
+  STATISTICS
+}
+
+type GraphQLQueryCostStatistics {
+  """Branch the statistics describe, always the default branch."""
+  branch: String!
+  """Time the statistics refresh started reading the branch."""
+  computed_at: DateTime!
+  version: Int!
+}
+
+type GraphQLQueryFieldCostEstimate {
+  """ONE or MANY; MANY for a top-level field."""
+  cardinality: String!
+  """Null when reason is set."""
+  expected: GraphQLQueryCostFigures
+  kind: String!
+  """
+  Response keys from the top-level field, joined by '/', without edges, node and list indexes.
+  """
+  path: String!
+  """Why no estimate is given, for example 'no statistics'."""
+  reason: String
+  """Relationship identifier; null for a top-level field."""
+  relationship_identifier: String
+  source: GraphQLQueryCostSource
+  """Null when reason is set."""
+  worst_case: GraphQLQueryCostFigures
+  """
+  True when the worst case is an upper bound: statistics of the request's branch, no at time.
+  """
+  worst_case_is_bound: Boolean!
+}
+
 type GraphQLQueryReport {
+  """
+  Estimated work of the submitted query for each field. Selecting this field requires read permission, on the request's branch, for every kind in the submitted query; otherwise the request fails with the permission error that running the query would return.
+  """
+  cost_estimate: GraphQLQueryCostEstimate!
   """
   True if every operation in the submitted query resolves to uniquely identifiable nodes. An operation resolves uniquely when it filters by a required ids or hfid argument, or when every component of at least one of the model's uniqueness constraints is pinned by a required, single-valued argument. When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
   """
@@ -25640,6 +25708,10 @@ type Query {
   InfrahubGraphQLQueryReport(
     """The raw GraphQL query string to analyze."""
     query: String!
+    """
+    Values of the variables the query declares. When given (an empty object counts), the first step is counted; when omitted, the estimate is statistics only.
+    """
+    variables: GenericScalar
   ): GraphQLQueryReport!
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
