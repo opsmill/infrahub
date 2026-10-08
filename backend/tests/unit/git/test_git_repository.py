@@ -2,17 +2,19 @@ import asyncio
 import logging
 import re
 import shutil
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import nullcontext as does_not_raise
 from dataclasses import dataclass, field
+from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 from uuid import UUID
 
 import pydantic
 import pytest
-from git import Repo
+from git import Git, PushInfo, Remote, RemoteProgress, Repo
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
@@ -27,12 +29,15 @@ from infrahub.exceptions import (
     RepositoryCredentialsError,
     RepositoryError,
     RepositoryInvalidBranchError,
+    RepositoryNotFoundError,
+    RepositoryPushRejectedError,
 )
 from infrahub.git import InfrahubRepository
 from infrahub.git.base import BranchInRemote
 from infrahub.git.divergence.models import ReconciledBranch
-from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge
+from infrahub.git.models import GitRepositoryAdd, GitRepositoryMerge, PushRejectionReason
 from infrahub.git.repository import FailedImport, ImportStep, InfrahubReadOnlyRepository, PendingObjectImport
+from infrahub.git.worktree import Worktree
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -592,36 +597,64 @@ async def test_update_operational_status_writes_on_the_branch_the_object_was_res
     assert recorder.recorded_branches == ["feature-branch"]
 
 
-class _RaisingOrigin:
-    """Stand-in for GitPython's `origin` remote whose push always raises a transport-level error."""
+class _ScriptedOrigin:
+    """Stand-in for GitPython's `origin` remote whose push replays a scripted outcome.
 
-    def __init__(self, error: GitCommandError) -> None:
-        self._error = error
-
-    def push(self, *args: Any, **kwargs: Any) -> None:
-        raise self._error
-
-
-class _RaisingWorktree:
-    def __init__(self, error: GitCommandError) -> None:
-        self.remotes = type("_Remotes", (), {"origin": _RaisingOrigin(error)})()
-
-
-class _FailingPushRepository(InfrahubRepository):
-    """An InfrahubRepository whose worktree's origin push always fails with a preset transport error.
-
-    Records every operational status write so the test can assert a transient push failure leaves the
-    recorded status untouched. The double keeps it in memory; it does not persist.
+    The push hands ``stderr_lines`` to the progress handler it receives, as GitPython does with Git's
+    stderr, then raises ``error`` when one is set and returns ``push_infos`` otherwise. It records the
+    ``kill_after_timeout`` of every call.
     """
 
-    push_error: GitCommandError
+    def __init__(
+        self,
+        stderr_lines: list[str] | None = None,
+        push_infos: list[PushInfo] | None = None,
+        error: GitCommandError | None = None,
+    ) -> None:
+        self.stderr_lines = stderr_lines or []
+        self.push_infos = push_infos or []
+        self.error = error
+        self.kill_after_timeouts: list[float | None] = []
+
+    def push(self, refspec: str, progress: RemoteProgress, kill_after_timeout: float | None) -> list[PushInfo]:
+        self.kill_after_timeouts.append(kill_after_timeout)
+        handle_line = progress.new_message_handler()
+        for line in self.stderr_lines:
+            handle_line(line)
+        if self.error is not None:
+            raise self.error
+        return self.push_infos
+
+
+class _ScriptedPushRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree pushes through a scripted origin.
+
+    Records every operational status write so the test can assert a failed push leaves the recorded
+    status untouched. The double keeps it in memory; it does not persist.
+    """
+
+    origin: _ScriptedOrigin
     recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
 
     def get_git_repo_worktree(self, identifier: str) -> Any:
-        return _RaisingWorktree(self.push_error)
+        return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
         self.recorded_statuses.append(status)
+
+
+def build_scripted_push_repository(origin: _ScriptedOrigin) -> _ScriptedPushRepository:
+    return _ScriptedPushRepository(
+        id=UUIDT.new(),
+        name="push-repo",
+        default_branch="main",
+        location="https://gitlab.example.com/net/repo.git",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+        origin=origin,
+    )
 
 
 @dataclass
@@ -629,6 +662,7 @@ class PushErrorCase:
     name: str
     stderr: str
     expected: type[RepositoryError]
+    message: str | None = None
 
 
 @pytest.mark.parametrize(
@@ -645,30 +679,471 @@ class PushErrorCase:
             "Could not resolve host: gitlab.example.com",
             expected=RepositoryConnectionError,
         ),
+        PushErrorCase(
+            name="past_its_time_limit",
+            stderr="error: process killed because it timed out. kill_after_timeout=300 seconds",
+            expected=RepositoryConnectionError,
+            message=(
+                "The Git command for repository push-repo did not complete within its time limit, "
+                "please check that the remote is reachable."
+            ),
+        ),
+        PushErrorCase(
+            name="repository_not_found",
+            stderr="fatal: repository 'https://gitlab.example.com/net/repo.git/' not found",
+            expected=RepositoryNotFoundError,
+        ),
     ],
     ids=lambda c: c.name,
 )
 async def test_push_classifies_transport_error(case: PushErrorCase) -> None:
     """A transport-level push GitCommandError is classified into a typed RepositoryError without writing status."""
-    repository = _FailingPushRepository(
-        id=UUIDT.new(),
-        name="push-repo",
-        default_branch="main",
-        location="https://gitlab.example.com/net/repo.git",
-        has_origin=True,
-        cache_repo=None,
-        is_read_only=False,
-        internal_status=RepositoryInternalStatus.ACTIVE,
-        reinitialized=False,
-        infrahub_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-        push_error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr),
+    repository = build_scripted_push_repository(
+        origin=_ScriptedOrigin(error=GitCommandError(command=["git", "push"], status=128, stderr=case.stderr))
     )
 
-    with pytest.raises(case.expected):
+    with pytest.raises(case.expected) as raised:
         await repository.push("main")
 
+    assert type(raised.value) is case.expected
+    if case.message is not None:
+        assert raised.value.message == case.message
     assert repository.recorded_statuses == []
+
+
+@dataclass
+class PushRejectionCase:
+    name: str
+    flags: int
+    summary: str
+    stderr_lines: list[str]
+    reason: PushRejectionReason
+    remote_message: str
+    message: str
+
+
+PUSH_REJECTION_CASES = [
+    PushRejectionCase(
+        # A GitHub ruleset summary matches no wording of the message, so only the flags give the reason.
+        name="github_ruleset",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_REJECTED,
+        summary="[remote rejected] (push declined due to repository rule violations)\n",
+        stderr_lines=[
+            "Enumerating objects: 5, done.",
+            "Counting objects: 100% (5/5), done.",
+            "Writing objects: 100% (3/3), 290 bytes | 290.00 KiB/s, done.",
+            "Total 3 (delta 1), reused 0 (delta 0), pack-reused 0 (from 0)",
+            "remote: Resolving deltas: 100% (1/1), completed with 1 local object.",
+            "remote: error: GH013: Repository rule violations found for refs/heads/main.        ",
+            "remote: Review all repository rules at https://github.com/opsmill/net-repo/rules?ref=refs%2Fheads%2Fmain",
+            "remote: ",
+            "remote: - Changes must be made through a pull request.",
+            "To https://github.com/opsmill/net-repo.git",
+            "error: failed to push some refs to 'https://github.com/opsmill/net-repo.git'",
+        ],
+        reason=PushRejectionReason.POLICY,
+        remote_message=(
+            "remote: error: GH013: Repository rule violations found for refs/heads/main.\n"
+            "remote: Review all repository rules at https://github.com/opsmill/net-repo/rules?ref=refs%2Fheads%2Fmain\n"
+            "remote:\n"
+            "remote: - Changes must be made through a pull request."
+        ),
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote rejected] (push declined due to repository rule violations)"
+        ),
+    ),
+    PushRejectionCase(
+        # The lines that Git 2.56 sends when the ref is locked, as by another push that changes it first.
+        name="ref_locked_on_the_remote",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_REJECTED,
+        summary="[remote rejected] (reference already exists)\n",
+        stderr_lines=[
+            "remote: error: cannot lock ref 'refs/heads/main': Unable to create '/srv/git/net/repo.git/./refs/heads/"
+            "main.lock': File exists.",
+            "remote: ",
+            "remote: Another git process seems to be running in this repository, or the lock file may be stale",
+            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
+        ],
+        reason=PushRejectionReason.REF_UPDATE_FAILED,
+        remote_message=(
+            "remote: error: cannot lock ref 'refs/heads/main': Unable to create '/srv/git/net/repo.git/./refs/heads/"
+            "main.lock': File exists.\n"
+            "remote:\n"
+            "remote: Another git process seems to be running in this repository, or the lock file may be stale"
+        ),
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote rejected] (reference already exists)"
+        ),
+    ),
+    PushRejectionCase(
+        name="remote_failure",
+        flags=PushInfo.ERROR | PushInfo.REMOTE_FAILURE,
+        summary="[remote failure] (remote failed to report status)\n",
+        stderr_lines=[
+            "remote: fatal: Out of memory, malloc failed (tried to allocate 1048576 bytes)",
+            "error: failed to push some refs to 'https://gitlab.example.com/net/repo.git'",
+        ],
+        reason=PushRejectionReason.UNKNOWN,
+        remote_message="remote: fatal: Out of memory, malloc failed (tried to allocate 1048576 bytes)",
+        message=(
+            "Unable to push the branch main to the remote for repository push-repo: "
+            "[remote failure] (remote failed to report status)"
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", PUSH_REJECTION_CASES, ids=lambda c: c.name)
+async def test_push_rejection_carries_the_reason_and_the_remote_lines(case: PushRejectionCase, tmp_path: Path) -> None:
+    """A rejected ref raises a typed error with its reason from the push result and the remote's lines, and writes no status."""
+    remote = Remote(repo=Repo.init(tmp_path / "local"), name="origin")
+    push_info = PushInfo(
+        flags=case.flags, local_ref=None, remote_ref_string="refs/heads/main", remote=remote, summary=case.summary
+    )
+    repository = build_scripted_push_repository(
+        origin=_ScriptedOrigin(stderr_lines=case.stderr_lines, push_infos=[push_info])
+    )
+
+    with pytest.raises(RepositoryPushRejectedError, match=rf"^{re.escape(case.message)}$") as raised:
+        await repository.push("main")
+
+    assert raised.value.reason == case.reason
+    assert raised.value.remote_message == case.remote_message
+    assert repository.recorded_statuses == []
+
+
+def _decline_in_a_pre_receive_hook(remote_directory: Path, source_directory: Path) -> None:
+    hooks_directory = remote_directory / "test-hooks"
+    hooks_directory.mkdir()
+    hook = hooks_directory / "pre-receive"
+    hook.write_text(
+        "#!/bin/sh\necho 'branch main is protected' >&2\necho 'error: 2 commits are not signed' >&2\nexit 1\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    # Set in the remote's own configuration, which wins over any hooks path of the host's Git configuration.
+    with Repo(remote_directory).config_writer() as cfg:
+        cfg.set_value("core", "hooksPath", str(hooks_directory))
+
+
+def _advance_the_remote(remote_directory: Path, source_directory: Path) -> None:
+    source = Repo(source_directory)
+    (source_directory / "data.txt").write_text("v2\n", encoding="utf-8")
+    source.index.add(["data.txt"])
+    source.index.commit("commit 2")
+    Repo(remote_directory).git.fetch(str(source_directory), "main:main")
+
+
+@dataclass
+class RealPushRejectionCase:
+    name: str
+    refuse: Callable[[Path, Path], None]
+    """Makes the remote refuse the next push to main, given the remote and the source it was cloned from."""
+    reason: PushRejectionReason
+    remote_message: str
+    message: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RealPushRejectionCase(
+            name="pre_receive_hook_declines",
+            refuse=_decline_in_a_pre_receive_hook,
+            reason=PushRejectionReason.POLICY,
+            # The second line has the shape of a progress line, which the base progress handler drops.
+            remote_message="remote: branch main is protected\nremote: error: 2 commits are not signed",
+            message=(
+                "Unable to push the branch main to the remote for repository push-repo: the remote refused the "
+                "update (for example missing push permission or branch protection): "
+                "[remote rejected] (pre-receive hook declined)"
+            ),
+        ),
+        RealPushRejectionCase(
+            name="remote_has_new_commits",
+            refuse=_advance_the_remote,
+            reason=PushRejectionReason.NON_FAST_FORWARD,
+            remote_message="",
+            message=(
+                "Unable to push the branch main to the remote for repository push-repo: the remote branch has "
+                "commits that are missing locally (non-fast-forward): [rejected] (fetch first)"
+            ),
+        ),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_refused_by_a_git_remote_carries_the_reason_and_the_remote_lines(
+    case: RealPushRejectionCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A push that a real Git remote refuses gives the reason and the remote's lines that Git itself reports."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    remote_directory = tmp_path / "remote.git"
+    Repo(source_directory).clone(str(remote_directory), bare=True)
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="push-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    case.refuse(remote_directory, source_directory)
+    local = repository.get_git_repo_main()
+    (Path(str(local.working_dir)) / "local.txt").write_text("local\n", encoding="utf-8")
+    local.index.add(["local.txt"])
+    local.index.commit("local change")
+    recorder = RecordingGraphqlClient()
+    repository.client = recorder
+
+    with pytest.raises(RepositoryPushRejectedError, match=rf"^{re.escape(case.message)}$") as raised:
+        await repository.push("main")
+
+    assert raised.value.reason == case.reason
+    assert raised.value.remote_message == case.remote_message
+    # The status write is a GraphQL call, so no call at all means no status was written.
+    assert recorder.recorded_branches == []
+
+
+@dataclass
+class PushTimeoutCase:
+    name: str
+    push_kwargs: dict[str, float]
+    kill_after_timeout: float | None
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        PushTimeoutCase(name="no_time_limit_by_default", push_kwargs={}, kill_after_timeout=None),
+        PushTimeoutCase(name="time_limit_passed_to_git", push_kwargs={"timeout_seconds": 300}, kill_after_timeout=300),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
+    origin = _ScriptedOrigin()
+    repository = build_scripted_push_repository(origin=origin)
+
+    assert await repository.push("main", **case.push_kwargs) is True
+
+    assert origin.kill_after_timeouts == [case.kill_after_timeout]
+
+
+class _GitWrappedRepository(InfrahubRepository):
+    """An InfrahubRepository whose main clone runs every Git command through the wrapper that the test sets."""
+
+    git_wrapper: Callable[[str], Git]
+
+    def get_git_repo_main(self) -> Repo:
+        repo = super().get_git_repo_main()
+        repo.git = self.git_wrapper(str(repo.working_dir))
+        return repo
+
+
+async def clone_with_git_wrapper(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, git_wrapper: Callable[[str], Git]
+) -> _GitWrappedRepository:
+    """Clone a local remote that has a `feature` branch, then open the clone with the given Git wrapper."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    source = Repo(source_directory)
+    source.git.checkout("-b", "feature")
+    (source_directory / "feature.txt").write_text("feature\n", encoding="utf-8")
+    source.index.add(["feature.txt"])
+    source.index.commit("feature commit")
+    source.git.checkout("main")
+    remote_directory = tmp_path / "remote.git"
+    source.clone(str(remote_directory), bare=True)
+    clone = await clone_repository(
+        id=UUIDT.new(),
+        name="local-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    return _GitWrappedRepository(
+        id=clone.id,
+        name=clone.name,
+        location=clone.location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+        client=clone.client,
+        git_wrapper=git_wrapper,
+    )
+
+
+class _TimeLimitGit(Git):
+    """Fails every Git command as GitPython does when its watchdog stops a command at its time limit."""
+
+    def execute(self, command: Any, *args: Any, **kwargs: Any) -> Any:
+        quoted = " ".join(str(part) for part in command)
+        raise GitCommandError(
+            command, -9, f'Timeout: the command "{quoted}" did not complete in {kwargs["kill_after_timeout"]:g} secs.'
+        )
+
+
+async def test_create_commit_worktree_reports_a_worktree_listing_past_its_time_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree list` past its time limit raises a RepositoryError that names no argument or worker path."""
+    repository = await clone_with_git_wrapper(tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=_TimeLimitGit)
+
+    with pytest.raises(
+        RepositoryError,
+        match=r"^The command git worktree for repository local-repo did not complete within 7 seconds\.$",
+    ) as raised:
+        repository.create_commit_worktree(commit="abc", timeout_seconds=7)
+
+    assert type(raised.value) is RepositoryError
+
+
+async def clone_with_a_slow_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[InfrahubRepository, str]:
+    """Clone a local remote, and return a commit whose checkout runs a smudge filter that waits one second."""
+    source_directory = _init_source_repository(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    source = Repo(source_directory)
+    source.git.checkout("-b", "slow")
+    (source_directory / ".gitattributes").write_text("slow.txt filter=slow\n", encoding="utf-8")
+    (source_directory / "slow.txt").write_text("slow\n", encoding="utf-8")
+    source.index.add([".gitattributes", "slow.txt"])
+    commit = source.index.commit("slow checkout").hexsha
+    source.git.checkout("main")
+    remote_directory = tmp_path / "remote.git"
+    source.clone(str(remote_directory), bare=True)
+    repository = await clone_repository(
+        id=UUIDT.new(),
+        name="local-repo",
+        location=str(remote_directory),
+        default_branch="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+    with repository.get_git_repo_main().config_writer() as git_config:
+        git_config.set_value('filter "slow"', "smudge", "sleep 1; cat")
+        git_config.set_value('filter "slow"', "clean", "cat")
+    return repository, commit
+
+
+async def test_create_commit_worktree_removes_an_add_past_its_time_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree add` stopped at its time limit leaves no locked worktree, so the next call creates it."""
+    repository, commit = await clone_with_a_slow_checkout(tmp_path=tmp_path, monkeypatch=monkeypatch)
+
+    with pytest.raises(
+        RepositoryError,
+        match=r"^The command git worktree for repository local-repo did not complete within 0\.3 seconds\.$",
+    ):
+        repository.create_commit_worktree(commit=commit, timeout_seconds=0.3)
+
+    worktree = repository.create_commit_worktree(commit=commit)
+
+    assert isinstance(worktree, Worktree)
+    assert (worktree.directory / "slow.txt").read_text(encoding="utf-8") == "slow\n"
+
+
+class _WorktreeCheckMissesRepository(InfrahubRepository):
+    """An InfrahubRepository whose worktree check misses every worktree, as when another process adds one in between."""
+
+    def has_worktree(self, identifier: str, timeout_seconds: float | None = None) -> bool:
+        return False
+
+
+async def test_create_commit_worktree_keeps_a_worktree_that_already_exists(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A `git worktree add` that fails for a reason other than its time limit removes no worktree."""
+    repository, commit = await clone_with_a_slow_checkout(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    worktree = repository.create_commit_worktree(commit=commit)
+    assert isinstance(worktree, Worktree)
+    racing_repository = _WorktreeCheckMissesRepository(
+        id=repository.id,
+        name=repository.name,
+        location=repository.location,
+        default_branch="main",
+        has_origin=True,
+        internal_status=RepositoryInternalStatus.ACTIVE,
+        infrahub_branch_name="main",
+        client=repository.client,
+    )
+
+    with pytest.raises(RepositoryError, match="already exists"):
+        racing_repository.create_commit_worktree(commit=commit, timeout_seconds=7)
+
+    assert repository.has_worktree(identifier=commit) is True
+    assert (worktree.directory / "slow.txt").read_text(encoding="utf-8") == "slow\n"
+
+
+TIME_LIMIT_SECONDS = 7.0
+
+
+class _RecordingGit(Git):
+    """Runs every Git command for real and keeps its subcommand with the time limit it received."""
+
+    def __init__(self, working_dir: str | None, calls: list[tuple[str, float | None]]) -> None:
+        super().__init__(working_dir)
+        self.calls = calls
+
+    def execute(self, command: Any, *args: Any, **kwargs: Any) -> Any:
+        self.calls.append((command[1], kwargs.get("kill_after_timeout")))
+        return super().execute(command, *args, **kwargs)
+
+
+async def _check_for_a_worktree(repository: _GitWrappedRepository) -> None:
+    repository.has_worktree(identifier="feature", timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _list_the_worktrees(repository: _GitWrappedRepository) -> None:
+    repository.get_worktrees(timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _create_a_commit_worktree(repository: _GitWrappedRepository) -> None:
+    commit = Repo(repository.directory_default).commit("origin/feature").hexsha
+    repository.create_commit_worktree(commit=commit, timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _delete_the_remote_branch(repository: _GitWrappedRepository) -> None:
+    await repository.delete_remote_branch(branch_name="feature", timeout_seconds=TIME_LIMIT_SECONDS)
+
+
+async def _reset_the_main_clone(repository: _GitWrappedRepository) -> None:
+    clone = repository.get_git_repo_main()
+    repository._reset_to_pre_merge_commit(
+        repo=clone, dest_branch="main", commit_before=clone.head.commit.hexsha, timeout_seconds=TIME_LIMIT_SECONDS
+    )
+
+
+@dataclass
+class TimeLimitForwardingCase:
+    name: str
+    run: Callable[[_GitWrappedRepository], Awaitable[None]]
+    git_commands: list[str]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        TimeLimitForwardingCase(name="has_worktree", run=_check_for_a_worktree, git_commands=["worktree"]),
+        TimeLimitForwardingCase(name="get_worktrees", run=_list_the_worktrees, git_commands=["worktree"]),
+        TimeLimitForwardingCase(
+            name="create_commit_worktree", run=_create_a_commit_worktree, git_commands=["worktree", "worktree"]
+        ),
+        TimeLimitForwardingCase(name="delete_remote_branch", run=_delete_the_remote_branch, git_commands=["push"]),
+        TimeLimitForwardingCase(name="reset_to_pre_merge_commit", run=_reset_the_main_clone, git_commands=["reset"]),
+    ],
+    ids=lambda c: c.name,
+)
+async def test_each_git_command_receives_the_time_limit_of_the_call(
+    case: TimeLimitForwardingCase, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[str, float | None]] = []
+    repository = await clone_with_git_wrapper(
+        tmp_path=tmp_path, monkeypatch=monkeypatch, git_wrapper=partial(_RecordingGit, calls=calls)
+    )
+    calls.clear()
+
+    await case.run(repository)
+
+    assert calls == [(command, TIME_LIMIT_SECONDS) for command in case.git_commands]
 
 
 class _BranchSyncRepository(InfrahubRepository):
@@ -681,7 +1156,7 @@ class _BranchSyncRepository(InfrahubRepository):
     connection_error_branch: str
     git_pushed_branches: list[str] = Field(default_factory=list)
 
-    async def fetch(self) -> bool:
+    async def fetch(self, timeout_seconds: float | None = None) -> bool:
         return True
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
@@ -726,7 +1201,7 @@ class _BranchSyncRepository(InfrahubRepository):
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         return f"commit-{branch_name}"
 
-    def create_commit_worktree(self, commit: str) -> bool:
+    def create_commit_worktree(self, commit: str, timeout_seconds: float | None = None) -> bool:
         return True
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:

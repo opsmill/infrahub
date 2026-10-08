@@ -193,7 +193,9 @@ must become "action required" after one attempt, with no automatic retry.
    runs after the attempt went stale, **Then** a new attempt starts with no user action, and a user
    can also retry at once.
 6. **Given** a push to a remote that stops answering, **When** the bound of the Git command expires,
-   **Then** the attempt fails as transient and does not hang.
+   **Then** the attempt fails as transient and does not hang. Note: the current design does not meet
+   this yet, because its time limit does not stop a hung push. This is the open point of
+   `research.md` R6.
 
 ---
 
@@ -449,7 +451,9 @@ system, and the new delivery path must keep them true.*
   MUST NOT automatically retry a credential, permission or branch-protection failure. A failure
   after the remote accepted the push counts as transient. Every Git command of a delivery attempt,
   outside the repository import, MUST be bounded in time, so that a remote that stops answering
-  produces a transient failure. FR-027 covers the import.
+  produces a transient failure. FR-027 covers the import. Note: the time limit of the current design
+  does not yet stop a hung fetch or push, or a direct Git call in the runtime image. This is the open
+  point of `research.md` R6.
 - **FR-005**: The system MUST keep, per repository and destination branch, an ordered queue of
   merges awaiting delivery. A later merge MUST be appended and MUST NOT displace an earlier one. An
   entry MUST hold the merge inputs, the remote source branch and the source commit that Infrahub

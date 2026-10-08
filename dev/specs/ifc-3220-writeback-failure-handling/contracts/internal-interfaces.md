@@ -169,13 +169,16 @@ says that the clone on this worker has no `origin`, with no path. The service cl
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
 
-Every port method that runs Git bounds each of its Git commands with GitPython's
-`kill_after_timeout` (`research.md` R6):
+Every port method that runs Git passes a time limit to each of its Git commands, as GitPython's
+`kill_after_timeout` (`research.md` R6). The limit does not stop a hung fetch or push, and in the
+runtime image it stops no direct Git call (open point of R6):
 
 - `fetch` by `FETCH_TIMEOUT_SECONDS`, and `push` and `delete_remote_branch` by
-  `PUSH_TIMEOUT_SECONDS`. A timeout of `fetch` or `push` raises `RepositoryConnectionError`, because
-  `_raise_enriched_error_static` maps GitPython's "process killed because it timed out" text to it
-  (section 10).
+  `PUSH_TIMEOUT_SECONDS`. A `fetch` or a `push` past its limit raises `RepositoryConnectionError`
+  once Git ends, because `_raise_enriched_error_static` maps GitPython's "process killed because it
+  timed out" text to it (section 10). `delete_remote_branch` is a push too: it types its errors as
+  `push` does. Past its limit it raises `RepositoryConnectionError`, but only where GitPython's
+  watchdog can stop Git: the watchdog needs `ps`, which the runtime image does not have.
 - `remote_head`, `is_ancestor`, `replay`, `reset` and `record` by `LOCAL_GIT_TIMEOUT_SECONDS`, for
   each local command. `remote_head` reads with `git rev-parse`, not through GitPython's object
   database. A timeout raises `RepositoryError`, with a message that names the command and the bound
@@ -514,13 +517,13 @@ Contract:
 
 | Component | Change |
 |---|---|
-| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags and the joined `remote:` lines. Message wording unchanged. |
+| `git/repository.py::InfrahubRepository.push` | Passes a `RemoteProgress` and `kill_after_timeout`. A per-ref rejection raises `RepositoryPushRejectedError`, with the reason from the `PushInfo` flags, and from the summary for Git's wording of a ref it cannot lock or update, and the joined `remote:` lines. Message wording unchanged. |
 | `git/base.py::InfrahubRepositoryBase.fetch` | Accepts a timeout and passes it as `kill_after_timeout`. |
-| `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. |
+| `git/base.py::InfrahubRepositoryBase.create_commit_worktree`, `git/base.py::InfrahubRepositoryBase.delete_remote_branch` | Accept a timeout and pass it as `kill_after_timeout` to each Git command they run. Default unchanged. `create_commit_worktree` raises `RepositoryError` for a failed `worktree list` too, through `_raise_enriched_error_static`. After a `worktree add` stopped by its time limit, it removes the worktree that Git keeps locked as "initializing" (`git worktree remove -f -f`, best effort), and after any other failure it removes nothing. `delete_remote_branch` types its errors as `push` does (`is_write_operation=True`) and never writes the operational status. |
 | `git/repository.py::InfrahubRepository._reset_to_pre_merge_commit` | Accepts a timeout and passes it as `kill_after_timeout`. Still never raises. |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found", and `RepositoryConnectionError` for GitPython's "process killed because it timed out". |
-| `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status with `isinstance`, most specific first. |
-| `message_bus/operations/git/repository.py::connectivity` | Same `isinstance` resolution. |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error_static` | Raises `RepositoryTLSError` for the TLS markers, `RepositoryNotFoundError` for "Repository not found" and for Git's own HTTP 404 line (`GIT_HTTP_REPOSITORY_NOT_FOUND`), and `RepositoryConnectionError` for GitPython's "process killed because it timed out". For GitPython's "Timeout: the command ... did not complete" text of a direct Git call, raises `RepositoryError` with the Git command and the limit, not the arguments, or `RepositoryConnectionError` for a write operation. |
+| `git/base.py::InfrahubRepositoryBase._raise_enriched_error` | Resolves the status through `git/base.py::operational_status_for_error`, which matches with `isinstance`, most specific first. |
+| `message_bus/operations/git/repository.py::connectivity` | Resolves the status through the same function. |
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |

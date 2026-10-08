@@ -362,7 +362,7 @@ Under the repository lock:
    non-empty queue, or held work with no live release lease. If there is nothing to do, return
    `nothing-pending`. If only held work remains, take a lease through `lease_owed_release`, leave
    the repository lock, and go to step 16.
-2. **Fetch**, bounded in time (R6). Let **H** be the remote head of the destination, and **R** the
+2. **Fetch**, with its time limit (R6). Let **H** be the remote head of the destination, and **R** the
    commit recorded for the destination. Move `last_progress_at`. On a clone with no `origin`, the
    fetch raises, and the attempt stops here, before any check. It pushes nothing, records nothing
    and keeps every entry (R3). R5 classifies the failure as `unclassified`.
@@ -378,8 +378,9 @@ Under the repository lock:
    replay. Merge each remaining source commit, in queue order, with the same `--no-ff` rule as today
    (`git.use_explicit_merge_commit`). On a conflict, abort, reset to the pre-attempt commit, and mark
    the queue unreplayable with the cause `replay-conflict`, naming the entry.
-7. **Push** once, if any entry was replayed, bounded in time. On a failure, reset the worktree to
-   the pre-attempt commit (FR-002) and classify the failure (R5). Move `last_progress_at`.
+7. **Push** once, if any entry was replayed, with its time limit (R6). On a failure, reset the
+   worktree to the pre-attempt commit (FR-002) and classify the failure (R5). Move
+   `last_progress_at`.
 8. Let **M** be the worktree head. Because step 6 always resets to H, M is H on the observation
    path, and H plus the replayed merges otherwise.
 9. **Import obligation.** If H is not R, or an import is already owed, save
@@ -476,7 +477,7 @@ Git (PRD testing decisions). The concrete adapter wraps one `InfrahubRepository`
 | Port method | Built on |
 |---|---|
 | `fetch()` | `InfrahubRepositoryBase.fetch`, with `kill_after_timeout`. That method returns `False` on a clone with no `origin`. The adapter then raises `RepositoryError` and never treats it as a fetch. |
-| `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, bounded. Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
+| `remote_head(git_branch)` | `git rev-parse refs/remotes/origin/<branch>`, with its time limit (R6). Not `get_commit_value(remote=True)`: it reads through GitPython's object database, whose long-lived `cat-file` process no timeout covers. |
 | `is_ancestor(ancestor, descendant)` | `git merge-base --is-ancestor`. Exit 1 means no. A missing object means no. Any other failure raises. Shared with IFC-3210 (R19). |
 | `replay(base, commits)` | `reset --hard`, then `merge` per commit, aborting on a conflict. |
 | `push()` | `InfrahubRepository.push`, extended by R5, with `kill_after_timeout`. |
@@ -500,13 +501,14 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | Stage | Exception | Cause | Retried automatically |
 |---|---|---|---|
 | enqueue | any, while `merge_git_repository` writes the entry that the dispatcher could not write (R3) | left unchanged. The entry is not in the queue, and the store just failed, so the attempt records nothing on the repository. | yes. The task retry runs the write again before it delivers. After the final attempt, the run ends `Failed` with an error-level log line that names the repository, the source branch and the source commit (R3). |
-| fetch, push | `RepositoryConnectionError` (unreachable, timeout, 5xx, a killed Git command) | `remote-unreachable` | yes |
+| fetch, push | `RepositoryConnectionError` (unreachable, timeout, 5xx, a fetch or a push past its time limit, known only after Git ends) | `remote-unreachable` | yes |
 | fetch, push | `RepositoryNotFoundError` (new subtype) | `not-found` | no |
 | fetch, push | `RepositoryTLSError` (new subtype) | `certificate` | no |
 | fetch, push | `RepositoryCredentialsError` | `credentials` | no |
 | fetch | `RepositoryError` for a clone with no `origin` (R3) | `unclassified` | no. An automatic retry runs on the same worker and fails again. The message names the repository and says that the clone on this worker has no `origin`. It names no path. |
 | push | `RepositoryPermissionError` | `permission` | no |
-| push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`) | `permission` | no |
+| push | `RepositoryPushRejectedError`, reason `policy` (`REMOTE_REJECTED`, any other summary) | `permission` | no |
+| push | `RepositoryPushRejectedError`, reason `ref-update-failed` (`REMOTE_REJECTED`, with Git's wording for a ref it cannot lock or update) | `remote-advanced` | yes. Another push changed or locked the ref, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
@@ -525,23 +527,40 @@ flags classify it as `REMOTE_REJECTED`. `RepositoryPushRejectedError` subclasses
 so every existing `except RepositoryError` keeps working, and its message keeps today's wording,
 which `test_git_live_remote.py` asserts.
 
+**A ref that the remote cannot lock or update.** The remote's Git also sends `[remote rejected]` when
+it cannot lock or update the ref, as when another push changed the ref first. That is not a policy.
+The wording of the summary depends on the Git version of the remote: "failed to lock", "failed to
+update ref", "reference already exists" or "incorrect old value provided". The push reads these
+words from the summary and gives the reason `ref-update-failed`, which is retried. Every other
+`[remote rejected]` stays `policy`.
+
 **Why two new subtypes.** A certificate failure and "Repository not found" are
 `RepositoryConnectionError` today, told apart only by their message. Retrying either is pointless.
-`RepositoryTLSError` and `RepositoryNotFoundError` subclass `RepositoryConnectionError`. Both
-operational-status maps (R0) move from an exact-type lookup to an `isinstance` lookup, most specific
-first, so both subtypes keep `ERROR_CONNECTION`.
+`RepositoryTLSError` and `RepositoryNotFoundError` subclass `RepositoryConnectionError`. The two
+exact-type maps of R0 become one function, `git/base.py::operational_status_for_error`, which both
+call sites use. It matches with `isinstance`, most specific first, so both subtypes keep
+`ERROR_CONNECTION`.
 
-**A killed Git command.** When `kill_after_timeout` expires, GitPython kills the process and reports
-"process killed because it timed out" (`git/cmd.py::handle_process_output`). Today no rule of
-`_raise_enriched_error_static` matches that text, so it would become a plain `RepositoryError`. The
-text joins the connection markers, so a timeout of the fetch or the push raises
-`RepositoryConnectionError` and is retried.
+**Git's own not-found line.** For a fetch or a push, GitPython hands `_raise_enriched_error_static`
+only the lines that start with `error:` or `fatal:`, so the host's `remote: Repository not found.`
+line never reaches it. Git's own line for an HTTP 404, `fatal: repository '<url>' not found`, also
+raises `RepositoryNotFoundError` (`GIT_HTTP_REPOSITORY_NOT_FOUND`). Git removes the credentials from
+that URL. Effect: a fetch of a missing repository now records `error-connection` and the connection
+message, where it recorded `error` and the raw Git line before.
+
+**A fetch or a push past its time limit.** When Git ends after `kill_after_timeout` passed and Git
+failed, GitPython adds "process killed because it timed out" to the error lines
+(`git/cmd.py::handle_process_output`). `_raise_enriched_error_static` raises
+`RepositoryConnectionError` for that text, with a message of its own, so the attempt is retried.
+GitPython does not stop the command at the limit, so this classification comes only after Git ends
+(R6).
 
 **A killed local Git command.** It is not a remote fault, so it must not become
 `remote-unreachable`. GitPython reports it with a different text, "Timeout: the command ... did not
-complete" (`git/cmd.py::Git.execute`), which names the command with its arguments. The adapter
-raises a `RepositoryError` whose message names the command and the bound, but not the arguments,
-which can name worker paths. At the replay, and in the checks before it, that error is
+complete" (`git/cmd.py::Git.execute`), which names the command with its arguments.
+`_raise_enriched_error_static` turns that text into a `RepositoryError` whose message names the Git
+command and the limit, but not the arguments, which can name worker paths (`GIT_CALL_TIME_LIMIT`).
+`create_commit_worktree` raises that error for its `worktree list` and its `worktree add`. At the replay, and in the checks before it, that error is
 `unclassified`: the status becomes `action-required`, and the user retries. At the record, the
 `record` row applies: the remote already has the content, so the failure is `record-failed` and is
 retried.
@@ -566,7 +585,7 @@ through one scrubber that removes `user:password@` from URLs, since a location c
 
 ---
 
-## R6. The automatic retry, and bounded Git commands
+## R6. The automatic retry, and time limits on Git commands
 
 **Decision**: the delivery attempt is a Prefect `@task` with `retries=3`,
 `retry_delay_seconds=[30, 120, 300]` and a `retry_condition_fn` that retries only a failure
@@ -580,8 +599,8 @@ the final attempt. Tests override the delays with `with_options(retry_delay_seco
 server restart. The PRD assumes that real outages last days, so a longer automatic window buys
 nothing and holds a worker slot.
 
-**Bounded Git commands.** The adapter passes GitPython's `kill_after_timeout` to every Git command
-that it runs, so no command can hold the repository lock for ever:
+**Time limits on Git commands.** The adapter passes GitPython's `kill_after_timeout` to every Git
+command that it runs. The limit does not stop every command; see "What the limit does" below.
 
 | Command | Bound |
 |---|---|
@@ -589,12 +608,34 @@ that it runs, so no command can hold the repository lock for ever:
 | The push, and the deletion of a source branch at R4 step 13, which is a push too | `PUSH_TIMEOUT_SECONDS`, 300 seconds |
 | Each local command: `rev-parse`, in `remote_head`; `merge-base --is-ancestor`; `reset --hard`, in `replay` and in `reset`; `merge` and `merge --abort`, in `replay`; `worktree list` and `worktree add`, in `create_commit_worktree` for `record` | `LOCAL_GIT_TIMEOUT_SECONDS`, 120 seconds |
 
-A fetch or a push to a remote that accepts the connection and never answers fails as
-`remote-unreachable`, and the chain retries it. A local command normally ends in seconds, so its
-bound stops only a command that is stuck. A killed local command raises a `RepositoryError` that
-names the command, and R5 classifies it. `reset` never raises: a killed reset is logged like any
-failed reset, and the failure of the attempt still propagates. The bounds live in
-`git/writeback/constants.py`.
+**What the limit does** (GitPython 3.1.62):
+
+- **A fetch or a push past its limit is classified only after Git ends.** The fetch and the push run
+  through `Remote.fetch` and `Remote.push`. When the limit passes, `AutoInterrupt._terminate` closes
+  the pipes before it kills Git, and the close waits until Git ends. When Git then fails, GitPython
+  adds "process killed because it timed out" to the error lines, and R5 makes it
+  `remote-unreachable`, which the chain retries. When Git then succeeds, the call returns normally.
+- **A hung fetch or push is not stopped.** A remote that accepts the connection and never answers
+  keeps the fetch or the push running, with the repository lock and the worker slot, until the
+  connection ends.
+- **A direct Git call is stopped by a watchdog that needs `ps`.** Every other command, the deletion
+  of a source branch included, runs through `Git.execute`. There a watchdog kills Git when the limit
+  passes, and GitPython reports "Timeout: the command ... did not complete". The watchdog finds the
+  child processes of Git with `ps`. The runtime image has no `ps`, so there the watchdog cannot stop
+  a direct Git call either.
+
+**Open point for a later story**: a bound that stops a hung fetch or push, and a direct Git call in
+the runtime image. Until it ships, FR-004 holds for these commands only when Git ends by itself.
+
+A local command normally ends in seconds, so its limit matters only for a command that is stuck. A
+killed local command raises a `RepositoryError` that names the command and the limit, and R5
+classifies it. A killed `worktree add` leaves a worktree that Git keeps locked as "initializing", so
+`create_commit_worktree` removes it with `git worktree remove -f -f` before it raises. After any
+other failure, it removes nothing. The deletion of a source branch is a push, so
+`delete_remote_branch` types its errors as `push` does. Past its limit it raises
+`RepositoryConnectionError`, but only where the watchdog can stop Git, which needs `ps` (see above).
+`reset` never raises: a killed reset is logged like any failed reset, and the failure of the attempt
+still propagates. The limits live in `git/writeback/constants.py`.
 
 **A killed local command can leave a lock file.** GitPython kills with `SIGKILL`, so a killed
 `reset` or `merge` can leave `index.lock` in the destination worktree. Every later Git command in
@@ -903,8 +944,9 @@ delays, plus the fetch and push timeouts times the number of attempts, plus a 10
 the import and the settle. With the constants of R6 that is 450 + 4 × 420 + 600 = 2,730 seconds,
 about 45 minutes. A merge whose delivery succeeds within its automatic retry chain regenerates as
 precisely as today. A miss only widens. The derivation leaves out the local timeouts, because a local
-command normally ends in seconds. A chain that runs longer than the cache, for example after
-retried record failures, only widens its release.
+command normally ends in seconds. It counts the fetch and push timeouts as if they stopped the
+command, which they do not for a hung fetch or push (R6). A chain that runs longer than the cache,
+for example after retried record failures or a hung fetch or push, only widens its release.
 
 **Rejected: waiting for the first attempt before the follow-ups.** It would delay every git-synced
 merge by the Git round trip, and by minutes when the remote is down.
@@ -1154,8 +1196,8 @@ list, and the status vocabulary (INFP-671).
 
 **Unit, no database** (`backend/tests/unit/git/writeback/`, `backend/tests/unit/core/merge/`):
 
-- the classifier across every row of R5, the flags included, a fetch outage, and a killed fetch and
-  push;
+- the classifier across every row of R5, the flags included, a fetch outage, and a fetch and a push
+  past their time limit;
 - the scrubber;
 - the queue model: append, idempotent enqueue, refusal of a removed id, snapshot removal, version;
 - the held set: a repeated hold of the same identifier during a release survives the clear; two
@@ -1315,7 +1357,12 @@ Conditions 3 and 4 judge a run that a worker took, so condition 5 leaves out the
   for that moment. The extra run that the check then submits waits for the lock, then finds nothing
   to do or delivers what remains.
 
-**Known limitations of the recovery.** Two cases delay or stop it:
+**Known limitations of the recovery.** These cases delay or stop it:
+
+- **A fetch or a push that hangs.** Its time limit does not stop it (R6). The attempt keeps the
+  repository lock, so condition 4 fails, the recovery check submits nothing, and a manual retry
+  waits for the lock too. The delivery stays `pending` until the connection ends. This is the open
+  point of R6, for a later story.
 
 - **A repository lock that a dead worker held.** The repository lock has no time to live
   (`lock.py::InfrahubLockRegistry.get`, R2). A worker that dies while it holds the lock leaves it
