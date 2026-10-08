@@ -210,6 +210,35 @@ def gogs_repo_branch_commit(container: DockerContainer, repo_name: str, branch: 
     return _gogs_git(container, repo_name, "rev-parse", branch, failure=f"Unable to read {branch} of {repo_name}")
 
 
+def gogs_branches_containing(container: DockerContainer, repo_name: str, commit: str) -> list[str]:
+    """Return the remote branches whose history contains a commit."""
+    output = _gogs_git(
+        container,
+        repo_name,
+        "branch",
+        "--format=%(refname:short)",
+        "--contains",
+        commit,
+        failure=f"Unable to list the branches of {repo_name} that contain {commit}",
+    )
+    return output.splitlines()
+
+
+def gogs_commit_parents(container: DockerContainer, repo_name: str, commit: str) -> list[str]:
+    """Return the parents of a remote commit, the first parent first."""
+    output = _gogs_git(
+        container,
+        repo_name,
+        "rev-list",
+        "--parents",
+        "-n",
+        "1",
+        commit,
+        failure=f"Unable to read {commit} of {repo_name}",
+    )
+    return output.split()[1:]
+
+
 def gogs_repo_tag(container: DockerContainer, repo_name: str, tag_name: str, commit_ish: str = "master") -> None:
     """Create a lightweight tag in the remote."""
     _gogs_git(container, repo_name, "tag", tag_name, commit_ish, failure=f"Tagging {repo_name} failed")

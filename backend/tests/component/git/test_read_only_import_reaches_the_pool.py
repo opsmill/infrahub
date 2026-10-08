@@ -106,6 +106,7 @@ class TestImportLatestCommitReachesThePool(TestInfrahubApp):
                     commit=latest_commit,
                     infrahub_branch_name=default_branch.name,
                     infrahub_branch_id=str(default_branch.get_uuid()),
+                    target_changed=True,
                 )
             }
         ]

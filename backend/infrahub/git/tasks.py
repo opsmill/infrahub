@@ -46,6 +46,7 @@ from infrahub.exceptions import (
     RepositoryCredentialsError,
     RepositoryError,
 )
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
@@ -79,6 +80,7 @@ from .constants import IMPORT_STATUS_CHECK_KIND, IMPORT_STATUS_CHECK_NAME, MERGE
 from .divergence.models import ReconciledBranch
 from .divergence.recorder import HistoryRewriteRecorder
 from .divergence.store import SdkRepositoryRecordStore
+from .divergence.suppression import RetargetMarkers
 from .models import (
     CheckRepositoryImportStatus,
     CheckRepositoryMergeConflicts,
@@ -206,6 +208,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
         lock_registry=lock.registry,
         importer=importer,
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+        retarget_markers=RetargetMarkers(cache=await get_cache()),
     )
     added = await RepositoryAdder(lock_registry=lock.registry, importer=importer, client=client).add(model)
     repo = added.repository
@@ -357,6 +360,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         lock_registry=lock.registry,
         importer=RepositoryFileImporter(),
         recorder=HistoryRewriteRecorder(store=SdkRepositoryRecordStore(client=client)),
+        retarget_markers=RetargetMarkers(cache=await get_cache()),
     )
     online = operational_status == RepositoryOperationalStatus.ONLINE.value
     try:
@@ -1007,6 +1011,32 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
+async def _read_destination_commit(
+    client: InfrahubClient, repo: InfrahubRepository, model: GitRepositoryMerge
+) -> str | None:
+    """Return the commit the graph records for the destination now, which an earlier merge can move after the dispatch.
+
+    Raises:
+        RepositoryError: When the API cannot answer.
+
+    """
+    try:
+        repository = await client.get(kind=CoreRepository, id=model.repository_id, branch=model.destination_branch)
+    except SdkError as exc:
+        raise RepositoryError(
+            identifier=model.repository_name,
+            message=repo.unfinished_merge_message(
+                source_branch=model.source_branch,
+                dest_branch=model.destination_branch,
+                reason=(
+                    f"Infrahub cannot read the commit it records for {model.destination_branch} "
+                    f"({(exc.message or type(exc).__name__).rstrip('.')})."
+                ),
+            ),
+        ) from exc
+    return readable_commit(repository.commit.value)
+
+
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
@@ -1021,19 +1051,22 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
     # local clone, so it must not build a read-write repository object: its node is not a
     # CoreRepository, and resolving one would raise.
     if model.repository_kind == InfrahubKind.READONLYREPOSITORY:
-        repo_source = await client.get(kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch)
         repo_destination = await client.get(
             kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.destination_branch
         )
+        source_ref, source_commit = model.source_ref, model.source_commit
+        # Only a merge that an older version queued carries neither value.
+        if source_ref is None and source_commit is None:
+            repo_source = await client.get(
+                kind=CoreReadOnlyRepository, id=model.repository_id, branch=model.source_branch
+            )
+            source_ref, source_commit = repo_source.ref.value, repo_source.commit.value
 
-        if (
-            repo_destination.ref.value != repo_source.ref.value
-            or repo_destination.commit.value != repo_source.commit.value
-        ):
+        if repo_destination.ref.value != source_ref or repo_destination.commit.value != source_commit:
             log.info(f"Merging {model.repository_kind}")
 
-            repo_destination.ref.value = repo_source.ref.value
-            repo_destination.commit.value = repo_source.commit.value
+            repo_destination.ref.value = source_ref
+            repo_destination.commit.value = source_commit
             await repo_destination.save()
 
             log.info(f"Finished merging {model.repository_kind}")
@@ -1063,6 +1096,12 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
     else:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
+            await repo.prepare_branches_for_merge(
+                source_branch=model.source_branch,
+                dest_branch=model.destination_branch,
+                source_commit=model.source_commit,
+                destination_commit=await _read_destination_commit(client=client, repo=repo, model=model),
+            )
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:
                 try:

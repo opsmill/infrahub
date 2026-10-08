@@ -521,6 +521,23 @@ def test_message_models_no_longer_carry_a_trunk() -> None:
     assert "default_branch" not in GitRepositoryMerge.model_fields
 
 
+def test_a_merge_queued_by_an_older_version_still_loads() -> None:
+    """Prefect stores the parameters of a queued run, and validates them again when the run starts."""
+    model = GitRepositoryMerge.model_validate(
+        {
+            "repository_id": "repository-id",
+            "repository_name": "network-repo",
+            "internal_status": RepositoryInternalStatus.ACTIVE.value,
+            "source_branch": "feature",
+            "destination_branch": "main",
+            "destination_branch_id": "main-id",
+            "repository_kind": "CoreRepository",
+        }
+    )
+
+    assert model.source_commit is None
+
+
 async def test_read_only_fetch_failure_keeps_its_classified_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

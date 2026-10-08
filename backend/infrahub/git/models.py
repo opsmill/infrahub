@@ -125,6 +125,9 @@ class GitRepositoryPullReadOnly(BaseModel):
     commit: str | None = Field(None, description="Specific commit to pull")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     infrahub_branch_id: str = Field(..., description="Infrahub branch on which to sync the remote repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class GitRepositoryMerge(BaseModel):
@@ -137,6 +140,16 @@ class GitRepositoryMerge(BaseModel):
     destination_branch: str = Field(..., description="The destination branch")
     destination_branch_id: str = Field(..., description="The ID of the destination branch")
     repository_kind: str = Field(..., description="The kind of the repository.")
+    source_commit: str | None = Field(
+        default=None,
+        description=(
+            "The commit the graph records for the source branch: for a read-write repository, None when it records "
+            "no full commit id, and for a read-only repository, the value as stored"
+        ),
+    )
+    source_ref: str | None = Field(
+        default=None, description="The ref the graph records for the source branch of a read-only repository"
+    )
 
 
 class GitRepositoryImportObjects(BaseModel):
@@ -157,6 +170,9 @@ class GitReadOnlyRepositoryImportCommit(BaseModel):
     repository_kind: str = Field(..., description="The type of repository")
     infrahub_branch_name: str = Field(..., description="Infrahub branch on which to sync the remote repository")
     ref: str = Field(..., description="The ref of the repository")
+    target_changed: bool = Field(
+        default=False, description="Whether the ref or the commit of the repository changed on purpose"
+    )
 
 
 class TrackedRef(BaseModel):

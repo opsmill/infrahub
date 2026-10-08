@@ -87,7 +87,6 @@ class TestCreateRepository(TestInfrahubApp):
             ("error: pathspec", RepositoryOperationalStatus.ERROR),
             ("SSL certificate problem", RepositoryOperationalStatus.ERROR_CONNECTION),
             ("authentication failed for", RepositoryOperationalStatus.ERROR_CRED),
-            ("Need to specify how to reconcile", RepositoryOperationalStatus.ERROR),
             ("fatal: could not read Username for | terminal prompts disable", RepositoryOperationalStatus.ERROR_CRED),
         ],
     )

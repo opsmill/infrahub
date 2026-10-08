@@ -188,8 +188,9 @@ import path, and the rule above is live rather than unreachable.
 - The detector is given the graph commit. It never reads the worktree, and it never decides whether
   this worker needs to reset. That decision belongs to the `pull` contract in section 3.
 - **`target_changed` is supplied by the caller, and the caller is the only component that touches
-  the suppression marker.** It reads the marker, deletes it, and passes the result here. Neither
-  the detector nor the recorder reads the cache. See section 8.
+  the suppression marker.** It reads the marker without deleting it, passes the result here, and
+  clears it after the collection once the trunk records the remote head of the git branch the
+  marker names. Neither the detector nor the recorder reads the cache. See section 8.
 - **Reset and record are two different decisions.** `REWRITE` and `RETARGET` both reset: both
   describe a branch whose local history no longer leads to the remote's, and both must end with
   the worktree on the remote head. Only `REWRITE` records. `FAST_FORWARD`, `REMOTE_ABSENT` and
@@ -225,10 +226,10 @@ nothing needs resetting. `pull` cannot be relied on to close the gap: it returns
 `if commit_after == commit_before: return True`, **before** `update_commit_value`, so a worktree
 that did not move writes no commit and queues no import.
 
-Without that row the graph never catches up. A `default_branch` edit then consumes its marker on
-the first cycle and classifies `RETARGET`, and every cycle after that classifies `REWRITE`, writes
-a record and fires the trunk event again. The failure repeats once a minute for the life of the
-repository.
+Without that row the graph never catches up. A `default_branch` edit then classifies `RETARGET`
+while its marker lives, because the sweep never sees the trunk on the new head, and every cycle
+after the marker expires classifies `REWRITE`, writes a record and fires the trunk event again. The
+failure repeats once a minute for the life of the repository.
 
 A worker whose graph already matches the remote still resets when its own worktree does not. That
 is the `UNCHANGED` row of the first table meeting the last row of the second, and it is the whole
@@ -378,8 +379,9 @@ repository kinds. A test substitutes an in-memory one. The recorder itself impor
 
 Changed. `backend/infrahub/git/base.py`.
 
-Before it pulls, it compares the branch worktree head and the remote head by ancestry. It
-hard-resets onto the remote head whenever the worktree does not lead to it.
+It fetches the branch, then compares the branch worktree head and the fetched remote head by
+ancestry. It hard-resets onto the remote head whenever the worktree does not lead to it, and
+otherwise fast-forwards with `git merge --ff-only` onto that head. No path runs `git pull`.
 
 ### Contract
 
@@ -387,14 +389,15 @@ hard-resets onto the remote head whenever the worktree does not lead to it.
 |---|---|
 | No origin | Returns `False`, unchanged. |
 | Worktree head equals remote head | Returns `True`, unchanged. |
-| Worktree head is an ancestor of remote head | Pulls, unchanged. |
+| Worktree head is an ancestor of remote head | Fast-forwards with `git merge --ff-only` onto the fetched head. |
 | **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
 | No worktree, `create_if_missing` and a branch id | Creates the worktree in this clone only. It does not push the new branch. |
+| The remote carries no such ref | The fetch fails, and `pull` raises `RepositoryError`. Nothing moves. |
 
 **The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
-is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
-its remote resets like any other, because nothing leaves a commit there that exists nowhere else.
+is the remote head or is an ancestor of it. A worktree ahead of its remote resets like any other,
+because nothing leaves a commit there that exists nowhere else.
 
 The pull path answers this without any classification context: both ancestry questions are the
 same gateway call the detector makes. What the pull path cannot do is tell a rewrite from a
@@ -403,12 +406,10 @@ and neither records.
 
 ### Rules
 
-- The reset honours `update_commit_value` the same way the pull does, and forces no value of its
-  own. The broadcast handler passes `update_commit_value=False`, so a reset driven by a broadcast
-  writes nothing. A worker that heard **no** broadcast reaches the reset through `pull` or through
-  `collect_pending_imports`, and both default to `True`, so that worker does write the commit. The
-  write is idempotent: the reconciling worker already stored the same value. Do not read the
-  broadcast handler's flag as a property of self-healing.
+- The reset honours `update_commit_value` the same way the fast-forward does, and forces no value
+  of its own. Both production callers of `pull`, in `git/convergence.py`, pass
+  `update_commit_value=False`, so a reset in `pull` writes nothing. The commit is written by the
+  cycle that reconciles the branch, in `collect_pending_imports`.
 - The reset writes no rewrite record and emits no event, whatever the caller (FR-007).
 - No message raised from this path calls a divergent history a conflict (FR-003, FR-017).
 - **The unconditional reset is safe because of the merge ordering.** `InfrahubRepository.merge`
@@ -601,7 +602,7 @@ different mutations submit it:
 |---|---|---|
 | `ReadOnlyRepositoryImportLastCommit` | pick up whatever the tracked ref now resolves to | false |
 | `InfrahubRepositoryMutation.mutate_update`, `ref` changed | deliberate re-point | true |
-| `InfrahubRepositoryMutation.mutate_update`, `commit` changed | deliberate re-pin | true |
+| `InfrahubRepositoryMutation.mutate_update`, `commit` changed or cleared | deliberate re-pin, or a return to the head of `ref` | true |
 
 `mutate_update` submits `GIT_READ_ONLY_REPOSITORY_IMPORT_LAST_COMMIT` alongside
 `GIT_REPOSITORIES_PULL_READ_ONLY` on every `ref` or `commit` change. So the flow **must** read
@@ -652,54 +653,75 @@ never records.
 
 ## 8. Re-target suppression marker
 
-New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`.
+New. Written by `backend/infrahub/graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`,
+which the update and every upsert path call.
 
 ### Contract
 
 | Trigger | Marker written for |
 |---|---|
-| `CoreRepository.default_branch` changes | Infrahub's default branch |
+| `CoreRepository.default_branch` changes | the repository and the new git branch, which feeds Infrahub's default branch |
 
 **That is the whole table.** Read-only repositories write no marker. A read-only re-point, whether
 it changes `ref` or `commit`, is carried in band on the workflow model instead. SC-007 covers "a
 different branch, tag **or commit**", and both of those reach the flow as an explicit
 `target_changed` flag rather than through the cache.
 
-1. The marker is written after the update succeeds, and before the mutation returns. Nothing else
-   in that mutation reads it, so the ordering only has to put the write before the first
-   synchronisation cycle that could classify the branch.
-2. It expires after one hour.
+1. The marker is written inside the update transaction, before it commits. A cycle that reads the
+   new `default_branch` therefore always finds the marker too. A write after the commit would leave
+   a gap in which a cycle reads the new target, finds no marker and records a false rewrite. A
+   rolled-back update leaves a marker for a target the repository does not track. It has a key of
+   its own, so it does not replace the marker of a change that committed, and rule 9 makes it
+   inert.
+2. It expires after seven days. The sweep of rule 8 is what bounds a marker; the time to live only
+   removes one that no cycle ever reconciles. A long one is safe because of rule 9: a marker whose
+   target the repository no longer tracks does nothing.
 3. **Exactly one component touches the marker: the detector's caller in the sync path**,
-   `collect_pending_imports`. It reads the marker, passes the result to `classify` as
-   `target_changed`, and **deletes it only after the commit write for that branch has succeeded**.
-   The detector never touches the cache, and neither does the recorder.
+   `collect_pending_imports`. It reads the marker before any classification, without deleting it,
+   and passes the result to `classify` as `target_changed`. After the collection it clears the
+   marker, and **only when the trunk records the remote head of the git branch the marker names**,
+   which comes after the commit write for that branch (rule 8). The detector never touches the
+   cache, and neither does the recorder.
 4. Deleting at classification time is wrong. The reset, the commit write and the import all come
    after it, and any of them can fail. The marker would already be gone, so the next cycle sees a
    re-target it has no record of, classifies `REWRITE`, writes a record and **fires the trunk
-   webhook**. Deleting after the commit write means a failed cycle simply retries with the marker
-   still in place.
+   webhook**. Clearing only once the trunk records the remote head means a failed cycle simply
+   retries with the marker still in place.
 5. A lost marker costs more than a wrong row. It produces a false rewrite record **and** a false
    trunk webhook to whatever a customer has subscribed. `research.md` R4 carries this as an
    accepted loss path.
-6. The cache has no atomic get-and-delete, so reading and deleting are two operations with a window
-   between them. Nothing guards that window except `GIT_REPOSITORIES_SYNC` running with
-   `concurrency_limit=1` and `CANCEL_NEW`, which keeps two cycles from overlapping. If that ever
-   changes, this needs a compare-and-delete.
+6. Reading never deletes, and the clear is one delete of the key of the target this cycle
+   synchronised. A marker that an edit writes for another target during the cycle has a key of its
+   own, so it survives for the next cycle. `GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1`
+   and `CANCEL_NEW`, so no second cycle reaches the marker at the same time.
 7. The marker is read within one cron cycle of being written, because the widened candidate
    selection above puts the re-targeted trunk in the classified set as soon as its graph commit
    stops matching the remote head. There is no per-repository sync to submit:
    `GIT_REPOSITORIES_SYNC` is a single cron flow with `concurrency_limit=1` and `CANCEL_NEW`.
-8. **A marker whose branch never becomes a candidate is still deleted at the end of the cycle.**
+8. **A marker no candidate reads is still swept, once the trunk records the head it names.**
    A re-point can leave the graph commit and the worktree both equal to the remote head, for
    example when the remote default branch is renamed without moving and `default_branch` is edited
-   to match. The branch then enters no candidate set, nothing reads the marker, and for the rest of
-   its hour it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
+   to match. The branch then enters no candidate set, nothing reads the marker, and until it expires
+   it would turn a genuine trunk rewrite into a `RETARGET`: reset, no record, no trunk
    webhook. Sweeping the repository's remaining markers when the cycle finishes with it bounds
-   every marker to one cycle.
+   every marker to the first cycle that reconciles the re-point. The sweep deletes the marker only
+   when the trunk records the remote head of the git branch the marker names. A trunk that failed,
+   an inactive repository and a default branch the remote does not hold yet all leave the trunk on
+   another commit. They keep the marker for the cycle that synchronises the trunk, so the retry of
+   rule 4 still finds it.
+   The sweep runs only in a cycle whose read found a marker for the target it synchronises. A cycle
+   with no marker therefore costs one cache read and no walk of the remote refs, and a marker
+   written after the read waits for the next cycle, which reads it.
+9. **A marker applies only to a cycle that synchronises the target it names.** The cycle reads
+   `default_branch` when it builds the repository, before it reads or sweeps the marker. An edit
+   that lands between the two leaves a cycle that synchronises the old target while the marker
+   names the new one. That cycle neither uses the marker nor deletes it, so the next cycle, which
+   synchronises the new target, still finds it. Without this rule the sweep of rule 8 deletes the
+   marker, and the next cycle records a false rewrite and **fires the trunk webhook**.
 
 > The recorder must not be the reader. It writes nothing unless the classification is already
 > `REWRITE`, so on a `RETARGET` it would return before reaching the marker and leave it to survive
-> its full hour and suppress the next genuine rewrite of that branch.
+> until it expires and suppress the next genuine rewrite of that branch.
 
 ### How the read-write marker gets read
 
@@ -711,21 +733,25 @@ cancelled or re-run the whole fleet.
 The widened candidate selection is what makes the marker readable. The edit changes which remote
 branch feeds Infrahub's default branch, so the graph commit for that branch stops matching the
 remote head, and the next cron cycle picks it up. That is within a minute, well inside the marker's
-hour.
+time to live.
 
-### The read-write writer does not exist yet
+### Where the read-write writer compares
 
-`InfrahubRepositoryMutation.mutate_update` currently returns to `super().mutate_update` immediately
-for any kind other than `CoreReadOnlyRepository`, so there is **no** existing comparison of the old
-and new `default_branch`. Only the read-only comparison (`current_ref` against `new_ref`) is
-already there. The read-write marker therefore needs that comparison added before the early return.
-This is a change to the mutation, not a reuse of something already computed.
+`InfrahubRepositoryMutation.mutate_update` returns to `super().mutate_update` immediately for any
+kind other than `CoreReadOnlyRepository`, and an upsert never calls it. The comparison of the old
+and new `default_branch` therefore lives in `mutate_update_object`, which the update and every
+upsert path call inside the transaction. It reads the old value from the database rather than from
+the node, because a retried update hands back the node an earlier attempt already changed.
 
 ---
 
 ## 9. The merge guard
 
-Changed. `backend/infrahub/git/tasks.py::merge_git_repository`.
+Changed. The guard of the Git merge is
+`backend/infrahub/git/repository.py::InfrahubRepository.prepare_branches_for_merge`, which
+`backend/infrahub/git/tasks.py::merge_git_repository` calls before `merge`. The check before the
+graph merge is `backend/infrahub/git/merge_readiness.py::RemoteHeadsMergeCheck`, which
+`backend/infrahub/core/branch/tasks.py::merge_branch` runs (FR-005d).
 
 FR-005 covers paths that advance a worktree **from the remote**. The merge path advances the
 destination from local state and reads its source commit from the local branch ref, so FR-005 never
@@ -733,21 +759,57 @@ reaches it. This guard closes that.
 
 ### Contract
 
-1. Fetch, then compare the **source** branch worktree and the **destination** branch worktree
-   against their remote heads, using the same ancestry gateway as section 1.
-2. When either has diverged, compare the **graph commit** for that branch against the remote head
-   as well. The two answers mean different things:
+1. Fetch the heads of the remote branches with `--prune` and `--no-tags`, then compare the
+   **source** branch ref, which the merge reads, and the **destination** branch worktree against
+   their remote heads, using the same ancestry gateway as section 1. A branch with no remote head,
+   and a destination with no worktree, are not compared. The fetch leaves tags out, because a tag
+   moved on the remote would fail it after the graph merge, and it prunes, so a branch the remote
+   deleted has no remote head. A fetch that fails says that the branch is merged in Infrahub and
+   not in Git, and how to finish the merge in Git.
+2. Compare the **graph commit** for each branch against the remote head as well, also when the clone
+   holds that head. The answers mean different things:
 
-| Worktree | Graph commit | Action |
+| Clone | Graph commit | Action |
 |---|---|---|
-| Diverged | also diverged | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
-| Diverged | matches the remote | **Reset the worktree and merge.** The rewrite is already recorded; only this clone is behind. |
+| Is the remote head | equals the remote head | **Merge.** |
+| Behind, ahead or diverged | equals the remote head | **Move the branch onto the remote head and merge.** The graph imported that head; only this clone is stale. |
+| Ahead of the remote head, or diverged from it | differs from the remote head | **Refuse.** The rewrite is unrecorded, and merging would erase it. |
+| Destination on or behind the remote head | differs from the remote head | **Refuse.** On an older trunk, the remote would reject the push after the graph merge. On a head the graph never imported, the record of the merge commit would hide that head from the next cycle. |
+| Source on or behind the remote head | differs, and the remote history holds it | **Move the source onto the graph commit and merge**, forward or back. The Git merge then holds the commit the graph merged. |
+| Source on or behind the remote head | none, or the remote history no longer holds it | **Merge as it is.** A known risk, see "Accepted residual risk". |
 
 3. A refusal raises a typed error naming a divergent remote history. The message never says
-   "conflict" (FR-003, FR-017).
-4. Never reset a branch whose **graph commit** is stale and then merge it (FR-005c). That is the
-   case where the merge commit would hide the rewrite.
-5. A worktree ahead of its remote has been rewound. It is reset before the merge, like any other.
+   "conflict" (FR-003, FR-017). It says that the branch is merged in Infrahub and not in Git, and
+   how to finish the merge in Git.
+4. Never reset a branch whose **graph commit** differs from the remote head and then merge it
+   (FR-005c). That is the case where the merge commit would hide the rewrite.
+5. A worktree ahead of its remote has been rewound. It is diverged from the remote head, so the table
+   decides: move it when the graph commit equals the remote head, refuse otherwise.
+6. A source ref with no worktree is moved with `git branch --force`, because the merge reads that
+   ref. A source that this clone does not hold, as on a worker whose sync has not created it yet, is
+   created the same way at its graph commit when the remote history holds that commit. Otherwise
+   the guard refuses: the merge has no source to read, and the remote head can hold content the
+   graph never imported.
+7. When the merge does not use the remote head of the source, whether the source moved onto its
+   graph commit, back or forward, or stayed behind, the guard logs a warning. It names the commit the
+   merge uses and the remote head, and says that the commits after it stay on the source branch and
+   do not reach the trunk. A refusal cannot help there, because the branch is merged in Infrahub
+   already.
+8. The source graph commit comes in `GitRepositoryMerge` (`source_commit`), which
+   `RepositoryMergeDispatcher` fills when it submits the Git merge. The branch merge submits the
+   delete of the source branch without a wait for the Git merge, so a later read of that branch can
+   fail. A read-only repository gets `source_ref` and `source_commit` the same way, and its merge
+   copies them to the trunk. Only a merge that an older version queued carries neither, and reads
+   the source branch.
+9. `merge_git_repository` reads the destination graph commit when the Git merge runs, under the
+   repository lock. The default branch is never deleted, and an earlier Git merge can move it after
+   the dispatch: two merges in a row both see the old trunk commit at dispatch.
+
+**Equal, not an ancestor.** The classification of section 1 treats a graph commit that is an
+ancestor of the remote head as a fast-forward. This guard does not: such a remote holds commits the
+graph never imported, and a reset and merge records the merge commit, so the next cycle sees no
+change and never imports them. That is the FR-005c hazard again, so the guard resets only on
+equality.
 
 ### Why it refuses instead of reconciling
 
@@ -758,17 +820,69 @@ recorded, the trunk signal never fires, and the rewritten content is never re-im
 the source is worse: it merges objects the graph never imported.
 
 Reconciliation has one owner. The synchronisation cycle resets, records, signals and re-imports,
-under the repository lock. A refused merge fails loudly, the next cycle reconciles, and the retry
-succeeds.
+under the repository lock.
 
 **That is why a stale clone alone is not a refusal.** The cron heals whichever worker runs it, not
-the worker the merge lands on, so refusing on a stale worktree with a current graph commit would
-refuse again on every retry. Resetting is safe there: nothing is lost, because the rewrite is
+the worker the merge lands on, so a refusal on a stale clone with a current graph commit would leave
+the merge undelivered although nothing is lost. Resetting is safe there, because the rewrite is
 already recorded.
+
+### Before the graph merge
+
+The Git merge runs after the graph merge. By then the source branch is merged, the sync never
+records a commit on it again, and nothing runs the Git merge a second time. A refusal of this guard
+therefore cannot clear by a retry. The branch merge runs a check before the graph merge instead
+(FR-005d):
+
+1. For each repository whose merge runs in Git, read the remote heads of the source branch and of the
+   trunk with `git ls-remote`, with no clone and no lock. One read stops after
+   `REMOTE_HEADS_TIMEOUT_SECONDS`, at most `REMOTE_HEADS_PARALLEL_READS` (8) remotes are read at once,
+   and all the reads together stop at `REMOTE_HEADS_DEADLINE_SECONDS`: a repository not read by then
+   is treated as a remote that cannot be read. The timeout of one read is lower than the deadline,
+   so a remote that hangs frees its place for a read that waits. A repository has nothing to merge
+   in Git (`nothing_to_merge_in_git`) when its source branch records the commit its trunk records,
+   or when neither branch records a commit: read its source branch only, and
+   `RepositoryMergeDispatcher` submits no Git merge for it. A merged branch never syncs again, so
+   its source branch is still compared.
+2. Compare each head with the commit the graph records for that branch. The rule is equality, as
+   above.
+3. Refuse the merge with `RepositoryNotSynchronizedError` while one differs. The branch stays open,
+   and the merge can run again after the next cycle imports the head.
+4. Any failure to read a remote other than a refusal of the credentials, and a remote not read
+   before `REMOTE_HEADS_DEADLINE_SECONDS`, does not block the merge. The check logs a warning and
+   compares nothing for that repository. The guard of the Git merge fetches from the same remote, so
+   it does not compare the heads either: when the remote still cannot be reached, its fetch fails,
+   and the Git merge fails after the graph merge, with how to finish the merge in Git.
+5. A remote that refuses the credentials blocks the merge with `RepositoryCredentialsRefusedError` when the
+   repository needs a Git merge: that Git merge would read the remote with the same credentials and
+   fail after the graph merge. For a repository whose branch records the commit of its trunk, no Git
+   merge runs, so the check only logs the warning.
+
+**No commit on both branches counts as nothing to merge.** An earlier version of this check did not
+count it. The case is a real state: a repository is active before its first clone, and records a
+commit only after the clone. A failed first clone therefore leaves it active with no commit, on the
+trunk and on every branch created before a later sync clones it. Without the rule, the remote head
+of the trunk differed from the empty graph commit, and every merge of a branch that syncs with Git
+was refused until that sync. A value that is set but is not a full commit id still never counts: it
+is unknown, not empty.
+
+The guard of the Git merge stays as the last check, for a remote that moves between the two. Its
+refusal leaves the branch merged in Infrahub and not in Git. The user finishes the merge in Git, as
+the message says, and the next cycle imports the result. The delivery queue of IFC-3220 does not
+recover this case. After a rewrite of the source or of the trunk, its FR-020 and FR-022 only mark
+such a delivery unreplayable, with a named cause. After a plain push to the trunk between the two
+checks, IFC-3220 specifies no recovery.
 
 ### Accepted residual risk
 
 The remote can be rewritten between this guard's fetch and the push that follows the merge. The
 guard narrows that window and does not close it, so FR-005b is best-effort rather than guaranteed.
+A source branch that was deleted on the remote has no remote head, so neither check compares it,
+and the merge reads the local ref.
+A source whose graph commit is missing, or no longer in the remote history, is merged as it is. The
+Git merge can then hold a source that differs from the one the graph merged. A merge that an older
+version queued carries no graph commit, and a value that is not a full commit id reads as none. A
+graph commit leaves the remote history when the source branch is rewritten after its last import,
+which the check before the graph merge refuses first, unless the remote cannot be read then.
 Closing it would need the remote to reject the push, which is branch protection on the remote and
 outside this work.

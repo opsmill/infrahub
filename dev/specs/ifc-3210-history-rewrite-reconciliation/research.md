@@ -158,9 +158,10 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 ## R3. Where the self-healing reset runs
 
-**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call.
-Hard-reset onto the remote head unless the worktree head already is it, is an ancestor of it, or
-the remote carries no such ref.
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, after it fetches the branch.
+Hard-reset onto the remote head unless the worktree head already is it or is an ancestor of it, and
+fast-forward with `git merge --ff-only` otherwise. When the remote carries no such ref, the fetch
+fails and `pull` raises.
 
 A worktree ahead of its remote resets too. The state that argued against it, a commit left behind
 by a rejected push, no longer arises: `merge` pushes before it records and resets the destination
@@ -189,8 +190,10 @@ the **pre-rewrite** history into the trunk and pushes it, putting the discarded 
 remote. If the rewrite existed to strip a leaked credential, the merge restores it. The destination
 side only corrupts one worker's view; the source side corrupts the remote, for everyone.
 
-FR-005a therefore covers both worktrees. **It refuses the merge rather than reconciling it**, and
-FR-005c says why that distinction matters.
+FR-005a therefore covers both worktrees. **It refuses the merge when the graph has not recorded the
+rewrite, rather than reconciling it**, and FR-005c says why that distinction matters. When the graph
+commit already equals the remote head, only this clone is behind, and the branch is reset before the
+merge.
 
 Reconciling inside the merge path looks tempting and destroys the evidence.
 `InfrahubRepository.merge` pushes the merge commit before it records it on the destination, so a
@@ -200,8 +203,16 @@ signal, no re-import of the rewritten content. Resetting the source is worse sti
 the rewritten history and merges objects the graph never imported.
 
 Refusing keeps one owner for reconciliation. The synchronisation cycle resets, records, signals and
-re-imports, in that order, under the repository lock. The merge fails with a typed error, the next
-cycle reconciles, and the retry succeeds.
+re-imports, in that order, under the repository lock. But the Git merge runs after the graph merge,
+when the source branch is already merged and is never synchronised again, and nothing runs the Git
+merge a second time. A refusal there cannot clear. FR-005d therefore moves the normal refusal before
+the graph merge: the branch merge compares the remote heads with the graph commits through
+`git ls-remote`, and refuses while one differs. The branch stays open, the next cycle imports the
+head, and the user merges again. The refusal of the Git merge itself is left for a remote that moves
+between the two checks. The user finishes that merge in Git, as the refusal message says. The
+delivery queue of IFC-3220 does not recover it. After a rewrite of the source or of the trunk, its
+FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause. After a plain push to
+the trunk between the two checks, IFC-3220 specifies no recovery.
 
 **Accepted residual risk**: the remote can be rewritten between the guard's fetch and the push that
 follows. The guard narrows that window, it does not close it. FR-005b is a best-effort property,
@@ -210,10 +221,12 @@ not a guarantee.
 Branch creation is left alone: a branch created from a stale trunk converges on its own first pull,
 and creating it is not a merge of anything.
 
-**What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
-not write the rewrite record, and must not emit the signal. `pull` already takes
-`update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
-record and the signal are written by the recorder in the sync path, never here.
+**What the pull-side reset must not do** (FR-007): it must not write the rewrite record, and must not
+emit the signal. It writes the commit only when its caller asks for it, through
+`update_commit_value`. Both production callers of `pull`, in `git/convergence.py`, pass
+`update_commit_value=False`, so a reset in `pull` writes nothing. The cycle that reconciles the branch
+writes the commit. The record and the signal are written by the recorder in the sync path, never
+here.
 
 **Why an unconditional reset is safe.** `InfrahubRepository.merge` pushes the merge commit first,
 records it second, and resets the destination worktree to its pre-merge commit when either step
@@ -231,28 +244,34 @@ This is the hardest decision in the feature. FR-002 and SC-007 both depend on it
 repository was re-pointed at a different target. The detector sees only two commits. The tracking
 target that produced the imported commit is not stored anywhere.
 
-**Decision**: the mutation that changes a tracking target writes a short-lived suppression marker in
+**Decision**: the mutation that changes a tracking target writes a suppression marker in
 the shared cache. The component that calls the detector reads it, passes the result as
-`target_changed`, and deletes it after the commit write for that branch succeeds. Read-only repositories do not use it at all: their re-point
-travels in band on the workflow model.
+`target_changed`, and clears it once the trunk records the remote head of the git branch it names.
+Reading never deletes it. Read-only repositories do not use it at all: their re-point travels in band
+on the workflow model.
 
-- Key: repository id plus Infrahub branch name.
+- Key: repository id plus a digest of the target git branch, so each target has a marker of its
+  own.
 - Read-only repositories write no marker. Their re-point travels in band on the workflow model,
   set from the comparison
   `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update` already makes.
-- Writer, read-write: **this comparison does not exist yet.** The same method returns to
-  `super().mutate_update` immediately for any kind other than read-only, so nothing there compares
-  the old and new `default_branch` on `CoreRepository`. The comparison has to be added before that
-  early return. It is a change to the mutation, not a reuse.
-- Reader: **the detector's caller, and nothing else.** A present marker makes `target_changed` true,
-  so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the
-  record is skipped. The delete happens after the commit write, not at the read.
+- Writer, read-write: `InfrahubRepositoryMutation.mutate_update_object`, which the update and every
+  upsert path call. It compares the old and new `default_branch` on `CoreRepository` and writes the
+  marker inside the update transaction, before it commits.
+- Reader: **the detector's caller, and nothing else.** A marker that names the git branch the cycle
+  synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still
+  reset onto the remote head; only the record is skipped. The clear happens after the
+  collection, not at the read.
 - Scope: **read-write repositories only.** A read-only re-target is carried in band on the
   workflow model, because the mutation already computes the comparison. That removes the cache from
   the read-only path entirely: no expiry, no timing question, no lost marker.
-- Time to live: one hour. The widened candidate selection below puts a re-targeted trunk in the
-  classified set on the next cron cycle, so the marker is read within a minute. An hour is generous
-  and short enough that a stale marker cannot suppress an unrelated rewrite days later.
+- Time to live: seven days. The widened candidate selection below puts a re-targeted trunk in the
+  classified set on the next cron cycle, so the marker is usually read within a minute. The sweep,
+  not the time to live, bounds a marker: it is cleared once the trunk records the remote head of the
+  branch it names. A failed trunk, an inactive repository, or a default branch the remote does not
+  hold yet keeps it until a cycle gets there, and a short time to live would lose it first. A stale
+  marker cannot suppress an unrelated rewrite, because it applies only to a cycle that synchronises
+  the target it names.
 
 **What makes the read-write marker readable.** A `default_branch` edit moves no git ref, so
 `compare_local_remote` reports nothing for it, and there is no per-repository sync to submit:
@@ -267,13 +286,14 @@ case costs nothing extra.
 
 **Why the caller reads it and not the recorder.** The recorder writes nothing unless the
 classification is already `REWRITE`, so on a `RETARGET` it would return before reaching the marker
-and never consume it. The marker would then survive its full hour and suppress the *next*, genuine, rewrite
-of that branch. Reading at classification time keeps `RETARGET` reachable in the detector's own
-tests, and deleting after the commit write keeps a failed cycle retryable.
+and never clear it. The marker would then survive until it expires and suppress the *next*,
+genuine, rewrite of that branch. Reading at classification time keeps `RETARGET` reachable in the
+detector's own tests, and clearing only once the trunk records the remote head keeps a failed cycle
+retryable.
 
 **Rationale**: the cache is how this codebase already coordinates repository state across workers,
-and the read-write edit has no in-band channel to travel on. The marker is deleted once the commit
-write lands, so it cannot suppress twice.
+and the read-write edit has no in-band channel to travel on. The marker is cleared once the trunk
+records the remote head of the branch it names, so it cannot suppress twice.
 
 **Known failure mode, accepted and documented**: if the cache is flushed between the mutation and
 the reconciliation, a deliberate re-target is recorded as a rewrite. That costs more than a wrong
@@ -281,18 +301,14 @@ row. The count on the branch goes one too high, and the trunk signal fires, so w
 has wired to that webhook receives a security-remediation notice for an ordinary configuration
 change.
 
-Two things keep the window small. The marker is deleted only after the commit write for that branch
-succeeds, so a cycle that fails anywhere earlier retries with the marker still in place. And the
-widened candidate set classifies a re-targeted trunk on the next cycle, within a minute of the
-edit.
+Two things keep the window small. The marker is cleared only once the trunk records the remote
+head of the branch it names, so a cycle that fails anywhere earlier, or never reaches the trunk,
+keeps it in place. And the widened candidate set classifies a re-targeted trunk on the next cycle,
+within a minute of the edit.
 
-The read and the delete are separate operations, because the cache has no atomic get-and-delete.
-`GIT_REPOSITORIES_SYNC` runs with `concurrency_limit=1` and `CANCEL_NEW`, so no second cycle enters
-that window. A user edit does. A second re-target between the read and the delete writes a fresh
-marker, the cycle deletes that newer marker, and the next cycle reports the second re-target as a
-rewrite. Deleting only the value that was read would close it, and the cache API would have to grow
-a compare-and-delete to do so. Accepted: the cost is the one in the risk table, for two deliberate
-re-targets of the same repository inside one cycle.
+Reading never deletes, and the clear deletes only the key of the target the cycle synchronised. A
+second re-target written during a cycle, or a marker left by a rolled-back update, has a key of its
+own, so it survives the clear.
 
 **Alternatives rejected**:
 
@@ -481,6 +497,10 @@ place for the next one to find is how this defect arrived. FR-017 states the con
   which returns the same `ERROR`, so the test would keep passing while no longer exercising the
   divergent-branches case. Add an assertion on the message instead: it must not contain the word
   "conflict".
+
+**Later decision**: the classifier entry and that test parameter were removed. Once `pull` stopped
+calling `git pull`, no path could reach the entry, so it was dead code. The merge guard raises the
+typed error itself.
 
 **The status flap**: on a diverged branch, `operational_status` goes to `ERROR` on every cycle and
 `fetch()` sets it back to `ONLINE` on the next one, so it flaps once a minute. Removing the failure

@@ -245,24 +245,25 @@ record lands is never retried.
 
 ### The re-target suppression marker
 
-Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update`, read and
-deleted by the component that calls the detector. See `research.md` R4 for why this shape was
-chosen, and why the recorder must not be the reader.
+Written by `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update_object`,
+which the update and every upsert path call. Read and cleared by the component that calls the
+detector. See `research.md` R4 for why this shape was chosen, and why the recorder must not be the
+reader.
 
 | Property | Value |
 |---|---|
-| Key | Repository id plus Infrahub branch name, under a namespace of its own. |
-| Value | The new tracking target, for diagnostics only. |
-| Time to live | One hour. |
-| Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands after the update succeeds and before any workflow is submitted. |
+| Key | Repository id plus a digest of the target git branch, under a namespace of its own. Each target has a key of its own, so a marker for one target never replaces or deletes the marker for another. |
+| Value | The new tracking target, the git branch that now feeds Infrahub's default branch, for diagnostics. A cycle reads only the key of the git branch it synchronises, so a cycle that started before the edit neither uses nor deletes the marker of the new target. |
+| Time to live | Seven days. The sweep clears a marker once its re-point is reconciled; the time to live only removes one that no cycle ever reconciles. A stale marker does nothing, because a marker applies only to a cycle that synchronises the target it names. |
+| Written when | `CoreRepository.default_branch` changes. Read-write repositories only: a read-only re-point travels in band on the workflow model. The write lands inside the update transaction, before it commits, on the update and on every upsert path. A sync that reads the new `default_branch` therefore finds the marker too. A rolled-back update leaves a marker that names a target the repository does not track, so no cycle uses it. |
 | Read by | The detector's caller in the sync path, `collect_pending_imports`, and nothing else. |
-| Read when | Before every classification, not only before a `REWRITE`. |
-| Effect | Makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
-| Consumed | Yes, but only after the commit write for that branch succeeds. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
+| Read when | Before every classification of Infrahub's default branch, not only before a `REWRITE`. No other branch can be re-pointed, so no other branch carries a marker. |
+| Effect | A marker that names the git branch this cycle synchronises makes `target_changed` true, so the detector returns `RETARGET`. The branch is still reset onto the remote head; only the record is skipped. |
+| Cleared | After the collection, and only when the trunk records the remote head of the git branch the marker names, which comes after the commit write for that branch. Reading leaves the marker in place. Deleting at classification time would lose the marker to a failure in the reset, the write or the import, and the next cycle would record a false rewrite and fire a false trunk webhook. |
 
 **The recorder must not read this key.** It returns early on any classification other than
-`REWRITE`, so on a `RETARGET` it would never reach the read and never consume the marker. The
-marker would then survive its full hour and suppress the next genuine rewrite of that branch.
+`REWRITE`, so on a `RETARGET` it would never reach the read and never clear the marker. The
+marker would then survive until it expires and suppress the next genuine rewrite of that branch.
 
 ---
 
