@@ -23990,8 +23990,8 @@ export type NumberPoolRangeUtilization = {
   /** Last value of the range, included. */
   end: Scalars['BigInt']['output'];
   /**
-   * Figures over the range's values. On a scoped pool, the figures of the division given as
-   * division.
+   * Figures over the range's values. On a scoped pool, only the values held in the division passed in
+   * the division argument.
    */
   figures: NumberPoolUtilizationFigures;
   /** The range node's id. */
@@ -24016,8 +24016,8 @@ export type NumberPoolUtilization = {
   /** The pool's display label. */
   display_label: Scalars['String']['output'];
   /**
-   * Figures over the pool's whole space. On a scoped pool, the figures of the division given as
-   * division, which a scoped pool requires.
+   * Figures over the pool's whole space. On a scoped pool, only the values held in the division passed
+   * in the division argument, which is required.
    */
   figures: NumberPoolUtilizationFigures;
   /** The pool's id, as given in pool_id. */

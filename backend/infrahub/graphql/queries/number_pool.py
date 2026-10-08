@@ -72,7 +72,8 @@ class NumberPoolRangeUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the range's values. On a scoped pool, the figures of the division given as\ndivision."
+            "Figures over the range's values. On a scoped pool, only the values held in the division passed in\n"
+            "the division argument."
         ),
     )
 
@@ -98,8 +99,8 @@ class NumberPoolUtilization(ObjectType):
         NumberPoolUtilizationFigures,
         required=True,
         description=(
-            "Figures over the pool's whole space. On a scoped pool, the figures of the division given as\n"
-            "division, which a scoped pool requires."
+            "Figures over the pool's whole space. On a scoped pool, only the values held in the division passed\n"
+            "in the division argument, which is required."
         ),
     )
     ranges = Field(
