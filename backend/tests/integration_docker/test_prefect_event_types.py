@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ from infrahub_sdk.testing.schemas.car_person import TESTING_MANUFACTURER, Schema
 from prefect.client.schemas.filters import FlowRunFilter, FlowRunFilterState, FlowRunFilterStateType
 from prefect.client.schemas.objects import StateType
 from prefect.client.schemas.responses import OrchestrationResult, SetStateStatus
+from prefect.events.schemas.events import Event, Resource
 from prefect.states import Cancelled, Scheduled
 
 from infrahub.prefect_server.retention import PREFECT_EVENT_TYPES
@@ -37,6 +39,17 @@ EVENT_PERSISTER_SETTLE_SECONDS = 15
 POLL_SECONDS = 1
 
 CANCELLED_RUN_DEPLOYMENT = "git_repositories_sync/git_repositories_sync"
+UNLISTED_PREFECT_EVENT = "prefect.infrahub-test.unlisted"
+UNLISTED_WARNING = (
+    "Task manager retention: Infrahub does not list these Prefect event types, so they are kept for the activity log "
+    f"retention (7 days) instead of prefect_own_events: {UNLISTED_PREFECT_EVENT}"
+)
+STARTUP_CHECK_FAILED = "Task manager retention: could not read the stored event types"
+_DELETE_UNLISTED_PREFECT_EVENTS = (
+    "DELETE FROM event_resources WHERE event_id IN "
+    "(SELECT id FROM events WHERE event = 'prefect.infrahub-test.unlisted'); "
+    "DELETE FROM events WHERE event = 'prefect.infrahub-test.unlisted'"
+)
 
 _STORED_PREFECT_EVENTS_QUERY = "SELECT event, count(*) FROM events WHERE event NOT LIKE 'infrahub.%' GROUP BY event"
 
@@ -62,6 +75,26 @@ async def _wait_for_stored_event_types(compose: InfrahubDockerCompose, event_typ
     deadline = time.monotonic() + EVENT_WAIT_SECONDS
     while time.monotonic() < deadline:
         if event_types <= set(_stored_prefect_events(compose=compose)):
+            return
+        await asyncio.sleep(POLL_SECONDS)
+
+
+def _delete_unlisted_prefect_events(compose: InfrahubDockerCompose) -> None:
+    compose.exec_in_container(
+        command=["psql", "--username=postgres", "--dbname=prefect", "-c", _DELETE_UNLISTED_PREFECT_EVENTS],
+        service_name="task-manager-db",
+    )
+
+
+def _task_manager_log_lines_with(compose: InfrahubDockerCompose, text: str) -> list[str]:
+    stdout, stderr = compose.get_logs("task-manager")
+    return [line for line in f"{stdout}\n{stderr}".splitlines() if text in line]
+
+
+async def _wait_for_task_manager_log_line(compose: InfrahubDockerCompose, text: str) -> None:
+    deadline = time.monotonic() + EVENT_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        if _task_manager_log_lines_with(compose=compose, text=text):
             return
         await asyncio.sleep(POLL_SECONDS)
 
@@ -166,3 +199,30 @@ class TestPrefectEventTypes(TestInfrahubDockerClient, SchemaCarPerson):
         """The workload stores completed, failed and cancelled flow runs, so a quiet stack cannot pass the guard."""
         # Cron runs, heartbeats and the worker restart add types that vary between runs, so only these are pinned.
         assert sorted(WORKLOAD_EVENT_TYPES - stored_prefect_event_types) == []
+
+    async def test_a_restarted_task_manager_warns_about_a_stored_prefect_event_type_missing_from_the_list(
+        self,
+        stored_prefect_event_types: set[str],
+        prefect_client: PrefectClient,
+        infrahub_compose: InfrahubDockerCompose,
+    ) -> None:
+        """At startup the task manager names the stored Prefect event types missing from the list, read on Postgres.
+
+        It requests the workload so that the task manager restarts only after the workload has run.
+        """
+        event = Event(
+            id=uuid.uuid4(),
+            event=UNLISTED_PREFECT_EVENT,
+            resource=Resource({"prefect.resource.id": f"infrahub-test.{uuid.uuid4()}"}),
+        )
+        try:
+            response = await prefect_client._client.post("/events", json=[event.model_dump(mode="json")])
+            response.raise_for_status()
+            await _wait_for_stored_event_types(compose=infrahub_compose, event_types={UNLISTED_PREFECT_EVENT})
+            infrahub_compose._run_command(cmd=[*infrahub_compose.compose_command_property, "restart", "task-manager"])
+            await _wait_for_task_manager_log_line(compose=infrahub_compose, text=UNLISTED_WARNING)
+        finally:
+            _delete_unlisted_prefect_events(compose=infrahub_compose)
+
+        assert len(_task_manager_log_lines_with(compose=infrahub_compose, text=UNLISTED_WARNING)) == 1
+        assert _task_manager_log_lines_with(compose=infrahub_compose, text=STARTUP_CHECK_FAILED) == []
