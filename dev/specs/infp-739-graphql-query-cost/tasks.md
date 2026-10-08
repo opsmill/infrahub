@@ -106,45 +106,45 @@ Requirements: FR-001, FR-002, FR-015, the actual-count part of FR-014, and SC-00
 
 ### Tests for part A
 
-- [ ] T007 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_recorder.py`:
+- [X] T007 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_recorder.py`:
     - `field_path_from_response_keys(["TestPerson", "edges", 0, "node", "cars", "edges", 3, "node", "owner"]) == "TestPerson/cars/owner"`, and an alias key replaces the field name
     - `QueryCostRecorder` adds calls, nodes and rows for each path
     - rows recorded while the field `ContextVar` holds `ESTIMATE_FIELD_PATH` go to the estimate totals
     - rows recorded with no field go to `unattributed`
     - `activate_recorder()` and `resolving_field()` restore the previous `ContextVar` values when the block exits, including on an exception
-- [ ] T008 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_actual_counts.py` (with `__init__.py`). Use the HTTP client pattern of `backend/tests/component/api/test_20_graphql.py` and data on `car_person_schema` with known counts, for example 3 persons owning 0, 2 and 5 cars. Check:
+- [X] T008 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_actual_counts.py` (with `__init__.py`). Use the HTTP client pattern of `backend/tests/component/api/test_20_graphql.py` and data on `car_person_schema` with known counts, for example 3 persons owning 0, 2 and 5 cars. Check:
     - without the header, the response has no `extensions` key (FR-001, FR-002)
     - with the header, `data` is identical to the response without the header (FR-001)
     - each path has exact `actual.nodes` and `actual.resolver_calls`, for example `TestPerson`, `TestPerson/cars` and `TestPerson/cars/owner` (FR-001)
-    - with `CountingInfrahubDatabase` (`backend/tests/helpers/db_query_counter.py`): the sum of every field's `database_rows`, `estimate_queries.database_rows` and `unattributed.database_rows` equals the total rows the counter recorded during the request
+    - with `CountingInfrahubDatabase` (`backend/tests/helpers/db_query_counter.py`): the sum of every field's `database_rows`, `estimate_queries.database_rows` and `unattributed.database_rows` equals the total rows the counter recorded during the request, minus the rows read before the handler starts the recorder (authentication and permission loading, measured with a request that resolves no field)
     - a query that selects `display_label` and `count` has the rows of those reads in the actual counts of the fields that read them (FR-014)
     - a mutation sent with the header has no `extensions` key, and its response equals the response without the header (FR-015)
-- [ ] T009 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_query_counts.py` (SC-002). With `CountingInfrahubDatabase`, run the same query with and without the header, and check that the queries counted without the header equal the queries counted with the header minus `extensions.query_cost.estimate_queries.queries`.
-- [ ] T010 [P] [US1] Write component tests in `backend/tests/component/api/test_query_cost_header.py`. Use the stored-query pattern of `backend/tests/component/api/test_10_query.py`:
+- [X] T009 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_query_counts.py` (SC-002). With `CountingInfrahubDatabase`, run the same query with and without the header, and check that the queries counted without the header equal the queries counted with the header minus `extensions.query_cost.estimate_queries.queries`.
+- [X] T010 [P] [US1] Write component tests in `backend/tests/component/api/test_query_cost_header.py`. Use the stored-query pattern of `backend/tests/component/api/test_10_query.py`:
     - `GET /api/query/{name}?<variable>=<value>` with the header returns `{"data": ..., "extensions": {"query_cost": ...}}`, with an entry for each relationship field
     - without the header it returns `{"data": ...}` only
     - `POST /api/query/{name}` behaves the same
 
 ### Implementation for part A
 
-- [ ] T011 [US1] Create `backend/infrahub/graphql/cost/recorder.py` with:
+- [X] T011 [US1] Create `backend/infrahub/graphql/cost/recorder.py` with:
     - `QueryCostRecorder`, created with T006: mutable totals for each path, plus estimate and unattributed totals; methods `record_call(path, field, nodes)`, where `field` is the field's `FieldDescription`, and `record_query(path, rows)`, where `path` is the current field path, `ESTIMATE_FIELD_PATH` or `None`
     - two `ContextVar`s, the recorder and the current field path, with accessors `get_cost_recorder()` and `get_current_field()`
     - context managers `activate_recorder(recorder)` and `resolving_field(path)`, both resetting by token in `finally`
     - `field_path_from_info(info)`, which uses `info.path.as_list()` with `field_path_from_response_keys` and drops `edges`, `node` and list indexes
     - `count_returned_nodes(result)`: `len(result["edges"])` for paginated results, 1 or 0 for a `{"node": ...}` result
-- [ ] T012 [US1] In `backend/infrahub/database/__init__.py::InfrahubDatabase.execute_query_with_metadata`, after the results are read: call `recorder.record_query(path=get_current_field(), rows=len(results))` when `get_cost_recorder()` returns a recorder, and do nothing more when it returns `None` (FR-002). Read `dev/knowledge/backend/query-pattern.md` first; this is the single path for every query.
-- [ ] T013 [US1] In `backend/infrahub/graphql/resolvers/resolver.py` (`single_relationship_resolver`, `many_relationship_resolver`, `hierarchy_resolver`, `default_paginated_list_resolver`) and `backend/infrahub/graphql/resolvers/ipam.py::ipam_paginated_list_resolver`, when `get_cost_recorder()` returns a recorder:
+- [X] T012 [US1] In `backend/infrahub/database/__init__.py::InfrahubDatabase.execute_query_with_metadata`, after the results are read: call `recorder.record_query(path=get_current_field(), rows=len(results))` when `get_cost_recorder()` returns a recorder, and do nothing more when it returns `None` (FR-002). Read `dev/knowledge/backend/query-pattern.md` first; this is the single path for every query.
+- [X] T013 [US1] In `backend/infrahub/graphql/resolvers/resolver.py` (`single_relationship_resolver`, `many_relationship_resolver`, `hierarchy_resolver`, `default_paginated_list_resolver`) and `backend/infrahub/graphql/resolvers/ipam.py::ipam_paginated_list_resolver`, when `get_cost_recorder()` returns a recorder:
     - run the existing body inside `resolving_field(field_path_from_info(info))`
     - call `record_call(path, field=<the field's FieldDescription>, nodes=count_returned_nodes(result))` in a `finally` block, with 0 nodes when the body raises, so that a failed attempt still counts as a call and every path with rows has a field description
     - keep the path without a recorder exactly as it is
     - record inside the function that `retry_db_transaction` wraps, so that a retry counts as a call
-- [ ] T014 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request`:
+- [X] T014 [US1] In `backend/infrahub/graphql/app.py::InfrahubGraphQLApp._handle_http_request`:
     - read `QUERY_COST_HEADER` from the request and compare its value with `QUERY_COST_HEADER_VALUE` without case
     - when it matches and `analyzed_query.contains_mutation` is false, run `execute_graphql_query` inside `activate_recorder(...)`
     - then set `response["extensions"] = {"query_cost": build_query_cost_details(estimate=None, recorder=...).model_dump(mode="json")}`
     - in every other case, leave the response unchanged
-- [ ] T015 [US1] In `backend/infrahub/api/query.py`, do the same as T014 in `execute_query`, with the header read in `graphql_query_get` and `graphql_query_post` from the `Request`. Return `{"data": data, "extensions": {...}}` only when the header is present.
+- [X] T015 [US1] In `backend/infrahub/api/query.py`, do the same as T014 in `execute_query`, with the header read in `graphql_query_get` and `graphql_query_post` from the `Request`. Return `{"data": data, "extensions": {...}}` only when the header is present.
 
 **Checkpoint**: T007 to T010 pass. The actual counts can be used to diagnose a query, with every estimate marked "no statistics".
 

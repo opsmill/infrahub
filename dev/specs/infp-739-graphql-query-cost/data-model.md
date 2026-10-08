@@ -109,7 +109,11 @@ Tree rules (critique E2):
 
 `CostFigures` (frozen): `nodes: int`, `resolver_calls: int`, `database_rows: int`.
 
-`FieldDescription` (frozen): `kind`, `relationship_identifier` (none for a top-level field) and `cardinality`. The cost details show it for every field.
+`FieldDescription` (frozen): `kind`, `relationship_identifier` (none for a top-level field) and `cardinality`. The cost details show it for every field. The resolvers fill it from the schema objects they already hold, and the estimation tree must give the same values for the same path:
+
+- a relationship field: the peer kind declared on the relationship (the generic, for a generic peer), the relationship identifier and the relationship's cardinality
+- a top-level field: the kind of the field, no identifier and `many`
+- `ancestors` and `descendants`: the hierarchy kind that the field returns, `parent__child` and `many`
 
 `FieldEstimate`:
 
@@ -132,7 +136,7 @@ Tree rules (critique E2):
 - `statistics`: branch, computed time, version, or `null` when no statistics exist
 - `fields`: one entry for each field of the estimation tree, in tree order, with its estimate and its actual counts
 - `estimate_queries`: database queries and rows that the counted first step ran, or the label-count read in statistics-only mode
-- `unattributed`: database queries and rows that ran while no field was set
+- `unattributed`: database queries and rows that ran while no field was set, from the point where the request handler starts the recorder
 
 ## Rules taken from the requirements
 

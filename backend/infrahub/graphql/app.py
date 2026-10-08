@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from contextlib import nullcontext
 from inspect import isawaitable
 from typing import (
     TYPE_CHECKING,
@@ -43,6 +44,8 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.cost.details import build_query_cost_details, query_cost_details_requested
+from infrahub.graphql.cost.recorder import QueryCostRecorder, activate_recorder
 from infrahub.graphql.error_formatter import format_graphql_errors
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
@@ -219,68 +222,74 @@ class InfrahubGraphQLApp:
             document=cached_parse(query),
         )
 
-        # if the query contains some mutation, it's not currently supported to set AT manually
-        if analyzed_query.contains_mutation:
-            graphql_params.context.at = Timestamp()
-        elif at:
-            at_ts = Timestamp(at)
-            BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
-            if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
-                schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
-                db.add_schema(name=branch.name, schema=schema_branch)
-                analyzed_query = InfrahubGraphQLQueryAnalyzer(
-                    query=query,
-                    schema_branch=schema_branch,
-                    query_variables=variable_values,
-                    schema=graphql_params.schema,
-                    operation_name=operation_name,
+        cost_recorder = (
+            QueryCostRecorder()
+            if not analyzed_query.contains_mutation and query_cost_details_requested(headers=request.headers)
+            else None
+        )
+        with activate_recorder(recorder=cost_recorder) if cost_recorder is not None else nullcontext():
+            # if the query contains some mutation, it's not currently supported to set AT manually
+            if analyzed_query.contains_mutation:
+                graphql_params.context.at = Timestamp()
+            elif at:
+                at_ts = Timestamp(at)
+                BranchQueryTimeValidator(registry=registry).validate(branch=branch, at=at_ts)
+                if branch.schema_changed_at and Timestamp(branch.schema_changed_at) > at_ts:
+                    schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch, at=at_ts)
+                    db.add_schema(name=branch.name, schema=schema_branch)
+                    analyzed_query = InfrahubGraphQLQueryAnalyzer(
+                        query=query,
+                        schema_branch=schema_branch,
+                        query_variables=variable_values,
+                        schema=graphql_params.schema,
+                        operation_name=operation_name,
+                        branch=branch,
+                        document=cached_parse(query),
+                    )
+            impacted_models = analyzed_query.query_report.impacted_models
+
+            try:
+                await self._evaluate_permissions(
+                    db=db,
+                    request=request,
+                    query=analyzed_query,
+                    query_parameters=graphql_params,
+                    account_session=account_session,
                     branch=branch,
-                    document=cached_parse(query),
                 )
-        impacted_models = analyzed_query.query_report.impacted_models
-
-        try:
-            await self._evaluate_permissions(
-                db=db,
-                request=request,
-                query=analyzed_query,
-                query_parameters=graphql_params,
-                account_session=account_session,
-                branch=branch,
-            )
-        except PermissionDeniedError as exc:
-            self._forward_exception_log(
-                exception=exc,
-                account_session=account_session,
-                branch=branch,
-                analyzed_query=analyzed_query,
-                request=request,
-                graphql_params=graphql_params,
-            )
-            raise
-
-        if operation_name == "IntrospectionQuery":
-            nbr_object_in_schema = len(graphql_params.schema.type_map)
-            self.logger.debug(
-                "Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema
-            )
-
-        labels = self._set_labels(request=request, branch=branch, query=analyzed_query)
-
-        with trace.get_tracer(__name__).start_as_current_span("execute_graphql") as span:
-            span.set_attributes(labels)
-
-            with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-                result = await execute_graphql_query(
-                    schema=graphql_params.schema,
-                    source=query,
-                    context_value=graphql_params.context,
-                    root_value=self.root_value,
-                    middleware=[raise_on_mutation_for_branch_status],
-                    variable_values=variable_values,
-                    operation_name=operation_name,
-                    execution_context_class=self.execution_context_class,
+            except PermissionDeniedError as exc:
+                self._forward_exception_log(
+                    exception=exc,
+                    account_session=account_session,
+                    branch=branch,
+                    analyzed_query=analyzed_query,
+                    request=request,
+                    graphql_params=graphql_params,
                 )
+                raise
+
+            if operation_name == "IntrospectionQuery":
+                nbr_object_in_schema = len(graphql_params.schema.type_map)
+                self.logger.debug(
+                    "Processing IntrospectionQuery .. ", branch=branch.name, nbr_object_in_schema=nbr_object_in_schema
+                )
+
+            labels = self._set_labels(request=request, branch=branch, query=analyzed_query)
+
+            with trace.get_tracer(__name__).start_as_current_span("execute_graphql") as span:
+                span.set_attributes(labels)
+
+                with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+                    result = await execute_graphql_query(
+                        schema=graphql_params.schema,
+                        source=query,
+                        context_value=graphql_params.context,
+                        root_value=self.root_value,
+                        middleware=[raise_on_mutation_for_branch_status],
+                        variable_values=variable_values,
+                        operation_name=operation_name,
+                        execution_context_class=self.execution_context_class,
+                    )
 
         response: dict[str, Any] = {"data": result.data}
         if result.errors:
@@ -294,6 +303,10 @@ class InfrahubGraphQLApp:
                 graphql_params=graphql_params,
             )
             response["errors"] = format_graphql_errors(list(result.errors))
+        if cost_recorder is not None:
+            response["extensions"] = {
+                "query_cost": build_query_cost_details(estimate=None, recorder=cost_recorder).model_dump(mode="json")
+            }
 
         json_response = JSONResponse(
             response,

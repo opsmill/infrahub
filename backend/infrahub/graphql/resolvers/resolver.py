@@ -3,15 +3,24 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from graphene.types.definitions import GrapheneGraphQLType
 from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
-from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipHierarchyDirection
+from infrahub.core.constants import (
+    BranchSupportType,
+    InfrahubKind,
+    RelationshipCardinality,
+    RelationshipHierarchyDirection,
+)
+from infrahub.core.constants.schema import PARENT_CHILD_IDENTIFIER
 from infrahub.core.manager import NodeManager
 from infrahub.core.order import OrderModel
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import NodeNotFoundError
+from infrahub.graphql.cost.models import FieldDescription
+from infrahub.graphql.cost.recorder import field_path_from_info, get_cost_recorder, record_resolver_call
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.metadata import build_metadata_query_options
 
@@ -20,10 +29,26 @@ from ..parser import extract_selection
 from ..permissions import get_permissions
 
 if TYPE_CHECKING:
-    from graphql import GraphQLResolveInfo
+    from graphql import GraphQLOutputType, GraphQLResolveInfo
 
     from infrahub.core.schema import MainSchemaTypes, NodeSchema
     from infrahub.graphql.initialization import GraphqlContext
+
+
+def _schema_of_type(graphql_type: GraphQLOutputType) -> MainSchemaTypes:
+    named_type = graphql_type.of_type if isinstance(graphql_type, GraphQLNonNull) else graphql_type
+    if not isinstance(named_type, GrapheneGraphQLType):
+        raise TypeError(f"The GraphQL type {named_type} is not built from an Infrahub schema")
+    return named_type.graphene_type._meta.schema
+
+
+def _relationship_field_description(info: GraphQLResolveInfo) -> FieldDescription:
+    relationship = _schema_of_type(graphql_type=info.parent_type).get_relationship(name=info.field_name)
+    return FieldDescription(
+        kind=relationship.peer,
+        relationship_identifier=relationship.identifier,
+        cardinality=relationship.cardinality,
+    )
 
 
 @trace.get_tracer(__name__).start_as_current_span("account_resolver")
@@ -217,6 +242,33 @@ def validate_offset_and_limit(offset: int | None, limit: int | None) -> None:
 @trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
 @retry_db_transaction(name="default_paginated_list_resolver")
 async def default_paginated_list_resolver(
+    root: dict,
+    info: GraphQLResolveInfo,
+    offset: int | None = None,
+    limit: int | None = None,
+    order: dict | None = None,
+    partial_match: bool = False,
+    **kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    body = _resolve_paginated_list(
+        root=root, info=info, offset=offset, limit=limit, order=order, partial_match=partial_match, **kwargs
+    )
+    cost_recorder = get_cost_recorder()
+    if cost_recorder is None:
+        return await body
+    return await record_resolver_call(
+        recorder=cost_recorder,
+        path=field_path_from_info(info=info),
+        field=FieldDescription(
+            kind=_schema_of_type(graphql_type=info.return_type).kind,
+            relationship_identifier=None,
+            cardinality=RelationshipCardinality.MANY,
+        ),
+        body=body,
+    )
+
+
+async def _resolve_paginated_list(
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,
     offset: int | None = None,
@@ -321,7 +373,16 @@ async def default_paginated_list_resolver(
 async def single_relationship_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs: Any) -> dict[str, Any]:
     graphql_context: GraphqlContext = info.context
     resolver = graphql_context.single_relationship_resolver
-    return await resolver.resolve(parent=parent, info=info, **kwargs)
+    body = resolver.resolve(parent=parent, info=info, **kwargs)
+    cost_recorder = get_cost_recorder()
+    if cost_recorder is None:
+        return await body
+    return await record_resolver_call(
+        recorder=cost_recorder,
+        path=field_path_from_info(info=info),
+        field=_relationship_field_description(info=info),
+        body=body,
+    )
 
 
 @trace.get_tracer(__name__).start_as_current_span("many_relationship_resolver")
@@ -331,7 +392,16 @@ async def many_relationship_resolver(
 ) -> dict[str, Any]:
     graphql_context: GraphqlContext = info.context
     resolver = graphql_context.many_relationship_resolver
-    return await resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
+    body = resolver.resolve(parent=parent, info=info, include_descendants=include_descendants, **kwargs)
+    cost_recorder = get_cost_recorder()
+    if cost_recorder is None:
+        return await body
+    return await record_resolver_call(
+        recorder=cost_recorder,
+        path=field_path_from_info(info=info),
+        field=_relationship_field_description(info=info),
+        body=body,
+    )
 
 
 async def ancestors_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs) -> dict[str, Any]:
@@ -349,6 +419,25 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 @trace.get_tracer(__name__).start_as_current_span("hierarchy_resolver")
 @retry_db_transaction(name="hierarchy_resolver")
 async def hierarchy_resolver(
+    direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
+) -> dict[str, Any]:
+    body = _resolve_hierarchy(direction=direction, parent=parent, info=info, **kwargs)
+    cost_recorder = get_cost_recorder()
+    if cost_recorder is None:
+        return await body
+    return await record_resolver_call(
+        recorder=cost_recorder,
+        path=field_path_from_info(info=info),
+        field=FieldDescription(
+            kind=_schema_of_type(graphql_type=info.return_type).kind,
+            relationship_identifier=PARENT_CHILD_IDENTIFIER,
+            cardinality=RelationshipCardinality.MANY,
+        ),
+        body=body,
+    )
+
+
+async def _resolve_hierarchy(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
     """Resolver for ancestors and dependants for Hierarchical nodes.

@@ -46,5 +46,6 @@ Without the header, both responses are the same as today: no `extensions` key.
 - `nodes`: nodes the field returned, summed over every parent node.
 - `database_rows`: rows the database returned to queries that ran while the field's resolver was running. A batch of cardinality-one peers that serves several fields with the same selection is counted for the field whose resolver started the batch.
 - Queries that the counted first step ran are reported under `estimate_queries`, not under any field. Queries that ran while no field was being resolved are reported under `unattributed`.
+- Counting starts when the request handler has read the operation and found no mutation. Queries that run before that point are not reported: authentication, loading the account's permissions and, on `/api/query`, reading the stored query.
 - The first step is always counted on these endpoints, because a request runs with its variable values (`estimate_mode = counted_first_step`).
 - Fields with the same path, for example a field selected directly and through a fragment, have one entry. Root fields that do not map to a schema kind have no entry.

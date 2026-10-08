@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
@@ -13,6 +14,8 @@ from infrahub.core.protocols import CoreGraphQLQuery
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.api.dependencies import build_graphql_query_permission_checker
+from infrahub.graphql.cost.details import build_query_cost_details, query_cost_details_requested
+from infrahub.graphql.cost.recorder import QueryCostRecorder, activate_recorder
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.metrics import (
@@ -54,6 +57,7 @@ async def execute_query(
     subscribers: list[str],
     permission_checker: GraphQLQueryPermissionChecker,
     account_session: AccountSession,
+    query_cost_requested: bool,
 ) -> dict[str, Any]:
     gql_query = await registry.manager.get_one_by_id_or_default_filter(
         db=db, id=query_id, kind=CoreGraphQLQuery, branch=branch_params.branch, at=branch_params.at
@@ -77,31 +81,33 @@ async def execute_query(
         branch=branch_params.branch,
         document=cached_parse(gql_query.query.value),
     )
-    await permission_checker.check(
-        db=db,
-        account_session=account_session,
-        analyzed_query=analyzed_query,
-        query_parameters=gql_params,
-        branch=branch_params.branch,
-    )
-
-    labels = {
-        "type": "mutation" if analyzed_query.contains_mutation else "query",
-        "branch": branch_params.branch.name,
-        "operation": "",
-        "name": gql_query.name.value,
-        "query_id": query_id,
-    }
-
-    with GRAPHQL_DURATION_METRICS.labels(**labels).time():
-        result = await execute_graphql_query(
-            schema=gql_params.schema,
-            source=gql_query.query.value,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values=params,
-            middleware=[raise_on_mutation_for_branch_status],
+    cost_recorder = QueryCostRecorder() if query_cost_requested and not analyzed_query.contains_mutation else None
+    with activate_recorder(recorder=cost_recorder) if cost_recorder is not None else nullcontext():
+        await permission_checker.check(
+            db=db,
+            account_session=account_session,
+            analyzed_query=analyzed_query,
+            query_parameters=gql_params,
+            branch=branch_params.branch,
         )
+
+        labels = {
+            "type": "mutation" if analyzed_query.contains_mutation else "query",
+            "branch": branch_params.branch.name,
+            "operation": "",
+            "name": gql_query.name.value,
+            "query_id": query_id,
+        }
+
+        with GRAPHQL_DURATION_METRICS.labels(**labels).time():
+            result = await execute_graphql_query(
+                schema=gql_params.schema,
+                source=gql_query.query.value,
+                context_value=gql_params.context,
+                root_value=None,
+                variable_values=params,
+                middleware=[raise_on_mutation_for_branch_status],
+            )
 
     data = extract_data(query_name=gql_query.name.value, result=result)
 
@@ -113,6 +119,10 @@ async def execute_query(
     GRAPHQL_QUERY_OBJECTS_METRICS.labels(**labels).observe(len(analyzed_query.query_report.impacted_models))
 
     response_payload: dict[str, Any] = {"data": data}
+    if cost_recorder is not None:
+        response_payload["extensions"] = {
+            "query_cost": build_query_cost_details(estimate=None, recorder=cost_recorder).model_dump(mode="json")
+        }
 
     related_node_ids = gql_params.context.related_node_ids or set()
 
@@ -163,6 +173,7 @@ async def graphql_query_post(
         subscribers=subscribers,
         permission_checker=permission_checker,
         account_session=account_session,
+        query_cost_requested=query_cost_details_requested(headers=request.headers),
     )
 
 
@@ -198,4 +209,5 @@ async def graphql_query_get(
         subscribers=subscribers,
         permission_checker=permission_checker,
         account_session=account_session,
+        query_cost_requested=query_cost_details_requested(headers=request.headers),
     )
