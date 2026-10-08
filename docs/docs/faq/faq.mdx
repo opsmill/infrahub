@@ -147,15 +147,13 @@ We recommend a full database backup before every upgrade and validation in a sta
 
 ### What monitoring and observability does Infrahub provide?
 
-Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provides Prometheus-format scraping and OTLP push to monitoring systems such as Prometheus and OpenTelemetry collectors. Workflow orchestration runs on Prefect, which provides task-level observability.
+The API server and each task worker expose Prometheus metrics on `/metrics`. Task manager metrics, such as flow runs that start later than scheduled, come from the Prefect exporter included in the [observability stack](../deploy-manage/install-configure/install/observability-stack.mdx). The [Infrahub Exporter](https://docs.infrahub.app/exporter) is a separate service that publishes metrics built from the objects stored in Infrahub.
 
-In production, the most commonly monitored signals are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
+In production, the most commonly monitored signals are API request latency, late flow runs in the task manager, database connection pool usage, and disk utilisation. See [Metrics](../deploy-manage/run-observe/metrics.mdx) for where each one is exposed.
 
 ### Does the web interface have a dark theme?
 
-Yes, as a pre-release feature. The dark theme is gated behind the `INFRAHUB_EXPERIMENTAL_DARK_THEME` setting (see the [configuration reference](../reference/configuration)): with the setting enabled, the interface follows your operating system's appearance, and the Theme option in the account menu at the bottom of the sidebar switches between System, Light, and Dark, marked *alpha*. The choice is remembered per browser. With the setting disabled — the default — the interface is light-only.
-
-While the theme is in alpha, some surfaces may still render with incorrect colours. Development deployments started from the repository's compose file enable it by default so those get found; production deployments stay light unless an operator opts in.
+Yes, as an alpha feature, so some pages may still show incorrect colors. The **Theme** option in the account menu, at the bottom of the sidebar, offers System, Light, and Dark. System is the default and follows your operating system's appearance.
 
 ### How does Infrahub handle authentication and access control?
 

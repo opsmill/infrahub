@@ -1,1 +1,1 @@
-Added an experimental dark theme, available when the `INFRAHUB_EXPERIMENTAL_DARK_THEME` setting is enabled. It follows the operating system's appearance by default, and the Theme option in the account menu offers System, Light, and Dark, with Dark marked alpha.
+Added an alpha dark theme that follows the operating system's appearance by default, with System, Light, and Dark available from the Theme option in the account menu.

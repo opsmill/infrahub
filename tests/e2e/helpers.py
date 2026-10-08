@@ -72,9 +72,9 @@ async def save_screenshot_for_docs(page: Page, filename: str) -> None:
     """
     if not os.environ.get("UPDATE_DOCS_SCREENSHOTS"):
         return
-    # The published documentation is written against the light theme, while a test on a development
-    # stack may have chosen or emulated dark. Without pinning it here, a regeneration run would
-    # quietly turn those screenshots dark.
+    # The published documentation is written against the light theme, while a test may have chosen
+    # or emulated dark. Without pinning it here, a regeneration run would quietly turn those
+    # screenshots dark.
     await page.evaluate(
         """() => {
             localStorage.setItem("infrahub.theme.choice", "light");

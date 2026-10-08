@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any
 from git.exc import GitCommandError
 from jinja2 import TemplateError
 
+from infrahub.git.closure_builder.canonicalizer import InvalidDependencyPathError
 from infrahub.git.closure_builder.jinja2_closure import Jinja2Closure
 from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
 from infrahub.git.closure_builder.python_closure import PythonClosure
@@ -25,6 +26,12 @@ ISOLATED_FAILURES: tuple[type[BaseException], ...] = (
     GitCommandError,
 )
 
+# The isolated failures caused by the repository's content, which are logged without a traceback.
+EXPECTED_FAILURES: tuple[type[BaseException], ...] = (
+    InvalidDependencyPathError,
+    TemplateError,
+)
+
 
 class AggregatedTransformClosureBuilder:
     """Select the closure builder that supports a transform config and run it with failure isolation.
@@ -32,7 +39,9 @@ class AggregatedTransformClosureBuilder:
     Tries each injected builder in order and delegates to the first whose
     `supports` returns True. Failures in `ISOLATED_FAILURES` produce a fallback
     `ClosureResult` with `complete=False` so a single broken transform does not
-    abort import of the rest of the repository.
+    abort import of the rest of the repository. A failure in `EXPECTED_FAILURES`
+    is logged by its cause alone; any other keeps its traceback, which signals a
+    failure that needs investigating.
     """
 
     def __init__(
@@ -54,8 +63,12 @@ class AggregatedTransformClosureBuilder:
                 worktree_root=worktree_root,
                 logger=self._logger,
             )
-        except ISOLATED_FAILURES:
-            self._logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
+        except ISOLATED_FAILURES as exc:
+            message = f"Closure builder failed for transform {transform_config.name!r}: {exc}"
+            if isinstance(exc, EXPECTED_FAILURES):
+                self._logger.error(message)
+            else:
+                self._logger.exception(message)
             return ClosureResult(dependencies=(), complete=False, unresolved=())
 
     def _select(self, *, transform_config: TransformConfig) -> ClosureBuilder[Any]:

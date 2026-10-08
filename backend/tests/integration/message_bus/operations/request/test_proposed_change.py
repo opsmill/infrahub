@@ -37,6 +37,7 @@ from infrahub.workflows.catalogue import (
 )
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
+from tests.adapters.repository_record_store import build_in_memory_recorder
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.graphql import graphql_mutation, graphql_query
 from tests.helpers.test_app import TestInfrahubApp
@@ -101,9 +102,14 @@ PROPOSED_CHANGE_QUERY = """
 @flow(name="sync-repository-for-test")
 async def sync_repository(repo: InfrahubRepository) -> None:
     """Run a repository sync inside a flow run so the import has a Prefect run context, as in production."""
-    await RepositorySyncer(lock_registry=InfrahubLockRegistry(local_only=True), importer=RepositoryFileImporter()).sync(
-        repo
+    syncer = RepositorySyncer(
+        lock_registry=InfrahubLockRegistry(local_only=True),
+        importer=RepositoryFileImporter(),
+        recorder=build_in_memory_recorder(),
     )
+    outcome = await syncer.sync(repo)
+    assert outcome.failed == ()
+    assert outcome.report.imported_branches == ("change1",)
 
 
 class TestProposedChange(TestInfrahubApp):

@@ -15,6 +15,7 @@ from infrahub.git.repository import InfrahubRepository
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from infrahub_sdk.exceptions import Error as SdkError
     from infrahub_sdk.types import HTTPMethod
     from testcontainers.core.container import DockerContainer
 
@@ -62,18 +63,31 @@ class LocalRemote:
     def create_branch(self, branch_name: str) -> None:
         self.repo.git.branch(branch_name, self.trunk)
 
-    def commit(self, branch_name: str, files: dict[str, str]) -> str:
-        """Commit the given files on a branch, creating it from the trunk when it does not exist yet."""
+    def commit(self, branch_name: str, files: dict[str, str], amend: bool = False) -> str:
+        """Commit the given files on a branch, creating it from the trunk when it does not exist yet.
+
+        Args:
+            amend: Replace the last commit of the branch, so the branch no longer holds that commit.
+
+        """
         remote_head = self.repo.active_branch.name
         if branch_name not in [head.name for head in self.repo.heads]:
             self.create_branch(branch_name)
         self.repo.git.checkout(branch_name)
         for name, content in files.items():
+            (self.directory / name).parent.mkdir(parents=True, exist_ok=True)
             (self.directory / name).write_text(content, encoding="utf-8")
         self.repo.index.add(list(files))
-        commit = self.repo.index.commit(f"Update on {branch_name}").hexsha
+        if amend:
+            self.repo.git.commit("--amend", "-m", f"Rewritten on {branch_name}")
+        else:
+            self.repo.index.commit(f"Update on {branch_name}")
+        commit = self.repo.head.commit.hexsha
         self.repo.git.checkout(remote_head)
         return commit
+
+    def move_branch(self, branch_name: str, commit: str) -> None:
+        self.repo.git.branch("-f", branch_name, commit)
 
     def delete_branch(self, branch_name: str) -> None:
         self.repo.git.branch("-D", branch_name)
@@ -87,6 +101,7 @@ def build_repository_client(
     default_branch: str,
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
+    commit_update_error: SdkError | None = None,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -94,6 +109,10 @@ def build_repository_client(
     construction started reading the graph. Use this where the code under test builds the repository
     object itself, so the real resolution path runs. The schema comes from the live registry, so it
     cannot drift; the caller must have the core schema registered.
+
+    Args:
+        commit_update_error: Raise this error for every commit update instead of answering it.
+
     """
     node = {
         "__typename": InfrahubKind.REPOSITORY,
@@ -113,6 +132,8 @@ def build_repository_client(
     ) -> httpx.Response:
         request = httpx.Request(method="POST", url="http://mock")
         query = (payload or {}).get("query", "")
+        if commit_update_error is not None and "commit" in ((payload or {}).get("variables") or {}):
+            raise commit_update_error
         # Only the construction read, which selects default_branch, returns a node; every other
         # query naming the repository kind gets an empty success.
         if InfrahubKind.REPOSITORY in query and "default_branch" in query:
