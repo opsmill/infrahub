@@ -232,27 +232,20 @@ describe("ScopeField", () => {
     await expect.element(component.getByRole("option", { name: /^Site/ })).toBeVisible();
   });
 
-  test("warns that numbers cannot repeat across scopes when the attribute is unique on its own", async () => {
-    // GIVEN
-    const component = await renderScopeField("InfraCircuit", "circuit_number", ["provider"])
-      .rendered;
-
-    // WHEN
-    const warning = component.getByText(/must be unique across every Circuit/);
-
-    // THEN
-    await expect.element(warning).toBeVisible();
-  });
-
-  test("shows no warning while no scope is chosen", async () => {
+  test("blocks the scope and explains why when the attribute is unique", async () => {
     // GIVEN
     const component = await renderScopeField("InfraCircuit", "circuit_number").rendered;
 
     // WHEN
-    const warning = component.getByText(/must be unique across every Circuit/);
+    const explanation = component.getByText(
+      "A unique attribute cannot repeat its numbers per scope, so this pool cannot be scoped."
+    );
 
     // THEN
-    await expect.element(warning).not.toBeInTheDocument();
+    await expect.element(explanation).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "No relationship or attribute" }))
+      .toBeDisabled();
   });
 
   test("explains that the node has no field to scope by when none can be chosen", async () => {

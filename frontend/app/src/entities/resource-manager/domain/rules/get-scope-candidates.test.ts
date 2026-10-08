@@ -68,20 +68,8 @@ describe("getScopeCandidates", () => {
         detail: "Text",
         unavailableReason: "Optional",
       },
-      {
-        name: "tags_list",
-        label: "Tag names",
-        type: "attribute",
-        detail: "List",
-        unavailableReason: "List attributes can't be used",
-      },
-      {
-        name: "data",
-        label: "Data",
-        type: "attribute",
-        detail: "JSON",
-        unavailableReason: "JSON attributes can't be used",
-      },
+      { name: "tags_list", label: "Tag names", type: "attribute", detail: "List" },
+      { name: "data", label: "Data", type: "attribute", detail: "JSON" },
       {
         name: "vlan_id",
         label: "VLAN ID",
@@ -104,6 +92,26 @@ describe("getScopeCandidates", () => {
         detail: "InfraInterface",
         unavailableReason: "Relationships of cardinality many can't be used",
       },
+    ]);
+  });
+
+  it("refuses an optional List or JSON attribute as optional", () => {
+    // GIVEN
+    const optionalStructured = generateNodeSchema({
+      attributes: [
+        attribute({ name: "tags_list", label: "Tag names", kind: "List", optional: true }),
+        attribute({ name: "data", label: "Data", kind: "JSON", optional: true }),
+      ],
+      relationships: [],
+    });
+
+    // WHEN
+    const candidates = getScopeCandidates(optionalStructured, "number");
+
+    // THEN
+    expect(candidates.map(({ unavailableReason }) => unavailableReason)).toEqual([
+      "Optional",
+      "Optional",
     ]);
   });
 

@@ -17,6 +17,15 @@ function toStoredRange(range: RangeNode): StoredRange {
   };
 }
 
+// A scope element is read as a plain name or as an object with a name, because the server can return either shape.
+function toScopeElementName(element: unknown): string[] {
+  if (typeof element === "string") return [element];
+  if (typeof element === "object" && element !== null && "name" in element) {
+    return typeof element.name === "string" ? [element.name] : [];
+  }
+  return [];
+}
+
 export function toNumberPoolForEditing(node: NumberPoolForEditingNode): NumberPoolForEditing {
   const scope = node.allocation_scope?.value;
 
@@ -26,7 +35,7 @@ export function toNumberPoolForEditing(node: NumberPoolForEditingNode): NumberPo
     description: node.description?.value ?? "",
     node: node.node?.value ?? "",
     nodeAttribute: node.node_attribute?.value ?? "",
-    allocationScope: Array.isArray(scope) ? scope : [],
+    allocationScope: Array.isArray(scope) ? scope.flatMap(toScopeElementName) : [],
     poolType: node.pool_type?.value === "Schema" ? "Schema" : "User",
     ranges: node.ranges.edges.flatMap(({ node: range }) => (range ? [toStoredRange(range)] : [])),
   };

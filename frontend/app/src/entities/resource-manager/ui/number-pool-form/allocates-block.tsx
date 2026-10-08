@@ -97,15 +97,13 @@ function AllocatesInputs() {
   const scopeLabelId = useId();
   const selectedNode: FormAttributeValue | undefined = useWatch({ name: NUMBER_POOL_NODE_FIELD });
   const nodeKind = selectedNode?.value?.toString();
+  const { schema } = useSchema(nodeKind);
 
-  function removeFromScope(fieldName: string) {
+  function updateScopeForAttribute(attributeName: string) {
     const scope: string[] = form.getValues(NUMBER_POOL_ALLOCATION_SCOPE_FIELD) ?? [];
-    if (scope.includes(fieldName)) {
-      form.setValue(
-        NUMBER_POOL_ALLOCATION_SCOPE_FIELD,
-        scope.filter((name) => name !== fieldName)
-      );
-    }
+    const isUnique = schema?.attributes?.find(({ name }) => name === attributeName)?.unique;
+    const kept = isUnique ? [] : scope.filter((name) => name !== attributeName);
+    if (kept.length !== scope.length) form.setValue(NUMBER_POOL_ALLOCATION_SCOPE_FIELD, kept);
   }
 
   return (
@@ -145,7 +143,7 @@ function AllocatesInputs() {
                 value={field.value?.value?.toString()}
                 onSelect={(attributeName) => {
                   field.onChange(updateFormFieldValue(attributeName, DEFAULT_FORM_FIELD_VALUE));
-                  removeFromScope(attributeName);
+                  updateScopeForAttribute(attributeName);
                 }}
               />
               <FormMessage />

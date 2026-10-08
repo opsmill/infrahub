@@ -1,6 +1,5 @@
 import type { RelationshipKind } from "@/entities/nodes/object/domain/model/node";
 import type { ScopeCandidate } from "@/entities/resource-manager/domain/model/scope-candidate";
-import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
 import type {
   AttributeSchema,
   ModelSchema,
@@ -15,8 +14,6 @@ function getAttributeUnavailableReason(
   nodeAttribute: string
 ): string | undefined {
   if (attribute.name === nodeAttribute) return "This is the attribute the pool allocates";
-  if (attribute.kind === ATTRIBUTE_KIND.LIST) return "List attributes can't be used";
-  if (attribute.kind === ATTRIBUTE_KIND.JSON) return "JSON attributes can't be used";
   if (attribute.optional) return "Optional";
   return undefined;
 }

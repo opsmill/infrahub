@@ -73,6 +73,35 @@ describe("toNumberPoolForEditing", () => {
     expect(pool.ranges[0]?.end).toBe(9223372036854775807n);
   });
 
+  it("reads a scope stored as id and name objects by its names", () => {
+    // GIVEN a scope returned as schema element ids with their names
+    const node = poolNode({
+      allocation_scope: {
+        value: [
+          { id: "17d0a4c2", name: "site" },
+          { id: "3b1f90ee", name: "role" },
+        ],
+      },
+    });
+
+    // WHEN mapped
+    const pool = toNumberPoolForEditing(node);
+
+    // THEN the scope holds the names, in order
+    expect(pool.allocationScope).toEqual(["site", "role"]);
+  });
+
+  it("reads a scope element given as an object with a name only", () => {
+    // GIVEN a scope mixing a name and an object without id
+    const node = poolNode({ allocation_scope: { value: ["site", { name: "role" }] } });
+
+    // WHEN mapped
+    const pool = toNumberPoolForEditing(node);
+
+    // THEN both elements are read by their names
+    expect(pool.allocationScope).toEqual(["site", "role"]);
+  });
+
   it("maps a schema-defined pool", () => {
     // GIVEN a pool created by the schema
     const node = poolNode({ pool_type: { value: "Schema" } });

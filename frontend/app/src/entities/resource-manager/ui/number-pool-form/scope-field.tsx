@@ -1,6 +1,6 @@
 import { Button, Tooltip } from "@infrahub/ui";
-import { PlusIcon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { Fragment, type ReactNode, useState } from "react";
+import { PlusIcon, XIcon } from "lucide-react";
+import { Fragment, useState } from "react";
 import { useWatch } from "react-hook-form";
 
 import { Col, Row } from "@/shared/components/container";
@@ -74,20 +74,22 @@ function ScopeInput({ schema, nodeAttribute, scope, onChange }: ScopeInputProps)
 
   if (!schema) return <EmptyScopeButton isDisabled />;
 
+  if (schema.attributes?.find(({ name }) => name === nodeAttribute)?.unique) {
+    return (
+      <DisabledScope reason="A unique attribute cannot repeat its numbers per scope, so this pool cannot be scoped." />
+    );
+  }
+
   const candidates = getScopeCandidates(schema, nodeAttribute);
   const labelOf = (name: string) => candidates.find((c) => c.name === name)?.label ?? name;
   const remaining = candidates.filter((candidate) => !scope.includes(candidate.name));
   const add = (name: string) => onChange([...scope, name]);
-  const attribute = schema.attributes?.find(({ name }) => name === nodeAttribute);
 
   if (scope.length === 0 && remaining.every((candidate) => candidate.unavailableReason)) {
     return (
-      <Row className="flex-wrap">
-        <EmptyScopeButton isDisabled />
-        <span className="text-foreground-muted text-xs">
-          {schema.label ?? schema.kind} has no required attribute or relationship to scope by.
-        </span>
-      </Row>
+      <DisabledScope
+        reason={`${schema.label ?? schema.kind} has no required attribute or relationship to scope by.`}
+      />
     );
   }
 
@@ -108,59 +110,50 @@ function ScopeInput({ schema, nodeAttribute, scope, onChange }: ScopeInputProps)
   }
 
   return (
-    <Col className="gap-2">
-      <Row className="flex-wrap gap-1.5">
-        {scope.map((name, index) => (
-          <Fragment key={name}>
-            {index > 0 && <span className="text-foreground-muted">+</span>}
-            <Badge className="max-w-full gap-1 py-0 pr-0.5">
-              <span className="truncate">{labelOf(name)}</span>
-              <Button
-                variant="ghost"
-                shape="square"
-                size="xxs"
-                aria-label={`Remove ${labelOf(name)}`}
-                onPress={() => onChange(scope.filter((chosen) => chosen !== name))}
-                className="text-foreground-muted"
-              >
-                <XIcon />
-              </Button>
-            </Badge>
-          </Fragment>
-        ))}
-        <CandidatePicker
-          candidates={remaining}
-          onAdd={add}
-          isOpen={isOpen}
-          onOpenChange={setIsOpen}
-          trigger={
+    <Row className="flex-wrap gap-1.5">
+      {scope.map((name, index) => (
+        <Fragment key={name}>
+          {index > 0 && <span className="text-foreground-muted">+</span>}
+          <Badge className="max-w-full gap-1 py-0 pr-0.5">
+            <span className="truncate">{labelOf(name)}</span>
             <Button
               variant="ghost"
-              size="sm"
               shape="square"
-              aria-label="Add a relationship or attribute"
+              size="xxs"
+              aria-label={`Remove ${labelOf(name)}`}
+              onPress={() => onChange(scope.filter((chosen) => chosen !== name))}
+              className="text-foreground-muted"
             >
-              <PlusIcon />
+              <XIcon />
             </Button>
-          }
-        />
-      </Row>
-      {attribute?.unique && (
-        <WarningNote>
-          {attribute.label ?? attribute.name} must be unique across every{" "}
-          {schema.label ?? schema.kind}, so the same number can't be used in two scopes. To reuse
-          numbers per scope, make it unique together with the scope fields in the schema.
-        </WarningNote>
-      )}
-    </Col>
+          </Badge>
+        </Fragment>
+      ))}
+      <CandidatePicker
+        candidates={remaining}
+        onAdd={add}
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        trigger={
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Add a relationship or attribute"
+          >
+            <PlusIcon />
+          </Button>
+        }
+      />
+    </Row>
   );
 }
 
-function WarningNote({ children }: { children: ReactNode }) {
+function DisabledScope({ reason }: { reason: string }) {
   return (
-    <p className="flex gap-2 text-pretty rounded-lg border border-warning-border bg-warning-surface px-2.5 py-2 text-sm text-warning">
-      <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
-      <span>{children}</span>
-    </p>
+    <Row className="flex-wrap">
+      <EmptyScopeButton isDisabled />
+      <span className="text-foreground-muted text-xs">{reason}</span>
+    </Row>
   );
 }

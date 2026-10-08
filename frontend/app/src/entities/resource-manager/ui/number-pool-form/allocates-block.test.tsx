@@ -20,6 +20,12 @@ const interfaceSchema = generateNodeSchema({
   attributes: [
     generateAttributeSchema({ name: "speed", label: "Speed", kind: "Number" }),
     generateAttributeSchema({ name: "mtu", label: "MTU", kind: "Number" }),
+    generateAttributeSchema({
+      name: "if_index",
+      label: "Interface index",
+      kind: "Number",
+      unique: true,
+    }),
   ],
 });
 const vlanSchema = generateNodeSchema({
@@ -197,6 +203,33 @@ describe("AllocatesBlock", () => {
         .element(component.getByRole("combobox", { name: "Attribute *" }))
         .toHaveTextContent("MTU");
       expect(formRef.current?.getValues("allocation_scope")).toEqual(["device"]);
+    });
+
+    test("clears the scope when a unique attribute is chosen", async () => {
+      // GIVEN
+      const formRef = createRef<FormRef>();
+      const component = await render(
+        <TestForm
+          ref={formRef}
+          defaultValues={{
+            node: { source: { type: "user" }, value: "InfraInterface" },
+            node_attribute: { source: { type: "user" }, value: "speed" },
+            allocation_scope: ["device", "mtu"],
+          }}
+        >
+          <AllocatesBlock variant="input" />
+        </TestForm>
+      );
+      await component.getByRole("combobox", { name: "Attribute *" }).click();
+
+      // WHEN
+      await component.getByRole("option", { name: "Interface index" }).click();
+
+      // THEN
+      await expect
+        .element(component.getByRole("combobox", { name: "Attribute *" }))
+        .toHaveTextContent("Interface index");
+      expect(formRef.current?.getValues("allocation_scope")).toEqual([]);
     });
 
     test("labels the scope picker with Scoped by", async () => {
