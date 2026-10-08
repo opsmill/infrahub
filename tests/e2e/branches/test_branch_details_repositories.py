@@ -50,14 +50,14 @@ class TestBranchDetailsRepositoryImportError:
 
         await band.get_by_role("link", name="View task log").click()
         # The band links the newest failed import, which the periodic Git sync can replace after the first one.
-        task_url = re.compile(r"/tasks/(?P<task_id>[0-9a-f-]{36})(?=$|[?#])")
+        task_url = re.compile(r"/tasks/([0-9a-f-]{36})(?=$|[?#])")
         await expect(admin_page).to_have_url(task_url)
         match = task_url.search(admin_page.url)
         assert match
         response = await infrahub_client.execute_graphql(
             query=FAILED_REPOSITORY_TASK_QUERY,
             variables={
-                "taskId": match["task_id"],
+                "taskId": match[1],
                 "branch": broken_repository.branch,
                 "repositoryId": broken_repository.repository_id,
             },
