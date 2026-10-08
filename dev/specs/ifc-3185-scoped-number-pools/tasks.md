@@ -575,12 +575,12 @@ division rows, the range rows and the filtered allocation list against the recor
       a partial two-entry filter on a `["site", "role"]` pool; `InfrahubResourcePoolAllocated`
       count, offset and limit unchanged across the fragment move.
 - [ ] T085 [P] [US3] Component test in the same file (scenario of part 2, IFC-3184 T064): a number
-      attached outside the ranges is listed with `in_space: false` and `range: null`, counts in no
-      figure, and counts once a range is widened to hold it, with no new attach; the same holds
-      when a range is removed under a tracked number.
+      attached outside the ranges is not listed and counts in no figure; once a range is widened to
+      hold it, it is listed with that range and counts, with no new attach; when a range is removed
+      under a tracked number, the number is no longer listed and no longer counts.
 - [ ] T086 [P] [US3] Component test in the same file (scenario of part 2, IFC-3184 T065): one
-      record inside the space on one branch and outside it on another appears in both states, told
-      apart by the row's `branch`.
+      record whose value is inside the space on one branch and outside it on another is listed
+      once, with the `branch` on which it is inside the space, and counts only there.
 - [ ] T087 [P] [US3] Component test in the same file (scenario of part 2, IFC-3184 T066): number 50
       allocated in site A and attached on site B with no uniqueness constraint gives two rows, one
       `ALLOCATED` and one `PROVIDED`, while the pool's `used` counts 50 once.
@@ -594,8 +594,9 @@ division rows, the range rows and the filtered allocation list against the recor
       `branch_name: str | None = None` and `provenance: PoolRecordProvenance | None = None`;
       project `coalesce(ir.provenance, $allocated_provenance) AS provenance`; add `provenance:
       PoolRecordProvenance` to `NumberPoolAllocatedResult`; keep `ORDER BY av.value, hv.branch,
-      n.uuid`. `in_space` and `range` of each row come from
-      `backend/infrahub/pools/number_ranges.py::EffectiveSpace.contains` and `range_for`. The
+      n.uuid`. A row outside the pool's space is dropped
+      (`backend/infrahub/pools/number_ranges.py::EffectiveSpace.contains`); the `range` of each row
+      comes from `EffectiveSpace.range_for`. The
       generic callers (`resolve_number_pool_allocation`, `NumberUtilizationGetter`) pass nothing
       new and render the same text as today. Component test in
       `backend/tests/component/core/resource_manager/test_number_pool.py` (extend): each filter

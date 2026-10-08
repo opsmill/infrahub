@@ -789,7 +789,7 @@ Using the repository's "ask first" list.
   shared effective-space calculation (`backend/infrahub/pools/number_ranges.py::EffectiveSpace`:
   the ranges clipped to the attribute's `min_value` / `max_value` minus its `excluded_values`).
   The division filter sits inside the records fragment the range walk calls, so it is independent
-  of the walk. The dedicated surface computes every `size`, `used` and `in_space` from
+  of the walk. The dedicated surface computes every `size` and `used`, and the values it lists, from
   `EffectiveSpace`, never from the shorthand, so allocation and the surface use one definition of
   the pool's space.
 - P2 has landed in part on this branch: the `IS_RESERVED` record is a global edge from the pool to
@@ -884,7 +884,7 @@ says and what this specification does instead. None is resolved here.
 |---|---|---|
 | FR-020 amendment; Mechanism "Scope enumeration" | The divisions list holds every division with at least one node of the kind; a division with nodes and no allocation reports 0; `NumberPoolGetScopes` enumerates distinct tuples over the kind's nodes, left-joined to the counts | `InfrahubNumberPoolDivisions` lists only the divisions whose holders hold at least one tracked value (FR-011, FR-022); the enumeration over nodes exists only for the attribute-add size check (D9). Kept by the user on 2026-10-07 |
 | Mechanism "Per-scope utilization (FR-020)" | One read, the traversal grouped by scope, returns every scope's utilization | Utilization is read for one division at a time and `division` is required on a scoped pool (FR-011, FR-015, FR-017); the fullest division is the first row of the divisions list. Specified with the GraphQL surface (#10911) |
-| Open question 1 (provenance in the pool query) | Asks whether the generic pool query carries provenance in v1 | Provenance is carried by the dedicated `InfrahubNumberPoolAllocations` and `out_of_space_count` on `InfrahubNumberPoolUtilization`; the generic queries are frozen (FR-028, FR-029) |
+| Open question 1 (provenance in the pool query) | Asks whether the generic pool query carries provenance in v1 | Provenance is carried by the dedicated `InfrahubNumberPoolAllocations`; a value outside the pool's space is not listed and counts in no figure; the generic queries are frozen (FR-028, FR-029) |
 | Validation at pool save (Mechanism) | Refuses optional fields, many relationships, paths into a related node, a scope on a `unique` attribute and an entry not satisfied by the generic | Also refuses a list or JSON attribute, a duplicate entry and the pool's own number-pool attribute (FR-020). Additions, each a refusal |
 | FR-010 | A schema load that makes a scoped entry optional, absent or many is refused | Also refuses a schema load that makes the pool's attribute `unique: true` while the pool carries a scope (FR-010). Addition that follows from the FR-017 carve-out |
 

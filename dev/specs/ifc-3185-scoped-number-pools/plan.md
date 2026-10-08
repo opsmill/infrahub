@@ -317,7 +317,7 @@ None of the three resolvers reads the deprecated `start_range` / `end_range` pai
 mirror leaves it null on a pool holding several ranges. The pool's space comes from
 `pools/number_ranges.py::EffectiveSpace`, built from the pool's ranges and the attribute's domain
 (`min_value` / `max_value` minus `excluded_values`) by `pools/number_pool_space.py`: `size` and
-`size_of(range_id)` give the figures' denominators, `contains` decides `in_space`, `range_for`
+`size_of(range_id)` give the figures' denominators, `contains` decides whether a row is listed, `range_for`
 gives a row's `range`, `as_query_ranges` gives the bounds the rows query filters on. Allocation
 draws from the same `EffectiveSpace`, so the surface and the picker use one definition of the
 pool's space.
@@ -459,7 +459,7 @@ diffing `schema/schema.graphql` for those types.
 |---|---|
 | The hop's fork-window leg makes the scoped free query slow at high occupancy | SC-006 measures; the stored key is the documented next lever |
 | Deferring `handle_pool` on update reorders error surfacing for mixed payloads | Functional test pins the order; P2's intent resolver slots in after the deferral |
-| This slice and part 1 share `NumberPoolParameters`, the picker's range walk, `EffectiveSpace` and the SDK generator | The fragment change is parameter-only and sits inside the range walk; `size`, `used` and `in_space` on the dedicated surface come from `EffectiveSpace`, so allocation and the surface use one definition of the pool's space; the SDK models of both parts merge into `infrahub-develop` before the release merge (IFC-3356) |
+| This slice and part 1 share `NumberPoolParameters`, the picker's range walk, `EffectiveSpace` and the SDK generator | The fragment change is parameter-only and sits inside the range walk; `size`, `used` and the values listed on the dedicated surface come from `EffectiveSpace`, so allocation and the surface use one definition of the pool's space; the SDK models of both parts merge into `infrahub-develop` before the release merge (IFC-3356) |
 | The generic queries and today's getter read the deprecated shorthand, null on a pool holding several ranges | The dedicated surface never reads the shorthand; the generic queries stay as they are (frozen), and their behaviour on a multi-range pool is P1's to fix |
 | The record-side anchor runs the entry subqueries once per record at full occupancy | Both anchor orders rendered and profiled before one is kept |
 | `NumberPoolGetAllocated` on the shared fragment changes the allocation lists on a deleting branch | Intended; changelog entry; component test |
