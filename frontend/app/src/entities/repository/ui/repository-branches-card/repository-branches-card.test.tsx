@@ -88,7 +88,7 @@ function asRenderedColour(colour: string): string {
 type RenderedCard = Awaited<ReturnType<typeof renderCard>>;
 
 async function openFilterField(component: RenderedCard, field: string) {
-  await component.getByRole("button", { name: "Filter", exact: true }).click();
+  await component.getByRole("button", { name: /^Filter/ }).click();
   await component.getByRole("option", { name: field, exact: true }).click();
 }
 
@@ -99,7 +99,7 @@ async function applyBranchStatusFilter(component: RenderedCard, status: string) 
 }
 
 async function applySort(component: RenderedCard, field: string, direction: string) {
-  await component.getByRole("button", { name: "Sort", exact: true }).click();
+  await component.getByRole("button", { name: /^Sort/ }).click();
   await component.getByRole("menuitem", { name: field, exact: true }).click();
   await component.getByRole("menuitem", { name: direction, exact: true }).click();
 }
@@ -923,6 +923,15 @@ describe("RepositoryBranchesCard", () => {
       rowVisibleAfter: "feature-auth",
     });
     await component.getByRole("searchbox", { name: "Search branches" }).fill("release");
+    // The search is debounced and both controls write one key, so wait for its request to land
+    // before adding the status: otherwise the assertion races the debounce.
+    await expectServerDrivenChange({
+      apiMock,
+      callIndex: 1,
+      variables: { ...FIRST_PAGE_VARIABLES, name__value: "release", partial_match: true },
+      payload: toApiResult(matched),
+      rowVisibleAfter: "release-2-0",
+    });
     await applyBranchStatusFilter(component, "OPEN");
 
     // THEN
@@ -967,7 +976,7 @@ describe("RepositoryBranchesCard", () => {
 
     // WHEN
     const component = await renderCard(readOnlyRepositorySchema);
-    await component.getByRole("button", { name: "Sort", exact: true }).click();
+    await component.getByRole("button", { name: /^Sort/ }).click();
 
     // THEN nothing the card renders as a column is offered, because the order input cannot express it
     await expect
