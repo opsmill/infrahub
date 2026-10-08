@@ -114,7 +114,13 @@ so nodes changed during the run do not count.
 
 `chunk_size` is `config.SETTINGS.database.query_size_limit`. Each chunk is a separate auto-commit
 read, so no transaction holds more than one chunk; the flow keeps the IDs of one kind and one
-aggregate per side in memory. For a relationship R of kind K, the collector reads the side of K and
+aggregate per side in memory.
+
+Keep the `USING INDEX n:Node(uuid)` hint on the degree query: for a list of thousands of IDs, Neo4j
+otherwise plans a read of every node of the kind through the `kind` index and filters it by ID.
+Keep the label counts aggregated without a grouping key, so Neo4j reads them from its count store
+instead of scanning each label. Each page of `KindActiveNodeIdsQuery` still reads and sorts every
+node of the kind, so reading the IDs of a kind grows with the square of its size. For a relationship R of kind K, the collector reads the side of K and
 the opposite side of each concrete peer kind, because the worst case needs the largest number of
 nodes that reach one peer even when the peer kind declares no relationship back.
 

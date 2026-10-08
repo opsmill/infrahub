@@ -37,8 +37,10 @@ def _label_count_subquery(kinds: Sequence[str], params: dict[str, Any]) -> str:
     label_counts: list[str] = []
     for index, kind in enumerate(sorted(set(kinds))):
         params[f"label_kind_{index}"] = kind
+        # An aggregation without a grouping key is read from the database's label counts, not a scan of the label.
         label_counts.append(
-            f"MATCH (labelled:`{kind}`) RETURN $label_kind_{index} AS label_kind, count(labelled) AS label_total"
+            f"MATCH (labelled:`{kind}`) WITH count(labelled) AS label_total "
+            f"RETURN $label_kind_{index} AS label_kind, label_total"
         )
     return "\nUNION ALL\n".join(label_counts)
 
@@ -180,7 +182,9 @@ class RelationshipSideDegreeQuery(Query):
         self.params["identifier"] = self.identifier
         arrows = self.get_query_arrows(direction=self.direction)
         query = """
+        // without the hint, a chunk of ids is planned as a read of every node of the kind through the kind index
         MATCH (n:Node)
+        USING INDEX n:Node(uuid)
         WHERE n.uuid IN $node_ids AND n.kind = $kind
         MATCH (n)%(left_start)s[:IS_RELATED]%(left_end)s(rl:Relationship { name: $identifier })
         WITH DISTINCT n, rl
