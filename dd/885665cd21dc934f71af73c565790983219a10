@@ -1,0 +1,25 @@
+backend/infrahub/graphql/queries/number_pool.py
+  s_b221a4e981ff67::t_39e0e13a417953 7
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_b221a4e981ff67::t_39e0e13a417953 24977-24978,24981-24987
+backend/infrahub/pools/number_pool_mock.py
+  s_b221a4e981ff67::t_39e0e13a417953 8
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_b221a4e981ff67::t_39e0e13a417953 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dd885665cd21dc934f71af73c565790983219a10",
+  "prompts": {},
+  "sessions": {
+    "s_b221a4e981ff67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc9618a-9cab-4d92-8799-c95598cb67b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
