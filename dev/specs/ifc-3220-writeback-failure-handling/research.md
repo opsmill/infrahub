@@ -756,8 +756,8 @@ every candidate after one read.
 | `PostMergeRegenerationDispatcher.dispatch`, on the plan, before `_dispatch_plan` | generator runs, artifact generations | `generator_definition.repository_id`; a new `RequestArtifactDefinitionGenerate.repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the generator cascade reselects artifacts | artifact generations | as above |
 | `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | "every definition of a repository" | see below |
-| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target source |
-| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the same owner map |
+| `core/merge/recompute_coalescing.py::_resolve_python_targets`, used by `MergeRecomputeCoordinator` and `RecomputeChainSubmitter` | Python computed attributes as `(kind, attribute)` | the owner map of the Python target resolver |
+| `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the `(kind, attribute)` pairs it selected | the repository of each gathered trigger, from the same gather |
 
 ### The artifact request gains its repository
 
@@ -768,9 +768,11 @@ validates.
 
 ### The Python owner map
 
-`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, and the
-Python target source exposes `owner_of(kind, attribute) -> str | None`. The barrier consults it
-after `_resolve_python_targets`, so it filters both a resolved result and the widened failsafe.
+`GatheredPythonReadSets` drops the repository of each transform. It keeps it instead, the read set
+of each attribute carries it, and the Python target resolver exposes
+`owner_of(kind, attribute_name, branch) -> str | None`. The owner is known once a resolution on the
+branch has loaded the read sets. The barrier consults it after `_resolve_python_targets`, so it
+filters both a resolved result and the widened failsafe.
 
 When the owner of a target is unknown while some repository has a pending delivery, the barrier
 holds the target under every pending repository. Each release then runs it, which over-executes and
