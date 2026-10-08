@@ -34,7 +34,7 @@ export function updateNumberPoolRangeFromApi({
   return graphqlClient.mutate({
     mutation: UPDATE_NUMBER_POOL_RANGE,
     variables: { id: range.id, start: range.start, end: range.end, weight: range.weight },
-    // The form shows the refusal inline, so the global toast is suppressed to avoid a second message.
+    // Callers display the refusal, so the global toast is suppressed.
     context: {
       branch: branchName,
       processErrorMessage: () => {},

@@ -61,7 +61,7 @@ describe("applyNumberPoolRangeChanges", () => {
 
     // THEN the calls follow the safe order and all four are counted
     expect(calls).toEqual(["delete r-old", "update r-1", "update r-2", "create 100"]);
-    expect(result).toEqual({ appliedCount: 4, errorMessage: null });
+    expect(result).toEqual({ errorMessage: null });
     expect(createMock).toHaveBeenCalledWith({
       branchName: "main",
       poolId: "pool-1",
@@ -87,7 +87,7 @@ describe("applyNumberPoolRangeChanges", () => {
 
     // THEN no call is made
     expect(calls).toEqual([]);
-    expect(result).toEqual({ appliedCount: 0, errorMessage: null });
+    expect(result).toEqual({ errorMessage: null });
   });
 
   it("stops at the first server refusal and returns its message", async () => {
@@ -105,13 +105,10 @@ describe("applyNumberPoolRangeChanges", () => {
       changes,
     });
 
-    // THEN the create is never sent and two changes are counted as applied
+    // THEN the create is never sent
     expect(calls).toEqual(["delete r-old", "update r-1", "update r-2"]);
     expect(createMock).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      appliedCount: 2,
-      errorMessage: "Range 16-30 overlaps 25-40 (r-9)",
-    });
+    expect(result).toEqual({ errorMessage: "Range 16-30 overlaps 25-40 (r-9)" });
   });
 
   it("stops at a network failure and returns a generic message", async () => {
@@ -128,6 +125,6 @@ describe("applyNumberPoolRangeChanges", () => {
     // THEN nothing else is sent and the generic message is returned
     expect(updateMock).not.toHaveBeenCalled();
     expect(createMock).not.toHaveBeenCalled();
-    expect(result).toEqual({ appliedCount: 0, errorMessage: UNEXPECTED_RANGE_SAVE_ERROR });
+    expect(result).toEqual({ errorMessage: UNEXPECTED_RANGE_SAVE_ERROR });
   });
 });

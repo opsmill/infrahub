@@ -21,7 +21,7 @@ function getAttributeUnavailableReason(
   return undefined;
 }
 
-// Mirrors the backend uniqueness-constraint rule: only a required relationship of cardinality one is accepted.
+// Only a required relationship of cardinality one can identify a scope.
 function getRelationshipUnavailableReason(relationship: RelationshipSchema): string | undefined {
   if (relationship.cardinality === "many") return "Relationships of cardinality many can't be used";
   if (relationship.optional) return "Optional";

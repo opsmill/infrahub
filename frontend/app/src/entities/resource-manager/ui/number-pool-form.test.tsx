@@ -74,7 +74,7 @@ describe("NumberPoolForm", () => {
   beforeEach(() => {
     createPool.mockResolvedValue(createdPool);
     updatePool.mockResolvedValue(createdPool);
-    applyRangeChanges.mockResolvedValue({ appliedCount: 2, errorMessage: null });
+    applyRangeChanges.mockResolvedValue({ errorMessage: null });
     vi.mocked(getNumberPoolForEditing).mockResolvedValue(storedPool);
     vi.mocked(useCreateObjectMutation).mockReturnValue({
       mutateAsync: createPool,
@@ -175,7 +175,7 @@ describe("NumberPoolForm", () => {
 
   test("keeps the form open with the rows as typed and shows the range refusal once", async () => {
     // GIVEN
-    applyRangeChanges.mockResolvedValue({ appliedCount: 1, errorMessage: RANGE_REFUSED });
+    applyRangeChanges.mockResolvedValue({ errorMessage: RANGE_REFUSED });
     const component = await renderFilledCreateForm();
 
     // WHEN
@@ -192,7 +192,7 @@ describe("NumberPoolForm", () => {
 
   test("shows the node and attribute of the created pool as read-only after a range refusal", async () => {
     // GIVEN
-    applyRangeChanges.mockResolvedValue({ appliedCount: 1, errorMessage: RANGE_REFUSED });
+    applyRangeChanges.mockResolvedValue({ errorMessage: RANGE_REFUSED });
     const component = await renderFilledCreateForm();
 
     // WHEN
@@ -205,7 +205,7 @@ describe("NumberPoolForm", () => {
 
   test("saving again after a range refusal does not create a second pool and sends only the remaining ranges", async () => {
     // GIVEN
-    applyRangeChanges.mockResolvedValueOnce({ appliedCount: 1, errorMessage: RANGE_REFUSED });
+    applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
     const component = await renderFilledCreateForm();
     await component.getByRole("button", { name: "Save" }).click();
     await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
@@ -312,7 +312,7 @@ describe("NumberPoolForm", () => {
 
     test("after a refusal mid-sequence, keeps the rows as typed and the next save sends only what remains", async () => {
       // GIVEN
-      applyRangeChanges.mockResolvedValueOnce({ appliedCount: 2, errorMessage: RANGE_REFUSED });
+      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
       const component = await renderEditForm();
       await component.getByRole("textbox", { name: "Weight" }).nth(0).fill("20");
       await component.getByRole("button", { name: "Remove range" }).nth(2).click();
@@ -352,7 +352,7 @@ describe("NumberPoolForm", () => {
     test("a refused delete of a range that no longer exists is reported, and the next save sends no range call", async () => {
       // GIVEN
       const RANGE_MISSING = "Unable to find the range range-3";
-      applyRangeChanges.mockResolvedValueOnce({ appliedCount: 0, errorMessage: RANGE_MISSING });
+      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_MISSING });
       const component = await renderEditForm();
       await component.getByRole("button", { name: "Remove range" }).nth(2).click();
       vi.mocked(getNumberPoolForEditing).mockResolvedValue({

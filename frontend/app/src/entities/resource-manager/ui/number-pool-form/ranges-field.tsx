@@ -8,21 +8,18 @@ import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { formatNumberDisplay } from "@/shared/utils/number";
 
-import type {
-  RangeRow,
-  StoredRange,
+import {
+  EMPTY_RANGE_ROW,
+  type RangeRow,
+  type StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
+import { RANGES_FIELD } from "@/entities/resource-manager/domain/model/pool";
 import { sortStoredRanges } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import {
   getRangeClipHint,
   type RangeLimits,
   validateRangeRows,
 } from "@/entities/resource-manager/domain/rules/validate-range-rows";
-
-export const RANGES_FIELD = "ranges";
-
-// Rows hold the plain typed strings rather than `{ source, value }` because a range is a peer node of the pool, not an attribute with a provenance.
-export const EMPTY_RANGE_ROW: RangeRow = { start: "", end: "", weight: "" };
 
 type RangeKey = "start" | "end" | "weight";
 type RangeFieldName = `${typeof RANGES_FIELD}.${number}.${RangeKey}`;

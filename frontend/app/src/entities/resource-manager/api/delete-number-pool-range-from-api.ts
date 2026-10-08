@@ -20,7 +20,7 @@ export function deleteNumberPoolRangeFromApi({
   return graphqlClient.mutate({
     mutation: DELETE_NUMBER_POOL_RANGE,
     variables: { id },
-    // The form shows the refusal inline, so the global toast is suppressed to avoid a second message.
+    // Callers display the refusal, so the global toast is suppressed.
     context: {
       branch: branchName,
       processErrorMessage: () => {},

@@ -19,16 +19,18 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type { NodeCore } from "@/entities/nodes/object/domain/model/node";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import type {
-  NumberPoolForEditing,
-  RangeRow,
-  StoredRange,
+import {
+  EMPTY_RANGE_ROW,
+  type NumberPoolForEditing,
+  type RangeRow,
+  type StoredRange,
 } from "@/entities/resource-manager/domain/model/number-pool-range";
 import {
   NUMBER_POOL_ALLOCATION_SCOPE_FIELD,
   NUMBER_POOL_KIND,
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
+  RANGES_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
 import {
   diffRanges,
@@ -39,8 +41,6 @@ import {
 import type { RangeLimits } from "@/entities/resource-manager/domain/rules/validate-range-rows";
 import { AllocatesBlock } from "@/entities/resource-manager/ui/number-pool-form/allocates-block";
 import {
-  EMPTY_RANGE_ROW,
-  RANGES_FIELD,
   RangesField,
   ReadOnlyRangesField,
 } from "@/entities/resource-manager/ui/number-pool-form/ranges-field";

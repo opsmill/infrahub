@@ -16,7 +16,6 @@ export interface ApplyNumberPoolRangeChangesParams extends BranchContextParams {
 }
 
 export interface ApplyNumberPoolRangeChangesResult {
-  appliedCount: number;
   errorMessage: string | null;
 }
 
@@ -51,15 +50,13 @@ export const applyNumberPoolRangeChanges: ApplyNumberPoolRangeChanges = async ({
     ),
   ];
 
-  let appliedCount = 0;
   for (const call of calls) {
     try {
       await call();
     } catch (error) {
-      return { appliedCount, errorMessage: toErrorMessage(error) };
+      return { errorMessage: toErrorMessage(error) };
     }
-    appliedCount += 1;
   }
 
-  return { appliedCount, errorMessage: null };
+  return { errorMessage: null };
 };

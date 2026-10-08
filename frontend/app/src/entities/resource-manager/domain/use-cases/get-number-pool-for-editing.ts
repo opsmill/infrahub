@@ -7,9 +7,11 @@ import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/mo
 
 export type GetNumberPoolForEditingParams = GetNumberPoolForEditingFromApiParams;
 
+export type GetNumberPoolForEditingResult = NumberPoolForEditing;
+
 export type GetNumberPoolForEditing = (
   params: GetNumberPoolForEditingParams
-) => Promise<NumberPoolForEditing>;
+) => Promise<GetNumberPoolForEditingResult>;
 
 export const getNumberPoolForEditing: GetNumberPoolForEditing = async (params) => {
   const { data } = await getNumberPoolForEditingFromApi(params);

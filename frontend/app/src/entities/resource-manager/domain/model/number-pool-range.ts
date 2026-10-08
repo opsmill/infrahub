@@ -6,6 +6,9 @@ export interface RangeRow {
   weight: string;
 }
 
+// Rows hold the plain typed strings rather than `{ source, value }` because a range is a peer node of the pool, not an attribute with a provenance.
+export const EMPTY_RANGE_ROW: RangeRow = { start: "", end: "", weight: "" };
+
 export interface StoredRange {
   id: string;
   start: number;
@@ -13,18 +16,9 @@ export interface StoredRange {
   weight: number | null;
 }
 
-export interface RangeUpdate {
-  id: string;
-  start: number;
-  end: number;
-  weight: number | null;
-}
+export type RangeUpdate = StoredRange;
 
-export interface RangeInput {
-  start: number;
-  end: number;
-  weight: number | null;
-}
+export type RangeInput = Omit<StoredRange, "id">;
 
 export interface RangeChanges {
   deletes: string[];

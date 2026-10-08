@@ -19,7 +19,7 @@ export function parseWholeNumber(value: string): number | null {
   return Number.isSafeInteger(parsed) ? parsed : null;
 }
 
-function formatRange(start: number, end: number): string {
+export function formatRange(start: number, end: number): string {
   return `${formatNumberDisplay(start)} – ${formatNumberDisplay(end)}`;
 }
 
