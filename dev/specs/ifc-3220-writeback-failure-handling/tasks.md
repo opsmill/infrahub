@@ -344,7 +344,7 @@ SC-002, SC-007.
 
 ### Frontend
 
-- [ ] T047 [P] [US1] Write `frontend/app/src/entities/repository/api/get-delivery-state-from-api.ts`, which
+- [X] T047 [P] [US1] Write `frontend/app/src/entities/repository/api/get-delivery-state-from-api.ts`, which
       queries the nine attributes on the default branch whatever branch is selected, plus the
       domain model and the "Actions by status" rule in
       `frontend/app/src/entities/repository/domain/model/delivery-state.ts`, with a Vitest test.
