@@ -112,10 +112,22 @@ class RepositoryDeliveryGitAdapter:
             timeout_seconds=self.local_timeout_seconds,
         )
         with self._bounded():
-            # The comparison raises for a missing commit, which this answer reports as no.
-            if not all(gateway.has_commit(commit=commit) for commit in (ancestor, descendant)):
-                return False
-            return gateway.is_ancestor(ancestor_commit=ancestor, descendant_commit=descendant)
+            try:
+                # The comparison raises for a missing commit, which this answer reports as no.
+                if not all(gateway.has_commit(commit=commit) for commit in (ancestor, descendant)):
+                    return False
+                return gateway.is_ancestor(ancestor_commit=ancestor, descendant_commit=descendant)
+            except RepositoryError as exc:
+                if _killed_command(error=exc) is not None:
+                    raise
+                # The detail can name a path on this worker, and users read the message in the push state.
+                raise RepositoryError(
+                    identifier=self.repository.name,
+                    message=(
+                        f"Unable to compare the commit {ancestor} against {descendant} in the clone of "
+                        f"repository {self.repository.name} on this worker."
+                    ),
+                ) from exc
 
     def replay(self, *, base: str, commits: Sequence[str]) -> ReplayResult:
         worktree = self._destination_worktree()
