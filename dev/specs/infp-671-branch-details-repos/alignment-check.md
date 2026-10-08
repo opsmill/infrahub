@@ -5,7 +5,7 @@
 ## 1. Source
 
 - Primary PRD: `design/05-handoff.md` (proposal §2, rejected §3, decisions §4, open questions §5, system gaps §6, lift sheet, queries, checks).
-- Supporting: `design/00-brief.md`, `design/03-decisions.md` (rounds 1–6), `design/04-review.md`.
+- Supporting: `00-brief.md`, `03-decisions.md` (rounds 1–6) and `04-review.md`, on the design branch `ple-design-branch-details-repos` in `.design/branch-details-repos/`.
 - Inline ask: the feature description passed to this run (same content as handoff §2).
 - Caller's standing decisions (Merge ungated, backend-data-only, raw log line, tasks link out, desktop only, theme tokens, open questions 2–4 defaults, `TablePagination` as an early task).
 

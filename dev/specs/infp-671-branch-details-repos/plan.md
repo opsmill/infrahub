@@ -189,7 +189,7 @@ A failed page past the first shows "Go to first page" in the card's failed state
 
 ### Copy
 
-All strings from `design/03-decisions.md` and rev-06 are kept verbatim where they describe real data ("— import failed", "View task log →", "Infrahub can't fetch new commits, so the commit shown may be out of date.", "Open repository", "Show all"/"Collapse", "Open in Tasks", "This branch"). The prototype's "Ask an administrator for read access to repositories on all branches" becomes "Ask an administrator for permission to view repositories." (the page queries one branch).
+All strings from `03-decisions.md` (design branch) and rev-06 are kept verbatim where they describe real data ("— import failed", "View task log →", "Infrahub can't fetch new commits, so the commit shown may be out of date.", "Open repository", "Show all"/"Collapse", "Open in Tasks", "This branch"). The prototype's "Ask an administrator for read access to repositories on all branches" becomes "Ask an administrator for permission to view repositories." (the page queries one branch).
 
 ## Risks
 
