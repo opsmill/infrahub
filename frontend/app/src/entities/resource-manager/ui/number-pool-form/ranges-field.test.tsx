@@ -122,6 +122,36 @@ describe("RangesField", () => {
     await expect.element(component.getByText("Whole number")).not.toBeInTheDocument();
   });
 
+  test("announces the error once the user leaves the field", async () => {
+    // GIVEN
+    const component = await renderRanges([{ start: "", end: "", weight: "" }]);
+    await component.getByRole("textbox", { name: "Start" }).fill("abcd");
+
+    // WHEN
+    await userEvent.tab();
+
+    // THEN
+    await expect.element(component.getByRole("alert")).toHaveTextContent("Whole number");
+  });
+
+  test("names each input after its row number", async () => {
+    // GIVEN
+    const ranges = [
+      { start: "100", end: "199", weight: "10" },
+      { start: "300", end: "399", weight: "" },
+    ];
+
+    // WHEN
+    const component = await renderRanges(ranges);
+
+    // THEN
+    const start = component.getByRole("textbox", { name: "Start, range 2", exact: true });
+    await expect.element(start).toHaveValue("300");
+    await expect
+      .element(component.getByRole("button", { name: "Remove range 2", exact: true }))
+      .toBeVisible();
+  });
+
   test("names the other range on both overlapping rows and blocks the submit", async () => {
     // GIVEN
     const onSubmit = vi.fn();

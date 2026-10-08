@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
 
@@ -24,7 +24,15 @@ const interfaceSchema = generateNodeSchema({
   name: "Interface",
   namespace: "Infra",
   label: "Interface",
-  attributes: [generateAttributeSchema({ name: "speed", label: "Speed", kind: "Number" })],
+  attributes: [
+    generateAttributeSchema({ name: "speed", label: "Speed", kind: "Number" }),
+    generateAttributeSchema({
+      name: "mtu",
+      label: "MTU",
+      kind: "Number",
+      parameters: { min_value: 150, max_value: 250 },
+    }),
+  ],
   relationships: [
     {
       ...generateNodeSchema().relationships![0]!,
@@ -52,6 +60,7 @@ const storedPool: NumberPoolForEditing = {
 };
 
 const RANGE_REFUSED = "Range 300-399 overlaps another range";
+const RANGE_MISSING = "Unable to find the range range-3";
 
 describe("NumberPoolForm", () => {
   const initialNodeSchemas = store.get(nodeSchemasAtom);
@@ -72,6 +81,7 @@ describe("NumberPoolForm", () => {
   });
 
   beforeEach(() => {
+    vi.resetAllMocks();
     createPool.mockResolvedValue(createdPool);
     updatePool.mockResolvedValue(createdPool);
     applyRangeChanges.mockResolvedValue({ errorMessage: null });
@@ -87,10 +97,6 @@ describe("NumberPoolForm", () => {
     } as unknown as ReturnType<typeof useApplyNumberPoolRangeChangesMutation>);
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   async function renderFilledCreateForm() {
     const component = await render(<NumberPoolForm onSuccess={onSuccess} />);
     await component.getByLabelText("Name *").fill("VLAN pool");
@@ -98,12 +104,12 @@ describe("NumberPoolForm", () => {
     await component.getByRole("option", { name: "Interface Infra" }).click();
     await component.getByRole("combobox", { name: "Attribute *" }).click();
     await component.getByRole("option", { name: "Speed" }).click();
-    await component.getByRole("textbox", { name: "Start" }).fill("100");
-    await component.getByRole("textbox", { name: "End" }).fill("199");
-    await component.getByRole("textbox", { name: "Weight" }).fill("10");
+    await component.getByRole("textbox", { name: "Start, range 1" }).fill("100");
+    await component.getByRole("textbox", { name: "End, range 1" }).fill("199");
+    await component.getByRole("textbox", { name: "Weight, range 1" }).fill("10");
     await component.getByRole("button", { name: "Add range" }).click();
-    await component.getByRole("textbox", { name: "Start" }).nth(1).fill("300");
-    await component.getByRole("textbox", { name: "End" }).nth(1).fill("399");
+    await component.getByRole("textbox", { name: "Start, range 2" }).fill("300");
+    await component.getByRole("textbox", { name: "End, range 2" }).fill("399");
     return component;
   }
 
@@ -173,6 +179,60 @@ describe("NumberPoolForm", () => {
     });
   });
 
+  async function renderCreateFormWithAttribute(attributeLabel: string) {
+    const component = await render(<NumberPoolForm onSuccess={onSuccess} />);
+    await component.getByRole("combobox", { name: "Node *" }).click();
+    await component.getByRole("option", { name: "Interface Infra" }).click();
+    await component.getByRole("combobox", { name: "Attribute *" }).click();
+    await component.getByRole("option", { name: attributeLabel }).click();
+    return component;
+  }
+
+  test("shows how the limits of the chosen attribute clip a range", async () => {
+    // GIVEN
+    const component = await renderCreateFormWithAttribute("MTU");
+    await component.getByRole("textbox", { name: "Start, range 1" }).fill("100");
+
+    // WHEN
+    await component.getByRole("textbox", { name: "End, range 1" }).fill("199");
+
+    // THEN
+    await expect
+      .element(component.getByText("Clipped to 150 – 199 by the mtu limits"))
+      .toBeVisible();
+  });
+
+  test("removes the clip hint when the chosen attribute has no limits", async () => {
+    // GIVEN
+    const component = await renderCreateFormWithAttribute("MTU");
+    await component.getByRole("textbox", { name: "Start, range 1" }).fill("100");
+    await component.getByRole("textbox", { name: "End, range 1" }).fill("199");
+    await component.getByRole("combobox", { name: "Attribute *" }).click();
+
+    // WHEN
+    await component.getByRole("option", { name: "Speed" }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("combobox", { name: "Attribute *" }))
+      .toHaveTextContent("Speed");
+    await expect.element(component.getByText(/^Clipped to/)).not.toBeInTheDocument();
+  });
+
+  test("shows Required on an empty start and does not save", async () => {
+    // GIVEN
+    const component = await renderFilledCreateForm();
+    await component.getByRole("textbox", { name: "Start, range 1" }).fill("");
+
+    // WHEN
+    await component.getByRole("button", { name: "Save" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("alert")).toHaveTextContent("Required");
+    expect(createPool).not.toHaveBeenCalled();
+    expect(applyRangeChanges).not.toHaveBeenCalled();
+  });
+
   test("keeps the form open with the rows as typed and shows the range refusal once", async () => {
     // GIVEN
     applyRangeChanges.mockResolvedValue({ errorMessage: RANGE_REFUSED });
@@ -199,7 +259,9 @@ describe("NumberPoolForm", () => {
     await component.getByRole("button", { name: "Save" }).click();
 
     // THEN
-    await expect.element(component.getByText("Not scoped")).toBeVisible();
+    const allocates = component.getByRole("group", { name: "What it allocates" });
+    await expect.element(allocates.getByText("Interface Infra")).toBeVisible();
+    await expect.element(allocates.getByText("Speed")).toBeVisible();
     expect(component.getByRole("combobox", { name: "Node *" }).elements()).toHaveLength(0);
   });
 
@@ -323,7 +385,10 @@ describe("NumberPoolForm", () => {
       const component = await render(<NumberPoolForm currentObject={currentObject} />);
 
       // THEN
-      await expect.element(component.getByText("Not scoped")).toBeVisible();
+      const allocates = component.getByRole("group", { name: "What it allocates" });
+      await expect.element(allocates.getByText("Interface Infra")).toBeVisible();
+      await expect.element(allocates.getByText("Speed")).toBeVisible();
+      await expect.element(allocates.getByText("Not scoped")).toBeVisible();
       const starts = component.getByRole("textbox", { name: "Start" });
       await expect.element(starts.nth(0)).toHaveValue("100");
       await expect.element(starts.nth(1)).toHaveValue("300");
@@ -402,15 +467,14 @@ describe("NumberPoolForm", () => {
       });
     });
 
-    test("after a refusal mid-sequence, keeps the rows as typed and the next save sends only what remains", async () => {
-      // GIVEN
+    async function renderEditFormWithMidSequenceRefusal() {
       applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
       const component = await renderEditForm();
-      await component.getByRole("textbox", { name: "Weight" }).nth(0).fill("20");
-      await component.getByRole("button", { name: "Remove range" }).nth(2).click();
+      await component.getByRole("textbox", { name: "Weight, range 1" }).fill("20");
+      await component.getByRole("button", { name: "Remove range 3" }).click();
       await component.getByRole("button", { name: "Add range" }).click();
-      await component.getByRole("textbox", { name: "Start" }).nth(2).fill("800");
-      await component.getByRole("textbox", { name: "End" }).nth(2).fill("899");
+      await component.getByRole("textbox", { name: "Start, range 3" }).fill("800");
+      await component.getByRole("textbox", { name: "End, range 3" }).fill("899");
       vi.mocked(getNumberPoolForEditing)
         .mockResolvedValueOnce(poolWithRanges)
         .mockResolvedValue({
@@ -420,12 +484,43 @@ describe("NumberPoolForm", () => {
             { id: "range-1", start: 100, end: 199, weight: 20 },
           ],
         });
+      return component;
+    }
+
+    async function renderEditFormWithRefusedDelete() {
+      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_MISSING });
+      const component = await renderEditForm();
+      await component.getByRole("button", { name: "Remove range 3" }).click();
+      vi.mocked(getNumberPoolForEditing)
+        .mockResolvedValueOnce(poolWithRanges)
+        .mockResolvedValue({
+          ...poolWithRanges,
+          ranges: poolWithRanges.ranges.filter(({ id }) => id !== "range-3"),
+        });
+      return component;
+    }
+
+    test("after a refusal mid-sequence, keeps the rows as typed and shows the refusal once", async () => {
+      // GIVEN
+      const component = await renderEditFormWithMidSequenceRefusal();
+
+      // WHEN
       await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
       await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
       expect(component.getByText(RANGE_REFUSED).elements()).toHaveLength(1);
       await expect
-        .element(component.getByRole("textbox", { name: "Start" }).nth(2))
+        .element(component.getByRole("textbox", { name: "Start, range 3" }))
         .toHaveValue("800");
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    test("after a refusal mid-sequence, the next save sends only what remains", async () => {
+      // GIVEN
+      const component = await renderEditFormWithMidSequenceRefusal();
+      await component.getByRole("button", { name: "Save" }).click();
+      await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
 
       // WHEN
       await component.getByRole("button", { name: "Save" }).click();
@@ -443,18 +538,24 @@ describe("NumberPoolForm", () => {
       });
     });
 
-    test("a refused delete of a range that no longer exists is reported, and the next save sends no range call", async () => {
+    test("reports a refused delete of a range that no longer exists", async () => {
       // GIVEN
-      const RANGE_MISSING = "Unable to find the range range-3";
-      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_MISSING });
-      const component = await renderEditForm();
-      await component.getByRole("button", { name: "Remove range" }).nth(2).click();
-      vi.mocked(getNumberPoolForEditing)
-        .mockResolvedValueOnce(poolWithRanges)
-        .mockResolvedValue({
-          ...poolWithRanges,
-          ranges: poolWithRanges.ranges.filter(({ id }) => id !== "range-3"),
-        });
+      const component = await renderEditFormWithRefusedDelete();
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.element(component.getByText(RANGE_MISSING)).toBeVisible();
+      expect(applyRangeChanges).toHaveBeenCalledWith({
+        poolId: "pool-1",
+        changes: { deletes: ["range-3"], smaller: [], larger: [], creates: [] },
+      });
+    });
+
+    test("after a refused delete of a range that no longer exists, the next save sends no range call", async () => {
+      // GIVEN
+      const component = await renderEditFormWithRefusedDelete();
       await component.getByRole("button", { name: "Save" }).click();
       await expect.element(component.getByText(RANGE_MISSING)).toBeVisible();
 
@@ -464,10 +565,22 @@ describe("NumberPoolForm", () => {
       // THEN
       await expect.poll(() => onSuccess).toHaveBeenCalled();
       expect(applyRangeChanges).toHaveBeenCalledTimes(1);
-      expect(applyRangeChanges).toHaveBeenCalledWith({
-        poolId: "pool-1",
-        changes: { deletes: ["range-3"], smaller: [], larger: [], creates: [] },
-      });
+    });
+
+    test("appends a range the user adds after the stored ranges sorted by weight", async () => {
+      // GIVEN
+      const component = await renderEditForm();
+
+      // WHEN
+      await component.getByRole("button", { name: "Add range" }).click();
+
+      // THEN
+      await expect
+        .element(component.getByRole("textbox", { name: "Start, range 3" }))
+        .toHaveValue("600");
+      await expect
+        .element(component.getByRole("textbox", { name: "Start, range 4" }))
+        .toHaveValue("");
     });
   });
 
