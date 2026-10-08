@@ -334,9 +334,9 @@ Requirements: FR-003, FR-006, FR-010, FR-011 and FR-018.
     - the estimator
     - the known limits: shared `NodeDataLoader` batches, statistics of main only, correlation between steps
 - [X] T042 [P] Add the changelog fragment `changelog/+graphql-query-cost.added.md` with the `creating-changelog-entries` skill.
-- [ ] T043 Run `EXPLAIN` on `RelationshipSideDegreeQuery`, `FirstStepNodesQuery` and `FirstStepPeerCountQuery` against a database seeded with at least 100,000 nodes of one kind. Check that `n.uuid IN $ids` uses the `node_uuid` index and that the first-step queries do not scan every node of a kind they do not need. Record the plans in `dev/specs/infp-739-graphql-query-cost/pr-description.md` (constitution Principle V).
-- [ ] T044 Run steps 1 to 8 of `dev/specs/infp-739-graphql-query-cost/quickstart.md` on a development stack. Record the results in `dev/specs/infp-739-graphql-query-cost/pr-description.md`.
-- [ ] T045 Run `/pre-ci`: format, lint (including `ruff check . --exclude python_sdk`), mypy, unit tests of the changed areas, `uv run invoke docs.validate` and generated-file validation. Fix what it reports, and list the checks run in `dev/specs/infp-739-graphql-query-cost/pr-description.md`.
+- [X] T043 Run `EXPLAIN` on `RelationshipSideDegreeQuery`, `FirstStepNodesQuery` and `FirstStepPeerCountQuery` against a database seeded with at least 100,000 nodes of one kind. Check that `n.uuid IN $ids` uses the `node_uuid` index and that the first-step queries do not scan every node of a kind they do not need. Record the plans in `dev/specs/infp-739-graphql-query-cost/pr-description.md` (constitution Principle V).
+- [X] T044 Run steps 1 to 8 of `dev/specs/infp-739-graphql-query-cost/quickstart.md` on a development stack. Record the results in `dev/specs/infp-739-graphql-query-cost/pr-description.md`.
+- [X] T045 Run `/pre-ci`: format, lint (including `ruff check . --exclude python_sdk`), mypy, unit tests of the changed areas, `uv run invoke docs.validate` and generated-file validation. Fix what it reports, and list the checks run in `dev/specs/infp-739-graphql-query-cost/pr-description.md`.
 - [ ] T046 Outside this repository: in `opsmill/infrahub-private-tests`, open a PR with:
     - a synthetic data set that reproduces the customer's distribution, including the correlation between steps
     - a check that the estimated single-relationship resolver calls of a `CablingPlanLogical`-shaped query, with the first step counted, are between half and twice the actual count (SC-001)
