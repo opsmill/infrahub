@@ -22,7 +22,9 @@ from infrahub_sdk.protocols import (
 from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
+from prefect.client.schemas.objects import State
 from prefect.logging import get_run_logger
+from prefect.states import Completed, Failed
 
 from infrahub import lock
 from infrahub.context import InfrahubContext
@@ -36,7 +38,9 @@ from infrahub.core.constants import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
+from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import (
+    BranchNotFoundError,
     CheckError,
     CommitNotFoundError,
     RepositoryConnectionError,
@@ -101,6 +105,10 @@ from .sync import (
 )
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+from .writeback.content import read_pending_merges
+from .writeback.factory import build_writeback_service
+from .writeback.models import DeliveryOutcome, PendingMerge
+from .writeback.service import RepositoryWritebackService
 
 
 def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
@@ -993,7 +1001,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge) -> None:
+async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
     log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
@@ -1019,7 +1027,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
             await repo_destination.save()
 
             log.info(f"Finished merging {model.repository_kind}")
-        return
+        return None
 
     # The merge lands on the destination branch, and the staging decision below comes from the model
     # rather than from the object, so the destination is the branch to resolve on.
@@ -1042,31 +1050,77 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
 
         await repo_main.save()
         log.info(f"Finished merging {model.repository_kind}")
+        return None
 
-    else:
-        async with lock.registry.get(name=model.repository_name, namespace="repository"):
-            await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
-            if repo.location:
-                try:
-                    pinned_commit: str | None = repo.get_commit_value(
-                        branch_name=model.destination_branch, remote=False
-                    )
-                except (ValueError, InvalidGitRepositoryError):
-                    pinned_commit = None
-                # Destination branch has changed and pushed remotely, tell workers to re-fetch and
-                # check out the merge commit so the pool converges even if upstream advances meanwhile.
-                message = messages.RefreshGitFetch(
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                    location=repo.location,
-                    repository_id=str(repo.id),
-                    repository_name=repo.name,
-                    repository_kind=InfrahubKind.REPOSITORY,
-                    infrahub_branch_name=model.destination_branch,
-                    infrahub_branch_id=model.destination_branch_id,
-                    commit=pinned_commit,
-                )
-                message_bus = await get_message_bus()
-                await message_bus.send(message=message)
+    database = await get_database()
+    lost_merge: str | None = None
+    async with database.start_session() as db:
+        entry = None
+        # Once the branch merge queued the entry, a user can abandon it while this run waits, so it is not queued again.
+        if not model.pending_merge_enqueued:
+            try:
+                entry = model.pending_merge or await _read_unqueued_merge(db=db, model=model)
+            except BranchNotFoundError:
+                lost_merge = _describe_lost_merge(repo=repo, model=model)
+                log.error(lost_merge)
+        service = await build_writeback_service(db=db, repository=repo)
+        outcome = await deliver_pending_merges(service=service, manual=False, entry=entry)
+
+    message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
+    log.info(message)
+    if outcome in {DeliveryOutcome.FAILED, DeliveryOutcome.UNREPLAYABLE}:
+        return Failed(message=message)
+    if lost_merge is not None:
+        return Failed(message=lost_merge)
+    return Completed(message=message)
+
+
+def _describe_lost_merge(repo: InfrahubRepository, model: GitRepositoryMerge) -> str:
+    """Say which merge the remote never receives, and how to push it by hand."""
+    try:
+        commit = repo.get_commit_value(branch_name=model.source_branch)
+    except ValueError:
+        commit = "unknown"
+    return (
+        f"The branch {model.source_branch} was deleted before its merge was queued, so repository "
+        f"{model.repository_name} does not push that merge to its remote. The last commit of the branch on this "
+        f"worker is {commit}. Merge the branch {model.source_branch} into the branch {repo.default_branch} on the "
+        "remote by hand."
+    )
+
+
+async def _read_unqueued_merge(db: InfrahubDatabase, model: GitRepositoryMerge) -> PendingMerge | None:
+    """Build the queue entry that the submission did not carry, or return None when the merge changes no content.
+
+    Raises:
+        BranchNotFoundError: The source branch no longer exists.
+
+    """
+    log = get_run_logger()
+    source_branch = await registry.get_branch(db=db, branch=model.source_branch)
+    pending_merges = await read_pending_merges(
+        db=db,
+        source_branch=source_branch,
+        default_branch=await registry.get_branch(db=db),
+        repository_ids=[model.repository_id],
+    )
+    entry = pending_merges.get(model.repository_id)
+    if entry is None:
+        log.info(
+            f"The merge of branch {model.source_branch} changes no content of repository {model.repository_name}, "
+            "so nothing is pushed to its remote."
+        )
+    return entry
+
+
+@task(name="git-repository-deliver", task_run_name="Deliver the queued merges to the remote", cache_policy=NONE)
+async def deliver_pending_merges(
+    service: RepositoryWritebackService, manual: bool, entry: PendingMerge | None
+) -> DeliveryOutcome:
+    """Run one delivery attempt for the repository of the service, and return what the attempt did."""
+    # This task does not retry, so each attempt is the final one.
+    result = await service.deliver(final_attempt=True, manual=manual, entry=entry)
+    return result.outcome
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")

@@ -223,7 +223,7 @@ SC-002, SC-007.
 
 ### Delivery service
 
-- [ ] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
+- [X] T029 [US1] Write `RepositoryDeliveryGitAdapter` in `backend/infrahub/git/writeback/git_adapter.py`,
       implementing `DeliveryGitPort` over one `InfrahubRepository`, per contracts section 4.
       `is_ancestor` uses `git merge-base --is-ancestor`, returns `False` only for "no" or a missing
       object, and raises otherwise. `fetch` raises `RepositoryError` on a clone with no `origin`.
@@ -233,13 +233,13 @@ SC-002, SC-007.
       command, `remote_head`'s `git rev-parse` included. A killed local command removes a left-over
       `index.lock` of the worktree, then raises `RepositoryError` with a message that names the
       command and the bound, not its arguments. Agree the primitive with IFC-3210 first (**gate**).
-- [ ] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
+- [X] T030 [P] [US1] Write `backend/tests/unit/git/writeback/test_git_adapter.py` against a temporary local
       repository: `is_ancestor` for equal, yes, no, a missing object and a corrupt object store;
       `replay` with a clean merge and a conflict; `reset`; `fetch` on a clone with no `origin`.
-- [ ] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
+- [X] T031 [P] [US1] Write in-memory `DeliveryGitPort` and `RegenerationReleasePort` fakes in
       `backend/tests/unit/git/writeback/fakes.py`. The Git fake records every call in order, and can
       fail at any step.
-- [ ] T032 [US1] Write `RepositoryWritebackService.deliver` in
+- [X] T032 [US1] Write `RepositoryWritebackService.deliver` in
       `backend/infrahub/git/writeback/service.py`, per [research.md](research.md) R4 steps 0 to 17
       and contracts section 5. Step 0 enqueues the `entry` argument, when it is not `None`, before
       the repository lock, with the stage `enqueue` on a failure. Steps 1 to 15 run under the
@@ -248,7 +248,7 @@ SC-002, SC-007.
       the lease the settle returned. A held-only run takes its lease through `lease_owed_release`.
       When the release raises, the service calls `expire_lease` on its lease, then handles the
       failure with the stage `release` (R10, rule 4).
-- [ ] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
+- [X] T033 [US1] Write `backend/tests/unit/git/writeback/test_service.py`: nothing pending; an
       `entry` that step 0 enqueues before the snapshot, and an enqueue that raises, which is
       retryable on a non-final attempt and, on the final one, returns `failed` with an error-level
       log line that names the repository, the source branch and the source commit; observation of
@@ -262,15 +262,15 @@ SC-002, SC-007.
       its first call, and a second `deliver` call, as the task retry makes it, that releases every
       item of the window under a new lease; an abandonment and a deletion guard that wait for the
       lock find the entries already settled.
-- [ ] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
+- [X] T034 [US1] Write `build_writeback_service` in `backend/infrahub/git/writeback/factory.py`. It builds
       one service per repository, with the adapter bound to the same repository. Until T069, it wires
       a releaser that does nothing, because no barrier holds anything yet.
 
 ### Enqueue in the branch merge flow, and the delivery in `merge_git_repository`
 
-- [ ] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
+- [X] T035 [US1] Add `GitRepositoryMerge.pending_merge: PendingMerge | None = None` and
       `GitRepositoryMerge.pending_merge_enqueued: bool = False` to `backend/infrahub/git/models.py`.
-- [ ] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
+- [X] T036 [US1] Change `RepositoryMergeDispatcher.merge_core_repositories` in
       `backend/infrahub/core/merge/repository_merge_dispatcher.py`: enqueue only for an `active`
       repository, on a branch that syncs with Git, whose source commit carries content (R3: compare
       with the default branch's commit at `branched_from` and with the recorded commit). Guard each
@@ -285,7 +285,7 @@ SC-002, SC-007.
       `delivery_run_tags` to `backend/infrahub/git/writeback/runs.py`. Pass
       `tags=delivery_run_tags(repository_id)` when you submit the merge of an `active` repository,
       so a run that waits in the queue carries the node tag and the delivery marker (R20, R21).
-- [ ] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
+- [X] T037 [US1] Change `merge_git_repository` in `backend/infrahub/git/tasks.py`: for an `active`
       repository, when `model.pending_merge_enqueued` is `False`, pass `model.pending_merge` as the
       `entry` of `deliver_pending_merges`, or build it from the source branch's graph commit when it
       is `None`, after the content test of R3. Step 0 of `deliver` enqueues it with `widen=True`, so
@@ -298,7 +298,7 @@ SC-002, SC-007.
       locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (R3). Tag
       the run with the repository node and the default branch, log one line per transition, and set
       the run state from the outcome (R21).
-- [ ] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
+- [X] T038 [US1] Write the task `deliver_pending_merges` in `backend/infrahub/git/tasks.py`, with the
       `entry` parameter of contracts section 5, and no retry yet. Phase 6 adds the retries. Until
       then, a failed enqueue of step 0 fails the run at once, with the error-level log line.
 
@@ -317,15 +317,15 @@ SC-002, SC-007.
 
 ### Tests
 
-- [ ] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
+- [X] T042 [P] [US1] Add a fixture to `backend/tests/integration/git/test_git_live_remote.py` that builds a
       git-synced Infrahub branch whose repository file differs from the default branch, on
       `protected_branch_dataset`. Reuse `rejected_push_to_main`.
-- [ ] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
+- [X] T043 [US1] Add `test_delivery_visible` to `backend/tests/integration/git/test_git_live_remote.py`
       (US1 #1 to #3): one entry, `action-required`, cause `permission`, the hook's `remote:` line
       verbatim, the commit unchanged.
-- [ ] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
+- [X] T044 [US1] Add `test_first_attempt_delivers` to the same module (US1 #4): nothing pending, the commit
       recorded, the remote updated, the broadcast sent.
-- [ ] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
+- [X] T045 [P] [US1] Write `backend/tests/component/git/writeback/test_enqueue.py`: a data-only
       branch forked before the trunk moved queues nothing (US1 #7); a staging repository queues
       nothing; a clone with no `origin` fails the attempt, records no commit and keeps the queue; a
       failed enqueue of one repository still submits the others; an enqueue that fails once and then
@@ -621,10 +621,10 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-020, FR-021, FR-022, SC-007.
 
-- [ ] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
+- [X] T099 [US7] Add `test_source_discarded` to `backend/tests/integration/git/test_git_live_remote.py`:
       force-push the source branch, retry, cause `source-discarded`, the remote never holds the
       discarded commit.
-- [ ] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
+- [X] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
       retry, cause `destination-rewritten`, nothing pushed.
 - [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.

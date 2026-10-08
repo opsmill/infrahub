@@ -6,7 +6,9 @@ import logging
 import re
 import shutil
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +19,8 @@ from infrahub_sdk.exceptions import GraphQLError
 from infrahub import config, lock
 from infrahub.core.constants import (
     InfrahubKind,
+    RepositoryDeliveryFailureCause,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -30,6 +34,9 @@ from infrahub.git.convergence import WorktreeConverger
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.git.tasks import sync_remote_repositories
+from infrahub.git.writeback.factory import build_writeback_service
+from infrahub.git.writeback.models import DeliveryOutcome
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
 from tests.helpers.test_app import TestInfrahubApp
@@ -56,6 +63,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.git.writeback.models import DeliveryAttemptResult, WritebackIntent
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.git import GogsServer
 
@@ -115,6 +123,56 @@ if [ -f pre-receive.orig ]; then mv pre-receive.orig pre-receive; fi
 """
     result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
     assert result.exit_code == 0, f"Hook removal failed (exit {result.exit_code}): {result.output.decode()}"
+
+
+def _remote_branch_contains(container: DockerContainer, repo_name: str, branch: str, commit: str) -> bool:
+    """Return whether the history of a branch of the remote holds the commit."""
+    result = container.get_wrapped_container().exec_run(
+        [
+            "git",
+            f"--git-dir=/data/git/repositories/{GOGS_ADMIN}/{repo_name}.git",
+            "merge-base",
+            "--is-ancestor",
+            commit,
+            branch,
+        ],
+        user="git",
+    )
+    # Any other exit code means that Git could not answer, which is not a "no".
+    assert result.exit_code in {0, 1}, f"Ancestry check failed (exit {result.exit_code}): {result.output.decode()}"
+    return result.exit_code == 0
+
+
+async def _delivery_state(db: InfrahubDatabase, repository_id: str) -> WritebackIntent:
+    """Return the delivery state of the repository, which lives on the default branch."""
+    store = WritebackIntentStore(
+        db=db,
+        lock_registry=lock.registry,
+        default_branch=await registry.get_branch(db=db),
+        clock=partial(datetime.now, UTC),
+    )
+    return await store.read(repository_id=repository_id)
+
+
+async def _recorded_commit(db: InfrahubDatabase, repository_id: str) -> str | None:
+    """Return the commit that the default branch records for the repository."""
+    repository: CoreRepository = await NodeManager.get_one(
+        db=db, id=repository_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
+    )
+    return repository.commit.value
+
+
+@dataclass(frozen=True)
+class SyncedBranchRepository:
+    """A repository on a remote of its own, with a branch that syncs with Git and holds a file that main lacks."""
+
+    name: str
+    node_id: str
+    branch_name: str
+    trunk_commit: str
+    """The head of the default branch of the remote, which Infrahub records."""
+    source_commit: str
+    """The head of the branch, which Infrahub records on the branch."""
 
 
 class TestRepositoryRemoteOperations(TestInfrahubApp):
@@ -207,18 +265,72 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         return {"repo_name": repo_name, "node_id": node.id}
 
     @pytest.fixture
-    def rejected_push_to_main(
-        self, protected_branch_dataset: dict, gogs_server: GogsServer
-    ) -> Generator[Callable[[], None], None, None]:
-        """Make the remote reject pushes to main, yielding a callable that lifts the rejection."""
-        repo_name = protected_branch_dataset["repo_name"]
-        _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+    def reject_pushes_to_main(
+        self, gogs_server: GogsServer
+    ) -> Generator[Callable[[str], Callable[[], None]], None, None]:
+        """Yield a callable that makes a remote reject pushes to main, and returns a callable that lifts the rejection."""
+        rejected: list[str] = []
 
-        def lift_rejection() -> None:
+        def reject(repo_name: str) -> Callable[[], None]:
+            _install_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
+            rejected.append(repo_name)
+            return partial(_remove_remote_branch_rejection_hook, container=gogs_server.container, repo_name=repo_name)
+
+        yield reject
+        for repo_name in rejected:
             _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
 
-        yield lift_rejection
-        lift_rejection()
+    @pytest.fixture
+    def rejected_push_to_main(
+        self, protected_branch_dataset: dict, reject_pushes_to_main: Callable[[str], Callable[[], None]]
+    ) -> Callable[[], None]:
+        """Make the remote reject pushes to main, returning a callable that lifts the rejection."""
+        return reject_pushes_to_main(protected_branch_dataset["repo_name"])
+
+    @pytest.fixture
+    def synced_branch_repository(
+        self,
+        initialize_registry: None,
+        git_repos_dir_module_scope: Path,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+    ) -> Callable[[str], Awaitable[SyncedBranchRepository]]:
+        """Return a factory for a repository whose branch adds a file that the default branch does not have.
+
+        Each test gets a remote and a repository of its own, so a queued merge of one test never reaches another.
+        """
+
+        async def create(branch_name: str) -> SyncedBranchRepository:
+            repo_name = f"{branch_name}-repo"
+            location = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
+            node = await client.create(kind=InfrahubKind.REPOSITORY, data={"name": repo_name, "location": location})
+            await node.save()
+            await client.branch.create(branch_name=branch_name, sync_with_git=True)
+            source_commit = commit_to_remote_branch(
+                gogs_server.container, repo_name, branch=branch_name, files={f"{branch_name}.txt": f"{branch_name}\n"}
+            )
+
+            # A synchronisation visits every repository of the stack, so only this repository pulls the branch.
+            repo = await InfrahubRepository.init(
+                id=node.id, name=repo_name, client=client, infrahub_branch_name=registry.default_branch
+            )
+            await repo.fetch()
+            await repo.pull(branch_name=branch_name)
+            on_branch: CoreRepository = await NodeManager.get_one(
+                db=db, id=node.id, kind=InfrahubKind.REPOSITORY, branch=branch_name, raise_on_error=True
+            )
+            assert on_branch.commit.value == source_commit, "the branch does not record the commit of its file"
+
+            return SyncedBranchRepository(
+                name=repo_name,
+                node_id=node.id,
+                branch_name=branch_name,
+                trunk_commit=gogs_repo_branch_commit(gogs_server.container, repo_name, "main"),
+                source_commit=source_commit,
+            )
+
+        return create
 
     @pytest.fixture
     def block_commit_worktree(self) -> Generator[Callable[[Path], Callable[[], None]], None, None]:
@@ -930,6 +1042,167 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             raise_on_error=True,
         )
         assert created.name.value == repo_name
+
+    async def _retry_delivery(
+        self, db: InfrahubDatabase, client: InfrahubClient, repository: SyncedBranchRepository
+    ) -> DeliveryAttemptResult:
+        # No flow runs a manual retry yet, so the test runs the attempt that a manual retry makes.
+        repo = await InfrahubRepository.init(
+            id=repository.node_id, name=repository.name, client=client, infrahub_branch_name=registry.default_branch
+        )
+        async with db.start_session() as session:
+            service = await build_writeback_service(db=session, repository=repo)
+            return await service.deliver(final_attempt=True, manual=True, entry=None)
+
+    async def test_delivery_visible(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """A merge that the remote refuses stays queued, and the repository shows why in the words of the remote."""
+        repository = await synced_branch_repository("delivery-visible")
+        reject_pushes_to_main(repository.name)
+
+        await client.branch.merge(branch_name=repository.branch_name)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.error) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.PERMISSION,
+            "remote: branch main is protected\n"
+            "Unable to push the branch main to the remote for repository delivery-visible-repo: "
+            "the remote refused the update (for example missing push permission or branch protection): "
+            "[remote rejected] (pre-receive hook declined)",
+        )
+        assert [
+            (entry.source_branch, entry.source_git_branch, entry.source_commit) for entry in state.queue.entries
+        ] == [(repository.branch_name, repository.branch_name, repository.source_commit)]
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+
+    async def test_first_attempt_delivers(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        bus_simulator: BusSimulator,
+        fast_forward_merges: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+    ) -> None:
+        """A merge that the remote accepts leaves nothing pending, and the workers fetch the commit it pushed.
+
+        The merge fast-forwards the default branch, so the pushed commit is the head of the branch.
+        """
+        repository = await synced_branch_repository("delivery-first-attempt")
+        main = await client.branch.get(branch_name=registry.default_branch)
+        sent_before = len(bus_simulator.messages)
+
+        await client.branch.merge(branch_name=repository.branch_name)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (state.status, state.cause, state.error, state.queue.entries, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+            repository.source_commit,
+        )
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
+        assert [
+            (message.infrahub_branch_name, message.infrahub_branch_id, message.commit)
+            for message in bus_simulator.messages[sent_before:]
+            if isinstance(message, RefreshGitFetch) and message.repository_id == repository.node_id
+        ] == [(main.name, main.id, repository.source_commit)]
+
+    async def test_source_discarded(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """A retry pushes nothing when the remote branch of a queued merge no longer holds its commit.
+
+        This worker still holds the discarded commit, so only the check of the source branch keeps it off the remote.
+        """
+        repository = await synced_branch_repository("delivery-source-discarded")
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        assert (await _delivery_state(db=db, repository_id=repository.node_id)).cause == (
+            RepositoryDeliveryFailureCause.PERMISSION
+        )
+        rewritten = commit_to_remote_branch(
+            gogs_server.container,
+            repository.name,
+            branch=repository.branch_name,
+            files={"rewritten.txt": "rewritten\n"},
+            amend=True,
+        )
+        lift_rejection()
+
+        result = await self._retry_delivery(db=db, client=client, repository=repository)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        entry_ids = [entry.entry_id for entry in state.queue.entries]
+        assert [(entry.source_branch, entry.source_commit) for entry in state.queue.entries] == [
+            (repository.branch_name, repository.source_commit)
+        ]
+        assert (result.outcome, state.status, state.cause, state.error) == (
+            DeliveryOutcome.UNREPLAYABLE,
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.SOURCE_DISCARDED,
+            f"The remote branch {repository.branch_name} of repository {repository.name} is at {rewritten}, "
+            f"which does not contain the commit {repository.source_commit} of the merge {entry_ids[0]} of branch "
+            f"{repository.branch_name}, so nothing was pushed.",
+        )
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+        assert not _remote_branch_contains(
+            gogs_server.container, repository.name, branch="main", commit=repository.source_commit
+        )
+
+    async def test_destination_rewritten(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """A retry pushes nothing when the default branch of the remote no longer holds the commit that Infrahub records.
+
+        A branch forked from the old history holds that history, so a replay would push the discarded commits back.
+        """
+        repository = await synced_branch_repository("delivery-destination-rewritten")
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        assert (await _delivery_state(db=db, repository_id=repository.node_id)).cause == (
+            RepositoryDeliveryFailureCause.PERMISSION
+        )
+        lift_rejection()
+        rewritten = commit_to_remote_branch(
+            gogs_server.container, repository.name, branch="main", files={"rewritten.txt": "rewritten\n"}, amend=True
+        )
+
+        result = await self._retry_delivery(db=db, client=client, repository=repository)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert [(entry.source_branch, entry.source_commit) for entry in state.queue.entries] == [
+            (repository.branch_name, repository.source_commit)
+        ]
+        assert (result.outcome, state.status, state.cause, state.error) == (
+            DeliveryOutcome.UNREPLAYABLE,
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.DESTINATION_REWRITTEN,
+            f"The remote branch main of repository {repository.name} is at {rewritten}, which does not contain "
+            f"the commit {repository.trunk_commit} that Infrahub records, so nothing was pushed.",
+        )
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == rewritten
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
 
 
 async def _tracked_graph_state(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> tuple[str | None, str | None]:

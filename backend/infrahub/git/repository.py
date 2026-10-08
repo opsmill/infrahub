@@ -922,7 +922,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             self.name,
         )
 
-        repo = self.get_git_repo_worktree(identifier=branch_name)
+        repo = self.get_git_repo_worktree(identifier=branch_name, timeout_seconds=timeout_seconds)
         remote_branch = self._get_mapped_remote_branch(branch_name=branch_name)
         # The server explains a refusal only in its "remote:" lines.
         progress = _RemoteLineCollector()

@@ -37,9 +37,16 @@ NOT_AN_ANCESTOR_STATUS = 1
 
 
 class GitAncestryGateway:
-    def __init__(self, repository_name: str, repo: Repo) -> None:
+    def __init__(self, repository_name: str, repo: Repo, timeout_seconds: float | None = None) -> None:
+        """Answer for the object database of one repository.
+
+        Args:
+            timeout_seconds: Passed to GitPython as ``kill_after_timeout`` for each Git command; ``None`` sets no limit.
+
+        """
         self.repository_name = repository_name
         self.repo = repo
+        self.timeout_seconds = timeout_seconds
 
     def is_ancestor(self, ancestor_commit: str, descendant_commit: str) -> bool:
         """Whether ancestor_commit is reachable from descendant_commit.
@@ -53,7 +60,9 @@ class GitAncestryGateway:
 
         try:
             # The shared object reader fails on its own terms, so ask git directly.
-            self.repo.git.merge_base("--is-ancestor", ancestor_commit, descendant_commit)
+            self.repo.git.merge_base(
+                "--is-ancestor", ancestor_commit, descendant_commit, kill_after_timeout=self.timeout_seconds
+            )
         except GitCommandError as exc:
             if exc.status == NOT_AN_ANCESTOR_STATUS:
                 return False
@@ -82,7 +91,9 @@ class GitAncestryGateway:
 
         try:
             # Peeling to a commit answers presence and kind together, in one process.
-            resolved = self.repo.git.rev_parse("--verify", "--quiet", f"{commit}^{{commit}}")
+            resolved = self.repo.git.rev_parse(
+                "--verify", "--quiet", f"{commit}^{{commit}}", kill_after_timeout=self.timeout_seconds
+            )
         except GitCommandError as exc:
             if exc.status == OBJECT_ABSENT_STATUS:
                 # A false absence is recorded as a rewrite, so prove git read every store.
@@ -116,7 +127,7 @@ class GitAncestryGateway:
     def _object_directories(self) -> list[Path]:
         """Every object directory git searches, the ones borrowed through alternates included."""
         # A worktree keeps its objects in the common directory, so ask git where they are.
-        objects = str(self.repo.git.rev_parse("--git-path", "objects")).strip()
+        objects = str(self.repo.git.rev_parse("--git-path", "objects", kill_after_timeout=self.timeout_seconds)).strip()
         pending = [Path(self.repo.working_dir or self.repo.common_dir) / objects]
         directories: list[Path] = []
         seen: set[Path] = set()
