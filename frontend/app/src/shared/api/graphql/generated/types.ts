@@ -24960,7 +24960,6 @@ export type PermissionType = {
   update_value: Maybe<BranchRelativePermissionDecision>;
 };
 
-/** For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead. */
 export type PoolAllocated = {
   __typename: 'PoolAllocated';
   /** The number of allocations within the selected pool. */
@@ -24973,7 +24972,6 @@ export type PoolAllocatedEdge = {
   node: PoolAllocatedNode;
 };
 
-/** For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead. */
 export type PoolAllocatedNode = {
   __typename: 'PoolAllocatedNode';
   /** The branch where the node is allocated */
@@ -24988,7 +24986,6 @@ export type PoolAllocatedNode = {
   kind: Scalars['String']['output'];
 };
 
-/** For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
 export type PoolUtilization = {
   __typename: 'PoolUtilization';
   /** The number of resources within the selected pool. */

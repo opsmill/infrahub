@@ -12852,9 +12852,6 @@ type PermissionType {
   update_value: BranchRelativePermissionDecision
 }
 
-"""
-For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead.
-"""
 type PoolAllocated {
   """The number of allocations within the selected pool."""
   count: BigInt!
@@ -12865,9 +12862,6 @@ type PoolAllocatedEdge {
   node: PoolAllocatedNode!
 }
 
-"""
-For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead.
-"""
 type PoolAllocatedNode {
   """The branch where the node is allocated"""
   branch: String!
@@ -12891,9 +12885,6 @@ enum PoolRecordProvenance {
   PROVIDED
 }
 
-"""
-For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead.
-"""
 type PoolUtilization {
   """The number of resources within the selected pool."""
   count: BigInt!

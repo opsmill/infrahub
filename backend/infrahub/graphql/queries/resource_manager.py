@@ -65,9 +65,6 @@ class IPPrefixUtilizationEdge(ObjectType):
 
 
 class PoolAllocatedNode(ObjectType):
-    class Meta:
-        description = NUMBER_POOL_ALLOCATED_NOTE
-
     id = Field(String, required=True, description="The ID of the allocated node")
     display_label = Field(String, required=True, description="The common name of the resource")
     kind = Field(String, required=True, description="The node kind")
@@ -95,9 +92,6 @@ def _validate_pool_type(pool_id: str, pool: Node | None = None) -> Node:
 
 
 class PoolAllocated(ObjectType):
-    class Meta:
-        description = NUMBER_POOL_ALLOCATED_NOTE
-
     count = Field(BigInt, required=True, description="The number of allocations within the selected pool.")
     edges = Field(List(of_type=NonNull(PoolAllocatedEdge), required=True), required=True)
 
@@ -203,9 +197,6 @@ class PoolAllocated(ObjectType):
 
 
 class PoolUtilization(ObjectType):
-    class Meta:
-        description = NUMBER_POOL_UTILIZATION_NOTE
-
     count = Field(BigInt, required=True, description="The number of resources within the selected pool.")
     utilization = Field(Float, required=True, description="The overall utilization of the pool.")
     utilization_branches = Field(Float, required=True, description="The utilization in all non default branches.")
