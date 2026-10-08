@@ -325,8 +325,8 @@ Requirements: FR-003, FR-006, FR-010, FR-011 and FR-018.
 
 ## Phase 7: Polish and cross-cutting concerns
 
-- [ ] T039 Regenerate `schema/schema.graphql` with `uv run invoke schema.generate-graphqlschema`. Then regenerate the frontend types with `cd frontend/app && pnpm codegen:graphql` and commit `frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts` and `graphql-cache.d.ts` (`dev/knowledge/backend/code-generation.md`).
-- [ ] T040 [P] Write `docs/docs/development-resources/graphql/query-cost.mdx` with the content listed in `plan.md` "User documentation". Add it to `docs/sidebars.ts` next to `development-resources/graphql/single-target-queries`, link it from `single-target-queries.mdx`, and run `uv run invoke docs.lint`. Use the `opsmill-docs:writing-infrahub-docs` skill.
+- [X] T039 Regenerate `schema/schema.graphql` with `uv run invoke schema.generate-graphqlschema`. Then regenerate the frontend types with `cd frontend/app && pnpm codegen:graphql` and commit `frontend/app/src/shared/api/graphql/generated/graphql-env.d.ts` and `graphql-cache.d.ts` (`dev/knowledge/backend/code-generation.md`).
+- [X] T040 [P] Write `docs/docs/development-resources/graphql/query-cost.mdx` with the content listed in `plan.md` "User documentation". Add it to `docs/sidebars.ts` next to `development-resources/graphql/single-target-queries`, link it from `single-target-queries.mdx`, and run `uv run invoke docs.lint`. Use the `opsmill-docs:writing-infrahub-docs` skill.
 - [ ] T041 [P] Write `dev/knowledge/backend/graphql-query-cost.md` and list it in `dev/README.md` next to `graphql-execution.md` (`dev/guidelines/documentation.md`). It covers:
     - the recorder `ContextVar`s and why no middleware is used
     - the statistics cache layout and versioning

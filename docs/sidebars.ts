@@ -536,6 +536,7 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'development-resources/graphql/queries-and-mutations', label: 'Queries & mutations' },
                 { type: 'doc', id: 'development-resources/graphql/stored-queries', label: 'Stored queries' },
                 { type: 'doc', id: 'development-resources/graphql/single-target-queries', label: 'Single-target queries' },
+                { type: 'doc', id: 'development-resources/graphql/query-cost', label: 'Query cost' },
                 { type: 'doc', id: 'development-resources/graphql/groups', label: 'Working with groups' },
               ],
             },

@@ -1,0 +1,280 @@
+---
+title: Check the cost of a GraphQL query
+description: View the nodes, resolver calls and database rows of each field of a GraphQL query, next to an expected and a worst-case estimate, to find the relationship field that makes a query slow.
+---
+
+# Check the cost of a GraphQL query
+
+For each top-level and relationship field of a GraphQL query, Infrahub can report how many nodes the field returned, how many times its resolver ran and how many rows the database returned for it. Next to these actual counts, Infrahub gives an expected and a worst-case estimate of the same three figures. Use them when an artifact, a Transformation or a Generator takes longer than you expect, to find the relationship field that multiplies the work, or to check a query before you store it.
+
+The work of a query depends mostly on how many peers each relationship field returns, and that number varies between nodes. The same query costs much more for a device with 500 interfaces than for a device with 10, because every field under `interfaces` runs once for each interface. The duration of a query does not tell you which field causes the work.
+
+You get the figures in one of two ways:
+
+- Send the query to `/graphql` or `/api/query` with the `X-Infrahub-Query-Cost: details` header. Infrahub runs the query and adds the actual counts and the estimate of each field to the response.
+- Select `cost_estimate` in the `InfrahubGraphQLQueryReport` query. Infrahub returns the estimate and does not run the query.
+
+The estimate uses statistics that Infrahub computes once a day, as described in [Refresh the statistics](#refresh-the-statistics). Until the first refresh, a response sent with the header still has the actual counts, and every field has the reason `no statistics` instead of an estimate.
+
+## Get the actual cost of a query
+
+Add the header `X-Infrahub-Query-Cost` with the value `details` to the request. Infrahub compares the value without case and ignores any other value.
+
+### Send the header to `/graphql`
+
+```bash
+curl -s "$INFRAHUB_ADDRESS/graphql" \
+  -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+  -H "X-Infrahub-Query-Cost: details" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "query($device: String!) { InfraDevice(name__value: $device) { edges { node { name { value } interfaces { edges { node { name { value } } } } } } } }", "variables": {"device": "atl1-edge1"}}' \
+  | jq '.extensions.query_cost'
+```
+
+To run the query on a branch, send it to `/graphql/<branch name>`. The response has the same `data` and `errors` as without the header, plus an `extensions.query_cost` object. Without the header, the response has no `extensions` key.
+
+### Send the header to `/api/query`
+
+To run a [stored query](stored-queries.mdx), send the header to `/api/query/<query name or ID>`. With `GET`, Infrahub uses each URL parameter as a variable of the query, except `branch`, `at`, `update_group` and `subscribers`:
+
+```bash
+curl -s "$INFRAHUB_ADDRESS/api/query/device_interfaces?device=atl1-edge1" \
+  -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+  -H "X-Infrahub-Query-Cost: details" \
+  | jq '.extensions.query_cost'
+```
+
+URL parameters are strings. For a variable of another type, such as `Int`, send a `POST` request with the variables in the body:
+
+```bash
+curl -s -X POST "$INFRAHUB_ADDRESS/api/query/device_interfaces" \
+  -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+  -H "X-Infrahub-Query-Cost: details" \
+  -H "Content-Type: application/json" \
+  -d '{"variables": {"device": "atl1-edge1"}}' \
+  | jq '.extensions.query_cost'
+```
+
+With the header, the response is `{"data": ..., "extensions": {"query_cost": ...}}`. When the query returns errors, `/api/query` returns the errors without the cost details.
+
+Infrahub ignores the header on an operation that contains a mutation: the response is the same as without the header.
+
+## Find the field that makes an artifact slow
+
+Infrahub renders an artifact with the stored query of its Transformation, once for each target, with variables taken from the target. To view the work of one render, run that query for one target with the same variables:
+
+1. Open the artifact definition and note its Transformation and its `parameters`. Each entry of `parameters` maps a variable of the query to an attribute of the target. For example, `device: name__value` sets the `device` variable to the name of the target device.
+2. Open the Transformation and note the name of its query.
+3. Run the query through `/api/query` with the header and the target's values as URL parameters. Add `branch=<branch name>` to run it on the branch of the render. Sort the fields by their actual resolver calls:
+
+   ```bash
+   curl -s "$INFRAHUB_ADDRESS/api/query/device_interfaces?device=atl1-edge1" \
+     -H "X-INFRAHUB-KEY: $INFRAHUB_API_TOKEN" \
+     -H "X-Infrahub-Query-Cost: details" \
+     | jq -c '.extensions.query_cost.fields | sort_by(-.actual.resolver_calls) | .[] | {path, resolver_calls: .actual.resolver_calls, nodes: .actual.nodes, database_rows: .actual.database_rows}'
+   ```
+
+Take the stored query `device_interfaces`, which selects the IP addresses of each layer 3 interface of a device:
+
+```graphql
+query device_interfaces($device: String!) {
+  InfraDevice(name__value: $device) {
+    edges {
+      node {
+        name { value }
+        interfaces {
+          edges {
+            node {
+              name { value }
+              ... on InfraInterfaceL3 {
+                ip_addresses { edges { node { address { value } } } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+For a device with 48 interfaces, 40 of them layer 3 interfaces, the command prints:
+
+```json
+{"path":"InfraDevice/interfaces/ip_addresses","resolver_calls":40,"nodes":52,"database_rows":156}
+{"path":"InfraDevice/interfaces","resolver_calls":1,"nodes":48,"database_rows":144}
+{"path":"InfraDevice","resolver_calls":1,"nodes":1,"database_rows":3}
+```
+
+The resolver of a relationship field runs once for each parent node it is selected on, so the field with the most resolver calls is directly under the relationship that returned the most peers. Here, `interfaces` returned 48 interfaces, and the resolver of `ip_addresses` ran once for each of the 40 layer 3 interfaces among them.
+
+A Generator runs its query in the same way: the Generator definition names its query and its `parameters` directly.
+
+## Read the cost details
+
+`extensions.query_cost` has one entry in `fields` for each top-level field and each relationship field of the query, in the order of the query. This example shows the entry of `interfaces`:
+
+```json
+{
+  "estimate_mode": "counted_first_step",
+  "statistics": {"branch": "main", "computed_at": "2026-10-08T04:17:03.512094Z", "version": 12},
+  "fields": [
+    {
+      "path": "InfraDevice/interfaces",
+      "kind": "InfraInterface",
+      "relationship_identifier": "device__interface",
+      "cardinality": "many",
+      "estimate": {
+        "expected": {"nodes": 48, "resolver_calls": 1, "database_rows": 144},
+        "worst_case": {"nodes": 48, "resolver_calls": 1, "database_rows": 144},
+        "worst_case_is_bound": true,
+        "source": "counted",
+        "reason": null
+      },
+      "actual": {"nodes": 48, "resolver_calls": 1, "database_rows": 144}
+    }
+  ],
+  "estimate_queries": {"queries": 2, "database_rows": 3},
+  "unattributed": {"queries": 0, "database_rows": 0}
+}
+```
+
+### Fields and their paths
+
+- `path`: the response keys from the top-level field to the field, joined with `/`, without `edges`, `node` and list indexes. An alias replaces the name of the field, so two selections of the same relationship under different aliases have separate entries. Inline fragments do not appear in the path, and a field selected both directly and inside a fragment has one entry.
+- `kind`: the kind of the nodes the field returns, as the schema declares it. For `interfaces`, it is the generic `InfraInterface`.
+- `relationship_identifier`: the identifier of the relationship, or `null` for a top-level field.
+- `cardinality`: `one` or `many`, and `many` for a top-level field.
+
+Attribute fields have no entry. Infrahub reads the attributes with their node, so their rows are counted in the field that returned the node.
+
+### Actual counts
+
+`actual` holds what the query did:
+
+- `nodes`: the nodes the field returned, summed over every parent node.
+- `resolver_calls`: the number of times the resolver of the field ran, including a retry after a transient database error.
+- `database_rows`: the rows the database returned to the queries that ran while the resolver of the field was running, including the reads for display labels and `count`.
+
+Infrahub reads the peers of cardinality-one fields in batches. A batch reads each peer once, so the `database_rows` of a cardinality-one field can be lower than its `nodes`. When one batch serves several cardinality-one fields with the same selection, its rows are counted for the field whose resolver started the batch.
+
+Two totals cover the queries that belong to no field:
+
+- `estimate_queries`: the counting queries that Infrahub ran to compute the estimate.
+- `unattributed`: the queries that ran while no field was being resolved.
+
+Infrahub starts counting after it has read the operation and checked that it contains no mutation. It does not report the queries that run before that point: authentication, loading the permissions of the account and, on `/api/query`, reading the stored query.
+
+### Estimate
+
+`estimate_mode` names how Infrahub obtained the figures. A request sent with the header has `counted_first_step`: Infrahub counted the nodes of each top-level field and the peers of each relationship field directly under it, on the branch and at the time of the request. Below that first step, the figures come from the statistics.
+
+`statistics` gives the branch the statistics describe, which is always the default branch, the time the refresh started reading it, and the version of the statistics. It is `null` when no statistics exist yet.
+
+In the `estimate` of each field:
+
+- `expected`: the figures for nodes with the average number of peers. Infrahub multiplies the number of parent nodes by the mean number of peers of the parent kind, and splits the peers between the concrete peer kinds in proportion to their stored totals.
+- `worst_case`: the figures when the parent nodes are the nodes with the most peers. Infrahub takes the stored peer counts of the nodes of the parent kind in decreasing order.
+- `worst_case_is_bound`: `true` when the request reads the default branch at the current time. Then, as long as the data has not changed since the last refresh, the actual `nodes` and `resolver_calls` of the field are not above `worst_case`, unless a resolver ran again after a transient database error. The bound can be above the largest value the data allows, because at each step Infrahub applies to every node the largest number of parents that reach any one node. On another branch, or with an `at` time, the statistics describe other data, so `worst_case` is an estimate and not a bound.
+- `source`: `counted` when Infrahub counted the figures on the branch and at the time of the request, and `statistics` when it computed them from the statistics.
+- `reason`: `no statistics` when the field has no estimate. `expected`, `worst_case` and `source` are then `null`.
+
+A field has the reason `no statistics` in these cases:
+
+- No refresh has completed yet.
+- The relationship was added to the schema after the last refresh, or the kind has no statistics.
+- The field is `ancestors` or `descendants`, or is under one of them.
+- Infrahub could not compute the estimate. The variables do not match their declared types, the `offset` or `limit` of a top-level field is negative, or reading the statistics from the cache or a counting query fails. In that case `estimate_mode` is `statistics_only`, `statistics` is `null`, and the `data` and `errors` of the response do not change. When the variables do not match their types, no field runs, so `fields` is empty. The server logs a failure to read the statistics or to run a counting query.
+
+Infrahub does not count the first step of these fields and computes their figures from the statistics:
+
+- A top-level field filtered by `hfid`.
+- The fields under a top-level field that matches more nodes than `INFRAHUB_DB_QUERY_SIZE_LIMIT`, 5,000 by default. Infrahub still counts the nodes of the top-level field.
+- A relationship field with `include_descendants: true`.
+
+### Differences between the estimate and the actual counts
+
+- The statistics describe the default branch at the last refresh. Infrahub adjusts the number of nodes of each kind for the nodes created since then, but not the number of peers of each node.
+- The statistics do not record whether the number of peers at one step depends on the step before. When the nodes that one relationship returns have more peers than the average of their kind, `expected` is too low below the first step. Counting the first step removes this error for the top-level field and the fields directly under it.
+- The estimate of `database_rows` counts the reads of nodes, attributes, cardinality-one relationships and `count`. It does not count the reads for display labels, Profile values and permission filtering, which `actual.database_rows` includes.
+
+## Estimate the cost without running the query
+
+Select `cost_estimate` in `InfrahubGraphQLQueryReport` to get the estimate of a query that you have not stored or run yet. Pass the query as a string, and its variables in `variables`:
+
+```graphql
+query {
+  InfrahubGraphQLQueryReport(
+    query: "query($device: String!) { InfraDevice(name__value: $device) { edges { node { interfaces { edges { node { name { value } } } } } } } }"
+    variables: { device: "atl1-edge1" }
+  ) {
+    targets_unique_nodes
+    cost_estimate {
+      mode
+      statistics { branch computed_at version }
+      fields {
+        path
+        kind
+        relationship_identifier
+        cardinality
+        expected { nodes resolver_calls database_rows }
+        worst_case { nodes resolver_calls database_rows }
+        worst_case_is_bound
+        source
+        reason
+      }
+    }
+  }
+}
+```
+
+The `variables` argument sets the mode of the estimate:
+
+- With `variables`, `mode` is `COUNTED_FIRST_STEP`: Infrahub counts the first step as it does for a request sent with the header. To count the first step of a query that declares no variables, pass `variables: {}`.
+- Without `variables`, `mode` is `STATISTICS_ONLY`: every figure comes from the statistics, and the only database query reads the current number of nodes of each kind in the query. Infrahub applies the `offset`, `limit` and `ids` that the query gives as literal values, and counts one node for a top-level field that targets a single node, as a [single-target query](single-target-queries.mdx) does. It does not apply other filters. When the query gives literal `ids` and one of these nodes is among the 20 nodes with the most peers for a relationship field directly under the top-level field, Infrahub uses the stored peer count of that node.
+
+The report returns the same figures as a request sent with the header, without `actual`, `estimate_queries` and `unattributed`. GraphQL enum values are in upper case: `COUNTED` and `STATISTICS` for `source`, and `ONE` and `MANY` for `cardinality`. To count the first step on a branch, send the report to `/graphql/<branch name>`.
+
+Selecting `cost_estimate` requires the permissions that running the submitted query requires. An account that cannot view one of the kinds in the query, on the branch of the request, gets the permission error that running the query returns, and no figures. The report returns an error instead of an estimate in these cases:
+
+- The query contains a mutation: `The cost estimate covers queries only.`
+- `variables` is not an object: `The variables argument must be an object that maps each variable name to its value.`
+- A variable does not match its declared type: the GraphQL error for that variable.
+- Infrahub cannot read the statistics from the cache: the error of the cache read.
+
+## Refresh the statistics
+
+The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the nodes in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, so no query reads more than one chunk.
+
+The task manager runs the workflow once a day, between 04:00 and 05:00 UTC, at a random minute that Infrahub sets when the server starts. Only one run takes place at a time: the task manager cancels a run that starts while another run is in progress. Requests use the new statistics as soon as a run completes.
+
+Until the first run completes, every field has the reason `no statistics`. A relationship added to the schema has statistics after the next run.
+
+Run these commands from a shell in a task worker container, which has the address of the task manager. The examples use Docker Compose.
+
+To run the refresh now:
+
+```bash
+docker compose exec task-worker prefect deployment run 'graphql-cost-statistics-refresh/graphql-cost-statistics-refresh'
+```
+
+To pause the daily refresh, list the schedule of the deployment to read its ID, then pause it:
+
+```bash
+docker compose exec task-worker prefect deployment schedule ls 'graphql-cost-statistics-refresh/graphql-cost-statistics-refresh'
+docker compose exec task-worker prefect deployment schedule pause 'graphql-cost-statistics-refresh/graphql-cost-statistics-refresh' <schedule ID>
+```
+
+To start the daily refresh again:
+
+```bash
+docker compose exec task-worker prefect deployment schedule resume 'graphql-cost-statistics-refresh/graphql-cost-statistics-refresh' <schedule ID>
+```
+
+When the Infrahub server starts, it creates its workflow deployments again with an active schedule. After a restart, pause the schedule again if you still want the daily refresh stopped.
+
+## Related
+
+- [Stored queries](stored-queries.mdx): store a GraphQL query and run it through `/api/query`.
+- [Single-target queries](single-target-queries.mdx): write queries for artifacts, Transformations and Generators that target one node.
+- [Artifacts](../../artifacts/overview): how Infrahub renders artifacts from a Transformation and its query.
