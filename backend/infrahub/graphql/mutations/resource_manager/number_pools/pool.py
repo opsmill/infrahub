@@ -17,11 +17,15 @@ from infrahub.pools.number_pool_range_validation import (
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
+from infrahub.pools.scope import SCOPE_FIELD, ScopeValidator
 
 from ...main import DeleteResult, InfrahubMutation
 from .common import (
     SCHEMA_POOL_RANGES_REFUSED,
+    SCHEMA_POOL_SCOPE_REFUSED,
     SCHEMA_POOL_SHORTHAND_REFUSED,
+    SCOPE_UPDATE_REFUSED,
+    is_schema_pool,
     pool_lock,
     range_bounds,
     refuse_schema_pool,
@@ -62,6 +66,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
     ) -> Any:
         graphql_context: GraphqlContext = info.context
         attribute = cls._resolve_target_attribute(data=data)
+        cls._normalise_scope(data=data, kind=data["node"].value, attribute_name=attribute.name)
         ranges_supplied = "ranges" in data.keys()
         shorthand = cls._parse_shorthand(data=data, attribute=attribute, ranges_supplied=ranges_supplied)
 
@@ -113,6 +118,57 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         if attribute.kind != "Number":
             raise ValidationError(input_value="The selected attribute is not of the kind Number")
         return attribute
+
+    @classmethod
+    def _normalise_scope(cls, data: InputObjectType, kind: str, attribute_name: str) -> None:
+        """Replace the payload's allocation scope with its bare field names, once the default branch's schema accepts it.
+
+        The default branch's schema is the reference whatever branch the mutation runs on, because the pool is shared
+        by every branch while the kind's fields differ between branches.
+
+        Raises:
+            ValidationError: When the scope is not a list of strings, an entry cannot divide the pool, or the default
+                branch's schema does not define the pool's kind.
+
+        """
+        scope_input = data.get(SCOPE_FIELD)
+        if not scope_input:
+            return
+        scope = ScopeValidator.parse(value=scope_input.get("value"))
+        if not scope:
+            return
+
+        validator = ScopeValidator(schema_branch=registry.schema.get_schema_branch(name=registry.default_branch))
+        try:
+            normalised = validator.validate(kind=kind, attribute_name=attribute_name, scope=scope)
+        except SchemaNotFoundError as exc:
+            raise ValidationError(
+                {SCOPE_FIELD: f"cannot scope a pool of {kind}, the default branch's schema does not define it"}
+            ) from exc
+        scope_input["value"] = list(normalised)
+
+    @classmethod
+    def _refuse_scope_change(cls, data: InputObjectType, pool: Node) -> None:
+        """Refuse an allocation scope that differs from the stored one, and keep the stored value for one that matches.
+
+        A matching scope is accepted so that a pool re-sent whole, as an upsert does, still saves.
+
+        Raises:
+            ValidationError: When the scope is not a list of strings, or names other fields than the stored scope.
+
+        """
+        scope_input = data.get(SCOPE_FIELD)
+        if not scope_input or "value" not in scope_input:
+            return
+
+        stored_scope = pool.get_attribute(SCOPE_FIELD).value
+        sent_fields = [
+            ScopeValidator.field_name(entry=entry) for entry in ScopeValidator.parse(value=scope_input["value"])
+        ]
+        if sent_fields != list(stored_scope or []):
+            message = SCHEMA_POOL_SCOPE_REFUSED if is_schema_pool(pool=pool) else SCOPE_UPDATE_REFUSED
+            raise ValidationError(input_value=message)
+        scope_input["value"] = stored_scope
 
     @classmethod
     def _parse_shorthand(
@@ -191,6 +247,7 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
+        cls._refuse_scope_change(data=data, pool=obj)
         shorthand_supplied = "start_range" in data.keys() or "end_range" in data.keys()
         ranges_supplied = "ranges" in data.keys()
         if not shorthand_supplied and not ranges_supplied:

@@ -24,10 +24,16 @@ SCHEMA_POOL_SHORTHAND_REFUSED = (
     f"start_range or end_range can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
 )
 SCHEMA_POOL_RANGES_REFUSED = f"ranges can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
+SCHEMA_POOL_SCOPE_REFUSED = f"allocation_scope can't be updated on schema defined pools, {SCHEMA_POOL_EDIT_HINT}"
+SCOPE_UPDATE_REFUSED = "The field 'allocation_scope' can't be changed."
+
+
+def is_schema_pool(pool: Node) -> bool:
+    return pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value
 
 
 def refuse_schema_pool(pool: Node, message: str) -> None:
-    if pool.get_attribute("pool_type").get_value() == NumberPoolType.SCHEMA.value:
+    if is_schema_pool(pool=pool):
         raise ValidationError(input_value=message)
 
 
