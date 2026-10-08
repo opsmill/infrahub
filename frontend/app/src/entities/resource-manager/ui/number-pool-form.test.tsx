@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { store } from "@/shared/stores";
@@ -410,6 +411,39 @@ describe("NumberPoolForm", () => {
         .poll(() => component.getByRole("textbox", { name: "Start" }).elements())
         .toHaveLength(1);
       await expect.element(component.getByRole("textbox", { name: "Start" })).toHaveValue("100");
+    });
+
+    test("keeps the typed rows open when a background reload of the pool fails", async () => {
+      // GIVEN
+      const RefetchButton = () => {
+        const queryClient = useQueryClient();
+        return (
+          <button type="button" onClick={() => queryClient.invalidateQueries()}>
+            Reload
+          </button>
+        );
+      };
+      vi.mocked(getNumberPoolForEditing).mockResolvedValue(poolWithRanges);
+      const component = await render(
+        <>
+          <NumberPoolForm currentObject={currentObject} />
+          <RefetchButton />
+        </>
+      );
+      await component.getByRole("textbox", { name: "End" }).first().fill("150");
+      vi.mocked(getNumberPoolForEditing).mockRejectedValue(new Error("network down"));
+
+      // WHEN
+      await component.getByRole("button", { name: "Reload" }).click();
+
+      // THEN
+      await expect
+        .poll(() => vi.mocked(getNumberPoolForEditing).mock.calls.length)
+        .toBeGreaterThan(1);
+      await expect
+        .element(component.getByRole("textbox", { name: "End" }).first())
+        .toHaveValue("150");
+      expect(component.getByText("Unable to load the number pool").elements()).toHaveLength(0);
     });
 
     test("keeps a range added elsewhere after the form loaded when saving", async () => {

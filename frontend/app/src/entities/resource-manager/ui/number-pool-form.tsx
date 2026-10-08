@@ -52,16 +52,15 @@ function toFieldValue(value: string) {
 
 export const NumberPoolForm = ({ currentObject, ...props }: NumberPoolFormProps) => {
   const poolId = typeof currentObject?.id === "string" ? currentObject.id : "";
-  const {
-    data: initialPool,
-    isError,
-    isFetchedAfterMount,
-  } = useGetNumberPoolForEditing({ poolId }, { enabled: !!poolId, refetchOnMount: "always" });
+  const { data: initialPool, isFetchedAfterMount } = useGetNumberPoolForEditing(
+    { poolId },
+    { enabled: !!poolId, refetchOnMount: "always" }
+  );
 
   if (!poolId) return <NumberPoolFormContent {...props} />;
   // The rows are diffed against the stored ranges on save, so they must start from a fresh read, not the cache.
   if (!isFetchedAfterMount) return <LoadingIndicator className="p-4" />;
-  if (isError || !initialPool) {
+  if (!initialPool) {
     return <Alert type={ALERT_TYPES.ERROR} message="Unable to load the number pool" />;
   }
 
