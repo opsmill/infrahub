@@ -20,31 +20,18 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   );
 }
 
-const hasGraphQLErrors = (error: Error): error is Error & Pick<CombinedError, "graphQLErrors"> =>
-  "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
+const hasGraphQLErrors = (error: unknown): error is Pick<CombinedError, "graphQLErrors"> =>
+  error instanceof Error && "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
 
-// The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, and callers
-// may wrap that again, so the cause chain is walked until the GraphQL errors are found.
-function findThrownGraphQLErrors(error: unknown): CombinedError["graphQLErrors"] {
-  let current = error;
-  while (current instanceof Error) {
-    if (hasGraphQLErrors(current)) return current.graphQLErrors;
-    current = current.cause;
-  }
-  return [];
-}
-
-// True only when every GraphQL error carries the code, so a mixed failure isn't mistaken for it.
+// The client throws a plain `Error` with the GraphQL errors on its `cause`, and a mixed failure
+// must not pass for the code.
 export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
-  const graphQLErrors = findThrownGraphQLErrors(error);
+  const cause = error instanceof Error ? error.cause : undefined;
+  const graphQLErrors = hasGraphQLErrors(cause) ? cause.graphQLErrors : [];
   return (
     graphQLErrors.length > 0 &&
     graphQLErrors.every(({ extensions }) => parseCatalogueError(extensions).code === code)
   );
-}
-
-export function isThrownShed(error: unknown): boolean {
-  return findThrownGraphQLErrors(error).some(({ extensions }) => isShedErrorItem(extensions));
 }
 
 // Its own id so a page-load's worth of shed queries collapses into one toast

@@ -1,49 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
+import {
+  BranchRepositoriesError,
+  type BranchRepository,
+} from "@/entities/repository/domain/model/branch-repository";
 import { getBranchRepositoriesQueryOptions } from "@/entities/repository/ui/queries/get-branch-repositories.query";
-import { getBranchRepositoryHealthQueryOptions } from "@/entities/repository/ui/queries/get-branch-repository-health.query";
 
 import {
   generateBranchRepository,
-  generateBranchRepositoryHealth,
   SYNC_STATUS,
 } from "../../../../../tests/fake/branch-repositories";
 
 const pageParams = { branchName: "feature", syncWithGit: true, limit: 10, offset: 0 };
-
-describe("getBranchRepositoryHealthQueryOptions", () => {
-  const refetchIntervalFor = (
-    syncingCount: number | undefined,
-    status: "success" | "error" = "success"
-  ) => {
-    const { refetchInterval } = getBranchRepositoryHealthQueryOptions({
-      branchName: "feature",
-      syncWithGit: true,
-    });
-    if (typeof refetchInterval !== "function")
-      throw new Error("refetchInterval must be a function");
-    const data =
-      syncingCount === undefined ? undefined : generateBranchRepositoryHealth({ syncingCount });
-    return refetchInterval({ state: { data, status } } as unknown as Parameters<
-      typeof refetchInterval
-    >[0]);
-  };
-
-  it("polls every 10 seconds while the server counts a syncing repository", () => {
-    expect(refetchIntervalFor(2)).toBe(10_000);
-  });
-
-  it("doesn't poll when none is syncing or nothing has loaded", () => {
-    expect(refetchIntervalFor(0)).toBe(false);
-    expect(refetchIntervalFor(undefined)).toBe(false);
-  });
-
-  it("slows the health check down once it has failed through its retries", () => {
-    expect(refetchIntervalFor(undefined, "error")).toBe(60_000);
-    expect(refetchIntervalFor(2, "error")).toBe(60_000);
-  });
-});
 
 describe("getBranchRepositoriesQueryOptions", () => {
   const pageRefetchIntervalFor = (isSyncing: boolean, rows: BranchRepository[] | undefined) => {
@@ -60,19 +28,20 @@ describe("getBranchRepositoriesQueryOptions", () => {
     expect(pageRefetchIntervalFor(false, undefined)).toBe(false);
   });
 
-  it("slows the page poll down once a fetch has failed", () => {
+  it("stops polling once the user is denied, and keeps polling after any other failure", () => {
     const { refetchInterval } = getBranchRepositoriesQueryOptions({
       ...pageParams,
       isSyncing: true,
     });
     if (typeof refetchInterval !== "function")
       throw new Error("refetchInterval must be a function");
-
-    expect(
-      refetchInterval({ state: { status: "error" } } as unknown as Parameters<
+    const intervalAfter = (error: Error) =>
+      refetchInterval({ state: { status: "error", error } } as unknown as Parameters<
         typeof refetchInterval
-      >[0])
-    ).toBe(60_000);
+      >[0]);
+
+    expect(intervalAfter(new BranchRepositoriesError("PERMISSION_DENIED", "Denied"))).toBe(false);
+    expect(intervalAfter(new BranchRepositoriesError("UNKNOWN", "Offline"))).toBe(10_000);
   });
 
   it("fetches the page again after the sync ends while its rows still show it", () => {

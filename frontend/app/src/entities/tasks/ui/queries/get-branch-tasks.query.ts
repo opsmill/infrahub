@@ -1,6 +1,5 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
 import { useCountClampedQuery } from "@/shared/hooks/use-count-clamped-query";
 
 import { TASK_STATE_FAILED } from "@/entities/tasks/domain/model/task";
@@ -18,9 +17,8 @@ export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
   return queryOptions({
     queryKey: tasksQueryKeys.branchList(params),
     queryFn: () => getBranchTasks(params),
-    retry: retryBackgroundQuery,
-    refetchInterval: (query) =>
-      pollWhileHealthy(params.offset === 0, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
+    // Only the first page gets new tasks as they start.
+    refetchInterval: params.offset === 0 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[2].branchName === params.branchName ? previousData : undefined,
   });
@@ -45,8 +43,7 @@ export function getBranchFailedTaskCountQueryOptions({ branchName }: { branchNam
   return queryOptions({
     ...getTaskCountQueryOptions(params),
     queryFn: () => getTaskCount(params, { silenceErrors: true }),
-    retry: retryBackgroundQuery,
-    refetchInterval: (query) => pollWhileHealthy(true, BRANCH_TASKS_REFETCH_INTERVAL_MS, query),
+    refetchInterval: BRANCH_TASKS_REFETCH_INTERVAL_MS,
   });
 }
 

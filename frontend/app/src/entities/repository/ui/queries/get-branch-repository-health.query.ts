@@ -1,7 +1,6 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 
-import { pollWhileHealthy, retryBackgroundQuery } from "@/shared/api/background-query";
-
+import { isRepositoryAccessDenied } from "@/entities/repository/domain/rules/branch-repositories-error";
 import { isAnyRepositorySyncing } from "@/entities/repository/domain/rules/is-any-repository-syncing";
 import {
   type GetBranchRepositoryHealthParams,
@@ -14,14 +13,10 @@ export function getBranchRepositoryHealthQueryOptions(params: GetBranchRepositor
   return queryOptions({
     queryKey: repositoryQueryKeys.branchHealth(params),
     queryFn: () => getBranchRepositoryHealth(params),
-    retry: retryBackgroundQuery,
-    // A failed check is retried slowly even with nothing syncing, so the bands come back on their own.
     refetchInterval: (query) =>
-      pollWhileHealthy(
-        isAnyRepositorySyncing(query.state.data) || query.state.status === "error",
-        REPOSITORY_SYNC_REFETCH_INTERVAL_MS,
-        query
-      ),
+      !isRepositoryAccessDenied(query.state.error) && isAnyRepositorySyncing(query.state.data)
+        ? REPOSITORY_SYNC_REFETCH_INTERVAL_MS
+        : false,
   });
 }
 
