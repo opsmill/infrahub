@@ -459,7 +459,7 @@ deployment rule.** T070 to T073 are not.
       `releasing` reaches every dispatch, the lease is renewed, and a dispatch failure raises. A
       `terminals` marker, a held generator definition and a held Python attribute in one window
       release all three: the artifact trigger, the generator request and the Python submission.
-- [ ] T069 [US3] Wire the releaser into `build_writeback_service` in
+- [X] T069 [US3] Wire the releaser into `build_writeback_service` in
       `backend/infrahub/git/writeback/factory.py`, so a delivery releases (R4 step 16).
 - [ ] T070 [US3] Keep the repository id per attribute in `GatheredPythonReadSets` and expose `owner_of` in
       `backend/infrahub/core/merge/python_target_sources.py`.

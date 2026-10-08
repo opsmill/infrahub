@@ -96,7 +96,8 @@ A per-merge line records the path taken (selective, with generator/artifact coun
 | `core/regeneration/` | Predicates, member mapping, definition models shared with the proposed-change pipeline |
 | `core/regeneration/derived_dependencies.py`, `classifier_builder.py`, `core/schema/derived_path.py` | Resolve a `display_label` / `human_friendly_id` read's backing peers and fold them into the classifier as traversed kinds |
 | `graphql/analyzer.py` | `ReachedPathResolver` / `relationship_reached_paths` — reconstructs the relationship chains reaching each related kind |
-| `core/branch/tasks.py` | `_build_post_merge_regeneration_dispatcher`, `post_process_branch_merge` wiring |
+| `core/merge/builder.py` | `build_post_merge_regeneration_dispatcher`, `build_regeneration_barrier`, `build_held_regeneration_releaser` |
+| `core/branch/tasks.py` | `post_process_branch_merge` wiring |
 | `config.py` | `selective_execution_after_merge` |
 
 ## See Also

@@ -56,12 +56,14 @@ from infrahub.workers.dependencies import build_client, build_event_service, bui
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.adapters.lock import LockTimeline, RecordingImporter
 from tests.adapters.repository_record_store import build_in_memory_recorder
+from tests.adapters.workflow import WorkflowRecorder
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
 from tests.helpers.git import build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
+from tests.helpers.workflow_override import override_workflow
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
@@ -659,8 +661,12 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     with (
         override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
         override_dependency(build_message_bus, lambda: bus_simulator, dependency_provider=dependency_provider),
+        override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider),
     ):
-        await merge_git_repository(model=model)
+        await merge_git_repository(
+            model=model,
+            context=InfrahubContext(branch=BranchContext(name=default_branch.name), account=AnonymousSession()),
+        )
 
     upstream = Repo(upstream_path)
     assert upstream.commit("develop").hexsha != develop_before

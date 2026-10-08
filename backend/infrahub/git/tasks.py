@@ -27,8 +27,10 @@ from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
 from infrahub import lock
-from infrahub.context import InfrahubContext
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
+    GLOBAL_BRANCH_NAME,
     InfrahubKind,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
@@ -1010,11 +1012,15 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
         await message_bus.send(message=message)
 
 
+# A run queued before the flow took a context carries none, and must still push its merge.
+_NO_MERGE_CONTEXT = InfrahubContext(branch=BranchContext(name=GLOBAL_BRANCH_NAME), account=AnonymousSession())
+
+
 @flow(
     name="git-repository-merge",
     flow_run_name="Merge {model.source_branch} > {model.destination_branch} in git repository",
 )
-async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
+async def merge_git_repository(model: GitRepositoryMerge, context: InfrahubContext = _NO_MERGE_CONTEXT) -> State | None:
     log = get_run_logger()
     await add_tags(branches=[model.source_branch, model.destination_branch], nodes=[model.repository_id])
 
@@ -1076,7 +1082,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> State | None:
             except BranchNotFoundError:
                 lost_merge = _describe_lost_merge(repo=repo, model=model)
                 log.error(lost_merge)
-        service = await build_writeback_service(db=db, repository=repo)
+        service = await build_writeback_service(db=db, repository=repo, context=context, log=log)
         outcome = await deliver_pending_merges(service=service, manual=False, entry=entry)
 
     message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."

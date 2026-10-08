@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -35,10 +34,12 @@ from infrahub.core.diff.model.path import (
 )
 from infrahub.core.diff.models import RequestDiffUpdate
 from infrahub.core.diff.repository.repository import DiffRepository
-from infrahub.core.diff.summary_cache import DiffSummaryCache
-from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.graph import GRAPH_VERSION
-from infrahub.core.merge.builder import build_branch_merge_orchestrator
+from infrahub.core.merge.builder import (
+    build_branch_merge_orchestrator,
+    build_post_merge_regeneration_dispatcher,
+    build_regeneration_barrier,
+)
 from infrahub.core.merge.merge_locker import MergeLocker
 from infrahub.core.merge.python_target_sources import (
     UnavailablePythonTargetResolver,
@@ -50,14 +51,8 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
-from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
-from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_blanket_regeneration
+from infrahub.core.merge.regeneration_dispatcher import submit_blanket_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
-from infrahub.core.merge.selective_regen.generator_output import (
-    GeneratorCascadeOutput,
-    GeneratorTrackingGroupDiffCapturer,
-)
-from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.merge.write_blocker import MergeWriteBlocker
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.runner import MigrationRunner
@@ -78,13 +73,11 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
-from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
     get_cache,
-    get_client,
     get_component,
     get_database,
     get_event_service,
@@ -640,49 +633,6 @@ async def _retire_agnostic_fields_of_base_deletions(
         )
 
 
-async def _build_regeneration_barrier(db: InfrahubDatabase, default_branch: Branch) -> RegenerationBarrier:
-    return RegenerationBarrier(
-        state=WritebackIntentStore(
-            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: datetime.now(tz=UTC)
-        ),
-        narrowed=NarrowedHoldCache(
-            cache=await get_cache(), ttl_seconds=NARROWED_HOLD_TTL_SECONDS, max_bytes=NARROWED_HOLD_MAX_BYTES
-        ),
-        default_branch_name=default_branch.name,
-        sleep=asyncio.sleep,
-    )
-
-
-async def _build_post_merge_regeneration_dispatcher(
-    db: InfrahubDatabase,
-    branch: Branch,
-    barrier: RegenerationBarrier,
-    log: Logger | LoggerAdapter[Logger],
-) -> PostMergeRegenerationDispatcher:
-    component_registry = get_component_registry()
-    diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
-    diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
-    output_capturer = GeneratorTrackingGroupDiffCapturer(
-        diff_coordinator=diff_coordinator,
-        diff_repository=diff_repository,
-        serializer=DiffSummarySerializer(),
-        client=get_client(),
-        branch=branch,
-    )
-    generator_output = GeneratorCascadeOutput(capturer=output_capturer)
-    return PostMergeRegenerationDispatcher(
-        workflow=get_workflow(),
-        planner=build_merge_selective_regeneration(
-            db=db, client=get_client(), log=log, generator_output=generator_output
-        ),
-        summary_cache=DiffSummaryCache(
-            cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
-        ),
-        barrier=barrier,
-        log=log,
-    )
-
-
 @flow(
     name="branch-merge-post-process",
     flow_run_name="Run additional tasks after merging {source_branch} in {target_branch}",
@@ -703,11 +653,16 @@ async def post_process_branch_merge(
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-        barrier = await _build_regeneration_barrier(db=db, default_branch=default_branch)
+        barrier = await build_regeneration_barrier(
+            state=WritebackIntentStore(
+                db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: datetime.now(tz=UTC)
+            ),
+            default_branch_name=default_branch.name,
+        )
         if config.SETTINGS.main.selective_execution_after_merge:
             target_branch_obj = await Branch.get_by_name(db=db, name=target_branch)
-            dispatcher = await _build_post_merge_regeneration_dispatcher(
-                db=db, branch=target_branch_obj, barrier=barrier, log=log
+            dispatcher = await build_post_merge_regeneration_dispatcher(
+                db=db, branch=target_branch_obj, barrier=barrier, workflow=get_workflow(), log=log
             )
             await dispatcher.dispatch(
                 context=context,
