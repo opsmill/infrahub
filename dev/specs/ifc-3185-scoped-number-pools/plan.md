@@ -212,8 +212,8 @@ module, so the generic file changes in description strings only. The checker goe
 The change sets ship as the Jira tickets of [tasks.md](./tasks.md): A is IFC-3334; B is IFC-3346
 (the contract) and IFC-3347 (the queries over the fixed dataset); the validator of D3 is IFC-3348;
 D4 is IFC-3352; C and D1 together are IFC-3349; the size check of D3 is IFC-3353; the schema side
-of D3 is IFC-3351; D2 and E together are IFC-3329; F is IFC-3357 (consolidation), IFC-3355
-(measurement), IFC-3354 (two-branch verification) and IFC-3356 (docs, changelog, SDK pointer). The
+of D3 is IFC-3351; D2 and E together are IFC-3329; F is IFC-3354 (final testing: two-branch
+verification, consolidation, measurement) and IFC-3356 (wrap up: docs, changelog, SDK pointer). The
 validator lands before scoped allocation so that the division resolver only meets scopes the
 validator accepted; IFC-3352 runs in parallel with both.
 
@@ -517,6 +517,6 @@ diffing `schema/schema.graphql` for those types.
       dedicated surface; its findings on the utilization shape are superseded by D7, and its
       Erratum lists the outcomes the decisions of 2026-10-07 and 2026-10-08 reversed.
 - [x] Phase 2 — `tasks.md` (phases follow change sets A, B, C, D1–D4, E, F)
-- [x] Tickets — `tasks.md` regrouped by Jira ticket (IFC-3334, IFC-3346 to IFC-3358, IFC-3329), one
+- [x] Tickets — `tasks.md` regrouped by Jira ticket (IFC-3334, IFC-3346 to IFC-3354, IFC-3356, IFC-3329), one
       pull request per ticket; the surface keeps form A and User Story 7 is in scope (decisions of
       2026-10-07)

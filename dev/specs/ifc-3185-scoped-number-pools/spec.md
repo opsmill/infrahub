@@ -101,8 +101,9 @@ Jira ticket per pull request, each a coherent piece of behaviour with its own te
    declared in the schema).
 7. **The real reads** (IFC-3329): the three queries read the database and the fixed dataset is
    deleted.
-8. **Consolidation, measurement, the branch seam, documentation** (IFC-3357, IFC-3355, IFC-3354,
-   IFC-3356).
+8. **Final testing** (IFC-3354): the branch seam, the consolidation through attach and the
+   measurements.
+9. **Wrap up** (IFC-3356): documentation, changelog, knowledge entry, SDK pointer.
 
 User Story 1 below is the contract story. Nothing after it may rename, retype or remove a field it
 publishes.
@@ -120,11 +121,8 @@ publishes.
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | Adding a scoped attribute is refused only when a division outgrows the pool | research decision D9 |
 | [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | The scope declared on a number-pool attribute reaches the schema-created pool | User Story 4; FR-012, FR-013 |
 | [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329) | The three queries read real pools; the fixed dataset is deleted | User Story 3, User Story 1 scenarios 2 to 7 on real data (replacing the fixed dataset); FR-011, FR-015 to FR-017, FR-022 to FR-030; SC-010, SC-011 |
-| [IFC-3357](https://opsmill.atlassian.net/browse/IFC-3357) | Per-site pools consolidated into one scoped pool through attach | User Story 7; SC-001 |
-| [IFC-3355](https://opsmill.atlassian.net/browse/IFC-3355) | Latency and throughput measured; one anchor order kept | User Story 8; SC-005, SC-006 |
-| [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | The branch seam verified with two branches in every scenario | User Story 6; FR-007, FR-008, FR-021 |
-| [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | User docs, changelog fragments, knowledge entry, SDK pointer | Behaviour changes for the changelog; Open points |
-| [IFC-3358](https://opsmill.atlassian.net/browse/IFC-3358) | Follow-up, outside the definition of done: search, pagination and sort orders of the divisions list; search and sort orders of the allocation list | Out of scope (search, sort orders); FR-022, FR-023 |
+| [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | Final testing: the branch seam verified with two branches in every scenario, per-site pools consolidated into one scoped pool through attach, latency and throughput measured with one anchor order kept | User Stories 6, 7 and 8; FR-007, FR-008, FR-021; SC-001, SC-005, SC-006 |
+| [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | Wrap up: user docs, changelog fragments, knowledge entry, SDK pointer | Behaviour changes for the changelog; Open points |
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -926,7 +924,7 @@ Using the repository's "ask first" list.
   ticket).
 - The SDK helpers `get_pool_allocated_resources` and `get_pool_resources_utilization` (own ticket).
 - Search on the allocation list, and sort orders of the allocation list other than value, branch,
-  holder id (follow-up IFC-3358, with the divisions list's search, pagination and sort orders).
+  holder id, and search, pagination and other sort orders of the divisions list.
 - New mutations: bulk attach and detach, identifier-only reservation. A "next free value in a
   division" query.
 - Any change to the generic resource-pool queries' shape or meaning.

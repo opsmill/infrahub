@@ -26,11 +26,8 @@ piece of behaviour with its own tests. The plan's change sets map onto the ticke
 | [IFC-3353](https://opsmill.atlassian.net/browse/IFC-3353) | new | D3 (size check) | The attribute-add size check compares against the largest division |
 | [IFC-3351](https://opsmill.atlassian.net/browse/IFC-3351) | new | D3 (schema) | The scope declared on a number-pool attribute in the schema |
 | [IFC-3329](https://opsmill.atlassian.net/browse/IFC-3329) | new | D2, E | The three queries read the database; the fixed dataset is deleted |
-| [IFC-3357](https://opsmill.atlassian.net/browse/IFC-3357) | new | US7 | Consolidation of per-site pools through attach |
-| [IFC-3355](https://opsmill.atlassian.net/browse/IFC-3355) | new | F (measure) | SC-005 and SC-006 figures; one anchor order kept |
-| [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | new | US6 | Two-branch verification of the branch seam |
-| [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | new | F (close) | Docs, changelog, knowledge, SDK pointer |
-| [IFC-3358](https://opsmill.atlassian.net/browse/IFC-3358) | follow-up | none | Search, pagination and sort orders of the divisions list, if the frontend needs them |
+| [IFC-3354](https://opsmill.atlassian.net/browse/IFC-3354) | new | US6, US7, F (measure) | Final testing: two-branch verification of the branch seam, consolidation of per-site pools through attach, SC-005 and SC-006 figures with one anchor order kept |
+| [IFC-3356](https://opsmill.atlassian.net/browse/IFC-3356) | new | F (close) | Wrap up: docs, changelog, knowledge, SDK pointer |
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -393,7 +390,7 @@ pool handling deferred on update and on template create until every field is app
 the allocation lock keyed by pool and division (FR-031). Unscoped pools issue the same query and
 take the same lock as today.
 
-**Depends on**: IFC-3348. **Blocks**: IFC-3329, IFC-3351, IFC-3355, IFC-3357.
+**Depends on**: IFC-3348. **Blocks**: IFC-3329, IFC-3351.
 
 **Independent Test**: the scoped pool fixture; devices in several sites through the ordinary
 allocation path, on one branch and on two.
@@ -614,7 +611,7 @@ outside the space dropped) and per-entry division values; the pure division repo
 resolvers reading the database; the fixed
 dataset deleted. The three queries switch together so that they agree with each other (SC-010).
 
-**Depends on**: IFC-3347, IFC-3349. **Blocks**: IFC-3354, IFC-3356, IFC-3357, IFC-3358.
+**Depends on**: IFC-3347, IFC-3349. **Blocks**: IFC-3354, IFC-3356.
 
 **Independent Test**: uneven occupancy across sites on the scoped fixture; compare the headline, the
 division rows, the range rows and the filtered allocation list against the records.
@@ -786,57 +783,26 @@ SC-010 and SC-011 hold.
 
 ---
 
-## IFC-3357: Consolidate per-site pools into one scoped pool through attach
+## IFC-3354: Final testing
 
-**Delivers**: User Story 7. The operator attaches each node with one `<Kind>Update` that sends
-`value` and `from_pool` (the attach of part 2); no bulk attach mutation exists.
+**Delivers**: the acceptance of the epic once every behaviour has landed, in three parts; no new
+capability. Defects the scenarios reveal are fixed here.
 
-**Depends on**: IFC-3349, IFC-3329. **Blocks**: IFC-3356 (the consolidation procedure in the docs).
+- User Story 6: the branch seam end to end, with two branches in every scenario: entries that do
+  not apply on a branch ignored per read, validation against the schema of the branch where the
+  pool is saved, the full scope after merge, the scope in force reported by the dedicated queries,
+  and the two known limitations.
+- User Story 7: per-site pools consolidated into one scoped pool. The operator attaches each node
+  with one `<Kind>Update` that sends `value` and `from_pool` (the attach of part 2); no bulk
+  attach mutation exists.
+- User Story 8: SC-005 and SC-006 figures recorded and the anchor order chosen on numbers; no
+  behaviour changes.
 
-- [ ] T074 [US7] Add the consolidation scenario to
-      `backend/tests/functional/pools/test_numberpool_scoped_allocation.py`: P_A and P_B each handed
-      out 1–10; scope P_A by site; attach each of the ten site-B nodes with one `<Kind>Update`
-      sending `value` and `from_pool: {id: <P_A>}` → `InfrahubNumberPoolDivisions` on P_A reports A
-      10 of 100 and B 10 of 100, the next allocation in B returns 11, P_B tracks no number and is
-      deleted, P_A's records are unchanged after the deletion; a write sending `from_pool` without
-      `value` on a number no pool tracks is refused.
+**Depends on**: IFC-3329, IFC-3351, IFC-3352, and through them IFC-3348 and IFC-3349. **Blocks**:
+IFC-3356 (the consolidation procedure in the docs, and the knowledge document that describes the
+anchor order kept).
 
----
-
-## IFC-3355: Measure the cost of a scoped pool and keep one division read shape
-
-**Delivers**: User Story 8: SC-005 and SC-006 figures recorded, the anchor order chosen on numbers.
-No behaviour changes.
-
-**Depends on**: IFC-3349. **Blocks**: IFC-3356 (the knowledge document describes the anchor kept).
-
-- [ ] T075 [P] [US8] Query benchmark `backend/tests/query_benchmark/test_number_pool_scoped_allocation.py`:
-      a 4094-number pool with a three-entry scope (two relationships, one attribute), five live
-      branches, fully occupied; one allocation; record latency and the `EXPLAIN`/`PROFILE` of the
-      scoped free query (SC-006).
-- [ ] T076 [P] [US8] Timed functional scenario
-      `backend/tests/functional/pools/test_numberpool_scoped_throughput.py` marked `measurement`
-      (excluded from the default run in `backend/pytest.ini` or the folder's `conftest.py`): one
-      scoped pool, locking per pool and division (FR-031), versus N per-site pools serving the same
-      nodes under concurrent allocation; record throughput for both (SC-005).
-- [ ] T077 [US8] Run T075 against both anchor orders from T043 at the SC-006 shape and at a hub
-      shape (one site holding most nodes); keep the better one, delete the other and its switch.
-- [ ] T078 [US8] Write `dev/specs/ifc-3185-scoped-number-pools/measurements.md`: both figures, the
-      plans, the anchor order kept, and the occupancy at which a stored division key would be
-      needed. State what the lock per pool and division buys against the per-site pools (SC-005).
-      The figures come from a run against a live stack.
-
----
-
-## IFC-3354: Verify scoped allocation and reads across branches whose schemas differ
-
-**Delivers**: User Story 6: the branch seam end to end, with two branches in every scenario:
-entries that do not apply on a branch ignored per read, validation against the schema of the
-branch where the pool is saved, the full scope after merge, the scope in force reported by the
-dedicated queries, and the two known limitations. Defects the
-scenarios reveal are fixed here.
-
-**Depends on**: IFC-3329, IFC-3351, IFC-3352. **Blocks**: IFC-3356.
+### Two-branch verification
 
 - [ ] T069 [US6] Functional tests in `backend/tests/functional/pools/test_numberpool_scoped_branch.py`
       (`workflow_awaited_only` for the merge and the rebase), one per User Story 6 scenario: `pod`
@@ -860,17 +826,46 @@ scenarios reveal are fixed here.
       both divisions until merge or delete) and schema divergence (the transient double-1 under the
       coarser reading is accepted and documented in the test name by behaviour, not by issue).
 
-**Checkpoint**: the branch cases in the spec's edge list each have a two-branch test.
+### Consolidation through attach
+
+- [ ] T074 [US7] Add the consolidation scenario to
+      `backend/tests/functional/pools/test_numberpool_scoped_allocation.py`: P_A and P_B each handed
+      out 1–10; scope P_A by site; attach each of the ten site-B nodes with one `<Kind>Update`
+      sending `value` and `from_pool: {id: <P_A>}` → `InfrahubNumberPoolDivisions` on P_A reports A
+      10 of 100 and B 10 of 100, the next allocation in B returns 11, P_B tracks no number and is
+      deleted, P_A's records are unchanged after the deletion; a write sending `from_pool` without
+      `value` on a number no pool tracks is refused.
+
+### Measurements
+
+- [ ] T075 [P] [US8] Query benchmark `backend/tests/query_benchmark/test_number_pool_scoped_allocation.py`:
+      a 4094-number pool with a three-entry scope (two relationships, one attribute), five live
+      branches, fully occupied; one allocation; record latency and the `EXPLAIN`/`PROFILE` of the
+      scoped free query (SC-006).
+- [ ] T076 [P] [US8] Timed functional scenario
+      `backend/tests/functional/pools/test_numberpool_scoped_throughput.py` marked `measurement`
+      (excluded from the default run in `backend/pytest.ini` or the folder's `conftest.py`): one
+      scoped pool, locking per pool and division (FR-031), versus N per-site pools serving the same
+      nodes under concurrent allocation; record throughput for both (SC-005).
+- [ ] T077 [US8] Run T075 against both anchor orders from T043 at the SC-006 shape and at a hub
+      shape (one site holding most nodes); keep the better one, delete the other and its switch.
+- [ ] T078 [US8] Write `dev/specs/ifc-3185-scoped-number-pools/measurements.md`: both figures, the
+      plans, the anchor order kept, and the occupancy at which a stored division key would be
+      needed. State what the lock per pool and division buys against the per-site pools (SC-005).
+      The figures come from a run against a live stack.
+
+**Checkpoint**: the branch cases in the spec's edge list each have a two-branch test, the
+consolidation scenario passes, and `measurements.md` records the anchor order kept.
 
 ---
 
-## IFC-3356: Document scoped number pools and record the changelog
+## IFC-3356: Wrap up
 
 **Delivers**: the user documentation, the changelog fragments, the knowledge entry, the record of
 the surface decision, the SDK pointer and the final checks. The only ticket that writes changelog
 fragments.
 
-**Depends on**: IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354, IFC-3355, IFC-3357. **Blocks**:
+**Depends on**: IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354. **Blocks**:
 the merge of `feature-number-pools-1.12` into the release branch.
 
 - [ ] T079 [P] Changelog fragments in `changelog/` (use the `creating-changelog-entries` skill), the
@@ -917,19 +912,6 @@ the merge of `feature-number-pools-1.12` into the release branch.
 
 ---
 
-## Follow-up
-
-### IFC-3358: Search, pagination and other sort orders for the divisions list of a number pool
-
-Not in this epic's definition of done. `InfrahubNumberPoolDivisions` returns the complete list
-ordered by utilization descending then display label, with no search and no pagination (FR-022);
-`InfrahubNumberPoolAllocations` is ordered by value, then branch, then holder id, with no search
-(FR-023). The ticket records the search, pagination and sort orders (including "most recent") of
-the original request for the divisions list, and search and other sort orders for the allocation
-list, to be scheduled only if the frontend needs them. Depends on IFC-3329. No tasks.
-
----
-
 ## Dependencies and execution order
 
 ```mermaid
@@ -943,11 +925,8 @@ flowchart TD
   T3353["IFC-3353 attribute-add size check per division"]
   T3351["IFC-3351 scope declared in the schema"]
   T3329["IFC-3329 reads from the database"]
-  T3357["IFC-3357 consolidation through attach"]
-  T3355["IFC-3355 measurements"]
-  T3354["IFC-3354 two-branch verification"]
-  T3356["IFC-3356 docs and changelog"]
-  T3358["IFC-3358 follow-up: divisions list search, pagination, sort"]
+  T3354["IFC-3354 final testing"]
+  T3356["IFC-3356 wrap up"]
 
   T3334 --> T3346 --> T3347 --> T3348 --> T3349 --> T3329
   T3334 --> T3352 --> T3354
@@ -955,12 +934,8 @@ flowchart TD
   T3348 --> T3351
   T3348 --> T3353 --> T3356
   T3349 --> T3351 --> T3354
-  T3349 --> T3355 --> T3356
-  T3349 --> T3357
-  T3329 --> T3357 --> T3356
   T3329 --> T3354 --> T3356
   T3329 --> T3356
-  T3329 --> T3358
 ```
 
 | Ticket | Blocked by | Blocks |
@@ -970,15 +945,12 @@ flowchart TD
 | IFC-3347 | IFC-3346 | IFC-3348, IFC-3329 |
 | IFC-3348 | IFC-3347 | IFC-3349, IFC-3351, IFC-3353 |
 | IFC-3352 | IFC-3334 | IFC-3354 |
-| IFC-3349 | IFC-3348 | IFC-3329, IFC-3351, IFC-3355, IFC-3357 |
+| IFC-3349 | IFC-3348 | IFC-3329, IFC-3351 |
 | IFC-3353 | IFC-3348 | IFC-3356 |
 | IFC-3351 | IFC-3348, IFC-3349 | IFC-3354 |
-| IFC-3329 | IFC-3347, IFC-3349 | IFC-3354, IFC-3356, IFC-3357, IFC-3358 |
-| IFC-3357 | IFC-3349, IFC-3329 | IFC-3356 |
-| IFC-3355 | IFC-3349 | IFC-3356 |
+| IFC-3329 | IFC-3347, IFC-3349 | IFC-3354, IFC-3356 |
 | IFC-3354 | IFC-3329, IFC-3351, IFC-3352 | IFC-3356 |
-| IFC-3356 | IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354, IFC-3355, IFC-3357 | the release merge |
-| IFC-3358 | IFC-3329 | none |
+| IFC-3356 | IFC-3329, IFC-3351, IFC-3352, IFC-3353, IFC-3354 | the release merge |
 
 - **IFC-3334 merges first, on its own**; IFC-3346 (the documents) is then the bottom of the stack
   and every later pull request is based on it.
@@ -993,20 +965,20 @@ flowchart TD
 - **IFC-3353 needs `entries_in_force`** from IFC-3348; the divisions list of the queries derives
   from the rows, so IFC-3329 does not need `NumberPoolDivisions`.
 - **IFC-3354** needs the validator, the allocation, the reads, the schema-declared scope and the
-  dependency checker to assert the two-branch scenarios.
-- **IFC-3355** needs IFC-3349; T077 decides between the two anchor orders T043 rendered.
+  dependency checker to assert the two-branch scenarios and the consolidation scenario; its T077
+  decides between the two anchor orders T043 rendered.
 - **IFC-3356** is last: it documents the delivered behaviour and carries every changelog fragment.
 
 ## Parallel tracks
 
 | Track | Tickets in order | Waits on |
 |---|---|---|
-| Allocation and reads | IFC-3349, then IFC-3329, then IFC-3355 | IFC-3348 |
+| Allocation and reads | IFC-3349, then IFC-3329 | IFC-3348 |
 | Schema | IFC-3352 alone; IFC-3353 and IFC-3351 after IFC-3348 | IFC-3334 (IFC-3352); IFC-3348 (IFC-3353, IFC-3351); IFC-3349 (IFC-3351's allocation assertions) |
-| Acceptance and closing | IFC-3357, IFC-3354, IFC-3356 | IFC-3349 and IFC-3329 (IFC-3357); IFC-3329, IFC-3351, IFC-3352 (IFC-3354); everything (IFC-3356) |
+| Final testing and wrap up | IFC-3354, IFC-3356 | IFC-3329, IFC-3351, IFC-3352 (IFC-3354); everything (IFC-3356) |
 
 Recommended merge order into `feature-number-pools-1.12`: IFC-3334, IFC-3346, IFC-3347, IFC-3348,
-IFC-3352, IFC-3349, IFC-3353, IFC-3351, IFC-3329, IFC-3357, IFC-3355, IFC-3354, IFC-3356. IFC-3352
+IFC-3352, IFC-3349, IFC-3353, IFC-3351, IFC-3329, IFC-3354, IFC-3356. IFC-3352
 and IFC-3353 can merge anywhere after their dependencies; the order keeps IFC-3349 and IFC-3329,
 which both change `resource_manager.py`, from colliding.
 
@@ -1034,8 +1006,6 @@ which both change `resource_manager.py`, from colliding.
 | IFC-3353 | 4 (T046, T048, T056, T061) | 0 |
 | IFC-3351 | 5 (T055, T059, T060, T062, T098) | 0 |
 | IFC-3329 | 23 (T012, T014 to T016, T016a obsolete, T019 to T021, T026, T033 to T035, T047, T049 to T052, T071 to T073, T085 to T087) | 0 |
-| IFC-3357 | 1 (T074) | 0 |
-| IFC-3355 | 4 (T075 to T078) | 0 |
-| IFC-3354 | 2 (T069, T070) | 0 |
+| IFC-3354 | 7 (T069, T070, T074 to T078) | 0 |
 | IFC-3356 | 9 (T079 to T084, T088 to T090) | 1 |
 | Total | 99 (98 live, T016a obsolete) | 19 |
