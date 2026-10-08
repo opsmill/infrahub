@@ -156,6 +156,16 @@ class GitRepositoryMerge(BaseModel):
     )
 
 
+class GitRepositoryDeliveryRetry(BaseModel):
+    """Push every pending merge of a repository to its remote."""
+
+    repository_id: str = Field(..., description="The unique ID of the Repository")
+    repository_name: str = Field(..., description="The name of the repository")
+    manual: bool = Field(
+        default=True, description="A user asked for the retry. False when the recovery check submitted it."
+    )
+
+
 class GitRepositoryImportObjects(BaseModel):
     """Re run import job against an existing commit."""
 

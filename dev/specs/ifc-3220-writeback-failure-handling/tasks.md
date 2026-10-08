@@ -370,8 +370,8 @@ SC-002, SC-007.
 
 **Maps to**: FR-007, FR-012, FR-023 (obligation), SC-003.
 
-- [ ] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
-- [ ] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
+- [X] T050 [P] [US2] Add `GitRepositoryDeliveryRetry` to `backend/infrahub/git/models.py`.
+- [X] T051 [US2] Write the flow `retry_repository_delivery` in `backend/infrahub/git/tasks.py` and the
       catalogue entry `GIT_REPOSITORY_DELIVERY_RETRY` in `backend/infrahub/workflows/catalogue.py`.
       It calls `deliver_pending_merges` with `entry=None` and `manual=True`, or `False` when the
       recovery check submitted it, and re-checks nothing itself: `deliver` step 1 decides.

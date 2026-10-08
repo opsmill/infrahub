@@ -81,6 +81,7 @@ from .models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryAdd,
     GitRepositoryAddReadOnly,
+    GitRepositoryDeliveryRetry,
     GitRepositoryImportObjects,
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
@@ -1121,6 +1122,32 @@ async def deliver_pending_merges(
     # This task does not retry, so each attempt is the final one.
     result = await service.deliver(final_attempt=True, manual=manual, entry=entry)
     return result.outcome
+
+
+@flow(
+    name="git-repository-delivery-retry",
+    flow_run_name="Retry the delivery of the pending merges of repository {model.repository_name}",
+)
+async def retry_repository_delivery(model: GitRepositoryDeliveryRetry) -> State:
+    log = get_run_logger()
+    await add_tags(branches=[registry.default_branch], nodes=[model.repository_id])
+
+    repo = await InfrahubRepository.init(
+        id=model.repository_id,
+        name=model.repository_name,
+        client=get_client(),
+        infrahub_branch_name=registry.default_branch,
+    )
+    database = await get_database()
+    async with database.start_session() as db:
+        service = await build_writeback_service(db=db, repository=repo)
+        outcome = await deliver_pending_merges(service=service, manual=model.manual, entry=None)
+
+    message = f"The delivery to repository {model.repository_name} ended with the outcome {outcome.value}."
+    log.info(message)
+    if outcome in {DeliveryOutcome.FAILED, DeliveryOutcome.UNREPLAYABLE}:
+        return Failed(message=message)
+    return Completed(message=message)
 
 
 @flow(name="git-repository-import-object", flow_run_name="Import objects from git repository")
