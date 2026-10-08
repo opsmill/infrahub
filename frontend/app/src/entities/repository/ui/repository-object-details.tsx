@@ -65,7 +65,7 @@ export function RepositoryObjectDetails({
       <RepositoryActivityCard repositoryId={objectData.id} />
 
       {isOfKind(REPOSITORY_KIND, objectSchema) && (
-        <RepositoryPushToRemoteCard repositoryId={objectData.id} />
+        <RepositoryPushToRemoteCard repositoryId={objectData.id} permission={permission} />
       )}
     </>
   );
