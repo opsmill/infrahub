@@ -37,6 +37,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
+from tests.helpers.agnostic_edges import attribute_global_edges
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 
 REQUEST = NodeSchema(
@@ -584,6 +585,56 @@ class TestNumberPoolReleaseReserved:
         assert reloaded.get_attribute("number").value == 2, "a release keeps the number on the object"
         for untouched in (incidents[0], incidents[2]):
             assert await live_record_count(db=db, node_id=untouched.get_id(), attribute_name="number") == 1
+
+
+class TestSchemaPoolRemoval:
+    async def test_a_schema_pool_removed_from_the_schema_ends_every_record_it_holds(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Once no branch declares the NumberPool attribute, the synchronizer deletes the pool and ends its records."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        [request] = await create_objects(db=db, schema=request_schema, branch=default_branch.name, start=1, end=1)
+        pools: list[CoreNumberPool] = await NodeManager.query(
+            db=db, schema=CoreNumberPoolProtocol, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+        for incident in incidents:
+            assert await live_record_count(db=db, node_id=incident.get_id(), attribute_name="number") == 1
+        incident_without_pool = INCIDENT.model_copy(deep=True)
+        incident_without_pool.get_attribute(name="number").kind = "Number"
+        registry.schema.register_schema(schema=SchemaRoot(nodes=[incident_without_pool]), branch=default_branch.name)
+
+        upserter = SchemaNumberPoolUpserter(
+            db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository
+        )
+        synchronizer = SchemaNumberPoolSynchronizer(
+            db=db, schema_manager=registry.schema, upserter=upserter, range_store_factory=NumberPoolRepository
+        )
+        await synchronizer.run(user_id="pool-deleter")
+
+        assert await NodeManager.get_one(db=db, id=incident_pool.get_id(), branch=default_branch) is None
+        for incident, number in zip(incidents, (1, 2, 3), strict=True):
+            assert await live_record_count(db=db, node_id=incident.get_id(), attribute_name="number") == 0
+            attribute_id = await get_number_attribute_id(db=db, node_id=incident.get_id(), branch=default_branch)
+            assert await get_tracking_pool_id(db=db, attribute_id=attribute_id) is None
+            [record] = [
+                edge
+                for edge in await attribute_global_edges(db=db, node_id=incident.get_id(), attribute_name="number")
+                if edge.edge_type == "IS_RESERVED"
+            ]
+            assert (record.status, record.is_open, record.to_user_id) == ("active", False, "pool-deleter")
+            reloaded = await NodeManager.get_one(db=db, id=incident.get_id(), branch=default_branch)
+            assert reloaded is not None
+            assert reloaded.get_attribute("number").value == number, "the removal keeps the number on the object"
+        assert await live_record_count(db=db, node_id=request.get_id(), attribute_name="number") == 1, (
+            "another pool's record is untouched"
+        )
 
 
 class TestNumberPoolChangeReserved:

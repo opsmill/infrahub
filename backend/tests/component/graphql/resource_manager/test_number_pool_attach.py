@@ -49,6 +49,12 @@ query TicketSources($id: ID!) {
 }
 """
 
+DELETE_POOL = """
+mutation DeletePool($id: String!) {
+    CoreNumberPoolDelete(data: { id: $id }) { ok }
+}
+"""
+
 OPEN_IS_RESERVED_EDGES_OF_POOL = """
 MATCH (:Node { uuid: $pool_id })-[reserved:IS_RESERVED]->(:Attribute)<-[:HAS_ATTRIBUTE]-(node:Node)
 WHERE reserved.status = "active" AND reserved.to IS NULL
@@ -615,3 +621,54 @@ class TestNumberPoolAttach:
         assert await _open_is_reserved_edges(db=db, pool=pool) == set()
         assert await _allocated(db=db, branch=main_branch, pool=pool) == []
         assert await _used(db=db, branch=main_branch, pool=pool) == []
+
+    async def test_deleting_a_pool_ends_its_records_and_leaves_the_numbers(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        pool = await _new_pool(db=db, name="delete-pool", start_range=1700, end_range=1709)
+        successor = await _new_pool(db=db, name="delete-pool-successor", start_range=1700, end_range=1719)
+        first = await _create_ticket(
+            db=db, branch=main_branch, title="delete-pool-first", ticket_id={"from_pool": {"id": pool.id}}
+        )
+        second = await _create_ticket(
+            db=db, branch=main_branch, title="delete-pool-second", ticket_id={"from_pool": {"id": pool.id}}
+        )
+        provided = await _create_ticket(
+            db=db,
+            branch=main_branch,
+            title="delete-pool-provided",
+            ticket_id={"value": 1705, "from_pool": {"id": pool.id}},
+        )
+        other_branch = await create_branch(branch_name="delete-pool-other", db=db)
+        assert await _open_is_reserved_edges(db=db, pool=pool) == {
+            (first["id"], "allocated"),
+            (second["id"], "allocated"),
+            (provided["id"], "provided"),
+        }
+
+        await _execute(db=db, branch=main_branch, source=DELETE_POOL, variables={"id": pool.id})
+
+        assert await NodeManager.get_one(db=db, id=pool.id, branch=main_branch) is None
+        assert await _open_is_reserved_edges(db=db, pool=pool) == set()
+        for ticket, value in ((first, 1700), (second, 1701), (provided, 1705)):
+            [ended] = await _is_reserved_edges(db=db, node_id=ticket["id"])
+            assert (ended.status, ended.is_open) == ("active", False), "the IS_RESERVED edge is ended, not deleted"
+            assert await _tracking_pool_id(db=db, node_id=ticket["id"]) is None
+            for branch in (main_branch, other_branch):
+                sources = await _sources(db=db, branch=branch, node_id=ticket["id"])
+                assert sources["ticket_id"] == (value, None), f"{branch.name} lost the number or reports a pool"
+
+        for ticket, value in ((first, 1700), (second, 1701), (provided, 1705)):
+            changed = await _update_ticket(
+                db=db,
+                branch=main_branch,
+                node_id=ticket["id"],
+                ticket_id={"value": value, "from_pool": {"id": successor.id}},
+            )
+            assert changed["ticket_id"]["value"] == value
+        assert await _open_is_reserved_edges(db=db, pool=successor) == {
+            (first["id"], "provided"),
+            (second["id"], "provided"),
+            (provided["id"], "provided"),
+        }
+        assert await _used(db=db, branch=main_branch, pool=successor) == [1700, 1701, 1705]

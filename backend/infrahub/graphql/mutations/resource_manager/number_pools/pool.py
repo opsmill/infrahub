@@ -291,4 +291,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
                 f" is in use (branches: {','.join(violating_branches)})"
             )
 
-        return await super().mutate_delete(info=info, data=data, branch=branch)
+        async with pool_lock(pool_id=number_pool.get_id()):
+            return await super().mutate_delete(info=info, data=data, branch=branch)
+
+    @classmethod
+    async def _delete_obj(cls, graphql_context: GraphqlContext, branch: Branch, obj: Node) -> list[Node]:  # noqa: ARG003
+        return await NumberPoolRepository(db=graphql_context.db).delete_pool(
+            pool_id=obj.get_id(), user_id=graphql_context.assigned_user_id
+        )
