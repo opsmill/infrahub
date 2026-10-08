@@ -78,7 +78,11 @@ describe("RepositoryCommitsManager loading more", () => {
     const component = await render(
       <>
         <CaptureQueryClient />
-        <RepositoryCommitsManager repositoryId="repo-1" repositoryLocation={null} />
+        <RepositoryCommitsManager
+          repositoryId="repo-1"
+          repositoryLocation={null}
+          remoteCheck={null}
+        />
       </>
     );
     await expect.element(component.getByRole("button", { name: "Load more" })).toBeVisible();
@@ -104,7 +108,11 @@ describe("RepositoryCommitsManager loading more", () => {
     const component = await render(
       <>
         <CaptureQueryClient />
-        <RepositoryCommitsManager repositoryId="repo-1" repositoryLocation={null} />
+        <RepositoryCommitsManager
+          repositoryId="repo-1"
+          repositoryLocation={null}
+          remoteCheck={null}
+        />
       </>
     );
     await expect.element(component.getByText(PAGE_ONE_HEAD)).toBeVisible();

@@ -313,6 +313,21 @@ describe("getConditionNotice", () => {
     });
   });
 
+  test("warns when the tracked ref no longer exists on the remote", () => {
+    // WHEN
+    const notice = getConditionNotice({
+      condition: RepositoryGitCondition.REF_MISSING,
+      pending_count: null,
+    });
+
+    // THEN
+    expect(notice).toEqual({
+      tone: "warning",
+      message:
+        "The tracked ref no longer exists on the remote. The imported commit is still the one in use.",
+    });
+  });
+
   test("counts the commits pending import when behind", () => {
     // WHEN
     const notice = getConditionNotice({

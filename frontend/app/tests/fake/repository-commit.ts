@@ -70,7 +70,7 @@ export const generateBehindCommitsResponse = () =>
     condition: "BEHIND",
     imported_commit: fullHash(BEHIND_IMPORTED),
     remote_head: fullHash(BEHIND_HEAD),
-    pending_count: 2,
+    pending_count: 3,
     edges: [
       { node: node(BEHIND_HEAD, "HEAD", "Bump firmware baseline", "Grace Hopper") },
       { node: node("b2c3d4e", "PENDING", "Add site Paris", "Ada Lovelace") },

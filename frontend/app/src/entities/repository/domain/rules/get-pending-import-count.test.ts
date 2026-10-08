@@ -25,6 +25,7 @@ describe("getPendingImportCount", () => {
   test.each([
     RepositoryGitCondition.REWRITTEN,
     RepositoryGitCondition.ORPHANED,
+    RepositoryGitCondition.REF_MISSING,
     RepositoryGitCondition.NO_REMOTE,
     RepositoryGitCondition.NOT_TRACKED,
     RepositoryGitCondition.UNAVAILABLE,

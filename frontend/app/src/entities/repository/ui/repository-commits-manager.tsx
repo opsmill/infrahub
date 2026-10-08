@@ -1,6 +1,6 @@
 import { Button, Spinner } from "@infrahub/ui";
 
-import { Col, Row } from "@/shared/components/container";
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -22,11 +22,14 @@ import {
 } from "@/entities/repository/ui/repository-commits.view";
 import {
   RepositoryCommitsHeader,
-  RepositoryCommitsRefreshButton,
+  RepositoryCommitsToolbar,
+  type RepositoryCommitsToolbarProps,
 } from "@/entities/repository/ui/repository-commits-header";
 import { RepositoryCommitsNotice } from "@/entities/repository/ui/repository-commits-notice";
 
-export interface RepositoryCommitsManagerProps {
+type RepositoryCheckRemoteProps = Pick<RepositoryCommitsToolbarProps, "remoteCheck">;
+
+export interface RepositoryCommitsManagerProps extends RepositoryCheckRemoteProps {
   repositoryId: string;
   repositoryLocation: string | null;
 }
@@ -37,6 +40,7 @@ const gridTemplateColumns = () =>
 export function RepositoryCommitsManager({
   repositoryId,
   repositoryLocation,
+  remoteCheck,
 }: RepositoryCommitsManagerProps) {
   const {
     data,
@@ -62,6 +66,7 @@ export function RepositoryCommitsManager({
           <RepositoryCommitsEmptyState
             log={withoutPages.error.log}
             repositoryId={repositoryId}
+            remoteCheck={remoteCheck}
             emptyState={getEmptyState(withoutPages.error, {
               isRetrying: withoutPages.isRetrying,
             })}
@@ -70,9 +75,9 @@ export function RepositoryCommitsManager({
       case "failed":
         return (
           <Col className="h-full gap-0">
-            <Row className="p-2">
-              <RepositoryCommitsRefreshButton repositoryId={repositoryId} />
-            </Row>
+            <Col className="p-2">
+              <RepositoryCommitsToolbar repositoryId={repositoryId} remoteCheck={remoteCheck} />
+            </Col>
             <ErrorScreen message={withoutPages.error.message} />
           </Col>
         );
@@ -94,6 +99,7 @@ export function RepositoryCommitsManager({
       <RepositoryCommitsEmptyState
         log={log}
         repositoryId={repositoryId}
+        remoteCheck={remoteCheck}
         emptyState={noCommitLogState}
       />
     );
@@ -101,7 +107,7 @@ export function RepositoryCommitsManager({
 
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
+      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
       {isShowingStaleCommits({ isRefetchError, isRefetching, failureReason }) && (
         <RepositoryCommitsNotice>
           <p>
@@ -146,7 +152,7 @@ export function RepositoryCommitsManager({
   );
 }
 
-interface RepositoryCommitsEmptyStateProps {
+interface RepositoryCommitsEmptyStateProps extends RepositoryCheckRemoteProps {
   log: RepositoryCommitLog;
   repositoryId: string;
   emptyState: CommitLogEmptyState;
@@ -155,11 +161,12 @@ interface RepositoryCommitsEmptyStateProps {
 function RepositoryCommitsEmptyState({
   log,
   repositoryId,
+  remoteCheck,
   emptyState,
 }: RepositoryCommitsEmptyStateProps) {
   return (
     <Col className="h-full gap-0">
-      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} />
+      <RepositoryCommitsHeader log={log} repositoryId={repositoryId} remoteCheck={remoteCheck} />
       <NoDataFound title={emptyState.title} message={emptyState.message} />
     </Col>
   );

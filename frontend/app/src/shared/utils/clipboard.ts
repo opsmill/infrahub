@@ -10,7 +10,7 @@ async function copyWithClipboardApi(value: string): Promise<boolean> {
 
 function copyWithSelection(value: string): boolean {
   const selection = window.getSelection();
-  if (!selection) return false;
+  if (!selection || typeof document.execCommand !== "function") return false;
   const savedRanges = Array.from({ length: selection.rangeCount }, (_, index) =>
     selection.getRangeAt(index)
   );

@@ -74,6 +74,7 @@ const tab = () => (
       <RepositoryCommitsManager
         repositoryId="repo-1"
         repositoryLocation="https://github.com/opsmill/infrahub-demo.git"
+        remoteCheck={null}
       />
     </div>
   </>
@@ -129,7 +130,7 @@ describe("RepositoryCommitsManager", () => {
     expect(rows.nth(2).getByText("Pending import").query()).toBeNull();
     await expect.element(rows.nth(3).getByText("Pending import")).toBeVisible();
     await expect.element(rows.nth(4).getByText("Imported")).toBeVisible();
-    await expect.element(component.getByText("2 commits pending import")).toBeVisible();
+    await expect.element(component.getByText("3 commits pending import")).toBeVisible();
   });
 
   test("puts both markers on the same row when the remote head is the imported commit", async () => {

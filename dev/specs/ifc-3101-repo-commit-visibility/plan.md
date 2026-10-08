@@ -408,10 +408,20 @@ determinism logic, no test and no documentation entry.
 - Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
-  `InfrahubReadOnlyRepositoryCheckRefs`. Disabled while a check is in flight, and it surfaces the
-  returned task id rather than firing a second run (FR-025). Without it the on-demand half of
-  User Story 2 has no entry point outside the API, which matters because the interval stays at 15
-  minutes. Not landed yet, and its placement on the design canvas is still open.
+  `InfrahubReadOnlyRepositoryCheckRefs`. The commit view polls the task the mutation returned, by
+  its id, every 2 seconds until it leaves the ongoing states or is no longer listed. Meanwhile the button is disabled and a
+  "View task" link beside it opens that task in the repository's Tasks tab; when it ends, the commit
+  log is refetched. The started task is read back from the mutation cache, so it survives the commit
+  view remounting, and only on the branch it was started on. A check started from another browser
+  tab or by another user is not shown. Without it the on-demand half of User Story 2 has no entry
+  point outside the API, which matters because the interval stays at 15 minutes. Its placement on
+  the design canvas is still open (T094).
+- Departure from FR-025 in the interface, recorded rather than fixed here: the commit view follows
+  only the task it started, so it cannot see a scheduled check. Pressing the button while one, or
+  another user's on-demand check, holds the repository submits a run that exits at once as
+  `SKIPPED_CLAIMED` with `claimed_by` set and records no check time; the new check time shows once
+  the holding check ends and the commit view is refreshed. FR-025 allows the duplicate run when it
+  reports the claim it found; the run records it, but the button does not show it.
 - Waiting for a worker uses capped retries, not polling. The use-case throws an `UNAVAILABLE` answer
   as `RepositoryGitUnavailableError`, and the query retries it every 10 seconds, up to 30 times
   (about five minutes), for `NOT_CLONED`, `TIMEOUT` and a missing reason. `NOT_IMPLEMENTED` is not
