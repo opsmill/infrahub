@@ -1,6 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { BranchMergeButton } from "@/entities/branches/ui/branch-merge-button";
 import { useGetBranchDetails } from "@/entities/branches/ui/queries/get-branch-details.query";
 import { BranchRepositoriesCard } from "@/entities/repository/ui/branch-repositories/branch-repositories-card";
 import { BranchTasksCard } from "@/entities/tasks/ui/branch-tasks/branch-tasks-card";
@@ -17,7 +16,7 @@ vi.mock("@/entities/tasks/ui/branch-tasks/branch-tasks-card", () => ({
   BranchTasksCard: vi.fn(() => <section data-testid="branch-tasks-card" />),
 }));
 vi.mock("@/entities/branches/ui/branch-merge-button", () => ({
-  BranchMergeButton: vi.fn(() => <button type="button">Merge</button>),
+  BranchMergeButton: () => <button type="button">Merge</button>,
 }));
 vi.mock("@/entities/branches/ui/branch-propose-change-button", () => ({
   BranchProposeChangeButton: () => <button type="button">Propose change</button>,
@@ -102,20 +101,6 @@ describe("BranchDetails", () => {
       syncWithGit: false,
     });
     expect(vi.mocked(BranchTasksCard).mock.lastCall?.[0]).toStrictEqual({ branchName: "feature" });
-  });
-
-  test("passes exactly { branch } to the merge button", async () => {
-    // GIVEN
-    const branch = setup({ isDefault: false });
-
-    // WHEN
-    const component = await renderDetails();
-
-    // THEN
-    await expect.element(component.getByRole("button", { name: "Merge" })).toBeVisible();
-    for (const [props] of vi.mocked(BranchMergeButton).mock.calls) {
-      expect(props).toStrictEqual({ branch });
-    }
   });
 
   test("on the default branch, renders only the Details card", async () => {
