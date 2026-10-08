@@ -1,0 +1,19 @@
+backend/tests/component/core/schema/test_attribute_parameters.py
+  s_b221a4e981ff67::t_1189d90e735b9c 8,11,34,723-775
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a00d115d214d0a139bc246d526b62af8963231c",
+  "prompts": {},
+  "sessions": {
+    "s_b221a4e981ff67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3cc9618a-9cab-4d92-8799-c95598cb67b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
