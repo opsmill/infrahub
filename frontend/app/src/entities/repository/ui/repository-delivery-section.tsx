@@ -1,11 +1,11 @@
 import { Card, CardHeader } from "@infrahub/ui";
 
 import { ColorDisplay } from "@/shared/components/display/color-display";
-import { DateDisplay } from "@/shared/components/display/date-display";
 import { DetailRow } from "@/shared/components/display/detail-row";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
+import { PendingMergeList } from "@/entities/repository/ui/pending-merge-list";
 import { useGetDeliveryState } from "@/entities/repository/ui/queries/get-delivery-state.query";
 import {
   DELIVERY_TEXTS,
@@ -65,15 +65,7 @@ function RepositoryDeliveryState({ repositoryId }: RepositoryDeliverySectionProp
 
       {state.pendingMerges.length > 0 && (
         <DetailRow label={DELIVERY_TEXTS.pendingMerges}>
-          <ol className="flex flex-col gap-1">
-            {state.pendingMerges.map((merge) => (
-              <li key={merge.entry_id} className="flex items-center gap-2">
-                <span className="font-medium">{merge.source_branch}</span>
-                <code className="text-xs">{merge.source_commit.slice(0, 7)}</code>
-                <DateDisplay date={merge.merged_at} />
-              </li>
-            ))}
-          </ol>
+          <PendingMergeList merges={state.pendingMerges} />
         </DetailRow>
       )}
     </div>

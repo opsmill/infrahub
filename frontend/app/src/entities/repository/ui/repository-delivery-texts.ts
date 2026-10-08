@@ -14,6 +14,14 @@ export const DELIVERY_TEXTS = {
   retry: "Retry push",
   retryStarted: "Retry of the pending pushes started.",
   retryFailed: "Error retrying the pending pushes:",
+  abandon: "Abandon pending push",
+  abandonMerges: "Abandon every pending merge of this repository:",
+  abandonKeepsRemote: "Nothing is removed from the remote, and no remote branch is deleted.",
+  abandonKeepsObjects:
+    "Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported.",
+  abandonConfirm: "Abandon",
+  abandonStarted: "Abandonment of the pending pushes started.",
+  abandonFailed: "Error abandoning the pending pushes:",
 } as const;
 
 export const REQUIRED_ACTION_BY_CAUSE: Record<DeliveryFailureCause, string> = {
