@@ -134,7 +134,7 @@ A Generator runs its query in the same way: the Generator definition names its q
       "actual": {"nodes": 48, "resolver_calls": 1, "database_rows": 144}
     }
   ],
-  "estimate_queries": {"queries": 2, "database_rows": 3},
+  "estimate_queries": {"queries": 2, "database_rows": 2},
   "unattributed": {"queries": 0, "database_rows": 0}
 }
 ```
@@ -168,6 +168,8 @@ Infrahub starts counting after it has read the operation and checked that it con
 ### Estimate
 
 `estimate_mode` names how Infrahub obtained the figures. A request sent with the header has `counted_first_step`: Infrahub counted the nodes of each top-level field and the peers of each relationship field directly under it, on the branch and at the time of the request. Below that first step, the figures come from the statistics.
+
+The counts apply the filters, `offset` and `limit` of each field. As the query does, Infrahub applies the `offset` and `limit` of a relationship field to the peers of each parent node, so the counted `nodes` of the field are the nodes the field returns. When the field has an `offset` or a `limit` and returns peers of several concrete kinds, Infrahub does not know which kinds the returned peers belong to. It splits the returned peers of each parent node between the kinds in proportion to its peers of each kind, so the figures of the fields under it can differ from the actual counts.
 
 `statistics` gives the branch the statistics describe, which is always the default branch, the time the refresh started reading it, and the version of the statistics. It is `null` when no statistics exist yet.
 
@@ -233,7 +235,7 @@ The `variables` argument sets the mode of the estimate:
 - With `variables`, `mode` is `COUNTED_FIRST_STEP`: Infrahub counts the first step as it does for a request sent with the header. To count the first step of a query that declares no variables, pass `variables: {}`.
 - Without `variables`, `mode` is `STATISTICS_ONLY`: every figure comes from the statistics, and the only database query reads the current number of nodes of each kind in the query. Infrahub applies the `offset`, `limit` and `ids` that the query gives as literal values, and counts one node for a top-level field that targets a single node, as a [single-target query](single-target-queries.mdx) does. It does not apply other filters. When the query gives literal `ids` and one of these nodes is among the 20 nodes with the most peers for a relationship field directly under the top-level field, Infrahub uses the stored peer count of that node.
 
-The report returns the same figures as a request sent with the header, without `actual`, `estimate_queries` and `unattributed`. GraphQL enum values are in upper case: `COUNTED` and `STATISTICS` for `source`, and `ONE` and `MANY` for `cardinality`. To count the first step on a branch, send the report to `/graphql/<branch name>`.
+The report returns the same figures as a request sent with the header, without `actual`, `estimate_queries` and `unattributed`. The values of the `source` enum are in upper case: `COUNTED` and `STATISTICS`. `cardinality` is a string, `ONE` or `MANY`. To count the first step on a branch, send the report to `/graphql/<branch name>`.
 
 Selecting `cost_estimate` requires the permissions that running the submitted query requires. An account that cannot view one of the kinds in the query, on the branch of the request, gets the permission error that running the query returns, and no figures. The report returns an error instead of an estimate in these cases:
 
@@ -244,7 +246,7 @@ Selecting `cost_estimate` requires the permissions that running the submitted qu
 
 ## Refresh the statistics
 
-The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the nodes in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, so no query reads more than one chunk.
+The `graphql-cost-statistics-refresh` workflow reads the default branch and stores, for each kind, its number of nodes and, for each relationship, the number of peers of its nodes: the total, a histogram of peers per node, and the 20 nodes with the most peers. Infrahub stores the statistics in the cache, Redis by default. The workflow reads the IDs of the nodes of each kind in chunks of `INFRAHUB_DB_QUERY_SIZE_LIMIT` IDs, and each query that counts peers reads one chunk of IDs, so no query returns more than one chunk. To return each chunk of IDs, the database sorts all the nodes of the kind, and the queries that count the nodes of each kind read every kind.
 
 The task manager runs the workflow once a day, between 04:00 and 05:00 UTC, at a random minute that Infrahub sets when the server starts. Only one run takes place at a time: the task manager cancels a run that starts while another run is in progress. Requests use the new statistics as soon as a run completes.
 

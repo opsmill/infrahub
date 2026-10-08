@@ -26,7 +26,8 @@ _ESTIMATE_MODE_DESCRIPTIONS = {
         "The variables argument was given: the top-level nodes and the fields directly under them were counted."
     ),
     EstimateMode.STATISTICS_ONLY: (
-        "The variables argument was not given: every figure comes from the statistics, and no counting query ran."
+        "The variables argument was not given: every figure comes from the statistics, scaled by the current "
+        "number of nodes of each kind, which one query reads."
     ),
 }
 

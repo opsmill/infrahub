@@ -107,7 +107,7 @@ so nodes changed during the run do not count.
 2. `KindActiveNodeIdsQuery` reads the IDs of each kind in pages of `chunk_size` nodes, taken before
    the active-edge check so each page checks the edges of its own nodes only.
 3. For each relationship side of the kind and each chunk of `chunk_size` IDs,
-   `RelationshipSideDegreeQuery` returns `(node_id, peer_kind, peers)` for `n.uuid IN $ids`, with
+   `RelationshipSideDegreeQuery` returns `(node_id, peer_kind, peers)` for `n.uuid IN $node_ids`, with
    the active-edge rule of `RelationshipGetPeerQuery`.
 4. `RelationshipSideAccumulator.add_chunk` adds each chunk to the histogram, the totals and the
    top nodes, and `build(active_count)` counts nodes without a row as nodes without peers.

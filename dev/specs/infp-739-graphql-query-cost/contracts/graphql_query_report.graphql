@@ -17,7 +17,7 @@ type GraphQLQueryReport {
 enum GraphQLQueryCostEstimateMode {
   "The variables argument was given: the top-level nodes and the fields directly under them were counted."
   COUNTED_FIRST_STEP
-  "The variables argument was not given: every figure comes from the statistics, and no counting query ran."
+  "The variables argument was not given: every figure comes from the statistics, scaled by the current number of nodes of each kind, which one query reads."
   STATISTICS_ONLY
 }
 

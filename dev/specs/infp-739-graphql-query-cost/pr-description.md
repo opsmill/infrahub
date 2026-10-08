@@ -474,6 +474,7 @@ How the checks ran on this host:
 | Frontend GraphQL types | `gql.tada generate output`, `gql.tada generate turbo`, then `git diff --exit-code` on the two generated files | Passed, no difference |
 | Backend unit tests | `uv run pytest --cov=infrahub backend/tests/unit` | Passed: 2,831 tests |
 | Component tests of the feature | `uv run pytest tests/component/graphql/cost/ tests/component/graphql/queries/test_graphql_query_report.py tests/component/graphql/queries/test_graphql_query_report_permissions.py tests/component/api/test_query_cost_header.py`, from `backend/` | Passed: 49 tests |
+| Feature suites after the review fixes | `uv run pytest tests/unit/graphql/cost/`, then `uv run pytest tests/component/graphql/cost/ tests/component/graphql/queries/test_graphql_query_report.py tests/component/graphql/queries/test_graphql_query_report_permissions.py tests/component/api/test_query_cost_header.py tests/component/api/test_20_graphql.py tests/component/api/test_10_query.py`, from `backend/`, on 2026-10-08 | Passed: 145 unit tests; 77 component tests, and 1 test that is marked as an expected failure failed as expected |
 
 The ty error: `resolve_graphql_query_cost_estimate` in `backend/infrahub/graphql/queries/graphql_query_report.py` passed the `variables` argument, narrowed from `object` to `dict[Unknown, Unknown]`, where `QueryCostEstimator.estimate` takes `dict[str, Any] | None`. The resolver now builds a mapping with string keys after it checks that the argument is an object. mypy did not report it.
 

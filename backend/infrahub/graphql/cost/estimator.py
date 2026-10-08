@@ -62,8 +62,9 @@ def estimate(
 
     The top-level fields, and the fields directly under them, take the counts of the first step when it was
     counted. A top-level field estimated from the statistics has the node count of each kind scaled by its
-    current label count, capped by its offset, limit and the IDs it is given; when every ID given is listed
-    among the nodes with the most peers of a field under it, that field takes their stored peer counts.
+    current label count, capped by its offset, limit and the IDs it is given. For each field directly under it,
+    each ID given that is listed among the nodes with the most peers of that field takes its stored peer count,
+    and the other IDs are estimated from the other nodes of the kind.
 
     Args:
         first_step: Counts read on the branch and at the time of the request, or None for an estimate from
