@@ -348,7 +348,7 @@ SC-002, SC-007.
       queries the nine attributes on the default branch whatever branch is selected, plus the
       domain model and the "Actions by status" rule in
       `frontend/app/src/entities/repository/domain/model/delivery-state.ts`, with a Vitest test.
-- [ ] T048 [US1] Write the "Push to remote" section in
+- [X] T048 [US1] Write the "Push to remote" section in
       `frontend/app/src/entities/repository/ui/repository-delivery-section.tsx`, shown on the
       repository details page for `CoreRepository` only: status, cause, required action, the
       paused-imports sentence, the remote's message verbatim, and the pending merges. Add
