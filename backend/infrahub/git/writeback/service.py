@@ -28,7 +28,7 @@ REPOSITORY_LOCK_NAMESPACE = "repository"
 
 
 class RetryableDeliveryError(Error):
-    """A delivery attempt failed in a way that a later attempt can fix, so the task runs it again."""
+    """A delivery attempt failed in a way that a later attempt can fix."""
 
     def __init__(self, failure: DeliveryFailure) -> None:
         self.failure = failure
@@ -44,7 +44,7 @@ class _StepFailedError(Exception):
 
 
 class _AttemptStoppedError(Exception):
-    """The attempt recorded its result and stops before its last step."""
+    """The attempt ends early with this result."""
 
     def __init__(self, *, result: DeliveryAttemptResult) -> None:
         super().__init__(result.outcome)
@@ -79,7 +79,7 @@ class RepositoryWritebackService:
         self.clock = clock
 
     async def deliver(self, *, final_attempt: bool, manual: bool, entry: PendingMerge | None) -> DeliveryAttemptResult:
-        """Run one delivery attempt, which records a final failure on the repository and returns it.
+        """Run one delivery attempt and return its result; a final failure of a step is also recorded on the repository.
 
         Args:
             final_attempt: No automatic retry follows, so a failure that a retry could fix is final.
@@ -135,14 +135,14 @@ class RepositoryWritebackService:
             ) from exc
         if any(queued_entry.entry_id == entry.entry_id for queued_entry in queued.queue.entries):
             log.info(
-                "Queued the merge %s of branch %s for delivery to repository %s, with a full regeneration held.",
+                "The queue of repository %s holds the merge %s of branch %s.",
+                self.repository.name,
                 entry.entry_id,
                 entry.source_branch,
-                self.repository.name,
             )
         else:
             log.info(
-                "Did not queue the merge %s for repository %s, because the queue holds it or it left the queue.",
+                "Did not queue the merge %s for repository %s, because it left the queue.",
                 entry.entry_id,
                 self.repository.name,
             )
@@ -211,6 +211,8 @@ class RepositoryWritebackService:
             with _step(DeliveryStage.FETCH):
                 await self.git.fetch()
                 head = self.git.remote_head(git_branch=destination)
+            # Infrahub holds this commit, not the remote, so a failed read is retried as a failed record is.
+            with _step(DeliveryStage.RECORD):
                 recorded = await self.git.recorded_commit()
         except _StepFailedError as failed:
             await self._fail(failed=failed, final_attempt=final_attempt)
@@ -287,7 +289,7 @@ class RepositoryWritebackService:
     async def _replay(
         self, *, head: str, replayed: tuple[PendingMerge, ...], pre_attempt: str, final_attempt: bool
     ) -> str:
-        """Return the worktree head after the merges are replayed on the remote head, which is that head with none."""
+        """Return the worktree head after the merges are replayed on the remote head, or the remote head with no merge."""
         try:
             with _step(DeliveryStage.REPLAY):
                 replay = self.git.replay(base=head, commits=[entry.source_commit for entry in replayed])
@@ -418,7 +420,7 @@ class RepositoryWritebackService:
         try:
             await self.state.expire_lease(repository_id=self.repository.id, lease_id=lease.lease_id)
         except Exception:
-            # The lease then ends at its own expiry, and the recovery check releases its items.
+            # The lease then ends at its own expiry, and a later attempt leases its items again.
             log.warning(
                 "Failed to end the release lease %s of repository %s.",
                 lease.lease_id,
@@ -436,24 +438,31 @@ class RepositoryWritebackService:
         """
         failure = classify_delivery_failure(error=failed.error, stage=failed.stage)
         final = final_attempt or not failure.retryable
-        await self.state.record_failure(
-            repository_id=self.repository.id, failure=failure, final=final, retry_due_at=None
-        )
-        if not final:
+        # The log comes first, so the failure stays visible when the record of it fails too.
+        if final:
+            log.error(
+                "The %s step of the delivery to repository %s failed: %s",
+                failed.stage,
+                self.repository.name,
+                failure.message,
+                exc_info=failed.error,
+            )
+        else:
             log.warning(
                 "The %s step of the delivery to repository %s failed, and a later attempt retries it: %s",
                 failed.stage,
                 self.repository.name,
                 failure.message,
             )
-            raise RetryableDeliveryError(failure=failure) from failed.error
-        log.error(
-            "The %s step of the delivery to repository %s failed: %s",
-            failed.stage,
-            self.repository.name,
-            failure.message,
-            exc_info=failed.error,
+        # The merges of a failed release are on the remote already, so no user has to act on it.
+        await self.state.record_failure(
+            repository_id=self.repository.id,
+            failure=failure,
+            final=final and failed.stage != DeliveryStage.RELEASE,
+            retry_due_at=None,
         )
+        if not final:
+            raise RetryableDeliveryError(failure=failure) from failed.error
         raise _AttemptStoppedError(
             result=DeliveryAttemptResult(outcome=DeliveryOutcome.FAILED, commit=commit, failure=failure)
         ) from failed.error
@@ -466,8 +475,8 @@ class RepositoryWritebackService:
 
         """
         failure = DeliveryFailure(cause=cause, retryable=False, message=message)
+        log.error("The delivery to repository %s was refused: %s", self.repository.name, message)
         await self.state.record_failure(
             repository_id=self.repository.id, failure=failure, final=True, retry_due_at=None
         )
-        log.error("The delivery to repository %s was refused: %s", self.repository.name, message)
         raise _AttemptStoppedError(result=DeliveryAttemptResult(outcome=DeliveryOutcome.UNREPLAYABLE, failure=failure))
