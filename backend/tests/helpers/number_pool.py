@@ -12,7 +12,6 @@ from infrahub.core.constants import (
     ComputedAttributeKind,
     InfrahubKind,
     RelationshipCardinality,
-    RelationshipDirection,
 )
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -20,7 +19,6 @@ from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters, NumberPoolParameters
 from infrahub.core.schema.attribute_schema import NumberAttributeSchema
 from infrahub.core.schema.computed_attribute import ComputedAttribute
-from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.number_pool_space import SchemaAttributeDomains
@@ -146,25 +144,12 @@ def schema_domains(db: InfrahubDatabase, branch: Branch) -> SchemaAttributeDomai
     return SchemaAttributeDomains(schema=db.schema, branch=branch)
 
 
-SCOPED_SITE_KIND = "ScopeSite"
-SCOPED_TAG_KIND = "ScopeTag"
-SCOPED_DEVICE_KIND = "ScopeDevice"
-SCOPED_DEVICE_ATTRIBUTE = "number"
-
 SCOPED_SITE = NodeSchema(
     name="Site",
     namespace="Scope",
     label="Site",
     human_friendly_id=["name__value"],
     display_label="{{ name__value }}",
-    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-)
-
-SCOPED_TAG = NodeSchema(
-    name="Tag",
-    namespace="Scope",
-    label="Tag",
-    human_friendly_id=["name__value"],
     attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
 )
 
@@ -178,47 +163,17 @@ SCOPED_DEVICE = NodeSchema(
     display_label="{{ name__value }}",
     attributes=[
         AttributeSchema(name="name", kind="Text", unique=True),
-        AttributeSchema(name=SCOPED_DEVICE_ATTRIBUTE, kind="Number", optional=True),
-        AttributeSchema(
-            name="role",
-            kind="Dropdown",
-            optional=False,
-            choices=[DropdownChoice(name="leaf"), DropdownChoice(name="spine")],
-        ),
-        AttributeSchema(name="description", kind="Text", optional=True),
+        AttributeSchema(name="number", kind="Number", optional=True),
     ],
     relationships=[
         RelationshipSchema(
             name="site",
-            peer=SCOPED_SITE_KIND,
+            peer="ScopeSite",
             identifier="scope_device__site",
             cardinality=RelationshipCardinality.ONE,
             optional=False,
         ),
-        RelationshipSchema(
-            name="tags",
-            peer=SCOPED_TAG_KIND,
-            identifier="scope_device__tag",
-            cardinality=RelationshipCardinality.MANY,
-            optional=True,
-        ),
-        RelationshipSchema(
-            name="parent",
-            peer=SCOPED_DEVICE_KIND,
-            identifier="scope_device__parent",
-            cardinality=RelationshipCardinality.ONE,
-            direction=RelationshipDirection.OUTBOUND,
-            optional=True,
-        ),
-        RelationshipSchema(
-            name="children",
-            peer=SCOPED_DEVICE_KIND,
-            identifier="scope_device__parent",
-            cardinality=RelationshipCardinality.MANY,
-            direction=RelationshipDirection.INBOUND,
-            optional=True,
-        ),
     ],
 )
 
-SCOPED_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_TAG, SCOPED_DEVICE])
+SCOPED_POOL_SCHEMA = SchemaRoot(nodes=[SCOPED_SITE, SCOPED_DEVICE])

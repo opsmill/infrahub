@@ -150,20 +150,24 @@ class TestNumberPoolSurface:
             (item["display_label"], item["figures"]["size"], item["figures"]["used"]) for item in utilization["ranges"]
         ] == [("1 - 50", 50, 0), ("51 - 100", 50, 30)]
 
-    async def test_filtered_allocations_count_matches_the_division_figures(self, gql_params: GraphqlParams) -> None:
+    async def test_allocations_count_one_row_per_branch_where_figures_count_each_value_once(
+        self, gql_params: GraphqlParams
+    ) -> None:
         divisions = await self._data(gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
-        site_b = next(
-            item for item in divisions["InfrahubNumberPoolDivisions"]["divisions"] if item["display_label"] == "Site B"
-        )
+        used = {
+            item["display_label"]: item["figures"]["used"]
+            for item in divisions["InfrahubNumberPoolDivisions"]["divisions"]
+        }
 
-        data = await self._data(
-            gql_params,
-            ALLOCATIONS_QUERY,
-            pool_id=SCOPED_POOL_ID,
-            division=[{"path": "site", "value": SITE_B}],
-        )
+        counts = {}
+        for label, site in (("Site A", SITE_A), ("Site B", SITE_B)):
+            data = await self._data(
+                gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, division=[{"path": "site", "value": site}]
+            )
+            counts[label] = data["InfrahubNumberPoolAllocations"]["count"]
 
-        assert data["InfrahubNumberPoolAllocations"]["count"] == site_b["figures"]["used"] == 30
+        assert (counts["Site A"], used["Site A"]) == (41, 40)
+        assert (counts["Site B"], used["Site B"]) == (30, 30)
 
     async def test_allocations_keep_the_rows_of_a_holder_moved_on_a_branch(self, gql_params: GraphqlParams) -> None:
         data = await self._data(
