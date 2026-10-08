@@ -600,17 +600,17 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-010, FR-011. **In the deployment rule.**
 
-- [ ] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: when
+- [X] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: when
       `references_source_branch` is true, call `request_branch_deletion`, skip the remote deletion,
       log why, and do not send `RefreshGitRepositoryBranchDeleted`.
-- [ ] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
+- [X] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
 - [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
       `backend/tests/integration/git/test_git_live_remote.py`, with
       `delete_branch_after_merge_reset_config` and `delete_git_branch_after_merge_reset_config`:
       kept, not re-imported by the sync as new or as updated, deleted after the retry; and, after an
       abandonment instead, kept on the remote and imported again as a new Infrahub branch.
-- [ ] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
+- [X] T098 [P] [US6] Add a case to `backend/tests/component/git/writeback/test_enqueue.py`: a merge of
       another branch is not blocked while repository X has a pending delivery (FR-010).
 
 ---

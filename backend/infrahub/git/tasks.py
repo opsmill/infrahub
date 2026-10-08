@@ -1,5 +1,7 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -109,6 +111,7 @@ from .writeback.content import read_pending_merges
 from .writeback.factory import build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
 from .writeback.service import RepositoryWritebackService
+from .writeback.store import WritebackIntentStore
 
 
 def log_skipped_branches(repo: InfrahubRepository, report: SyncReport) -> None:
@@ -750,6 +753,33 @@ async def git_branch_delete(
 
     async with lock.registry.get(name=repository_name, namespace="repository"):
         if not repo.origin_has_branch(branch):
+            return
+
+        try:
+            database = await get_database()
+            async with database.start_session() as db:
+                store = WritebackIntentStore(
+                    db=db,
+                    lock_registry=lock.registry,
+                    default_branch=await registry.get_branch(db=db),
+                    clock=partial(datetime.now, UTC),
+                )
+                needed = await store.references_source_branch(
+                    repository_id=repository_id, git_branch=branch
+                ) and await store.request_branch_deletion(repository_id=repository_id, git_branch=branch)
+        except Exception:
+            # One repository must not stop the deletion in the others, and a kept branch loses nothing.
+            log.exception(
+                f"Did not delete the Git branch '{branch}' from repository '{repository_name}', because the check for "
+                "a pending delivery that needs the branch failed. Delete the branch from the remote by hand when the "
+                "repository has no pending delivery."
+            )
+            return
+        if needed:
+            log.warning(
+                f"Did not delete the Git branch '{branch}' from repository '{repository_name}', because a pending "
+                "delivery of the repository needs it. The delivery deletes the branch after it pushes the merge."
+            )
             return
 
         try:

@@ -3,14 +3,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from contextlib import asynccontextmanager, nullcontext
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
 from typing import TYPE_CHECKING, override
 from uuid import uuid4
 
 import pytest
+from prefect import flow
 
 from infrahub import lock
 from infrahub.auth.session import AccountSession
@@ -30,10 +31,11 @@ from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispa
 from infrahub.core.node import Node
 from infrahub.exceptions import DeliveryStateUnavailableError
 from infrahub.git.models import GitRepositoryMerge
-from infrahub.git.tasks import merge_git_repository
+from infrahub.git.tasks import git_branch_delete, merge_git_repository
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
 from infrahub.git.writeback.models import DeliveryFailure, DeliveryQueue, HeldRegeneration, HeldWiden
 from infrahub.git.writeback.store import STATE_LOCK_NAMESPACE, WritebackIntentStore
+from infrahub.message_bus.messages.refresh_git_repository_branch_deleted import RefreshGitRepositoryBranchDeleted
 from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
 from tests.adapters.message_bus import BusRecorder
@@ -64,6 +66,7 @@ MOVED_TRUNK_COMMIT = "c" * 40
 DISPATCHER_LOGGER = "tests.repository_merge_dispatcher"
 RUN_LOGGER = "infrahub.tasks"
 FLOW_LOGGER = "prefect.flow_runs"
+TASK_LOGGER = "prefect.task_runs"
 
 
 class RecordingSleep:
@@ -110,6 +113,7 @@ class ClonedRepository:
     """A repository whose remote is on disk, with its clone on this worker."""
 
     id: str
+    remote: LocalRemote
     clone: InfrahubRepository
     client: InfrahubClient
     trunk_commit: str
@@ -266,6 +270,7 @@ async def cloned_repository(
     )
     return ClonedRepository(
         id=node.id,
+        remote=remote,
         clone=clone,
         client=client,
         trunk_commit=trunk_commit,
@@ -737,3 +742,127 @@ async def test_a_merge_flow_whose_source_branch_is_gone_fails_and_says_how_to_pu
     ]
     intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
     assert intent.queue == DeliveryQueue()
+
+
+@dataclass
+class BranchDeletionCase:
+    name: str
+    queued_git_branch: str
+    """The remote branch that the queued merge comes from."""
+    state_lock_held: bool
+    flagged: bool
+    remote_branches: list[str]
+    notified: list[str]
+    logged: list[tuple[int, str, type[BaseException] | None]]
+    """The level, the message and the type of the logged error of each warning or error."""
+
+
+BRANCH_DELETION_CASES = [
+    BranchDeletionCase(
+        name="a_queued_merge_comes_from_the_branch",
+        queued_git_branch=SOURCE_BRANCH,
+        state_lock_held=False,
+        flagged=True,
+        remote_branches=[SOURCE_BRANCH, "main"],
+        notified=[],
+        logged=[
+            (
+                logging.WARNING,
+                f"Did not delete the Git branch '{SOURCE_BRANCH}' from repository '{REPOSITORY_NAME}', because a "
+                "pending delivery of the repository needs it. The delivery deletes the branch after it pushes the "
+                "merge.",
+                None,
+            )
+        ],
+    ),
+    BranchDeletionCase(
+        name="no_queued_merge_comes_from_the_branch",
+        queued_git_branch="other-feature",
+        state_lock_held=False,
+        flagged=False,
+        remote_branches=["main"],
+        notified=[SOURCE_BRANCH],
+        logged=[],
+    ),
+    BranchDeletionCase(
+        name="the_check_for_a_queued_merge_fails",
+        queued_git_branch=SOURCE_BRANCH,
+        state_lock_held=True,
+        flagged=False,
+        remote_branches=[SOURCE_BRANCH, "main"],
+        notified=[],
+        logged=[
+            (
+                logging.ERROR,
+                f"Did not delete the Git branch '{SOURCE_BRANCH}' from repository '{REPOSITORY_NAME}', because the "
+                "check for a pending delivery that needs the branch failed. Delete the branch from the remote by hand "
+                "when the repository has no pending delivery.",
+                DeliveryStateUnavailableError,
+            )
+        ],
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in BRANCH_DELETION_CASES])
+async def test_a_branch_deletion_keeps_the_remote_branch_while_a_queued_merge_comes_from_it(
+    case: BranchDeletionCase,
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    cloned_repository: ClonedRepository,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    repository = cloned_repository
+    repository.remote.create_branch(SOURCE_BRANCH)
+    await repository.clone.fetch()
+    store = build_store(db=db, default_branch=default_branch)
+    entry = pending_merge(entry_id=str(uuid4()), source_git_branch=case.queued_git_branch)
+    await store.enqueue(repository_id=repository.id, entry=entry, widen=False)
+    queued = await store.read(repository_id=repository.id)
+    bus = BusRecorder()
+
+    @flow(name="test-delete-a-git-branch-of-one-repository")
+    async def delete_the_git_branch() -> None:
+        await git_branch_delete(
+            client=repository.client,
+            branch=SOURCE_BRANCH,
+            repository_id=repository.id,
+            repository_name=REPOSITORY_NAME,
+            repository_location=str(repository.remote.directory),
+        )
+
+    state_lock = held_state_lock(repository_id=repository.id) if case.state_lock_held else nullcontext()
+    with (
+        override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+        caplog.at_level(logging.WARNING, logger=TASK_LOGGER),
+    ):
+        async with state_lock:
+            state = await delete_the_git_branch(return_state=True)
+
+    assert state.is_completed()
+    assert sorted(head.name for head in repository.remote.repo.heads) == case.remote_branches
+    assert [(type(message), message.model_dump(exclude={"meta"})) for message in bus.messages] == [
+        (
+            RefreshGitRepositoryBranchDeleted,
+            {
+                "repository_id": repository.id,
+                "repository_name": REPOSITORY_NAME,
+                "repository_kind": InfrahubKind.REPOSITORY,
+                "branch_name": branch_name,
+            },
+        )
+        for branch_name in case.notified
+    ]
+    assert [
+        (record.levelno, record.getMessage(), record.exc_info[0] if record.exc_info else None)
+        for record in caplog.records
+        if record.name == TASK_LOGGER and record.levelno >= logging.WARNING
+    ] == case.logged
+    assert await store.read(repository_id=repository.id) == replace(
+        queued,
+        queue=queued.queue.model_copy(
+            update={"entries": (entry.model_copy(update={"delete_source_git_branch": case.flagged}),)}
+        ),
+    )
