@@ -293,7 +293,7 @@ Requirements: FR-003, FR-006, FR-010, FR-011 and FR-018.
 
 ### Tests for User Story 2
 
-- [ ] T035 [P] [US2] Add tests to `backend/tests/component/graphql/queries/test_graphql_query_report.py`, keeping the existing ones unchanged:
+- [X] T035 [P] [US2] Add tests to `backend/tests/component/graphql/queries/test_graphql_query_report.py`, keeping the existing ones unchanged:
     - with `variables`, `mode = COUNTED_FIRST_STEP` and each field's figures equal the values computed by hand (FR-003)
     - without `variables`, `mode = STATISTICS_ONLY`, every `source = STATISTICS`, and `CountingInfrahubDatabase` records no query other than the label-count read (FR-006)
     - `variables: {}` on a query that declares no variables gives `COUNTED_FIRST_STEP`
@@ -302,18 +302,18 @@ Requirements: FR-003, FR-006, FR-010, FR-011 and FR-018.
     - a mutation returns exactly "The cost estimate covers queries only."
     - a variable of the wrong type returns the graphql-core coercion error
     - selecting only `targets_unique_nodes` runs no counting query
-- [ ] T036 [P] [US2] Write component tests in `backend/tests/component/graphql/queries/test_graphql_query_report_permissions.py`, using `permissions_helper` from `backend/tests/component/graphql/conftest.py`:
+- [X] T036 [P] [US2] Write component tests in `backend/tests/component/graphql/queries/test_graphql_query_report_permissions.py`, using `permissions_helper` from `backend/tests/component/graphql/conftest.py`:
     - an account without view permission on `TestCar` gets, from the report's `cost_estimate`, the same `PermissionDeniedError` message that running the submitted query through `/graphql` returns, and no counts (FR-010)
     - an account with permission gets the estimate
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] In `backend/infrahub/graphql/queries/graphql_query_report.py`, add the graphene types of `contracts/graphql_query_report.graphql`:
+- [X] T037 [US2] In `backend/infrahub/graphql/queries/graphql_query_report.py`, add the graphene types of `contracts/graphql_query_report.graphql`:
     - `GraphQLQueryCostEstimateMode`, `GraphQLQueryCostSource`, `GraphQLQueryCostStatistics`, `GraphQLQueryCostFigures`, `GraphQLQueryFieldCostEstimate` and `GraphQLQueryCostEstimate`
     - a `cost_estimate` field on `GraphQLQueryReport` with its own resolver
     - `variables = GenericScalar(required=False)` on `InfrahubGraphQLQueryReport`
     - `resolve_graphql_query_report` returns what the child resolver needs (analyzer, variables, whether `variables` was given) next to `targets_unique_nodes`, and computes nothing extra
-- [ ] T038 [US2] Implement the `cost_estimate` resolver in `backend/infrahub/graphql/queries/graphql_query_report.py`. In order, it:
+- [X] T038 [US2] Implement the `cost_estimate` resolver in `backend/infrahub/graphql/queries/graphql_query_report.py`. In order, it:
     - raises a GraphQL error "The cost estimate covers queries only." when the submitted analyzer contains a mutation
     - runs the permission checker pipeline built by `infrahub.graphql.api.dependencies::build_graphql_query_permission_checker` on the submitted query's analyzer, with the request's account session, branch and database (FR-010)
     - calls `QueryCostEstimator.estimate(...)` with `variable_values` set only when `variables` was given (research D9)

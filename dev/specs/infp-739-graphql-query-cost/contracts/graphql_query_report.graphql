@@ -27,7 +27,7 @@ enum GraphQLQueryCostSource {
 }
 
 type GraphQLQueryCostStatistics {
-  "Branch the statistics describe. Always main in this version."
+  "Branch the statistics describe, always the default branch."
   branch: String!
   "Time the statistics refresh started reading the branch."
   computed_at: DateTime!
@@ -81,3 +81,8 @@ extend type Query {
 # - cost_estimate selected without read permission on one kind: PermissionDeniedError, same message
 #   as running the query
 # - variables that do not match their declared types: the graphql-core coercion error for that variable
+# - variables that are not an object: "The variables argument must be an object that maps each variable name to its
+#   value."
+# - cost_estimate selected while the statistics cannot be read from the cache: the error of the cache read, and no
+#   estimate. Unlike a request sent with the cost-details header, the caller asked for the estimate, so the failure is
+#   returned rather than hidden behind an estimate without statistics, which means "no refresh has run yet".

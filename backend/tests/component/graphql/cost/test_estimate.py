@@ -20,8 +20,7 @@ from infrahub.graphql.cost.tasks import refresh_query_cost_statistics
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.workers.dependencies import build_cache
-from tests.adapters.cache import MemoryCache
-from tests.component.graphql.cost.helpers import ADMIN_HEADERS, QUERY_COST_HEADERS
+from tests.component.graphql.cost.helpers import ADMIN_HEADERS, QUERY_COST_HEADERS, StatisticsUnreachableCache
 from tests.helpers.dependency_override import override_dependency
 
 if TYPE_CHECKING:
@@ -32,6 +31,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.cache import MemoryCache
 
 # Electric and gaz cars are as many overall, while the first person owns one electric car and eight gaz cars.
 CARS_BY_OWNER = {
@@ -207,13 +207,11 @@ query {
 """
 
 
-class StatisticsUnreachableCache(MemoryCache):
-    """Serves every key except the statistics keys, whose reads fail as when the cache cannot be reached."""
-
-    async def get(self, key: str) -> str | None:
-        if key.startswith("graphql_cost:"):
-            raise ConnectionError("cache unreachable")
-        return await super().get(key=key)
+REPORT_COST_ESTIMATE_QUERY = """
+query ($q: String!, $variables: GenericScalar) {
+    InfrahubGraphQLQueryReport(query: $q, variables: $variables) { cost_estimate { mode } }
+}
+"""
 
 
 @pytest.fixture
@@ -642,3 +640,21 @@ async def test_unreachable_statistics_return_the_same_data_without_an_estimate(
         ("TestPerson/cars", "no statistics", 18),
         ("TestPerson/cars/owner", "no statistics", 18),
     ]
+
+
+async def test_report_sent_with_the_header_reports_the_counting_queries_of_its_estimate(
+    counting_client: TestClient, car_fleet_with_statistics: dict[str, Node]
+) -> None:
+    with counting_client:
+        payload = post_query(
+            client=counting_client,
+            query=REPORT_COST_ESTIMATE_QUERY,
+            headers=QUERY_COST_HEADERS,
+            variables={"q": CARS_OF_PERSON_QUERY, "variables": {"name": "Ann"}},
+        )
+
+    assert payload["data"] == {"InfrahubGraphQLQueryReport": {"cost_estimate": {"mode": "COUNTED_FIRST_STEP"}}}
+    query_cost = payload["extensions"]["query_cost"]
+    # The report maps to no kind, and its estimate counts the person, then the cars of that person.
+    assert query_cost["fields"] == []
+    assert query_cost["estimate_queries"]["queries"] == 2
