@@ -573,6 +573,8 @@ classification can tell them apart.
       classification first records a false rewrite on every read-only re-point.
       A run whose `ref` is not the `ref` the graph records classifies nothing. Two windows during a
       re-point still record a false rewrite; contract section 7 lists them.
+      The classification lives in `git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`
+      and `_classify_latest_commit`, which the flow calls.
 - [x] T073 [US5] Confirm the import path is unchanged: detection changes what is recorded, never
       what is imported.
 - [x] T074 [P] [US5] Component-test the read-only classification in
@@ -582,6 +584,7 @@ classification can tell them apart.
       takes that lock around `update_latest_commit`. Do not read it in the mutation and carry it on
       the model: that read is outside the lock, so two queued runs both carry the same old commit,
       both classify `REWRITE` and both record, and the count rises twice for one rewrite.
+      The read lives in `_classify_latest_commit`, which runs inside the lock that the flow holds.
 - [x] T076 [US5] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`, which is where the Gogs harness and
       `readonly_sync_dataset` live: a **force-pushed branch** tracked by a read-only repository
