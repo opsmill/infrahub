@@ -171,7 +171,9 @@ trunk and records no rewrite.
 - **Written inside the update transaction.** `InfrahubRepositoryMutation.mutate_update_object` writes
   it for the update and for every upsert of a read-write repository, before the commit. It is keyed
   by the new git branch, so each target has a marker of its own and a rolled-back update cannot
-  replace the marker of a change that committed.
+  replace the marker of a change that committed. The cache write is not part of the transaction, so
+  a rolled-back update leaves its marker until the marker expires. That marker does nothing, because
+  a cycle reads only the marker for the git branch that `default_branch` names.
 - **Read only by `collect_pending_imports`**, once per cycle, for the trunk alone. The cycle reads
   only the marker of the git branch it synchronises, so markers for other targets do not apply and
   stay.
