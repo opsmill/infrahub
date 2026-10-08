@@ -73,6 +73,6 @@ export const getPageItems = (page: number, totalPages: number, siblingCount = 1)
 };
 
 /** The url key a table's page lives on, so the pagination hook and a filter scope agree on it. */
-export function getPageUrlKey(urlKey: string): string {
-  return `${urlKey}_page`;
+export function toPageUrlKey(urlPrefix: string): string {
+  return `${urlPrefix}_page`;
 }
