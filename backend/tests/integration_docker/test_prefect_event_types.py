@@ -34,6 +34,8 @@ WORKLOAD_EVENT_TYPES = {"prefect.flow-run.Completed", "prefect.flow-run.Failed",
 WORKER_STARTED = "prefect.worker.started"
 EVENT_WAIT_SECONDS = 180
 RUNNING_FLOW_WAIT_SECONDS = 60
+# Short enough that a missing warning fails on its assertion within the test timeout, after the workload.
+TASK_MANAGER_RESTART_WAIT_SECONDS = 120
 # Three flush intervals of the task manager's event persister, so events emitted just before the read are stored.
 EVENT_PERSISTER_SETTLE_SECONDS = 15
 POLL_SECONDS = 1
@@ -92,7 +94,7 @@ def _task_manager_log_lines_with(compose: InfrahubDockerCompose, text: str) -> l
 
 
 async def _wait_for_task_manager_log_line(compose: InfrahubDockerCompose, text: str) -> None:
-    deadline = time.monotonic() + EVENT_WAIT_SECONDS
+    deadline = time.monotonic() + TASK_MANAGER_RESTART_WAIT_SECONDS
     while time.monotonic() < deadline:
         if _task_manager_log_lines_with(compose=compose, text=text):
             return
