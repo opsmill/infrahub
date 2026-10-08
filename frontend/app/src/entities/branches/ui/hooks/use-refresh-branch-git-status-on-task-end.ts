@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
+import { useLocation, useNavigate } from "react-router";
 
 import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { isTaskFinishedQueryOptions } from "@/entities/tasks/ui/queries/is-task-finished.query";
@@ -29,4 +30,21 @@ export function getGitStatusRefreshTaskId(state: unknown): string | null {
   }
   const { gitStatusRefreshTaskId } = state;
   return typeof gitStatusRefreshTaskId === "string" ? gitStatusRefreshTaskId : null;
+}
+
+// Read once, then cleared from history, so a reload or back navigation does not check the task again.
+export function useGitStatusRefreshTaskIdFromNavigation(): string | null {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [taskId] = React.useState(() => getGitStatusRefreshTaskId(location.state));
+
+  React.useEffect(() => {
+    if (getGitStatusRefreshTaskId(location.state) === null) return;
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null }
+    );
+  }, [location, navigate]);
+
+  return taskId;
 }

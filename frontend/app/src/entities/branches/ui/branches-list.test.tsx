@@ -125,8 +125,9 @@ describe("BranchesList", () => {
     // WHEN the next check finds the merge ended
     await vi.advanceTimersByTimeAsync(5000);
 
-    // THEN the Git status is refreshed once
+    // THEN the Git status is refreshed once, and the task is gone from history
     await expect.poll(() => gitStatusInvalidations()).toBe(1);
+    expect(window.history.state?.usr).toBeNull();
   });
 
   test("checks no task when opened without one", async () => {
