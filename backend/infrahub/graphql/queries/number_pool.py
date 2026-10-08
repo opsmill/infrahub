@@ -91,7 +91,7 @@ class NumberPoolUtilization(ObjectType):
         required=True,
         description=(
             "Scope entries in force on the request's branch, in scope order. Empty for an unscoped pool,\n"
-            "and for a scoped pool none of whose entries the branch's schema defines."
+            "and for a scoped pool when the branch's schema defines none of its entries as a legal scope entry."
         ),
     )
     figures = Field(
