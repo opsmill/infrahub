@@ -31,7 +31,12 @@ from .mutations.proposed_change import (
     ProposedChangeReview,
 )
 from .mutations.relationship import RelationshipAdd, RelationshipRemove
-from .mutations.repository import ProcessRepository, ReadOnlyRepositoryImportLastCommit, ValidateRepositoryConnectivity
+from .mutations.repository import (
+    ProcessRepository,
+    ReadOnlyRepositoryImportLastCommit,
+    RepositoryDeliveryRetry,
+    ValidateRepositoryConnectivity,
+)
 from .mutations.resource_manager import IPAddressPoolGetResource, IPPrefixPoolGetResource
 from .mutations.schema import SchemaDropdownAdd, SchemaDropdownRemove, SchemaEnumAdd, SchemaEnumRemove
 from .mutations.task import InfrahubTaskCancel, InfrahubTaskRetry
@@ -136,6 +141,9 @@ class InfrahubBaseMutation(ObjectType):
 
     InfrahubReadOnlyRepositoryImportLastCommit = ReadOnlyRepositoryImportLastCommit.Field()
     InfrahubRepositoryProcess = ProcessRepository.Field()
+    InfrahubRepositoryDeliveryRetry = RepositoryDeliveryRetry.Field(
+        description="Push every pending merge of a repository to its remote, in order, in a single push."
+    )
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
     InfrahubUpdateDisplayLabel = UpdateDisplayLabel.Field()
