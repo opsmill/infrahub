@@ -664,7 +664,7 @@ and is not re-imported; retry; the branch is gone.
       discarded commit.
 - [ ] T100 [US7] Add `test_destination_rewritten` to the same module: force-push the remote default branch,
       retry, cause `destination-rewritten`, nothing pushed.
-- [ ] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
+- [X] T101 [US7] Call `record_reverted` from IFC-3210's reconciliation of the default branch, per
       [research.md](research.md) R13, and add a test beside the sibling's reconciliation tests.
       **Gate: IFC-3210 rewrite classification on `develop`.**
 
