@@ -229,7 +229,12 @@ class RepositoryWritebackService:
     ) -> None: ...
 
     async def deliver(
-        self, *, final_attempt: bool, manual: bool, entry: PendingMerge | None
+        self,
+        *,
+        final_attempt: bool,
+        manual: bool,
+        entry: PendingMerge | None,
+        retry_delay: timedelta | None = None,
     ) -> DeliveryAttemptResult: ...
 ```
 
@@ -287,8 +292,11 @@ async def deliver_pending_merges(
 ) -> DeliveryOutcome: ...
 ```
 
-The task computes `final_attempt` from `task_run.run_count` and `DELIVERY_RETRIES`, and passes
-`entry` to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that
+The task computes the wait before its next retry from `task_run.run_count` and its own `retries`
+and `retry_delay_seconds`, which are `DELIVERY_RETRIES` and `DELIVERY_RETRY_DELAYS_SECONDS` unless a
+test changes them with `with_options`. It passes that wait to `deliver` as `retry_delay`, which sets
+`retry_due_at` at the time of the failure, and `final_attempt` is `True` when no retry follows. It
+passes `entry` to `deliver` on every attempt. The enqueue is idempotent, so an attempt after one that
 enqueued finds the id and writes nothing. The flow sets
 its own final state from the outcome (`research.md` R21). `DELIVERY_RETRIES = 3` and
 `DELIVERY_RETRY_DELAYS_SECONDS = [30, 120, 300]`. Tests pass shorter delays through

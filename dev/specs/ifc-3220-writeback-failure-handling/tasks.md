@@ -496,7 +496,7 @@ deployment rule.** T070 to T073 are not.
 **Maps to**: FR-004, FR-027, SC-003. **T077, T079 and T080 are in the deployment rule.** T078 and
 T081 to T084 are not.
 
-- [ ] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
+- [X] T077 [US4] Give `deliver_pending_merges` in `backend/infrahub/git/tasks.py` its `retries`,
       `retry_delay_seconds` and `retry_condition_fn`, and compute `final_attempt` from
       `task_run.run_count`. Record `retry_due_at` before each wait.
 - [ ] T078 [US4] Make `RepositoryWritebackService.deliver` return `deferred` when `manual` is `False` and a

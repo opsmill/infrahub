@@ -23,6 +23,7 @@ from infrahub_sdk.uuidt import UUIDT
 from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.client.schemas.objects import State
+from prefect.context import TaskRunContext
 from prefect.logging import get_run_logger
 from prefect.states import Completed, Failed
 
@@ -109,9 +110,11 @@ from .sync import (
 )
 from .sync_status import RepositoryBranchSyncStatusReader
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+from .writeback.constants import DELIVERY_RETRIES, DELIVERY_RETRY_DELAYS_SECONDS
 from .writeback.content import read_pending_merges
 from .writeback.factory import build_writeback_service
 from .writeback.models import DeliveryOutcome, PendingMerge
+from .writeback.runs import is_retryable_delivery_failure, next_retry_delay
 from .writeback.service import RepositoryWritebackService
 
 
@@ -1132,13 +1135,36 @@ async def _read_unqueued_merge(db: InfrahubDatabase, model: GitRepositoryMerge) 
     return entry
 
 
-@task(name="git-repository-deliver", task_run_name="Deliver the queued merges to the remote", cache_policy=NONE)
+@task(
+    name="git-repository-deliver",
+    task_run_name="Deliver the queued merges to the remote",
+    cache_policy=NONE,
+    retries=DELIVERY_RETRIES,
+    retry_delay_seconds=DELIVERY_RETRY_DELAYS_SECONDS,
+    retry_condition_fn=is_retryable_delivery_failure,
+)
 async def deliver_pending_merges(
     service: RepositoryWritebackService, manual: bool, entry: PendingMerge | None
 ) -> DeliveryOutcome:
-    """Run one delivery attempt for the repository of the service, and return what the attempt did."""
-    # This task does not retry, so each attempt is the final one.
-    result = await service.deliver(final_attempt=True, manual=manual, entry=entry)
+    """Run delivery attempts for the repository of the service, and return what the last attempt did.
+
+    A failure that a later attempt can fix raises, and the task runs the attempt again after its retry delay. The
+    attempt with no retry left records such a failure as final.
+    """
+    context = TaskRunContext.get()
+    # Outside a task run, no retry follows the attempt.
+    retry_delay = (
+        None
+        if context is None
+        else next_retry_delay(
+            run_count=context.task_run.run_count,
+            retries=context.task.retries,
+            retry_delay_seconds=context.task.retry_delay_seconds,
+        )
+    )
+    result = await service.deliver(
+        final_attempt=retry_delay is None, manual=manual, entry=entry, retry_delay=retry_delay
+    )
     return result.outcome
 
 

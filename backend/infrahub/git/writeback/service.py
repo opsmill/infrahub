@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, NoReturn
 
 from infrahub.core.constants import RepositoryDeliveryFailureCause
@@ -11,6 +12,7 @@ from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+    from datetime import timedelta
 
     from infrahub.git.writeback.models import PendingMerge, ReleaseLease, WritebackIntent
     from infrahub.git.writeback.ports import (
@@ -51,6 +53,13 @@ class _AttemptStoppedError(Exception):
         self.result = result
 
 
+@dataclass(frozen=True)
+class _Attempt:
+    final: bool
+    retry_delay: timedelta | None
+    """None when the wait before the next attempt is not known, so a failure records no due time."""
+
+
 @contextmanager
 def _step(stage: DeliveryStage) -> Iterator[None]:
     try:
@@ -78,13 +87,22 @@ class RepositoryWritebackService:
         self.lock_registry = lock_registry
         self.clock = clock
 
-    async def deliver(self, *, final_attempt: bool, manual: bool, entry: PendingMerge | None) -> DeliveryAttemptResult:
+    async def deliver(
+        self,
+        *,
+        final_attempt: bool,
+        manual: bool,
+        entry: PendingMerge | None,
+        retry_delay: timedelta | None = None,
+    ) -> DeliveryAttemptResult:
         """Run one delivery attempt and return its result; a final failure of a step is also recorded on the repository.
 
         Args:
             final_attempt: No automatic retry follows, so a failure that a retry could fix is final.
             manual: A user asked for this attempt.
             entry: A merge to queue before the attempt, because the branch merge could not queue it.
+            retry_delay: The wait before the automatic retry that follows when this attempt fails, which sets when the
+                recorded retry is due.
 
         Raises:
             RetryableDeliveryError: A step failed in a way that a later attempt can fix, and the attempt is not the
@@ -97,10 +115,11 @@ class RepositoryWritebackService:
             final_attempt,
             manual,
         )
+        attempt = _Attempt(final=final_attempt, retry_delay=retry_delay)
         try:
             if entry is not None:
-                await self._enqueue(entry=entry, final_attempt=final_attempt)
-            return await self._deliver_queue(final_attempt=final_attempt)
+                await self._enqueue(entry=entry, attempt=attempt)
+            return await self._deliver_queue(attempt=attempt)
         except _AttemptStoppedError as stopped:
             return stopped.result
         except DeliveryStateUnavailableError as exc:
@@ -108,12 +127,12 @@ class RepositoryWritebackService:
                 failure=DeliveryFailure(cause=None, retryable=True, message=exc.message)
             ) from exc
 
-    async def _enqueue(self, *, entry: PendingMerge, final_attempt: bool) -> None:
+    async def _enqueue(self, *, entry: PendingMerge, attempt: _Attempt) -> None:
         try:
             queued = await self.state.enqueue(repository_id=self.repository.id, entry=entry, widen=True)
         except Exception as exc:
             failure = classify_delivery_failure(error=exc, stage=DeliveryStage.ENQUEUE)
-            if not final_attempt:
+            if not attempt.final:
                 log.warning(
                     "The merge %s of branch %s was not queued for repository %s; the next attempt queues it.",
                     entry.entry_id,
@@ -147,14 +166,14 @@ class RepositoryWritebackService:
                 self.repository.name,
             )
 
-    async def _deliver_queue(self, *, final_attempt: bool) -> DeliveryAttemptResult:
+    async def _deliver_queue(self, *, attempt: _Attempt) -> DeliveryAttemptResult:
         async with self.lock_registry.get(name=self.repository.name, namespace=REPOSITORY_LOCK_NAMESPACE):
             snapshot = await self.state.start_attempt(repository_id=self.repository.id)
             if not snapshot.has_work(now=self.clock()):
                 log.info("Repository %s has no merge to deliver and no regeneration to release.", self.repository.name)
                 return DeliveryAttemptResult(outcome=DeliveryOutcome.NOTHING_PENDING)
             if snapshot.queue.entries:
-                result, lease = await self._deliver_entries(snapshot=snapshot, final_attempt=final_attempt)
+                result, lease = await self._deliver_entries(snapshot=snapshot, attempt=attempt)
             else:
                 lease = await self.state.lease_owed_release(repository_id=self.repository.id)
                 if lease is None:
@@ -164,30 +183,30 @@ class RepositoryWritebackService:
         if lease is None:
             return result
         # A release awaits generator runs, which take the repository lock to fetch a commit they lack.
-        return await self._release(lease=lease, result=result, final_attempt=final_attempt)
+        return await self._release(lease=lease, result=result, attempt=attempt)
 
     async def _deliver_entries(
-        self, *, snapshot: WritebackIntent, final_attempt: bool
+        self, *, snapshot: WritebackIntent, attempt: _Attempt
     ) -> tuple[DeliveryAttemptResult, ReleaseLease | None]:
         entry_ids = [entry.entry_id for entry in snapshot.queue.entries]
         log.info("Delivery attempt of repository %s works on the merges %s.", self.repository.name, entry_ids)
 
-        head, recorded = await self._fetch(final_attempt=final_attempt)
-        replayed = await self._check(snapshot=snapshot, head=head, recorded=recorded, final_attempt=final_attempt)
+        head, recorded = await self._fetch(attempt=attempt)
+        replayed = await self._check(snapshot=snapshot, head=head, recorded=recorded, attempt=attempt)
         # With no recorded commit, the remote head is the state of the worktree before the attempt.
         pre_attempt = recorded if recorded is not None else head
-        commit = await self._replay(head=head, replayed=replayed, pre_attempt=pre_attempt, final_attempt=final_attempt)
+        commit = await self._replay(head=head, replayed=replayed, pre_attempt=pre_attempt, attempt=attempt)
         if replayed:
-            await self._push(commit=commit, replayed=replayed, pre_attempt=pre_attempt, final_attempt=final_attempt)
+            await self._push(commit=commit, replayed=replayed, pre_attempt=pre_attempt, attempt=attempt)
 
         import_owed = head != recorded or snapshot.queue.import_owed_commit is not None
         if import_owed:
             # A crash before the record then leaves an import that the next attempt runs.
             await self.state.owe_import(repository_id=self.repository.id, commit=commit)
             log.info("An import of %s is owed for repository %s.", commit, self.repository.name)
-        await self._record(commit=commit, pre_attempt=pre_attempt, final_attempt=final_attempt)
+        await self._record(commit=commit, pre_attempt=pre_attempt, attempt=attempt)
         if import_owed:
-            await self._import(snapshot=snapshot, commit=commit, final_attempt=final_attempt)
+            await self._import(snapshot=snapshot, commit=commit, attempt=attempt)
 
         await self._broadcast(commit=commit)
         await self._delete_source_branches(snapshot=snapshot)
@@ -204,7 +223,7 @@ class RepositoryWritebackService:
         outcome = DeliveryOutcome.DELIVERED if replayed else DeliveryOutcome.OBSERVED
         return DeliveryAttemptResult(outcome=outcome, commit=commit), lease
 
-    async def _fetch(self, *, final_attempt: bool) -> tuple[str, str | None]:
+    async def _fetch(self, *, attempt: _Attempt) -> tuple[str, str | None]:
         """Return the remote head of the destination and the commit that Infrahub records."""
         destination = self.repository.destination_git_branch
         try:
@@ -215,7 +234,7 @@ class RepositoryWritebackService:
             with _step(DeliveryStage.RECORD):
                 recorded = await self.git.recorded_commit()
         except _StepFailedError as failed:
-            await self._fail(failed=failed, final_attempt=final_attempt)
+            await self._fail(failed=failed, attempt=attempt)
         await self.state.progress(repository_id=self.repository.id)
         log.info(
             "The remote branch %s of repository %s is at %s, and Infrahub records %s.",
@@ -235,7 +254,7 @@ class RepositoryWritebackService:
         return head, recorded
 
     async def _check(
-        self, *, snapshot: WritebackIntent, head: str, recorded: str | None, final_attempt: bool
+        self, *, snapshot: WritebackIntent, head: str, recorded: str | None, attempt: _Attempt
     ) -> tuple[PendingMerge, ...]:
         """Return the merges that the remote head lacks, after a check that a replay restores no discarded commit.
 
@@ -251,7 +270,7 @@ class RepositoryWritebackService:
                 )
                 discarded = self._discarded_source(entries=replayed)
         except _StepFailedError as failed:
-            await self._fail(failed=failed, final_attempt=final_attempt)
+            await self._fail(failed=failed, attempt=attempt)
         if rewritten:
             await self._refuse(
                 cause=RepositoryDeliveryFailureCause.DESTINATION_REWRITTEN,
@@ -287,7 +306,7 @@ class RepositoryWritebackService:
         return None
 
     async def _replay(
-        self, *, head: str, replayed: tuple[PendingMerge, ...], pre_attempt: str, final_attempt: bool
+        self, *, head: str, replayed: tuple[PendingMerge, ...], pre_attempt: str, attempt: _Attempt
     ) -> str:
         """Return the worktree head after the merges are replayed on the remote head, or the remote head with no merge."""
         try:
@@ -295,7 +314,7 @@ class RepositoryWritebackService:
                 replay = self.git.replay(base=head, commits=[entry.source_commit for entry in replayed])
         except _StepFailedError as failed:
             self.git.reset(commit=pre_attempt)
-            await self._fail(failed=failed, final_attempt=final_attempt)
+            await self._fail(failed=failed, attempt=attempt)
         if replay.conflicting_commit is not None:
             self.git.reset(commit=pre_attempt)
             conflicting = next(entry for entry in replayed if entry.source_commit == replay.conflicting_commit)
@@ -311,14 +330,14 @@ class RepositoryWritebackService:
         return replay.head
 
     async def _push(
-        self, *, commit: str, replayed: tuple[PendingMerge, ...], pre_attempt: str, final_attempt: bool
+        self, *, commit: str, replayed: tuple[PendingMerge, ...], pre_attempt: str, attempt: _Attempt
     ) -> None:
         try:
             with _step(DeliveryStage.PUSH):
                 await self.git.push()
         except _StepFailedError as failed:
             self.git.reset(commit=pre_attempt)
-            await self._fail(failed=failed, final_attempt=final_attempt)
+            await self._fail(failed=failed, attempt=attempt)
         await self.state.progress(repository_id=self.repository.id)
         log.info(
             "Pushed %s to the remote branch %s of repository %s with the merges %s.",
@@ -328,25 +347,25 @@ class RepositoryWritebackService:
             [entry.entry_id for entry in replayed],
         )
 
-    async def _record(self, *, commit: str, pre_attempt: str, final_attempt: bool) -> None:
+    async def _record(self, *, commit: str, pre_attempt: str, attempt: _Attempt) -> None:
         try:
             with _step(DeliveryStage.RECORD):
                 await self.git.record(commit=commit)
         except _StepFailedError as failed:
             # The remote holds the commit, so the next attempt observes the delivery and records it.
             self.git.reset(commit=pre_attempt)
-            await self._fail(failed=failed, final_attempt=final_attempt, commit=commit)
+            await self._fail(failed=failed, attempt=attempt, commit=commit)
         await self.state.progress(repository_id=self.repository.id)
         log.info("Recorded %s for repository %s.", commit, self.repository.name)
 
-    async def _import(self, *, snapshot: WritebackIntent, commit: str, final_attempt: bool) -> None:
+    async def _import(self, *, snapshot: WritebackIntent, commit: str, attempt: _Attempt) -> None:
         await self.state.progress(repository_id=self.repository.id)
         try:
             with _step(DeliveryStage.IMPORT):
                 await self.git.import_at(commit=commit)
         except _StepFailedError as failed:
             # The import stays owed, and the queued merges and the held regeneration wait for it.
-            await self._fail(failed=failed, final_attempt=final_attempt, commit=commit)
+            await self._fail(failed=failed, attempt=attempt, commit=commit)
         await self.state.progress(repository_id=self.repository.id)
         if await self.state.settle_import(repository_id=self.repository.id, commit=commit, snapshot=snapshot):
             log.info("Imported %s for repository %s.", commit, self.repository.name)
@@ -398,7 +417,7 @@ class RepositoryWritebackService:
             log.info("Deleted the remote branch %s of repository %s.", git_branch, self.repository.name)
 
     async def _release(
-        self, *, lease: ReleaseLease, result: DeliveryAttemptResult, final_attempt: bool
+        self, *, lease: ReleaseLease, result: DeliveryAttemptResult, attempt: _Attempt
     ) -> DeliveryAttemptResult:
         repository_id = self.repository.id
 
@@ -411,7 +430,7 @@ class RepositoryWritebackService:
         except _StepFailedError as failed:
             # Nothing cleared the items, so the next lease takes them and the next run releases every one.
             await self._expire(lease=lease)
-            await self._fail(failed=failed, final_attempt=final_attempt, commit=result.commit)
+            await self._fail(failed=failed, attempt=attempt, commit=result.commit)
         await self.state.clear_released(repository_id=repository_id, lease_id=lease.lease_id)
         log.info("Released the held regeneration of lease %s for repository %s.", lease.lease_id, self.repository.name)
         return result
@@ -428,7 +447,7 @@ class RepositoryWritebackService:
                 exc_info=True,
             )
 
-    async def _fail(self, *, failed: _StepFailedError, final_attempt: bool, commit: str | None = None) -> NoReturn:
+    async def _fail(self, *, failed: _StepFailedError, attempt: _Attempt, commit: str | None = None) -> NoReturn:
         """Record the failure of the step, then stop the attempt, or raise to retry it when a retry can fix it.
 
         Raises:
@@ -437,7 +456,7 @@ class RepositoryWritebackService:
 
         """
         failure = classify_delivery_failure(error=failed.error, stage=failed.stage)
-        final = final_attempt or not failure.retryable
+        final = attempt.final or not failure.retryable
         # The log comes first, so the failure stays visible when the record of it fails too.
         if final:
             log.error(
@@ -454,12 +473,13 @@ class RepositoryWritebackService:
                 self.repository.name,
                 failure.message,
             )
+        retry_due_at = None if final or attempt.retry_delay is None else self.clock() + attempt.retry_delay
         # The merges of a failed release are on the remote already, so no user has to act on it.
         await self.state.record_failure(
             repository_id=self.repository.id,
             failure=failure,
             final=final and failed.stage != DeliveryStage.RELEASE,
-            retry_due_at=None,
+            retry_due_at=retry_due_at,
         )
         if not final:
             raise RetryableDeliveryError(failure=failure) from failed.error
