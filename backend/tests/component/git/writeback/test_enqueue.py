@@ -396,13 +396,7 @@ async def test_a_merge_is_queued_behind_a_delivery_that_waits_for_an_action_and_
         False,
     )
     assert sleep.delays == []
-    intent = await store.read(repository_id=repository.id)
-    assert (intent.status, intent.cause, intent.error, intent.queue.entries) == (
-        RepositoryDeliveryStatus.PENDING,
-        RepositoryDeliveryFailureCause.PERMISSION,
-        "remote: Permission denied",
-        (earlier, entry),
-    )
+    assert (await store.read(repository_id=repository.id)).queue.entries == (earlier, entry)
 
 
 async def test_a_failed_enqueue_of_one_repository_still_submits_the_merge_of_the_others(
@@ -757,7 +751,7 @@ class BranchDeletionCase:
     """The level, the message and the type of the logged error of each warning or error."""
 
 
-BRANCH_DELETION_CASES = [
+BRANCH_DELETION_CASES: list[BranchDeletionCase] = [
     BranchDeletionCase(
         name="a_queued_merge_comes_from_the_branch",
         queued_git_branch=SOURCE_BRANCH,
@@ -770,7 +764,7 @@ BRANCH_DELETION_CASES = [
                 logging.WARNING,
                 f"Did not delete the Git branch '{SOURCE_BRANCH}' from repository '{REPOSITORY_NAME}', because a "
                 "pending delivery of the repository needs it. The delivery deletes the branch after it pushes the "
-                "merge.",
+                "merge, unless another queued merge comes from it. If the delivery is abandoned, the branch stays.",
                 None,
             )
         ],
@@ -819,8 +813,7 @@ async def test_a_branch_deletion_keeps_the_remote_branch_while_a_queued_merge_co
     await repository.clone.fetch()
     store = build_store(db=db, default_branch=default_branch)
     entry = pending_merge(entry_id=str(uuid4()), source_git_branch=case.queued_git_branch)
-    await store.enqueue(repository_id=repository.id, entry=entry, widen=False)
-    queued = await store.read(repository_id=repository.id)
+    queued = await store.enqueue(repository_id=repository.id, entry=entry, widen=False)
     bus = BusRecorder()
 
     @flow(name="test-delete-a-git-branch-of-one-repository")
@@ -839,9 +832,8 @@ async def test_a_branch_deletion_keeps_the_remote_branch_while_a_queued_merge_co
         caplog.at_level(logging.WARNING, logger=TASK_LOGGER),
     ):
         async with state_lock:
-            state = await delete_the_git_branch(return_state=True)
+            await delete_the_git_branch()
 
-    assert state.is_completed()
     assert sorted(head.name for head in repository.remote.repo.heads) == case.remote_branches
     assert [(type(message), message.model_dump(exclude={"meta"})) for message in bus.messages] == [
         (

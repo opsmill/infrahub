@@ -768,7 +768,7 @@ async def git_branch_delete(
                     repository_id=repository_id, git_branch=branch
                 ) and await store.request_branch_deletion(repository_id=repository_id, git_branch=branch)
         except Exception:
-            # One repository must not stop the deletion in the others, and a kept branch loses nothing.
+            # One repository must not stop the deletion in the others, and keeping the branch loses no content.
             log.exception(
                 f"Did not delete the Git branch '{branch}' from repository '{repository_name}', because the check for "
                 "a pending delivery that needs the branch failed. Delete the branch from the remote by hand when the "
@@ -778,7 +778,8 @@ async def git_branch_delete(
         if needed:
             log.warning(
                 f"Did not delete the Git branch '{branch}' from repository '{repository_name}', because a pending "
-                "delivery of the repository needs it. The delivery deletes the branch after it pushes the merge."
+                "delivery of the repository needs it. The delivery deletes the branch after it pushes the merge, unless "
+                "another queued merge comes from it. If the delivery is abandoned, the branch stays."
             )
             return
 
