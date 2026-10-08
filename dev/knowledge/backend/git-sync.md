@@ -161,14 +161,14 @@ worktree records nothing.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 
-A read-only repository records from the import of its last commit
-(`InfrahubReadOnlyRepository.update_latest_commit`). Under the repository lock, it classifies the
-commit the ref resolves to against the commit the graph records, imports that commit as before, and
-records a rewrite once the new commit is written. It never resets the clone: a read-only repository
-follows its remote. A graph read or a classification that fails logs a warning, and the import goes
-on, because the check must not change what is imported. A record that fails fails the run after the
-import, as on the read-write path. Either way the next import reads the new commit, so that rewrite
-stays unrecorded.
+A read-only repository records from the import of its last commit, in
+`git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The flow holds the repository
+lock around it. It classifies the commit the ref resolves to against the commit the graph records,
+imports that commit as before, and records a rewrite once the new commit is written. It never
+resets the clone: a read-only repository follows its remote. A graph read or a classification that
+fails logs a warning, and the import goes on, because the check must not change what is imported. A
+record that fails fails the run after the import, as on the read-write path. Either way the next
+import reads the new commit, so that rewrite stays unrecorded.
 
 ### The re-target marker
 
