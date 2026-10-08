@@ -9,7 +9,7 @@ from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
+    from collections.abc import Iterable, Mapping, Sequence
 
 UNSCOPED_POOL_ID = "mock-unscoped"
 DEFAULT_BRANCH = "main"
@@ -19,7 +19,14 @@ DEFAULT_LIMIT = 10
 
 
 @dataclass(frozen=True, slots=True)
+class MockScopeElement:
+    id: str
+    name: str
+
+
+@dataclass(frozen=True, slots=True)
 class MockDivisionEntry:
+    id: str
     path: str
     value: str
     display_label: str
@@ -91,7 +98,7 @@ class MockRangeUtilization:
 class MockUtilization:
     id: str
     display_label: str
-    allocation_scope: tuple[str, ...]
+    allocation_scope: tuple[MockScopeElement, ...]
     figures: MockFigures
     ranges: tuple[MockRangeUtilization, ...]
 
@@ -106,7 +113,7 @@ class MockDivision:
 @dataclass(frozen=True, slots=True)
 class MockDivisions:
     count: int
-    allocation_scope: tuple[str, ...]
+    allocation_scope: tuple[MockScopeElement, ...]
     divisions: tuple[MockDivision, ...]
 
 
@@ -124,6 +131,8 @@ class DivisionFilterEntry:
 
 @dataclass(frozen=True, slots=True)
 class _Row:
+    """One tracked value; division is where the holder sits on the default branch."""
+
     value: int
     branch: str
     holder: MockHolder
@@ -135,11 +144,13 @@ class _Row:
 @dataclass(frozen=True, slots=True)
 class MockPool:
     display_label: str
-    allocation_scope: tuple[str, ...]
+    allocation_scope: tuple[MockScopeElement, ...]
     ranges: tuple[MockRange, ...]
     excluded_values: frozenset[int]
     divisions: tuple[tuple[MockDivisionEntry, ...], ...]
     rows: tuple[_Row, ...] = field(repr=False)
+    # Keyed by holder id and branch: where a holder sits on a branch when it differs from the default branch.
+    moved_holders: Mapping[tuple[str, str], tuple[MockDivisionEntry, ...]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         if self.allocation_scope and not self.divisions:
@@ -164,6 +175,13 @@ class MockPool:
     def range_of(self, value: int) -> MockRange:
         return next(item for item in self.ranges if item.holds(value))
 
+    @property
+    def scope_names(self) -> tuple[str, ...]:
+        return tuple(element.name for element in self.allocation_scope)
+
+    def division_of(self, row: _Row, request_branch: str) -> tuple[MockDivisionEntry, ...]:
+        return self.moved_holders.get((row.holder.id, request_branch), row.division)
+
 
 def _holder(number: int, label: str) -> MockHolder:
     return MockHolder(
@@ -171,10 +189,14 @@ def _holder(number: int, label: str) -> MockHolder:
     )
 
 
+SITE_ELEMENT = MockScopeElement(id="18a0c0de-5c09-4000-8000-000000000001", name="site")
+
+
 def _site(letter: str, number: int) -> tuple[MockDivisionEntry, ...]:
     return (
         MockDivisionEntry(
-            path="site",
+            id=SITE_ELEMENT.id,
+            path=SITE_ELEMENT.name,
             value=f"18a0c0de-5173-4000-8000-{number:012d}",
             display_label=f"Site {letter}",
             peer_kind="LocationSite",
@@ -206,7 +228,7 @@ def _build_scoped_pool() -> MockPool:
                 division=site_a,
             )
         )
-    rows.append(_Row(value=5, branch=OTHER_BRANCH, holder=_holder(1, "D1"), division=site_c))
+    rows.append(_Row(value=5, branch=OTHER_BRANCH, holder=_holder(1, "D1"), division=site_a))
 
     for index, value in enumerate(range(51, 81)):
         rows.append(
@@ -221,11 +243,12 @@ def _build_scoped_pool() -> MockPool:
 
     return MockPool(
         display_label="Device index",
-        allocation_scope=("site",),
+        allocation_scope=(SITE_ELEMENT,),
         ranges=_two_ranges("aaaa"),
         excluded_values=frozenset(),
         divisions=(site_a, site_b, site_c, site_d),
         rows=tuple(rows),
+        moved_holders={(_holder(1, "D1").id, OTHER_BRANCH): site_c},
     )
 
 
@@ -299,15 +322,19 @@ def _row_in_division(entries: tuple[MockDivisionEntry, ...], division: Sequence[
     )
 
 
-def _own_rows(pool: MockPool, division: Sequence[DivisionFilterEntry]) -> list[_Row]:
-    """The rows held while the holder sits in the division on the row's branch, which the figures count."""
-    return [row for row in pool.rows if _row_in_division(entries=row.division, division=division)]
+def _own_rows(pool: MockPool, division: Sequence[DivisionFilterEntry], request_branch: str) -> list[_Row]:
+    """The rows whose holder sits in the division as read on the request branch."""
+    return [
+        row
+        for row in pool.rows
+        if _row_in_division(entries=pool.division_of(row=row, request_branch=request_branch), division=division)
+    ]
 
 
-def _division_list(pool: MockPool) -> tuple[MockDivision, ...]:
+def _division_list(pool: MockPool, request_branch: str) -> tuple[MockDivision, ...]:
     divisions = []
     for entries in pool.divisions:
-        rows = _own_rows(pool=pool, division=_as_filter(entries))
+        rows = _own_rows(pool=pool, division=_as_filter(entries), request_branch=request_branch)
         if not rows:
             continue
         divisions.append(
@@ -326,9 +353,7 @@ def _get_range(pool: MockPool, pool_id: str, range_id: str | None) -> MockRange 
     for item in pool.ranges:
         if item.id == range_id:
             return item
-    raise ValidationError(
-        input_value=f"The selected pool_id={pool_id} doesn't contain the requested range_id={range_id}"
-    )
+    raise ValidationError(input_value=f"The range {range_id} does not belong to the pool {pool_id}")
 
 
 def get_utilization(
@@ -337,16 +362,11 @@ def get_utilization(
     pool = get_mock_pool(pool_id)
     counted_rows: Sequence[_Row] = pool.rows
     if division:
-        _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
-        _validate_complete_division(pool=pool, division=division, request_branch=request_branch)
-        counted_rows = _own_rows(pool=pool, division=division)
+        _validate_division_filter(pool=pool, pool_id=pool_id, division=division)
+        _validate_complete_division(pool=pool, pool_id=pool_id, division=division)
+        counted_rows = _own_rows(pool=pool, division=division, request_branch=request_branch)
     elif pool.allocation_scope:
-        raise ValidationError(
-            input_value=(
-                f"The pool {pool_id} has an allocation scope in force on branch {request_branch}; "
-                "give a division to read its utilization"
-            )
-        )
+        raise ValidationError(input_value=_incomplete_division_message(pool_id))
 
     def figures_of(space: MockRange | None) -> MockFigures:
         return _space_figures(pool=pool, rows=counted_rows, space=space)
@@ -371,74 +391,43 @@ def get_utilization(
     )
 
 
-def get_divisions(pool_id: str) -> MockDivisions:
+def get_divisions(pool_id: str, request_branch: str) -> MockDivisions:
     pool = get_mock_pool(pool_id)
-    divisions = _division_list(pool=pool)
+    divisions = _division_list(pool=pool, request_branch=request_branch)
     return MockDivisions(count=len(divisions), allocation_scope=pool.allocation_scope, divisions=divisions)
 
 
-def _validate_division_filter(
-    pool: MockPool, pool_id: str, division: Sequence[DivisionFilterEntry], request_branch: str
-) -> None:
+def _incomplete_division_message(pool_id: str) -> str:
+    return (
+        f"The pool {pool_id} has an allocation scope; give a division with a value for every element "
+        "to read its utilization"
+    )
+
+
+def _validate_division_filter(pool: MockPool, pool_id: str, division: Sequence[DivisionFilterEntry]) -> None:
     if not pool.allocation_scope:
         raise ValidationError(
-            input_value=(
-                f"The pool {pool_id} has no allocation scope in force on branch {request_branch}; "
-                "the division filter cannot be applied"
-            )
+            input_value=f"The pool {pool_id} has no allocation scope; the division filter cannot be applied"
         )
     seen: set[str] = set()
     for entry in division:
-        if entry.path not in pool.allocation_scope:
+        if entry.path not in pool.scope_names or entry.path in seen:
             raise ValidationError(
-                input_value=(
-                    f"The division entry '{entry.path}' is not in the allocation scope in force "
-                    f"on branch {request_branch}"
-                )
+                input_value=f'The division entry "{entry.path}" is not an element of the pool\'s allocation scope'
             )
-        if entry.path in seen:
-            raise ValidationError(input_value=f"The division entry '{entry.path}' is given twice")
         seen.add(entry.path)
 
 
-def _validate_complete_division(pool: MockPool, division: Sequence[DivisionFilterEntry], request_branch: str) -> None:
+def _validate_complete_division(pool: MockPool, pool_id: str, division: Sequence[DivisionFilterEntry]) -> None:
     given = {entry.path for entry in division}
-    missing = [path for path in pool.allocation_scope if path not in given]
-    if missing:
-        raise ValidationError(
-            input_value=(
-                "The division filter must give a value for every allocation scope entry in force "
-                f"on branch {request_branch}; missing: {', '.join(missing)}"
-            )
-        )
+    if any(name not in given for name in pool.scope_names):
+        raise ValidationError(input_value=_incomplete_division_message(pool_id))
 
 
 def _validate_page(offset: int | None, limit: int | None) -> None:
     for name, value in (("offset", offset), ("limit", limit)):
         if value is not None and value < 0:
             raise ValidationError(input_value=f"{name} must be 0 or greater")
-
-
-def _holder_divisions(pool: MockPool) -> dict[str, set[tuple[MockDivisionEntry, ...]]]:
-    """The divisions each holder sits in, over every branch it holds a value on."""
-    divisions: dict[str, set[tuple[MockDivisionEntry, ...]]] = {}
-    for row in pool.rows:
-        divisions.setdefault(row.holder.id, set()).add(row.division)
-    return divisions
-
-
-def _matches_division(
-    holder_divisions: set[tuple[MockDivisionEntry, ...]], division: Sequence[DivisionFilterEntry]
-) -> bool:
-    return any(_row_in_division(entries=entries, division=division) for entries in holder_divisions)
-
-
-def _division_rows(
-    pool: MockPool,
-    holder_divisions: dict[str, set[tuple[MockDivisionEntry, ...]]],
-    division: Sequence[DivisionFilterEntry],
-) -> list[_Row]:
-    return [row for row in pool.rows if _matches_division(holder_divisions[row.holder.id], division)]
 
 
 def _to_allocation(pool: MockPool, row: _Row) -> MockAllocation:
@@ -467,9 +456,9 @@ def get_allocations(
     pool = get_mock_pool(pool_id)
     space = _get_range(pool=pool, pool_id=pool_id, range_id=range_id)
     if division:
-        _validate_division_filter(pool=pool, pool_id=pool_id, division=division, request_branch=request_branch)
+        _validate_division_filter(pool=pool, pool_id=pool_id, division=division)
 
-    candidates = _division_rows(pool=pool, holder_divisions=_holder_divisions(pool), division=division or ())
+    candidates = _own_rows(pool=pool, division=division or (), request_branch=request_branch)
     rows = [
         row
         for row in candidates
