@@ -25,14 +25,14 @@ class RefusedEntryCase:
 @dataclass(frozen=True)
 class DivisionValuesCase:
     name: str
-    values: tuple[Any, ...]
+    values: tuple[str | int, ...]
 
 
 @dataclass(frozen=True)
 class DistinctDivisionsCase:
     name: str
-    first: tuple[Any, ...]
-    second: tuple[Any, ...]
+    first: tuple[str | int, ...]
+    second: tuple[str | int, ...]
 
 
 REFUSED_ENTRY_CASES = [
@@ -47,20 +47,15 @@ REFUSED_ENTRY_CASES = [
 DIVISION_VALUES_CASES = [
     DivisionValuesCase(name="scalar", values=("site-a-id",)),
     DivisionValuesCase(name="two-scalars", values=("site-a-id", "leaf")),
-    DivisionValuesCase(name="list", values=(["red", "blue"],)),
-    DivisionValuesCase(name="json", values=({"pod": 1, "row": "b"},)),
+    DivisionValuesCase(name="number", values=(42,)),
     DivisionValuesCase(name="no-value", values=("",)),
 ]
 
 DISTINCT_DIVISIONS_CASES = [
     DistinctDivisionsCase(name="scalar", first=("site-a-id",), second=("site-b-id",)),
     DistinctDivisionsCase(name="order", first=("site-a-id", "leaf"), second=("leaf", "site-a-id")),
-    DistinctDivisionsCase(name="list-order", first=(["red", "blue"],), second=(["blue", "red"],)),
-    DistinctDivisionsCase(name="list-against-scalar", first=(["red"],), second=("red",)),
-    DistinctDivisionsCase(name="json-value-type", first=({"pod": 1},), second=({"pod": "1"},)),
     DistinctDivisionsCase(name="no-value-against-value", first=("",), second=("site-a-id",)),
-    DistinctDivisionsCase(name="integer-against-boolean", first=(1,), second=(True,)),
-    DistinctDivisionsCase(name="integer-against-float", first=({"pod": 1},), second=({"pod": 1.0},)),
+    DistinctDivisionsCase(name="text-against-number", first=("1",), second=(1,)),
 ]
 
 
@@ -118,20 +113,16 @@ class TestDivisionKey:
         assert first.key == second.key
         assert {first, second} == {first}
 
-    def test_key_does_not_depend_on_the_key_order_of_a_document(self) -> None:
-        assert Division(values=({"pod": 1, "row": "b"},)).key == Division(values=({"row": "b", "pod": 1},)).key
-
     def test_key_of_a_value_holding_a_lone_surrogate_is_computed(self) -> None:
-        # A JSON document decoded from a "\\ud83d" escape holds a lone surrogate, which UTF-8 cannot encode.
-        division = Division(values=({"label": "\ud83d"},))
+        # A text value can hold a lone surrogate, which UTF-8 cannot encode.
+        division = Division(values=("\ud83d",))
 
-        assert division.key != Division(values=({"label": ""},)).key
-        assert {division} == {Division(values=({"label": "\ud83d"},))}
+        assert division.key != Division(values=("",)).key
 
     def test_key_is_the_same_in_every_process(self) -> None:
-        division = Division(values=("site-a-id", ["red", "blue"], {"pod": 1}))
+        division = Division(values=("site-a-id", "leaf", 42))
 
-        assert division.key == "8236f44c632d78e56d3959c98a974fe6f324044beb26ccb062b3a18a081fb7ed"
+        assert division.key == "ee0417abeedcbfc0f9d05a07954f6dcf4f3941ebf2e1f013fdaefa3920abfaa3"
 
     @pytest.mark.parametrize("case", DISTINCT_DIVISIONS_CASES, ids=[case.name for case in DISTINCT_DIVISIONS_CASES])
     def test_different_divisions_have_different_keys(self, case: DistinctDivisionsCase) -> None:

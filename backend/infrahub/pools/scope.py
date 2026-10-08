@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from functools import cached_property
 from typing import Any
 
 from infrahub.exceptions import ValidationError
@@ -68,28 +67,17 @@ class AllocationScope:
         return tuple(element.name for element in self.elements)
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(frozen=True)
 class Division:
     """The values a holder has for the scope elements, in scope order; one division is one space of the pool.
 
-    Two divisions are equal when their values have the same JSON form, so a list or a document only matches
-    the same list or document, and 1, 1.0 and true are three different values.
+    A scope element is a relationship or a scalar attribute, so each value is a peer id or a scalar as stored.
     """
 
-    values: tuple[Any, ...]
+    values: tuple[str | int | float | bool, ...]
 
-    @cached_property
+    @property
     def key(self) -> str:
         """Return a hash of the values that stays the same across processes, used to name the division's lock."""
-        # Sorted keys make the hash ignore the key order of a document, as its equality does.
-        encoded = json.dumps(list(self.values), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+        encoded = json.dumps(list(self.values), separators=(",", ":"), ensure_ascii=True)
         return hashlib.sha256(encoded.encode("ascii")).hexdigest()
-
-    # Equality and hashing follow the lock key, so equal divisions share one lock and list values stay hashable.
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Division):
-            return NotImplemented
-        return self.key == other.key
-
-    def __hash__(self) -> int:
-        return hash(self.key)

@@ -135,11 +135,6 @@ async def site_role_scoped_pool(db: InfrahubDatabase, scoped_schema: None) -> Co
 
 
 @pytest.fixture
-async def tags_scoped_pool(db: InfrahubDatabase, scoped_schema: None) -> CoreNumberPool:
-    return await scoped_pool(db=db, name="vlan-per-tags", allocation_scope=["tags"])
-
-
-@pytest.fixture
 async def unscoped_device_pool(db: InfrahubDatabase, scoped_schema: None) -> CoreNumberPool:
     return await scoped_pool(db=db, name="vlan-shared", allocation_scope=None)
 

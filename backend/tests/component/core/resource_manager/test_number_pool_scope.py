@@ -23,7 +23,6 @@ class ScopedPoolCase:
 SCOPED_POOL_CASES = [
     ScopedPoolCase(name="one-element", allocation_scope=["site"]),
     ScopedPoolCase(name="two-elements", allocation_scope=["site", "role"]),
-    ScopedPoolCase(name="list-attribute", allocation_scope=["tags"]),
     ScopedPoolCase(name="unscoped", allocation_scope=None),
 ]
 
