@@ -50,7 +50,7 @@ A holder that does not exist on the request branch has no division there and is 
 
 `key`: a stable hash of the JSON form of `values`, used in lock names (`<pool id>.<key>`).
 
-Equality: two divisions are equal when their value lists are equal element by element.
+Equality: two divisions are equal when their `key` is equal, that is when their values have the same JSON form. The key order of a document does not matter; `1`, `1.0` and `true` are three different values.
 
 **Refusal**: when the schema of the request branch does not define an element on the pool's kind, the division cannot be read; the request is refused naming the element and the branch.
 

@@ -1,6 +1,6 @@
 # Contract: the three dedicated number-pool queries
 
-The surface is the one described in PR #10932, served from the database. This file lists the full SDL and marks the two changes relative to the PR description.
+The surface is the one described in PR #10932, served from the database. This file lists the full SDL, and the table below lists the changes relative to the PR description.
 
 ## Changes relative to PR #10932
 
@@ -37,23 +37,23 @@ type NumberPoolUtilization {
   """The pool's allocation scope, in scope order. Empty for an unscoped pool."""
   allocation_scope: [NumberPoolScopeElement!]!
   """
-  Figures over the pool's whole space. On a scoped pool, the figures of the division given as
-  division, which a scoped pool requires.
+  Figures over all the values the pool can allocate. On a scoped pool, only the values held in the
+  division passed in the division argument, which is required.
   """
   figures: NumberPoolUtilizationFigures!
   """The pool's ranges ordered by start, each with its own figures."""
   ranges: [NumberPoolRangeUtilization!]!
 }
 
-"""Absolute and relative utilization of one space: a pool, a range or a division."""
+"""Absolute and relative utilization of a pool, a range or a division."""
 type NumberPoolUtilizationFigures {
-  """Number of values the measured space holds. 0 when the pool has no range."""
+  """Number of values the pool, range or division can allocate. 0 when the pool has no range."""
   size: BigInt!
-  """Distinct values of the space held on any live branch."""
+  """Number of these values in use on any branch. A value used on several branches counts once."""
   used: BigInt!
-  """Distinct values of the space held on the default branch."""
+  """Number of these values in use on the default branch."""
   used_default_branch: BigInt!
-  """Distinct values of the space held on other branches and not on the default branch."""
+  """Number of these values in use only on other branches, not on the default branch."""
   used_branches: BigInt!
   """used as a percentage of size. 0 when size is 0."""
   utilization: Float!
@@ -75,7 +75,7 @@ type NumberPoolRangeUtilization {
   end: BigInt!
   """The range's allocation weight. 0 when the range declares none."""
   weight: BigInt!
-  """Figures over the range's values. On a scoped pool, the figures of the division given as division."""
+  """Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument."""
   figures: NumberPoolUtilizationFigures!
 }
 
@@ -99,7 +99,7 @@ type NumberPoolDivision {
   display_label: String!
   """One entry per scope element, in scope order."""
   entries: [NumberPoolDivisionEntry!]!
-  """Figures over the pool's whole space for this division."""
+  """Figures for this division, over all the values the pool can allocate."""
   figures: NumberPoolUtilizationFigures!
 }
 
@@ -231,7 +231,7 @@ All are `ValidationError`.
 
 ## Example
 
-Pool scoped by `site`, ranges `1 - 50` and `51 - 100`; site A holds 40 values, site B holds 30, site D holds none. Device D1 holds 5 in site A on the default branch and was moved to site C on branch `b1`. Read on branch `b1`, the list holds sites A (39), B (30) and C (1); read on the default branch, it holds sites A (40) and B (30). The response below is the read on `b1`.
+Pool scoped by `site`, ranges `1 - 50` and `51 - 100`; site A holds 40 values, site B holds 30 (3 of them only on branches other than the default branch), site D holds none. Device D1 holds 5 in site A on the default branch and was moved to site C on branch `b1`. Read on branch `b1`, the list holds sites A (39), B (30) and C (1); read on the default branch, it holds sites A (40) and B (30). The response below is the read on `b1`.
 
 ```graphql
 query {
@@ -255,7 +255,7 @@ query {
     { "display_label": "Site A", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "a1…", "display_label": "Site A", "peer_kind": "LocationSite" }],
       "figures": { "size": 100, "used": 39, "used_default_branch": 39, "used_branches": 0, "utilization": 39.0 } },
     { "display_label": "Site B", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "b2…", "display_label": "Site B", "peer_kind": "LocationSite" }],
-      "figures": { "size": 100, "used": 30, "used_default_branch": 30, "used_branches": 0, "utilization": 30.0 } },
+      "figures": { "size": 100, "used": 30, "used_default_branch": 27, "used_branches": 3, "utilization": 30.0 } },
     { "display_label": "Site C", "entries": [{ "id": "17d0a4c2…", "path": "site", "value": "c3…", "display_label": "Site C", "peer_kind": "LocationSite" }],
       "figures": { "size": 100, "used": 1, "used_default_branch": 1, "used_branches": 0, "utilization": 1.0 } }
   ]
