@@ -188,7 +188,7 @@ type Query {
 
   """
   The divisions of one number pool that hold at least one value, with their figures over the whole
-  pool. Complete list, no pagination.
+  pool.
   """
   InfrahubNumberPoolDivisions(pool_id: String!): NumberPoolDivisions!
 

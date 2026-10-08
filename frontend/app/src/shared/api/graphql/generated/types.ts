@@ -26215,7 +26215,7 @@ export type Query = {
   InfrahubInfo: Info;
   /** The numbers one number pool tracks, filtered and paginated. */
   InfrahubNumberPoolAllocations: NumberPoolAllocations;
-  /** The divisions of one number pool that hold at least one value, with their figures over the whole pool. Complete list, no pagination. */
+  /** The divisions of one number pool that hold at least one value, with their figures over the whole pool. */
   InfrahubNumberPoolDivisions: NumberPoolDivisions;
   /** Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division. */
   InfrahubNumberPoolUtilization: NumberPoolUtilization;
@@ -26224,9 +26224,9 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
-  /** For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead. */
+  /** The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead. */
   InfrahubResourcePoolAllocated: PoolAllocated;
-  /** For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
+  /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
   /** Retrieve the status of all infrahub workers. */

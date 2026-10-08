@@ -319,8 +319,7 @@ InfrahubNumberPoolDivisions = Field(
     resolver=NumberPoolDivisions.resolve,
     required=True,
     description=(
-        "The divisions of one number pool that hold at least one value, with their figures over the whole "
-        "pool. Complete list, no pagination."
+        "The divisions of one number pool that hold at least one value, with their figures over the whole pool."
     ),
 )
 

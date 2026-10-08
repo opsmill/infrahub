@@ -36,13 +36,15 @@ if TYPE_CHECKING:
     from infrahub.pools.number_ranges import NumberDomain
 
 
-NUMBER_POOL_UTILIZATION_NOTE = (
-    "For a number pool this query reports pool-wide figures and ignores the pool's allocation scope; "
-    "number-pool consumers read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead."
+RESOURCE_POOL_UTILIZATION_DESCRIPTION = (
+    "Utilization of one resource pool and of each of its resources. For a number pool, the figures cover "
+    "the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and "
+    "InfrahubNumberPoolDivisions instead."
 )
-NUMBER_POOL_ALLOCATED_NOTE = (
-    "For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and "
-    "display_label is the value itself; number-pool consumers read InfrahubNumberPoolAllocations instead."
+RESOURCE_POOL_ALLOCATED_DESCRIPTION = (
+    "The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, "
+    "resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is "
+    "the value itself; read InfrahubNumberPoolAllocations instead."
 )
 
 
@@ -419,7 +421,7 @@ InfrahubResourcePoolAllocated = Field(
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
-    description=NUMBER_POOL_ALLOCATED_NOTE,
+    description=RESOURCE_POOL_ALLOCATED_DESCRIPTION,
 )
 
 
@@ -428,5 +430,5 @@ InfrahubResourcePoolUtilization = Field(
     pool_id=String(required=True),
     resolver=PoolUtilization.resolve,
     required=True,
-    description=NUMBER_POOL_UTILIZATION_NOTE,
+    description=RESOURCE_POOL_UTILIZATION_DESCRIPTION,
 )
