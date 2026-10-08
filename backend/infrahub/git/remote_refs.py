@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
+import os
+import signal
 import tempfile
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import git
-from git.exc import GitCommandError
+from git.exc import GitCommandError, UnsafeOptionError
 
-from infrahub.exceptions import RepositoryError, RepositoryInvalidBranchError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryError, RepositoryInvalidBranchError
 from infrahub.git.base import InfrahubRepositoryBase
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 HEAD_SYMREF_PREFIX = "ref: refs/heads/"
 BRANCH_REF_PREFIX = "refs/heads/"
@@ -32,7 +40,13 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
     # which in a worktree build references a host path the container does not have.
     cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
     try:
-        listing = cmd.ls_remote("--symref", url, "HEAD", "refs/heads/*")
+        # The separator keeps git from reading a location that starts with a dash as an option.
+        listing = cmd.ls_remote("--symref", "--", url, "HEAD", "refs/heads/*")
+    except UnsafeOptionError as exc:
+        raise RepositoryError(
+            identifier=name,
+            message=f"Unable to read the remote of repository {name}: git does not accept the location {url}.",
+        ) from exc
     except GitCommandError as exc:
         InfrahubRepositoryBase._raise_enriched_error_static(name=name, location=url, error=exc)
 
@@ -49,6 +63,82 @@ def list_remote_refs(name: str, url: str) -> RemoteRefs:
             branches.add(right.removeprefix(BRANCH_REF_PREFIX))
 
     return RemoteRefs(default_branch=default_branch, branches=frozenset(branches))
+
+
+async def list_remote_heads(name: str, url: str, branch_names: Sequence[str], timeout_seconds: int) -> dict[str, str]:
+    """Return the head commit of each named branch the remote holds, without cloning it.
+
+    A branch the remote does not hold is absent from the result.
+
+    Raises:
+        RepositoryConnectionError: When the remote does not answer within ``timeout_seconds``.
+        RepositoryError: When git cannot start or cannot take the location, or for any other git failure,
+            raised as its connection or credentials subtype where the failure can be classified.
+
+    """
+    refs = [f"{BRANCH_REF_PREFIX}{branch_name}" for branch_name in branch_names]
+    command = ["git", "ls-remote", "--", url, *refs]
+    try:
+        # A session of its own lets the kill below stop the remote helpers git starts, which keep the pipes open.
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            cwd=tempfile.gettempdir(),
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+            # The error classifier matches the English text of git.
+            env={**os.environ, "LANGUAGE": "C", "LC_ALL": "C"},
+        )
+    # A location with a NUL byte raises ValueError before git starts.
+    except (OSError, ValueError) as exc:
+        raise RepositoryError(
+            identifier=name, message=f"Unable to run git to read the remote of repository {name}: {exc}"
+        ) from exc
+
+    try:
+        output, error_output = await asyncio.wait_for(process.communicate(), timeout=timeout_seconds)
+    except TimeoutError as exc:
+        raise RepositoryConnectionError(
+            identifier=name,
+            message=f"The remote of repository {name} did not answer within {timeout_seconds} seconds.",
+        ) from exc
+    finally:
+        # A timeout or a cancel must not leave git or its remote helpers running.
+        if process.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGKILL)
+            # The wait reaps the killed git, and the shield lets that finish when a second cancel arrives.
+            with contextlib.suppress(OSError):
+                await asyncio.shield(process.wait())
+
+    if process.returncode != 0:
+        InfrahubRepositoryBase._raise_enriched_error_static(
+            name=name,
+            location=url,
+            error=GitCommandError(command, process.returncode, error_output.decode(errors="replace")),
+        )
+
+    listing = output.decode(errors="replace")
+    heads: dict[str, str] = {}
+    for line in listing.splitlines():
+        commit, _, ref = line.partition("\t")
+        # Git matches a pattern against the end of a ref, so a longer ref can answer for a requested one.
+        if ref in refs:
+            heads[ref.removeprefix(BRANCH_REF_PREFIX)] = commit
+    return heads
+
+
+class GitRemoteHeadReader:
+    """Reads the remote heads with ``git ls-remote``, bounded in time."""
+
+    def __init__(self, timeout_seconds: int) -> None:
+        self.timeout_seconds = timeout_seconds
+
+    async def read_heads(self, repository_name: str, location: str, branch_names: Sequence[str]) -> dict[str, str]:
+        return await list_remote_heads(
+            name=repository_name, url=location, branch_names=branch_names, timeout_seconds=self.timeout_seconds
+        )
 
 
 def ensure_branch_exists(refs: RemoteRefs, *, branch_name: str, repository_name: str, location: str) -> None:

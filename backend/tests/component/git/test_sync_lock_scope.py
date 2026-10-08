@@ -4,7 +4,9 @@ from uuid import uuid4
 from infrahub.core.branch import Branch
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
+from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.sync import RepositorySyncer
+from tests.adapters.cache import MemoryCache
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.repository_record_store import build_in_memory_recorder
 
@@ -26,6 +28,7 @@ async def test_repository_lock_scopes_import_build_and_apply(
         lock_registry=RecordingLockRegistry(timeline=timeline),
         importer=RecordingImporter(timeline),
         recorder=build_in_memory_recorder(),
+        retarget_markers=RetargetMarkers(cache=MemoryCache()),
     )
 
     await syncer.sync(git_repo_04)

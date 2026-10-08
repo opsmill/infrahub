@@ -95,7 +95,7 @@ Exception: Branch delete is handled by the middleware allowlist, not by the perm
 
 `backend/infrahub/core/branch/tasks.py`
 
-Setting `MERGED` is the **final** step of the merge flow — only after all other operations succeed (graph merge, repository merge, schema updates, migrations, diff tracking). If any earlier step fails, the branch remains `OPEN`.
+Setting `MERGED` is the point of no return of the merge flow. It comes only after the graph merge, schema updates and migrations succeed. If any of them fails, the merge rolls back and the branch remains `OPEN`. Diff finalization runs next and only logs a failure, so the branch still becomes `MERGED`. The repository merge runs after `MERGED`, as a follow-up, so a Git merge that fails leaves the branch merged in Infrahub and not in Git: see [Git Integration](git-integration.md#two-checks-keep-a-merge-on-the-commits-the-graph-imported).
 
 After setting `MERGED`, the flow triggers `BRANCH_CANCEL_PROPOSED_CHANGES` to cancel any open proposed changes that reference the merged branch as their source.
 

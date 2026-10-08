@@ -106,7 +106,7 @@ backend/infrahub/
 │   │   ├── gateway.py                   # the ancestry question, the only git code here
 │   │   ├── recorder.py                  # HistoryRewriteRecorder
 │   │   ├── store.py                     # the SDK-backed RepositoryRecordStore
-│   │   └── suppression.py               # the re-target marker, read and consume
+│   │   └── suppression.py               # the re-target marker: write, read, clear
 │   ├── base.py                          # pull(): reset unless the worktree leads to the remote
 │   ├── repository.py                    # collect_pending_imports(): classify updated branches
 │   ├── sync.py                          # RepositorySyncer.sync(): return the outcome

@@ -8,9 +8,12 @@ from infrahub.services.adapters.cache import InfrahubCache
 class MemoryCache(InfrahubCache):
     def __init__(self) -> None:
         self.storage: dict[str, str] = {}
+        self.expiries: dict[str, int | None] = {}
+        """The time to live each key was last set with, in seconds. Nothing expires."""
 
     async def delete(self, key: str) -> None:
         self.storage.pop(key, None)
+        self.expiries.pop(key, None)
 
     async def get(self, key: str) -> str | None:
         return self.storage.get(key)
@@ -25,6 +28,7 @@ class MemoryCache(InfrahubCache):
 
     async def set(self, key: str, value: str, expires: int | None = None, not_exists: bool = False) -> bool | None:
         self.storage[key] = value
+        self.expiries[key] = expires
         return True
 
     async def close_connection(self) -> None: ...

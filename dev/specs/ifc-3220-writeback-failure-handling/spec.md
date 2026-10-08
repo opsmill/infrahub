@@ -418,6 +418,11 @@ unreplayable, with a cause that names the discarded source commit.
   that varies by worker. Accepted and documented. The sibling spec says more.
 - **A repository with two hundred branches.** The delivery state lives on the default branch only,
   so any surface that lists it needs one read per repository, not one per branch.
+- **The merge check of IFC-3210 while a delivery is pending.** FR-023 keeps the graph on the old
+  trunk commit, so when the remote trunk moves, the check that IFC-3210 FR-005d runs before the graph
+  merge refuses every merge of a branch that records a commit other than the commit of the trunk of
+  that repository, against User Story 2 scenarios 2 and 3. The decision is open and belongs to this spec. The IFC-3210 spec records the conflict in
+  its edge cases.
 
 ## Requirements *(mandatory)*
 

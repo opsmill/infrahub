@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -7,14 +8,17 @@ from uuid import UUID
 import httpx
 from git import Repo
 from infrahub_sdk import Config, InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
 from infrahub.core.registry import registry
 from infrahub.git.repository import InfrahubRepository
+from tests.helpers.test_client import dummy_async_request
 
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
     from infrahub_sdk.exceptions import Error as SdkError
     from infrahub_sdk.types import HTTPMethod
     from testcontainers.core.container import DockerContainer
@@ -93,6 +97,71 @@ class LocalRemote:
         self.repo.git.branch("-D", branch_name)
 
 
+def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
+    return {
+        "id": f"{name}-id",
+        "name": name,
+        "description": None,
+        "sync_with_git": True,
+        "is_default": name == "main",
+        "has_schema_changes": False,
+        "graph_version": None,
+        "status": status,
+        "origin_branch": "main",
+        "branched_from": "2024-01-01T00:00:00Z",
+    }
+
+
+class GraphRecordingClient(InfrahubClient):
+    """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them.
+
+    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise, and
+    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase.
+    """
+
+    def __init__(self, branch_names: tuple[str, ...]) -> None:
+        super().__init__(config=Config(requester=dummy_async_request))
+        self.branch_names = branch_names
+        self.branch_statuses: dict[str, str] = {}
+        self.rejecting_branches: frozenset[str] = frozenset()
+        self.recorded_commits: list[tuple[str, str]] = []
+
+    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        tracker = kwargs.get("tracker")
+        variables = kwargs.get("variables") or {}
+        if tracker == "query-branch-all":
+            return {
+                "Branch": [
+                    branch_payload(name=name, status=self.branch_statuses.get(name, "OPEN"))
+                    for name in self.branch_names
+                ]
+            }
+        if tracker == "mutation-branch-create":
+            raise GraphQLError(errors=[{"message": "The branch already exists"}])
+        if tracker == "query-branch":
+            return {"Branch": [branch_payload(name=variables["branch_name"])]}
+        if tracker == "mutation-repository-update-commit":
+            if kwargs["branch_name"] in self.rejecting_branches:
+                raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])
+            self.recorded_commits.append((kwargs["branch_name"], variables["commit"]))
+        return {}
+
+
+def rejected_commit_message(branch_name: str) -> str:
+    return f"Branch {branch_name} must be rebased before any updates can be made"
+
+
+def install_remote_helper(directory: Path, monkeypatch: pytest.MonkeyPatch, script: str) -> str:
+    """Put a git remote helper running ``script`` on the PATH, and return a URL that git hands to it."""
+    helper_directory = directory / "bin"
+    helper_directory.mkdir()
+    helper = helper_directory / "git-remote-fake"
+    helper.write_text(f"#!/bin/sh\n{script}\n", encoding="utf-8")
+    helper.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{helper_directory}{os.pathsep}{os.environ['PATH']}")
+    return "fake::nowhere"
+
+
 def build_repository_client(
     *,
     repository_id: str,
@@ -102,6 +171,7 @@ def build_repository_client(
     internal_status: RepositoryInternalStatus = RepositoryInternalStatus.ACTIVE,
     query_branches: tuple[str, ...] = ("main",),
     commit_update_error: SdkError | None = None,
+    commit: str | None = None,
 ) -> InfrahubClient:
     """Return a client that answers the one repository read a read-write construction performs.
 
@@ -112,6 +182,7 @@ def build_repository_client(
 
     Args:
         commit_update_error: Raise this error for every commit update instead of answering it.
+        commit: The commit the graph records for the repository, on every branch.
 
     """
     node = {
@@ -121,6 +192,7 @@ def build_repository_client(
         "location": {"value": location},
         "default_branch": {"value": default_branch},
         "internal_status": {"value": internal_status.value},
+        "commit": {"value": commit},
     }
 
     async def requester(

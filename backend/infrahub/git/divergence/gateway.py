@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import os
-import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from git.exc import GitCommandError, GitError
 
 from infrahub.exceptions import RepositoryError
+from infrahub.git.commit_id import COMMIT_SHA_PATTERN
 
 if TYPE_CHECKING:
     from git import Repo
-
-COMMIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 
 GITPYTHON_STDERR_PREFIX = "stderr: '"
 """GitPython wraps the text git wrote in a newline, this prefix and a closing quote."""
