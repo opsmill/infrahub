@@ -12,7 +12,7 @@ from infrahub.exceptions import ResourceNotFoundError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import RequestGeneratorDefinitionRun
 from infrahub.git.models import RequestArtifactDefinitionGenerate
-from infrahub.git.writeback.models import HeldItem, HeldRegeneration, HeldWiden
+from infrahub.git.writeback.models import HeldItem, HeldRegeneration
 from infrahub.workflows.catalogue import (
     REQUEST_ARTIFACT_DEFINITION_GENERATE,
     REQUEST_GENERATOR_DEFINITION_RUN,
@@ -310,9 +310,7 @@ class PostMergeRegenerationDispatcher:
         self, context: InfrahubContext, target_branch: str, reason: FullRegenerationReason, releasing: str | None
     ) -> None:
         self.log.debug(f"{reason}; regenerating all definitions")
-        held = await self.barrier.hold_widen(
-            branch=target_branch, widen=HeldWiden(scope="all", reason=reason, hold_seq=0), releasing=releasing
-        )
+        held = await self.barrier.hold_widen(branch=target_branch, scope="all", reason=reason, releasing=releasing)
         await submit_full_regeneration(
             workflow=self.workflow, context=context, target_branch=target_branch, exclude_repository_ids=held
         )
@@ -322,7 +320,8 @@ class PostMergeRegenerationDispatcher:
     ) -> None:
         held = await self.barrier.hold_widen(
             branch=target_branch,
-            widen=HeldWiden(scope="terminals", reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED, hold_seq=0),
+            scope="terminals",
+            reason=FullRegenerationReason.TERMINAL_SELECTION_FAILED,
             releasing=releasing,
         )
         repository_filters = _repository_filters(exclude_repository_ids=held)
