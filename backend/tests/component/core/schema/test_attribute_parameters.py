@@ -725,7 +725,7 @@ class TestNumberPoolAllocationScopeParameters:
 ALLOCATION_SCOPE_CASES = [
     pytest.param({"allocation_scope": ["site"]}, ["site"], id="scoped"),
     pytest.param({}, None, id="absent"),
-    pytest.param({"allocation_scope": []}, None, id="empty"),
+    pytest.param({"allocation_scope": []}, [], id="empty"),
 ]
 
 
@@ -771,5 +771,4 @@ async def test_number_pool_allocation_scope_round_trips_through_schema_api(
 
     number = next(attribute for attribute in read.attributes if attribute.name == "number")
     read_scope = number.model_dump()["parameters"]["allocation_scope"]
-    # Clients treat an empty scope and a missing one alike, so both read as unscoped.
-    assert (read_scope or None) == expected_scope
+    assert read_scope == expected_scope
