@@ -1,7 +1,10 @@
 import { toast } from "react-toastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getLatestRepositoryImportTaskFromApi } from "./get-latest-repository-import-task-from-api";
+import {
+  type GetLatestRepositoryImportTaskFromApiParams,
+  getLatestRepositoryImportTaskFromApi,
+} from "./get-latest-repository-import-task-from-api";
 
 vi.mock("react-toastify", () => ({ toast: vi.fn() }));
 
@@ -33,7 +36,7 @@ describe("getLatestRepositoryImportTaskFromApi", () => {
   it("asks for the single newest task of the repository on the branch", async () => {
     // GIVEN
     respondWith({ data: { InfrahubTask: { edges: [] } } });
-    const lookup = {
+    const lookup: GetLatestRepositoryImportTaskFromApiParams = {
       branch: "feature",
       repositoryId: "repo-1",
       workflows: ["git-repository-import-object"],
