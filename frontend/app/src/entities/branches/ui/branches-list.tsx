@@ -5,6 +5,7 @@ import { Col, Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { BRANCH_FILTER_DEFINITIONS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
@@ -12,7 +13,6 @@ import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches
 import { ActiveFilterTags } from "@/entities/nodes/filters/ui/active-filter-tags";
 import { useFilters } from "@/entities/nodes/filters/ui/hooks/use-filters";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 function BranchesListHeader() {
   const [filters] = useFilters();
@@ -20,12 +20,12 @@ function BranchesListHeader() {
   const [isReloading, setIsReloading] = React.useState(false);
   const queryClient = useQueryClient();
 
-  const refetchBranches = async () => {
+  const reload = async () => {
     setIsReloading(true);
     try {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all }),
-        queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all }),
       ]);
     } finally {
       setIsReloading(false);
@@ -37,7 +37,7 @@ function BranchesListHeader() {
       title="Branches"
       badgeContent={isPending ? "..." : isError ? "-" : count}
       isReloadLoading={isRefetching || isReloading}
-      reload={refetchBranches}
+      reload={reload}
     />
   );
 }

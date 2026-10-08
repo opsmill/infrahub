@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { page } from "vitest/browser";
 
 import {
   BranchRepositoriesError,
@@ -65,7 +64,6 @@ describe("BranchRepositoriesCard", () => {
 
   afterEach(() => {
     window.history.replaceState(null, "", initialUrl);
-    vi.unstubAllGlobals();
   });
 
   test("lists every repository with its Git state and commit, and the count in the header", async () => {
@@ -275,7 +273,7 @@ describe("BranchRepositoriesCard", () => {
     expect(component.container.querySelector(".rounded-full")).toBeNull();
   });
 
-  test("says the repositories couldn't be loaded, with the reason, when the query fails", async () => {
+  test("says the repositories couldn't be loaded when the query fails", async () => {
     // GIVEN
     vi.mocked(getBranchRepositories).mockRejectedValue(
       new BranchRepositoriesError("UNKNOWN", "Something broke")
@@ -287,7 +285,6 @@ describe("BranchRepositoriesCard", () => {
 
     // THEN
     await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-    await expect.element(component.getByText("Something broke")).toBeVisible();
   });
 
   test("offers the first page when a later page fails, as the pager came with the page", async () => {
@@ -419,43 +416,5 @@ describe("BranchRepositoriesCard", () => {
     // THEN
     await expect.element(component.getByText("mystery")).toBeVisible();
     await expect.element(component.getByText("—")).toBeVisible();
-  });
-
-  test("shows the server message in its failed state, with no toast, when the repositories request returns a GraphQL error", async () => {
-    // GIVEN
-    serve([]);
-    const { getBranchRepositories: realGetBranchRepositories } = await vi.importActual<
-      typeof import("@/entities/repository/domain/use-cases/get-branch-repositories")
-    >("@/entities/repository/domain/use-cases/get-branch-repositories");
-    vi.mocked(getBranchRepositories).mockImplementation(realGetBranchRepositories);
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json({
-          data: null,
-          errors: [
-            { message: "Repository index unavailable", extensions: { code: "NODE_NOT_FOUND" } },
-          ],
-        })
-      )
-    );
-
-    // WHEN
-    const component = await renderCard();
-
-    // THEN
-    await expect.element(component.getByText("Repositories couldn't be loaded.")).toBeVisible();
-    // A toast is emitted before the request rejects, so it would already be rendered by the time the card shows the error.
-    await expect
-      .poll(() =>
-        page
-          .getByRole("alert")
-          .elements()
-          .map((alert) => alert.textContent)
-      )
-      .toEqual(["Repositories couldn't be loaded.Repository index unavailable"]);
-    await expect
-      .element(component.getByText("Repository index unavailable", { exact: true }))
-      .toBeVisible();
   });
 });

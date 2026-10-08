@@ -1,9 +1,9 @@
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import BranchesList from "@/entities/branches/ui/branches-list";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 import { render } from "../../../../tests/components/render";
 
@@ -47,10 +47,10 @@ describe("BranchesList", () => {
     await expect
       .poll(() => invalidateSpy)
       .toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
-    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: branchGitStatusQueryKeys.all });
   });
 
-  test("keeps the reload indicator busy until both refreshes finish, and only for a reload", async () => {
+  test("keeps the reload indicator busy until both refreshes finish", async () => {
     // GIVEN
     const pending: Array<() => void> = [];
     vi.spyOn(QueryClient.prototype, "invalidateQueries").mockImplementation(
@@ -84,12 +84,12 @@ describe("BranchesList", () => {
 
     // WHEN
     client?.prefetchQuery({
-      queryKey: [...repositoryQueryKeys.all, "background"],
+      queryKey: [...branchGitStatusQueryKeys.all, "background"],
       queryFn: () => new Promise<never>(() => {}),
     });
 
     // THEN
-    await expect.poll(() => client?.isFetching({ queryKey: repositoryQueryKeys.all })).toBe(1);
+    await expect.poll(() => client?.isFetching({ queryKey: branchGitStatusQueryKeys.all })).toBe(1);
     expect(findReloadControl(container)?.className).not.toContain("animate-spin");
   });
 });

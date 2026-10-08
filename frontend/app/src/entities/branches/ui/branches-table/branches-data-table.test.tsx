@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
+
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import { toBranchTableRows } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchesDataTable } from "@/entities/branches/ui/branches-table/branches-data-table";
@@ -18,6 +20,8 @@ vi.mock("@/entities/nodes/object/ui/queries/get-objects-count.query");
 
 const main = generateBranch({ id: "branch-main", name: "main", is_default: true });
 const feature = generateBranch({ id: "branch-feature", name: "feature", sync_with_git: false });
+
+const FIT = `fit-content(${COLUMN_MAX_WIDTH})`;
 
 describe("BranchesDataTable", () => {
   beforeEach(() => {
@@ -42,19 +46,10 @@ describe("BranchesDataTable", () => {
 
   test("ticking a row selects it and offers to delete that branch", async () => {
     // GIVEN
-    const branches = [main, feature];
     const component = await render(
       <BranchesDataTable
         columns={getBranchTableColumns()}
-        data={toBranchTableRows(
-          branches,
-          Object.fromEntries(
-            branches.map((branch) => [
-              branch.name,
-              { status: "ok" as const, repositories: [], counts: [] },
-            ])
-          )
-        )}
+        data={toBranchTableRows([main, feature], {})}
       />
     );
 
@@ -65,5 +60,38 @@ describe("BranchesDataTable", () => {
     // THEN
     await expect.element(component.getByRole("toolbar")).toHaveTextContent("1 selected");
     await expect.element(component.getByRole("dialog")).toHaveTextContent("`feature`");
+  });
+
+  test("sizes each column by its own track, whatever its position", async () => {
+    // GIVEN
+    const columns = getBranchTableColumns();
+
+    // WHEN
+    const inOrder = await render(
+      <BranchesDataTable columns={columns} data={[]} data-testid="in-order" />
+    );
+    const reversed = await render(
+      <BranchesDataTable columns={[...columns].reverse()} data={[]} data-testid="reversed" />
+    );
+
+    // THEN
+    const tracks = [
+      `fit-content(${WIDE_COLUMN_MAX_WIDTH})`,
+      FIT,
+      "minmax(150px, 200px)",
+      "minmax(12rem, 18rem)",
+      "9rem",
+      FIT,
+      FIT,
+      FIT,
+      FIT,
+      "2.5rem",
+    ];
+    const templateOf = (element: Element) =>
+      element instanceof HTMLElement ? element.style.gridTemplateColumns : null;
+    expect(templateOf(inOrder.getByTestId("in-order").element())).toBe(tracks.join(" "));
+    expect(templateOf(reversed.getByTestId("reversed").element())).toBe(
+      [...tracks].reverse().join(" ")
+    );
   });
 });

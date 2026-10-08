@@ -2,44 +2,29 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
+import { getBranchGitRepositories } from "@/entities/branch-git-status/domain/use-cases/get-branch-git-repositories";
+import { getRepositoryBranchStatus } from "@/entities/branch-git-status/domain/use-cases/get-repository-branch-status";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
-import {
-  useGetBranches,
-  useGetBranchesPaginated,
-} from "@/entities/branches/ui/queries/get-branches.query";
+import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 import { useGetProposedChanges } from "@/entities/proposed-changes/ui/queries/get-proposed-changes.query";
-import { mapRepositoryBranchStatusPage } from "@/entities/repository/domain/model/repository-branch-status";
-import { getBranchRepositories } from "@/entities/repository/domain/use-cases/get-branch-repositories";
-import { getRepositoryBranchStatus } from "@/entities/repository/domain/use-cases/get-repository-branch-status";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { render } from "../../../../../tests/components/render";
 import { generateBranch } from "../../../../../tests/fake/branch";
 import {
-  generateBranchRepository,
-  toBranchRepositoryPage,
-} from "../../../../../tests/fake/branch-repositories";
-import {
-  generateRepositoryBranchStatus,
+  generateBranchGitRepository,
   generateRepositoryBranchStatusPage,
-} from "../../../../../tests/fake/repository";
+  generateRepositoryBranchStatusWire,
+} from "../../../../../tests/fake/branch-git-status";
 
 vi.mock("@/entities/authentication/ui/auth-provider");
 vi.mock("@/entities/branches/ui/queries/get-branches.query");
 vi.mock("@/entities/proposed-changes/ui/queries/get-proposed-changes.query");
 vi.mock("@/entities/schema/ui/hooks/useSchema");
 vi.mock("@/entities/nodes/object/ui/queries/get-objects-count.query");
-vi.mock(
-  "@/entities/repository/domain/use-cases/get-branch-repositories",
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import("@/entities/repository/domain/use-cases/get-branch-repositories")
-    >()),
-    getBranchRepositories: vi.fn(),
-  })
-);
-vi.mock("@/entities/repository/domain/use-cases/get-repository-branch-status");
+vi.mock("@/entities/branch-git-status/domain/use-cases/get-branch-git-repositories");
+vi.mock("@/entities/branch-git-status/domain/use-cases/get-repository-branch-status");
 
 const main = generateBranch({
   id: "branch-main",
@@ -51,21 +36,14 @@ const alpha = generateBranch({ id: "branch-alpha", name: "alpha", status: "NEED_
 const zulu = generateBranch({ id: "branch-zulu", name: "zulu" });
 const yankee = generateBranch({ id: "branch-yankee", name: "yankee" });
 
-const REPOSITORIES = toBranchRepositoryPage(
-  [
-    generateBranchRepository({ id: "repo-1", name: "repo-one" }),
-    generateBranchRepository({ id: "repo-2", name: "repo-two" }),
-    generateBranchRepository({ id: "repo-3", name: "repo-three" }),
+const REPOSITORIES = {
+  repositories: [
+    generateBranchGitRepository({ id: "repo-1", name: "repo-one" }),
+    generateBranchGitRepository({ id: "repo-2", name: "repo-two" }),
+    generateBranchGitRepository({ id: "repo-3", name: "repo-three" }),
   ],
-  { limit: 500 }
-);
-
-const statusPage = (...branchNames: string[]) =>
-  mapRepositoryBranchStatusPage(
-    generateRepositoryBranchStatusPage({
-      rows: branchNames.map((name) => generateRepositoryBranchStatus({ name: { value: name } })),
-    })
-  );
+  count: 3,
+};
 
 const statusErrorResponse = (code: string, message: string) => ({
   data: null,
@@ -76,8 +54,8 @@ const statusErrorResponse = (code: string, message: string) => ({
 
 const serveRealStatusOverFetch = async (respond: (repositoryId: string) => unknown) => {
   const { getRepositoryBranchStatus: real } = await vi.importActual<
-    typeof import("@/entities/repository/domain/use-cases/get-repository-branch-status")
-  >("@/entities/repository/domain/use-cases/get-repository-branch-status");
+    typeof import("@/entities/branch-git-status/domain/use-cases/get-repository-branch-status")
+  >("@/entities/branch-git-status/domain/use-cases/get-repository-branch-status");
   vi.mocked(getRepositoryBranchStatus).mockImplementation(real);
   vi.stubGlobal(
     "fetch",
@@ -131,12 +109,11 @@ describe("BranchesTable", () => {
       },
       isPending: false,
     } as unknown as ReturnType<typeof useGetProposedChanges>);
-    vi.mocked(useGetBranches).mockReturnValue({
-      data: [alpha, main, zulu, yankee],
-    } as unknown as ReturnType<typeof useGetBranches>);
     mockBranchPages([zulu, main, alpha]);
-    vi.mocked(getBranchRepositories).mockResolvedValue(REPOSITORIES);
-    vi.mocked(getRepositoryBranchStatus).mockResolvedValue(statusPage("main", "alpha", "zulu"));
+    vi.mocked(getBranchGitRepositories).mockResolvedValue(REPOSITORIES);
+    vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
+      generateRepositoryBranchStatusPage("main", "alpha", "zulu")
+    );
   });
 
   afterEach(() => {
@@ -146,7 +123,7 @@ describe("BranchesTable", () => {
 
   test("renders branch name, status and proposed changes while repositories are pending", async () => {
     // GIVEN
-    vi.mocked(getBranchRepositories).mockReturnValue(new Promise(() => {}));
+    vi.mocked(getBranchGitRepositories).mockReturnValue(new Promise(() => {}));
 
     // WHEN
     const component = await render(<BranchesTable />);
@@ -156,7 +133,7 @@ describe("BranchesTable", () => {
     await expect.element(component.getByText("Rebase needed")).toBeVisible();
     await expect.element(component.getByRole("link", { name: "Add VLANs" }).first()).toBeVisible();
     expect(identifierCellNames(component.container)).toEqual(["main", "alpha", "zulu"]);
-    expect(component.getByTestId("branches-table").getByRole("status").elements()).toHaveLength(3);
+    expect(component.getByText("Loading repositories").elements()).toHaveLength(3);
   });
 
   test("issues one repository-list request and one status request per repository", async () => {
@@ -164,38 +141,41 @@ describe("BranchesTable", () => {
     const component = await render(<BranchesTable />);
 
     // THEN
-    await expect.element(component.getByRole("link", { name: "+2 more" }).nth(2)).toBeVisible();
-    await expect.element(component.getByText("3/3", { exact: true }).nth(2)).toBeVisible();
-    expect(vi.mocked(getBranchRepositories).mock.calls).toEqual([
-      [{ branchName: "main", syncWithGit: true, limit: 500, offset: 0 }],
-    ]);
-    expect(vi.mocked(getRepositoryBranchStatus).mock.calls.map(([params]) => params.id)).toEqual([
-      "repo-1",
-      "repo-2",
-      "repo-3",
-    ]);
+    await expect
+      .element(component.getByTestId("branch-git-state-cell-zulu"))
+      .toHaveTextContent("3/3");
+    await expect
+      .element(component.getByRole("link", { name: "+2 more repositories on zulu" }))
+      .toBeVisible();
+    expect(vi.mocked(getBranchGitRepositories).mock.calls).toEqual([[{ limit: 500, offset: 0 }]]);
+    expect(
+      vi.mocked(getRepositoryBranchStatus).mock.calls.map(([params]) => params.repositoryId)
+    ).toEqual(["repo-1", "repo-2", "repo-3"]);
   });
 
   test("loading a second page of branches issues no new status request", async () => {
     // GIVEN
     vi.mocked(getRepositoryBranchStatus).mockResolvedValue(
-      statusPage("main", "alpha", "zulu", "yankee")
+      generateRepositoryBranchStatusPage("main", "alpha", "zulu", "yankee")
     );
     const component = await render(<BranchesTable />);
-    await expect.element(component.getByText("3/3", { exact: true }).nth(2)).toBeVisible();
+    await expect
+      .element(component.getByTestId("branch-git-state-cell-zulu"))
+      .toHaveTextContent("3/3");
 
     // WHEN
     mockBranchPages([zulu, main, alpha], [yankee]);
     await component.rerender(<BranchesTable />);
 
     // THEN
-    await expect.element(component.getByRole("link", { name: "yankee" })).toBeVisible();
-    await expect.element(component.getByText("3/3", { exact: true }).nth(3)).toBeVisible();
-    expect(getBranchRepositories).toHaveBeenCalledTimes(1);
+    await expect
+      .element(component.getByTestId("branch-git-state-cell-yankee"))
+      .toHaveTextContent("3/3");
+    expect(getBranchGitRepositories).toHaveBeenCalledTimes(1);
     expect(getRepositoryBranchStatus).toHaveBeenCalledTimes(3);
   });
 
-  test("reads No permission on every row when the status read is denied, with no toast", async () => {
+  test("reads No permission on every row when every status read is denied, with no toast", async () => {
     // GIVEN
     await serveRealStatusOverFetch(() =>
       statusErrorResponse("PERMISSION_DENIED", "You do not have one of the following permissions")
@@ -211,16 +191,17 @@ describe("BranchesTable", () => {
     await expectNoToast();
   });
 
-  test("reads Could not load repositories on every row when one status read fails, with no toast", async () => {
+  test("keeps the loaded repositories and notes the one whose status read failed, with no toast", async () => {
     // GIVEN
     await serveRealStatusOverFetch((repositoryId) =>
       repositoryId === "repo-2"
         ? statusErrorResponse("NODE_NOT_FOUND", "Repository index unavailable")
         : {
             data: {
-              InfrahubRepositoryBranchStatus: generateRepositoryBranchStatusPage({
-                rows: [generateRepositoryBranchStatus({ name: { value: "main" } })],
-              }),
+              InfrahubRepositoryBranchStatus: {
+                count: 1,
+                edges: [{ node: generateRepositoryBranchStatusWire("main") }],
+              },
             },
           }
     );
@@ -229,8 +210,13 @@ describe("BranchesTable", () => {
     const component = await render(<BranchesTable />);
 
     // THEN
-    await expect.element(component.getByText("Could not load repositories").nth(2)).toBeVisible();
-    expect(component.getByText("Could not load repositories").elements()).toHaveLength(3);
+    await expect
+      .element(component.getByTestId("branch-repositories-cell-main"))
+      .toHaveTextContent(/repo-one.*\+1 more.*1 repository could not be loaded/);
+    await expect
+      .element(component.getByTestId("branch-repositories-cell-alpha"))
+      .toHaveTextContent("1 repository could not be loadedrepo-two: Repository index unavailable");
+    expect(component.getByText("Could not load repositories").query()).toBeNull();
     await expectNoToast();
   });
 });

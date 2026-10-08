@@ -5,10 +5,10 @@ import { renderHook } from "vitest-browser-react";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { createBranch } from "@/entities/branches/domain/use-cases/create-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useCreateBranchMutation } from "@/entities/branches/ui/queries/create-branch.mutation";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 
@@ -38,7 +38,7 @@ describe("useCreateBranchMutation", () => {
     // THEN
     await expect
       .poll(() => invalidateSpy)
-      .toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
+      .toHaveBeenCalledWith({ queryKey: branchGitStatusQueryKeys.all });
     expect(refetchSpy).toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
   });
 

@@ -1,18 +1,18 @@
+import type { BranchGitStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import type { BranchListItem } from "@/entities/branches/domain/model/branch";
-import type { BranchRepositorySummary } from "@/entities/branches/domain/model/branch-repository-summary";
 
 export interface BranchTableRow extends BranchListItem {
-  repositorySummary: BranchRepositorySummary;
+  gitStatus: BranchGitStatus;
 }
 
-const PENDING_SUMMARY: BranchRepositorySummary = { status: "pending" };
+const PENDING_GIT_STATUS: BranchGitStatus = { status: "pending" };
 
 export function toBranchTableRows(
   branches: readonly BranchListItem[],
-  summaries: Record<string, BranchRepositorySummary>
+  gitStatusesByBranchName: Record<string, BranchGitStatus>
 ): BranchTableRow[] {
   return branches.map((branch) => ({
     ...branch,
-    repositorySummary: summaries[branch.name] ?? PENDING_SUMMARY,
+    gitStatus: gitStatusesByBranchName[branch.name] ?? PENDING_GIT_STATUS,
   }));
 }

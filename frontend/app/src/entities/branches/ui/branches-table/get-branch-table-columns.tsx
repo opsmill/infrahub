@@ -1,5 +1,7 @@
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
+import { WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
+
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
 import { BranchActionsCell } from "@/entities/branches/ui/branches-table/cells/branch-actions-cell";
@@ -22,6 +24,7 @@ const columnHelper = createColumnHelper<BranchTableRow>();
 export function getBranchIdentifierColumn(): ColumnDef<BranchTableRow> {
   return columnHelper.display({
     id: "id",
+    meta: { gridTrack: `fit-content(${WIDE_COLUMN_MAX_WIDTH})` },
     header: ({ table }) => (
       <BranchIdentifierHeader
         isSelected={table.getIsAllRowsSelected()}
@@ -48,6 +51,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
     }),
     columnHelper.display({
       id: "proposed_changes",
+      meta: { gridTrack: "minmax(150px, 200px)" },
       size: 250,
       minSize: 250,
       header: () => (
@@ -57,13 +61,16 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
     }),
     columnHelper.display({
       id: "repositories",
+      // Fixed so the cells filling in as repositories load do not shift the columns.
+      meta: { gridTrack: "minmax(12rem, 18rem)" },
       header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.repositories} />,
       cell: ({ row }) => <BranchRepositoriesCell branch={row.original} />,
     }),
     columnHelper.display({
       id: "git_state",
+      meta: { gridTrack: "9rem" },
       header: () => <TableColumnHeaderSimple columnSchema={BRANCH_FIELD_SCHEMAS.git_state} />,
-      cell: ({ row }) => <BranchGitStateCell summary={row.original.repositorySummary} />,
+      cell: ({ row }) => <BranchGitStateCell branch={row.original} />,
     }),
     columnHelper.display({
       id: "branched_from",
@@ -97,6 +104,7 @@ export function getBranchFieldsColumns(): Array<ColumnDef<BranchTableRow>> {
 export function getBranchActionsColumn(): ColumnDef<BranchTableRow> {
   return columnHelper.display({
     id: "actions",
+    meta: { gridTrack: "2.5rem" },
     header: () => <ActionsHeaderCell />,
     cell: ({ row }) => <BranchActionsCell branch={row.original} />,
   });

@@ -74,22 +74,15 @@ export function BranchRepositoryHealthFailed() {
   );
 }
 
-interface BranchRepositoriesFailedProps {
-  errorMessage?: string;
+interface FailedStateProps {
   onGoToFirstPage?: () => void;
 }
 
-export function BranchRepositoriesFailed({
-  errorMessage,
-  onGoToFirstPage,
-}: BranchRepositoriesFailedProps) {
+export function BranchRepositoriesFailed({ onGoToFirstPage }: FailedStateProps) {
   return (
-    <Row role="alert" className="items-start px-4 py-4 text-sm">
-      <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />
-      <div>
-        <p className="text-danger">Repositories couldn't be loaded.</p>
-        {errorMessage && <p className="text-foreground-muted">{errorMessage}</p>}
-      </div>
+    <Row role="alert" className="px-4 py-4 text-danger text-sm">
+      <AlertCircleIcon className="size-4 shrink-0" aria-hidden />
+      Repositories couldn't be loaded.
       {onGoToFirstPage && (
         <Button variant="outline" size="xs" className="ml-auto" onPress={onGoToFirstPage}>
           Go to first page

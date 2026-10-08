@@ -1,7 +1,13 @@
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  type Header,
+  useReactTable,
+} from "@tanstack/react-table";
 import React from "react";
 
-import { COLUMN_MAX_WIDTH, WIDE_COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
+import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
 import { useAuth } from "@/entities/authentication/ui/auth-provider";
 import type { BranchTableRow } from "@/entities/branches/ui/branches-table/branch-table-row";
@@ -13,32 +19,23 @@ export interface BranchesDataTableProps extends React.HTMLAttributes<HTMLDivElem
   data: Array<BranchTableRow>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
-  gridTemplateColumns?: (columnCount: number) => string;
 }
-
-// Fixed so the cells filling in as repositories load do not shift the columns.
-const REPOSITORIES_TRACK = "minmax(12rem, 18rem)";
-const GIT_STATE_TRACK = "9rem";
 
 // Same capping rule as the shared DataTable: `fit-content` so short columns shrink
 // to fit, with a ceiling so one long value cannot stretch the column off-screen.
-const defaultGridTemplateColumns = (columnCount: number) =>
-  [
-    `fit-content(${WIDE_COLUMN_MAX_WIDTH})`,
-    `fit-content(${COLUMN_MAX_WIDTH})`,
-    "minmax(150px, 200px)",
-    REPOSITORIES_TRACK,
-    GIT_STATE_TRACK,
-    `repeat(${columnCount - 6}, fit-content(${COLUMN_MAX_WIDTH}))`,
-    "2.5rem",
-  ].join(" ");
+const DEFAULT_GRID_TRACK = `fit-content(${COLUMN_MAX_WIDTH})`;
+
+function getGridTemplateColumns(headers: Header<BranchTableRow, unknown>[]): string {
+  return headers
+    .map((header) => header.column.columnDef.meta?.gridTrack ?? DEFAULT_GRID_TRACK)
+    .join(" ");
+}
 
 export function BranchesDataTable({
   columns,
   data,
   isLoading,
   renderEmpty,
-  gridTemplateColumns = defaultGridTemplateColumns,
   ...props
 }: BranchesDataTableProps) {
   const { isAuthenticated } = useAuth();
@@ -61,7 +58,7 @@ export function BranchesDataTable({
   const allHeaders = table.getFlatHeaders();
   const allRows = table.getRowModel().rows;
   const style: React.CSSProperties = {
-    gridTemplateColumns: gridTemplateColumns(allHeaders.length),
+    gridTemplateColumns: getGridTemplateColumns(allHeaders),
   };
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);

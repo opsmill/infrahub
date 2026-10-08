@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import type { BranchRepositoryState } from "@/entities/branches/domain/model/branch-repository-summary";
-
+import type { BranchGitRepository } from "@/entities/branch-git-status/domain/model/branch-git-repository";
+import type { BranchRepositoryState } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import {
-  countRepositoriesInState,
+  formatFailedRepositoryCount,
+  formatFailedRepositoryReasons,
   formatRepositoryState,
   formatSyncStatusCounts,
-} from "./format-repository-summary";
+} from "@/entities/branch-git-status/domain/rules/format-branch-git-status";
+
+const repository = (name: string): BranchGitRepository => ({
+  id: `repo-${name}`,
+  name,
+  kind: "CoreRepository",
+  isReadOnly: false,
+});
 
 const state = (overrides: Partial<BranchRepositoryState> = {}): BranchRepositoryState => ({
-  repository: { id: "repo-1", name: "repo-one", kind: "CoreRepository", isReadOnly: false },
+  repository: repository("repo-one"),
   commit: "1234567890abcdef",
   syncStatus: { value: "error-import", label: "Import Error", color: null, description: null },
   ...overrides,
@@ -29,7 +37,7 @@ describe("formatRepositoryState", () => {
     expect(text).toBe("Import Error · 1234567 · read-only");
   });
 
-  it("omits the commit and the read-only tag for a read/write repository", () => {
+  it("shows only the status for a read/write repository without a commit", () => {
     expect(formatRepositoryState(state({ commit: null }))).toBe("Import Error");
   });
 
@@ -64,29 +72,26 @@ describe("formatSyncStatusCounts", () => {
   });
 });
 
-describe("countRepositoriesInState", () => {
-  const counts = [
-    { value: "error-import", label: "Import Error", count: 2 },
-    { value: null, label: "Unknown", count: 1 },
-  ];
-
-  it("returns the count of the state's value", () => {
-    expect(countRepositoriesInState(counts, state())).toBe(2);
+describe("formatFailedRepositoryCount", () => {
+  it.each([
+    { count: 1, text: "1 repository could not be loaded" },
+    { count: 2, text: "2 repositories could not be loaded" },
+  ])("reads $text", ({ count, text }) => {
+    expect(formatFailedRepositoryCount(count)).toBe(text);
   });
+});
 
-  it("matches a state with no value to the null count", () => {
-    const noValue = state({
-      syncStatus: { value: null, label: null, color: null, description: null },
-    });
+describe("formatFailedRepositoryReasons", () => {
+  it("names each repository with the reason it could not be loaded", () => {
+    const text = formatFailedRepositoryReasons([
+      { status: "denied", repository: repository("secrets") },
+      {
+        status: "error",
+        repository: repository("broken"),
+        message: "Repository index unavailable",
+      },
+    ]);
 
-    expect(countRepositoriesInState(counts, noValue)).toBe(1);
-  });
-
-  it("returns 0 when no count matches the state", () => {
-    const inSync = state({
-      syncStatus: { value: "in-sync", label: "In Sync", color: null, description: null },
-    });
-
-    expect(countRepositoriesInState(counts, inSync)).toBe(0);
+    expect(text).toBe("secrets: No permission · broken: Repository index unavailable");
   });
 });

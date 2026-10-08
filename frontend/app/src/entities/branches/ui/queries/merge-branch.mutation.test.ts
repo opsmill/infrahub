@@ -5,10 +5,10 @@ import { renderHook } from "vitest-browser-react";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { mergeBranch } from "@/entities/branches/domain/use-cases/merge-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useMergeBranch } from "@/entities/branches/ui/queries/merge-branch.mutation";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 vi.mock("@/entities/branches/domain/use-cases/merge-branch");
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("useMergeBranch", () => {
-  test("invalidates branches, tasks and repository status once the branch operation succeeds", async () => {
+  test("invalidates branches, tasks and branch Git status once the merge succeeds", async () => {
     // GIVEN
     vi.mocked(mergeBranch).mockResolvedValue({} as Awaited<ReturnType<typeof mergeBranch>>);
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
@@ -36,7 +36,7 @@ describe("useMergeBranch", () => {
     // THEN
     await expect
       .poll(() => invalidateSpy)
-      .toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
+      .toHaveBeenCalledWith({ queryKey: branchGitStatusQueryKeys.all });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: tasksQueryKeys.all });
   });

@@ -19,6 +19,6 @@ function getSyncStatusSeverity(value: SyncStatusValue): number {
   return SEVERITY.get(value) ?? UNKNOWN_SEVERITY;
 }
 
-export function compareSyncStatusSeverity(a: SyncStatusValue, b: SyncStatusValue): number {
+export function compareWorstSyncStatusFirst(a: SyncStatusValue, b: SyncStatusValue): number {
   return getSyncStatusSeverity(b) - getSyncStatusSeverity(a);
 }

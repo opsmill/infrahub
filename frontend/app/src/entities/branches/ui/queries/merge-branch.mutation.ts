@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { mergeBranch } from "@/entities/branches/domain/use-cases/merge-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 export function useMergeBranch() {
@@ -11,10 +11,10 @@ export function useMergeBranch() {
   return useMutation({
     mutationFn: mergeBranch,
     onSuccess: () => {
-      // A merge changes branch status and enqueues a background task.
+      // A merge changes branch status and repository commits, and enqueues a background task.
       queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: repositoryQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: branchGitStatusQueryKeys.all });
     },
   });
 }

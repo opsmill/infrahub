@@ -5,10 +5,10 @@ import { renderHook } from "vitest-browser-react";
 
 import { queryClient } from "@/shared/api/rest/client";
 
+import { branchGitStatusQueryKeys } from "@/entities/branch-git-status/ui/queries/branch-git-status.query-keys";
 import { deleteBranch } from "@/entities/branches/domain/use-cases/delete-branch";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
-import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 
 vi.mock("@/entities/branches/domain/use-cases/delete-branch");
 
@@ -35,7 +35,7 @@ describe("useDeleteBranchMutation", () => {
     // THEN
     await expect
       .poll(() => invalidateSpy)
-      .toHaveBeenCalledWith({ queryKey: repositoryQueryKeys.all });
+      .toHaveBeenCalledWith({ queryKey: branchGitStatusQueryKeys.all });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: branchesQueryKeys.all });
   });
 });

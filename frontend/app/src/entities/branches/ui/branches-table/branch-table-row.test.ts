@@ -1,31 +1,32 @@
 import { describe, expect, it } from "vitest";
 
-import type { BranchRepositorySummary } from "@/entities/branches/domain/model/branch-repository-summary";
+import type { BranchGitStatus } from "@/entities/branch-git-status/domain/model/branch-git-status";
 import { toBranchTableRows } from "@/entities/branches/ui/branches-table/branch-table-row";
 
 import { generateBranch } from "../../../../../tests/fake/branch";
 
 describe("toBranchTableRows", () => {
-  it("attaches each branch's summary by branch name, in branch order", () => {
+  it("attaches each branch's Git status by branch name, in branch order", () => {
     // GIVEN
     const main = generateBranch({ id: "b-main", name: "main" });
     const feature = generateBranch({ id: "b-feature", name: "feature" });
-    const summaries: Record<string, BranchRepositorySummary> = {
+    const empty: BranchGitStatus = { status: "ok", repositories: [], counts: [], unloaded: [] };
+    const gitStatuses: Record<string, BranchGitStatus> = {
       feature: { status: "denied" },
-      main: { status: "ok", repositories: [], counts: [] },
+      main: empty,
     };
 
     // WHEN
-    const rows = toBranchTableRows([main, feature], summaries);
+    const rows = toBranchTableRows([main, feature], gitStatuses);
 
     // THEN
     expect(rows).toEqual([
-      { ...main, repositorySummary: { status: "ok", repositories: [], counts: [] } },
-      { ...feature, repositorySummary: { status: "denied" } },
+      { ...main, gitStatus: empty },
+      { ...feature, gitStatus: { status: "denied" } },
     ]);
   });
 
-  it("marks a branch with no summary yet as pending", () => {
+  it("marks a branch with no Git status yet as pending", () => {
     // GIVEN
     const branch = generateBranch({ name: "new-branch" });
 
@@ -33,6 +34,6 @@ describe("toBranchTableRows", () => {
     const [row] = toBranchTableRows([branch], {});
 
     // THEN
-    expect(row?.repositorySummary).toEqual({ status: "pending" });
+    expect(row?.gitStatus).toEqual({ status: "pending" });
   });
 });
