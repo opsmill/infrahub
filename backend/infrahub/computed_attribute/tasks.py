@@ -729,7 +729,6 @@ async def computed_attribute_setup_python(
     database = await get_database()
     async with database.start_session() as db:
         log = get_run_logger()
-        barrier = await build_default_branch_barrier(db=db)
 
         # Reconciling the automations deletes every one its gather did not return, so the registry
         # is refreshed first: a gather off a stale one would delete automations that nothing else
@@ -741,6 +740,7 @@ async def computed_attribute_setup_python(
             await wait_for_schema_to_converge(branch_name=branch_name, component=component, db=db, log=log)
 
         try:
+            barrier = await build_default_branch_barrier(db=db)
             changed_element_set = _resolve_changed_elements(changed_elements)
 
             triggers_python, _ = await gather_trigger_computed_attribute_python(db=db)
