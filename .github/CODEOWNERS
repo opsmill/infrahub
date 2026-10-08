@@ -5,7 +5,17 @@
 /docs/ @opsmill/sa @opsmill/product
 /docs/docs @opsmill/sa @opsmill/backend @opsmill/frontend
 /docs/docs/reference/ @opsmill/backend @opsmill/frontend
+/docs/docs/deploy-manage/install-configure/ @opsmill/sa @opsmill/backend @opsmill/frontend @opsmill/cloud
+/docs/docs/deploy-manage/maintain-upgrade/ @opsmill/sa @opsmill/backend @opsmill/frontend @opsmill/cloud
+/docs/docs/deploy-manage/run-observe/ @opsmill/sa @opsmill/backend @opsmill/frontend @opsmill/cloud
 /docker-compose.yml @opsmill/cloud
+/development/ @opsmill/cloud
+/.github/ @opsmill/cloud
+/.devcontainer/ @opsmill/cloud
+/.dockerignore @opsmill/cloud
+/python_testcontainers/ @opsmill/cloud
+/tasks/ @opsmill/cloud
+/utilities/ @opsmill/cloud
 /frontend/app/src/shared/api/graphql/generated/**
 /frontend/app/src/shared/api/rest/types.generated.ts
 /python_sdk/ @opsmill/backend
