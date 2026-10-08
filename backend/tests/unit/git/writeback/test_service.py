@@ -941,6 +941,7 @@ SOURCE_BRANCH_CASES: list[SourceBranchCase] = [
         deleted=[],
         joining=_merge(entry_id="merge-3", source_branch="add-vlan-again", source_commit=OTHER),
     ),
+    SourceBranchCase(name="a_merge_that_joined_comes_from_another_branch", deleted=["feature"], joining=OTHER_MERGE),
     SourceBranchCase(
         name="a_failed_deletion_keeps_the_branch",
         deleted=[],
@@ -966,6 +967,7 @@ async def test_delivered_source_branch_is_deleted_when_no_queued_merge_needs_it(
     result = await rig.deliver()
 
     assert result.outcome == DeliveryOutcome.DELIVERED
+    assert rig.intent.queue.entries == (() if joining is None else (joining,))
     assert rig.git.deleted_branches == case.deleted
     assert rig.git.notified_branches == case.deleted
 
