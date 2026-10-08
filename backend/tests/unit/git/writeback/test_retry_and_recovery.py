@@ -397,6 +397,76 @@ def test_the_wait_before_the_next_attempt_follows_the_retries_of_the_task(case: 
     assert delay == case.expected
 
 
+@dataclass
+class WaitingRetryCase:
+    name: str
+    manual: bool
+    retry_due_at: datetime
+    """When the retry of another attempt chain is due."""
+    deferred: bool
+
+
+WAITING_RETRY_CASES: list[WaitingRetryCase] = [
+    WaitingRetryCase(
+        name="automatic_attempt_leaves_the_queue_to_a_retry_due_later",
+        manual=False,
+        retry_due_at=NOW + timedelta(seconds=30),
+        deferred=True,
+    ),
+    WaitingRetryCase(
+        name="manual_attempt_runs_while_a_retry_is_due_later",
+        manual=True,
+        retry_due_at=NOW + timedelta(seconds=30),
+        deferred=False,
+    ),
+    WaitingRetryCase(
+        name="automatic_attempt_runs_when_the_retry_is_due_now",
+        manual=False,
+        retry_due_at=NOW,
+        deferred=False,
+    ),
+    WaitingRetryCase(
+        name="automatic_attempt_runs_when_the_retry_was_due_earlier",
+        manual=False,
+        retry_due_at=NOW - timedelta(seconds=1),
+        deferred=False,
+    ),
+]
+DELIVERED_COMMIT = f"{UPSTREAM}+{FEATURE}"
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in WAITING_RETRY_CASES])
+async def test_an_automatic_attempt_leaves_the_queue_to_the_retry_that_another_chain_waits_for(
+    rig: Rig, case: WaitingRetryCase, caplog: pytest.LogCaptureFixture
+) -> None:
+    initial = rig.state.intents[REPOSITORY.id]
+    rig.state.intents[REPOSITORY.id] = replace(initial, progress=DeliveryProgress(retry_due_at=case.retry_due_at))
+
+    with caplog.at_level(logging.INFO, logger=RUN_LOGGER):
+        result = await rig.service.deliver(
+            final_attempt=False, manual=case.manual, entry=ENTRY, retry_delay=timedelta(seconds=30)
+        )
+
+    intent = rig.state.intents[REPOSITORY.id]
+    if case.deferred:
+        assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DEFERRED)
+        assert intent.queue.entries == (ENTRY,)
+        assert intent.progress.retry_due_at == case.retry_due_at
+        assert rig.state.calls == ["enqueue", "read"]
+        assert rig.git.calls == []
+        assert rig.service.lock_registry.locks == {}
+        assert [record.getMessage() for record in caplog.records if record.name == RUN_LOGGER] == [
+            "Delivery attempt of repository net-repo starts (final attempt: False, manual: False).",
+            "The queue of repository net-repo holds the merge merge-1 of branch add-vlan.",
+            "Left the queue of repository net-repo to the retry that is due at 2026-10-08 12:00:30+00:00.",
+        ]
+    else:
+        assert result == DeliveryAttemptResult(outcome=DeliveryOutcome.DELIVERED, commit=DELIVERED_COMMIT)
+        assert intent.queue.entries == ()
+        assert intent.progress.retry_due_at is None
+        assert rig.git.pushed == [DELIVERED_COMMIT]
+
+
 @dataclass(frozen=True)
 class FlowRunsRead:
     flow_filter: FlowFilter | None
