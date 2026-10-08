@@ -13,7 +13,6 @@ from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
 
 from .rollback_handler import PreMergeState
-from .write_blocker import MergeProtectionState
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
@@ -33,6 +32,7 @@ if TYPE_CHECKING:
     from .post_merge import PostMergeDispatcher
     from .rollback_handler import MergeRollbackHandler
     from .schema_analyzer import MergeSchemaAnalyzer
+    from .start_gate import MergeStartGate
     from .write_blocker import MergeWriteBlocker
 
 
@@ -51,6 +51,7 @@ class BranchMergeOrchestrator:
         rollback_handler: MergeRollbackHandler,
         post_merge_dispatcher: PostMergeDispatcher,
         merge_write_blocker: MergeWriteBlocker,
+        merge_start_gate: MergeStartGate,
         ipam_diff_parser: IpamDiffParser,
         diff_repository: DiffRepository,
         diff_serializer: DiffSummarySerializer,
@@ -67,6 +68,7 @@ class BranchMergeOrchestrator:
         self.rollback_handler = rollback_handler
         self.post_merge_dispatcher = post_merge_dispatcher
         self.merge_write_blocker = merge_write_blocker
+        self.merge_start_gate = merge_start_gate
         self.ipam_diff_parser = ipam_diff_parser
         self.diff_repository = diff_repository
         self.diff_serializer = diff_serializer
@@ -81,7 +83,7 @@ class BranchMergeOrchestrator:
             raise ValidationError("Cannot merge a branch while a merge is in progress.")
 
         # Publish the shared write-protection key before any graph write
-        await self.merge_write_blocker.set(branch=self.source_branch.name, state=MergeProtectionState.MERGING)
+        await self.merge_start_gate.block_writes(branch=self.source_branch)
 
         # The merge timestamp is stamped after the write-protection key is set so that a write
         # slipping in ahead of the block is stamped before merge_at and stays out of the rollback

@@ -4,6 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
+from infrahub_sdk.branch import BranchStatus
 from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.protocols import CoreFileCheck, CoreGenericRepository, CoreProposedChange, CoreStandardCheck
 
@@ -35,6 +36,7 @@ BRANCH_NAME = "repository-import-status"
 INHERITED_BRANCH_NAME = "repository-import-status-inherited"
 REBASED_BRANCH_NAME = "repository-import-status-rebased"
 DEACTIVATED_BRANCH_NAME = "repository-import-status-deactivated"
+INCOMPLETE_BRANCH_NAME = "repository-import-status-incomplete"
 MANAGED_REPOSITORY = "core-repo"
 READ_ONLY_REPOSITORY = "read-only-repo"
 RERUN_REPOSITORY_CHECKS = """
@@ -189,6 +191,23 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
 
         proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change_id)
         assert proposed_change_after.state.value == ProposedChangeState.OPEN.value
+
+    async def test_branch_merge_refuses_a_failed_import(self, proposed_change_id: str, client: InfrahubClient) -> None:
+        with pytest.raises(GraphQLError) as excinfo:
+            await client.branch.merge(branch_name=BRANCH_NAME)
+
+        assert [error["message"] for error in excinfo.value.errors] == [
+            f"Cannot merge. The last import of repositories '{MANAGED_REPOSITORY}', '{READ_ONLY_REPOSITORY}' failed: "
+            f"push a fix, reimport the current commit, or set the repositories to inactive."
+        ]
+        branch = await client.branch.get(branch_name=BRANCH_NAME)
+        assert branch.status == BranchStatus.OPEN
+
+        for branch_name in ("main", BRANCH_NAME):
+            tag = await client.create(kind=InfrahubKind.TAG, branch=branch_name, data={"name": f"after-{branch_name}"})
+            await tag.save()
+            stored = await client.get(kind=InfrahubKind.TAG, id=tag.id, branch=branch_name)
+            assert stored.name.value == f"after-{branch_name}"
 
     async def test_checks_clear_once_the_imports_succeed(
         self,
@@ -351,3 +370,43 @@ class TestProposedChangeRepositoryImportStatus(TestInfrahubApp):
 
         proposed_change_after = await client.get(kind=CoreProposedChange, id=proposed_change.id)
         assert proposed_change_after.state.value == ProposedChangeState.MERGED.value
+
+    async def test_branch_merge_waits_for_a_completed_import(
+        self, repository_ids: dict[str, str], client: InfrahubClient
+    ) -> None:
+        """A branch with no completed import is refused, and merges once each import completes."""
+        await client.branch.create(branch_name=INCOMPLETE_BRANCH_NAME, sync_with_git=False)
+        await self._set_sync_status(
+            client=client,
+            repository_id=repository_ids[MANAGED_REPOSITORY],
+            branch=INCOMPLETE_BRANCH_NAME,
+            status=RepositorySyncStatus.SYNCING,
+        )
+        await self._set_sync_status(
+            client=client,
+            repository_id=repository_ids[READ_ONLY_REPOSITORY],
+            branch=INCOMPLETE_BRANCH_NAME,
+            status=RepositorySyncStatus.UNKNOWN,
+        )
+
+        with pytest.raises(GraphQLError) as excinfo:
+            await client.branch.merge(branch_name=INCOMPLETE_BRANCH_NAME)
+
+        assert [error["message"] for error in excinfo.value.errors] == [
+            f"Cannot merge. Repositories '{MANAGED_REPOSITORY}', '{READ_ONLY_REPOSITORY}' have not finished "
+            f"importing: wait for the import, or reimport the current commit if it does not finish."
+        ]
+        branch = await client.branch.get(branch_name=INCOMPLETE_BRANCH_NAME)
+        assert branch.status == BranchStatus.OPEN
+
+        for repository_id in repository_ids.values():
+            await self._set_sync_status(
+                client=client,
+                repository_id=repository_id,
+                branch=INCOMPLETE_BRANCH_NAME,
+                status=RepositorySyncStatus.IN_SYNC,
+            )
+        await client.branch.merge(branch_name=INCOMPLETE_BRANCH_NAME)
+
+        branch = await client.branch.get(branch_name=INCOMPLETE_BRANCH_NAME)
+        assert branch.status == BranchStatus.MERGED

@@ -19,6 +19,17 @@ This approach provides several benefits:
 
 This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
 
+## Before the merge starts: repository imports
+
+Infrahub refuses to merge a branch when the sync status that a Git repository recorded on that branch shows that its last import failed or has not completed. The check applies to every merge, whether you merge a Proposed Change, run the `BranchMerge` GraphQL mutation or call `branch.merge` in the Python SDK. Infrahub reads the sync status that each repository that is not inactive recorded on the source branch:
+
+- **Import Error**: the last import of the repository on the branch failed. Push a fix to Git, run **Reimport current commit** for the repository on that branch, or set the repository to inactive on the branch, then merge again.
+- **Syncing** or **Unknown**: no completed import is recorded on the branch. Wait for the import to complete, then merge again. If the status does not change, run **Reimport current commit** for the repository on that branch.
+
+A repository that never imported on the branch shows the status that the default branch had when the branch was created. That status does not block the merge. Inactive repositories are not checked.
+
+A refused merge writes nothing. The branch stays open, the default branch is not modified, and the error message names each repository that blocks the merge.
+
 ## During the merge
 
 While a merge is running, Infrahub temporarily blocks writes to keep the data consistent:

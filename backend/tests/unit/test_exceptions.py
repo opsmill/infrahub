@@ -12,6 +12,7 @@ from infrahub.exceptions import (
     CommitNotFoundError,
     Error,
     GraphQLQueryError,
+    MergeRepositoryImportError,
     PropagatedFromWorkerError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -77,6 +78,10 @@ ERROR_PICKLE_CASES = [
         name="slotted_state",
         error=SlottedError(detail="slot-value"),
     ),
+    ErrorPickleCase(
+        name="merge_repository_import",
+        error=MergeRepositoryImportError(failed_repositories=["repo-1"], incomplete_repositories=["repo-2"]),
+    ),
 ]
 
 
@@ -109,6 +114,81 @@ def test_pickle_preserves_slot_state() -> None:
 
     assert isinstance(restored, SlottedError)
     assert restored.detail == "slot-value"
+
+
+@dataclass
+class MergeRepositoryImportMessageCase:
+    name: str
+    failed_repositories: list[str]
+    incomplete_repositories: list[str]
+    expected: str
+
+
+MERGE_REPOSITORY_IMPORT_MESSAGE_CASES = [
+    MergeRepositoryImportMessageCase(
+        name="one_failed",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=[],
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_failed",
+        failed_repositories=["repo-1", "repo-2"],
+        incomplete_repositories=[],
+        expected=(
+            "Cannot merge. The last import of repositories 'repo-1', 'repo-2' failed: push a fix, reimport the "
+            "current commit, or set the repositories to inactive."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="one_incomplete",
+        failed_repositories=[],
+        incomplete_repositories=["Repo-1"],
+        expected=(
+            "Cannot merge. Repository 'Repo-1' has not finished importing: wait for the import, or reimport the "
+            "current commit if it does not finish."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="two_incomplete",
+        failed_repositories=[],
+        incomplete_repositories=["repo-1", "repo-2"],
+        expected=(
+            "Cannot merge. Repositories 'repo-1', 'repo-2' have not finished importing: wait for the import, or "
+            "reimport the current commit if it does not finish."
+        ),
+    ),
+    MergeRepositoryImportMessageCase(
+        name="failed_and_incomplete",
+        failed_repositories=["repo-1"],
+        incomplete_repositories=["repo-2"],
+        expected=(
+            "Cannot merge. The last import of repository 'repo-1' failed: push a fix, reimport the current commit, "
+            "or set the repository to inactive. Repository 'repo-2' has not finished importing: wait for the "
+            "import, or reimport the current commit if it does not finish."
+        ),
+    ),
+]
+
+
+@pytest.mark.parametrize("case", MERGE_REPOSITORY_IMPORT_MESSAGE_CASES, ids=lambda case: case.name)
+def test_merge_repository_import_error_names_each_repository(case: MergeRepositoryImportMessageCase) -> None:
+    error = MergeRepositoryImportError(
+        failed_repositories=case.failed_repositories,
+        incomplete_repositories=case.incomplete_repositories,
+    )
+
+    assert error.message == case.expected
+
+
+def test_merge_repository_import_error_requires_a_repository() -> None:
+    with pytest.raises(
+        ValueError, match=r"^A repository import refusal needs at least one failed or incomplete repository$"
+    ):
+        MergeRepositoryImportError(failed_repositories=[], incomplete_repositories=[])
 
 
 def test_reconstructed_error_can_be_raised_and_caught() -> None:
