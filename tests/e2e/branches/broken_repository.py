@@ -7,4 +7,4 @@ from dataclasses import dataclass
 class BrokenRepository:
     branch: str
     repository_name: str
-    failed_task_id: str
+    repository_id: str

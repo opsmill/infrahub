@@ -13,14 +13,23 @@ pytestmark = pytest.mark.shard_branches_repo
 
 if TYPE_CHECKING:
     from broken_repository import BrokenRepository
+    from infrahub_sdk import InfrahubClient
     from playwright.async_api import Page
 
 BAND_TIMEOUT_MS = 30_000
 
+FAILED_REPOSITORY_TASK_QUERY = """
+query FailedRepositoryTask($taskId: String!, $branch: String!, $repositoryId: String!) {
+  InfrahubTask(ids: [$taskId], branch: $branch, related_node__ids: [$repositoryId], state: [FAILED, CRASHED]) {
+    edges { node { id } }
+  }
+}
+"""
+
 
 class TestBranchDetailsRepositoryImportError:
     async def test_import_error_band_links_to_the_task_page(
-        self, admin_page: Page, broken_repository: BrokenRepository
+        self, admin_page: Page, infrahub_client: InfrahubClient, broken_repository: BrokenRepository
     ) -> None:
         await admin_page.goto(f"/branches/{quote(broken_repository.branch, safe='')}")
 
@@ -40,4 +49,18 @@ class TestBranchDetailsRepositoryImportError:
         await expect(band).to_contain_text("is missing a configuration file")
 
         await band.get_by_role("link", name="View task log").click()
-        await expect(admin_page).to_have_url(re.compile(rf"/tasks/{re.escape(broken_repository.failed_task_id)}"))
+        # The band links the newest failed import, which the periodic Git sync can replace after the first one.
+        task_url = re.compile(r"/tasks/(?P<task_id>[0-9a-f-]{36})(?=$|[?#])")
+        await expect(admin_page).to_have_url(task_url)
+        match = task_url.search(admin_page.url)
+        assert match
+        response = await infrahub_client.execute_graphql(
+            query=FAILED_REPOSITORY_TASK_QUERY,
+            variables={
+                "taskId": match["task_id"],
+                "branch": broken_repository.branch,
+                "repositoryId": broken_repository.repository_id,
+            },
+            tracker="query-failed-repository-task",
+        )
+        assert response["InfrahubTask"]["edges"]

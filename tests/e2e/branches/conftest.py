@@ -46,7 +46,7 @@ async def _wait_for_import_error(client: InfrahubClient, branch: str, repository
         await deadline.tick(pause=POLL_INTERVAL_SECONDS)
 
 
-async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> str:
+async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repository_id: str) -> None:
     # The repository reaches Import Error before its import task is recorded as failed.
     deadline = Deadline(
         f"a failed import task for repository {repository_id} on {branch}", timeout=POLL_TIMEOUT_SECONDS
@@ -57,9 +57,8 @@ async def _wait_for_failed_import_task(client: InfrahubClient, branch: str, repo
             variables={"branch": branch, "repositoryId": repository_id},
             tracker="query-failed-import-task",
         )
-        edges = response["InfrahubTask"]["edges"]
-        if edges:
-            return edges[0]["node"]["id"]
+        if response["InfrahubTask"]["edges"]:
+            return
         await deadline.tick(pause=POLL_INTERVAL_SECONDS)
 
 
@@ -110,8 +109,8 @@ async def broken_repository(
         repository_created = True
 
         repository_id = await _wait_for_import_error(infrahub_client, branch, repository_name)
-        task_id = await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
-        yield BrokenRepository(branch=branch, repository_name=repository_name, failed_task_id=task_id)
+        await _wait_for_failed_import_task(infrahub_client, branch, repository_id)
+        yield BrokenRepository(branch=branch, repository_name=repository_name, repository_id=repository_id)
     finally:
         try:
             await branch_api.delete(branch)
