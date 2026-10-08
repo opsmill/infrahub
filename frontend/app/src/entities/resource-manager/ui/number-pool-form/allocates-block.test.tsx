@@ -77,6 +77,20 @@ describe("AllocatesBlock", () => {
       await expect.element(component.getByText("Attribute *")).not.toBeInTheDocument();
     });
 
+    test("shows the scope fields with the labels the scope picker uses", async () => {
+      // GIVEN
+      const pool = { node: "InfraInterface", attribute: "speed", scope: ["mtu", "unknown"] };
+
+      // WHEN
+      const component = await render(<AllocatesBlock variant="read-only" {...pool} />);
+
+      // THEN
+      const allocates = component.getByRole("group", { name: "What it allocates" });
+      await expect.element(allocates.getByText("MTU")).toBeVisible();
+      await expect.element(allocates.getByText("unknown")).toBeVisible();
+      await expect.element(allocates.getByText("mtu", { exact: true })).not.toBeInTheDocument();
+    });
+
     test("states that a pool without scope is not scoped", async () => {
       // GIVEN
       const pool = { node: "InfraInterface", attribute: "speed", scope: [] };
@@ -185,20 +199,22 @@ describe("AllocatesBlock", () => {
       expect(formRef.current?.getValues("allocation_scope")).toEqual(["device"]);
     });
 
-    test("shows the scope field under Scoped by", async () => {
+    test("labels the scope picker with Scoped by", async () => {
       // GIVEN
-      const scopeField = <span>scope picker</span>;
+      const props = { variant: "input" } as const;
 
       // WHEN
       const component = await render(
         <TestForm>
-          <AllocatesBlock variant="input" scopeField={scopeField} />
+          <AllocatesBlock {...props} />
         </TestForm>
       );
 
       // THEN
-      await expect.element(component.getByText("Scoped by")).toBeVisible();
-      await expect.element(component.getByText("scope picker")).toBeVisible();
+      const scope = component.getByRole("group", { name: "Scoped by" });
+      await expect
+        .element(scope.getByRole("button", { name: "No relationship or attribute" }))
+        .toBeVisible();
       await expect.element(component.getByText(/The scope is optional/)).toBeVisible();
     });
   });

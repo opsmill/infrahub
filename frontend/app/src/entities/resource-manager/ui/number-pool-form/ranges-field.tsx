@@ -1,5 +1,6 @@
 import { Button } from "@infrahub/ui";
 import { PlusIcon, Trash2Icon } from "lucide-react";
+import type { ReactNode } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 
 import { Col, Row } from "@/shared/components/container";
@@ -16,6 +17,7 @@ import {
 import { RANGES_FIELD } from "@/entities/resource-manager/domain/model/pool";
 import { sortStoredRanges } from "@/entities/resource-manager/domain/rules/plan-range-changes";
 import {
+  formatRange,
   getRangeClipHint,
   type RangeLimits,
   validateRangeRows,
@@ -24,6 +26,9 @@ import {
 type RangeKey = "start" | "end" | "weight";
 type RangeFieldName = `${typeof RANGES_FIELD}.${number}.${RangeKey}`;
 type RangesFormValues = { [RANGES_FIELD]: RangeRow[] };
+
+const WEIGHT_ORDER_NOTE =
+  "The highest weight is used first. An empty weight counts as 0, and equal weights start with the lowest range.";
 
 const RANGE_KEYS: RangeKey[] = ["start", "end", "weight"];
 const RANGE_LABELS: Record<RangeKey, string> = { start: "Start", end: "End", weight: "Weight" };
@@ -66,7 +71,7 @@ export function RangesField({ limits }: RangesFieldProps) {
 
   return (
     <Col>
-      <RangesSectionHeader limits={limits} />
+      <RangesHeader description={`${WEIGHT_ORDER_NOTE}${describeLimits(limits)}`} />
 
       {fields.length > 0 && (
         <Row aria-hidden className="px-0.5 font-medium text-foreground-muted text-xs">
@@ -98,7 +103,7 @@ export function RangesField({ limits }: RangesFieldProps) {
                 return (
                   <Input
                     key={key}
-                    aria-label={RANGE_LABELS[key]}
+                    aria-label={`${RANGE_LABELS[key]}, range ${index + 1}`}
                     inputMode="numeric"
                     placeholder={key === "weight" ? "0" : undefined}
                     aria-invalid={hasError}
@@ -123,7 +128,7 @@ export function RangesField({ limits }: RangesFieldProps) {
                 variant="ghost"
                 shape="square"
                 size="md"
-                aria-label="Remove range"
+                aria-label={`Remove range ${index + 1}`}
                 className="text-foreground-muted"
                 onPress={() => {
                   remove(index);
@@ -135,7 +140,7 @@ export function RangesField({ limits }: RangesFieldProps) {
             </Row>
 
             {message && (
-              <p id={messageId} className="text-danger text-xs">
+              <p id={messageId} role="alert" className="text-danger text-xs">
                 {message}
               </p>
             )}
@@ -174,13 +179,7 @@ interface ReadOnlyRangesFieldProps {
 export function ReadOnlyRangesField({ ranges }: ReadOnlyRangesFieldProps) {
   return (
     <Col>
-      <Col className="gap-0.5">
-        <h3 className="font-medium text-sm">Ranges</h3>
-        <p className="text-pretty text-foreground-muted text-xs">
-          These ranges come from the schema. To change them, update the schema on the default
-          branch.
-        </p>
-      </Col>
+      <RangesHeader description="These ranges come from the schema. To change them, update the schema on the default branch." />
 
       {ranges.length === 0 ? (
         <p className="text-foreground-muted text-sm">No ranges.</p>
@@ -188,9 +187,7 @@ export function ReadOnlyRangesField({ ranges }: ReadOnlyRangesFieldProps) {
         <ul className="flex flex-col gap-1">
           {sortStoredRanges(ranges).map((range) => (
             <li key={range.id} className="flex gap-2 text-sm tabular-nums">
-              <span>
-                {formatNumberDisplay(range.start)} – {formatNumberDisplay(range.end)}
-              </span>
+              <span>{formatRange(range.start, range.end)}</span>
               {range.weight !== null && (
                 <span className="text-foreground-muted">
                   Weight {formatNumberDisplay(range.weight)}
@@ -204,18 +201,17 @@ export function ReadOnlyRangesField({ ranges }: ReadOnlyRangesFieldProps) {
   );
 }
 
-function RangesSectionHeader({ limits }: RangesFieldProps) {
-  const hasLimits = limits?.min != null && limits?.max != null;
+function describeLimits(limits?: RangeLimits | null): string {
+  const { attribute, min, max } = limits ?? {};
+  if (min == null || max == null) return "";
+  return ` ${attribute} accepts ${formatRange(min, max)}.`;
+}
 
+function RangesHeader({ description }: { description: ReactNode }) {
   return (
     <Col className="gap-0.5">
       <h3 className="font-medium text-sm">Ranges</h3>
-      <p className="text-pretty text-foreground-muted text-xs">
-        The highest weight is used first. An empty weight counts as 0, and equal weights start with
-        the lowest range.
-        {hasLimits &&
-          ` ${limits.attribute} accepts ${formatNumberDisplay(limits.min!)} – ${formatNumberDisplay(limits.max!)}.`}
-      </p>
+      <p className="text-pretty text-foreground-muted text-xs">{description}</p>
     </Col>
   );
 }

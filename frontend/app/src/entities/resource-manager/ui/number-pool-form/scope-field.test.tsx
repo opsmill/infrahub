@@ -128,7 +128,8 @@ function renderScopeField(node: string | null, attribute: string, scope: string[
   };
   const rendered = render(
     <TestForm ref={formRef} defaultValues={defaultValues}>
-      <ScopeField />
+      <span id="scope-label">Scoped by</span>
+      <ScopeField labelledBy="scope-label" />
     </TestForm>
   );
   return { formRef, rendered };

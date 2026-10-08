@@ -1,5 +1,4 @@
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { type FieldValues, useForm, useWatch } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
@@ -28,10 +27,9 @@ import {
   RangesField,
   ReadOnlyRangesField,
 } from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
-import { ScopeField } from "@/entities/resource-manager/ui/number-pool-form/scope-field";
 import { useGetNumberPoolForEditing } from "@/entities/resource-manager/ui/queries/get-number-pool-for-editing.query";
-import type { NumberAttributeParameters } from "@/entities/schema/domain/model/schema";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];
@@ -39,16 +37,13 @@ interface NumberPoolFormProps {
   onSuccess?: ObjectFormProps["onSuccess"];
 }
 
-function useRangeLimits(kind?: string | null, attributeName?: string | null): RangeLimits | null {
-  const nodes = useAtomValue(nodeSchemasAtom);
-  const generics = useAtomValue(genericSchemasAtom);
-  const attribute = [...generics, ...nodes]
-    .find((schema) => schema.kind === kind)
-    ?.attributes?.find(({ name }) => name === attributeName);
-  if (!attribute) return null;
+function useRangeLimits(kind?: string, attributeName?: string): RangeLimits | null {
+  const { schema } = useSchema(kind);
+  const attribute = schema?.attributes?.find(({ name }) => name === attributeName);
+  if (attribute?.kind !== ATTRIBUTE_KIND.NUMBER) return null;
 
-  const parameters = attribute.parameters as NumberAttributeParameters | undefined;
-  return { attribute: attribute.name, min: parameters?.min_value, max: parameters?.max_value };
+  const { min_value, max_value } = attribute.parameters ?? {};
+  return { attribute: attribute.name, min: min_value, max: max_value };
 }
 
 function toFieldValue(value: string) {
@@ -118,7 +113,7 @@ const NumberPoolFormContent = ({
             scope={storedPool?.allocationScope ?? []}
           />
         ) : (
-          <AllocatesBlock variant="input" scopeField={<ScopeField />} />
+          <AllocatesBlock variant="input" />
         )}
 
         {rangeSaveError && <Alert type={ALERT_TYPES.ERROR} message={rangeSaveError} />}
