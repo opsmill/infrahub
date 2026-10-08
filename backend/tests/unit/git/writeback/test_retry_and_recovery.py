@@ -3,9 +3,18 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
-from prefect.client.schemas.objects import TaskRun
+from prefect.client.schemas.filters import (
+    FlowFilter,
+    FlowRunFilter,
+    FlowRunFilterState,
+    FlowRunFilterStateType,
+    FlowRunFilterTags,
+)
+from prefect.client.schemas.objects import FlowRun, StateType, TaskRun
 from prefect.states import Failed
 
 from infrahub.core.constants import RepositoryDeliveryFailureCause, RepositoryDeliveryStatus
@@ -23,7 +32,7 @@ from infrahub.git.models import PushRejectionReason
 from infrahub.git.tasks import deliver_pending_merges
 from infrahub.git.writeback.models import DeliveryAttemptResult, DeliveryFailure, DeliveryOutcome, PendingMerge
 from infrahub.git.writeback.ports import RepositoryRef
-from infrahub.git.writeback.runs import is_retryable_delivery_failure, next_retry_delay
+from infrahub.git.writeback.runs import PrefectDeliveryRunQuery, is_retryable_delivery_failure, next_retry_delay
 from infrahub.git.writeback.service import RepositoryWritebackService, RetryableDeliveryError
 from infrahub.lock import InfrahubLockRegistry
 from tests.unit.git.writeback.fakes import (
@@ -32,6 +41,9 @@ from tests.unit.git.writeback.fakes import (
     InMemoryDeliveryState,
     RecordingRegenerationReleaser,
 )
+
+if TYPE_CHECKING:
+    from prefect.client.schemas.sorting import FlowRunSort
 
 REPOSITORY = RepositoryRef(id="repository-1", name="net-repo", destination_git_branch="main")
 NOW = datetime(2026, 10, 8, 12, 0, tzinfo=UTC)
@@ -361,3 +373,71 @@ def test_the_wait_before_the_next_attempt_follows_the_retries_of_the_task(case: 
     )
 
     assert delay == case.expected
+
+
+@dataclass(frozen=True)
+class FlowRunsRead:
+    flow_filter: FlowFilter | None
+    flow_run_filter: FlowRunFilter | None
+    limit: int | None
+    offset: int
+    sort: FlowRunSort | None
+
+
+class RecordingFlowRunClient:
+    """Records every argument of each read of flow runs, in order, and returns the runs that the test gives."""
+
+    def __init__(self, *, runs: list[FlowRun]) -> None:
+        self.runs = runs
+        self.reads: list[FlowRunsRead] = []
+
+    async def read_flow_runs(
+        self,
+        flow_filter: FlowFilter | None = None,
+        flow_run_filter: FlowRunFilter | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+        sort: FlowRunSort | None = None,
+    ) -> list[FlowRun]:
+        self.reads.append(
+            FlowRunsRead(
+                flow_filter=flow_filter, flow_run_filter=flow_run_filter, limit=limit, offset=offset, sort=sort
+            )
+        )
+        return self.runs
+
+
+@dataclass
+class QueuedRunCase:
+    name: str
+    runs: list[FlowRun]
+    expected: bool
+
+
+QUEUED_RUN_CASES: list[QueuedRunCase] = [
+    QueuedRunCase(name="returned_run_waits", runs=[FlowRun(flow_id=uuid4(), name="deliver")], expected=True),
+    QueuedRunCase(name="no_returned_run_means_none_waits", runs=[], expected=False),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in QUEUED_RUN_CASES])
+async def test_the_queued_run_query_asks_once_for_a_run_with_both_delivery_tags_that_waits_to_start(
+    case: QueuedRunCase,
+) -> None:
+    client = RecordingFlowRunClient(runs=case.runs)
+
+    queued = await PrefectDeliveryRunQuery(client=client).has_queued_run(repository_id=REPOSITORY.id)
+
+    assert queued is case.expected
+    assert client.reads == [
+        FlowRunsRead(
+            flow_filter=None,
+            flow_run_filter=FlowRunFilter(
+                tags=FlowRunFilterTags(all_=["infrahub.app/node/repository-1", "infrahub.app/repository-delivery"]),
+                state=FlowRunFilterState(type=FlowRunFilterStateType(any_=[StateType.SCHEDULED, StateType.PENDING])),
+            ),
+            limit=1,
+            offset=0,
+            sort=None,
+        )
+    ]
