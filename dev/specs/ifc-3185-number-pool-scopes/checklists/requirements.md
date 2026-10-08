@@ -32,6 +32,6 @@
 ## Notes
 
 - The GraphQL query names in FR-016 to FR-022 are part of the contract already communicated to the frontend team (PR #10932), not an implementation choice, so they stay in the spec.
-- Four points that the sources left open or that the landed code of IFC-3184 settled are listed under "Open points settled by judgment" in the spec, each with the choice made; the decisions of the product owner are recorded in the spec and override the sources.
+- The source statements that the decisions of the product owner replace are listed under "Source statements replaced by the decisions" in the spec; the decisions are recorded in the spec and override the sources.
 - No clarification question was asked: every unclear point had a default in the product owner's decisions, the PR description, the PRD or the code of the branch.
 - Re-checked on 2026-10-08 after the rewrite against `feature-number-pools-1.12` and decisions 6 to 10: every item still holds.

@@ -1,6 +1,6 @@
 # Research: Number pool allocation scopes
 
-Each entry records a decision, the reason, and the alternatives considered. Sources: the Notion PRD (allocation scopes part), the Jira tickets of IFC-3185, the description and the diff of PR #10932, the ten decisions of the product owner, and the code of the branch `feature-number-pools-1.12`.
+Each entry records a decision, the reason, and the alternatives considered. Sources: the Notion PRD (allocation scopes part), the Jira tickets of IFC-3185, the description and the diff of PR #10932, the thirteen decisions of the product owner, and the code of the branch `feature-number-pools-1.12`.
 
 ## R1. Where the scope is stored
 
@@ -34,7 +34,7 @@ Each entry records a decision, the reason, and the alternatives considered. Sour
 **Alternatives considered**:
 
 - Allowing a path into a related node (`site__region`): the division of a node would then depend on another node's attribute, which can change without touching the holder; the PRD refuses it. Rejected.
-- Storing `role__value` as `role` (Jira IFC-3348): a property path is neither a name nor an id. Refused instead, recorded as an open point settled by judgment in the spec.
+- Storing `role__value` as `role` (Jira IFC-3348): a property path is neither a name nor an id. Refused instead (decision 12).
 - Normalising `List` values (sorting) before comparison: would make two stored values one division without a rule the user can see. Rejected by decision 10.
 
 ## R4. Which schema the scope is resolved against
