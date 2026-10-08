@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -14,11 +16,13 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.diff.summary_cache import DiffSummaryCache
 from infrahub.core.diff.summary_serializer import DiffSummarySerializer
 from infrahub.core.initialization import create_branch
+from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher
 from infrahub.core.merge.selective_regen.generator_output import GeneratorCascadeOutput
 from infrahub.core.merge.selective_regen.orchestrator import build_merge_selective_regeneration
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
 from infrahub.server import app
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import (
@@ -31,6 +35,7 @@ from tests.helpers.dependency_override import override_dependency
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubAppWithoutLocalWorkflow
 from tests.helpers.workflow_override import override_workflow
+from tests.unit.git.writeback.fakes import FixedClock, InMemoryDeliveryState
 
 from .conftest import make_node_diff
 
@@ -276,12 +281,21 @@ class TestMergeSelectiveRegenSelection(TestInfrahubAppWithoutLocalWorkflow):
             summary_cache=DiffSummaryCache(
                 cache=memory_cache, serializer=DiffSummarySerializer(), key_namespace="branch_merge"
             ),
+            barrier=RegenerationBarrier(
+                state=InMemoryDeliveryState(clock=FixedClock(now=datetime.now(tz=UTC)), repository_names={}),
+                narrowed=NarrowedHoldCache(
+                    cache=memory_cache, ttl_seconds=NARROWED_HOLD_TTL_SECONDS, max_bytes=NARROWED_HOLD_MAX_BYTES
+                ),
+                default_branch_name=default_branch.name,
+                sleep=asyncio.sleep,
+            ),
             log=logging.getLogger("test"),
         )
         await dispatcher.dispatch(
             context=self._context(admin_account, default_branch),
             target_branch=default_branch.name,
             merge_diff_cache_key=DIFF_CACHE_KEY,
+            releasing=None,
         )
 
         generator_calls = workflow_recorder.get_execute_calls_for(REQUEST_GENERATOR_DEFINITION_RUN)

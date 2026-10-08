@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from prefect import flow, get_run_logger
@@ -15,7 +17,13 @@ from infrahub.core.branch.data_deleter import BranchDataDeleter
 from infrahub.core.branch.delete_coordinator import BranchDeleteOrchestrator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
-from infrahub.core.constants import PROFILES_RELATIONSHIP_NAME, SYSTEM_USER_ID, DiffAction, MutationAction
+from infrahub.core.constants import (
+    PROFILES_RELATIONSHIP_NAME,
+    SYSTEM_USER_ID,
+    DiffAction,
+    FullRegenerationReason,
+    MutationAction,
+)
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.ipam_diff_parser import IpamDiffParser
 from infrahub.core.diff.model.path import (
@@ -42,6 +50,7 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeChange,
     MergeRecomputeCoordinator,
 )
+from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, RegenerationBarrier
 from infrahub.core.merge.regeneration_dispatcher import PostMergeRegenerationDispatcher, submit_full_regeneration
 from infrahub.core.merge.schema_analyzer import MergeSchemaAnalyzer
 from infrahub.core.merge.selective_regen.generator_output import (
@@ -69,6 +78,9 @@ from infrahub.events.constants import NodeMutationOrigin
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
 from infrahub.exceptions import ValidationError
+from infrahub.git.writeback.constants import NARROWED_HOLD_MAX_BYTES, NARROWED_HOLD_TTL_SECONDS
+from infrahub.git.writeback.models import HeldWiden
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.utils import log_exception_guard
 from infrahub.workers.dependencies import (
@@ -629,9 +641,23 @@ async def _retire_agnostic_fields_of_base_deletions(
         )
 
 
+async def _build_regeneration_barrier(db: InfrahubDatabase, default_branch: Branch) -> RegenerationBarrier:
+    return RegenerationBarrier(
+        state=WritebackIntentStore(
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: datetime.now(tz=UTC)
+        ),
+        narrowed=NarrowedHoldCache(
+            cache=await get_cache(), ttl_seconds=NARROWED_HOLD_TTL_SECONDS, max_bytes=NARROWED_HOLD_MAX_BYTES
+        ),
+        default_branch_name=default_branch.name,
+        sleep=asyncio.sleep,
+    )
+
+
 async def _build_post_merge_regeneration_dispatcher(
     db: InfrahubDatabase,
     branch: Branch,
+    barrier: RegenerationBarrier,
     log: Logger | LoggerAdapter[Logger],
 ) -> PostMergeRegenerationDispatcher:
     component_registry = get_component_registry()
@@ -653,6 +679,7 @@ async def _build_post_merge_regeneration_dispatcher(
         summary_cache=DiffSummaryCache(
             cache=await get_cache(), serializer=DiffSummarySerializer(), key_namespace="branch_merge"
         ),
+        barrier=barrier,
         log=log,
     )
 
@@ -677,16 +704,27 @@ async def post_process_branch_merge(
         default_branch = registry.get_branch_from_registry()
         diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
+        barrier = await _build_regeneration_barrier(db=db, default_branch=default_branch)
         if config.SETTINGS.main.selective_execution_after_merge:
             target_branch_obj = await Branch.get_by_name(db=db, name=target_branch)
-            dispatcher = await _build_post_merge_regeneration_dispatcher(db=db, branch=target_branch_obj, log=log)
+            dispatcher = await _build_post_merge_regeneration_dispatcher(
+                db=db, branch=target_branch_obj, barrier=barrier, log=log
+            )
             await dispatcher.dispatch(
                 context=context,
                 target_branch=target_branch,
                 merge_diff_cache_key=merge_diff_cache_key,
+                releasing=None,
             )
         else:
-            await submit_full_regeneration(workflow=get_workflow(), context=context, target_branch=target_branch)
+            held = await barrier.hold_widen(
+                branch=target_branch,
+                widen=HeldWiden(scope="all", reason=FullRegenerationReason.FEATURE_DISABLED, hold_seq=0),
+                releasing=None,
+            )
+            await submit_full_regeneration(
+                workflow=get_workflow(), context=context, target_branch=target_branch, exclude_repository_ids=held
+            )
 
         if not config.SETTINGS.main.diff_update_after_merge:
             return

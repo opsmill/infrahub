@@ -12,7 +12,7 @@ from infrahub.log import get_logger
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Sequence
 
-    from infrahub.git.writeback.models import HoldReceipt
+    from infrahub.git.writeback.models import HeldWiden, HoldReceipt
     from infrahub.git.writeback.ports import DeliveryStatePort
     from infrahub.services.adapters.cache import InfrahubCache
 
@@ -92,7 +92,8 @@ class NarrowedHoldCache:
 class RegenerationBarrier:
     """Hold the regeneration that a repository owns while its merges wait for their push, and admit the rest.
 
-    It never raises: when the delivery state cannot be read after the retries, it admits every candidate.
+    It never raises: when the delivery state cannot be read after the retries, it admits every candidate and
+    holds no marker.
     """
 
     def __init__(
@@ -122,24 +123,62 @@ class RegenerationBarrier:
         """
         if branch != self.default_branch_name:
             return list(candidates)
+        return await self._with_retries(
+            attempt=lambda: self._partition(candidates=candidates, releasing=releasing),
+            fallback=list(candidates),
+            branch=branch,
+            gave_up="Could not read the delivery state; dispatching every candidate without a hold",
+            repository_ids=sorted(
+                {candidate.repository_id for candidate in candidates if candidate.repository_id is not None}
+            ),
+        )
+
+    async def hold_widen(self, *, branch: str, widen: HeldWiden, releasing: str | None) -> list[str]:
+        """Hold the marker under each pending repository except `releasing`, and return the sorted ids that hold it.
+
+        A blanket regeneration excludes the returned repositories, because the release of each marker regenerates them.
+        """
+        if branch != self.default_branch_name:
+            return []
+        return await self._with_retries(
+            attempt=lambda: self._hold_widen(widen=widen, releasing=releasing),
+            fallback=[],
+            branch=branch,
+            gave_up="Could not read the delivery state; regenerating every repository without a hold",
+            scope=widen.scope,
+            reason=widen.reason,
+        )
+
+    async def _with_retries[ResultT](
+        self,
+        *,
+        attempt: Callable[[], Awaitable[ResultT]],
+        fallback: ResultT,
+        branch: str,
+        gave_up: str,
+        **context: object,
+    ) -> ResultT:
         delays = iter(BARRIER_STATE_READ_DELAYS_SECONDS[:BARRIER_STATE_READ_RETRIES])
         while True:
             try:
-                return await self._partition(candidates=candidates, releasing=releasing)
+                return await attempt()
             # Nothing retries the flows that consult the barrier, so a raise would drop their regeneration.
             except Exception:
                 delay = next(delays, None)
                 if delay is None:
-                    log.exception(
-                        "Could not read the delivery state; dispatching every candidate without a hold",
-                        branch=branch,
-                        repository_ids=sorted(
-                            {candidate.repository_id for candidate in candidates if candidate.repository_id is not None}
-                        ),
-                    )
-                    return list(candidates)
+                    log.exception(gave_up, branch=branch, **context)
+                    return fallback
                 log.warning("Could not read the delivery state; reading it again", branch=branch, exc_info=True)
                 await self.sleep(delay)
+
+    async def _hold_widen(self, *, widen: HeldWiden, releasing: str | None) -> list[str]:
+        held = HeldRegeneration(widen=widen)
+        holders = sorted(await self.state.pending_repository_ids() - {releasing})
+        return [
+            repository_id
+            for repository_id in holders
+            if await self.state.hold(repository_id=repository_id, held=held) is not None
+        ]
 
     async def _partition[RequestT: BaseModel](
         self, *, candidates: Sequence[OwnedRegeneration[RequestT]], releasing: str | None

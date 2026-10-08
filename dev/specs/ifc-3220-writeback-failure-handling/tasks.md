@@ -438,7 +438,7 @@ deployment rule.** T070 to T073 are not.
       members. For a state error and for a lock timeout: an error that clears within the retries
       holds as usual, and one that persists admits after the last retry. Pass a `sleep` that records
       the delays and returns at once.
-- [ ] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
+- [X] T066 [US3] Wire the barrier into `PostMergeRegenerationDispatcher` in
       `backend/infrahub/core/merge/regeneration_dispatcher.py`: on the built plan, in `_submit` after
       the cascade, in `_full_regeneration` (marker scope `all`, with the reason it receives) and in
       `_submit_full_terminal_regeneration` (marker scope `terminals`, with the reason
