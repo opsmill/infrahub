@@ -29,6 +29,9 @@ services:
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
       PREFECT_LOCAL_STORAGE_PATH: ${PREFECT_LOCAL_STORAGE_PATH:-/opt/prefect/}
+      INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG: ${INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG:-7d}
+      INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS: ${INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS:-7d}
+      INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY: ${INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY:-30d}
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
