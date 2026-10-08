@@ -49,7 +49,7 @@ async def build_writeback_abandoner(
     context: InfrahubContext,
     log: Logger | LoggerAdapter[Logger],
 ) -> WritebackAbandoner:
-    """Build the abandoner of the repository, with the same state, Git adapter and releaser as its delivery service.
+    """Build the abandoner of the repository, with its delivery state, Git adapter and regeneration releaser.
 
     Args:
         db: A session that the flow opened for the life of the abandoner.

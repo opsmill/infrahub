@@ -374,15 +374,22 @@ async def test_crash_before_the_clear_leaves_a_lease_that_a_held_only_run_releas
     assert rig.intent.held.release_leases == ()
 
 
-async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(rig: Rig) -> None:
+async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
     entry = _merge()
     await rig.queue(entry)
     await rig.hold("definition-1")
     rig.releaser.failures.append(RuntimeError("dispatch failed"))
     rig.clear_calls()
 
-    with pytest.raises(RuntimeError, match=r"^dispatch failed$"):
+    with caplog.at_level(logging.ERROR, logger=RUN_LOGGER), pytest.raises(RuntimeError, match=r"^dispatch failed$"):
         await rig.abandon(queue_version=1)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.ERROR] == [
+        "The merges ['merge-1'] of repository net-repo are abandoned, but the release of their held regeneration "
+        "failed; a later delivery run of the repository releases it."
+    ]
 
     held = HeldItem(id="definition-1", hold_seq=1)
     assert rig.state.calls == ["abandon", "expire_lease"]
@@ -398,14 +405,18 @@ async def test_failed_release_expires_the_lease_now_and_keeps_the_items_held(rig
     assert rig.releaser.releases == [Release(repository_id=REPOSITORY.id, held=_held(held))]
 
 
-async def test_failed_expiry_keeps_the_error_of_the_release(rig: Rig) -> None:
+async def test_failed_expiry_keeps_the_error_of_the_release(rig: Rig, caplog: pytest.LogCaptureFixture) -> None:
     await rig.queue(_merge())
     await rig.hold("definition-1")
     rig.releaser.failures.append(RuntimeError("dispatch failed"))
     rig.state.failures["expire_lease"] = [DatabaseError(message="database is down")]
 
-    with pytest.raises(RuntimeError, match=r"^dispatch failed$"):
+    with caplog.at_level(logging.WARNING, logger=RUN_LOGGER), pytest.raises(RuntimeError, match=r"^dispatch failed$"):
         await rig.abandon(queue_version=1)
+
+    assert [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING] == [
+        "Failed to end the release lease lease-1 of repository net-repo."
+    ]
 
     held = HeldItem(id="definition-1", hold_seq=1)
     assert rig.intent.held.release_leases == (
