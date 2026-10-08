@@ -49,7 +49,7 @@ class AllocationScope:
                 isinstance(entry, dict) and isinstance(entry.get("id"), str) and isinstance(entry.get("name"), str)
             ):
                 raise ValidationError(
-                    f"allocation_scope of pool {pool}: the stored entry {json.dumps(entry)} is not an element "
+                    f"allocation_scope of pool {pool}: the stored entry {json.dumps(entry, default=repr)} is not an element "
                     'with an "id" and a "name"; recreate the pool to set its scope'
                 )
             elements.append(ScopeElement(id=entry["id"], name=entry["name"]))

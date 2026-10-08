@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import datetime
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -40,6 +41,7 @@ REFUSED_ENTRY_CASES = [
     RefusedEntryCase(name="missing-id", entry={"name": "site"}, shown='{"name": "site"}'),
     RefusedEntryCase(name="id-not-text", entry={"id": 7, "name": "site"}, shown='{"id": 7, "name": "site"}'),
     RefusedEntryCase(name="name-not-text", entry={"id": SITE.id, "name": 3}, shown=f'{{"id": "{SITE.id}", "name": 3}}'),
+    RefusedEntryCase(name="not-serializable", entry=datetime.date(2020, 1, 1), shown='"datetime.date(2020, 1, 1)"'),
 ]
 
 DIVISION_VALUES_CASES = [
