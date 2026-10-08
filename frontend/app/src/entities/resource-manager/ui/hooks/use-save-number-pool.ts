@@ -81,7 +81,6 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
         : { errorMessage: null };
 
     if (errorMessage === null) {
-      setSaveError(null);
       toast(createElement(Alert, { type: ALERT_TYPES.SUCCESS, message: successMessage }), {
         toastId: "alert-success-number-pool-save",
       });
@@ -154,6 +153,7 @@ export function useSaveNumberPool({ initialPool, onSuccess }: UseSaveNumberPoolP
 
   /** Resolves to the values the form resets to, so rows created before a refusal stay linked to their range. */
   async function save(data: FieldValues): Promise<FormSubmitResult | undefined> {
+    setSaveError(null);
     const keptRows = poolId ? await updatePool(poolId, data) : await createPool(data);
     return keptRows ? { resetTo: { ...data, [RANGES_FIELD]: keptRows } } : undefined;
   }

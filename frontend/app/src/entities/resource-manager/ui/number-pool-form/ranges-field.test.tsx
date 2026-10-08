@@ -188,6 +188,27 @@ describe("RangesField", () => {
     await expect.element(component.getByText("Overlaps 150 – 250")).not.toBeInTheDocument();
   });
 
+  test("clears the overlap on the remaining row once the overlapping row is removed", async () => {
+    // GIVEN
+    const component = await renderRanges([
+      { start: "100", end: "199", weight: "" },
+      { start: "150", end: "250", weight: "" },
+      { start: "300", end: "399", weight: "" },
+    ]);
+    await component.getByRole("button", { name: "Submit" }).click();
+    await expect.element(component.getByText("Overlaps 100 – 199")).toBeVisible();
+
+    // WHEN
+    await component.getByRole("button", { name: "Remove range 1", exact: true }).click();
+
+    // THEN
+    await expect
+      .element(component.getByRole("textbox", { name: "Start, range 1", exact: true }))
+      .toHaveValue("150");
+    await expect.element(component.getByText("Overlaps 100 – 199")).not.toBeInTheDocument();
+    await expect.element(component.getByText("Overlaps 150 – 250")).not.toBeInTheDocument();
+  });
+
   test("blocks the submit when a weight is negative", async () => {
     // GIVEN
     const onSubmit = vi.fn();

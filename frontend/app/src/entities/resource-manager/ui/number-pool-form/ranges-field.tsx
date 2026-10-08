@@ -1,6 +1,6 @@
 import { Button } from "@infrahub/ui";
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useFieldArray, useFormContext, useFormState, useWatch } from "react-hook-form";
 
 import { Col, Row } from "@/shared/components/container";
@@ -54,6 +54,7 @@ export function RangesField({ limits }: RangesFieldProps) {
   const { fields, append, remove } = useFieldArray({ control, name: RANGES_FIELD });
   const rows = useWatch({ control, name: RANGES_FIELD }) ?? [];
   const formState = useFormState({ control, name: RANGES_FIELD });
+  const [isRemovalPending, setIsRemovalPending] = useState(false);
 
   function revalidate(changedField?: RangeFieldName) {
     const current = getValues(RANGES_FIELD);
@@ -68,6 +69,13 @@ export function RangesField({ limits }: RangesFieldProps) {
     );
     trigger(fieldNames.map(({ name }) => name));
   }
+
+  // Each row's validator captures its index at registration, so rows are revalidated only once they have re-registered after a removal.
+  useEffect(() => {
+    if (!isRemovalPending) return;
+    setIsRemovalPending(false);
+    revalidate();
+  }, [isRemovalPending]);
 
   return (
     <Col>
@@ -132,7 +140,7 @@ export function RangesField({ limits }: RangesFieldProps) {
                 className="text-foreground-muted"
                 onPress={() => {
                   remove(index);
-                  revalidate();
+                  setIsRemovalPending(true);
                 }}
               >
                 <Trash2Icon />

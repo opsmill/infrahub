@@ -482,6 +482,44 @@ describe("NumberPoolForm", () => {
       expect(applyRangeChanges).not.toHaveBeenCalled();
     });
 
+    test("shows only the pool read failure when saving again after a range refusal", async () => {
+      // GIVEN
+      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
+      const component = await renderEditForm();
+      await component.getByRole("textbox", { name: "End" }).first().fill("150");
+      await component.getByRole("button", { name: "Save" }).click();
+      await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+      vi.mocked(getNumberPoolForEditing).mockRejectedValue(
+        new Error("Number pool pool-1 not found")
+      );
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.element(component.getByText(POOL_UNREADABLE)).toBeVisible();
+      await expect.element(component.getByText(RANGE_REFUSED)).not.toBeInTheDocument();
+    });
+
+    test("no longer shows a range refusal once a later save is refused for the pool itself", async () => {
+      // GIVEN
+      applyRangeChanges.mockResolvedValueOnce({ errorMessage: RANGE_REFUSED });
+      const component = await renderEditForm();
+      await component.getByRole("textbox", { name: "End" }).first().fill("150");
+      await component.getByRole("button", { name: "Save" }).click();
+      await expect.element(component.getByText(RANGE_REFUSED)).toBeVisible();
+      await component.getByLabelText("Name *").fill("Renamed pool");
+      updatePool.mockRejectedValue(new Error("Name already used"));
+
+      // WHEN
+      await component.getByRole("button", { name: "Save" }).click();
+
+      // THEN
+      await expect.poll(() => updatePool).toHaveBeenCalled();
+      await expect.element(component.getByText(RANGE_REFUSED)).not.toBeInTheDocument();
+      expect(onSuccess).not.toHaveBeenCalled();
+    });
+
     test("keeps a range added elsewhere after the form loaded when saving", async () => {
       // GIVEN
       const component = await renderEditForm();
