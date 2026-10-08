@@ -178,16 +178,35 @@ changelog/                                                        # NEW   fragme
 frontend/app/src/
 ├── shared/api/graphql/generated/{graphql-env.d.ts,graphql-cache.d.ts,types.ts}   # REGEN
 ├── shared/api/errors/catalogue.generated.ts                                       # REGEN
-├── entities/repository/api/get-repository-commits-from-api.ts                     # NEW
+├── entities/repository/api/get-repository-commits-from-api.ts                     # NEW  gql.tada document, pending_count on the first page only
+├── entities/repository/api/repository-commits.mappers.ts                          # NEW  response to domain commit log
+├── entities/repository/domain/model/repository.ts                                 # EDIT  REPOSITORY_COMMITS_TAB, commit log types
+├── entities/repository/domain/model/repository-git-unavailable-error.ts           # NEW  UNAVAILABLE answer thrown as a typed error
 ├── entities/repository/domain/use-cases/get-repository-commits.ts                 # NEW
-├── entities/repository/domain/rules/is-git-state-available.ts                     # NEW  pure predicate for polling
-├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  refetchInterval while UNAVAILABLE
+├── entities/repository/domain/rules/should-retry-git-unavailable.ts               # NEW  every unavailable reason but NOT_IMPLEMENTED is retried
+├── entities/repository/domain/rules/get-pending-import-count.ts                   # NEW  count shown on the tab link
+├── entities/repository/domain/rules/get-commit-web-url.ts                         # NEW  "View on GitHub" link, credentials dropped
+├── entities/repository/domain/rules/get-repository-location.ts                    # NEW
+├── entities/repository/ui/queries/get-repository-commits.query.ts                 # NEW  infinite query, capped retry while unavailable
+├── entities/repository/ui/queries/repository-commits.constants.ts                 # NEW  page size, stale time, retry delay and cap
 ├── entities/repository/ui/queries/repository.query-keys.ts                        # NEW or EDIT
-├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  list, markers, copy hash, freshness
-├── entities/repository/domain/model/repository.ts                                 # EDIT  REPOSITORY_COMMITS_TAB
+├── entities/repository/ui/repository-commits-tab.tsx                              # NEW  tab link with the pending-import count
+├── entities/repository/ui/repository-commits-manager.tsx                          # NEW  commit list: DataTable inside InfiniteScroll, empty and error states
+├── entities/repository/ui/repository-commits-header.tsx                           # NEW  refresh button, freshness line, condition notice
+├── entities/repository/ui/repository-commits.view.ts                              # NEW  pure display decisions (empty state, stale rows, next-page state, badges)
+├── entities/repository/ui/repository-commits-notice.tsx                           # NEW
+├── entities/repository/ui/get-repository-commits-columns.tsx                      # NEW
+├── entities/repository/ui/repository-commit-state-badges.tsx                      # NEW  state and marker labels
+├── entities/repository/ui/repository-commit-row-actions.tsx                       # NEW  row menu: Copy commit hash (shared CopyToClipboardMenuItem, toast), View on GitHub
 ├── entities/nodes/object/ui/object-details/object-details-tabs.tsx                # EDIT  Commits tab, isOfKind gate
 ├── pages/objects/object-details/repository-commits.tsx                            # NEW  route element
-└── app/router.tsx                                                                 # EDIT  nested route
+├── app/router.tsx                                                                 # EDIT  nested route
+├── shared/components/table/data-table.tsx                                         # EDIT  getRowId for rows that are not nodes
+├── shared/components/errors/no-data-found.tsx                                     # EDIT  optional title
+├── shared/components/a11y/copied-announcement.tsx                                 # NEW  screen-reader announcement of a copy
+├── shared/components/buttons/copy-to-clipboard-button.tsx                         # EDIT  announces the copy
+├── shared/hooks/useCopyToClipboard.ts                                             # EDIT  reports whether the copy succeeded
+└── shared/utils/clipboard.ts                                                      # NEW  clipboard API with a selection fallback
 
 tests/e2e/repository/test_repository_commits.py                                    # NEW  shard_branches_repo
 ```
@@ -262,7 +281,7 @@ Ordered for the fastest frontend hand-off. Each phase is independently reviewabl
 - The git work in both handlers runs in `asyncio.to_thread`. GitPython drives subprocesses
   synchronously, and one page is a head resolution, an ancestry check, up to `limit` per-commit
   ancestry checks and a paged walk. On the handler's event loop that stalls every other message the
-  worker is serving, and the commit tab polls while unavailable. Page size stays bounded at 100 by
+  worker is serving, and the commit tab retries while unavailable. Page size stays bounded at 100 by
   the resolver; no lower cap is imposed, because with the work off the loop the cost is the caller's
   own latency and the default page is 10.
 - Component tests on `FileRepo` fixtures (behind, in sync, rewritten via force-push to the
@@ -375,26 +394,58 @@ determinism logic, no test and no documentation entry.
 
 ### Phase D: frontend
 
-- Commits tab on the repository detail page with markers, per-row state, `CopyToClipboardButton`
-  for the full hash, `DateDisplay fullTimestamp` for `fetched_at`, `Pagination` with
-  `usePagination`, `NoDataFound` for `UNAVAILABLE`, polling while unavailable, `REWRITTEN` banner.
+- Commits tab on the repository detail page with markers, per-row state, `DateDisplay fullTimestamp`
+  for the freshness line, `NoDataFound` for `UNAVAILABLE` and a notice for `REWRITTEN`. The list is a
+  `DataTable` inside `InfiniteScroll`, which loads the next page when the end of the list comes into
+  view and shows no total; `Pagination` was dropped because it always shows a total, which FR-024
+  forbids. The full hash is copied from the row menu item "Copy commit hash", built on the shared
+  `CopyToClipboardMenuItem`, and a toast confirms the copy or says it failed. The same menu offers
+  "View on GitHub" for a repository hosted on GitHub.
+- The tab link shows the pending-import count, read from the first page of the same query through
+  `select`, so the label and the list share one read. That query runs on every repository tab, so
+  the request passes `processErrorMessage: () => {}`: the label never raises a toast, and the commit
+  view shows the error itself.
 - Freshness line shows `checked_at` when present and `fetched_at` otherwise, so a quiet read-only
   repository reads as recently checked rather than weeks stale. Both are shown when they differ.
 - "Check remote now" action, read-only repositories only, submitting
   `InfrahubReadOnlyRepositoryCheckRefs`. Disabled while a check is in flight, and it surfaces the
   returned task id rather than firing a second run (FR-025). Without it the on-demand half of
   User Story 2 has no entry point outside the API, which matters because the interval stays at 15
-  minutes.
-- Polling keeps the loaded page: `placeholderData: keepPreviousData` (or the equivalent) so a cold
-  worker answering a later poll with `UNAVAILABLE` cannot blank a populated list. The
-  not-yet-available state renders only when there is no previous data.
+  minutes. Not landed yet, and its placement on the design canvas is still open.
+- Waiting for a worker uses capped retries, not polling. The use-case throws an `UNAVAILABLE` answer
+  as `RepositoryGitUnavailableError`, and the query retries it every 10 seconds, up to 30 times
+  (about five minutes), for `NOT_CLONED`, `TIMEOUT` and a missing reason. `NOT_IMPLEMENTED` is not
+  retried, because it does not change for a deployment. `refetchInterval` was tried first and
+  dropped: each interval refetch of a query with no data resets it to pending and clears its error,
+  so the not-yet-available state flickered to a spinner. The cap exists because a clone that failed
+  for good keeps answering `NOT_CLONED`; once retrying stops, the not-yet-available state asks the
+  user to refresh. This departs from FR-014, and the spec records the departure under that
+  requirement.
+- A refresh that answers `UNAVAILABLE` cannot blank a populated list: it fails like any other
+  refetch, TanStack Query keeps the loaded pages, and the view flags the rows as stale. The
+  not-yet-available state renders only when no page is loaded. `placeholderData: keepPreviousData`
+  is not used, because it only fills in across a query-key change. Older pages do not load while a
+  refresh runs or after it fails: they are read at offsets of the current history and would not
+  line up with a first page the refresh left out of date.
 - Accessibility (FR-028): each commit state and each marker carries a text label or an icon with an
-  accessible name, never colour alone, and the copy action announces completion. Asserted in the
-  Vitest tests by querying on accessible names rather than on classes.
+  accessible name, never colour alone. The hash copy is confirmed by a toast, and the shared
+  `CopyToClipboardButton` now announces a copy to screen readers. Asserted in the Vitest tests by
+  querying on accessible names rather than on classes.
 - The drift column is specified (`InfrahubRepositoryBranchDrift` is live) but has no rows until the
   IFC-3104 Branches card exists; User Story 3's UI is tracked against that card.
-- Vitest tests for the tab, the polling predicate, the keep-previous-data behaviour and the
-  accessible names; e2e test on `demo_edge_repo`.
+- Vitest tests:
+  - the list, its empty and error states, retries, stale rows and loading more
+    (`repository-commits-manager.test.tsx`, `repository-commits-manager-load-more.test.tsx`)
+  - the display decisions (`repository-commits.view.test.ts`)
+  - the row menu's copy toasts and GitHub link (`repository-commit-row-actions.test.tsx`)
+  - the tab link's pending-import count (`repository-commits-tab.test.tsx`)
+  - the retry cap and which reasons are retried (`get-repository-commits.query.test.ts`,
+    `should-retry-git-unavailable.test.ts`)
+  - the typed error, the mapper, the API document and the other domain rules
+    (`get-repository-commits.test.ts`, `repository-commits.mappers.test.ts`,
+    `get-repository-commits-from-api.test.ts`, `get-commit-web-url.test.ts`,
+    `get-pending-import-count.test.ts`, `get-repository-location.test.ts`)
+- e2e test on `demo_edge_repo`, not landed yet.
 - The e2e suite asserts against a repository seeded already behind, with the sync tick awaited once
   in a fixture, rather than pushing mid-test and waiting out the one-minute cron. A fixed
   minute of wall time per run is both slow and a standing flake risk; the push-then-observe

@@ -23,7 +23,7 @@ import {
   ObjectTableToolbar,
 } from "@/entities/nodes/object/ui/object-table/toolbar/object-table-toolbar";
 
-export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> {
+interface DataTableBaseProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   columnOrder?: ColumnOrderState;
   columns: ColumnDef<T>[];
   columnVisibility?: VisibilityState;
@@ -31,9 +31,26 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   data: Array<T>;
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
+  gridTemplateColumns?: (columnCount: number) => string;
+}
+
+interface NodeDataTableProps<T extends NodeCore> extends DataTableBaseProps<T> {
+  getRowId?: never;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
-  gridTemplateColumns?: (columnCount: number) => string;
+}
+
+/** Rows that are not nodes have no `id` to key on and no node toolbar to select into. */
+interface PlainDataTableProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  toolbarActions?: never;
+  enableRowSelection?: never;
+}
+
+interface DataTableGridProps<T> extends DataTableBaseProps<T> {
+  getRowId: (row: T) => string;
+  enableRowSelection: RowSelectionOptions<T>["enableRowSelection"];
+  renderSelectionToolbar?: (selectedRows: T[], onClose: () => void) => React.ReactNode;
 }
 
 /**
@@ -52,7 +69,33 @@ const defaultGridTemplateColumns = (columnCount: number) =>
     ? "1fr 2.5rem"
     : `repeat(${columnCount - 2}, fit-content(${COLUMN_MAX_WIDTH})) 1fr 2.5rem`;
 
-export function DataTable<T extends NodeCore>({
+const getNodeId = (row: NodeCore) => row.id;
+
+export function DataTable<T extends NodeCore>(props: NodeDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: PlainDataTableProps<T>): React.ReactNode;
+export function DataTable<T>(props: NodeDataTableProps<T & NodeCore> | PlainDataTableProps<T>) {
+  if (props.getRowId) {
+    return <DataTableGrid {...props} getRowId={props.getRowId} enableRowSelection={false} />;
+  }
+
+  const { toolbarActions, enableRowSelection = true, ...nodeProps } = props;
+  return (
+    <DataTableGrid
+      {...nodeProps}
+      getRowId={getNodeId}
+      enableRowSelection={enableRowSelection}
+      renderSelectionToolbar={(selectedRows, onClose) => (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={onClose}
+          renderMore={toolbarActions}
+        />
+      )}
+    />
+  );
+}
+
+function DataTableGrid<T>({
   columnOrder,
   columns,
   columnVisibility,
@@ -60,11 +103,12 @@ export function DataTable<T extends NodeCore>({
   data,
   isLoading,
   renderEmpty,
-  toolbarActions,
+  renderSelectionToolbar,
   enableRowSelection,
+  getRowId,
   gridTemplateColumns = defaultGridTemplateColumns,
   ...props
-}: DataTableProps<T>) {
+}: DataTableGridProps<T>) {
   const { isAuthenticated } = useAuth();
 
   const table = useReactTable({
@@ -73,7 +117,7 @@ export function DataTable<T extends NodeCore>({
     enableRowSelection,
     getCoreRowModel: getCoreRowModel(),
     manualSorting: true,
-    getRowId: (row) => row.id,
+    getRowId,
     state: {
       columnOrder,
       columnVisibility,
@@ -146,13 +190,7 @@ export function DataTable<T extends NodeCore>({
           </div>
         ))}
 
-      {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
-        />
-      )}
+      {selectedRows.length > 0 && renderSelectionToolbar?.(selectedRows, table.resetRowSelection)}
     </div>
   );
 }

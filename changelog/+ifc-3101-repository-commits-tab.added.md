@@ -1,0 +1,3 @@
+The repository page has a new Commits tab. Once Infrahub can read a repository's commit history, the tab lists the commits of the branch you are viewing, newest first, with the short hash, summary, author and date of each one. It marks the commit Infrahub has imported and the current head of the remote, shows how many commits are pending import, also as a count on the tab, and shows a notice when the tracked ref was rewritten so the imported commit is no longer part of its history. The tab says when the listing was last updated, and each commit has a menu to copy its full hash or, for repositories hosted on GitHub, view the commit on GitHub.
+
+Until Infrahub can read a repository's commit history, the tab says the commit log is not available.
