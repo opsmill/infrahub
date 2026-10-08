@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { queryClient } from "@/shared/api/rest/client";
+
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { RepositoryPushState } from "@/entities/repository/domain/model/repository-push-state";
 import { abandonDelivery } from "@/entities/repository/domain/use-cases/abandon-delivery";
 
@@ -130,8 +133,11 @@ describe("AbandonDeliveryModal", () => {
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
 
-  test("shows the refusal message of the backend when the pending pushes changed", async () => {
+  test("shows the refusal message, closes and reloads the state when the pending pushes changed", async () => {
     // GIVEN
+    const invalidateQueriesSpy = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockResolvedValue(undefined);
     vi.mocked(abandonDelivery).mockRejectedValue(
       new Error(
         "The pending pushes of repository repo-a changed since version 4; reload and try again."
@@ -150,6 +156,8 @@ describe("AbandonDeliveryModal", () => {
         )
       )
       .toBeVisible();
+    await vi.waitFor(() => expect(mockOnOpenChange).toHaveBeenCalledWith(false));
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: objectQueryKeys.all });
   });
 
   test("closes without abandoning on Cancel", async () => {

@@ -13,6 +13,7 @@ interface AbandonDeliveryProps extends MutationConfig<typeof abandonDelivery> {}
 export const ABANDON_DELIVERY_MUTATION_KEY = ["repository", "abandon-delivery"] as const;
 
 // The pending pushes live on the default branch, and the backend refuses an abandonment sent on any other.
+// invalidation-at-callsite: the caller invalidates `objectQueryKeys.all` with its own toast.
 export function useAbandonDeliveryMutation(config?: Omit<AbandonDeliveryProps, "mutationFn">) {
   const defaultBranch = useDefaultBranch();
 
