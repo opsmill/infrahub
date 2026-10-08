@@ -7,10 +7,9 @@ import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.exceptions import GraphQLError, ServerNotReachableError
 from infrahub_sdk.uuidt import UUIDT
 
@@ -26,8 +25,7 @@ from tests.adapters.repository_record_store import (
     InMemoryRepositoryRecordStore,
     WrittenRecord,
 )
-from tests.helpers.git import LocalRemote, clone_repository
-from tests.helpers.test_client import dummy_async_request
+from tests.helpers.git import GraphRecordingClient, LocalRemote, clone_repository
 
 if TYPE_CHECKING:
     from infrahub.git.repository import InfrahubRepository
@@ -44,60 +42,6 @@ REWRITTEN_AT = datetime(2026, 10, 6, 9, 30, tzinfo=UTC)
 @pytest.fixture(autouse=True)
 def capture_sync_logs(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(logging.INFO, logger=SYNC_LOGGER)
-
-
-def branch_payload(name: str, status: str = "OPEN") -> dict[str, Any]:
-    return {
-        "id": f"{name}-id",
-        "name": name,
-        "description": None,
-        "sync_with_git": True,
-        "is_default": name == "main",
-        "has_schema_changes": False,
-        "graph_version": None,
-        "status": status,
-        "origin_branch": "main",
-        "branched_from": "2024-01-01T00:00:00Z",
-    }
-
-
-class GraphRecordingClient(InfrahubClient):
-    """An SDK client whose graph holds the given Infrahub branches and keeps every commit recorded on them.
-
-    ``branch_statuses`` sets the status the listing reports for a branch, OPEN otherwise, and
-    ``rejecting_branches`` refuse a commit write the way the API refuses one on a branch that needs a rebase.
-    """
-
-    def __init__(self, branch_names: tuple[str, ...]) -> None:
-        super().__init__(config=Config(requester=dummy_async_request))
-        self.branch_names = branch_names
-        self.branch_statuses: dict[str, str] = {}
-        self.rejecting_branches: frozenset[str] = frozenset()
-        self.recorded_commits: list[tuple[str, str]] = []
-
-    async def execute_graphql(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        tracker = kwargs.get("tracker")
-        variables = kwargs.get("variables") or {}
-        if tracker == "query-branch-all":
-            return {
-                "Branch": [
-                    branch_payload(name=name, status=self.branch_statuses.get(name, "OPEN"))
-                    for name in self.branch_names
-                ]
-            }
-        if tracker == "mutation-branch-create":
-            raise GraphQLError(errors=[{"message": "The branch already exists"}])
-        if tracker == "query-branch":
-            return {"Branch": [branch_payload(name=variables["branch_name"])]}
-        if tracker == "mutation-repository-update-commit":
-            if kwargs["branch_name"] in self.rejecting_branches:
-                raise GraphQLError(errors=[{"message": rejected_commit_message(kwargs["branch_name"])}])
-            self.recorded_commits.append((kwargs["branch_name"], variables["commit"]))
-        return {}
-
-
-def rejected_commit_message(branch_name: str) -> str:
-    return f"Branch {branch_name} must be rebased before any updates can be made"
 
 
 @dataclass(frozen=True)

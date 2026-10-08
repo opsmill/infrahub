@@ -235,6 +235,22 @@ either case.
   records a commit the remote never carried, so the remote discarded content here exactly as a
   rewrite does. It is reconciled and recorded like any other rewrite, on every worker: a worktree
   the remote head is an ancestor of was rewound too, and FR-001b resets it.
+- **A plain push that the synchronisation has not imported yet.** The check before the graph merge
+  compares each remote head with the graph commit for equality (FR-005d). It therefore refuses a
+  merge after a plain push to the source branch, or to the trunk of a repository whose branch
+  records a commit other than the commit of its trunk, not only after a rewrite. A branch created
+  from an older trunk is held too, even when it changed no file of that repository. The branch stays
+  open, and the merge goes through once the next cycle imports the head. Contract section 9 says why
+  the rule is equality and not ancestry.
+- **A delivery that IFC-3220 holds while the trunk moves.** IFC-3220 FR-023 forbids an import of a
+  branch while a delivery for that branch is pending, so the graph keeps the old trunk commit. When
+  the remote trunk moves in that time, the check before the graph merge (FR-005d) finds a remote
+  head the graph does not record. It refuses every merge of a branch that records a commit other
+  than the commit of the trunk of that repository, until the delivery is done. IFC-3220 expects the
+  opposite: in its User Story 2, scenario 2 queues a second merge behind the pending one, and
+  scenario 3 replays onto a remote trunk that advanced. The two rules conflict. This spec does not
+  decide which one wins. The decision is open and belongs to IFC-3220
+  (`dev/specs/ifc-3220-writeback-failure-handling/spec.md`).
 - **The commit Infrahub imported is no longer present in the local object database.** Ancestry
   cannot be tested. The branch is treated as diverged, which is the safe classification, and the
   record names the imported commit as the previous commit.
@@ -280,18 +296,51 @@ here. See "Out of Scope".
   branch worktree **from the remote**. Convergence MUST NOT depend on receiving a notification.
   This covers the synchronisation collector and the convergence handler.
 - **FR-005a**: The merge path MUST fetch and compare both the source branch and the destination
-  branch against the remote before it merges. When either has diverged, it MUST refuse the merge
-  with a typed error naming a divergent remote history. It MUST NOT reconcile the branch itself.
-  The merge path reads its source commit from the local branch ref and advances the destination
-  worktree from local state, without contacting the remote, so FR-005 does not reach it.
+  branch against the remote before it merges. The merge path reads its source commit from the local
+  branch ref and advances the destination worktree from local state, without contacting the remote,
+  so FR-005 does not reach it. A branch whose clone is not the remote head is decided by its graph
+  commit:
+  - When the graph commit equals the remote head, only this clone is stale. The merge path MUST move
+    the branch onto that head and merge, whether the clone is behind, ahead or diverged.
+  - When the graph commit differs and the clone is ahead or diverged, the rewrite is not reconciled
+    yet. The merge path MUST refuse the merge with a typed error naming a divergent remote history.
+    It MUST NOT reconcile that branch itself.
+  - When the graph commit differs and the destination clone is on or behind its remote head, the
+    remote would reject a push onto an older trunk, and the record of a merge onto a head the graph
+    never imported would hide that head. The merge path MUST refuse the merge with the same typed
+    error.
+  - When the graph commit differs and the source clone is on or behind its remote head, the merge
+    path MUST move the source onto the graph commit when the remote history holds that commit, and
+    MUST merge the source as it is otherwise. In that last case the Git merge can hold a source that
+    differs from the one the graph merged, which is an accepted risk. When the merge does not use
+    the remote head of the source, the merge path MUST log a warning that names the commit it uses,
+    the remote head, and that the commits after it stay on the source branch.
 - **FR-005b**: The system MUST NOT push a commit the remote has already discarded. Merging a stale
   source branch into the trunk and pushing the result restores commits a rewrite removed. When a
   rewrite exists to remove a leaked credential, that restores the credential.
-- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it. Doing so writes
-  the merge commit to the graph, so the next synchronisation cycle sees the graph and the remote
-  agree and classifies the branch unchanged. The rewrite is then never recorded, the trunk signal
-  never fires, and the rewritten content is never re-imported. Resetting the source also merges
-  content that was never imported at all.
+- **FR-005c**: The merge path MUST NOT reset a diverged branch and then merge it while the graph
+  commit of that branch differs from the remote head. Doing so writes the merge commit to the graph,
+  so the next synchronisation cycle sees the graph and the remote agree and classifies the branch
+  unchanged. The rewrite is then never recorded, the trunk signal never fires, and the rewritten
+  content is never re-imported. Resetting the source also merges content that was never imported at
+  all.
+- **FR-005d**: The Git merge runs after the graph merge, when the source branch is merged and is
+  never synchronised again, so a refusal there cannot clear by a retry. The branch merge MUST
+  therefore compare, before the graph merge, the remote heads of the source branch and of the trunk
+  of every repository whose merge runs in Git with the commits the graph records, and MUST refuse
+  the merge while one differs. A repository whose source branch records the commit that its trunk
+  records has nothing to merge in Git, and so has a repository where neither branch records a
+  commit, as after a failed first clone: the system MUST NOT run its Git merge, and MUST compare
+  only the remote head of its source branch. That refusal leaves the branch open, and the merge can
+  run again after the synchronisation imports the head. A remote that refuses the credentials of a
+  repository that needs a Git merge MUST block the merge, because that Git merge would fail the same
+  way after the graph merge. Any other failure to read a remote, and a remote not read before the
+  total deadline of the check, MUST be logged as a warning and MUST NOT block the merge. A refusal
+  of the Git merge itself, after a remote moved between the two checks, MUST say that the branch is
+  merged in Infrahub and not in Git, and how to finish the merge in Git. The user finishes that
+  merge in Git. The delivery queue of IFC-3220 does not recover it. After a rewrite of the source or
+  of the trunk, its FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause.
+  After a plain push to the trunk between the two checks, IFC-3220 specifies no recovery.
 - **FR-006**: The worker-convergence broadcast MUST cover every branch reconciled in a cycle. It
   MUST be sent before a failed branch aborts the flow.
 - **FR-007**: A worker that reconciles itself MUST NOT record the commit and MUST NOT emit the
@@ -321,8 +370,9 @@ here. See "Out of Scope".
 #### Truthfulness of the error path
 
 - **FR-017**: When a pull fails for a reason the system cannot classify, the message MUST NOT claim
-  a merge conflict unless the system observed one. The divergent-branches case MUST get its own
-  message naming a divergent history.
+  a merge conflict unless the system observed one. No path runs `git pull`, so a pull never stops on
+  diverged branches. The merge guard carries the diverged case: its `RepositoryDivergentHistoryError`
+  MUST have its own message naming a divergent history.
 
 #### Failure handling and observability
 

@@ -158,9 +158,10 @@ the per-branch failure isolation that is already there: a branch that fails clas
 
 ## R3. Where the self-healing reset runs
 
-**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, before the `origin.pull` call.
-Hard-reset onto the remote head unless the worktree head already is it, is an ancestor of it, or
-the remote carries no such ref.
+**Decision**: inside `git/base.py::InfrahubRepositoryBase.pull`, after it fetches the branch.
+Hard-reset onto the remote head unless the worktree head already is it or is an ancestor of it, and
+fast-forward with `git merge --ff-only` otherwise. When the remote carries no such ref, the fetch
+fails and `pull` raises.
 
 A worktree ahead of its remote resets too. The state that argued against it, a commit left behind
 by a rejected push, no longer arises: `merge` pushes before it records and resets the destination
@@ -189,8 +190,10 @@ the **pre-rewrite** history into the trunk and pushes it, putting the discarded 
 remote. If the rewrite existed to strip a leaked credential, the merge restores it. The destination
 side only corrupts one worker's view; the source side corrupts the remote, for everyone.
 
-FR-005a therefore covers both worktrees. **It refuses the merge rather than reconciling it**, and
-FR-005c says why that distinction matters.
+FR-005a therefore covers both worktrees. **It refuses the merge when the graph has not recorded the
+rewrite, rather than reconciling it**, and FR-005c says why that distinction matters. When the graph
+commit already equals the remote head, only this clone is behind, and the branch is reset before the
+merge.
 
 Reconciling inside the merge path looks tempting and destroys the evidence.
 `InfrahubRepository.merge` pushes the merge commit before it records it on the destination, so a
@@ -200,8 +203,16 @@ signal, no re-import of the rewritten content. Resetting the source is worse sti
 the rewritten history and merges objects the graph never imported.
 
 Refusing keeps one owner for reconciliation. The synchronisation cycle resets, records, signals and
-re-imports, in that order, under the repository lock. The merge fails with a typed error, the next
-cycle reconciles, and the retry succeeds.
+re-imports, in that order, under the repository lock. But the Git merge runs after the graph merge,
+when the source branch is already merged and is never synchronised again, and nothing runs the Git
+merge a second time. A refusal there cannot clear. FR-005d therefore moves the normal refusal before
+the graph merge: the branch merge compares the remote heads with the graph commits through
+`git ls-remote`, and refuses while one differs. The branch stays open, the next cycle imports the
+head, and the user merges again. The refusal of the Git merge itself is left for a remote that moves
+between the two checks. The user finishes that merge in Git, as the refusal message says. The
+delivery queue of IFC-3220 does not recover it. After a rewrite of the source or of the trunk, its
+FR-020 and FR-022 only mark such a delivery unreplayable, with a named cause. After a plain push to
+the trunk between the two checks, IFC-3220 specifies no recovery.
 
 **Accepted residual risk**: the remote can be rewritten between the guard's fetch and the push that
 follows. The guard narrows that window, it does not close it. FR-005b is a best-effort property,
@@ -210,10 +221,12 @@ not a guarantee.
 Branch creation is left alone: a branch created from a stale trunk converges on its own first pull,
 and creating it is not a merge of anything.
 
-**What the pull-side reset must not do** (FR-007): it must not write the commit to the graph, must
-not write the rewrite record, and must not emit the signal. `pull` already takes
-`update_commit_value`, and the broadcast handler already passes `update_commit_value=False`. The
-record and the signal are written by the recorder in the sync path, never here.
+**What the pull-side reset must not do** (FR-007): it must not write the rewrite record, and must not
+emit the signal. It writes the commit only when its caller asks for it, through
+`update_commit_value`. Both production callers of `pull`, in `git/convergence.py`, pass
+`update_commit_value=False`, so a reset in `pull` writes nothing. The cycle that reconciles the branch
+writes the commit. The record and the signal are written by the recorder in the sync path, never
+here.
 
 **Why an unconditional reset is safe.** `InfrahubRepository.merge` pushes the merge commit first,
 records it second, and resets the destination worktree to its pre-merge commit when either step
@@ -481,6 +494,10 @@ place for the next one to find is how this defect arrived. FR-017 states the con
   which returns the same `ERROR`, so the test would keep passing while no longer exercising the
   divergent-branches case. Add an assertion on the message instead: it must not contain the word
   "conflict".
+
+**Later decision**: the classifier entry and that test parameter were removed. Once `pull` stopped
+calling `git pull`, no path could reach the entry, so it was dead code. The merge guard raises the
+typed error itself.
 
 **The status flap**: on a diverged branch, `operational_status` goes to `ERROR` on every cycle and
 `fetch()` sets it back to `ONLINE` on the next one, so it flaps once a minute. Removing the failure

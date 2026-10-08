@@ -209,7 +209,8 @@ head, the imported objects match the rewritten tree, and the repository reports 
       make the classifier fall through to its generic branch, which still yields `ERROR`, so the
       test would keep passing while no longer exercising the divergent-branches case at all.
       Instead, add an assertion that the resulting message does not contain the word "conflict"
-      (FR-003, SC-003).
+      (FR-003, SC-003). Later, the parameter went away with the classifier entry, which no path
+      reaches once `pull` stops calling `git pull` (research R9).
 - [x] T025 [US1] Test the reconciliation log line (FR-019): it names the repository, the
       branch, the discarded commit and the new commit. Until INFP-671 ships a view, this line is the
       only way an operator learns a reconciliation happened, so nothing else holds it.
@@ -327,26 +328,34 @@ emits no signal.
 > `_resolve_worktree_identifier`, and the trunk fallback this phase would otherwise have inherited
 > is gone. Read `pull` as it stands before changing it.
 
-- [ ] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
-      before the `origin.pull` call, per
+- [x] T041 [US2] Reset on divergence in `backend/infrahub/git/base.py::InfrahubRepositoryBase.pull`,
+      after the fetch of the branch, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 3. The reset
-      honours `update_commit_value` the same way the pull does.
-- [ ] T042 [US2] Update the component test T023 rewrote, in
+      honours `update_commit_value` the same way the fast-forward does.
+- [x] T042 [US2] Update the component test T023 rewrote, in
       `backend/tests/component/git/test_git_repository.py`. T023 leaves it asserting the corrected
       message on a diverged pull, which is right while `pull` still raises. This task makes `pull`
       reset instead, so the test now asserts the reset and that nothing is raised. Without it the
       test fails the moment this task lands.
-- [ ] T043 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
+- [x] T043 [US2] Confirm by inspection that the pull path holds no reference to the recorder, so
       FR-007 holds by construction rather than by a runtime check. Record the finding in the task's
       commit message.
-- [ ] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
-      `backend/infrahub/git/tasks.py::merge_git_repository`, fetch and compare the **source** branch
-      and the **destination** branch against the remote before calling `repo.merge`. When either has
-      diverged, compare the graph commit for that branch too. Refuse only when the **graph commit**
-      is also stale, which is the case where merging would hide an unrecorded rewrite. When the
-      graph already matches the remote and only this clone is behind, reset the worktree and merge:
-      nothing is lost, and refusing there would refuse again on every retry, because the cron heals
-      whichever worker runs it rather than the one the merge lands on. A refusal raises a typed
+- [x] T044 [US2] Guard **both sides** of the merge path (FR-005a, FR-005b, FR-005c): in
+      `backend/infrahub/git/repository.py::InfrahubRepository.prepare_branches_for_merge`, which
+      `backend/infrahub/git/tasks.py::merge_git_repository` calls before `repo.merge`, fetch and
+      compare the **source** branch and the **destination** branch against the remote. When either
+      has diverged, compare the graph commit for that branch too. Refuse only when the **graph
+      commit** is also stale, which is the case where merging would hide an unrecorded rewrite. When
+      the graph commit already equals the remote head and only this clone is behind, reset the
+      worktree and merge: nothing is lost, and refusing there would leave the merge undelivered,
+      because the cron heals whichever worker runs it rather than the one the merge lands on. A
+      clone that is only behind a head the graph records is moved onto it the same way, or the
+      merge builds on an old source or pushes onto an old trunk. A source on or behind its remote
+      head is moved onto its graph commit when the remote history holds that commit. A destination
+      on or behind a head the graph does not record is refused, because the remote would reject the
+      push or the merge record would hide that head; the Git merge reads that graph commit when it
+      runs, under the repository lock, since an earlier merge can move the trunk after the
+      dispatch. A refusal raises a typed
       error naming a divergent remote history.
       **In that refusing case, do not reset and merge instead.** `merge` pushes the merge commit
       before it records it on the destination, so a reset-then-merge puts the merge commit on the
@@ -357,28 +366,43 @@ emits no signal.
       local source ref via `get_commit_value(..., remote=False)`, and nothing fetches first, so a
       worker holding a stale source branch would merge the pre-rewrite history into the trunk and
       **push it**. A rewrite that removed a leaked credential would restore it.
-- [ ] T045 [US2] Add the typed error for a divergent remote history to
+- [x] T044a [US2] Check the remote heads before the graph merge (FR-005d), in
+      `backend/infrahub/git/merge_readiness.py::RemoteHeadsMergeCheck`, run by
+      `backend/infrahub/core/branch/tasks.py::merge_branch` before the global merge lock. The Git
+      merge runs after the graph merge, when the source branch never syncs again, so its own refusal
+      cannot clear. Refuse with `RepositoryNotSynchronizedError` while a remote head differs from the
+      graph commit. A remote that refuses the credentials of a repository that needs a Git merge
+      refuses the merge; any other failure to read a remote, and a remote not read before the total
+      deadline, logs a warning and lets the merge go on. A repository whose source branch records
+      the trunk commit, or where neither branch records a commit, has nothing to merge in Git:
+      compare its source branch only, and submit no Git merge for it. Add a live-remote test that
+      merges a branch through the mutation, not through a direct call of the Git merge flow.
+- [x] T045 [US2] Add the typed error for a divergent remote history to
       `backend/infrahub/exceptions.py` and map it in the error classifier, so the merge failure
-      names the real cause and never says "conflict" (FR-003, FR-017).
-- [ ] T046 [P] [US2] Add a live-remote test in
+      names the real cause and never says "conflict" (FR-003, FR-017). The merge guard raises it
+      itself. The classifier entry was removed later, because no path runs `git pull` (research R9).
+- [x] T046 [P] [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker whose destination worktree
-      holds a discarded history refuses the merge instead of merging onto it.
-- [ ] T047 [US2] Add a live-remote test for the source side, in the same file: a worker holding a
+      holds a discarded history refuses the merge instead of merging onto it. One test covers T046
+      and T048: it checks that nothing moved after the refusal, then runs the cycle.
+- [x] T047 [US2] Add a live-remote test for the source side, in the same file: a worker holding a
       stale **source** branch refuses the merge, and the discarded commits do not reappear on the
       remote. This is the security-relevant half of FR-005a.
-- [ ] T048 [US2] Add a live-remote test that the refused merge leaves the rewrite recordable: after
+- [x] T048 [US2] Add a live-remote test that the refused merge leaves the rewrite recordable: after
       the refusal, the next synchronisation cycle reconciles the branch, writes the record and fires
       the trunk signal. This is what a reset-then-merge would have destroyed (FR-005c).
-- [ ] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
+      The trunk signal does not exist before T067, so the test asserts the record and that a Git
+      merge run after the cycle succeeds. T067 adds the signal to this test.
+- [x] T049 [US2] Add a live-remote test that a worker which missed the broadcast resets and records
       nothing, while the graph already holds the remote commit (FR-001c). This is the case that
       decides whether the classification reads the graph or the worktree.
-- [ ] T050 [P] [US2] Component-test the reset in
+- [x] T050 [P] [US2] Component-test the reset in
       `backend/tests/component/git/test_git_repository.py`: a diverged branch worktree is reset to
       the remote head by `pull`, and nothing is raised.
-- [ ] T051 [US2] Add a live-remote test in
+- [x] T051 [US2] Add a live-remote test in
       `backend/tests/integration/git/test_git_live_remote.py`: a worker that received no broadcast
       converges on first contact, writes no rewrite record and emits no signal.
-- [ ] T052 [P] [US2] Add a live-remote test that a worker which has never seen the repository
+- [x] T052 [P] [US2] Add a live-remote test that a worker which has never seen the repository
       clones fresh and needs no reset, in
       `backend/tests/integration/git/test_git_live_remote.py`.
 
@@ -495,7 +519,8 @@ cycles. The record written once, the signal emitted once, never twice, and a hea
       `backend/infrahub/git/divergence/recorder.py`, after a successful record, and only when the
       reconciled branch is the repository's configured default branch. Add the `RewriteEventEmitter`
       port to the recorder's constructor, and the repository name and `is_default_branch` to
-      `record`.
+      `record`. Extend the live-remote test of T048 to assert that the cycle after the refused
+      merge fires the signal once.
 - [ ] T068 [US4] Confirm the events reference documentation regenerated by T066 is committed.
 - [ ] T069 [P] [US4] Unit-test the emission rule in
       `backend/tests/unit/git/divergence/test_recorder.py`: the trunk emits the event once, and any
@@ -645,7 +670,7 @@ read-write repository's configured default branch. Neither writes a record.
       `dev/knowledge/backend/merge-failure-recovery.md`. It attributes the merge-start logic to
       `core/branch/tasks.py::_do_merge_branch`. That logic now lives in
       `core/merge/orchestrator.py`. Check the surrounding prose for the same claim.
-- [ ] T089 Rewrite **two** of the three "Volatile section" notes in
+- [x] T089 Rewrite **two** of the three "Volatile section" notes in
       `dev/knowledge/backend/git-integration.md`. The one under "How git errors are classified"
       describes this feature as planned; it now describes what shipped: the ancestry detection, the
       pull-path reset, the widened broadcast and the record. The one on the merge ordering
@@ -665,8 +690,9 @@ read-write repository's configured default branch. Neither writes a record.
       reset reads the worktree against the remote head and moves such a branch onto it, so the
       once-a-minute log line stops.
       The writeback spec of IFC-3220 rewrote the merge-ordering section and replaced its note.
-      IFC-3281 corrected the divergence gap and this known limitation. The note under "How git
-      errors are classified" waits for Phases 4 to 6.
+      IFC-3281 corrected the divergence gap and this known limitation. IFC-3283 rewrote the note
+      under "How git errors are classified" once Phases 4 to 6 landed. It keeps a smaller volatile
+      note for the trunk signal and for the recovery of a refused Git merge, which are not built.
 - [ ] T090 [P] Document the two limitations under `docs/docs/git-integration/`, which is the
       published section. Do not edit `docs/archive/topics/repository.mdx`: neither
       `docusaurus.config.ts` nor `sidebars.ts` references it, so an edit there ships nothing. The
@@ -687,11 +713,17 @@ read-write repository's configured default branch. Neither writes a record.
       goes to the error status after a force push, and it can ship before the rest of the stack.
       Extend that fragment instead of adding a second one.
       IFC-3282 fixes a different outage a user can see: one failed branch no longer keeps the
-      others off the other workers, and one failed repository no longer stops the cycle. It adds no
-      fragment of its own, because a stacked series carries one fragment, on its top PR. IFC-3284,
-      the top PR of the stack, carries that entry as
-      `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside its own
+      others off the other workers, and one failed repository no longer stops the cycle. Its entry
+      ships on IFC-3284, the next PR of the stack, as
+      `changelog/+failed-branch-blocks-other-branches.fixed.md`, beside the IFC-3284 entry
       `changelog/+repository-rewrite-record.added.md`.
+      IFC-3283, stacked on IFC-3284, adds `changelog/+merge-after-force-push.fixed.md`: a branch
+      merge no longer puts commits removed by a force push back in the Git repository, and it is
+      refused, with a message to merge again later, while Infrahub has not recorded the latest commit
+      pushed to the branch or to the branch it merges into. A refusal at the Git stage leaves the
+      branch merged in Infrahub and not in Git, and the user finishes the merge in Git. A worker that
+      missed the broadcast and now follows the new history on its own is the fix
+      `changelog/6299.fixed.md` describes, so it adds no entry.
 - [ ] T093 Add the end-to-end scenario under `tests/e2e/`: a developer rebases a branch Infrahub
       tracks and force-pushes it. The branch keeps synchronising, its imported objects match the
       rewritten history, and the repository reports healthy throughout. The constitution requires

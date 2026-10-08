@@ -2,6 +2,7 @@ import json
 import re
 import shutil
 from collections.abc import Generator
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -58,7 +59,7 @@ from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.flow import call_in_flow
-from tests.helpers.git import build_repository_client, clone_repository, open_repository
+from tests.helpers.git import GraphRecordingClient, build_repository_client, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -451,6 +452,19 @@ async def test_pull_branch(git_repo_04: InfrahubRepository) -> None:
     assert response is True
 
 
+async def test_pull_fast_forwards_whatever_the_pull_settings_of_the_clone(git_repo_04: InfrahubRepository) -> None:
+    """A pull setting that asks for a merge commit leaves a fast-forward of the worktree a fast-forward."""
+    repo = git_repo_04
+    with repo.get_git_repo_main().config_writer() as git_config:
+        git_config.set_value("pull", "ff", "false")
+    remote_commit = repo.get_commit_value(branch_name="branch01", remote=True)
+
+    response = await repo.pull(branch_name="branch01")
+
+    assert response == remote_commit
+    assert repo.get_commit_value(branch_name="branch01", remote=False) == remote_commit
+
+
 async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
     await repo.fetch()
@@ -496,24 +510,63 @@ async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubReposit
     assert response == commit
 
 
-async def test_pull_of_a_diverged_branch_names_a_divergent_history(git_repo_06: InfrahubRepository) -> None:
+async def test_pull_resets_a_diverged_branch_onto_the_remote_head(git_repo_06: InfrahubRepository) -> None:
     repo = git_repo_06
     await repo.fetch()
 
     branch_name = "branch01"
 
-    commit1 = repo.get_commit_value(branch_name=branch_name, remote=False)
-    commit2 = repo.get_commit_value(branch_name=branch_name, remote=True)
-    assert str(commit1) != str(commit2)
+    local_commit = repo.get_commit_value(branch_name=branch_name, remote=False)
+    remote_commit = repo.get_commit_value(branch_name=branch_name, remote=True)
+    git_repo = repo.get_git_repo_main()
+    assert not git_repo.is_ancestor(local_commit, remote_commit)
+    assert not git_repo.is_ancestor(remote_commit, local_commit)
 
-    with pytest.raises(RepositoryError) as exc:
-        await repo.pull(branch_name=branch_name)
+    response = await repo.pull(branch_name=branch_name)
 
-    assert exc.value.message == (
-        f"Unable to pull the branch {branch_name} for repository {repo.name}, "
-        "its local history and the remote history have diverged."
-    )
-    assert "conflict" not in exc.value.message.lower()
+    assert response == remote_commit
+    assert repo.get_commit_value(branch_name=branch_name, remote=False) == remote_commit
+    assert repo.has_worktree(identifier=remote_commit)
+
+
+@dataclass
+class RewoundPullCase:
+    name: str
+    update_commit_value: bool
+    writes_the_commit: bool
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        RewoundPullCase(name="commit-written", update_commit_value=True, writes_the_commit=True),
+        RewoundPullCase(name="commit-not-written", update_commit_value=False, writes_the_commit=False),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_pull_resets_a_branch_the_remote_rewound(
+    git_repo_01: InfrahubRepository, branch01: BranchData, case: RewoundPullCase
+) -> None:
+    """The worktree holds a commit the remote dropped, as after a force push that removes the last commit."""
+    repo = git_repo_01
+    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
+    remote_commit = repo.get_commit_value(branch_name=branch01.name, remote=True)
+
+    worktree = repo.get_git_repo_worktree(identifier=branch01.name)
+    (Path(str(worktree.working_dir)) / "dropped.txt").write_text("dropped by the remote\n", encoding="utf-8")
+    worktree.index.add(["dropped.txt"])
+    dropped_commit = str(worktree.index.commit("A commit the remote no longer holds"))
+    assert repo.get_git_repo_main().is_ancestor(remote_commit, dropped_commit)
+
+    client = GraphRecordingClient(branch_names=())
+    repo.client = client
+
+    response = await repo.pull(branch_name=branch01.name, update_commit_value=case.update_commit_value)
+
+    assert response == remote_commit
+    assert repo.get_commit_value(branch_name=branch01.name, remote=False) == remote_commit
+    assert repo.has_worktree(identifier=remote_commit)
+    assert client.recorded_commits == ([(branch01.name, remote_commit)] if case.writes_the_commit else [])
 
 
 async def test_pull_main(git_repo_05: InfrahubRepository) -> None:
@@ -612,6 +665,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     """
     upstream_path = str(git_upstream_repo_01["path"])
     Repo(upstream_path).git.branch("develop", "main")
+    develop_before = Repo(upstream_path).commit("develop").hexsha
 
     repo_node = await Node.init(db=db, schema=InfrahubKind.REPOSITORY)
     await repo_node.new(db=db, name=git_upstream_repo_01["name"], location=upstream_path, default_branch="develop")
@@ -622,6 +676,7 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         name=str(git_upstream_repo_01["name"]),
         location=upstream_path,
         default_branch="develop",
+        commit=develop_before,
     )
     repo = await clone_repository(
         id=repo_node.id,
@@ -640,10 +695,10 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
         destination_branch_id=str(default_branch.get_uuid()),
         internal_status=RepositoryInternalStatus.ACTIVE.value,
         repository_kind=InfrahubKind.REPOSITORY,
+        source_commit=repo.get_commit_value(branch_name=branch01.name),
     )
     assert "default_branch" not in model.model_dump()
 
-    develop_before = Repo(upstream_path).commit("develop").hexsha
     bus_simulator = await helper.get_message_bus_simulator()
     with (
         dependency_provider.scope(build_client, lambda: client),

@@ -1,0 +1,1 @@
+Fixed a branch merge that could put commits removed by a force push back in the Git repository, by refusing the merge until Infrahub records the latest commit pushed to the branch and to the branch it merges into, and by saying how to finish the merge in Git when the Git repository changes during the merge.

@@ -94,6 +94,21 @@ the branch worktree and intentionally discards local divergence, on the principl
 is a disposable mirror of the remote. It does not contact the remote; the caller must have fetched
 the commit first.
 
+### No path runs `git pull`
+
+The broadcast that pins a commit hard-resets onto it with no comparison, as above. The paths that
+move a branch worktree to the remote head compare it with that head by ancestry first, and reset a
+worktree that does not lead to it:
+
+- The periodic sync resets in its collector. `compare_local_remote` compares heads by equality only,
+  and the collector then classifies each branch by ancestry.
+  [Git Sync](git-sync.md#rewritten-history) describes how.
+- `InfrahubRepositoryBase.pull` fetches the branch and hard-resets onto the remote head when the
+  worktree does not lead to it. Otherwise it fast-forwards with `git merge --ff-only`, whatever the
+  pull settings of the clone. It writes no rewrite record and emits no event.
+
+`pull` runs only for a message entry that pins no commit, as [above](#how-the-workers-converge).
+
 ## Sync triggers, and what does not wait for what
 
 | Trigger | Entry point | Notes |
@@ -101,7 +116,7 @@ the commit first.
 | Periodic sync | `git.tasks.sync_remote_repositories` | Cron `* * * * *`, `concurrency_limit=1`, `CANCEL_NEW` (`workflows/catalogue.py::GIT_REPOSITORIES_SYNC`). Pull direction only; it never pushes. |
 | Add repository | `git.tasks.add_git_repository` / `..._read_only` | Clone, import, broadcast. |
 | Create branch | `git.tasks.create_branch` | Create in git, push, broadcast. |
-| Proposed-change merge | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Merge and push, read-write repositories only. |
+| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Merge and push for a read-write repository; copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records the commit of its trunk gets no Git merge: there is nothing to push. |
 | Read-only pull | `git.tasks.pull_read_only` | On-demand fetch latest. |
 
 The merge trigger is **not ordered against post-merge regeneration**.
@@ -172,6 +187,66 @@ A push that fails at the **transport** level (a 403 on the receive-pack advertis
 token, a refused connection, a TLS failure) is different: GitPython finds no porcelain status line to
 parse and re-raises `GitCommandError`. `push()` catches that and routes it through the same enriched
 classifier a fetch uses, so it is converted to the typed error and recorded on `operational_status`.
+
+### Two checks keep a merge on the commits the graph imported
+
+A merge does not move a worktree from the remote: it builds on the local destination and merges the
+local source ref. Two checks keep it on the commits the graph imported. Only the first one holds a
+merge after a plain push and keeps the branch open:
+
+- Before the graph merge, `merge_branch` reads the remote heads of the source branch and of the
+  trunk with `git ls-remote` and compares them with the commits the graph records
+  (`git/merge_readiness.py::RemoteHeadsMergeCheck`). It runs only for an open branch that syncs with
+  Git, and only for its active repositories; a source branch with the remote name of the trunk
+  compares only the trunk. While one head differs, it refuses the merge with
+  `RepositoryNotSynchronizedError`, so the branch stays open and the user merges again after the
+  next cycle. It compares for equality, so a plain push to the source branch, or to the trunk of a
+  repository whose branch records a commit other than the commit of its trunk, holds the merge too,
+  not only a rewrite, until the next cycle imports the new head. A remote that refuses the
+  credentials blocks the merge, with `RepositoryCredentialsRefusedError`, when the repository needs
+  a Git merge: that Git merge would fail the same way after the graph merge. Any other failure to
+  read a remote, and a remote not read before the total deadline of the check
+  (`REMOTE_HEADS_DEADLINE_SECONDS`), logs a warning and does not block the merge. For a repository
+  whose source branch records the commit its trunk records, or where neither branch records a
+  commit, as after a failed first clone, the check reads the source branch only, and the dispatcher
+  runs no Git merge for it: there is nothing to push. A value that is set but is not a full commit
+  id is unknown, so the full check runs.
+- In the Git merge, `InfrahubRepository.prepare_branches_for_merge` fetches the heads of the remote
+  branches, with no tags because a tag moved on the remote would fail the fetch, then compares the
+  local source ref and the local trunk worktree with their remote heads. A fetch that fails says how
+  to finish the merge in Git. The source graph commit comes in the merge model
+  (`GitRepositoryMerge`), read when the merge was dispatched, because the source branch can be
+  deleted before the Git merge runs. `merge_git_repository` reads the destination graph commit under
+  the repository lock, because an earlier Git merge can move the trunk after the dispatch. Each
+  branch is compared with its graph commit, also when the clone holds the remote head:
+  - A graph commit equal to the remote head: a clone behind, ahead (the remote was rewound) or
+    diverged moves onto that head, because only this clone is stale.
+  - Ahead or diverged, with a graph commit that differs: the merge is refused, because the rewrite is
+    not recorded yet.
+  - A trunk on or behind its remote head, with a graph commit that differs: the merge is refused. On
+    an older trunk the remote would reject the push. On a head the graph never imported, the record
+    of the merge commit would hide that head from the next cycle. A plain push to the trunk that
+    lands between the two checks ends here.
+  - A source on or behind its remote head, with a graph commit that differs: the source moves onto
+    the graph commit when the remote history holds it, forward or back, so the merge holds what the
+    graph merged. The commits after it stay on the source branch and do not reach the trunk, and a
+    warning says so, because the branch is merged in Infrahub already and a refusal cannot help.
+  - A source that this clone does not hold, as on a worker whose sync has not created it yet: the
+    guard creates it at the graph commit when the remote history holds that commit, and refuses the
+    merge otherwise.
+  - Known risk: a source whose graph commit is missing, or no longer in the remote history, is merged
+    as it is, and can differ from what the graph merged.
+
+  A refusal raises `RepositoryDivergentHistoryError`. It comes after the graph merge: the branch is
+  merged in Infrahub and not in Git, nothing runs the Git merge again, and the message tells the user
+  to finish the merge in Git.
+
+> **Volatile section.** A rewrite of the trunk emits no signal yet, and nothing recovers a Git merge
+> the guard refused: the user finishes it in Git. The delivery queue specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/` does not recover it either. After a rewrite of the
+> source or of the trunk, it only marks such a delivery as one it cannot replay. After a plain push
+> to the trunk between the two checks, it specifies no recovery at all. Update this section when
+> either lands.
 
 ## Repository state and branch support
 
@@ -250,20 +325,10 @@ upstream silently reclassifies an error to the generic fallthrough.
 One gap to know about: **per-ref push rejections bypass it** (see above); they arrive on
 `push_info.summary`. Transport-level push failures do reach it, because those raise `GitCommandError`.
 
-A diverged pull gets a message of its own. The workers configure no `pull.rebase` or `pull.ff`
-(`workers/infrahub_async.py::set_git_global_config`), so `git pull` on a branch whose remote history
-was rewritten fails with "Need to specify how to reconcile divergent branches". The classifier reports
-that as a local history and a remote history that have diverged, never as a conflict. Only "you have
-unmerged files", which is a conflict git observed, is reported as one.
-
-The periodic sync does not reach that failure for a rewritten branch. `compare_local_remote` compares
-heads by equality only, but the sync collector then classifies each branch by ancestry and resets a
-branch worktree that does not lead to the remote head. [Git Sync](git-sync.md#rewritten-history)
-describes how.
-
-> **Volatile section.** `InfrahubRepositoryBase.pull` still raises on a diverged branch, so a worker
-> that advances a branch outside the sync collector does not reset it yet. No record of a rewrite is
-> stored. Update this section when those land.
+A diverged history gets a message of its own, never a conflict. The merge guard raises
+`RepositoryDivergentHistoryError` itself. The classifier has no entry for git's "Need to specify how
+to reconcile divergent branches", because only `git pull` writes that text and no path runs it. Only
+"you have unmerged files", which is a conflict git observed, is reported as one.
 
 ## Known limitations
 
