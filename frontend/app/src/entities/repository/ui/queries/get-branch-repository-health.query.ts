@@ -9,7 +9,16 @@ import {
 import { repositoryQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import { REPOSITORY_SYNC_REFETCH_INTERVAL_MS } from "@/entities/repository/ui/queries/repository-polling";
 
-export function getBranchRepositoryHealthQueryOptions(params: GetBranchRepositoryHealthParams) {
+// Each failing list stops here; the server's total still counts the rest.
+const REPOSITORY_HEALTH_LIST_LIMIT = 50;
+
+type GetBranchRepositoryHealthQueryParams = Omit<GetBranchRepositoryHealthParams, "limit">;
+
+export function getBranchRepositoryHealthQueryOptions(
+  queryParams: GetBranchRepositoryHealthQueryParams
+) {
+  const params = { ...queryParams, limit: REPOSITORY_HEALTH_LIST_LIMIT };
+
   return queryOptions({
     queryKey: repositoryQueryKeys.branchHealth(params),
     queryFn: () => getBranchRepositoryHealth(params),
@@ -20,6 +29,6 @@ export function getBranchRepositoryHealthQueryOptions(params: GetBranchRepositor
   });
 }
 
-export function useGetBranchRepositoryHealth(params: GetBranchRepositoryHealthParams) {
+export function useGetBranchRepositoryHealth(params: GetBranchRepositoryHealthQueryParams) {
   return useQuery(getBranchRepositoryHealthQueryOptions(params));
 }

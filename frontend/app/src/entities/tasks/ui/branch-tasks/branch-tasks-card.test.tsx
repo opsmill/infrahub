@@ -311,11 +311,10 @@ describe("BranchTasksCard", () => {
     // THEN
     await expect.element(component.getByText("Task 11", { exact: true })).toBeVisible();
     expect(new URL(window.location.href).searchParams.get("tasks_page")).toBe("2");
-    expect(getBranchTasks).toHaveBeenLastCalledWith({
-      branchName: "feature",
-      offset: 10,
-      limit: 10,
-    });
+    expect(getBranchTasks).toHaveBeenLastCalledWith(
+      { branchName: "feature", offset: 10, limit: 10 },
+      { silenceErrors: true }
+    );
     expect(getTaskCount).toHaveBeenCalledWith(
       { branchName: "feature", state: ["FAILED"] },
       { silenceErrors: true }

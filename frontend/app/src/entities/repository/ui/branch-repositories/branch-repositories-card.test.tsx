@@ -102,6 +102,7 @@ describe("BranchRepositoriesCard", () => {
     expect(getBranchRepositoryHealth).toHaveBeenCalledWith({
       branchName: "feature",
       syncWithGit: false,
+      limit: 50,
     });
   });
 

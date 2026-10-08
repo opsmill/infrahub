@@ -34,9 +34,6 @@ export const IMPORT_TASK_STATES = [
 // Logs come back oldest first, so anything below the backend's 10 000-line cap can cut off the final error line.
 export const IMPORT_LOG_LIMIT = 10_000;
 
-export const MAX_VISIBLE_BANDS = 3;
-export const REPOSITORY_HEALTH_LIST_LIMIT = 50;
-
 /**
  * Selects repositories whose import failed. Attribute-value filters match on substrings, so
  * this stays exact only while no other sync status value contains it.

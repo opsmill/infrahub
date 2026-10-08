@@ -4,7 +4,6 @@ import React from "react";
 import { Row } from "@/shared/components/container";
 
 import type { BranchRepository } from "@/entities/repository/domain/model/branch-repository";
-import { MAX_VISIBLE_BANDS } from "@/entities/repository/domain/model/repository";
 import { getFailureKind } from "@/entities/repository/domain/rules/repository-failures";
 import { ImportErrorBand } from "@/entities/repository/ui/branch-repositories/import-error-band";
 import { UnreachableBand } from "@/entities/repository/ui/branch-repositories/unreachable-band";
@@ -15,6 +14,8 @@ interface RepositoryErrorBandsProps {
   branchName: string;
   isSyncing: boolean;
 }
+
+const MAX_VISIBLE_BANDS = 3;
 
 const pluralizeRepositories = (count: number) => (count === 1 ? "repository" : "repositories");
 

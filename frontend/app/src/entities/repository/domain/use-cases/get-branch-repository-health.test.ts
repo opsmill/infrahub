@@ -26,7 +26,7 @@ const connection = (nodes: ReturnType<typeof node>[], count = nodes.length) => (
   edges: nodes.map((n) => ({ node: n })),
 });
 
-const params = { branchName: "feature", syncWithGit: true };
+const params = { branchName: "feature", syncWithGit: true, limit: 50 };
 
 describe("getBranchRepositoryHealth", () => {
   beforeEach(() => {

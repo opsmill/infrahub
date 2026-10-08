@@ -17,7 +17,7 @@ const BRANCH_TASKS_REFETCH_INTERVAL_MS = 10_000;
 export function getBranchTasksQueryOptions(params: GetBranchTasksParams) {
   return queryOptions({
     queryKey: tasksQueryKeys.branchList(params),
-    queryFn: () => getBranchTasks(params),
+    queryFn: () => getBranchTasks(params, { silenceErrors: true }),
     // Only the first page gets new tasks as they start.
     refetchInterval: params.offset === 0 ? BRANCH_TASKS_REFETCH_INTERVAL_MS : false,
     placeholderData: keepPreviousDataWithin(

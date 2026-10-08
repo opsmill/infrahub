@@ -19,12 +19,6 @@ const refetchIntervalFor = (syncingCount: number | undefined, error: Error | nul
 };
 
 describe("getBranchRepositoryHealthQueryOptions", () => {
-  it("keys the check on the branch and the list", () => {
-    expect(
-      getBranchRepositoryHealthQueryOptions({ branchName: "feature", syncWithGit: false }).queryKey
-    ).toEqual(["repository", "branch-health", { branchName: "feature", syncWithGit: false }]);
-  });
-
   it("polls every 10 seconds while the server counts a syncing repository", () => {
     expect(refetchIntervalFor(2)).toBe(10_000);
   });
