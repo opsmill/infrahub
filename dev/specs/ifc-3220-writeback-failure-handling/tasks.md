@@ -521,6 +521,7 @@ T081 to T084 are not.
       no query; every submission carries the delivery tags. Test `PrefectDeliveryRunQuery` against a
       fake `FlowRunQuerying` client: the filter holds both tags and the state types `SCHEDULED` and
       `PENDING`, with `limit=1`.
+      Every case is written except the deferred chain, which waits for T078.
 - [ ] T081 [US4] Add `test_transient_fault_heals` to
       `backend/tests/integration/git/test_git_live_remote.py`: block the Gogs port for the first
       attempt, open it, short delays through `with_options`.

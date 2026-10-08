@@ -75,6 +75,7 @@ async def build_recovery_check(*, db: InfrahubDatabase, prefect_client: PrefectC
 
     Args:
         db: A session that the caller keeps open for the life of the check.
+        prefect_client: A client that the caller keeps open for the life of the check.
 
     """
     default_branch = await registry.get_branch(db=db)

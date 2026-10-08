@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import httpx
 import pytest
 from prefect.client.schemas.filters import (
     FlowFilter,
@@ -53,8 +54,8 @@ from infrahub.git.writeback.runs import PrefectDeliveryRunQuery, is_retryable_de
 from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE, RepositoryWritebackService, RetryableDeliveryError
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.unit.git.writeback.fakes import (
-    ContextRecordingWorkflow,
     FailingDeliveryRunQuery,
     FixedClock,
     InMemoryDeliveryGit,
@@ -538,6 +539,10 @@ async def run_check(rig: CheckRig, *, lock_held: bool = False) -> bool:
         return await rig.check.run(repository=REPOSITORY)
 
 
+STALE_SUBMISSION_LOG = "Submitted a delivery run of repository net-repo, whose delivery lost its attempt."
+HELD_SUBMISSION_LOG = (
+    "Submitted a delivery run of repository net-repo, whose held regeneration waits behind an empty queue."
+)
 EXPECTED_SUBMISSION = {
     "kind": "submit",
     "workflow": GIT_REPOSITORY_DELIVERY_RETRY,
@@ -557,6 +562,8 @@ class RecoveryCase:
     """Whether the check asks the orchestrator for a delivery run that waits to start."""
     lock_held: bool = False
     run_queued: bool = False
+    submission_log: str | None = None
+    """The info line that names why the check submitted."""
 
 
 RECOVERY_CASES: list[RecoveryCase] = [
@@ -565,6 +572,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         submits=True,
         asks=True,
+        submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
         name="repository_with_nothing_pending_makes_no_query",
@@ -619,6 +627,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
         intent=delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO),
         submits=True,
         asks=True,
+        submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
         name="crashed_run_whose_retry_was_due_is_stale",
@@ -630,6 +639,7 @@ RECOVERY_CASES: list[RecoveryCase] = [
         ),
         submits=True,
         asks=True,
+        submission_log=STALE_SUBMISSION_LOG,
     ),
     RecoveryCase(
         name="uncovered_held_work_behind_an_empty_queue_is_released",
@@ -641,6 +651,17 @@ RECOVERY_CASES: list[RecoveryCase] = [
         ),
         submits=True,
         asks=True,
+        submission_log=HELD_SUBMISSION_LOG,
+    ),
+    RecoveryCase(
+        # A merge flow that crashed before its first attempt never moved the progress time.
+        name="held_work_behind_an_empty_queue_that_never_progressed_is_released",
+        intent=delivery_state(
+            status=RepositoryDeliveryStatus.NONE, entries=(), last_progress_at=None, held=held_definition()
+        ),
+        submits=True,
+        asks=True,
+        submission_log=HELD_SUBMISSION_LOG,
     ),
     RecoveryCase(
         name="held_work_that_a_live_lease_covers_gets_no_submission",
@@ -689,15 +710,19 @@ RECOVERY_CASES: list[RecoveryCase] = [
 
 @pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in RECOVERY_CASES])
 async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_else_will_deliver(
-    check_rig: CheckRig, case: RecoveryCase
+    check_rig: CheckRig, case: RecoveryCase, caplog: pytest.LogCaptureFixture
 ) -> None:
     check_rig.state.intents[REPOSITORY.id] = case.intent
     if case.run_queued:
         check_rig.runs.queued.add(REPOSITORY.id)
 
-    submitted = await run_check(check_rig, lock_held=case.lock_held)
+    with caplog.at_level(logging.INFO, logger=RUN_LOGGER):
+        submitted = await run_check(check_rig, lock_held=case.lock_held)
 
     assert submitted is case.submits
+    assert [record.getMessage() for record in caplog.records if record.name == RUN_LOGGER] == (
+        [case.submission_log] if case.submits else []
+    )
     assert check_rig.runs.asked == ([REPOSITORY.id] if case.asks else [])
     intent = check_rig.state.intents[REPOSITORY.id]
     if case.submits:
@@ -716,10 +741,50 @@ async def test_the_recovery_check_submits_one_delivery_run_only_when_nothing_els
 STALE_INTENT = delivery_state(status=RepositoryDeliveryStatus.PENDING, entries=(ENTRY,), last_progress_at=LONG_AGO)
 
 
+@dataclass
+class QueryFailureCase:
+    name: str
+    error: Exception
+    log_level: int
+    log_message: str
+    traceback: type[Exception] | None
+    """The type of the error whose traceback the log line carries, None when it carries none."""
+
+
+ORCHESTRATOR_WARNING = (
+    "Could not ask the orchestrator whether a delivery run of repository net-repo waits, so none is submitted: "
+    "The orchestrator does not answer"
+)
+QUERY_FAILURE_CASES: list[QueryFailureCase] = [
+    QueryFailureCase(
+        name="orchestrator_http_error_is_a_warning",
+        error=httpx.ConnectError("The orchestrator does not answer"),
+        log_level=logging.WARNING,
+        log_message=ORCHESTRATOR_WARNING,
+        traceback=None,
+    ),
+    QueryFailureCase(
+        name="orchestrator_connection_error_is_a_warning",
+        error=ConnectionRefusedError("The orchestrator does not answer"),
+        log_level=logging.WARNING,
+        log_message=ORCHESTRATOR_WARNING,
+        traceback=None,
+    ),
+    QueryFailureCase(
+        name="code_error_is_an_error_with_its_traceback",
+        error=TypeError("has_queued_run() got an unexpected keyword argument"),
+        log_level=logging.ERROR,
+        log_message="The delivery recovery check of repository net-repo failed; the next cycle checks again.",
+        traceback=TypeError,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(case, id=case.name) for case in QUERY_FAILURE_CASES])
 async def test_a_query_that_raises_submits_nothing_and_leaves_the_progress_time(
-    check_rig: CheckRig, caplog: pytest.LogCaptureFixture
+    check_rig: CheckRig, case: QueryFailureCase, caplog: pytest.LogCaptureFixture
 ) -> None:
-    runs = FailingDeliveryRunQuery(error=ConnectionError("The orchestrator does not answer"))
+    runs = FailingDeliveryRunQuery(error=case.error)
     check = DeliveryRecoveryCheck(
         state=check_rig.state,
         workflow=check_rig.workflow,
@@ -738,13 +803,11 @@ async def test_a_query_that_raises_submits_nothing_and_leaves_the_progress_time(
     assert check_rig.workflow.submit_calls == []
     assert check_rig.state.calls == ["read"]
     assert check_rig.state.intents[REPOSITORY.id] == STALE_INTENT
-    assert [(record.levelno, record.getMessage()) for record in caplog.records if record.name == RUN_LOGGER] == [
-        (
-            logging.WARNING,
-            "Could not ask the orchestrator whether a delivery run of repository net-repo waits, so none is "
-            "submitted: The orchestrator does not answer",
-        )
-    ]
+    assert [
+        (record.levelno, record.getMessage(), record.exc_info[0] if record.exc_info else None)
+        for record in caplog.records
+        if record.name == RUN_LOGGER
+    ] == [(case.log_level, case.log_message, case.traceback)]
 
 
 @dataclass

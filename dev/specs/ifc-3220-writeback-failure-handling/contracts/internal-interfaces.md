@@ -370,13 +370,16 @@ The second trigger needs an empty queue. A queue with merges is the stale check'
 
 The lock condition needs the lock registry, and the orchestrator condition needs `runs`. The check
 takes both in its constructor. The retry flow requires a context, so the check also takes the
-system context that it submits with: the default branch and an anonymous account. It reads the state and the lock first, and calls
-`runs.has_queued_run(...)` only when every other condition of a trigger holds. It then passes the
-answer to `WritebackIntent.is_stale(now, lock_free, run_queued)`. A repository with no work to
-recover, or with recent progress, costs no orchestrator query. When `has_queued_run` raises, the
-check submits nothing, does not call `state.touch(...)`, logs the failure at warning level, and
-returns `False`. It returns whether it submitted. It never raises: a failure is logged and the next
-cycle checks again.
+system context that it submits with: the default branch and an anonymous account. It reads the
+state and the lock first, and evaluates the first trigger with
+`WritebackIntent.is_stale(now, lock_free, run_queued=False)` and the second with
+`WritebackIntent.release_waits(now)`. It calls `runs.has_queued_run(...)` last, only when one
+trigger holds, and submits only when no run waits. A repository with no work to recover, or with
+recent progress, costs no orchestrator query. When `has_queued_run` raises an `httpx.HTTPError` or
+an `OSError`, the check submits nothing, does not call `state.touch(...)`, logs the failure at
+warning level, and returns `False`. Another error gives the same result, but the guard of `run`
+logs it at error level, with its traceback. It returns whether it submitted. It never raises: a
+failure is logged and the next cycle checks again.
 
 `build_recovery_check` builds `PrefectDeliveryRunQuery` over
 `task_manager/flow_run/prefect_client.py::PrefectClientAdapter`, and the system context with

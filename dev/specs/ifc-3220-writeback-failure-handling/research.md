@@ -340,10 +340,10 @@ after the merge (`delete_branch_after_merge`), while the remote branch is protec
 ## R4. The delivery attempt
 
 **Decision**: one component, `RepositoryWritebackService`, built per repository at the top of each
-flow, with one entry point, `deliver(final_attempt, manual, entry)`. `merge_git_repository`, the
-retry flow and the recovery check (R20) all call it (FR-007). Its end has the same shape as the
-abandonment of R8: the entries leave the queue under the repository lock, and the release runs
-after the lock is released, under a lease.
+flow, with one entry point, `deliver(final_attempt, manual, entry, retry_delay)`.
+`merge_git_repository`, the retry flow and the recovery check (R20) all call it (FR-007). Its end
+has the same shape as the abandonment of R8: the entries leave the queue under the repository lock,
+and the release runs after the lock is released, under a lease.
 
 ### The algorithm
 
@@ -572,7 +572,9 @@ through one scrubber that removes `user:password@` from URLs, since a location c
 `retry_delay_seconds=[30, 120, 300]` and a `retry_condition_fn` that retries only a failure
 classified as automatically retryable (R5). The task reads its attempt number from
 `task_run.run_count` and passes `final_attempt` to `deliver`, which records `action-required` only on
-the final attempt. Tests override the delays with `with_options(retry_delay_seconds=...)`.
+the final attempt. The task also passes the wait before the next retry to `deliver`, which records
+`retry_due_at` as the failure time plus that wait. Tests override the delays with
+`with_options(retry_delay_seconds=...)`.
 
 **Why a task.** Prefect 3.8 supports `retry_condition_fn` on tasks only, not on flows.
 

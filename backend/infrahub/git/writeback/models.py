@@ -571,6 +571,16 @@ class WritebackIntent:
         last_progress_at = self.progress.last_progress_at
         return last_progress_at is None or now - last_progress_at > timedelta(seconds=STALE_AFTER_SECONDS)
 
+    def release_waits(self, *, now: datetime) -> bool:
+        """Whether held regeneration that no live lease covers waits behind an empty queue, with no recent progress.
+
+        A queue with merges is left to the stale check, so a delivery that waits for a user action gets no new run.
+        """
+        if self.queue.entries or self.held.lease_window(now=now, max_hold_seq=None).is_empty:
+            return False
+        last_progress_at = self.progress.last_progress_at
+        return last_progress_at is None or now - last_progress_at > timedelta(seconds=STALE_AFTER_SECONDS)
+
 
 @dataclass(frozen=True)
 class DeliveryFailure:

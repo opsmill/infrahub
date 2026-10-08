@@ -3,19 +3,16 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from infrahub.core.constants import InfrahubKind, RepositoryDeliveryStatus
 from infrahub.exceptions import NodeNotFoundError
 from infrahub.git.writeback.models import DeliveryProgress, DeliveryQueue, HeldRegeneration, WritebackIntent
 from infrahub.git.writeback.ports import ReplayResult
-from tests.adapters.workflow import WorkflowRecorder
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Mapping, Sequence
 
-    from infrahub.context import InfrahubContext
-    from infrahub.events.models import EventContext
     from infrahub.git.writeback.models import (
         AbandonmentRecord,
         Actor,
@@ -26,8 +23,6 @@ if TYPE_CHECKING:
         RevertedDelivery,
     )
     from infrahub.git.writeback.ports import Clock
-    from infrahub.workflows.constants import WorkflowPriority
-    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 
 class FixedClock:
@@ -211,6 +206,29 @@ class InMemoryDeliveryState:
         return f"lease-{next(self._lease_numbers)}"
 
 
+@dataclass(frozen=True)
+class RecordedFailure:
+    failure: DeliveryFailure
+    final: bool
+    retry_due_at: datetime | None
+
+
+class RecordingDeliveryState(InMemoryDeliveryState):
+    """Records each failure in `recorded_failures`, in order, then records it as its parent does."""
+
+    def __init__(self, *, clock: Clock, repository_names: Mapping[str, str]) -> None:
+        super().__init__(clock=clock, repository_names=repository_names)
+        self.recorded_failures: list[RecordedFailure] = []
+
+    async def record_failure(
+        self, *, repository_id: str, failure: DeliveryFailure, final: bool, retry_due_at: datetime | None
+    ) -> None:
+        self.recorded_failures.append(RecordedFailure(failure=failure, final=final, retry_due_at=retry_due_at))
+        await super().record_failure(
+            repository_id=repository_id, failure=failure, final=final, retry_due_at=retry_due_at
+        )
+
+
 class InMemoryDeliveryGit:
     """A clone, its destination worktree and the remote branches as last fetched, in memory.
 
@@ -370,30 +388,3 @@ class FailingDeliveryRunQuery:
     async def has_queued_run(self, *, repository_id: str) -> bool:
         self.asked.append(repository_id)
         raise self.error
-
-
-class ContextRecordingWorkflow(WorkflowRecorder):
-    """Records each submission as its parent does, and the context of each submission in `contexts`, in order.
-
-    An error that a test appends to `failures` is raised by the next submission, before it records anything.
-    """
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.contexts: list[InfrahubContext | EventContext | None] = []
-        self.failures: list[Exception] = []
-
-    async def submit_workflow(
-        self,
-        workflow: WorkflowDefinition,
-        context: InfrahubContext | EventContext | None = None,
-        parameters: dict[str, Any] | None = None,
-        tags: list[str] | None = None,
-        priority: WorkflowPriority | None = None,
-    ) -> WorkflowInfo:
-        if self.failures:
-            raise self.failures.pop(0)
-        self.contexts.append(context)
-        return await super().submit_workflow(
-            workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
-        )

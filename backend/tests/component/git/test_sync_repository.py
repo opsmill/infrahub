@@ -16,6 +16,8 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.objects import State
 
 from infrahub import config, lock
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
     InfrahubKind,
     RepositoryInternalStatus,
@@ -51,7 +53,7 @@ from infrahub.workflows.catalogue import GIT_REPOSITORY_DELIVERY_RETRY
 from infrahub.workflows.constants import TAG_NAMESPACE, WorkflowTag
 from tests.adapters.message_bus import BusRecorder, BusSimulator, FailingBus, RepositoryFailingBus
 from tests.adapters.repository_record_store import FailingRepositoryRecordStore, build_in_memory_recorder
-from tests.adapters.workflow import WorkflowRecorder
+from tests.adapters.workflow import ContextRecordingWorkflow
 from tests.conftest import TestHelper
 from tests.helpers.dependency_override import override_dependency
 from tests.helpers.git import LocalRemote, build_repository_client, clone_repository
@@ -1037,8 +1039,9 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
             )
         stale = nodes["stale-delivery-repo"]
         queued_at = datetime.now(UTC) - timedelta(seconds=STALE_AFTER_SECONDS + 60)
+        default_branch = await registry.get_branch(db=db)
         store = WritebackIntentStore(
-            db=db, lock_registry=lock.registry, default_branch=await registry.get_branch(db=db), clock=lambda: queued_at
+            db=db, lock_registry=lock.registry, default_branch=default_branch, clock=lambda: queued_at
         )
         await store.enqueue(
             repository_id=stale.id,
@@ -1056,10 +1059,13 @@ class TestSynchronisationCycleIsolation(TestInfrahubApp):
 
         with (
             override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
-            override_workflow(WorkflowRecorder(), dependency_provider=dependency_provider) as workflow,
+            override_workflow(ContextRecordingWorkflow(), dependency_provider=dependency_provider) as workflow,
         ):
             await sync_remote_repositories()
 
+        assert workflow.contexts == [
+            InfrahubContext(branch=BranchContext(name="main", id=str(default_branch.uuid)), account=AnonymousSession())
+        ]
         assert workflow.get_submit_calls_for(GIT_REPOSITORY_DELIVERY_RETRY) == [
             {
                 "kind": "submit",
