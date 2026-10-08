@@ -24,6 +24,8 @@ export const TASK_STATES = [
   TASK_STATE_CANCELING,
 ];
 
+export type TaskState = (typeof TASK_STATES)[number];
+
 export const TASK_ONGOING_STATES = [
   TASK_STATE_SCHEDULED,
   TASK_STATE_PENDING,

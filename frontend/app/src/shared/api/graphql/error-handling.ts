@@ -20,6 +20,20 @@ export function hasCatalogueCode(error: CombinedError | undefined, code: string)
   );
 }
 
+const hasGraphQLErrors = (error: unknown): error is Pick<CombinedError, "graphQLErrors"> =>
+  error instanceof Error && "graphQLErrors" in error && Array.isArray(error.graphQLErrors);
+
+// The client throws a plain `Error` with the GraphQL errors on its `cause`, and a mixed failure
+// must not pass for the code.
+export function hasOnlyThrownCatalogueCode(error: unknown, code: string): boolean {
+  const cause = error instanceof Error ? error.cause : undefined;
+  const graphQLErrors = hasGraphQLErrors(cause) ? cause.graphQLErrors : [];
+  return (
+    graphQLErrors.length > 0 &&
+    graphQLErrors.every(({ extensions }) => parseCatalogueError(extensions).code === code)
+  );
+}
+
 // The transport rethrows the GraphQL detail as a bare `Error` carrying it on `.cause`, so anything
 // caught outside this module has to be unwrapped before its catalogue code can be read.
 export function hasThrownCatalogueCode(error: unknown, code: string): boolean {

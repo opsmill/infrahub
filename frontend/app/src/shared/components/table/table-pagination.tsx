@@ -1,6 +1,7 @@
 import { buttonVariants } from "@infrahub/ui";
 
 import { Icon } from "@/shared/components/display/icon";
+import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import {
   clampPage,
@@ -15,15 +16,18 @@ export interface TablePaginationProps {
   totalCount: number;
   onPageChange: (page: number) => void;
   className?: string;
+  "aria-label"?: string;
 }
 
 const controlStyle = classNames(
   buttonVariants({ variant: "ghost", size: "sm", shape: "square" }),
+  focusVisibleStyle,
   "hover:bg-border disabled:pointer-events-none disabled:opacity-60"
 );
 
 const activePageStyle = classNames(
   buttonVariants({ variant: "outline", size: "sm", shape: "square" }),
+  focusVisibleStyle,
   "font-medium"
 );
 
@@ -33,13 +37,14 @@ export function TablePagination({
   totalCount,
   onPageChange,
   className,
+  "aria-label": ariaLabel = "Pagination",
 }: TablePaginationProps) {
   const totalPages = getTotalPages(totalCount, pageSize);
   const currentPage = clampPage(page, totalPages);
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={ariaLabel}
       className={classNames(
         "flex flex-wrap items-center justify-between gap-2 p-2 text-sm",
         className
@@ -59,7 +64,7 @@ export function TablePagination({
           }}
           type="button"
         >
-          <Icon icon="mdi:chevron-left" />
+          <Icon className="text-base" icon="mdi:chevron-left" />
         </button>
 
         {getPageItems(currentPage, totalPages).map((item, index) =>
@@ -96,7 +101,7 @@ export function TablePagination({
           }}
           type="button"
         >
-          <Icon icon="mdi:chevron-right" />
+          <Icon className="text-base" icon="mdi:chevron-right" />
         </button>
       </div>
     </nav>
