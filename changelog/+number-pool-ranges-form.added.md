@@ -1,0 +1,1 @@
+Added support for several ranges, each with an optional weight, when creating or editing a number pool in the web interface, and added a choice of the fields that scope its allocations when creating it.
