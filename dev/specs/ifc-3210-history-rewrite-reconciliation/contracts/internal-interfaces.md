@@ -289,10 +289,12 @@ The sole write path for the four attributes. It owns last-write-wins, the increm
 signal.
 
 ```text
-record(repository_id, repository_name, infrahub_branch_name, divergence, is_default_branch) -> bool
+record(repository_id, divergence) -> None
 ```
 
-Returns whether a record was written.
+It writes on the Infrahub branch that `divergence.infrahub_branch_name` names. Nothing reads a
+return value, so it returns none. The trunk signal of rule 6 adds the repository name, whether the
+branch is the repository's default branch, and the `RewriteEventEmitter` port (T067).
 
 ### Contract
 
@@ -334,7 +336,11 @@ one: `collect_pending_imports` moves every branch with `reset_to_commit`, which 
   reverse ordering would be worse, because it would let a record name a commit that was never
   written. `collect_pending_imports` also lets graph errors propagate, so a failed record write
   aborts collection for every branch and skips the broadcast; the record write must therefore be
-  isolated per branch like the other per-branch failures.
+  isolated per branch like the other per-branch failures. The failure joins `failed_imports` at
+  step `record`, and the import of the branch stays queued, so the failure fails the run but never
+  writes `error-import` (FR-013). It is logged once, where it is caught, as a failed import is: the
+  store chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised.
 
 **Not after the import.** The commit is written during collection, so a recorder placed after the
 import would find the next cycle reading the *new* head as the imported commit and classifying
@@ -352,18 +358,19 @@ protocols passed to the constructor, so the recorder's unit tests need no databa
 
 | Port | What it does |
 |---|---|
-| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, and writes the four attributes in one call. |
-| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. |
+| `RepositoryRecordStore` | Reads `rewrite_count` for one repository and branch, passes it to a function the recorder supplies, and writes the record that function returns. One method, one read and one write, so the increment stays in the recorder. |
+| `RewriteEventEmitter` | Emits `RepositoryHistoryRewrittenEvent`. It comes with the trunk signal (T067), because before that there is no event to emit. |
 
-The production `RepositoryRecordStore` is backed by the SDK node API. A test substitutes an
-in-memory one. The recorder itself imports neither the SDK nor the event service.
+The production `RepositoryRecordStore` is backed by the SDK node API. It reads the repository
+through the generic, and the node's own kind picks the update mutation, so one store serves both
+repository kinds. A test substitutes an in-memory one. The recorder itself imports neither the SDK nor the event service.
 
 ### Rules
 
 - The recorder is never called from a worker's own pull path. That is FR-007, and the pull path has
   no recorder reference at all, so the rule holds by construction.
-- The production store writes through the SDK node API. It does not change the `python_sdk`
-  submodule.
+- The production store writes through the SDK node API. It changes no SDK code. Only the
+  generated `infrahub_sdk/protocols.py` gains the four attributes.
 
 ---
 
@@ -383,7 +390,7 @@ hard-resets onto the remote head whenever the worktree does not lead to it.
 | Worktree head is an ancestor of remote head | Pulls, unchanged. |
 | **Remote head is an ancestor of worktree head** | **Hard-resets onto the remote head.** The remote was rewound. |
 | Neither is an ancestor of the other | Hard-resets onto the remote head and creates the commit worktree. |
-| No worktree, `create_if_missing` and a branch id | Creates the worktree, unchanged. |
+| No worktree, `create_if_missing` and a branch id | Creates the worktree in this clone only. It does not push the new branch. |
 
 **The rule is "the worktree does not lead to the remote head".** Reset unless the worktree already
 is the remote head, is an ancestor of it, or the remote carries no such ref. A worktree ahead of
@@ -414,22 +421,22 @@ and neither records.
 
 Changed. `backend/infrahub/git/sync.py`.
 
-Today it returns a `SyncReport` of the skipped, imported and advanced branches, and it raises
-`RepositoryBranchesFailedError`, carrying the same report, when a branch failed. Phase 4 (T031) makes
-it return the branches the cycle advanced, and leaves the raise for failed branches to its caller,
-after the broadcast.
+Before Phase 4 (T031) it returned a `SyncReport` of the skipped, imported and advanced branches,
+and it raised `RepositoryBranchesFailedError`, carrying the same report, when a branch failed. T031
+makes it return the branches the cycle advanced and the branches that failed, and leaves the raise
+for failed branches to its caller, after the broadcast.
 
 ```text
-sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # today
-sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # after T031
+sync(repo, staging_branch=None, graph_commits=None) -> SyncReport    # before T031
+sync(repo, staging_branch=None, graph_commits=None) -> SyncOutcome   # since T031
 ```
 
 `graph_commits` holds the commit the graph records for each Infrahub branch that can still record
 one, read once per cycle (section 1). The add flow passes none, so its first sync classifies nothing.
 
-`SyncOutcome` carries `reconciled: tuple[ReconciledBranch, ...]` and
-`failed: tuple[FailedImport, ...]`. It must also keep what `SyncReport` reports today, because
-`git/tasks.py::report_sync_run` logs the skipped branches and links the run from it.
+`SyncOutcome` carries the run's `report: SyncReport`, `reconciled: tuple[ReconciledBranch, ...]` and
+`failed: tuple[FailedImport, ...]`. It keeps the report because `git/tasks.py::report_sync_run`
+logs the skipped branches and links the run from it.
 
 ### Contract
 
@@ -443,7 +450,9 @@ one, read once per cycle (section 1). The add flow passes none, so its first syn
    `git/tasks.py::sync_git_repo_with_origin_and_tag_on_failure` no longer reaches its `except` and
    would stop tagging failures, and `git/tasks.py::add_git_repository` calls `sync` directly and
    would silently ignore a failed initial import. Both must read the returned failures and act on
-   them.
+   them. Both do so through `git/sync.py::raise_if_branches_failed`, which raises
+   `RepositoryBranchesFailedError` as before, now carrying the whole `SyncOutcome`. The tagging
+   flow still links its run and fails it, and the add flow still fails.
 
 ---
 
@@ -454,19 +463,33 @@ Changed. `backend/infrahub/git/tasks.py`.
 It sends one coalesced `RefreshGitFetch` covering every reconciled branch, before any raise.
 
 **The catch boundary.** This function is the single owner of logging and recording a failed
-reconciliation. It never propagates a failure of the configured default branch. It re-raises the
-failure of any other branch, because the existing path tags the repository from that raise, and the
-per-repository `try` added to `sync_remote_repositories` keeps the raise from reaching the next
-repository.
+reconciliation, and it propagates no failed branch. The raise that tags the repository is the one
+the tagging flow `sync_git_repo_with_origin_and_tag_on_failure` makes for any failed branch: that
+flow links its run to the repository and fails it, as it did before, and this function catches the
+error. A failed configured default branch is then logged at error level and recorded on the
+repository's synchronisation status, unless only its rewrite record failed. The failure of any other branch is logged at info level, as
+it was before. The failure is handled even when the send of the message raises, and the send's
+error then propagates. The per-repository `try` added to `sync_remote_repositories` catches whatever
+else a repository raises.
+
+The original wording had this function re-raise the failures of the other branches so that they
+are tagged. The tagging already happens one level down, inside the tagging flow, so a re-raise here
+would only log the same failure a second time, in the next repository's way.
 
 ### Contract
 
 | Before | After |
 |---|---|
-| One message, for `staging_branch or registry.default_branch` only | One message, carrying every branch the cycle advanced |
-| Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is re-raised |
-| Commit read from `repo.default_branch` | Commit taken per branch from `ReconciledBranch` |
+| One message, for `staging_branch or registry.default_branch` only | One message, carrying the trunk first and then every other branch the cycle advanced |
+| Sent after the sync returns, so a raise skips it | Sent before the failure for a failed branch is handled |
+| Commit read from `repo.default_branch` | The trunk commit is still read from `repo.default_branch`; every other commit is taken from its `ReconciledBranch` |
 | A staging sync names the staging branch | A staging sync names the branch its trunk maps onto, as `ReconciledBranch` does, so other workers move their trunk worktree |
+
+The tagging flow `sync_git_repo_with_origin_and_tag_on_failure` sits between this function and the
+syncer, and it still raises `RepositoryBranchesFailedError` when a branch failed, so its run stays
+linked and failed. The error carries the whole `SyncOutcome`. This function catches it, sends the
+message built from `outcome.reconciled`, and only then handles the failure. The builder is
+`git/tasks.py::build_cycle_fetch_message`.
 
 ### Rules
 
@@ -478,14 +501,28 @@ repository.
   pull-path self-heal of FR-005 replaces it. **Order the two:** keep sending the trunk message
   unconditionally until the pull-path reset ships, then drop it. Shipping the "no branch advanced,
   no message" rule first leaves a stale worker with no heal on either side.
-- When every branch failed, the coalesced message carries no pairs. The unconditional trunk
-  message above still goes, because it is what heals a stale worker and nothing in this phase
-  replaces it.
+- The trunk is the first pair of that one message on every cycle, whether or not it advanced, and
+  the trunk worktree's local head is its commit. This is the unconditional trunk message above,
+  carried in the coalesced message rather than sent beside it. When every branch failed, the
+  message lists the trunk alone, because it is what heals a stale worker and nothing in this phase
+  replaces it. When the trunk commit cannot be read, the trunk is still listed first, with no
+  commit. A pair with no commit means "pull this branch", so every worker pulls the trunk as it did
+  before, also when other branches advanced.
 - **A trunk failure is made loud without being made fatal.** Today
   `sync_repository_from_origin` catches `RepositoryError` and `CommitNotFoundError` and calls
   `log.info`; nothing propagates. FR-018 raises the severity of that path for the configured
   default branch: log at error level and record the failure against the repository's
-  synchronisation status. It does **not** propagate out of the flow.
+  synchronisation status. It does **not** propagate out of the flow. The record writes
+  `error-import` on the branch the trunk imports into, through
+  `InfrahubRepository.record_import_failure`. An import failure has already written it; a failure
+  while the trunk is collected has not, and that is the case the record adds.
+  `FailedImport.on_default_branch` marks which failure is the trunk's. The collector sets it once, from
+  the git branch name, and `PendingObjectImport.on_default_branch` carries it to an import failure.
+  A staging repository's trunk is covered too: the collector isolates it like any other branch, so
+  its failure is flagged as the default branch, and the record goes on the staging branch the trunk
+  imports into. A failed rewrite record of the trunk is logged at error level too, but it writes no
+  `error-import`: its import still runs and writes `in-sync`, and FR-013 keeps the rewrite record
+  out of the synchronisation status.
 
   Propagating would be a worse bug than the one it reports. `sync_remote_repositories` loops over
   every repository with no per-repository `try`, so a raise from one repository aborts the cycle
@@ -498,20 +535,22 @@ repository.
 - **The single-branch fields stay populated.** `infrahub_branch_name` and `infrahub_branch_id` are
   required on the message, so a coalesced message fills them, and `commit`, from its first pair. A
   worker still running the previous code then converges one branch instead of failing to construct
-  the message. That is a degradation during a rolling deployment, not a failure, and the remaining
+  the message. Because the trunk comes first, that branch is the trunk, as it was before. That is a degradation during a rolling deployment, not a failure, and the remaining
   branches converge on first contact through the pull-path rule of FR-005.
 
 ---
 
 ## 6. `RefreshGitFetch` handler
 
-Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
+Changed. `backend/infrahub/git/convergence.py::WorktreeConverger`, which the `fetch` handler in
+`backend/infrahub/message_bus/operations/git/repository.py` builds.
 
 ### Contract
 
 1. It still ignores a message whose `meta.initiator_id` is this worker.
 2. It still takes the repository lock and fetches once.
-3. When `branches` is present, it resets each pair in turn, inside that one lock hold.
+3. When `branches` is present, it resets each pair in turn, inside that one lock hold. A pair with
+   no commit is pulled instead.
 4. When `branches` is absent, it behaves exactly as it does today.
 5. It still passes `update_commit_value=False`. A broadcast never writes to the graph.
 6. **It resets with `reset_to_commit` and runs no ancestry check.** It moves the worktree onto
@@ -519,8 +558,12 @@ Changed. `backend/infrahub/message_bus/operations/git/repository.py::fetch`.
    That is deliberate, because the broadcast carries a SHA the sending worker already resolved
    and the receiving worker is meant to converge on exactly it.
 7. One pair failing does not stop the rest. Each failure is logged with the branch it belongs to,
-   and that branch converges on first contact through the pull-path rule of FR-005. The broadcast
+   on the task logger, so it shows in the flow run even though the run completes. That branch
+   converges on first contact through the pull-path rule of FR-005. The broadcast
    is a pre-warm, so a pair it could not converge costs promptness and not correctness.
+8. **It never writes to the remote.** A worktree it creates for a branch it lacks stays in this
+   clone. Creating it used to push the new branch, so a branch deleted on the remote between the
+   sync and this worker's fetch came back, created from this clone's head.
 
 ---
 

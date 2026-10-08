@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class RefClassification(StrEnum):
@@ -78,3 +82,18 @@ class ReconciledBranch:
     commit: str
     divergence: RefDivergence | None = None
     """How the remote head compares to the commit the graph recorded, None when no graph commit was given."""
+
+
+@dataclass(frozen=True)
+class RewriteRecord:
+    """What the repository holds about the last history rewrite of one branch."""
+
+    previous_commit: str
+    """The commit the graph recorded before the rewrite."""
+
+    commit: str
+    """The commit the branch was reconciled onto."""
+
+    rewritten_at: datetime
+    rewrite_count: int
+    """The rewrites the branch reads, including those of the branch it was created from."""

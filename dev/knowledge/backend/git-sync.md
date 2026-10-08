@@ -58,9 +58,17 @@ The read-write kind implements the mapping described below; the read-only kind r
   fetch. Its remote-tracking ref is read before the fetch and compared after it. A branch absent from
   that earlier read counts as moved, because it was pushed after this clone's last fetch. A worker
   with no clone makes one before the read, so its first sync does not see the branch as new.
-- `RepositorySyncer.sync` returns a `SyncReport` of the skipped, imported and advanced branches. When
-  a branch fails, it raises `RepositoryBranchesFailedError` carrying the same report, so a caller can
-  still report the skipped branches before re-raising.
+- `RepositorySyncer.sync` returns a `SyncOutcome`: a `SyncReport` of the skipped, imported and
+  advanced branches, the branches it advanced with their commits, and the branches that failed. A
+  failed branch does not raise there. Its callers report the skipped branches, then raise
+  `RepositoryBranchesFailedError` carrying the outcome through `git/sync.py::raise_if_branches_failed`.
+- The periodic cycle catches that error, sends the fetch message, and raises nothing further. A
+  failed configured default branch is logged at error level and recorded as `error-import` on the
+  branch the trunk imports into, because a trunk failure while it is collected writes no status of
+  its own. The failure of any other branch is logged at info level.
+- The cycle wraps each repository in its own `try` (`git/tasks.py::sync_remote_repository` is the
+  per-repository step), so one repository that raises is logged and the cycle continues with the
+  next one.
 - The operator-facing record of the skip is a warning in the flow run's log, emitted through
   Prefect's run logger. The add flow writes it whenever its first sync skips a branch. The
   per-repository sync flow writes it only when the run imported a branch or saw a skipped branch
@@ -154,6 +162,26 @@ commit, from the worktree or from the graph, logs one line with the branch, the 
 the commit that replaced it. A plain fast-forward logs nothing. The add flow passes no graph
 commits, so it classifies nothing.
 
+### The rewrite record
+
+A rewrite is also recorded on the repository, in four `LOCAL` attributes of the repository generic:
+`last_rewrite_previous_commit`, `last_rewrite_commit`, `last_rewrite_at` and `rewrite_count`.
+`HistoryRewriteRecorder` (`git/divergence/recorder.py`) is the only writer. It writes only when the
+graph comparison classifies the branch as a rewrite, so a worker that only resets its own stale
+worktree records nothing.
+
+- **Record right after the commit write, in the same hold of the repository lock.** After the import
+  the next cycle already reads the new commit as unchanged, so a later record never happens.
+- **A failed record fails its branch alone, at step `record`, and keeps its import queued.** The
+  graph already holds the new commit, so no later cycle selects the branch again to import it, and
+  that rewrite stays unrecorded. The import still runs, so the failure leaves `sync_status` alone. On
+  the default branch it is logged at error level, and the run fails although the import converged.
+- **A failed record is logged once, where it is caught, the way a failed import is.** The store
+  chains the SDK error, so the reason is the API's own message for a known failure, and the
+  traceback is kept only for an error that is not recognised, such as a lost connection.
+- **The count is what the branch reads, not what it did.** A branch-local read falls back to the
+  origin branch, so a branch created after a trunk record reads that record and counts on from it.
+
 ## Cloning and the repository lock
 
 Creating the local copy deletes whatever is already at the repository directory before cloning
@@ -206,7 +234,9 @@ read-only flows through `import_objects_from_files`.
   `import_entry(label)`. That context manager adds the entry's name and file as an exception note,
   and the message is prefixed with the notes, for example
   `GraphQL query 'backbone_service' (queries/backbone.gql): Violates uniqueness constraint 'name'`.
-  Schema files have no label, because their validation errors already name the file. The build
+  A schema entry is labelled `Schema '<path>'` only when the path does not exist or names a
+  directory without a schema file; errors in a schema file's content have no label, because they
+  already name the file. The build
   loops that import Python modules (checks, Python transforms, generators) also pass the worktree
   directory to `import_entry`, so a syntax error names its file relative to the repository root.
   The file can be a helper module, not the entry's own file.

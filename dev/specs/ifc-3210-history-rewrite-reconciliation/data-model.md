@@ -20,7 +20,7 @@ Declared in `backend/infrahub/core/schema/definitions/core/repository.py`, on th
 |---|---|---|---|---|---|
 | `last_rewrite_previous_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub had imported on this branch before the reconciliation. |
 | `last_rewrite_commit` | `Text` | yes | none | `LOCAL` | The commit Infrahub reconciled onto. |
-| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When the reconciliation completed. |
+| `last_rewrite_at` | `DateTime` | yes | none | `LOCAL` | When Infrahub detected the rewrite: the sync writes it while it collects the branch, before the import. |
 | `rewrite_count` | `Number` | yes | none | `LOCAL` | How many reconciliations are visible on this branch, cumulative. See "What LOCAL does not do" below: a branch inherits the count of the branch it forked from. |
 
 Order weights place them after `sync_status` and before the relationships, so the repository form
@@ -189,17 +189,23 @@ In `backend/infrahub/message_bus/messages/refresh_git_fetch.py`. One new optiona
 |---|---|---|---|
 | `branches` | `tuple[BranchCommitPair, ...] \| None` | new, optional | Every branch this message converges, with the commit each is pinned to. |
 
-`BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`.
+`BranchCommitPair` carries `infrahub_branch_name`, `infrahub_branch_id` and `commit`. `commit` is
+optional, and an empty one tells the worker to pull that branch instead of resetting it. The periodic
+cycle sends the trunk that way when it cannot read the trunk's commit. It must have a default: the
+message body leaves out every field that is empty, so a required `commit` fails to parse on the
+worker that receives it.
 
 The existing `infrahub_branch_name`, `infrahub_branch_id` and `commit` fields stay, and a coalesced
 message still populates them from its first pair. The first two are required, so a message that
 left them empty could not be constructed by a worker running the previous code. Five emission sites
 use them and are untouched by this epic. The handler prefers `branches` when present and falls back
-to the single-branch fields otherwise.
+to the single-branch fields otherwise. A message that sets `branches` lists at least one pair, and
+the model rejects one whose first pair differs from the single-branch fields, so a worker on the
+previous code converges the branch the list starts with.
 
-Under one lock acquisition and one fetch, the handler resets each pair in turn. This is why the
-list is coalesced rather than sent as N messages: the repository lock is contended by merges and
-by other synchronisations.
+Under one lock acquisition and one fetch, the handler resets, or pulls, each pair in turn. This is
+why the list is coalesced rather than sent as N messages: the repository lock is contended by merges
+and by other synchronisations.
 
 ---
 
@@ -269,4 +275,4 @@ marker would then survive its full hour and suppress the next genuine rewrite of
 | `internal_status` | Unrelated to reconciliation. |
 | `commit` on any kind | The reconciled commit is recorded the way every other commit is. |
 | `NodeMutationOrigin` | No new member. Not because the trigger builders would need changing, they match `live` explicitly and ignore a new value for free, but because the SDK mutation that writes the record always stamps `live`. See `research.md` R6. |
-| The SDK (`python_sdk`) | The recorder writes through the SDK node API, so no submodule change and no second PR. |
+| The SDK client (`python_sdk`) | The recorder writes through the SDK node API, so no SDK method changes. The generated `infrahub_sdk/protocols.py` still gains the four attributes, so one SDK PR lands first and the submodule pointer follows it. |

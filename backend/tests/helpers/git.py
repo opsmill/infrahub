@@ -75,6 +75,7 @@ class LocalRemote:
             self.create_branch(branch_name)
         self.repo.git.checkout(branch_name)
         for name, content in files.items():
+            (self.directory / name).parent.mkdir(parents=True, exist_ok=True)
             (self.directory / name).write_text(content, encoding="utf-8")
         self.repo.index.add(list(files))
         if amend:

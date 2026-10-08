@@ -82,6 +82,7 @@ from infrahub.git.fingerprint.composer import (
     build_fingerprint_composer,
 )
 from infrahub.git.import_errors import import_entry, log_import_failure
+from infrahub.git.jinja2_entry_template import validate_jinja2_entry_template
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
@@ -94,7 +95,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.checks import InfrahubCheck
     from infrahub_sdk.ctl.utils import YamlFileVar
     from infrahub_sdk.protocols_base import CoreNode
-    from infrahub_sdk.schema import MainSchemaTypesAPI
+    from infrahub_sdk.schema import InfrahubSchemaBase, MainSchemaTypesAPI
     from infrahub_sdk.schema.repository import InfrahubRepositoryArtifactDefinitionConfig
     from infrahub_sdk.transforms import InfrahubTransform
     from infrahub_sdk.yaml import LocalFile
@@ -267,6 +268,46 @@ def _generator_definition_label(name: str, file_path: Path | str) -> str:
 
 def _artifact_definition_label(name: str) -> str:
     return f"Artifact definition '{name}'"
+
+
+def _schema_label(path: Path | str) -> str:
+    return f"Schema '{path}'"
+
+
+def validate_jinja2_transform_against_schema(
+    schema_manager: InfrahubSchemaBase, schema: MainSchemaTypesAPI, transform: InfrahubJinja2TransformConfig
+) -> None:
+    """Check that every field the Jinja2 transform entry sets is an attribute or relationship of its kind.
+
+    Raises:
+        ValidationError: When a field is missing from the schema, with the entry's label as a note.
+
+    """
+    with import_entry(_jinja2_transform_label(transform.name, transform.template_path)):
+        schema_manager.validate_data_against_schema(
+            schema=schema, data=transform.model_dump(exclude_none=True, exclude={"watch"})
+        )
+
+
+def collect_artifact_definitions(
+    schema_manager: InfrahubSchemaBase,
+    schema: MainSchemaTypesAPI,
+    artifact_definitions: list[InfrahubRepositoryArtifactDefinitionConfig],
+) -> dict[str, InfrahubRepositoryArtifactDefinitionConfig]:
+    """Index the artifact definition entries by name, checking that every field each sets is in its kind's schema.
+
+    Raises:
+        ValidationError: When a field of an entry is missing from the schema, with the entry's label as a note.
+
+    """
+    collected: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
+    for artifact_definition in artifact_definitions:
+        with import_entry(_artifact_definition_label(artifact_definition.name)):
+            schema_manager.validate_data_against_schema(
+                schema=schema, data=artifact_definition.model_dump(exclude_none=True)
+            )
+        collected[artifact_definition.name] = artifact_definition
+    return collected
 
 
 def _repository_file_label(file: LocalFile, worktree_directory: Path) -> str:
@@ -611,6 +652,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """Build the desired Jinja2 transform definitions from the repository config.
 
         Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ValidationError: When an entry sets a field that the transform's kind does not have.
+            RepositoryConfigurationError: When the entry template of a transform cannot be used.
+
         """
         log = get_run_logger()
 
@@ -625,20 +671,15 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         closure_builder = build_default_closure_builder(logger=log)
 
         for config_transform in config_file.jinja2_transforms:
-            try:
-                self.sdk.schema.validate_data_against_schema(
-                    schema=schema, data=config_transform.model_dump(exclude_none=True, exclude={"watch"})
-                )
-            except PydanticValidationError as exc:
-                for error in exc.errors():
-                    locations = [str(error_location) for error_location in error["loc"]]
-                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
-                continue
-            except ValidationError as exc:
-                log.error(exc.message)
-                continue
-
+            validate_jinja2_transform_against_schema(
+                schema_manager=self.sdk.schema, schema=schema, transform=config_transform
+            )
             with import_entry(_jinja2_transform_label(config_transform.name, config_transform.template_path)):
+                validate_jinja2_entry_template(
+                    identifier=self.name,
+                    worktree_root=Path(worktree.directory),
+                    template_path=config_transform.template_path_value,
+                )
                 closure = closure_builder.build(
                     transform_config=config_transform,
                     worktree_root=Path(worktree.directory),
@@ -804,30 +845,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """Build the desired artifact definitions from the repository config.
 
         Performs no graph mutation, so it does not need to be serialized against concurrent imports.
+
+        Raises:
+            ValidationError: When an entry sets a field that the artifact definition's kind does not have.
+
         """
         log = get_run_logger()
         schema = await self.sdk.schema.get(kind=InfrahubKind.ARTIFACTDEFINITION, branch=branch_name)
 
-        local_artifact_defs: dict[str, InfrahubRepositoryArtifactDefinitionConfig] = {}
-
-        # Process the list of local Artifact Definitions to organize them by name
         log.info(f"Found {len(config_file.artifact_definitions)} artifact definitions in the repository")
 
-        for artdef in config_file.artifact_definitions:
-            try:
-                self.sdk.schema.validate_data_against_schema(schema=schema, data=artdef.model_dump(exclude_none=True))
-            except PydanticValidationError as exc:
-                for error in exc.errors():
-                    locations = [str(error_location) for error_location in error["loc"]]
-                    log.error(f"  {'/'.join(locations)} | {error['msg']} ({error['type']})")
-                continue
-            except ValidationError as exc:
-                log.error(exc.message)
-                continue
-
-            local_artifact_defs[artdef.name] = artdef
-
-        return local_artifact_defs
+        return collect_artifact_definitions(
+            schema_manager=self.sdk.schema, schema=schema, artifact_definitions=config_file.artifact_definitions
+        )
 
     async def _apply_artifact_definitions(
         self,
@@ -1012,6 +1042,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         """Load the schema files listed in the repository config into the branch.
 
         Raises:
+            RepositoryConfigurationError: When a schema path does not exist, or is a directory without a schema file.
             ValidationError: When a schema file cannot be read, is not valid, or the server rejects the schemas.
 
         """
@@ -1022,22 +1053,27 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         for schema in config_file.schemas:
             full_schema = branch_wt.directory / schema
-            if not full_schema.exists():
-                log.warning(f"Unable to find the schema {schema}")
 
-            if full_schema.is_file():
-                schema_file = SchemaFile(identifier=str(schema), location=full_schema)
-                schema_file.load_content()
-                schemas_data.append(schema_file)
-            elif full_schema.is_dir():
-                files = await self.find_files(
-                    extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
-                )
-                for item in files:
-                    identifier = str(item.relative_to(branch_wt.directory))
-                    schema_file = SchemaFile(identifier=identifier, location=item)
+            with import_entry(_schema_label(schema)):
+                if full_schema.is_file():
+                    schema_file = SchemaFile(identifier=str(schema), location=full_schema)
                     schema_file.load_content()
                     schemas_data.append(schema_file)
+                elif full_schema.is_dir():
+                    files = await self.find_files(
+                        extension=["yaml", "yml", "json"], branch_name=branch_name, commit=commit, directory=full_schema
+                    )
+                    if not files:
+                        raise RepositoryConfigurationError(
+                            identifier=self.name, message="The directory contains no .yml, .yaml or .json file"
+                        )
+                    for item in files:
+                        identifier = str(item.relative_to(branch_wt.directory))
+                        schema_file = SchemaFile(identifier=identifier, location=item)
+                        schema_file.load_content()
+                        schemas_data.append(schema_file)
+                else:
+                    raise RepositoryConfigurationError(identifier=self.name, message="The path does not exist")
 
         if not schemas_data:
             # If the repository doesn't contain any schema files there is no reason to continue
