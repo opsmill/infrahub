@@ -23890,7 +23890,7 @@ export type NumberPoolAllocation = {
   /** The identifier given when the number was allocated, if any. */
   identifier: Maybe<Scalars['String']['output']>;
   /** ALLOCATED when the pool picked the number, PROVIDED when a user gave it. */
-  provenance: NumberPoolProvenance;
+  provenance: PoolRecordProvenance;
   /** The range whose bounds hold the value. */
   range: NumberPoolRangeRef;
   /** The number held. */
@@ -23961,13 +23961,6 @@ export type NumberPoolHolder = {
   kind: Scalars['String']['output'];
 };
 
-/** How the number a tracked attribute currently holds got there. */
-export const NumberPoolProvenance = {
-  ALLOCATED: 'ALLOCATED',
-  PROVIDED: 'PROVIDED'
-} as const;
-
-export type NumberPoolProvenance = typeof NumberPoolProvenance[keyof typeof NumberPoolProvenance];
 /** A reference to one range of the pool. */
 export type NumberPoolRangeRef = {
   __typename: 'NumberPoolRangeRef';
@@ -38650,7 +38643,7 @@ export type QueryInfrahubNumberPoolAllocationsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   pool_id: Scalars['String']['input'];
-  provenance?: InputMaybe<NumberPoolProvenance>;
+  provenance?: InputMaybe<PoolRecordProvenance>;
   range_id?: InputMaybe<Scalars['String']['input']>;
 };
 
