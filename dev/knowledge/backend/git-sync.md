@@ -182,6 +182,15 @@ worktree records nothing.
 - **The count is what the branch reads, not what it did.** A branch-local read falls back to the
   origin branch, so a branch created after a trunk record reads that record and counts on from it.
 
+A read-only repository records from the import of its last commit, in
+`git/repository.py::InfrahubReadOnlyRepository.update_latest_commit`. The flow holds the repository
+lock around it. It classifies the commit the ref resolves to against the commit the graph records,
+imports that commit as before, and records a rewrite once the new commit is written. It never
+resets the clone: a read-only repository follows its remote. A graph read or a classification that
+fails logs a warning, and the import goes on, because the check must not change what is imported. A
+record that fails fails the run after the import, as on the read-write path. Either way the next
+import reads the new commit, so that rewrite stays unrecorded.
+
 ### The re-target marker
 
 A change of `default_branch` moves the git branch that feeds Infrahub's default branch, so the trunk
@@ -203,8 +212,19 @@ trunk and records no rewrite.
   inactive repository, or a default branch the remote does not hold yet keeps it.
 - **Expires after seven days**, which only removes a marker that no cycle reconciles.
 
-A read-only repository uses no marker. Its update mutation sets `target_changed` on the workflow
-models it submits.
+A read-only repository uses no marker. An update or an upsert that changes its `ref` or `commit`
+submits the pull and the import of the last commit with `target_changed` set, after the transaction
+commits: a workflow submitted before the commit still runs when the transaction rolls back. This
+holds because the update opens and commits its own transaction, as every GraphQL request does. A
+caller that already holds a transaction commits it after the submission.
+
+A commit that a flow writes goes through the same update, so every change of the commit submits
+another pull and import with `target_changed` set. "Import latest commit" carries no flag, so it can
+meet a re-point. A run that resolves a `ref` the graph no longer records classifies nothing: it was
+submitted before a change of `ref`. Two windows still record a false rewrite, and they are accepted,
+because a read-only repository sends no trunk signal: a run that takes the lock after a change of
+`ref` and before the runs of that change, and a run that comes after a pull writes a pin that the ref
+does not hold and before the import that this write submits.
 
 ## Cloning and the repository lock
 

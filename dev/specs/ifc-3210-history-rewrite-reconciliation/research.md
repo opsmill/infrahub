@@ -254,7 +254,8 @@ on the workflow model.
   own.
 - Read-only repositories write no marker. Their re-point travels in band on the workflow model,
   set from the comparison
-  `graphql/mutations/repository.py::InfrahubRepositoryMutation.mutate_update` already makes.
+  `graphql/mutations/repository.py::InfrahubRepositoryMutation._call_mutate_update` makes, which
+  the update and every upsert path call, after the update transaction commits.
 - Writer, read-write: `InfrahubRepositoryMutation.mutate_update_object`, which the update and every
   upsert path call. It compares the old and new `default_branch` on `CoreRepository` and writes the
   marker inside the update transaction, before it commits.

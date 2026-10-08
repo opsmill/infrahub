@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
     from infrahub.git.divergence.models import RefDivergence
+    from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
     from infrahub.git.divergence.suppression import RetargetMarkers
 
@@ -1390,12 +1391,71 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         await self._update_operational_status(status=RepositoryOperationalStatus.ONLINE)
         return True
 
-    async def update_latest_commit(self) -> None:
-        """Import the commit the tracked ref points at on the remote and record it as the tracked commit."""
+    async def update_latest_commit(
+        self,
+        tracked_targets: TrackedTargetReader | None = None,
+        recorder: HistoryRewriteRecorder | None = None,
+        target_changed: bool = False,
+    ) -> None:
+        """Import the commit the tracked ref resolves to, and record it when the history of the ref was rewritten.
+
+        The caller holds the repository lock, so a run queued behind this one reads the commit this one writes.
+        The commit is imported whatever the classification finds, and the local clone is never reset.
+
+        Args:
+            tracked_targets: Reads the ref and the commit the graph records before the import. Without it nothing
+                is classified.
+            recorder: Records a rewrite once the new commit is written. Without it nothing is recorded.
+            target_changed: Whether the ref or the commit of the repository changed on purpose.
+
+        Raises:
+            ValueError: When the ref cannot be resolved on the remote.
+            RepositoryError: When the repository has no ref configured, or when the rewrite cannot be recorded.
+                In the second case the new commit is already imported.
+
+        """
         latest_commit = self.get_commit_value(branch_name=await self.resolve_checkout_ref(), remote=True)
+        divergence = await self._classify_latest_commit(
+            latest_commit=latest_commit, tracked_targets=tracked_targets, target_changed=target_changed
+        )
         synced_from_remote = await self.sync_from_remote(commit=latest_commit)
         if not synced_from_remote:
             await self.update_commit_value(branch_name=self.infrahub_branch_name, commit=latest_commit)
+        if recorder is not None and divergence is not None:
+            await recorder.record(repository_id=str(self.id), divergence=divergence)
+
+    async def _classify_latest_commit(
+        self, latest_commit: str, tracked_targets: TrackedTargetReader | None, target_changed: bool
+    ) -> RefDivergence | None:
+        """Classify the commit the ref resolves to against the commit the graph records.
+
+        Returns None when either cannot be read, or when the repository no longer tracks this ref.
+        """
+        if tracked_targets is None or self.ref is None:
+            return None
+        try:
+            target = await tracked_targets.get_target(
+                repository_id=str(self.id), infrahub_branch_name=self.infrahub_branch_name
+            )
+            if target.ref != self.ref:
+                # A run submitted before a change of ref resolves the old ref, which the graph commit no longer follows.
+                log.info(
+                    "Not classifying ref %s of repository %s, which now tracks %s", self.ref, self.name, target.ref
+                )
+                return None
+            return RemoteDivergenceDetector(gateway=self._get_ancestry_gateway()).classify(
+                branch_name=self.ref,
+                infrahub_branch_name=self.infrahub_branch_name,
+                imported_commit=target.commit,
+                remote_head=latest_commit,
+                target_changed=target_changed,
+            )
+        except RepositoryError as exc:
+            # The classification only names a rewritten history, so it must not keep the commit from being imported.
+            log.warning(
+                "Unable to classify ref %s of repository %s against the graph: %s", self.ref, self.name, exc.message
+            )
+            return None
 
 
 @cached(
