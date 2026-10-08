@@ -400,7 +400,7 @@ SC-002, SC-007.
       `frontend/app/src/entities/repository/ui/queries/retry-delivery.mutation.ts`, sent with the
       default branch as branch context, and the "Retry push" item in `frontend/app/src/entities/repository/ui/repository-menu-section.tsx`, gated on
       `permission.update` and the actions rule. Extend `repository-menu-section.test.tsx`.
-- [ ] T060 [US2] Write the retry journey in `tests/e2e/repository/test_repository_delivery.py`: a rejecting
+- [X] T060 [US2] Write the retry journey in `tests/e2e/repository/test_repository_delivery.py`: a rejecting
       `pre-receive` hook in the bare repository of the SDK `GitRepo` helper, a merge, the section
       viewed from another branch, the hook removed, "Retry push", "Nothing pending".
 
@@ -586,7 +586,7 @@ rule.** T094 is not.
       "Abandon pending push" item, the confirmation modal
       `frontend/app/src/entities/repository/ui/abandon-delivery-modal.tsx` with its test, and the
       record and the reimport advice in `repository-delivery-section.tsx`.
-- [ ] T094 [US5] Add the abandonment journey to `tests/e2e/repository/test_repository_delivery.py`.
+- [X] T094 [US5] Add the abandonment journey to `tests/e2e/repository/test_repository_delivery.py`.
 
 ---
 
