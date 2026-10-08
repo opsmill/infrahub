@@ -37,16 +37,15 @@ The input types are the generated list-attribute inputs every `List` attribute a
 |---|---|
 | omitted | create: unscoped; update: unchanged |
 | `{value: []}` | unscoped |
-| `{value: null}` on update | clears the scope |
+| `{value: null}` on update | accepted on an unscoped pool; refused on a scoped pool (see Update) |
 | `{value: ["site"]}` | scoped by the `site` relationship |
 | `{value: ["site", "role__value"]}` | scoped by `site` and the `role` attribute; stored as `["site", "role"]` |
 
 ## Validation (default branch's schema)
 
 The scope is validated against the default branch's schema, whatever branch the mutation runs on,
-on every create, update or upsert that carries `allocation_scope`. A field that exists only on a
-branch enters a scope once it is merged; a pool re-sent whole from any branch validates against the
-same schema. Refused with a `ValidationError` on the `allocation_scope` field:
+on every create, including an upsert that creates the pool, that carries `allocation_scope`. A field
+that exists only on a branch enters a scope once it is merged. Refused with a `ValidationError` on the `allocation_scope` field:
 
 | Entry | Reason given |
 |---|---|
@@ -59,6 +58,15 @@ same schema. Refused with a `ValidationError` on the `allocation_scope` field:
 | not defined on the kind in the default branch's schema | not defined on the kind |
 | any entry, when the pool's target attribute is `unique: true` | cannot scope a pool whose attribute is unique (names the attribute) |
 | an entry not declared on the generic, when the pool's attribute is inherited from a generic | must be a required cardinality-one field of the generic (names the generic) |
+
+## Update
+
+The scope is set at create and cannot be changed through `CoreNumberPoolUpdate`, or an upsert of an
+existing pool, for now. A scope whose bare field names equal the stored scope is accepted and the
+stored value is kept (`null` and `[]` are equal; `site__value` equals `site`), so a pool re-sent
+whole from any branch saves. Any other value is refused with
+`The field 'allocation_scope' can't be changed.` A value that is not a list of strings is refused first, with
+`the scope must be a list of field names`.
 
 On a pool whose `pool_type` is `Schema`, any change to `allocation_scope` is refused with a message
 of the same form as the existing refusal of a shorthand write on such a pool: `allocation_scope
@@ -83,6 +91,7 @@ mutation {
 the range from it. Ranges are otherwise written through `CoreNumberPoolRange*`.
 
 ```graphql
+# refused on a scoped pool: The field 'allocation_scope' can't be changed.
 mutation { CoreNumberPoolUpdate(data: {id: "…", allocation_scope: {value: null}}) { ok } }
 ```
 

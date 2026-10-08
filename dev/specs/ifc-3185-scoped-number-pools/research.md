@@ -102,13 +102,18 @@ second kind with mutations for a two-element list; rejected under Principle VII)
 validate against, exposing `validate(kind, attribute_name, scope) -> tuple[str, ...]` which returns
 the normalised entries or raises a `ValidationError` naming the entry. It calls
 `SchemaBranch.validate_schema_path` with
-`SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_MANDATORY_NO_ATTR`, which already
-refuses many relationships and paths into a related node, and adds what that validator does not
-check: the field must be required (`optional=False`) — checked locally for relationships too,
-because `validate_schema_path` exempts `ip_namespace` on IP kinds from its mandatory check — the
-attribute's kind must be a single comparable scalar (list and JSON kinds refused), the entry must
-not be the pool's own attribute, and entries must be distinct. Attribute entries are normalised to
-the bare name (`role__value` → `role`); only the `value` property is accepted.
+`SchemaElementPathType.ATTR | SchemaElementPathType.REL_ONE_NO_ATTR`, which already
+refuses many relationships and paths into a related node that end with a property, and adds what
+that validator does not check: the field must be required (`optional=False`) — the flags let
+optional relationships through so that the local check covers them, because `validate_schema_path`
+exempts `ip_namespace` on IP kinds from its mandatory check — a related node's attribute without a
+property (`site__name`) and segments after a property (`role__value__junk`) are refused, because
+the path parser accepts the first and drops the second, the attribute's kind must be a single
+comparable scalar (List, JSON and Any kinds refused), the entry must not be the pool's own
+attribute, and entries must be distinct. An entry the kind does not declare is refused before the
+path is parsed, because the parser reads an undeclared `parent` as the hierarchy parent. Attribute
+entries are normalised to the bare name (`role__value` → `role`); only the `value` property is
+accepted.
 
 Three further rules sit in the same component: a scope on a pool whose target attribute is
 `unique: true` is refused naming the attribute (a scoped allocation on such an attribute would be
@@ -118,14 +123,16 @@ declared on the generic itself, and an entry only some implementing kinds declar
 naming the generic; an entry the reference schema does not define on the kind is refused naming
 the entry.
 
-Both callers use it: `InfrahubNumberPoolMutation` on create, update and upsert against the default
-branch's schema, whatever branch the mutation runs on, on every save that carries
-`allocation_scope` (FR-009); and `SchemaBranch._validate_number_pool_parameters` against the schema
+Both callers use it: `InfrahubNumberPoolMutation` on create, and on an upsert that creates the pool,
+against the default branch's schema, whatever branch the mutation runs on, on every create that
+carries `allocation_scope` (FR-009); and `SchemaBranch._validate_number_pool_parameters` against the schema
 being loaded (FR-012), since the declaration travels with the fields it names. The default branch
 is the reference at pool save because the pool and its scope are branch-agnostic while the kind's
-schema is branch-aware: a field that exists only on a branch enters a scope once it is merged, and
-a pool re-sent whole from any branch validates against the same schema, so no exemption for an
-unchanged scope is needed.
+schema is branch-aware: a field that exists only on a branch enters a scope once it is merged.
+The scope is set at create and cannot be changed through `CoreNumberPoolUpdate` for now: an update
+or upsert of an existing pool that re-sends the stored scope is accepted, so a pool re-sent whole
+from any branch saves, and any other value is refused with "The field 'allocation_scope' can't be changed."
+(schema-created pools keep their own message, D10).
 
 **Rationale**: the uniqueness-constraint flags are almost the FR-009 rules; the delta is small and
 local. One component for both surfaces is what FR-009 and FR-012 ask for ("the same rules").

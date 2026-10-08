@@ -135,7 +135,7 @@ divides a scoped pool's space and "allocation scope" is the pool setting that na
 ### User Story 1 - The number-pool GraphQL surface is published and frozen (Priority: P1)
 
 A frontend or SDK consumer reads a pool and views its allocation scope; writes a pool with a scope
-through create, update or upsert and reads it back; and builds the pool page, the range view, the
+through create, or an upsert that creates the pool, and reads it back; and builds the pool page, the range view, the
 division view and the allocation list from three queries dedicated to number pools:
 `InfrahubNumberPoolUtilization`, `InfrahubNumberPoolDivisions` and `InfrahubNumberPoolAllocations`
 ([contract](./contracts/graphql-number-pool-surface.md)). The generic queries the consumer used
@@ -152,9 +152,12 @@ examples.
 
 **Acceptance Scenarios**:
 
-1. **Given** the pool create, update and upsert inputs, **When** `allocation_scope: ["site"]` is
-   sent, **Then** the pool saves and reads back `["site"]`; **When** the field is omitted or sent
-   empty, **Then** the pool reads back as having no scope.
+1. **Given** the pool create and upsert inputs, **When** a pool is created with
+   `allocation_scope: ["site"]`, **Then** the pool saves and reads back `["site"]`; **When** the
+   field is omitted or sent empty, **Then** the pool reads back as having no scope. **Given** an
+   existing pool, **When** `CoreNumberPoolUpdate` or an upsert re-sends the stored scope, **Then**
+   the pool saves; **When** it sends any other value, **Then** it is refused with
+   "The field 'allocation_scope' can't be changed."
 2. **Given** an unscoped pool with two ranges, **When** `InfrahubNumberPoolUtilization` is read,
    **Then** the result carries `allocation_scope: []`, pool figures with `size`, `used`,
    `used_default_branch`, `used_branches` and the three percentages, one row per range ordered by
@@ -208,8 +211,8 @@ examples.
 ### User Story 2 - One pool, every site, from day one (Priority: P1)
 
 An operator creates one pool scoped by site, and every device in every site gets the lowest number
-free within its own site. Adding a site adds no pool. The operator can set, change or clear the
-scope at any time without losing what the pool has handed out.
+free within its own site. Adding a site adds no pool. The operator sets the scope when creating
+the pool; for now it cannot be changed through `CoreNumberPoolUpdate`.
 
 **Why this priority**: This is the capability the slice exists for. Without it an estate of two
 hundred sites needs two hundred pools.
@@ -374,8 +377,8 @@ cannot distinguish a union from an allocating-branch read.
 5. **Given** a node deleted on `b1` but live on the default branch, **When** allocation runs on
    either branch, **Then** its number still counts in its division.
 6. **Given** a pool scoped by `["site", "pod"]`, **When** the whole pool is re-sent unchanged from
-   `b0`, whose schema lacks `pod`, **Then** it saves, because the default branch's schema is what
-   validates it.
+   `b0`, whose schema lacks `pod`, **Then** it saves, because an update that re-sends the stored
+   scope is accepted without validating it again.
 
 ---
 
@@ -476,7 +479,9 @@ spec directory.
 - A scope entry is an attribute of a kind whose value is not a single comparable scalar (list,
   JSON): refused at save, as an entry that cannot define one division per node.
 - `allocation_scope` is sent as an empty list: the pool is unscoped; reading it back reports no
-  scope. Sent as `null` on update: clears the scope.
+  scope. The scope is set at create and cannot be changed through `CoreNumberPoolUpdate` for now:
+  re-sending the stored scope is accepted, and any other value, `null` included, is refused with
+  "The field 'allocation_scope' can't be changed."
 - A duplicate entry inside one scope (`["site", "site"]`): refused at save, naming the entry.
 - A scope names the pool's own number-pool attribute: refused at save; the entry would make the
   division depend on the number being allocated.
@@ -533,9 +538,9 @@ specification adds.
   MUST be required on the kind. A scope naming an optional field, a many relationship, or a path
   into a related node MUST be refused when the pool is saved, and the error MUST name the entry.
   Validation runs against the default branch's schema, whatever branch the mutation runs on, on
-  every save that carries `allocation_scope`: a field that exists only on a branch cannot enter a
-  scope until it is merged, and a pool re-sent whole from any branch validates against the same
-  schema. A scope on a pool whose target attribute is `unique: true` MUST be refused naming the
+  every create that carries `allocation_scope`: a field that exists only on a branch cannot enter a
+  scope until it is merged. An update that re-sends the stored scope is accepted without
+  validation, so a pool re-sent whole from any branch saves. A scope on a pool whose target attribute is `unique: true` MUST be refused naming the
   attribute. When the pool's attribute is inherited from a generic, every entry MUST be a required
   cardinality-one field declared on the generic itself; an entry only some implementing kinds
   declare MUST be refused naming the generic. *(PRD FR-009, FR-015 generic case, FR-017 carve-out,
@@ -571,8 +576,11 @@ specification adds.
 #### The API contract (added by this specification)
 
 - **FR-014**: `allocation_scope` MUST be readable on the pool and writable through the pool's
-  create, update and upsert inputs as an optional list of scope entries. Omitted or empty means no
-  scope; explicit null on update clears it. *(User Story 1, scenario 1)*
+  create input, and an upsert that creates the pool, as an optional list of scope entries. Omitted
+  or empty means no scope. The scope is set at create and cannot be changed through
+  `CoreNumberPoolUpdate`, or an upsert of an existing pool, for now: re-sending the stored scope is
+  accepted; any other value, `null` included, is refused with "The field 'allocation_scope' can't be changed." A
+  schema-created pool keeps its own message (FR-013). *(User Story 1, scenario 1)*
 - **FR-015**: A query dedicated to number pools, `InfrahubNumberPoolUtilization`, MUST return for
   one pool: the scope in force on the reading branch, the pool's figures, one row per range ordered
   by start with the range's id, display label, start, end, weight and figures. The query MUST

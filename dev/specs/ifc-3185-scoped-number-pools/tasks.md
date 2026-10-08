@@ -216,15 +216,15 @@ accepted.
 
 **Depends on**: IFC-3334, IFC-3347. **Blocks**: IFC-3349, IFC-3351, IFC-3353.
 
-- [ ] T027 [US2] Create `backend/infrahub/pools/scope.py` with `ScopeEntry`, `DivisionKey` (frozen
+- [X] T027 [US2] Create `backend/infrahub/pools/scope.py` with `ScopeEntry`, `DivisionKey` (frozen
       dataclass: the entries and the writer's value per entry) and
       `DivisionResolver.entries_in_force(scope, schema_branch, kind)` (pure) dropping every entry
       the branch's schema does not define on the kind, keeping scope order, carrying the
       relationship identifier for relationship entries. `division_of` lands with IFC-3349 (T040).
-- [ ] T028 [P] [US2] Unit tests in `backend/tests/unit/pools/test_scope.py` for
+- [X] T028 [P] [US2] Unit tests in `backend/tests/unit/pools/test_scope.py` for
       `entries_in_force`: an entry the branch's schema does not define is dropped; all unknown →
       empty tuple; order preserved; relationship entries carry the relationship identifier.
-- [ ] T053 [P] [US5] Unit tests in `backend/tests/unit/pools/test_scope.py` (extend) for
+- [X] T053 [P] [US5] Unit tests in `backend/tests/unit/pools/test_scope.py` (extend) for
       `ScopeValidator`: every refusal row of `contracts/graphql-pool-scope.md` (optional attribute,
       optional relationship, many relationship, related-node path, list kind, JSON kind, the pool's
       own attribute, duplicate, entry not defined on the kind) names the entry; any scope on a pool
@@ -235,36 +235,41 @@ accepted.
       `SchemaBranch` from T003's schema in memory, extended with a generic that declares the pooled
       attribute and a required `site`, implemented by two kinds of which one declares an extra
       required `pod`.
-- [ ] T054 [P] [US5] Component tests in
+- [X] T054 [P] [US5] Component tests in
       `backend/tests/component/graphql/resource_manager/number_pools/test_pool_scope.py` (extend
-      T010's file): each refused entry through `CoreNumberPoolCreate` and `CoreNumberPoolUpdate`; a
-      valid scope through create, update and upsert; a scope naming a field that exists only on
+      T010's file): each refused entry through `CoreNumberPoolCreate` and an upsert that creates
+      the pool; a valid scope through create and upsert; a scope change through
+      `CoreNumberPoolUpdate` or an upsert of an existing pool refused with "The field 'allocation_scope' can't be changed.",
+      the stored scope re-sent accepted; a scope naming a field that exists only on
       branch `b1` is refused on `b1` and on the default branch naming the entry; the same scope
       saves from any branch once the field is merged into the default branch; a pool re-sent whole
       from a branch forked before the field reached the default branch saves; a scope on a pool
       whose attribute is `unique: true` is refused naming the attribute; a scope change on a
       `pool_type: Schema` pool is refused with the message of the scope contract, of the same form
       as the shorthand refusal in `test_schema_pools.py`.
-- [ ] T057 [US5] Add `ScopeValidator(schema_branch)` to `backend/infrahub/pools/scope.py` with
+- [X] T057 [US5] Add `ScopeValidator(schema_branch)` to `backend/infrahub/pools/scope.py` with
       `validate(kind, attribute_name, scope) -> tuple[str, ...]`: calls
       `SchemaBranch.validate_schema_path(allowed_path_types=SchemaElementPathType.ATTR |
-      SchemaElementPathType.REL_ONE_MANDATORY_NO_ATTR)`, then checks `optional` on the field itself
-      (relationships included, because the path validator exempts `ip_namespace`), the attribute
-      kind against list and JSON, the pool's own attribute, duplicates; normalises `__value` away;
+      SchemaElementPathType.REL_ONE_NO_ATTR)`, then checks `optional` on the field itself
+      (relationships included, because the path validator exempts `ip_namespace`), a related
+      node's attribute without a property and segments after a property (the path parser accepts
+      the first and drops the second), the attribute kind against List, JSON and Any, the pool's
+      own attribute, duplicates; normalises `__value` away;
       raises `ValidationError({"allocation_scope": …})` naming the entry.
-- [ ] T091 [US5] Add to `ScopeValidator` the two rules of the Notion PRD's FR-017 carve-out and
+- [X] T091 [US5] Add to `ScopeValidator` the two rules of the Notion PRD's FR-017 carve-out and
       FR-015 generic case: refuse any scope when the target attribute's schema has `unique: true`,
       naming the attribute; when the pool's `node` is a generic, or the kind inherits the pooled
       attribute from a generic, resolve every entry on that generic's schema and refuse an entry the
       generic does not declare as a required cardinality-one field, naming the generic. The
       division of a node is then read from the generic's fields (T040).
-- [ ] T058 [US5] Wire it into
+- [X] T058 [US5] Wire it into
       `backend/infrahub/graphql/mutations/resource_manager/number_pools/pool.py::InfrahubNumberPoolMutation`:
-      `mutate_create` and `mutate_update` validate whenever the payload carries `allocation_scope`,
-      against the default branch's schema,
-      `registry.schema.get_schema_branch(name=registry.default_branch)`, whatever branch the
-      mutation runs on; `mutate_update` refuses any change on a `pool_type == Schema` pool with the
-      scope contract's message, beside `_refuse_shorthand_conflicts`.
+      `mutate_create` validates whenever the payload carries `allocation_scope`, against the default
+      branch's schema, `registry.schema.get_schema_branch(name=registry.default_branch)`, whatever
+      branch the mutation runs on; the scope cannot be changed through `mutate_update` for now:
+      re-sending the stored scope is accepted, any other value is refused with
+      "The field 'allocation_scope' can't be changed.", or with the scope contract's message on a
+      `pool_type == Schema` pool, beside `_refuse_shorthand_conflicts`.
 
 **Checkpoint**: every pool-save refusal of User Story 5 scenario 1 ships.
 
