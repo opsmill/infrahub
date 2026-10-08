@@ -635,8 +635,10 @@ class _ScriptedPushRepository(InfrahubRepository):
 
     origin: _ScriptedOrigin
     recorded_statuses: list[RepositoryOperationalStatus] = Field(default_factory=list)
+    worktree_lookup_timeouts: list[float | None] = Field(default_factory=list)
 
-    def get_git_repo_worktree(self, identifier: str) -> Any:
+    def get_git_repo_worktree(self, identifier: str, timeout_seconds: float | None = None) -> Any:
+        self.worktree_lookup_timeouts.append(timeout_seconds)
         return SimpleNamespace(remotes=SimpleNamespace(origin=self.origin))
 
     async def _update_operational_status(self, status: RepositoryOperationalStatus) -> None:
@@ -927,6 +929,7 @@ async def test_push_passes_its_timeout_to_git(case: PushTimeoutCase) -> None:
     assert await repository.push("main", **case.push_kwargs) is True
 
     assert origin.kill_after_timeouts == [case.kill_after_timeout]
+    assert repository.worktree_lookup_timeouts == [case.kill_after_timeout]
 
 
 class _GitWrappedRepository(InfrahubRepository):
