@@ -51,7 +51,7 @@ T001 has no commit of its own: the rebase of PR #10932 is the base of this table
   - `tags` is required, because a scope element must be required.
 - **Pool fixtures (T004).** The pools store their scope as a list of names, because the current code stores what it receives. T015 changes these fixtures, and the expected value in `test_number_pool_scope.py`, to `{id, name}` elements.
 - **Refusal message (T005).** `data-model.md` gives no exact text for a scope stored in the old shape, so `AllocationScope.from_stored` uses: `allocation_scope of pool <pool>: the stored entry <json> is not an element with an "id" and a "name"; recreate the pool to set its scope`. A stored value that is not a list is refused with a message of the same form.
-- **Division equality (T005).** Two divisions are equal when their `key` is equal, that is when their values have the same JSON form, and a division hashes by its key. This keeps equality and the lock name in agreement and makes a division holding a `List` or `JSON` value hashable.
+- **Division values (T005).** Decision 10 was revised on 2026-10-09: `List`, `JSON` and `Any` attributes are refused as scope elements, so a division holds only scalar values. `Division` is a plain frozen dataclass whose lock key hashes the values; the `List` scope fixture and smoke-test case are removed (`b5141177fc`).
 
 ## Tasks not completed
 

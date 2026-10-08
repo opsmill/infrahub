@@ -27,7 +27,7 @@ Order inside the list is the scope order; division tuples follow it.
 **Validation rules at creation** (`backend/infrahub/pools/scope.py::AllocationScopeResolver`), each refusal names the element:
 
 1. Every entry resolves, by id or by name, to one attribute or one relationship declared on the pool's kind in the schema of the default branch. When the kind is a generic, the element must be declared on the generic itself.
-2. An attribute entry is `optional: false`; any attribute kind is accepted, `List` and `JSON` included. A relationship entry is `optional: false` with `cardinality: one`.
+2. An attribute entry is `optional: false`; any attribute kind is accepted except `List`, `JSON` and `Any`, so a division holds only scalar values (decision 10). A relationship entry is `optional: false` with `cardinality: one`.
 3. An entry does not contain `__` (no path into a peer or into an attribute property).
 4. An entry is not the pool's `node_attribute`.
 5. No entry appears twice (by id).
@@ -44,13 +44,13 @@ Order inside the list is the scope order; division tuples follow it.
 Value of an element for a holder node, read on the branch of the request with the normal branch filter:
 
 - relationship element: the peer's id, or an empty string when the holder has no peer on that branch;
-- attribute element: the attribute value as stored (text for a scalar, the stored list or document for a `List` or `JSON` attribute, compared with no normalisation), or an empty string when the holder has no value.
+- attribute element: the scalar attribute value as stored, compared with no normalisation, or an empty string when the holder has no value.
 
 A holder that does not exist on the request branch has no division there and is not counted.
 
 `key`: a stable hash of the JSON form of `values`, used in lock names (`<pool id>.<key>`).
 
-Equality: two divisions are equal when their `key` is equal, that is when their values have the same JSON form. The key order of a document does not matter; `1`, `1.0` and `true` are three different values.
+Equality: two divisions are equal when their values are equal element by element. The values of one element are peer ids or come from one scalar attribute, so they share a type.
 
 **Refusal**: when the schema of the request branch does not define an element on the pool's kind, the division cannot be read; the request is refused naming the element and the branch.
 

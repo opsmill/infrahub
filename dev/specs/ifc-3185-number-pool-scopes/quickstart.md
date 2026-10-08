@@ -12,7 +12,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 
 | Scenario | Spec reference | Command |
 |----------|----------------|---------|
-| Scope resolver rules, `List` and `JSON` elements, division key | FR-003 to FR-006, FR-009 | `uv run pytest backend/tests/unit/pools/test_scope.py` |
+| Scope resolver rules, refusal of `List`, `JSON` and `Any` elements, division key | FR-003 to FR-006, FR-009 | `uv run pytest backend/tests/unit/pools/test_scope.py` |
 | Allocation per division, parallel writers in two divisions, repeatable identifier, update moving a node to another site, branch whose schema lacks the element | FR-010 to FR-013, FR-016 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py` |
 | Free, used, divisions and allocated queries with a division, read on the request branch | FR-015, FR-020 to FR-022 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope.py` |
 | Scope on create, every refusal, immutability on update, `null` refused | FR-001 to FR-008 | `uv run pytest backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py` |
