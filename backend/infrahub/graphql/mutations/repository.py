@@ -308,8 +308,8 @@ class RepositoryDeliveryRetry(Mutation):
     ) -> Self:
         graphql_context: GraphqlContext = info.context
         branch = graphql_context.branch
-        # The default-branch permission checker acts only on requests that name the default branch.
-        if branch.name != registry.default_branch:
+        # The permission checks read the request branch, so another branch would grant only the rights of that branch.
+        if not branch.is_default:
             raise ValidationError(
                 f"Send this request on the default branch {registry.default_branch}; the pending pushes live there."
             )

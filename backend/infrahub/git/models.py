@@ -161,9 +161,7 @@ class GitRepositoryDeliveryRetry(BaseModel):
 
     repository_id: str = Field(..., description="The unique ID of the Repository")
     repository_name: str = Field(..., description="The name of the repository")
-    manual: bool = Field(
-        default=True, description="A user asked for the retry. False when the recovery check submitted it."
-    )
+    manual: bool = Field(default=True, description="A user asked for the retry. False for an automatic retry.")
 
 
 class GitRepositoryImportObjects(BaseModel):
