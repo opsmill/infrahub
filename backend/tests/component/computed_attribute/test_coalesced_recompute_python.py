@@ -11,6 +11,8 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -38,6 +40,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.events.schema_action import ChangedElementsPayload, SchemaUpdatedEvent
+from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.workflows.catalogue import (
     COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
     TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
@@ -392,7 +395,14 @@ class TestCoalescedRecomputePython(CoalescedPythonTestBase):
         event_service = MemoryInfrahubEvent()
         dispatcher = PostMergeDispatcher(
             repository_merge_dispatcher=RepositoryMergeDispatcher(
-                db=db, source_branch=source_branch, destination_branch=default_branch, workflow=workflow_recorder
+                db=db,
+                source_branch=source_branch,
+                destination_branch=default_branch,
+                workflow=workflow_recorder,
+                state=WritebackIntentStore(
+                    db=db, lock_registry=lock.registry, default_branch=default_branch, clock=partial(datetime.now, UTC)
+                ),
+                sleep=asyncio.sleep,
             ),
             workflow=workflow_recorder,
             event_service=event_service,
