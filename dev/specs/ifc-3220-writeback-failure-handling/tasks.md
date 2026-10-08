@@ -581,7 +581,7 @@ rule.** T094 is not.
       waits, then let it run. The entry does not come back and the remote is unchanged. A second
       case: a run with the flag `False`, whose entry was never queued, enqueues the entry and
       delivers it.
-- [ ] T093 [US5] Write the abandon mutation in the three-file pattern
+- [X] T093 [US5] Write the abandon mutation in the three-file pattern
       (`abandon-delivery-from-api.ts`, `abandon-delivery.ts`, `abandon-delivery.mutation.ts`), the
       "Abandon pending push" item, the confirmation modal
       `frontend/app/src/entities/repository/ui/abandon-delivery-modal.tsx` with its test, and the

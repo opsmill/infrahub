@@ -22,6 +22,16 @@ export const DELIVERY_TEXTS = {
   abandonConfirm: "Abandon",
   abandonStarted: "Abandonment of the pending pushes started.",
   abandonFailed: "Error abandoning the pending pushes:",
+  lastAbandonment: "Last abandonment",
+  abandonedBy: "Abandoned by",
+  abandonedMerges: "Abandoned merges",
+  recordedCommit: "Recorded commit",
+  repositoryObjects: "Repository objects",
+  objectsCanStay: "The default branch can hold repository objects that the recorded commit lacks.",
+  objectsCanLack:
+    "The default branch can also lack repository objects that the recorded commit holds.",
+  reimport: "Reimport current commit",
+  reimportStarted: "Import of current commit started.",
 } as const;
 
 export const REQUIRED_ACTION_BY_CAUSE: Record<DeliveryFailureCause, string> = {

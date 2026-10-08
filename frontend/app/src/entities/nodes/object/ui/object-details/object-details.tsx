@@ -40,7 +40,7 @@ export function ObjectDetails({ objectSchema, objectData, permission }: ObjectDe
         )}
 
         {isOfKind(REPOSITORY_KIND, objectSchema) && (
-          <RepositoryDeliverySection repositoryId={objectData.id} />
+          <RepositoryDeliverySection repositoryId={objectData.id} permission={permission} />
         )}
       </DetailsLayout.Main>
 
