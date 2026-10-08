@@ -32,18 +32,19 @@ const PendingMergeSchema = z.object({
 export type PendingMerge = z.infer<typeof PendingMergeSchema>;
 
 export const DeliveryQueueSchema = z.object({
+  format: z.literal(1),
   entries: z.array(PendingMergeSchema),
 });
 
 /** The push state of a repository, as the default branch holds it. */
 export interface DeliveryState {
   status: DeliveryStatus;
-  /** The backend's own label and colour of the status, so its vocabulary stays authoritative. */
-  statusLabel: string | null;
+  /** The labels and the color come from the backend, so the UI keeps the backend's wording. */
+  statusLabel: string;
   statusColor: string | null;
   cause: DeliveryFailureCause | null;
   causeLabel: string | null;
-  /** The remote's message of the last failed attempt, verbatim. */
+  /** The message of the last failed push or import, with credentials removed. */
   error: string | null;
   /** In merge order. */
   pendingMerges: PendingMerge[];

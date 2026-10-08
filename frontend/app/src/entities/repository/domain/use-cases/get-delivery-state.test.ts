@@ -33,9 +33,13 @@ describe("getDeliveryState", () => {
     const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
 
     // THEN
+    expect(getDeliveryStateFromApi).toHaveBeenCalledWith({
+      repositoryId: "repo-1",
+      branchName: "primary",
+    });
     expect(state).toEqual({
       status: "none",
-      statusLabel: null,
+      statusLabel: "none",
       statusColor: null,
       cause: null,
       causeLabel: null,
@@ -101,5 +105,37 @@ describe("getDeliveryState", () => {
         },
       ],
     });
+  });
+
+  it("reads a status or a cause it does not know as an action to take, with the backend's label", async () => {
+    // GIVEN
+    mockRepository(
+      repositoryNode({
+        delivery_status: { value: "blocked", label: "Blocked", color: "#f87171" },
+        delivery_failure_cause: { value: "quota", label: "Quota exceeded" },
+      })
+    );
+
+    // WHEN
+    const state = await getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+
+    // THEN
+    expect(state).toMatchObject({
+      status: "action-required",
+      statusLabel: "Blocked",
+      cause: "unclassified",
+      causeLabel: "Quota exceeded",
+    });
+  });
+
+  it("fails with a readable message when the pending pushes cannot be read", async () => {
+    // GIVEN
+    mockRepository(repositoryNode({ delivery_queue: { value: { format: 2, entries: [] } } }));
+
+    // WHEN
+    const result = getDeliveryState({ repositoryId: "repo-1", branchName: "primary" });
+
+    // THEN
+    await expect(result).rejects.toThrow("Cannot read the pending pushes of this repository.");
   });
 });

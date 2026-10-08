@@ -19,19 +19,28 @@ export const getDeliveryState: GetDeliveryState = async (params) => {
   const { data } = await getDeliveryStateFromApi(params);
   const repository = data.CoreRepository.edges[0]?.node;
 
+  const queue = DeliveryQueueSchema.nullish().safeParse(repository?.delivery_queue?.value);
+  if (!queue.success) {
+    throw new Error("Cannot read the pending pushes of this repository.");
+  }
+
+  // A value this page does not know still shows with the backend's label, and still asks the user to act.
+  const status =
+    DeliveryStatusSchema.nullish()
+      .catch("action-required")
+      .parse(repository?.delivery_status?.value) ?? "none";
+  const cause =
+    DeliveryFailureCauseSchema.nullish()
+      .catch("unclassified")
+      .parse(repository?.delivery_failure_cause?.value) ?? null;
+
   return {
-    // A repository that never pushed has no status yet, which means nothing is pending.
-    status:
-      DeliveryStatusSchema.nullable().parse(repository?.delivery_status?.value ?? null) ?? "none",
-    statusLabel: repository?.delivery_status?.label ?? null,
+    status,
+    statusLabel: repository?.delivery_status?.label ?? status,
     statusColor: repository?.delivery_status?.color ?? null,
-    cause: DeliveryFailureCauseSchema.nullable().parse(
-      repository?.delivery_failure_cause?.value ?? null
-    ),
-    causeLabel: repository?.delivery_failure_cause?.label ?? null,
+    cause,
+    causeLabel: repository?.delivery_failure_cause?.label ?? cause,
     error: repository?.delivery_error?.value ?? null,
-    pendingMerges:
-      DeliveryQueueSchema.nullable().parse(repository?.delivery_queue?.value ?? null)?.entries ??
-      [],
+    pendingMerges: queue.data?.entries ?? [],
   };
 };
