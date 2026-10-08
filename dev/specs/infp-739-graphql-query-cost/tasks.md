@@ -160,21 +160,21 @@ Requirements: FR-009, FR-011, FR-016, and critique finding E4.
 
 ### Tests for part B
 
-- [ ] T016 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_histogram.py`, with nodes added in several chunks. Check:
+- [X] T016 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_histogram.py`, with nodes added in several chunks. Check:
     - powers-of-two buckets (0, 1, 2–3, 4–7, …) with the node count and the maximum of each bucket
     - `nodes_with_peers`, `total_peers` and `peers_by_kind`
     - the 20 nodes with the most peers, in decreasing order
     - for a kind with fewer than 20 nodes, every node with at least one peer
     - the median, the 95th percentile and the maximum read from the histogram
     - an empty kind (`active_count = 0`, mean 0)
-- [ ] T017 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_statistics_store.py` with `backend/tests/adapters/cache.py::MemoryCache`. Check:
+- [X] T017 [P] [US1] Write unit tests in `backend/tests/unit/graphql/cost/test_statistics_store.py` with `backend/tests/adapters/cache.py::MemoryCache`. Check:
     - `publish` writes every kind key before the pointer
     - it deletes the keys of the previous version
     - it deletes keys already stored under the version it writes (E4)
     - the snapshot holder loads a version once and reloads only when the pointer's version changes
     - a missing kind key makes the holder read the pointer once more, then treat that kind as without statistics
     - no pointer means no snapshot
-- [ ] T018 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_refresh.py`. Build persons owning 0, 1, 3 and 10 cars on `car_person_schema_generics`, with two concrete car kinds, plus:
+- [X] T018 [P] [US1] Write component tests in `backend/tests/component/graphql/cost/test_refresh.py`. Build persons owning 0, 1, 3 and 10 cars on `car_person_schema_generics`, with two concrete car kinds, plus:
     - one person deleted on main
     - one person that exists only on a branch
 
@@ -185,27 +185,27 @@ Requirements: FR-009, FR-011, FR-016, and critique finding E4.
 
 ### Implementation for part B
 
-- [ ] T019 [P] [US1] Create `backend/infrahub/graphql/cost/histogram.py` with `RelationshipSideAccumulator(identifier, direction, kind)`. Its `add_chunk(rows)` takes `(node_id, peer_kind, peers)` rows for the nodes of one chunk, and `build(active_count) -> RelationshipSideStatistics` counts nodes with no row as 0 peers. Add percentile helpers that read a `RelationshipSideStatistics`.
-- [ ] T020 [US1] Create the refresh queries in `backend/infrahub/graphql/cost/queries.py`. Follow `dev/knowledge/backend/query-pattern.md`: parameters only, `get_data()` returning frozen dataclasses, and kind labels taken from the schema, never from user input.
+- [X] T019 [P] [US1] Create `backend/infrahub/graphql/cost/histogram.py` with `RelationshipSideAccumulator(identifier, direction, kind)`. Its `add_chunk(rows)` takes `(node_id, peer_kind, peers)` rows for the nodes of one chunk, and `build(active_count) -> RelationshipSideStatistics` counts nodes with no row as 0 peers. Add percentile helpers that read a `RelationshipSideStatistics`.
+- [X] T020 [US1] Create the refresh queries in `backend/infrahub/graphql/cost/queries.py`. Follow `dev/knowledge/backend/query-pattern.md`: parameters only, `get_data()` returning frozen dataclasses, and kind labels taken from the schema, never from user input.
     - `KindLabelCountQuery`: the label count of each concrete kind given, in one query
-    - `KindActiveNodeIdsQuery`: the IDs of a kind's nodes whose latest `IS_PART_OF` edge on the default branch is active
+    - `KindActiveNodeIdsQuery`: one page of a kind's nodes, taken before the active-edge check, each with whether its latest `IS_PART_OF` edge on the default branch is active
     - `RelationshipSideDegreeQuery`: for `n.uuid IN $ids`, an identifier and a `RelationshipDirection`, it returns `(node_id, peer_kind, peers)`. It uses `Query.get_query_arrows`, and the same active-edge rule as `infrahub.core.query.relationship::RelationshipGetPeerQuery`: the latest edge of both `IS_RELATED` edges must be active.
-- [ ] T021 [US1] Create `backend/infrahub/graphql/cost/collector.py` with `StatisticsCollector(db, schema_branch, chunk_size)` and its method `collect() -> CollectedStatistics`, which returns the `KindStatistics` list and the query count. It:
+- [X] T021 [US1] Create `backend/infrahub/graphql/cost/collector.py` with `StatisticsCollector(db, branch, schema_branch, chunk_size)` and its method `collect(at) -> CollectedStatistics`, which returns the `KindStatistics` list and the query count. It:
     - lists every relationship side to read: for each concrete kind K (node, profile and template kinds) and each relationship R of K, the side `(R.identifier, R.direction, K)`, and for each concrete peer kind P, the side `(R.identifier, opposite direction, P)`, without duplicates
     - reads label counts with `KindLabelCountQuery`
     - reads active counts with `infrahub.telemetry.queries::CountNodesByKindsQuery`
     - reads each kind's IDs once, then runs `RelationshipSideDegreeQuery` for each chunk of `chunk_size` IDs (research D7)
-- [ ] T022 [US1] Create `backend/infrahub/graphql/cost/statistics_store.py` with:
-    - `StatisticsStore(cache: InfrahubCache)`, with `publish(kinds, computed_at, schema_hash) -> StatisticsPointer`, `read_pointer()` and `read_kinds(version, kinds)`, following the cache layout of `data-model.md`
+- [X] T022 [US1] Create `backend/infrahub/graphql/cost/statistics_store.py` with:
+    - `StatisticsStore(cache: InfrahubCache)`, with `publish(kinds, branch, computed_at, schema_hash) -> StatisticsPointer`, `read_pointer()` and `read_kinds(version, kinds)`, following the cache layout of `data-model.md`
     - `StatisticsSnapshotHolder`, one for each process, with `get(store) -> StatisticsSnapshot | None`, implementing research D6 and the retry rule of `data-model.md`
-- [ ] T023 [US1] Create `backend/infrahub/graphql/cost/tasks.py` with the flow `refresh_query_cost_statistics` (`@flow(name="graphql-cost-statistics-refresh")`). It:
+- [X] T023 [US1] Create `backend/infrahub/graphql/cost/tasks.py` with the flow `refresh_query_cost_statistics` (`@flow(name="graphql-cost-statistics-refresh")`). It:
     - gets the database and the cache from the existing worker dependencies (`infrahub.workers.dependencies`)
     - takes the main schema branch and its hash at the entry point
     - builds `StatisticsCollector(chunk_size=config.SETTINGS.database.query_size_limit)`
     - publishes through `StatisticsStore`
     - logs the duration and the number of kinds, sides and queries, and the version written
     - returns `None` (`dev/guidelines/backend/prefect-payloads.md`)
-- [ ] T024 [US1] Add `GRAPHQL_COST_STATISTICS_REFRESH` to `backend/infrahub/workflows/catalogue.py`:
+- [X] T024 [US1] Add `GRAPHQL_COST_STATISTICS_REFRESH` to `backend/infrahub/workflows/catalogue.py`:
     - `cron=f"{randint(0, 59)} 4 * * *"`, `concurrency_limit=1`, `ConcurrencyLimitStrategy.CANCEL_NEW` and low priority, following `ANONYMOUS_TELEMETRY_SEND`
     - add it to the workflows list there
 

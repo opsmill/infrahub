@@ -77,7 +77,7 @@ Each decision below states what was chosen, why, and what else was considered. T
 
 - **Decision**: a Prefect flow reads main in chunks of node IDs, following the pattern of `infrahub.core.diff.calculator::DiffCalculator._run_node_scoped_calculation_queries`:
     1. one query for the label count of each concrete kind, and `infrahub.telemetry.queries::CountNodesByKindsQuery` for the nodes active on main
-    2. for each concrete kind, one read of the IDs of its nodes active on main (paged by `Query.query_with_size_limit`)
+    2. for each concrete kind, one read of the IDs of its nodes active on main, in pages of `query_size_limit` nodes taken in the query before the active-edge check, so that each page checks the edge of its own nodes only (`Query.query_with_size_limit` pages the returned rows, which would check every node of the kind on each page)
     3. for each relationship side of that kind and each chunk of `query_size_limit` IDs, one degree query with `n.uuid IN $ids`; it returns, for each node, its peer count for each concrete peer kind, with the same active-edge rules as `RelationshipGetPeerQuery`
     4. Python adds each chunk to the histogram, the totals and the list of nodes with the most peers, then drops the chunk
 - Each chunk is a separate auto-commit read, so no transaction holds more than one chunk. The flow keeps one in-progress aggregate for each relationship side.
