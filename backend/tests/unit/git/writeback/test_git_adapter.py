@@ -16,6 +16,7 @@ from infrahub.exceptions import RepositoryError
 from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS
 from infrahub.git.writeback.git_adapter import RepositoryDeliveryGitAdapter
 from infrahub.git.writeback.ports import ReplayResult
+from infrahub.message_bus.messages import RefreshGitRepositoryBranchDeleted
 from tests.adapters.message_bus import BusRecorder
 from tests.helpers.git import LocalRemote, clone_repository, open_repository
 from tests.helpers.test_client import dummy_async_request
@@ -35,6 +36,7 @@ class DeliveryClone:
     """A clone of a remote whose branches each hold one commit made from the trunk."""
 
     repository: InfrahubRepository
+    remote: LocalRemote
     trunk: str
     feature: str
     """Adds a file that no other branch has, so it merges cleanly."""
@@ -77,6 +79,7 @@ async def clone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> DeliveryClon
     )
     return DeliveryClone(
         repository=repository,
+        remote=remote,
         trunk=str(remote.repo.commit(DESTINATION)),
         feature=feature,
         left=left,
@@ -88,12 +91,13 @@ def build_adapter(
     repository: InfrahubRepository,
     use_explicit_merge_commit: bool = True,
     local_timeout_seconds: float = LOCAL_GIT_TIMEOUT_SECONDS,
+    message_bus: BusRecorder | None = None,
 ) -> RepositoryDeliveryGitAdapter:
     return RepositoryDeliveryGitAdapter(
         repository=repository,
         destination_branch=DESTINATION,
         destination_branch_id="main-id",
-        message_bus=BusRecorder(),
+        message_bus=message_bus or BusRecorder(),
         initiator_id="worker",
         request_id="request",
         use_explicit_merge_commit=use_explicit_merge_commit,
@@ -258,3 +262,32 @@ async def test_a_fetch_on_a_clone_without_origin_raises_and_names_no_path(clone:
         RepositoryError, match=rf"^The clone of repository {REPOSITORY_NAME} on this worker has no origin\.$"
     ):
         await build_adapter(repository=without_origin).fetch()
+
+
+@dataclass
+class BranchDeletionCase:
+    name: str
+    git_branch: str
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        BranchDeletionCase(name="branch_on_the_remote", git_branch="feature"),
+        BranchDeletionCase(name="branch_already_gone", git_branch="gone"),
+    ],
+    ids=lambda case: case.name,
+)
+async def test_a_deleted_source_branch_is_gone_from_the_remote_and_every_worker_hears_of_it(
+    clone: DeliveryClone, case: BranchDeletionCase
+) -> None:
+    bus = BusRecorder()
+
+    await build_adapter(repository=clone.repository, message_bus=bus).delete_remote_branch(git_branch=case.git_branch)
+
+    assert case.git_branch not in [head.name for head in clone.remote.repo.heads]
+    assert [
+        (message.repository_id, message.branch_name)
+        for message in bus.messages
+        if isinstance(message, RefreshGitRepositoryBranchDeleted)
+    ] == [(str(clone.repository.id), case.git_branch)]
