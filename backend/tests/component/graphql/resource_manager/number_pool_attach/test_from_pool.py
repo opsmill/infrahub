@@ -1,7 +1,6 @@
 from collections import Counter
 from typing import Any
 
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_account, create_branch
 from infrahub.core.node import Node
