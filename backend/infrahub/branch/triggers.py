@@ -31,6 +31,9 @@ TRIGGER_BRANCH_DELETED_PURGE_TASKS = BuiltinTriggerDefinition(
             workflow=BRANCH_PURGE_TASKS,
             parameters={
                 "branch_name": jinja_parameter("{{ event.payload['data']['branch_name'] }}"),
+                # An event emitted outside a task carries no id, and the renderer has no null: the
+                # empty string stands for "nothing to keep".
+                "deletion_task_id": jinja_parameter("{{ event.payload['data']['deletion_task_id'] or '' }}"),
             },
         ),
     ],
