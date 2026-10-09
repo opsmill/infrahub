@@ -13,7 +13,6 @@ from infrahub.core.query.resource_manager import (
     NumberPoolGetUsed,
     NumberPoolReleaseAllReserved,
     NumberPoolSetReserved,
-    PoolRecordProvenance,
 )
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
@@ -186,17 +185,21 @@ class NumberPoolRepository(NumberPoolRangeStore):
         pool_id: str,
         identifier: str,
         attribute_id: str,
-        provenance: PoolRecordProvenance,
+        allocated_value: int | None,
         at: Timestamp | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
-        """Record that the pool accounts for the attribute, whatever value it holds."""
+        """Record that the pool accounts for the attribute, whatever value it holds.
+
+        `allocated_value` is the number the pool allocated in this write, or None when the pool only tracks a
+        number the attribute already holds.
+        """
         query = await NumberPoolSetReserved.init(
             db=self.db,
             pool_id=pool_id,
             identifier=identifier,
             attribute_id=attribute_id,
-            provenance=provenance,
+            allocated_value=allocated_value,
             at=at,
             user_id=user_id,
         )

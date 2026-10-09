@@ -515,19 +515,19 @@ async def is_reserved_edge_on(db: InfrahubDatabase, pool_id: str, node_id: str, 
     )
 
 
-async def set_open_is_reserved_edge_provenance(
-    db: InfrahubDatabase, node_id: str, attribute_name: str, provenance: str
+async def set_open_is_reserved_edge_allocated_values(
+    db: InfrahubDatabase, node_id: str, attribute_name: str, values: list[int]
 ) -> None:
-    """Overwrite the provenance on the open IS_RESERVED edges of this object's named attribute vertex."""
+    """Overwrite the allocated values on the open IS_RESERVED edges of this object's named attribute vertex."""
     await db.execute_query(
         query="""
         MATCH (:Node {uuid: $node_id})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attribute_name})
         WITH DISTINCT a
         MATCH ()-[is_reserved:IS_RESERVED]->(a)
         WHERE is_reserved.status = "active" AND is_reserved.to IS NULL
-        SET is_reserved.provenance = $provenance
+        SET is_reserved.allocated_values = $values
         """,
-        params={"node_id": node_id, "attribute_name": attribute_name, "provenance": provenance},
+        params={"node_id": node_id, "attribute_name": attribute_name, "values": values},
     )
 
 

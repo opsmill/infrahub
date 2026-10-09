@@ -186,7 +186,7 @@ async def rewrite_records_to_legacy_shape(
 ) -> int:
     """Put every number pool record back onto the shared value vertex it used to hang off.
 
-    The record keeps its properties bar `provenance`, which the pre-change writer never wrote, and is
+    The record keeps its properties bar `allocated_values`, which the pre-change writer never wrote, and is
     backdated because an upgrade finds records written well before it runs — a record stamped in the
     future is invisible to every read. This is the fixture every behaviour starts from: it turns a
     database today's code produced into the one an upgrade actually finds.
@@ -209,7 +209,7 @@ async def rewrite_records_to_legacy_shape(
         CREATE (pool)-[legacy:IS_RESERVED]->(av)
         SET legacy = properties(res)
         SET legacy.from = $backdated
-        REMOVE legacy.provenance
+        REMOVE legacy.allocated_values
         DELETE res
         RETURN count(legacy) AS rewritten
         """

@@ -96,7 +96,8 @@ where nothing else has moved the numbers.
       reach the node through the record instead of `HAS_SOURCE`, and **add the branch/time/status
       predicate on the reservation edge that it does not have today** (risk R8).
 - [X] T010 [US1] Rewrite `::NumberPoolSetReserved` from a bare `CREATE` to match-close-create,
-      targeting the `Attribute` vertex and writing `provenance`. See
+      targeting the `Attribute` vertex and writing `allocated_values` (first shipped as a single
+      `provenance` label, replaced 2026-10-07). See
       [`contracts/reservation-ledger.md`](./contracts/reservation-ledger.md).
 - [X] T011 [US1] Thread the `Attribute` vertex id through
       `core/node/resource_manager/number_pool.py::CoreNumberPool.get_resource` → `::reserve` → the
@@ -470,7 +471,7 @@ where nothing else has moved the numbers.
 ### 1h. Docs
 
 - [X] T038 [P] [US1] Document `IS_RESERVED` in `dev/knowledge/backend/database-schema.md` — its three
-      target shapes, its `-global-` scope, its properties including `provenance`, and the forward
+      target shapes, its `-global-` scope, its properties including `allocated_values`, and the forward
       liveness resolution. The edge-type table omits it entirely today. Follow
       `dev/guidelines/documentation.md` (*Writing Style → For Internal Docs* and the *Don't* list).
 
@@ -514,16 +515,17 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
       the template refusal, the schema-`NumberPool` path. Stop it mutating `attribute.from_pool` and
       `attribute.is_default` on the preview pass, which is meant to be side-effect-free.
 - [X] T043 [US2] Implement the attach path (FR-021, FR-024): a provided `value` alongside
-      `from_pool` is **kept**, not discarded, and recorded with `provenance=provided`.
+      `from_pool` is **kept**, not discarded, and the record created for it lists no allocated value.
 - [X] T044 [US2] Implement the refusal — `from_pool` alone on a non-default value the named pool does
       not track — naming **both** ways forward: restate the value to attach, or send `value: null` to
       discard and allocate. Follow `dev/guidelines/backend/exceptions.md`.
 - [X] T045 [US2] Implement re-pool (FR-024a): a write naming pool B on an attribute pool A reserves
       ends A's record and begins B's in one operation, allocating or attaching. `from_pool: B` alone
       over a non-default number is refused (T044).
-- [X] T046 [US2] On attach onto an existing record from the same pool, update `provenance` to
-      `provided` — it describes how the number the attribute *currently* holds got there.
-      *(Critique P5.)*
+- [X] T046 [US2] ~~On attach onto an existing record from the same pool, update `provenance` to
+      `provided`~~ **Superseded 2026-10-07**: the record carries `allocated_values` instead of one
+      label, and an attach writes nothing onto the pool's live record; each in-use row's label is
+      read from the list against the value its branch holds (FR-026, FR-026c). *(Critique P5.)*
 
 ### 2d. Locking
 
@@ -533,8 +535,8 @@ it, and assert what the pool reports in use, in the bucket, and as its next numb
       `core/node/lock_utils.py::get_lock_names_on_object_mutation`, which needed one tracking-pool read
       per attribute before the locks were taken. Replaced, at the user's direction, by a write lock on
       the `Attribute` vertex inside `NumberPoolSetReserved`: the query locks the vertex, ends every
-      live `IS_RESERVED` edge on it that does not match the expected pool and provenance, and creates
-      the expected edge only if it is not already live. The `lock_utils` change and
+      live `IS_RESERVED` edge on it unless it is this pool's and already lists the number allocated,
+      and creates the expected edge only if none was kept. The `lock_utils` change and
       `BaseAttribute.tracking_pool_id` are removed. Without the vertex lock, T048's race test fails 3
       runs out of 3.
 - [X] T048 [P] [US2] Component test for concurrent re-pool of one attribute into two different pools:
@@ -628,9 +630,10 @@ count dropped by one, and the number is offered again.
 - [ ] T062 [US2] Reduce `pools/number.py::NumberUtilizationGetter` to a fetch-and-delegate seam,
       owning no arithmetic. Preserve today's distinct-union semantics exactly (the three set
       comprehensions in `load_data` partition a distinct union).
-- [ ] T063 [US2] Extend the pool query surface in `graphql/queries/resource_manager.py`: `provenance`
-      per in-use row, and the out-of-space bucket as a list of rows carrying value, holder **and
-      branch** (FR-027a). One row per **(record, branch-resolved value)**.
+- [ ] T063 [US2] Extend the pool query surface in `graphql/queries/resource_manager.py`: ~~`provenance`
+      per in-use row~~ (done 2026-10-07: `PoolAllocatedNode.provenance`, read from the record's
+      `allocated_values` against each row's value), and the out-of-space bucket as a list of rows
+      carrying value, holder **and branch** (FR-027a). One row per **(record, branch-resolved value)**.
 - [ ] T064 [P] [US2] Component test: an attach outside the ranges succeeds, is bucketed not counted,
       and moves into the utilization fraction when a range is widened — with **no re-attach**
       (SC-015). Cover both paths into the state: attached out of range, and a range removed under a

@@ -32,15 +32,21 @@ Generated files are regenerated, never hand-edited:
 
 ## 1. `provenance` on in-use rows
 
-Each row of a number pool's allocated/in-use list gains `provenance`, a closed set:
+**Shipped 2026-10-07** as `PoolAllocatedNode.provenance`, a nullable `PoolRecordProvenance` enum
+(`ALLOCATED` / `PROVIDED`). It is nullable because the type is shared with the IP address and prefix
+pool rows, which carry none.
+
+Each row of a number pool's allocated/in-use list reports `provenance`, a closed set:
 
 | Value | Meaning |
 |---|---|
-| `allocated` | The pool picked this number |
-| `provided` | The user gave the pool this number |
+| `ALLOCATED` | The pool allocated the number this row's branch holds |
+| `PROVIDED` | The user gave the pool the number this row's branch holds |
 
 Two values, not three. Under FR-021/FR-024, "provided" and "attached" are the same request made on
-create and on update, so they do not merit separate values. Absent in storage means `allocated`.
+create and on update, so they do not merit separate values. The label is not stored: it is read per
+row from the record's `allocated_values` against the row's branch-resolved value, so it is correct
+on every branch (FR-026). A record with no list reads `ALLOCATED` for every value.
 
 **Row cardinality (FR-028a)**: one row per **(record, branch-resolved value)**. A record whose object
 holds `1` on the default branch and `5` on another contributes **two rows**. Several objects holding

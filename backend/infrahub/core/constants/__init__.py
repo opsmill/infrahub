@@ -382,6 +382,13 @@ class ValidatorState(InfrahubStringEnum):
     COMPLETED = "completed"
 
 
+class PoolRecordProvenance(InfrahubStringEnum):
+    """Whether the pool allocated a value or a user provided it."""
+
+    ALLOCATED = "allocated"
+    PROVIDED = "provided"
+
+
 class AttributeDBNodeType(Flag):
     DEFAULT = auto()
     INDEX_ONLY = auto()

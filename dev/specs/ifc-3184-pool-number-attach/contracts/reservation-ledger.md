@@ -20,12 +20,19 @@ This is new. Today writes are scattered: `NumberPoolSetReserved` is a bare `CREA
 
 ## Operations
 
-### `create(pool, attribute, provenance)`
+### `create(pool, attribute, allocated_value)`
+
+`allocated_value` is the number the pool allocated in this write, or none when the pool only tracks
+a number the attribute already holds.
 
 **Match-close-create**, not `CREATE`:
 
-1. Close any **live** record on the target `Attribute` vertex (`to = $at`), whichever pool owns it.
-2. Create the new `-global-` record with `provenance`.
+1. Keep this pool's live record when the write allocates nothing, or allocates a number the record
+   already lists. Otherwise close every **live** record on the target `Attribute` vertex
+   (`to = $at`), whichever pool owns it.
+2. When nothing was kept, create the new `-global-` record with `allocated_values`: the kept
+   pool's list plus `allocated_value` when this pool's record was closed, else `[allocated_value]`
+   or `[]`.
 
 Both steps in one query. The close is what makes the one-record-per-attribute invariant hold **by
 construction** (FR-024b) rather than by accident, and it is what makes re-pool a single operation
@@ -36,17 +43,23 @@ Today's bare `CREATE` is safe only because value anchoring kills the loser: pool
 and A's record dies. Anchored on the attribute, both records resolve forward to the same live value,
 neither dies, and pool A reports a number pool B handed out.
 
-`provenance ∈ {allocated, provided}`. Absent means `allocated`, so no backfill is needed.
+`allocated_values` is the list of every number the pool allocated to the attribute, on any branch.
+A row of the in-use list reads `allocated` when its branch-resolved value is in the list and
+`provided` otherwise; an absent list reads `allocated` for every value, and the re-anchoring
+migration writes the anchored value into each legacy record's list (FR-026, FR-026e).
 
-**On re-attach onto an existing record from the same pool**, `provenance` is updated to `provided`.
-Provenance describes how the number the attribute *currently* holds got there; a number the pool
-allocated and the user then overwrote by hand is `provided`, not `allocated`. Without this, the field
-reports how the record started rather than what it now describes.
+**The list is never changed in place.** Extending it is a close-and-create, so the history is kept
+and the pool is stamped like any other record change. Nothing removes a member: a value change,
+branch delete, object delete or merge writes nothing to the ledger, so a number the attribute no
+longer holds stays listed. It is inert, because the label is read only for a row whose
+branch-resolved value matches.
 
-**Restating the number the record already tracks keeps it.** When the write attaches the value the
-attribute already holds on the branch, an `allocated` record from the same pool counts as current and
-nothing is written; the query compares the held value before the write saves its own. Resending a
-number the pool allocated therefore does not turn it into `provided`. *(Revised 2026-10-05.)*
+**An attach writes nothing onto this pool's live record.** The record tracks the attribute, not the
+value, and the label of each row is computed at read time, so neither a hand-set number nor a
+restated one changes the record. A number the pool once allocated therefore reads `allocated` on
+every branch that holds it, including a branch where the user hand-set it after holding another
+number (FR-026c, accepted). *(Revised 2026-10-07: replaces the single `provenance` property, its
+update to `provided` on re-attach and the held-value comparison of 2026-10-05.)*
 
 **Required interface change**: `CoreNumberPool.get_resource(db, branch, attribute: AttributeSchema,
 identifier: str)` receives the attribute *schema* and a node uuid — it never sees the `Attribute`

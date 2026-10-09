@@ -30,7 +30,7 @@ resolved by joining that string back to a node:
 ```
 (:CoreNumberPool {uuid})
     -[:IS_RESERVED {branch:"-global-", branch_level:1, status:"active",
-                    from:<ts>, to:<ts|null>, provenance:"allocated"|"provided",
+                    from:<ts>, to:<ts|null>, allocated_values:[<int>, ...],
                     identifier:<node uuid>}]->
 (:Attribute {uuid, name, branch_support})
 ```
@@ -53,10 +53,14 @@ points at *is* the owner. What the record reserves is resolved **forward**, per 
 | `from` | set at creation | unchanged | |
 | `to` | only ever set by `PoolChangeReserved` | **now also set by release and by close-before-create** | Time-close, not tombstone — see §4 |
 | `identifier` | **load-bearing** for liveness | **retained, no longer load-bearing** | Kept for diagnostics and for the IP shapes; liveness no longer depends on it, which is what unblocks P4 |
-| `provenance` | — | **new**: `allocated` \| `provided` | Absent means `allocated`, so no backfill is needed |
+| `allocated_values` | — | **new**: list of integers | Every number the pool allocated to the attribute, on any branch. A row reads `allocated` when its branch-resolved value is in the list and `provided` otherwise; an absent list reads `allocated` for every value. The re-anchoring migration writes the anchored value into the list |
 
-`provenance` is deliberately two-valued, not three: under FR-021/FR-024, "provided" and "attached"
-are the same request made on create and on update.
+The label a row reports is two-valued, not three: under FR-021/FR-024, "provided" and "attached"
+are the same request made on create and on update. It is read per record and value, not stored,
+because two branches can hold different values on one attribute with different intents and a single
+stored label cannot be true on both (FR-026). The list is never changed in place: a second
+allocation from the pool holding the record closes it and creates one with the number appended, and
+nothing removes a member. *(Revised 2026-10-07: replaces the single `provenance` property.)*
 
 ### The three `IS_RESERVED` shapes after this slice
 
@@ -149,8 +153,9 @@ re-attach may recreate.
 
 | Event | Behaviour | Ledger write? |
 |---|---|---|
-| Allocate | Record created, `provenance=allocated` | create |
-| Attach (`value` + `from_pool`) | Record created, `provenance=provided` | create |
+| Allocate | Record created, `allocated_values=[number]` | create |
+| Attach (`value` + `from_pool`) | Record created, `allocated_values=[]` | create |
+| Allocate again from the pool holding the record (`value: null` + `from_pool` on another branch) | Record closed and recreated with the new number appended to `allocated_values` | close + create |
 | Re-attach the same value + pool | No-op (idempotent — clients resend every field) | none |
 | Value change, no pool named | Record unchanged; it tracks the attribute, not the value | **none** |
 | Detach (`from_pool: null`) | Record ended; number unchanged on the object | release |

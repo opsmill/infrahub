@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol, assert_never
 
 from infrahub.core.attribute import PayloadPresence
+from infrahub.core.constants import PoolRecordProvenance
 from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
-from infrahub.core.query.resource_manager import PoolRecordProvenance
 from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError

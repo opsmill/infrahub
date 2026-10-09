@@ -70,7 +70,7 @@ Every requirement-bearing element of the PRD is present in the spec.
 | A9 | Informational | **corrected** | Prerequisites, *"Every number-pool read query joins `res.identifier = n.uuid`"* | `research.md` §0 item 1 | Only two of five do. The PRD reaches the right conclusion (FR-030c) from a wrong premise. |
 | A10 | Informational | **added** | — (gap) | `data-model.md` §6, T006 | `IS_RESERVED` is the only property edge type with no `branch` index, and FR-030b puts it on a read path serving every attribute of every kind (critique E7). |
 | A11 | Informational | **added** | — (gap) | `contracts/reservation-ledger.md`, T011 | `get_resource` never receives the `Attribute` vertex, so the PRD's match-close-create is unimplementable as written (critique E2). |
-| A12 | Informational | **clarified** | FR-026 | `contracts/reservation-ledger.md`, T047 | `provenance` updates to `provided` when a user hand-sets a number onto a record the pool originally allocated. The PRD leaves this undetermined (critique P5). |
+| A12 | Informational | **clarified**, revised 2026-10-07 | FR-026, FR-026c | `contracts/reservation-ledger.md`, T046 | The record carries `allocated_values` instead of one label. A hand-set number reads `provided` on the branch that holds it unless the pool allocated that same number before; the record itself is not updated. The PRD leaves this undetermined (critique P5). |
 
 ### Not counted as drift
 

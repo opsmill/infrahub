@@ -5,14 +5,20 @@ from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.initialization import initialize_registry
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
-from infrahub.core.query.resource_manager import NumberPoolGetTaken, NumberPoolGetUsed, PoolRecordProvenance
+from infrahub.core.query.resource_manager import NumberPoolGetTaken, NumberPoolGetUsed
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.number_ranges import EffectiveSpace, NumberDomain
-from tests.helpers.agnostic_edges import TEST_ACTOR_ID, VertexMetadata, node_metadata, pool_reservation_edges
+from tests.helpers.agnostic_edges import (
+    TEST_ACTOR_ID,
+    VertexMetadata,
+    node_metadata,
+    open_is_reserved_edge_on,
+    pool_reservation_edges,
+)
 from tests.helpers.db_query_counter import CountingInfrahubDatabase
 from tests.helpers.number_pool import add_pool_range
 from tests.helpers.schema import TICKET, load_schema
@@ -100,7 +106,7 @@ class TestNumberPoolRepository:
             pool_id=pool.get_id(),
             identifier=ticket_id,
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
             at=at,
             user_id=TEST_ACTOR_ID,
         )
@@ -132,7 +138,7 @@ class TestNumberPoolRepository:
             pool_id=first_pool.get_id(),
             identifier=ticket_id,
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
             at=first_at,
             user_id=TEST_ACTOR_ID,
         )
@@ -143,7 +149,7 @@ class TestNumberPoolRepository:
             pool_id=second_pool.get_id(),
             identifier=ticket_id,
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
             at=second_at,
             user_id=SECOND_ACTOR_ID,
         )
@@ -184,7 +190,7 @@ class TestNumberPoolRepository:
             pool_id=pool.get_id(),
             identifier=ticket_id,
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
             at=Timestamp(),
             user_id=TEST_ACTOR_ID,
         )
@@ -196,7 +202,86 @@ class TestNumberPoolRepository:
             pool_id=pool.get_id(),
             identifier=ticket_id,
             attribute_id=attribute_id,
-            provenance=PoolRecordProvenance.PROVIDED,
+            allocated_value=None,
+            at=Timestamp(),
+            user_id=SECOND_ACTOR_ID,
+        )
+
+        assert await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id) == records_before
+        assert await node_metadata(db=db, node_id=pool.get_id()) == metadata_before
+
+    async def test_allocating_another_number_from_the_same_pool_extends_the_record_by_closing_and_recreating_it(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """A number the record does not list yet closes the record and opens one listing it, stamped like any record change."""
+        pool = await _pool(db=db, name="extend")
+        ticket_id, attribute_id = await _ticket_attribute_id(db=db, title="extend", ticket_id=1004)
+        repository = NumberPoolRepository(db=db)
+        first_at = Timestamp()
+        await repository.reserve(
+            pool_id=pool.get_id(),
+            identifier=ticket_id,
+            attribute_id=attribute_id,
+            allocated_value=5,
+            at=first_at,
+            user_id=TEST_ACTOR_ID,
+        )
+        second_at = Timestamp()
+
+        await repository.reserve(
+            pool_id=pool.get_id(),
+            identifier=ticket_id,
+            attribute_id=attribute_id,
+            allocated_value=7,
+            at=second_at,
+            user_id=SECOND_ACTOR_ID,
+        )
+
+        closed, opened = sorted(
+            await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id),
+            key=lambda edge: edge.from_time,
+        )
+        assert (closed.from_time, closed.from_user_id, closed.to_time, closed.to_user_id) == (
+            first_at.to_string(),
+            TEST_ACTOR_ID,
+            second_at.to_string(),
+            SECOND_ACTOR_ID,
+        )
+        assert (opened.from_time, opened.from_user_id, opened.to_time) == (second_at.to_string(), SECOND_ACTOR_ID, None)
+        live = await open_is_reserved_edge_on(
+            db=db, pool_id=pool.get_id(), node_id=ticket_id, attribute_name="ticket_id"
+        )
+        assert live["allocated_values"] == [5, 7]
+        assert await node_metadata(db=db, node_id=pool.get_id()) == VertexMetadata(
+            updated_at=second_at.to_string(),
+            updated_by=SECOND_ACTOR_ID,
+            previous_updated_at=first_at.to_string(),
+            previous_updated_by=TEST_ACTOR_ID,
+        )
+
+    async def test_allocating_a_number_the_record_already_lists_keeps_the_record(
+        self, db: InfrahubDatabase, main_branch: Branch
+    ) -> None:
+        """A number the pool already allocated to the attribute changes nothing, so the record and the pool keep their stamps."""
+        pool = await _pool(db=db, name="relist")
+        ticket_id, attribute_id = await _ticket_attribute_id(db=db, title="relist", ticket_id=1005)
+        repository = NumberPoolRepository(db=db)
+        await repository.reserve(
+            pool_id=pool.get_id(),
+            identifier=ticket_id,
+            attribute_id=attribute_id,
+            allocated_value=5,
+            at=Timestamp(),
+            user_id=TEST_ACTOR_ID,
+        )
+        records_before = await pool_reservation_edges(db=db, pool_id=pool.get_id(), attribute_id=attribute_id)
+        metadata_before = await node_metadata(db=db, node_id=pool.get_id())
+
+        await repository.reserve(
+            pool_id=pool.get_id(),
+            identifier=ticket_id,
+            attribute_id=attribute_id,
+            allocated_value=5,
             at=Timestamp(),
             user_id=SECOND_ACTOR_ID,
         )
