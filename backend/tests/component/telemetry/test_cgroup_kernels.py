@@ -40,11 +40,10 @@ _DAEMON_TIMEOUT_SECONDS = 30
 _BUILD_TIMEOUT_SECONDS = 600
 _RUN_TIMEOUT_SECONDS = 120
 
-# Import the module straight from a bind mount rather than through the ``infrahub``
-# package, whose import needs distribution metadata that a bare image lacks.
+# The module is imported on its own rather than through the ``infrahub`` package, whose
+# import needs distribution metadata that a bare image lacks.
 _PROBE = """
-import json, os, sys
-sys.path.insert(0, "/mounted")
+import json, os
 import psutil, resources
 reading = resources.ProcessResources().read()
 print(json.dumps(reading.model_dump() | {
@@ -57,6 +56,8 @@ print(json.dumps(reading.model_dump() | {
 
 # Every probe container gets this hostname, so the hostname part of the container name is known.
 _PROBE_HOSTNAME = "telemetry-probe"
+
+_PROBE_DIR = "/probe"
 
 # Enforce the limits on the parent and leave the process's own group unbounded,
 # the shape a pod-level limit produces. The parent must be vacated before its
@@ -100,7 +101,11 @@ class KernelCase:
     """Cores the quota lets the process occupy, when a fractional quota makes that differ."""
 
     expected_affinity: int | None = None
-    """CPUs pinned by a ``cpuset`` restriction, applied as a further cap independent of the quota."""
+    """The exact number of CPUs a ``cpuset`` restriction pins the process to.
+
+    Every case caps the expected usable CPUs by the pinned CPUs the probe reports;
+    this field only adds a check of that count.
+    """
 
     setup: str = ""
 
@@ -176,6 +181,19 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _probe_command(setup: str = "") -> list[str]:
+    """The command a probe container runs: save the module sent on standard input, run ``setup``, then print a reading.
+
+    The module is sent rather than mounted, because a daemon in a VM or on another
+    host cannot see this machine's files.
+    """
+    script = (
+        f"set -e\nmkdir -p {_PROBE_DIR}\ncat > {_PROBE_DIR}/resources.py\n"
+        f"{setup}\nPYTHONPATH={_PROBE_DIR} python -c '{_PROBE}'"
+    )
+    return ["sh", "-c", script]
+
+
 @pytest.fixture(scope="module")
 def probe_image() -> str:
     """Build a minimal image carrying only the reader's runtime dependencies."""
@@ -205,18 +223,20 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
         DOCKER,
         "run",
         "--rm",
+        "--interactive",
         *case.docker_args,
         "--hostname",
         _PROBE_HOSTNAME,
-        "--volume",
-        f"{RESOURCES_MODULE}:/mounted/resources.py:ro",
         probe_image,
-        "sh",
-        "-c",
-        f"{case.setup}\npython -c '{_PROBE}'",
+        *_probe_command(case.setup),
     ]
     result = subprocess.run(  # noqa: S603
-        command, capture_output=True, text=True, check=False, timeout=_RUN_TIMEOUT_SECONDS
+        command,
+        input=RESOURCES_MODULE.read_text(),
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=_RUN_TIMEOUT_SECONDS,
     )
     if result.returncode != 0 and "cpuset" in result.stderr.lower():
         # The case pins specific CPU ids, which a daemon confined to a different set
@@ -228,16 +248,18 @@ def test_reader_against_real_cgroups(case: KernelCase, probe_image: str) -> None
 
     assert reading["host"] == f"{_PROBE_HOSTNAME}/pid:[{reading['pid_namespace_number']}]"
 
-    # 'available' is what the process can use: the host's count capped by the quota (rounded
-    # down, since a fraction of a core cannot keep a whole one busy) and by CPU affinity,
-    # while 'assigned' rounds the same quota up to the cap that is enforced.
-    host_count = reading["host_processor_available"]
-    quota_cap = case.expected_usable if case.expected_usable is not None else case.expected_assigned
-    expected_available = host_count if quota_cap is None else min(host_count, quota_cap)
     if case.expected_affinity is not None:
         assert reading["affinity_available"] == case.expected_affinity
-        expected_available = min(expected_available, case.expected_affinity)
-    assert reading["processor_available"] == expected_available
+
+    # 'available' is what the process can use: the host's count capped by the quota (rounded
+    # down, since a fraction of a core cannot keep a whole one busy) and by the CPUs the
+    # process may run on, which a daemon can restrict for every container it starts, while
+    # 'assigned' rounds the same quota up to the cap that is enforced.
+    quota_cap = case.expected_usable if case.expected_usable is not None else case.expected_assigned
+    caps = [reading["host_processor_available"], reading["affinity_available"]]
+    if quota_cap is not None:
+        caps.append(quota_cap)
+    assert reading["processor_available"] == min(caps)
     assert reading["processor_available"] >= 1
 
     assert reading["processor_assigned"] == case.expected_assigned
@@ -268,8 +290,6 @@ def test_containers_sharing_a_hostname_get_different_container_names(probe_image
                     "--rm",
                     "--hostname",
                     _PROBE_HOSTNAME,
-                    "--volume",
-                    f"{RESOURCES_MODULE}:/mounted/resources.py:ro",
                     probe_image,
                     "sleep",
                     str(_RUN_TIMEOUT_SECONDS),
@@ -282,7 +302,8 @@ def test_containers_sharing_a_hostname_get_different_container_names(probe_image
             containers.append(started.stdout.strip())
         for container in containers:
             probed = subprocess.run(  # noqa: S603
-                [DOCKER, "exec", container, "python", "-c", _PROBE],
+                [DOCKER, "exec", "--interactive", container, *_probe_command()],
+                input=RESOURCES_MODULE.read_text(),
                 capture_output=True,
                 text=True,
                 check=True,

@@ -192,25 +192,22 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
     """A cache entry corrupted into a negative figure is dropped instead of reaching the payload."""
     cache = resource_environment
 
-    _seed_active(cache, "git_agent", "healthy")
-    _seed_reading(
-        cache,
-        "git_agent",
-        "healthy",
-        WorkerResourceReading(
-            host="git-host-good",
-            processor_available=4,
-            processor_assigned=None,
-            memory_total=8_000_000_000,
-            memory_available=6_000_000_000,
-        ),
+    healthy_reading = WorkerResourceReading(
+        host="git-host-good",
+        processor_available=4,
+        processor_assigned=None,
+        memory_total=8_000_000_000,
+        memory_available=6_000_000_000,
     )
+    _seed_active(cache, "git_agent", "healthy")
+    _seed_reading(cache, "git_agent", "healthy", healthy_reading)
 
     _seed_active(cache, "git_agent", "corrupted")
     # Written as raw JSON, bypassing WorkerResourceReading's own validation, the way a
-    # value actually corrupted or stale in the cache would arrive.
+    # value actually corrupted or stale in the cache would arrive. It reports one more
+    # figure than the healthy reading, so it would be the one reported if it were kept.
     cache.storage["workers:resources:git_agent:worker:corrupted"] = (
-        '{"host": "git-host-bad", "processor_available": -4, "processor_assigned": null, '
+        '{"host": "git-host-bad", "processor_available": -4, "processor_assigned": 2, '
         '"memory_total": 8000000000, "memory_available": 6000000000}'
     )
 
@@ -226,6 +223,7 @@ async def test_corrupted_reading_is_dropped(resource_environment: MemoryCache) -
         memory_total=8_000_000_000,
         memory_available=6_000_000_000,
     )
+    assert await gatherer.component.read_worker_resources() == {"git_agent": [healthy_reading]}
 
 
 async def test_payload_keeps_every_prior_key_and_its_version(resource_environment: MemoryCache) -> None:
