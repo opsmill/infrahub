@@ -95,7 +95,7 @@ Every regeneration decision during a proposed change is recorded in the pipeline
 
 An artifact belongs to the branch it was generated on. When a branch merges, Infrahub does not copy its artifacts to the default branch. It regenerates the affected artifacts on the default branch, from the default branch's data and repository commit at the time the regeneration runs. The artifact you reviewed in a [Proposed Change](../proposed-changes/overview) and the artifact on the default branch are separate nodes with different IDs. Their content is the same only when both were generated from the same data and the same repository commit.
 
-If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact, not the one you reviewed.
+If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact. Its content is the same as the artifact you reviewed when both of these are true: no data or Transformation file that the artifact uses changed on the default branch after the branch's `branched_from`, and both the repository merge and the regeneration succeeded. To check both before you deploy, see [Deploy the artifact that was reviewed](#deploy-the-artifact-that-was-reviewed).
 
 ### What happens after a merge
 
