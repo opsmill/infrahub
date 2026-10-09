@@ -12,9 +12,11 @@ from infrahub.core.path import SchemaPath
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.pool.scope import NumberPoolScopeChecker
+from infrahub.exceptions import InitializationError
 from infrahub.pools.scope import AllocationScope, ScopeElement
 from infrahub.pools.scoped_number_pool_reader import NumberPoolScopes, ScopedNumberPool, UnreadableScopeNumberPool
 from tests.helpers.number_pool import (
@@ -76,8 +78,8 @@ def _saved_schema() -> SchemaRoot:
     )
 
 
-def _schema_branch(schema: SchemaRoot, name: str = BRANCH.name) -> SchemaBranch:
-    schema_branch = SchemaBranch(cache={}, name=name)
+def _schema_branch(schema: SchemaRoot) -> SchemaBranch:
+    schema_branch = SchemaBranch(cache={}, name=BRANCH.name)
     schema_branch.load_schema(schema=schema)
     schema_branch.process()
     return schema_branch
@@ -231,6 +233,9 @@ class StaticSchemaSource:
     def __init__(self, schema_branch: SchemaBranch, default_branch_schema: SchemaBranch | None = None) -> None:
         self.schema_branch = schema_branch
         self.default_branch_schema = default_branch_schema
+
+    def has_schema_branch(self, name: str) -> bool:
+        return name == BRANCH.name or (name == registry.default_branch and self.default_branch_schema is not None)
 
     def get_schema_branch(self, name: str) -> SchemaBranch:
         if name == registry.default_branch and self.default_branch_schema is not None:
@@ -1123,6 +1128,95 @@ class TestNumberPoolScopeCheckerMissingSchema:
         assert (pool_source.requested_kinds, pool_source.requested_ids) == ([], [])
 
 
+@dataclass(frozen=True)
+class UnloadedBranchCase:
+    name: str
+    constraint_name: str
+    field_name: str
+    path_type: SchemaPathType
+    change: Callable[[SchemaRoot], None]
+
+
+UNLOADED_BRANCH_CASES = [
+    UnloadedBranchCase(
+        name="relationship-made-optional",
+        constraint_name="relationship.optional.update",
+        field_name="site",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_optional,
+    ),
+    UnloadedBranchCase(
+        name="relationship-renamed",
+        constraint_name="relationship.name.update",
+        field_name="location",
+        path_type=SchemaPathType.RELATIONSHIP,
+        change=_device_site_renamed,
+    ),
+]
+
+
+class TestNumberPoolScopeCheckerUnloadedBranch:
+    """A worker that has not loaded the schema of the request's branch cannot tell which pools a change breaks."""
+
+    @pytest.mark.parametrize("case", UNLOADED_BRANCH_CASES, ids=[case.name for case in UNLOADED_BRANCH_CASES])
+    async def test_refuses_to_check_without_registering_the_branch(self, case: UnloadedBranchCase) -> None:
+        candidate_schema = _declared_schema()
+        case.change(candidate_schema)
+        schema_manager = SchemaManager()
+        schema_manager.set_schema_branch(
+            name=registry.default_branch,
+            schema=_unvalidated_schema_branch(_declared_schema(), name=registry.default_branch),
+        )
+        pool_source = RecordingPoolSource(pools=(*SCHEMA_POOLS, DEVICE_POOL_BY_SITE))
+        checker = NumberPoolScopeChecker(pool_source=pool_source, schema_source=schema_manager)
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=case.constraint_name,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=case.path_type, schema_kind=DEVICE, field_name=case.field_name),
+            schema_branch=candidate,
+        )
+
+        with pytest.raises(
+            InitializationError,
+            match=rf"^The schema of branch feature is not loaded; the change to ScopeDevice\.{case.field_name} cannot"
+            r" be checked against the number pools$",
+        ):
+            await checker.check(request)
+        assert not schema_manager.has_schema_branch(name=BRANCH.name)
+
+    async def test_refuses_to_check_a_new_declaration_without_registering_the_default_branch(self) -> None:
+        candidate_schema = _declared_schema()
+        _declare_on_device(["site"])(candidate_schema)
+        schema_manager = SchemaManager()
+        schema_manager.set_schema_branch(name=BRANCH.name, schema=_unvalidated_schema_branch(_declared_schema()))
+        checker = NumberPoolScopeChecker(
+            pool_source=RecordingPoolSource(pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL)),
+            schema_source=schema_manager,
+        )
+        candidate = _unvalidated_schema_branch(candidate_schema)
+        node_schema = candidate.get(name=DEVICE, duplicate=False)
+        assert isinstance(node_schema, NodeSchema)
+        request = SchemaConstraintValidatorRequest(
+            branch=BRANCH,
+            constraint_name=SCOPE_CONSTRAINT,
+            node_schema=node_schema,
+            schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind=DEVICE, field_name="vlan_id"),
+            schema_branch=candidate,
+        )
+
+        with pytest.raises(
+            InitializationError,
+            match=r"^The schema of the default branch main is not loaded; an allocation scope declared on branch"
+            r" feature cannot be resolved$",
+        ):
+            await checker.check(request)
+        assert not schema_manager.has_schema_branch(name=registry.default_branch)
+
+
 class TestNumberPoolScopeCheckerCandidateOnDestination:
     """A proposed change or a merge builds the candidate on the destination's schema and checks it for the source."""
 
@@ -1136,10 +1230,10 @@ class TestNumberPoolScopeCheckerCandidateOnDestination:
             pool_source=pool_source,
             schema_source=StaticSchemaSource(
                 schema_branch=_schema_branch(source_schema),
-                default_branch_schema=_schema_branch(_saved_schema(), name=registry.default_branch),
+                default_branch_schema=_unvalidated_schema_branch(_saved_schema(), name=registry.default_branch),
             ),
         )
-        candidate = _schema_branch(candidate_schema, name=registry.default_branch)
+        candidate = _unvalidated_schema_branch(candidate_schema, name=registry.default_branch)
         node_schema = candidate.get(name=DEVICE, duplicate=False)
         assert isinstance(node_schema, NodeSchema)
         request = SchemaConstraintValidatorRequest(
