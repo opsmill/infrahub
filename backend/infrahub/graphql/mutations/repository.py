@@ -7,7 +7,7 @@ import httpx
 from graphene import Boolean, Field, InputObjectType, Mutation, String
 
 from infrahub import config, lock
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, RepositoryDeliveryStatus
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
@@ -283,7 +283,7 @@ class ProcessRepository(Mutation):
         )
         if repo.get_kind() == InfrahubKind.REPOSITORY:
             state = await build_intent_store(db=graphql_context.db, lock_registry=lock.registry)
-            if repo.id in await state.pending_repository_ids():
+            if (await state.read(repository_id=repo.id)).status is not RepositoryDeliveryStatus.NONE:
                 raise ValidationError(
                     f"Repository {repo.name.value} has pending pushes; a reimport now would remove the objects "
                     "they added. Retry or abandon the pending pushes first."

@@ -21,6 +21,7 @@ from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
@@ -1011,11 +1012,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         merges, and a source branch kept on the remote for them would be imported again, as a new
         Infrahub branch or onto the one still open.
         """
-        repository_id = str(self.id)
-        if repository_id not in await state.pending_repository_ids():
+        intent = await state.read(repository_id=str(self.id))
+        if intent.status is RepositoryDeliveryStatus.NONE:
             return new_branches, updated_branches
 
-        intent = await state.read(repository_id=repository_id)
         deferred = {self.default_branch, *(entry.source_git_branch for entry in intent.queue.entries)}
         skipped = sorted(deferred.intersection([*new_branches, *updated_branches]))
         if skipped:

@@ -121,7 +121,7 @@ async def test_sync_records_a_failure_raised_outside_the_import_on_its_branch(
         importer=FailingImporter(RuntimeError("lock lost")),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
-        state=build_idle_delivery_state(),
+        state=build_idle_delivery_state(repository_id=str(git_repo_04.id)),
     )
 
     outcome = await call_in_flow(lambda: syncer.sync(git_repo_04))
