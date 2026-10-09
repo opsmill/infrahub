@@ -528,7 +528,14 @@ class WritebackIntent:
         return settled._with_status_of_queue(), lease
 
     def abandoned(
-        self, *, repository_name: str, queue_version: int, record: AbandonmentRecord, lease_id: str, now: datetime
+        self,
+        *,
+        repository_name: str,
+        queue_version: int,
+        actor: Actor,
+        record: AbandonmentRecord,
+        lease_id: str,
+        now: datetime,
     ) -> tuple[WritebackIntent, ReleaseLease | None]:
         """Drop every pending merge and the owed import with their record, and lease every uncovered held item.
 
@@ -536,10 +543,20 @@ class WritebackIntent:
         held item is left to lease.
 
         Raises:
+            ValueError: The record names another queue version or account than the request.
             DeliveryQueueChangedError: The queue is no longer at `queue_version`.
             NothingPendingError: The queue is empty.
 
         """
+        if (record.queue_version, record.account_id, record.account_name) != (
+            queue_version,
+            actor.account_id,
+            actor.account_name,
+        ):
+            raise ValueError(
+                f"The abandonment record of repository {repository_name} names another queue version or account "
+                "than its request"
+            )
         if queue_version != self.queue.version:
             raise DeliveryQueueChangedError(repository_name=repository_name, queue_version=queue_version)
         if not self.queue.entries:
