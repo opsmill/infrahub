@@ -562,6 +562,39 @@ class MergeConflictsUnresolvedError(ValidationError):
         )
 
 
+class MergeRepositoryImportError(ValidationError):
+    """Raised when a branch cannot be merged because the objects a repository registered on it may not match it."""
+
+    def __init__(self, failed_repositories: list[str], incomplete_repositories: list[str]) -> None:
+        if not failed_repositories and not incomplete_repositories:
+            raise ValueError("A repository import refusal needs at least one failed or incomplete repository")
+        self.failed_repositories = failed_repositories
+        self.incomplete_repositories = incomplete_repositories
+
+        reasons = ["Cannot merge."]
+        if failed_repositories:
+            reasons.append(
+                f"The last import of {self._name_repositories(failed_repositories)} failed: push a fix, reimport the "
+                f"current commit, or set the {self._label(failed_repositories)} to inactive."
+            )
+        if incomplete_repositories:
+            verb = "has" if len(incomplete_repositories) == 1 else "have"
+            reasons.append(
+                f"{self._label(incomplete_repositories).title()} {self._quote(incomplete_repositories)} {verb} not "
+                f"finished importing: wait for the import, or reimport the current commit if it does not finish."
+            )
+        super().__init__(" ".join(reasons))
+
+    def _label(self, names: list[str]) -> str:
+        return "repository" if len(names) == 1 else "repositories"
+
+    def _quote(self, names: list[str]) -> str:
+        return ", ".join(f"'{name}'" for name in names)
+
+    def _name_repositories(self, names: list[str]) -> str:
+        return f"{self._label(names)} {self._quote(names)}"
+
+
 class BranchStatusError(Error):
     HTTP_CODE: int = 400
 

@@ -1,0 +1,204 @@
+# Data Model: Cross-branch Repository Status Query
+
+**Branch**: `cross-branch-repo-status-infp-671` | **Date**: 2026-09-03 | **Spec**: [spec.md](spec.md)
+
+No node kind, attribute, relationship or migration is added. This document describes the graph facts
+the read depends on and the in-memory shapes the feature introduces.
+
+## Graph facts the read relies on
+
+### Repository nodes
+
+`CoreGenericRepository`, `CoreRepository` and `CoreReadOnlyRepository`
+(`backend/infrahub/core/schema/definitions/core/repository.py`) are `AGNOSTIC` at node level: one node,
+visible from every branch. Attribute branch support decides where value edges live:
+
+| Kind | Attribute | Branch support | Read once or per branch |
+| --- | --- | --- | --- |
+| Generic and both concrete kinds | `name`, `description`, `location`, `operational_status` | `AGNOSTIC` | Once (from the repository lookup) |
+| `CoreRepository` | `default_branch` | agnostic by inheritance | Once |
+| `CoreGenericRepository`, inherited by both kinds | `sync_status`, `internal_status` | `LOCAL` | Per branch |
+| `CoreRepository` | `commit` | `LOCAL` | Per branch |
+| `CoreReadOnlyRepository` | `commit`, `ref` | `AWARE` | Per branch |
+
+A read on a branch resolves `LOCAL` and `AWARE` with the same per-branch predicate. They differ in
+merge and diff behaviour, and in where the value written at creation lands (below).
+
+### Where a per-branch value edge lives
+
+- At repository creation a `LOCAL` attribute and its first value are written on the global branch
+  (`branch_level` 1), because the node is agnostic (`Attribute.get_create_data`). An `AWARE`
+  attribute is not: its first value lands on the branch the repository was created from.
+- A later write on branch X (an import on that branch) creates a `HAS_VALUE` edge on X. On the default
+  branch that edge has `branch_level` 1; on a user branch it has `branch_level` 2.
+
+So a `CoreReadOnlyRepository` created on a user branch resolves `commit` and `ref` only on that
+branch until a value is written elsewhere; the default branch and every other branch read them as
+null.
+
+### Per-branch visibility of an edge `r` for row branch `B` at time `at`
+
+```text
+default_window(B) = B.branched_from if B.branched_from < at else at
+
+visible(r, B) =
+     (r.branch IN [B, "-global-"] AND r.from <= at AND (r.to IS NULL OR r.to > at))
+  OR (B <> default AND r.branch = default
+      AND r.from <= default_window(B) AND (r.to IS NULL OR r.to > default_window(B)))
+```
+
+Operators are the ones `Branch.get_query_filter_path` emits: **non-strict** `from <=` and strict
+`to >`. It builds two arms per branch, `from <= t AND to IS NULL` and `from <= t AND to > t`, which
+together are the disjunction above. The distinction is not cosmetic: an edge whose `from` equals the
+query time (or a branch's `branched_from` exactly) is visible to the standard read, and a strict `<`
+would silently hide it. The
+implementation copies them rather than paraphrasing, and a differential test against a standard
+per-branch read pins them.
+
+`Branch.get_branches_and_times_to_query_global` additionally skips the substitution when a branch's
+deprecated `is_isolated` flag is false. This read does not, because nothing creates such a branch:
+the API strips the field on creation and the model defaults it to true. Removing the flag from the
+platform, including the `isolated` parameter still exposed on `create_branch`, is tracked as separate
+work; note that the `is_isolated=False` *argument* to `get_query_filter_path` is a different thing
+and is not deprecated.
+
+The fork point substitutes for `at` only when it precedes `at`, which is the guard
+`Branch.get_branches_and_times_to_query_global` applies as `at > branched_from`. For a time before
+the branch existed the requested time is already the tighter bound, and widening the window forward
+to the fork would expose default-branch writes made after the time asked for.
+
+Winner among visible edges: `ORDER BY r.branch_level DESC, r.from DESC, r.status ASC LIMIT 1`, then keep
+only `status = "active"`. This is the rule `Branch.get_query_filter_path` encodes for a single branch
+and `infrahub.database.validation::_check_duplicate_attributes` encodes for a branch list.
+
+Consequences the spec pins by test, for a `CoreRepository` (its `commit` is `LOCAL`):
+
+| Situation | Winning `HAS_VALUE` edge for branch B | Row shows |
+| --- | --- | --- |
+| B imported on its own branch | B's edge (level 2) | B's commit, `own_value = true` |
+| B never imported; default imported before B forked | default's edge as of `branched_from` (level 1) | Fork-point commit, `own_value = false` |
+| B never imported; default imported after B forked | Same as above; the newer default edge fails the `branched_from` window | Fork-point commit (unchanged) |
+| B rebased | `branched_from` advanced; the newer default edge is now inside the window | Newer commit |
+| Repository never imported anywhere | Global creation edge | `commit.value = null`, `sync_status = unknown` |
+| Row is the default branch | Default's own edge if any, else global | `own_value = true` only if written on the default branch |
+
+For a `CoreReadOnlyRepository` created on the default branch, the creation edges of `commit` and
+`ref` sit on the default branch rather than the global one, so the default-branch row reports them
+with `own_value = true`. User branches forked after the creation inherit them through the fork-point
+window; a branch forked before it reads them as null, since the creation edge postdates its window.
+
+## Row set
+
+For a repository of kind K, the rows are the `Branch` nodes such that:
+
+- `is_global = false`
+- `status NOT IN (MERGED, DELETING)` (`TERMINAL_BRANCH_STATUSES` in `infrahub.core.branch.enums`)
+- `sync_with_git = true` when K is `CoreRepository`; no constraint when K is `CoreReadOnlyRepository`
+- the caller's optional name (exact or partial) and status filters hold
+
+`Branch` is a standard node (`infrahub.core.branch.models::Branch`); it is joined to attribute edges by
+name only (`edge.branch = branch.name`). The row set is read with `Branch.get_list` and the filters in
+`BranchListFilters`, which gains `sync_with_git`.
+
+`sync_with_git` is both a criterion and a returned row field (FR-003). It reads constant `true` on the
+read-write kind, where it selects the row set, and varies on the read-only kind, where every branch is
+a row. It comes off the `Branch` object already held by the row, so returning it costs nothing.
+
+## New in-memory shapes
+
+### `BranchListFilters.sync_with_git: bool | None`
+
+`infrahub.core.branch.filters::BranchListFilters`. `None` means no constraint. Emitted as
+`n.sync_with_git = $filter_sync_with_git`.
+
+### `RepositoryBranchAttributeValue` (frozen dataclass, query result)
+
+`infrahub.core.query.repository::RepositoryBranchAttributeValue`
+
+| Field | Type | Source |
+| --- | --- | --- |
+| `repository_id` | `str` | `n.uuid` |
+| `branch_name` | `str` | the unwound branch name |
+| `attribute_name` | `str` | `a.name` |
+| `attribute_id` | `str` | `a.uuid` |
+| `value` | `str \| None` | `av.value` of the winning `HAS_VALUE` edge |
+| `own_value` | `bool` | `r_value.branch = branch_name` |
+| `updated_at` | `str \| None` | `r_value.from` |
+
+One row per `(repository_id, branch_name, attribute_name)` that resolved to an active value. A branch
+whose attribute has no visible edge (never created) produces no row; the lookup's `get` returns
+`None` for it.
+
+### `RepositoryBranchAttributes` (frozen lookup, reader result)
+
+`infrahub.core.repository_branch_status.models::RepositoryBranchAttributes`
+
+- Built with `RepositoryBranchAttributes.from_values(values)` from a sequence of
+  `RepositoryBranchAttributeValue`. Two values for the same triple raise
+  `ResourceMultipleFoundError` naming it: the graph then holds two attributes of one name on that
+  branch, and the lookup does not pick one.
+- `get(repository_id, branch_name, attribute_name) -> RepositoryBranchAttributeValue | None`.
+- `for_branch(repository_id, branch_name) -> dict[str, RepositoryBranchAttributeValue]` for row assembly.
+- Immutable; holds read-only attribute-name maps keyed by `(repository_id, branch_name)`.
+
+### `RepositoryBranchStatusRow` (frozen dataclass, resolver internal)
+
+`infrahub.graphql.queries.repository_branch_status.paging::RepositoryBranchStatusRow`
+
+| Field | Type | Source |
+| --- | --- | --- |
+| `branch` | `Branch` | branch list |
+| `values` | `Mapping[str, RepositoryBranchAttributeValue]` | reader (increment B) or stub (increment A) |
+
+The pure helpers in `paging.py` operate on a list of these: `apply_value_filters`, `order_rows`
+(default branch first, then `name` ascending, applied when `order` is absent or expresses no
+ordering), `page_rows`.
+
+A row becomes one GraphQL edge through `Branch.to_graphql`, the branch query's own serialisation, so
+the five branch fields arrive wrapped in `InfrahubBranch`'s value-field types and each edge carries
+`node_metadata`. The attribute payloads are merged into the resulting `node`. The legacy flat
+`Branch` scalars are not the model: `StandardNode.to_graphql_flat` serves only the deprecated flat
+`Branch` query and the old-style branch mutations (`BranchCreate`, `BranchRebase`, `BranchValidate`,
+`BranchMerge`), which its own docstring says are to be replaced by `InfrahubBranch` equivalents.
+Reusing `to_graphql` is what keeps the two row shapes from diverging.
+
+### `RepositoryData` and `RepositoryBranchInfo`
+
+`infrahub.git.models::RepositoryData` keeps `branch_info: dict[str, RepositoryBranchInfo]` unchanged.
+Two changes in increment C:
+
+- `branches` widens from `dict[str, str]` to `dict[str, str | None]`. A branch whose `commit` resolves
+  to no visible value is written as `None` rather than skipped, so callers can tell "no commit here"
+  from "branch absent from the read". The declared type does not permit that today, and the one
+  consumer that reads the value already handles a falsy one.
+- The `-global-` key is no longer present. No caller reads it.
+
+### Constant
+
+`infrahub.git.constants::REPOSITORY_BRANCH_READ_CHUNK_SIZE = 100`, the number of branch names per
+primitive call in the periodic sync.
+
+## Validation rules (resolver arguments)
+
+| Argument | Rule | Failure |
+| --- | --- | --- |
+| `id` | required; a repository uuid or its name, resolved with `NodeManager.get_one_by_id_or_default_filter`. That lookup does not enforce `kind` on the id path, so the resolver checks the resolved node against `CoreGenericRepository.used_by` itself; without that check any node uuid resolves and the field becomes an existence-and-kind oracle | `NodeNotFoundError` when neither matches, and when the id resolves to a node that is not a repository |
+| `limit` | `>= 1`; default 40; no maximum; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `offset` | `>= 0`; default 0; an explicit `null` is rejected rather than defaulted | `ValidationError` |
+| `at` (request query parameter) | must be absent: the branch row set is always current | `ValidationError` |
+| `order` | at most one of `created_at`, `updated_at` (existing `standard_node_ordering_from_order_input`) | `ValidationError` |
+| `name__value` | any string; combined with `partial_match` for a contains match | none |
+| `partial_match` | boolean; default false | none |
+| `status__value` | any `BranchStatus` (the SDL name of the `InfrahubBranchStatus` symbol); `MERGED` or `DELETING` yields an empty set, not an error | none |
+| `own_values_only` | boolean; default false; keeps rows whose `commit` is the branch's own, and forces `commit` into the attribute read | none |
+| `sync_status__value`, `internal_status__value` | any string; unknown values yield an empty set; forces the filtered attribute into the attribute read | none |
+| repository not found | same `NodeNotFoundError` path as other repository lookups | error |
+| no `ALLOW_ALL` view on either repository kind | `PermissionDeniedError` before the lookup | error |
+| missing `ALLOW_ALL` view on the resolved concrete kind | `PermissionDeniedError` before any row is returned | error |
+| context without a `PermissionManager` | treated as denial | error |
+
+The table is the contract as shipped.
+
+## State transitions
+
+None. The feature writes nothing.

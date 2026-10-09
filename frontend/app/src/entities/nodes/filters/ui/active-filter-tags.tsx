@@ -16,6 +16,7 @@ import type { Filter } from "@/entities/nodes/filters/domain/model/filter";
 import type { FilterDefinition } from "@/entities/nodes/object/domain/model/filter-definition";
 import { getFilterDefinitionLabel } from "@/entities/nodes/object/domain/rules/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
+import type { FilterConditionSelectProps } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import {
@@ -49,6 +50,8 @@ export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
   filterDefinitions: Record<string, FilterDefinition>;
+  /** Narrows the conditions the edit form offers, for a caller whose request cannot honour them all. */
+  filterConditions?: FilterConditionSelectProps["filterConditions"];
   additionalTags?: React.ReactNode;
 }
 
@@ -56,6 +59,7 @@ export function ActiveFilterTags({
   filters,
   setFilters,
   filterDefinitions,
+  filterConditions,
   additionalTags,
   className,
   ...props
@@ -195,7 +199,11 @@ export function ActiveFilterTags({
           }}
           placement="bottom start"
         >
-          <FieldFilterForm definition={editingFilter} onSuccess={() => setEditingFilter(null)} />
+          <FieldFilterForm
+            definition={editingFilter}
+            filterConditions={filterConditions}
+            onSuccess={() => setEditingFilter(null)}
+          />
         </Popover>
       )}
     </ScrollArea>

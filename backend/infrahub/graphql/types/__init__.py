@@ -27,6 +27,11 @@ from .interface import InfrahubInterface
 from .node import InfrahubObject
 from .permission import PaginatedObjectPermission
 from .relationship import RelationshipNode
+from .repository_branch_status import (
+    InfrahubRepositoryBranchStatusEdge,
+    InfrahubRepositoryBranchStatusNode,
+    InfrahubRepositoryBranchStatusType,
+)
 from .standard_node import InfrahubObjectType
 from .task import TaskNodes
 from .task_log import TaskLog, TaskLogEdge, TaskLogNodes
@@ -49,6 +54,9 @@ __all__ = [
     "InfrahubInterface",
     "InfrahubObject",
     "InfrahubObjectType",
+    "InfrahubRepositoryBranchStatusEdge",
+    "InfrahubRepositoryBranchStatusNode",
+    "InfrahubRepositoryBranchStatusType",
     "IntAttributeType",
     "JSONAttributeType",
     "ListAttributeType",
