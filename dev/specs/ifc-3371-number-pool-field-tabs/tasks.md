@@ -94,10 +94,10 @@ Row IDs (C1, E5, …) refer to [contracts/form-submission.md](contracts/form-sub
 
 **Independent test**: Rows C1 and E1.
 
-- [ ] T013 [P] [US3] Add regression tests for rows C1 and E1 in
+- [X] T013 [P] [US3] Add regression tests for rows C1 and E1 in
   `getCreateMutationFromFormData.test.ts` and `getUpdateMutationFromFormData.test.ts` under
   `shared/components/form/utils/mutations/`, asserting no `from_pool` key is sent
-- [ ] T014 [P] [US3] Regression test in `shared/components/form/fields/number.field.test.tsx`: a
+- [X] T014 [P] [US3] Regression test in `shared/components/form/fields/number.field.test.tsx`: a
   Number attribute with no pool renders without tabs
 
 **Checkpoint**: no regression for numbers without a pool.

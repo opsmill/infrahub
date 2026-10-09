@@ -302,6 +302,16 @@ describe("getCreateMutationFromFormData", () => {
       pool: { kind: "CoreNumberPool", defaultAllocatedObjectKind: "TestDevice" },
     });
 
+    it("sends only the typed number when no pool is picked", () => {
+      const formData: Record<string, FormFieldValue> = {
+        vlan_id: { source: { type: "user" }, value: 42 },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({ vlan_id: { value: 42 } });
+    });
+
     it("asks the picked pool for its next free number when no number is typed", () => {
       const formData: Record<string, FormAttributeValue> = {
         vlan_id: {
