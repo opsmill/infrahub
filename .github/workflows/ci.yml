@@ -218,7 +218,8 @@ jobs:
 
   frontend-validate-graphql-types:
     if: |
-      needs.files-changed.outputs.graphql_schema == 'true'
+      needs.files-changed.outputs.graphql_schema == 'true' ||
+      needs.files-changed.outputs.frontend == 'true'
     needs: ["files-changed"]
     defaults:
       run:
