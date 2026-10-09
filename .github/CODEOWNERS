@@ -16,8 +16,9 @@
 /python_testcontainers/ @opsmill/cloud
 /tasks/ @opsmill/cloud
 /utilities/ @opsmill/cloud
+/.agents/ @opsmill/cloud
 /frontend/app/src/shared/api/graphql/generated/**
 /frontend/app/src/shared/api/rest/types.generated.ts
 /python_sdk/ @opsmill/backend
-uv.lock @opsmill/backend
-pyproject.toml @opsmill/backend
+/uv.lock @opsmill/backend
+/pyproject.toml @opsmill/backend
