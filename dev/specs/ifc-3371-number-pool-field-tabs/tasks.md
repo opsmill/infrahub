@@ -160,12 +160,17 @@ rows E2–E10, and detaches from the Value tab.
   number (C3) and check the node holds it; reopen the node and check the "From pool" tab is
   active with the pool and number; switch to "Value", type a number, save, and check the pool
   badge is gone (E9). Reuse the existing `number_pool_branch` fixture and the pools it creates
-- [ ] T026 [P] Add a towncrier fragment `changelog/+number-pool-field-attach.added.md` describing,
+  - ⚠️ Partial: the E9 test is marked `xfail(strict=True)`. The backend ends the pool reservation, but
+    the same update saves the pool as the attribute's `source` (a `HAS_SOURCE` edge), so the edit form
+    still opens on "From pool" with the pool badge. Needs a backend fix on the base branch.
+- [X] T026 [P] Add a towncrier fragment `changelog/+number-pool-field-attach.added.md` describing,
   from the user's side, that a number can be set by hand and recorded in a number pool from the
   object form
-- [ ] T027 Run `cd frontend && node_modules/.bin/biome ci .`, `cd frontend/app && pnpm knip`,
+- [X] T027 Run `cd frontend && node_modules/.bin/biome ci .`, `cd frontend/app && pnpm knip`,
   `pnpm betterer ci` and `pnpm vitest run src/shared/components/form`; fix any failure
-- [ ] T028 Walk [quickstart.md](quickstart.md) on a local instance and tick each manual scenario
+- [X] T028 Walk [quickstart.md](quickstart.md) on a local instance and tick each manual scenario
+  - Walked on the e2e test stack: C2, C3, E4, E9 and C1 sent the payloads in the contract, and the
+    pool listed the numbers as expected. E9 shows the same stale `source` as T025.
 
 ---
 

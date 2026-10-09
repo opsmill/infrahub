@@ -133,3 +133,70 @@ class TestNumberPool:
         await expect(
             admin_page.get_by_test_id("metadata-tooltip").get_by_role("link", name="number pool test for generic")
         ).to_be_visible()
+
+    async def test_create_node_with_typed_number_recorded_in_pool(
+        self, admin_page: Page, number_pool_branch: str
+    ) -> None:
+        await admin_page.goto(f"/objects/InfraInterfaceL3?branch={number_pool_branch}")
+        await admin_page.get_by_test_id("create-object-button").click()
+
+        await admin_page.get_by_role("combobox", name="Device *").click()
+        await admin_page.get_by_role("option", name="atl1-core1").click()
+        await admin_page.get_by_role("textbox", name="Name *").fill("test interface with typed pool number")
+
+        await admin_page.get_by_role("tab", name="From pool").click()
+        await admin_page.get_by_test_id("select-open-pool-option-button").click()
+        await admin_page.get_by_role("option", name="number pool test for generic").click()
+        await admin_page.get_by_role("spinbutton", name="Number").fill("5")
+
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("InterfaceL3 created")).to_be_visible()
+
+        await admin_page.get_by_role("searchbox", name="Search").fill("typed pool number")
+        await admin_page.get_by_role("link", name="test interface with typed pool number").click()
+        await expect(admin_page.get_by_text("Speed5")).to_be_visible()
+        await admin_page.get_by_text("Speed5").get_by_test_id("view-metadata-button").click()
+        await expect(
+            admin_page.get_by_test_id("metadata-tooltip").get_by_role("link", name="number pool test for generic")
+        ).to_be_visible()
+
+    async def test_edit_node_opens_pool_tab_with_pool_and_number(
+        self, admin_page: Page, number_pool_branch: str
+    ) -> None:
+        await admin_page.goto(f"/objects/InfraInterfaceL3?branch={number_pool_branch}")
+        await admin_page.get_by_role("searchbox", name="Search").fill("typed pool number")
+        await admin_page.get_by_role("link", name="test interface with typed pool number").click()
+        await expect(admin_page.get_by_text("Speed5")).to_be_visible()
+
+        await admin_page.get_by_test_id("edit-button").click()
+        await expect(admin_page.get_by_role("tab", name="From pool")).to_have_attribute("data-state", "active")
+        await expect(admin_page.get_by_test_id("select-open-pool-option-button")).to_contain_text(
+            "number pool test for generic"
+        )
+        await expect(admin_page.get_by_role("spinbutton", name="Number")).to_have_value("5")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_visible()
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "The update that ends the pool reservation saves the pool as the attribute's source, "
+            "so the form still shows the pool after the number leaves it"
+        ),
+    )
+    async def test_typed_value_takes_number_out_of_pool(self, admin_page: Page, number_pool_branch: str) -> None:
+        await admin_page.goto(f"/objects/InfraInterfaceL3?branch={number_pool_branch}")
+        await admin_page.get_by_role("searchbox", name="Search").fill("typed pool number")
+        await admin_page.get_by_role("link", name="test interface with typed pool number").click()
+        await expect(admin_page.get_by_text("Speed5")).to_be_visible()
+
+        await admin_page.get_by_test_id("edit-button").click()
+        await admin_page.get_by_role("tab", name="Value").click()
+        await admin_page.get_by_role("spinbutton", name="Speed").fill("7")
+        await admin_page.get_by_role("button", name="Save").click()
+        await expect(admin_page.get_by_text("InterfaceL3 updated")).to_be_visible()
+        await expect(admin_page.get_by_text("Speed7")).to_be_visible()
+
+        await admin_page.get_by_test_id("edit-button").click()
+        await expect(admin_page.get_by_role("tab", name="Value")).to_have_attribute("data-state", "active")
+        await expect(admin_page.get_by_role("spinbutton", name="Speed")).to_have_value("7")
+        await expect(admin_page.get_by_test_id("source-pool-badge")).to_be_hidden()

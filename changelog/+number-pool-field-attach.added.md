@@ -1,0 +1,1 @@
+Added a "Number" input to the "From pool" tab of a number attribute in object forms, so you can type a number and record it in the selected number pool; when editing, typing a number in the "Value" tab removes the number from its pool.
