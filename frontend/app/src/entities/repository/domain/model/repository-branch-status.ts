@@ -1,7 +1,9 @@
 import type {
+  BranchStatus,
   Dropdown,
   NonRequiredBooleanValueField,
   RequiredStringValueField,
+  StatusField,
   TextAttribute,
 } from "@/shared/api/graphql/generated/types";
 
@@ -13,6 +15,7 @@ export type RepositoryBranchStatusDropdown = Pick<
 export interface RepositoryBranchStatusWireNode {
   name: Pick<RequiredStringValueField, "value">;
   is_default?: Pick<NonRequiredBooleanValueField, "value"> | null;
+  status: Pick<StatusField, "value">;
   commit?: Pick<TextAttribute, "value"> | null;
   sync_status?: RepositoryBranchStatusDropdown | null;
   ref?: Pick<TextAttribute, "value"> | null;
@@ -30,6 +33,7 @@ export interface RepositoryBranchStatusRow {
   __typename: string;
   name: string;
   isDefault: boolean;
+  status: BranchStatus;
   commit: string | null;
   syncStatus: RepositoryBranchStatusDropdown | null;
   ref: string | null;
@@ -69,6 +73,7 @@ export function mapRepositoryBranchStatusRow(
     __typename: REPOSITORY_BRANCH_STATUS_TYPENAME,
     name: node.name.value,
     isDefault: node.is_default?.value ?? false,
+    status: node.status.value,
     commit: node.commit?.value ?? null,
     syncStatus: toDropdown(node.sync_status),
     ref: node.ref?.value ?? null,

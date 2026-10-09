@@ -1,14 +1,17 @@
 import type {
   NonRequiredBooleanValueField,
   RequiredStringValueField,
+  StatusField,
   TextAttribute,
 } from "@/shared/api/graphql/generated/types";
 
+import { BranchStatus } from "../../src/shared/api/graphql/generated/types";
 import { type DropdownSelection, generateDropdown } from "./dropdown";
 
 export type RepositoryBranchStatusWire = {
   name: Pick<RequiredStringValueField, "value">;
   is_default: Pick<NonRequiredBooleanValueField, "value"> | null;
+  status: Pick<StatusField, "value">;
   commit: Pick<TextAttribute, "value"> | null;
   sync_status: DropdownSelection | null;
   ref: Pick<TextAttribute, "value"> | null;
@@ -29,6 +32,7 @@ export const generateRepositoryBranchStatus = (
   return {
     name,
     is_default: { value: name.value === "main" },
+    status: { value: BranchStatus.OPEN },
     commit: { value: "9f1c0d4e2b7a6f8c3d5e1a0b4c7d9e2f1a3b5c7d" },
     sync_status: generateDropdown(),
     ref: null,

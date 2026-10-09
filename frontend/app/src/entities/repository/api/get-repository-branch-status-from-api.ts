@@ -29,6 +29,9 @@ const REPOSITORY_BRANCH_STATUS = graphql(`
           is_default {
             value
           }
+          status {
+            value
+          }
           commit {
             value
           }

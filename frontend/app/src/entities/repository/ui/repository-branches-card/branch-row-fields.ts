@@ -32,7 +32,7 @@ export function isFilterableBranchStatus(value: unknown): value is FilterableBra
   return FILTERABLE_BRANCH_STATUSES.some((status) => status === value);
 }
 
-const BRANCH_STATUS_FIELD_SCHEMA: AttributeSchema = {
+export const BRANCH_STATUS_FIELD_SCHEMA: AttributeSchema = {
   ...BRANCH_FIELD_SCHEMAS.status,
   enum: [...FILTERABLE_BRANCH_STATUSES],
 };
