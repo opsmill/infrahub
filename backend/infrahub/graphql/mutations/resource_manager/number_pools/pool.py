@@ -19,7 +19,13 @@ from infrahub.pools.number_pool_range_validation import (
 )
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.registration import get_branches_with_schema_number_pool
-from infrahub.pools.scope import SCOPE_FIELD, AllocationScope, AllocationScopeResolver, AllocationScopeValidator
+from infrahub.pools.scope import (
+    SCOPE_FIELD,
+    AllocationScope,
+    AllocationScopeResolver,
+    AllocationScopeValidator,
+    UnknownScopeElementError,
+)
 
 from ...main import DeleteResult, InfrahubMutation, build_graphql_response
 from .common import (
@@ -234,8 +240,8 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         are not checked again, because the scope is never set a second time.
 
         Raises:
-            ValidationError: When the scope is not a list of entries, an entry names no field of the pool's kind, the
-                scope differs from the stored one, or the stored scope is not a list of `{id, name}` elements.
+            ValidationError: When the scope is not a list of entries, differs from the stored one (an entry that names
+                no field of the pool's kind included), or the stored scope is not a list of `{id, name}` elements.
 
         """
         scope_input = data.get(SCOPE_FIELD)
@@ -247,7 +253,11 @@ class InfrahubNumberPoolMutation(InfrahubMutation):
         resolver = AllocationScopeResolver(
             schema_branch=registry.schema.get_schema_branch(name=registry.default_branch)
         )
-        sent_scope = resolver.resolve(kind=str(pool.get_attribute("node").value), entries=scope_input["value"])
+        try:
+            sent_scope = resolver.resolve(kind=str(pool.get_attribute("node").value), entries=scope_input["value"])
+        except UnknownScopeElementError as exc:
+            # An entry that names no element cannot match the stored scope, so it gets change refused error.
+            raise ValidationError(input_value=SCOPE_UPDATE_REFUSED) from exc
         if [element.id for element in sent_scope.elements] != [element.id for element in stored_scope.elements]:
             raise ValidationError(input_value=SCOPE_UPDATE_REFUSED)
         scope_input["value"] = stored_value
