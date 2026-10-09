@@ -111,19 +111,19 @@ rows E2–E10, and detaches from the Value tab.
 
 **Independent test**: Rows E2–E10.
 
-- [ ] T015 [P] [US4] Add failing tests for rows E2–E10 in
+- [X] T015 [P] [US4] Add failing tests for rows E2–E10 in
   `shared/components/form/utils/mutations/getUpdateMutationFromFormData.test.ts`
-- [ ] T016 [P] [US4] Add a failing test in `shared/components/form/utils/getFieldDefaultValue.test.ts`:
+- [X] T016 [P] [US4] Add a failing test in `shared/components/form/utils/getFieldDefaultValue.test.ts`:
   a Number attribute whose source is a `CoreNumberPool` yields
   `{ source: <number pool source>, value: { from_pool: { id, number: <current> } } }`; update any
   existing assertion that expected the raw number
-- [ ] T017 [US4] In `shared/components/form/utils/getFieldDefaultValue.ts::getDefaultValueFromPool`,
+- [X] T017 [US4] In `shared/components/form/utils/getFieldDefaultValue.ts::getDefaultValueFromPool`,
   build the number-pool value as `{ from_pool: { id, number: currentField.value } }` for a
   `CoreNumberPool` source instead of casting the raw value
-- [ ] T018 [US4] Check every consumer of `source.type === "pool"` under
+- [X] T018 [US4] Check every consumer of `source.type === "pool"` under
   `shared/components/form/` and `shared/components/inputs/pool-select.tsx` for code that read the
   number-pool value as a raw number, and fix it (critique E2)
-- [ ] T019 [US4] In `shared/components/form/utils/mutations/getUpdateMutationFromFormData.ts::getUpdateMutationFromFormData`:
+- [X] T019 [US4] In `shared/components/form/utils/mutations/getUpdateMutationFromFormData.ts::getUpdateMutationFromFormData`:
   (a) in the "same pool as the default" early return, also compare `from_pool.number` for number
   pools so row E5 and E6 are sent and E4 is not; (b) use the T003 helper in the `pool` branch for
   number pools without `fromPoolRelationshipName`; (c) in the `user` branch, add
