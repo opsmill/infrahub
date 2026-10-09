@@ -109,7 +109,7 @@ backend/infrahub/
 
 backend/tests/
 ├── unit/pools/test_scope.py                          # NEW: resolver rules, division values, division key
-├── unit/core/validators/test_number_pool_scope_checker.py   # NEW: the checker's decision table
+├── unit/core/validators/number_pool_scope/            # NEW: the checker's decision table, one module per test type
 ├── unit/core/test_resource_manager_query.py          # NEW: unscoped rendering of the shared fragment
 ├── helpers/number_pool.py                            # PR #10932: SCOPED_POOL_SCHEMA, extended here
 ├── component/core/resource_manager/conftest.py       # existing: scoped pool fixture added
