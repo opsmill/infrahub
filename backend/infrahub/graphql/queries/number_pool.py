@@ -146,7 +146,7 @@ class NumberPoolDivisionEntry(ObjectType):
         required=True,
         description=(
             "For a relationship, the peer's id. For an attribute, the value as text. An empty string when the "
-            "holder has no value for it."
+            "holding object has no value for it."
         ),
     )
     display_label = Field(
@@ -209,7 +209,7 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division that holds at least one value the pool tracks on any live branch. Each holder's "
+            "Every division that holds at least one value the pool tracks on any live branch. Each holding object's "
             "division is read on the request's branch. Ordered by utilization descending, then by display_label. "
             "Empty for an unscoped pool."
         ),
@@ -227,10 +227,12 @@ class NumberPoolDivisions(ObjectType):
 
 class NumberPoolHolder(ObjectType):
     class Meta:
-        description = "The node holding a tracked number."
+        description = "The object holding a tracked number."
 
     id = Field(String, required=True)
-    hfid = Field(List(NonNull(String)), description="The holder's human-friendly id. Null when its kind declares none.")
+    hfid = Field(
+        List(NonNull(String)), description="The holding object's human-friendly id. Null when its kind declares none."
+    )
     kind = Field(String, required=True)
     display_label = Field(String, required=True)
 
@@ -250,7 +252,9 @@ class NumberPoolAllocation(ObjectType):
         )
 
     value = Field(BigInt, required=True, description="The number held.")
-    branch = Field(String, required=True, description="The branch on which the holder's attribute holds this value.")
+    branch = Field(
+        String, required=True, description="The branch on which the holding object's attribute holds this value."
+    )
     holder = Field(
         NumberPoolHolder,
         required=True,
@@ -273,7 +277,7 @@ class NumberPoolAllocations(ObjectType):
     allocations = Field(
         List(NonNull(NumberPoolAllocation)),
         required=True,
-        description="The page, ordered by value, then branch, then holder id.",
+        description="The page, ordered by value, then branch, then the holding object's id.",
     )
 
     @staticmethod

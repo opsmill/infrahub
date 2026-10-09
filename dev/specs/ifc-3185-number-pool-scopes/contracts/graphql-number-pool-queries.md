@@ -9,7 +9,7 @@ The surface is the one described in PR #10932, served from the database. This fi
 | `NumberPoolUtilization.allocation_scope`, `NumberPoolDivisions.allocation_scope` | `[String!]!` (element names) | `[NumberPoolScopeElement!]!` with `id` and `name` | Breaking (decision 4 and 5) |
 | `NumberPoolDivisionEntry` | `path`, `value`, `display_label`, `peer_kind` | adds `id: String!`, the schema element id of the entry | Additive |
 | Descriptions mentioning "the scope in force on the request's branch" | scope could be partial on a branch | the scope is the pool's scope on every branch; a query on a branch whose schema lacks an element is refused | Wording and one refusal (decisions 1 and 7) |
-| Division of a holder | counted under every division the holder occupies on any live branch | read on the branch the query runs on | Changed (decision 7) |
+| Division of a holding object | counted under every division the object occupies on any live branch | read on the branch the query runs on | Changed (decision 7) |
 | Enum of `NumberPoolAllocation.provenance` and of the `provenance` argument | `NumberPoolProvenance`, a type of its own | `PoolRecordProvenance`, the enum that `InfrahubResourcePoolAllocated` already returns, with the same values `ALLOCATED` and `PROVIDED` | Breaking for a client that names the type in a query variable |
 
 Everything else (root fields, arguments, defaults, ordering, pagination, holder and range references) is unchanged. PR #10932 is open against another branch; it is rebased onto `feature-number-pools-1.12`, and its fixed dataset and tests are updated to this contract before the resolvers read the database.
@@ -86,7 +86,7 @@ type NumberPoolDivisions {
   """The pool's allocation scope, in scope order."""
   allocation_scope: [NumberPoolScopeElement!]!
   """
-  Every division that holds at least one value the pool tracks on any live branch. Each holder's
+  Every division that holds at least one value the pool tracks on any live branch. Each holding object's
   division is read on the request's branch. Ordered by utilization descending, then by display_label.
   Empty for an unscoped pool.
   """
@@ -111,7 +111,7 @@ type NumberPoolDivisionEntry {
   path: String!
   """
   For a relationship, the peer's id. For an attribute, the value as text. An empty string when the
-  holder has no value for it.
+  holding object has no value for it.
   """
   value: String!
   """
@@ -135,7 +135,7 @@ input NumberPoolDivisionEntryInput {
 type NumberPoolAllocations {
   """Number of rows matching the filters, before offset and limit."""
   count: BigInt!
-  """The page, ordered by value, then branch, then holder id."""
+  """The page, ordered by value, then branch, then the holding object's id."""
   allocations: [NumberPoolAllocation!]!
 }
 
@@ -143,7 +143,7 @@ type NumberPoolAllocations {
 type NumberPoolAllocation {
   """The number held."""
   value: BigInt!
-  """The branch on which the holder's attribute holds this value."""
+  """The branch on which the holding object's attribute holds this value."""
   branch: String!
   """The node whose attribute holds the value, read on the row's branch."""
   holder: NumberPoolHolder!
@@ -158,7 +158,7 @@ type NumberPoolAllocation {
 """The node holding a tracked number."""
 type NumberPoolHolder {
   id: String!
-  """The holder's human-friendly id. Null when its kind declares none."""
+  """The holding object's human-friendly id. Null when its kind declares none."""
   hfid: [String!]
   kind: String!
   display_label: String!
@@ -209,8 +209,8 @@ type Query {
 
 - `InfrahubNumberPoolUtilization`: on a scoped pool, `division` is required and must give a value for every scope element; the figures are those of that division over the pool and over each range. On an unscoped pool, `division` is refused and the figures cover the whole pool.
 - `InfrahubNumberPoolDivisions`: only the divisions holding at least one tracked value; figures over the whole pool; ordered by `utilization` descending then `display_label`. Empty list and empty scope on an unscoped pool.
-- The division of a holder is read on the branch the query runs on, as a normal branch read: a holder moved to another site on branch `b1` counts under the new site on `b1` and under the old site on the default branch; a holder that exists only on another branch is not counted. Each value counts in one division per branch read.
-- `InfrahubNumberPoolAllocations`: all arguments except `pool_id` optional; `offset` defaults to 0, `limit` to 10; rows are the values inside the pool's space (inside one of its ranges, not excluded by the attribute, within its `min_value` and `max_value`); `division` may name a subset of the scope elements; rows ordered by value, branch, holder id; `count` is the number of rows before pagination.
+- The division of a holding object is read on the branch the query runs on, as a normal branch read: an object moved to another site on branch `b1` counts under the new site on `b1` and under the old site on the default branch; an object that exists only on another branch is not counted. Each value counts in one division per branch read.
+- `InfrahubNumberPoolAllocations`: all arguments except `pool_id` optional; `offset` defaults to 0, `limit` to 10; rows are the values inside the pool's space (inside one of its ranges, not excluded by the attribute, within its `min_value` and `max_value`); `division` may name a subset of the scope elements; rows ordered by value, branch and the holding object's id; `count` is the number of rows before pagination.
 - The existing `InfrahubResourcePoolUtilization` and `InfrahubResourcePoolAllocated` keep their shape; for a number pool they ignore the scope and their descriptions point to the dedicated queries.
 
 ## Refusals

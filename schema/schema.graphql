@@ -11831,7 +11831,7 @@ input NumberAttributeUpdate {
 One tracked number as held on one branch. A number held on several branches gives one row per branch.
 """
 type NumberPoolAllocation {
-  """The branch on which the holder's attribute holds this value."""
+  """The branch on which the holding object's attribute holds this value."""
   branch: String!
   """The node whose attribute holds the value, read on the row's branch."""
   holder: NumberPoolHolder!
@@ -11849,7 +11849,7 @@ type NumberPoolAllocation {
 
 """A page of the numbers a pool tracks."""
 type NumberPoolAllocations {
-  """The page, ordered by value, then branch, then holder id."""
+  """The page, ordered by value, then branch, then the holding object's id."""
   allocations: [NumberPoolAllocation!]!
   """Number of rows matching the filters, before offset and limit."""
   count: BigInt!
@@ -11884,7 +11884,7 @@ type NumberPoolDivisionEntry {
   """
   peer_kind: String
   """
-  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holder has no value for it.
+  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holding object has no value for it.
   """
   value: String!
 }
@@ -11908,15 +11908,17 @@ type NumberPoolDivisions {
   """Number of divisions listed."""
   count: Int!
   """
-  Every division that holds at least one value the pool tracks on any live branch. Each holder's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool.
+  Every division that holds at least one value the pool tracks on any live branch. Each holding object's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool.
   """
   divisions: [NumberPoolDivision!]!
 }
 
-"""The node holding a tracked number."""
+"""The object holding a tracked number."""
 type NumberPoolHolder {
   display_label: String!
-  """The holder's human-friendly id. Null when its kind declares none."""
+  """
+  The holding object's human-friendly id. Null when its kind declares none.
+  """
   hfid: [String!]
   id: String!
   kind: String!

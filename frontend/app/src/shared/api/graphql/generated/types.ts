@@ -23883,7 +23883,7 @@ export type NumberAttributeUpdate = {
 /** One tracked number as held on one branch. A number held on several branches gives one row per branch. */
 export type NumberPoolAllocation = {
   __typename: 'NumberPoolAllocation';
-  /** The branch on which the holder's attribute holds this value. */
+  /** The branch on which the holding object's attribute holds this value. */
   branch: Scalars['String']['output'];
   /** The node whose attribute holds the value, read on the row's branch. */
   holder: NumberPoolHolder;
@@ -23900,7 +23900,7 @@ export type NumberPoolAllocation = {
 /** A page of the numbers a pool tracks. */
 export type NumberPoolAllocations = {
   __typename: 'NumberPoolAllocations';
-  /** The page, ordered by value, then branch, then holder id. */
+  /** The page, ordered by value, then branch, then the holding object's id. */
   allocations: Array<NumberPoolAllocation>;
   /** Number of rows matching the filters, before offset and limit. */
   count: Scalars['BigInt']['output'];
@@ -23928,7 +23928,7 @@ export type NumberPoolDivisionEntry = {
   path: Scalars['String']['output'];
   /** For a relationship, the peer's kind when the peer can be read. Null otherwise. */
   peer_kind: Maybe<Scalars['String']['output']>;
-  /** For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holder has no value for it. */
+  /** For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holding object has no value for it. */
   value: Scalars['String']['output'];
 };
 
@@ -23947,15 +23947,15 @@ export type NumberPoolDivisions = {
   allocation_scope: Array<NumberPoolScopeElement>;
   /** Number of divisions listed. */
   count: Scalars['Int']['output'];
-  /** Every division that holds at least one value the pool tracks on any live branch. Each holder's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool. */
+  /** Every division that holds at least one value the pool tracks on any live branch. Each holding object's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool. */
   divisions: Array<NumberPoolDivision>;
 };
 
-/** The node holding a tracked number. */
+/** The object holding a tracked number. */
 export type NumberPoolHolder = {
   __typename: 'NumberPoolHolder';
   display_label: Scalars['String']['output'];
-  /** The holder's human-friendly id. Null when its kind declares none. */
+  /** The holding object's human-friendly id. Null when its kind declares none. */
   hfid: Maybe<Array<Scalars['String']['output']>>;
   id: Scalars['String']['output'];
   kind: Scalars['String']['output'];

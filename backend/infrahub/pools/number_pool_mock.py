@@ -131,7 +131,7 @@ class DivisionFilterEntry:
 
 @dataclass(frozen=True, slots=True)
 class _Row:
-    """One tracked value; division is where the holder sits on the default branch."""
+    """One tracked value; division is where the holding object sits on the default branch."""
 
     value: int
     branch: str
@@ -149,7 +149,7 @@ class MockPool:
     excluded_values: frozenset[int]
     divisions: tuple[tuple[MockDivisionEntry, ...], ...]
     rows: tuple[_Row, ...] = field(repr=False)
-    # Keyed by holder id and branch: where a holder sits on a branch when it differs from the default branch.
+    # Keyed by the holding object's id and branch: where that object sits on a branch when it differs from the default branch.
     moved_holders: Mapping[tuple[str, str], tuple[MockDivisionEntry, ...]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
@@ -324,7 +324,7 @@ def _row_in_division(entries: tuple[MockDivisionEntry, ...], division: Sequence[
 
 
 def _own_rows(pool: MockPool, division: Sequence[DivisionFilterEntry], request_branch: str) -> list[_Row]:
-    """The rows whose holder sits in the division as read on the request branch."""
+    """The rows whose holding object sits in the division as read on the request branch."""
     return [
         row
         for row in pool.rows

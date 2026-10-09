@@ -201,7 +201,9 @@ class TestNumberPoolSurface:
             }
         ]
 
-    async def test_divisions_read_each_holder_on_the_request_branch(self, branch_gql_params: GraphqlParams) -> None:
+    async def test_divisions_read_each_holding_object_on_the_request_branch(
+        self, branch_gql_params: GraphqlParams
+    ) -> None:
         data = await self._data(branch_gql_params, DIVISIONS_QUERY, pool_id=SCOPED_POOL_ID)
 
         divisions = data["InfrahubNumberPoolDivisions"]
@@ -256,7 +258,9 @@ class TestNumberPoolSurface:
         assert (counts["Site A"], used["Site A"]) == (41, 40)
         assert (counts["Site B"], used["Site B"]) == (30, 30)
 
-    async def test_allocations_keep_the_rows_of_a_holder_moved_on_a_branch(self, gql_params: GraphqlParams) -> None:
+    async def test_allocations_keep_the_rows_of_a_holding_object_moved_on_a_branch(
+        self, gql_params: GraphqlParams
+    ) -> None:
         data = await self._data(
             gql_params, ALLOCATIONS_QUERY, pool_id=SCOPED_POOL_ID, division=[{"path": "site", "value": SITE_A}], limit=2
         )
@@ -269,7 +273,7 @@ class TestNumberPoolSurface:
         assert first["range"]["display_label"] == "1 - 50"
         assert (second["value"], second["branch"], second["holder"]["display_label"]) == (5, "branch1", "D1")
 
-    async def test_allocations_follow_a_holder_moved_on_the_request_branch(
+    async def test_allocations_follow_a_holding_object_moved_on_the_request_branch(
         self, branch_gql_params: GraphqlParams
     ) -> None:
         site_c = await self._data(

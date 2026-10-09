@@ -69,7 +69,7 @@ class AllocationScope:
 
 @dataclass(frozen=True)
 class Division:
-    """The values a holder has for the scope elements, in scope order; one division is one space of the pool.
+    """The values an object has for the scope elements, in scope order; one division is one space of the pool.
 
     A scope element is a relationship or a scalar attribute, so each value is a peer id or a scalar as stored.
     """
