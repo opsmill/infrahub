@@ -190,7 +190,7 @@ attachment check (FR-023) stays where it is — it needs the resolved pool node.
 **Alternative rejected** — enrich `handle_pool` in place. It keeps a seven-branch decision table
 reachable only through a database, which is how the current value-discard bug went unnoticed.
 
-### D5 — The pool leaves `HAS_SOURCE`; `source` is derived
+### D5 — The pool leaves `HAS_SOURCE`; the tracking pool is reported by `from_pool` (amended 2026-10-07)
 
 **Decision**: the pool is never written to `HAS_SOURCE`. `source` resolves to the user's edge when
 one exists, and otherwise to the pool reached by the inbound `-global-` `IS_RESERVED` edge on the
@@ -230,6 +230,22 @@ a branch will show a value change with no accompanying source change. Changelog 
 at all — retirement is its only lifecycle path. That is orthogonal to this slice (FR-030 scopes it
 to branch-aware attributes) but it explains why the existing agnostic-configured pool tests pass for
 a different reason than the branch-aware ones will.
+
+**Amended 2026-10-07 — the derivation into `source` is replaced by the `from_pool` output field.**
+The first half of D5 stands: the pool is never written to `HAS_SOURCE`, and the migration deletes
+the legacy edges. The second half does not: `source` resolves only to a stored user-set `HAS_SOURCE`
+edge and is null otherwise; it never names the pool. The read that placed the pool in the source
+property had a defect the derivation could not avoid: `source_id` is also the property a save
+compares and writes, so saving an attribute after a re-pool or a detach stored the pool as a
+`HAS_SOURCE` edge again. The tracking pool is therefore read by a clause of its own, gated by
+`MetadataOptions.TRACKING_POOL`, into `BaseAttribute.tracking_pool`, a property no save path
+reads, and rendered as `from_pool { pool provenance }` on `NumberAttribute`. Constraint 2 above no
+longer applies: the clause returns the pool's uuid and the provenance of the branch-resolved value
+as scalars, and a batched loader resolves the pool node for the `pool` sub-selection. The clause
+trusts the edge and does not check the pool node: deleting a number pool ends every live
+`IS_RESERVED` edge it holds in the same transaction, so its attributes read `from_pool: null` on
+every branch and keep their numbers. A pool-allocated attribute with no user source now reads `source: null` where every
+released version reported the pool; this is the user-visible change the changelog entry names.
 
 ### D6 — Restore one-record-per-attribute by construction, and lock both pools
 

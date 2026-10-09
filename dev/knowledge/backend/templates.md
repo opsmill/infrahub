@@ -132,7 +132,7 @@ Templates can reference resource pools instead of fixed values. The integration 
 **Application time** (`NodeTemplateApplier._handle_pool_relationship`):
 
 - When iterating template relationships, names ending in `RESOURCE_POOL_REL_SUFFIX` are routed to `_handle_pool_relationship`.
-- The applier asks the `PoolAllocator` to allocate either an attribute value (number) or a relationship peer (IP), then writes the result under the original (non-suffixed) name with `source` set to the pool's id so allocation is attributable.
+- The applier asks the `PoolAllocator` to allocate either an attribute value (number) or a relationship peer (IP), then writes the result under the original (non-suffixed) name. For a number it writes only the value and records the pool in `TemplatePoolFields.allocated`; the pool's `IS_RESERVED` edge is what the attribute reports through `from_pool`, and `source` is never set to the pool. For an IP peer it sets the relationship's `source` to the pool's id.
 - If allocation cannot proceed (e.g., `NoOpPoolAllocator` is in use), the field is added to `pool_pending_fields` so the caller can decide.
 
 **Constraint** (`TemplateResourcePoolExclusiveConstraint`):

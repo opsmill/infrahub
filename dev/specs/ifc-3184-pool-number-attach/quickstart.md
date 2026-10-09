@@ -160,18 +160,24 @@ by the pool.
 
 ---
 
-## Scenario 8 — Source (SC-019, SC-020)
+## Scenario 8 — Source and `from_pool` (SC-019, SC-020)
 
-1. Read an attribute whose number the pool allocated, with no user source set.
-2. **Expected**: `source` reports the **pool** — and no source edge is stored behind it. Check the
-   resolved GraphQL **kind**, not only the uuid: the concrete type is selected from the returned
-   node's labels, so an implementation returning an id alone passes a uuid assertion and still breaks.
+1. Read an attribute whose number the pool allocated, with no user source set, selecting
+   `source { id }` and `from_pool { pool { id display_label } provenance }`.
+2. **Expected**: `source` is **null**, `from_pool.pool` is the pool with its display label, and
+   `provenance` is `ALLOCATED`. No source edge is stored behind it.
 3. Set a user source on that attribute.
-4. **Expected**: the reported source becomes the user's, and **nothing the pool reports changes** —
-   utilization, the in-use list and the next number are all unaffected.
-5. Detach on a branch, then delete that branch.
-6. **Expected**: no branch reports a pool source for that attribute, and the pool reports nothing for
-   it.
+4. **Expected**: `source` reports the user's node, `from_pool` is unchanged, and **nothing the pool
+   reports changes** — utilization, the in-use list and the next number are all unaffected.
+5. Attach a number the user provided to the pool and read it.
+6. **Expected**: `from_pool.pool` is the pool and `provenance` is `PROVIDED`. On a branch created
+   before the attach, `from_pool` reports the same pool.
+7. Detach on a branch, then delete that branch.
+8. **Expected**: no branch reports the pool in `source` or in `from_pool` for that attribute, and
+   the pool reports nothing for it.
+9. Delete a pool while it tracks attributes.
+10. **Expected**: every attribute keeps its number, reads `from_pool: null` on every branch, and can
+    be attached to another pool afterwards.
 
 ---
 
@@ -277,9 +283,9 @@ count and no axis to vary. Steps 1 and 3 stand if the cost per record is in doub
    is written on the branch.
 
 The rename case is a confirmed bug today and fails until fixed. It matters more than it looks: the
-record is the sole storage of the pool's claim, so relocating it onto a branch makes it invisible to a
-derivation matching only `-global-` edges — the attribute then reports **no source at all** while the
-ledger still holds the number reserved.
+record is the sole storage of the pool's claim, so relocating it onto a branch makes it invisible to
+the `from_pool` read, which matches only `-global-` edges — the attribute then reads
+**`from_pool: null`** while the ledger still holds the number reserved.
 
 ---
 

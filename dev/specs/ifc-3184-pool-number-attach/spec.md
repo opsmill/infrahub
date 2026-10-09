@@ -224,7 +224,7 @@ record deletion, is what frees a number. `allocated_values` is irrelevant to eve
 | Object converted to another type | The record must follow to the new object's attribute. | **Confirmed broken post-move** — foundational work item 2 |
 | Attribute renamed or object converted, on any branch | A new `-global-` `IS_RESERVED` edge on the new attribute; the old one stays open for every branch that has not taken the change, including branches created before a change on the default branch. The old `IS_RESERVED` edge is closed once no branch can reach it (object delete, merge/rebase of a delete, rename, branch delete). | Tested on the default branch, on a user branch, and with a branch created before the change (T017a); a branch-agnostic rename still leaves the old vertex reachable |
 | Object re-pooled from A to B | A's record ends, B's begins; A reports nothing for it and A's bucket stays empty. | New — test, including that A's bucket does not acquire B's number |
-| Detach on a branch, then delete that branch | No branch displays a pool source, because none was ever written. | Resolved by FR-030b — test it holds |
+| Detach on a branch, then delete that branch | No branch reports the pool in `source`, because none was ever written, and `from_pool` reads null on every branch. | Resolved by FR-030b — test it holds |
 | A tracked value falls outside the effective space | Retained, invisible to allocation, reported in the bucket. Re-entering the space moves it to in use. | New state, two paths — test both |
 
 One component test per row **that is not already covered** — several are. Audit first; extend an
@@ -327,18 +327,23 @@ listed here stand as written there.
   stays read-only and accepts no provided value. Templates remain refused.
 - **FR-030a**: **Deleted.** A user MAY set `source` on an attribute a pool tracks. Both reasons
   earlier drafts gave for the refusal are dissolved by FR-030b: the two facts no longer share
-  storage, so they cannot carry the same fact incompatibly, and they no longer contend for anything
-  but the read slot. The refusal was in truth patching a query defect — the allocated-list query
+  storage, so they cannot carry the same fact incompatibly, and they no longer share a field: the
+  pool is reported by `from_pool` and the user's node by `source`. The refusal was in truth patching
+  a query defect — the allocated-list query
   gates every row on the source edge being active, so a user-set source today removes an allocated
   number from the list while it stays reserved. FR-030c fixes the query instead of constraining the
   user.
-- **FR-030b**: A pool MUST NOT be written to the attribute's source storage. `source` resolves to
-  the user's stored source when one exists, and otherwise to the pool derived from the inbound
-  branch-agnostic reservation record on the attribute. The output slot and its type are unchanged,
-  so this is **not** a published-contract shape change, and display is unchanged for every attribute
-  that has no user source. This is what makes detach correct: with no pool-owned source there is
-  nothing to clear on detach, nothing to leave behind when a detaching branch is deleted, and the
-  displayed source stops naming the pool on every branch at once.
+- **FR-030b**: A pool MUST NOT be written to the attribute's source storage, and `source` MUST NOT
+  name the pool. `source` resolves to the user's stored source when one exists and is null
+  otherwise. The pool tracking the attribute is reported by the `from_pool` output field on
+  `NumberAttribute`, read from the inbound branch-agnostic reservation record into a property of
+  its own (`tracking_pool`), never into the source property, so a save after a re-pool or a detach
+  cannot store the pool as a source. The `source` field and its type are unchanged, so the generated
+  schema does not show this change; a pool-allocated attribute with no user source reads `source:
+  null` where every released version reported the pool, which is a visible change needing a
+  changelog entry. This is what makes detach correct: with no pool-owned source there is nothing to
+  clear on detach, nothing to leave behind when a detaching branch is deleted, and `from_pool` stops
+  naming the pool on every branch at once.
   **Cost**: pool lineage leaves the diff. Allocating or attaching on a branch will show a value
   change with no accompanying source change. Defensible — the pool fact is branch-agnostic, so
   diffing it per branch was always a fiction — but user-visible, and it needs a changelog entry.
@@ -407,8 +412,9 @@ review; the first three are one change set.
    4. **Delete every stored pool source edge** (FR-030b), unconditionally: every
       `(attr)-[:HAS_SOURCE]->(:CoreNumberPool)` edge goes, whatever state that pool's record for the
       attribute is in. FR-030b says the pool is never a stored source, so a stored one is legacy by
-      construction. Left in place they win the read slot forever, so the derivation never fires for
-      pre-upgrade data — and, being branch-aware edges carrying what is now a branch-agnostic fact,
+      construction. Left in place they keep reporting the pool as `source` for pre-upgrade data,
+      where a current attribute reads null — and, being branch-aware edges carrying what is now a
+      branch-agnostic fact,
       they reproduce the detach orphaning for exactly the objects most likely to be detached during
       brownfield cleanup. Scoping the sweep to a pool that still holds a live record would spare the
       worst cases: a released reservation, a collapsed-away loser, and an attribute renamed out from
@@ -418,7 +424,7 @@ review; the first three are one change set.
    longer reads the records, so no ordering of the two can leave an edge behind. The order holds the
    line if that predicate is ever narrowed back to a pool with a live record: the collapse would then
    kill a losing pool's record first, behaviour 4 would find no live record for it, and its legacy
-   source edge would win the read slot forever.
+   source edge would keep reporting a pool that no longer tracks the attribute.
 
    **The migration is irreversible.** Three of its four behaviours delete data and there is no
    reverse migration; the recourse after a bad upgrade is a database restore. Each destructive
@@ -466,7 +472,7 @@ vertex. There are three, and each needs checking for correct branch-agnostic han
 
 FR-030b raises the stakes on all three. The record is now the sole storage of the pool's claim, so a
 sweep that relocates or drops it does not merely lose accounting — it silently changes what the
-attribute reports as its `source`.
+attribute reports as its `from_pool`.
 
 ### Key Entities
 
@@ -478,7 +484,8 @@ attribute reports as its `source`.
   It remains an ordinary branch-aware, user-settable lineage edge with its ordinary diff and merge
   semantics, and a user may now set it freely on a pooled attribute. The pool is no longer *in* it
   and is no longer *found* through it — the inbound record answers "which pool tracks this?" in one
-  hop, and the read slot falls back to that pool when no user source exists.
+  hop and is reported by the `from_pool` output field; `source` reads null when no user source
+  exists.
 - **Number pool**: no new attribute from this slice. Ranges come from P1.
 - **Allocation scope**: not involved. Scope affects which number is picked next and nothing else, so
   this slice is scope-unaware and does not depend on P3.
@@ -515,9 +522,10 @@ attribute reports as its `source`.
 - **SC-018**: An operator moves an object from pool A to pool B in a single update. A reports
   nothing for that object and A's out-of-space bucket is empty; B reports the number. No second
   call. Verifies FR-024a/FR-024b.
-- **SC-019**: An attribute allocated from a pool reports that pool as its source with no stored
-  source edge present. Setting a user source changes the reported source and changes nothing the
-  pool reports. Verifies FR-030a's deletion and FR-030b.
+- **SC-019**: An attribute allocated from a pool reports that pool in `from_pool` with provenance
+  `ALLOCATED`, reports `source: null`, and has no stored source edge. Setting a user source changes
+  `source`, leaves `from_pool` unchanged, and changes nothing the pool reports. Verifies FR-030a's
+  deletion and FR-030b.
 - **SC-020**: An operator detaches on a branch and then deletes that branch. No branch reports a
   pool source for that attribute and the pool reports nothing for it.
 - **SC-021**: An object holding a pooled number is converted to another type. The pool keeps
@@ -562,17 +570,19 @@ Carried from the PRD; the plan phase turns these into design, it does not reopen
   distinguishable at the GraphQL input layer (verified on the pinned graphene, provided `from_pool`
 is declared without a `null` default). Two new output
   fields on the pool query: `provenance` per in-use row, and the out-of-space bucket as a list of
-  rows carrying value, holder and branch (FR-027a). `source` keeps its existing field and type; only
-  what populates it changes (FR-030b).
+  rows carrying value, holder and branch (FR-027a). `NumberAttribute` gains the `from_pool` output
+  field (`pool`, `provenance`). `source` keeps its existing field and type; it stops naming the pool
+  (FR-030b).
 - **Errors**: **one** new refusal — `from_pool` alone on a non-default untracked value. The
   out-of-range refusal earlier drafts carried is deleted, and the two `source` refusals go with
   FR-030a. A duplicate reuses the existing uniqueness error.
 - **Data**: the record edge is re-anchored from the value to the attribute; one property on the
   edge; one new release query. No new core kind. The pool stops writing the source edge and the
-  source resolver gains a fallback to the record. The migration runs over every existing record and
-  carries four behaviours, two of them destructive.
-- **Frontend**: none. The backend must expose everything the deferred views need so they require no
-  further backend change.
+  attribute read loads the record into a property of its own, reported by `from_pool`. The migration
+  runs over every existing record and carries four behaviours, two of them destructive.
+- **Frontend**: the edit form reads `from_pool` to show the pool chip, which it read from
+  `source.__typename` before. No other UI work; the backend must expose everything the deferred
+  views need so they require no further backend change.
 - **SDK/CLI**: none.
 
 ---
@@ -667,9 +677,9 @@ is declared without a `null` default). Two new output
   **Amended 2026-09-18:** neither cost exists in what shipped. There is no branch-resolved hop and no
   per-branch resolution — the read carries no branch filter — so the range filter applies directly to
   the values the records reach, and nothing multiplies by branch count.
-  FR-030b's derivation is not comparable: one further optional match inside a subquery already bound
-  to the attribute, gated by the existing metadata flag. The reporting split must not reintroduce an
-  N+1 over records.
+  The `from_pool` read is not comparable: one further optional match inside a subquery already bound
+  to the attribute, gated by its own metadata flag, plus one batched pool load per request. The
+  reporting split must not reintroduce an N+1 over records.
 - **VI. Security & Input Boundaries**: no new authentication or authorization surface.
 - **VII. Simplicity & Maintainability**: one source for what a pool knows, one arithmetic for what it
   reports, and one edge behind both the ledger and the displayed lineage instead of two that had to
@@ -689,12 +699,13 @@ Using the "Ask First" list from `AGENTS.md`.
   collapse (FR-024b) and the deletion of legacy pool source edges (FR-030b). This is by some
   distance the heaviest gate the slice crosses and it lands in a release that also carries P1's
   range migration. It merges ahead of the feature work so that SC-022 can be measured against it.
-- [x] **GraphQL schema modification** — `from_pool` semantics, one new refusal, two new output
-  fields on the pool query, and a change to what populates `source` with no change to its shape.
-- [x] **Published schema contract (ADR 0010)** — the two output fields are a published-contract
+- [x] **GraphQL schema modification** — `from_pool` input semantics, one new refusal, two new output
+  fields on the pool query, the `from_pool` output field on `NumberAttribute`, and `source` no
+  longer naming the pool with no change to its shape.
+- [x] **Published schema contract (ADR 0010)** — the three output fields are a published-contract
   change. This slice must be named in the contract review alongside P1 and P3's attribute-parameter
-  changes. FR-030b must be named there too: the generated schema will not show it, because the field
-  and type are unchanged and only its provenance moves.
+  changes. FR-030b must be named there too: the generated schema shows the new `from_pool` field but
+  not the `source` change, because that field and its type are unchanged.
 - [ ] New dependency
 - [ ] CI/CD workflow change
 - [ ] Authentication / authorization change
@@ -720,12 +731,12 @@ Using the "Ask First" list from `AGENTS.md`.
   claim; the source edge is the user's lineage fact and nothing else. Hand-synchronising them was
   tried and rejected: their scopes differ, not just their semantics, so detach could not have been
   made correct.
-- A user who sets their own source accepts that the read slot stops naming the pool until the
-  deferred `from_pool` output field lands. Nothing the pool computes is affected.
-- Per-attribute user sources on pooled number attributes are **rare**, which is what makes deferring
-  that field safe. Automatic source assignment applies only to repository-managed core objects, not
-  to the user data nodes FR-030 scopes this slice to. A deployment that sets lineage widely by hand
-  will see the user's source and no pool on the object; its pool query is unaffected.
+- A user who sets their own source still views the tracking pool through `from_pool`. Nothing the
+  pool computes is affected.
+- Per-attribute user sources on pooled number attributes are **rare**. Automatic source assignment
+  applies only to repository-managed core objects, not to the user data nodes FR-030 scopes this
+  slice to. A deployment that sets lineage widely by hand views the user's source in `source` and
+  the pool in `from_pool`; its pool query is unaffected.
 - At most one pool tracks an attribute at a time. True today only as an emergent property of the
   value anchoring, and made an enforced invariant by FR-024b.
 - Bulk attach is out of scope, so brownfield adoption is one object at a time through the API. The
@@ -742,9 +753,8 @@ Using the "Ask First" list from `AGENTS.md`.
   the operator names the values they want tracked. This is a real ergonomic cost on the brownfield
   path and it is accepted knowingly; a migration tool can be added later if adoption shows it is
   needed. It is deferred, not rejected.
-- A dedicated `from_pool` output field. It is the end state and the only way to show a pool and a
-  user source together, but FR-030b makes it cheaper to add later rather than harder — it would
-  remove a branch in the source resolver, not change a contract.
+- Rendering `from_pool` in the UI beyond the edit form's pool chip, and reading `from_pool` from the
+  SDK.
 - Discarding a hand-set number in favour of a pool-picked one on a **required** attribute —
   `value: null` is unavailable there. For brownfield the answer is to attach the number.
 - Undoing a detach when the branch that performed it is deleted. Detach is permanent, like
@@ -764,15 +774,20 @@ Using the "Ask First" list from `AGENTS.md`.
    attach your hand-set numbers — belongs with this slice, because attaching is the replacement.
    Identifying which numbers those are is the operator's job; the note must say so plainly rather
    than implying a tool exists.
-4. Pool lineage is derived from the reservation rather than stored as a `source` edge. Displayed
-   source is unchanged, but branch diffs no longer show a source change when a number is allocated
-   or attached on a branch.
-5. A user may now set `source` on a pool-tracked attribute. Doing so hides which pool tracks it
-   until the `from_pool` output field lands.
+4. The pool is no longer stored as a `source` edge, and `source` no longer names the pool: a
+   pool-allocated number's `source` reads null unless a user set one. Read `from_pool` on the
+   attribute to view the pool. Branch diffs no longer show a source change when a number is
+   allocated or attached on a branch.
+5. A user may now set `source` on a pool-tracked attribute. `from_pool` keeps reporting the pool.
 6. Moving an object between pools is a single update.
 7. **Upgrade**: the migration removes legacy pool `source` edges, collapses records where more than
    one pool tracked the same attribute, and drops reservations whose object no longer exists. Each
    reports a count.
+8. `NumberAttribute` gains the `from_pool` output field: the pool tracking the attribute and
+   whether the pool allocated the number (`ALLOCATED`) or a user provided it (`PROVIDED`), null when
+   no pool tracks it.
+9. Deleting a number pool ends its tracking of every attribute it tracked. The attributes keep their
+   numbers, read `from_pool: null`, and can be attached to another pool afterwards.
 
 ---
 

@@ -182,7 +182,7 @@ defects the move exposes.
 |---|---|---|
 | A1 | Re-anchor `IS_RESERVED` to the `Attribute` vertex; rewrite six queries | D1, D2 |
 | A2 | Migration `m079` — re-anchor, drop orphans, collapse multi-pool, delete legacy pool `HAS_SOURCE`; three counts | D13, FR-024b, FR-030b |
-| A3 | Pool leaves `HAS_SOURCE`; `source` derives from the record | FR-030b, FR-030c, D5 |
+| A3 | Pool leaves `HAS_SOURCE`; the record is reported by `from_pool`, and `source` never names the pool | FR-030b, FR-030c, D5 |
 | A4 | Port the `-global-` `CASE` into `AttributeRenameQuery` | D14 |
 | A5 | Re-target `PoolChangeReserved` for object conversion; branch on pool shape | D8 |
 | A6 | Cross-branch liveness as a union | FR-036a, D9 |
@@ -296,23 +296,28 @@ own to resolve, and liveness is read forward through the value edge rather than 
 object. The `DELETING` exclusion is the only branch predicate that remains. One-sidedness survives
 unchanged — omitting a filter can only add numbers to the taken set.
 
-### 5. Source derivation (FR-030b)
+### 5. Tracking pool read and the `from_pool` output field (FR-030b)
 
-`NodeListGetAttributeQuery._add_source_to_query` gains an `OPTIONAL MATCH` for the inbound `-global-`
-`IS_RESERVED` edge on the already-bound `Attribute` vertex, plus a `CASE` preferring the user's
-`HAS_SOURCE` when one resolves active.
+`NodeListGetAttributeQuery` gains a tracking-pool clause of its own, gated by
+`MetadataOptions.TRACKING_POOL`: an `OPTIONAL MATCH` for the inbound `-global-` `IS_RESERVED` edge
+on the already-bound `Attribute` vertex, restricted to a pool that is an active node at the read's
+branch and time, returning the pool's uuid and the provenance of the branch-resolved value as
+scalars. The attribute read copies them into `BaseAttribute.tracking_pool`, a read-only property
+that no save path reads, and `to_graphql` renders it as `from_pool { pool provenance }` on
+`NumberAttribute`. The `pool` sub-selection is served by a batched loader. The source read is
+unchanged in shape and matches only a stored `HAS_SOURCE` edge.
 
 Two constraints that decide whether this works:
 
-1. It must return the **pool vertex**, not its uuid. Extraction builds
-   `AttributeNodePropertyFromDB(uuid=…, labels=…)` from `result.get_node("source").labels`, and those
-   labels are what `graphql/types/interface.py::InfrahubInterface.resolve_type` uses to select the
-   concrete GraphQL type. Returning only an id breaks `__kind__` resolution. This is the single most
-   likely way to get FR-030b subtly wrong.
-2. It stays inside the `_include_source` gate, so reads that ask for no metadata pay nothing.
+1. The pool must never enter the source property. A read that placed it there made a later save
+   write the pool back as a `HAS_SOURCE` edge after a re-pool or a detach. The tracking pool and the
+   source are two properties, loaded by two clauses, and only the source is compared on save.
+2. The tracking-pool clause stays inside its own gate, so reads that do not select `from_pool` pay
+   nothing. Mutation responses render the in-memory node, so an attribute whose tracking pool was
+   not read loads it lazily, at the current time, inside the same transaction.
 
-The existing subquery already matches undirected and unlabelled, and `CoreNumberPool` is already
-declared a `LineageSource`, so no contract shape changes — only what populates the slot.
+`source` keeps its field and type; `NumberAttribute` gains `from_pool`, which does show in the
+generated schema.
 
 ### 6. Interface contracts
 
@@ -342,7 +347,7 @@ Driven by the coverage audit in `research.md` D15 — which **inverts** the PRD'
 | **Functional** | Extend `functional/pools/test_numberpool_lifecycle.py` and `test_numberpool_branch.py`. Rewrite `test_convert_number_pool` to assert the value the pool **reports**, not that an edge exists. |
 | **FR-036a regression** | Promote `artifacts/test_fr036a_repro.py`. Both polarities: non-unique (reproduces today) and unique (starts failing when P1 lands FR-011). Keep the passing case as a regression — a branch-level value change must not free the default branch's value. |
 | **Integration (Docker)** | One upgrade-path test. **Module-level `pytestmark = pytest.mark.shard_a|shard_b` is mandatory** with a matching `shard:` entry in `.github/workflows/ci.yml`; `conftest.py` validates the whole collection `tryfirst`, so a missing marker fails CI. |
-| **Benchmark** | Allocation **and the utilization read** vs `develop`, before and after A6, varying live branch count. The same per-branch resolution lands in `NumberPoolGetUsed`, which backs utilization — a user-facing query with no lock but a wider fan-out. Requires extending `BenchmarkConfig` or adding a `parametrize` axis plus a generator that creates N branches — nothing does that today. Separately, benchmark the FR-030b source derivation on a metadata read over a kind with **no** pool. No gate; a superlinear curve is a release decision. |
+| **Benchmark** | Allocation **and the utilization read** vs `develop`, before and after A6, varying live branch count. The same per-branch resolution lands in `NumberPoolGetUsed`, which backs utilization — a user-facing query with no lock but a wider fan-out. Requires extending `BenchmarkConfig` or adding a `parametrize` axis plus a generator that creates N branches — nothing does that today. Separately, benchmark the `from_pool` read on a metadata read over a kind with **no** pool. No gate; a superlinear curve is a release decision. |
 | **E2E** | Deferred with the frontend. See Complexity Tracking. |
 
 **Do not duplicate**: two-branch allocation, branch delete, node delete and allocation over
@@ -358,13 +363,13 @@ pre-existing nodes are already covered (research.md D15). Extend those modules.
 | R2 | ~~**P1's FR-030a directly contradicts this slice's FR-030b.**~~ **RESOLVED 2026-09-16 by the PRD owner: P2 wins** — `source` can be cleared on pool-sourced attributes, P1's FR-030a and Decision 2 are superseded. | ~~High~~ Closed | Remaining action is mechanical: amend `POOL-RANGES-PRD.md` (delete FR-030a, Decision 2, and its resolved open question #2) before P1 enters spec-kit. No design impact on this slice — FR-030b/FR-030c were already written this way. |
 | R3 | FR-036a's per-branch resolution runs inside `get_resource`'s pool-wide lock, so allocation gains a live-branch-count dependency it does not have today. | Medium | Mandatory benchmark (D12). No numeric gate — SC-017 withdrawn for want of evidence. A superlinear curve or a large constant is a release decision. |
 | R4 | The migration deletes reservation data for the first time, and two of its four behaviours are destructive beyond the orphan drop. | Medium | Three reported counts; `validate_migration` post-condition following `m077`; component coverage per behaviour; one Docker upgrade test. Avoid `m066`'s documented partial-commit hazard. |
-| R5 | **Published contract (ADR 0010).** Two new output fields are a contract change; FR-030b is one the generated schema will **not** show, because the field and type are unchanged and only its provenance moves. | Medium | Name this slice explicitly in the contract review alongside P1 and P3's attribute-parameter changes, and name FR-030b within it. Regenerate, never hand-edit. |
+| R5 | **Published contract (ADR 0010).** Three new output fields are a contract change, `from_pool` on `NumberAttribute` included; the `source` change (FR-030b) is one the generated schema will **not** show, because the field and type are unchanged and only what populates it changes. | Medium | Name this slice explicitly in the contract review alongside P1 and P3's attribute-parameter changes, and name FR-030b within it. Regenerate, never hand-edit. |
 | R6 | Concurrent re-pool of one attribute into two different pools races: the close touches pool A while the mutation holds only pool B's lock. | Medium | D6, as revised 2026-10-05: `NumberPoolSetReserved` takes a write lock on the `Attribute` vertex before reading, so a second writer waits and then sees the first one's edges. |
 | R7 | `_add_source_to_query` returning an id rather than the pool vertex silently breaks `__kind__` resolution. | Medium | Called out in design §5; assert the resolved GraphQL kind in a component test, not just the uuid. |
 | R8 | `NumberPoolGetAllocated` today applies **no** status or branch predicate to the reservation edge. Harmless while nothing closes one; wrong the moment detach and re-pool do. | Medium | The rewrite adds the predicate. Listed explicitly so it is not lost in "rewrite the query". |
 | R9 | The PRD's testing guidance points at the wrong configuration (research.md §0 item 6) and names a merge suite that merges nothing (item 7). Following it literally would produce tests for a gap that is already covered and miss the real one. | Low | Superseded by the audit in D15. |
-| R10 | **Migration behaviour ordering** — collapsing multi-pool records before deleting legacy source edges leaves a losing pool's `HAS_SOURCE` winning the read slot forever. | High | Evaluate behaviour 4's predicate against records live at migration start, or run it first. Component test named in `data-model.md` §6. Found by critique (E3). |
-| R11 | **`IS_RESERVED` is the only property edge type with no index**, and FR-030b puts it on a read path that runs for every attribute of every kind. | High | A8: add the `branch` range index. Benchmark the source derivation on a kind with **no** pool — that is the blast radius, not the pooled case. Found by critique (E7). |
+| R10 | **Migration behaviour ordering** — collapsing multi-pool records before deleting legacy source edges leaves a losing pool's `HAS_SOURCE` reporting that pool in `source` for ever. | High | Evaluate behaviour 4's predicate against records live at migration start, or run it first. Component test named in `data-model.md` §6. Found by critique (E3). |
+| R11 | **`IS_RESERVED` is the only property edge type with no index**, and the `from_pool` read puts it on a read path that runs for every number attribute read with `from_pool` selected. | High | A8: add the `branch` range index. Benchmark the `from_pool` read on a kind with **no** pool — that is the blast radius, not the pooled case. Found by critique (E7). |
 | R12 | **The migration is irreversible** and nothing said so. | Medium | Stated in spec and `data-model.md`; each destructive behaviour reports a pre-count as well as a post-count. Recourse is a database restore. Found by critique (P7). |
 | R13 | ~~The upgrade note is unactionable without the brownfield worklist~~ **CLOSED 2026-09-16 — out of scope by decision.** Operators name the values they want tracked; P1 deletes the scan outright per its unchanged FR-011. | Accepted | The ergonomic cost on the brownfield path is accepted knowingly and recorded in the spec's *Out of Scope*. A migration tool may follow if adoption shows it is needed. Reverses critique X1/P2. |
 | R14 | ~~**Stakeholder-owned, unresolved**~~ **CLOSED 2026-09-16.** The PRD owner confirmed P2 supersedes P1 on `source` ownership. | Closed | See R2. Critique E13 is answered. |
@@ -377,7 +382,7 @@ pre-existing nodes are already covered (research.md D15). Extend those modules.
 |---|---|---|
 | **No E2E test in this slice** (Constitution IV requires E2E for user-facing features) | The user-facing surface is a GraphQL contract; the views that consume it (range management, the attach action, the pool detail view) are explicitly out of scope and deferred with the frontend. The E2E scenario **is** specified in spec.md and travels with that work. | Writing a Playwright test against a UI that does not exist is not possible. Writing an API-level "E2E" duplicates the functional suite at higher cost. |
 | **Two new pure modules** (Constitution VII: helpers serve ≥2 callers before extraction) | Both replace logic that exists today but is only reachable through a database. `from_pool` changes meaning without changing shape, so the decision table *is* the contract (III) and must be unit-testable; the utilization arithmetic is an invariant (FR-028a) that currently emerges from three lines of set comprehension inside a fetcher. | Leaving them inline keeps a seven-branch decision table and a 100%-bounded arithmetic testable only against Neo4j. That is how the current silent value-discard survived. |
-| **A migration that deletes data** (Constitution I: migrations preserve integrity) | The orphan drop removes records whose object no longer exists — dead rows the standing comment in `core/query/resource_manager.py` has flagged for years. The multi-pool collapse and legacy `HAS_SOURCE` deletion are required to make FR-024b and FR-030b hold for pre-upgrade data. | Leaving them: orphans keep leaking; multiple live records make the pool report numbers another pool handed out; legacy source edges win the read slot forever, so the derivation never fires for existing data. |
+| **A migration that deletes data** (Constitution I: migrations preserve integrity) | The orphan drop removes records whose object no longer exists — dead rows the standing comment in `core/query/resource_manager.py` has flagged for years. The multi-pool collapse and legacy `HAS_SOURCE` deletion are required to make FR-024b and FR-030b hold for pre-upgrade data. | Leaving them: orphans keep leaking; multiple live records make the pool report numbers another pool handed out; legacy source edges keep reporting a pool in `source` for existing data, where a current attribute reads null. |
 
 ---
 

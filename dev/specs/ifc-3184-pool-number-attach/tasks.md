@@ -73,8 +73,9 @@ where nothing else has moved the numbers.
 ### 1c. Re-anchor the edge
 
 - [ ] T006 [US1] ~~Add the `IS_RESERVED` `branch` range index to `core/graph/index.py::rel_indexes`~~
-      — original rationale: it is the **only** property edge type without one, and FR-030b is about to
-      put it on a read path that runs for every attribute of every kind. *(Critique E7 / risk R11.)*
+      — original rationale: it is the **only** property edge type without one, and the `from_pool`
+      read is about to put it on a read path that runs for every number attribute read with
+      `from_pool` selected. *(Critique E7 / risk R11.)*
 
       **Reverted 2026-09-16 by the PRD owner: the index does not earn its keep.** The premise about
       the read path holds, but a `branch` range index does not serve it. Every consumer expands
@@ -363,10 +364,16 @@ where nothing else has moved the numbers.
       the user's edge. **Return the pool vertex, not its uuid** — extraction reads
       `result.get_node("source").labels` and those labels select the concrete GraphQL type. Stays
       inside the `_include_source` gate.
+      *Superseded: the derivation into `source` is removed. The source read matches only a stored
+      `HAS_SOURCE` edge, and a separate clause gated by `MetadataOptions.TRACKING_POOL` reads the
+      pool and the provenance as scalars into the attribute's own `tracking_pool` property, rendered
+      as the `from_pool` output field. See plan.md section 5.*
 - [X] T022 [P] [US1] Component test: a pooled attribute with no user source resolves `source` to the
       pool **and the correct GraphQL kind**, with no stored source edge. Assert the resolved kind, not
       only the uuid — an implementation returning an id alone passes a uuid assertion and still breaks
       `__kind__`. *(Risk R7.)*
+      *Superseded: the test now asserts `source: null` and `from_pool` reporting the pool with
+      provenance `ALLOCATED`, with no stored source edge.*
 - [X] T023 [P] [US1] Component test: a **user-set, non-pool** source on a pooled attribute changes the
       reported source and changes **nothing** the pool reports. No such test exists today (SC-019).
 - [X] T024 [P] [US1] Fix the inaccurate comment in
@@ -602,12 +609,13 @@ count dropped by one, and the number is offered again.
       allocated list. The NumberPool attribute kind is read-only, so the release is driven through the
       query rather than a `from_pool: null` mutation.*
 
-      *Found while wiring T055, not fixed here: a read puts the pool that tracks an attribute into
-      the attribute's in-memory source when the user set none. Saving the attribute after a detach
-      or a re-pool ends that pool's IS_RESERVED edge therefore stores a `HAS_SOURCE` edge to the
-      pool, which contradicts FR-030b. The fix is left to IFC-3328, which reads the tracking pool
-      into its own property for a dedicated `from_pool` output field. Until then, the detach
-      component test does not assert the source after a detach on the default branch.*
+      *Found while wiring T055: a read put the pool that tracks an attribute into the attribute's
+      in-memory source when the user set none, so saving the attribute after a detach or a re-pool
+      stored a `HAS_SOURCE` edge to the pool, which contradicts FR-030b. Fixed by reading the
+      tracking pool into its own property (`tracking_pool`) and reporting it through the `from_pool`
+      output field; `source` is populated only by a stored `HAS_SOURCE` edge. The detach, re-pool and
+      attach component tests assert `source: null` and zero stored pool source edges after every
+      save.*
 
 **Checkpoint**: detach works and is permanent, symmetric with allocation.
 
@@ -655,8 +663,8 @@ count dropped by one, and the number is offered again.
       `load_db_indexes`, and the one branch-aware benchmark creates exactly one extra branch. **No
       numeric gate** (SC-017 withdrawn) — a superlinear curve or a large constant is a release
       decision.
-- [ ] T068 [US1] Benchmark the FR-030b source derivation on a metadata read over a kind with **no**
-      pool. That is the blast radius — the plan otherwise reasons only about pooled attributes.
+- [ ] T068 [US1] Benchmark the `from_pool` read on a metadata read over a kind with **no** pool. That
+      is the blast radius — the plan otherwise reasons only about pooled attributes.
       *(Critique E7.)*
 - [ ] T069 Regenerate every generated artefact — `uv run invoke backend.generate`,
       `schema.generate-graphqlschema`, `schema.generate-jsonschema`, `docs.generate`. **Never
@@ -670,9 +678,10 @@ count dropped by one, and the number is offered again.
       must be honest that adoption is manual and one object at a time.
 - [ ] T072 Name this slice in the **published-contract review** (ADR 0010) alongside P1's and P3's
       `NumberPoolParameters` changes — one review, one SDK type regeneration. **Name FR-030b in words
-      within it**: the generated schema will not show it, because the field and type are unchanged and
-      only its provenance moves. A reviewer diffing `schema/schema.graphql` sees no trace of a change
-      that alters what every pooled attribute reports as its source.
+      within it**: the generated schema shows the new `from_pool` field on `NumberAttribute` but not
+      the `source` change, because that field and its type are unchanged. A reviewer diffing
+      `schema/schema.graphql` sees no trace of the change that removes the pool from what every
+      pooled attribute reports as its source.
 - [ ] T073 Run `/pre-ci` (`.agents/commands/pre-ci.md`) — it includes the whole-repo
       `ruff check . --exclude python_sdk` that `invoke lint` does not, and `docs.validate`.
 - [ ] T074 Run `uv run invoke format` and `uv run invoke lint`.
@@ -695,8 +704,8 @@ These need someone outside the development team.
 
       What "cleared" means under FR-030b, so P1 is not amended into a different misunderstanding: the
       pool is never in `HAS_SOURCE`, so there is no pool-owned source to clear. A user clears **their
-      own** source edge, and the slot then falls back to the derived pool — clearing *reveals* the
-      pool rather than emptying the field. Covered by SC-019 and T023.
+      own** source edge, after which `source` reads null; the pool stays visible through the
+      `from_pool` output field. Covered by SC-019 and T023.
       *(Critique E13, risks R2/R14.)*
 - [x] **OQ2 — RESOLVED 2026-09-16: out of scope.** Operators manually name the values they want a
       pool to track. P1 deletes the hand-set-value scan outright per its FR-011, unchanged, and this
@@ -754,7 +763,7 @@ Phase 5  Polish
 - **T028 before T029.** Defence-in-depth only: T028's predicate no longer reads the records, so
   neither order can leave an edge behind. The order holds the line if the predicate is ever narrowed
   back to a live record, where the collapse would kill a losing pool's record first and its source
-  edge would survive and win the read slot forever.
+  edge would survive and keep reporting the losing pool in `source`.
 - **T011 before T010 can work.** Match-close-create has no target to close until `get_resource` sees
   the `Attribute` vertex.
 - **T059 before T061.** The reporter takes the effective space as an input and never computes it.

@@ -123,7 +123,7 @@ along with its resolved open question #2 (*"detach clears the pool-owned `source
 P2 clause FR-025 no longer contains. Do this **before P1 enters spec-kit**.
 
 Note for whoever amends P1: under FR-030b there is no pool-owned source to clear, because the pool is
-never written to `HAS_SOURCE`. What a user clears is **their own** source edge, after which the slot
-falls back to the derived pool — clearing *reveals* the pool rather than emptying the field.
+never written to `HAS_SOURCE`. What a user clears is **their own** source edge, after which `source`
+reads null; the pool stays visible through the `from_pool` output field on the attribute.
 
 Risk **R2**/**R14** in [`../plan.md`](../plan.md) are closed.
