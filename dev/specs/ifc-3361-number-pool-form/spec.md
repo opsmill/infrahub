@@ -8,7 +8,7 @@
 
 **Input**: Jira [IFC-3361](https://opsmill.atlassian.net/browse/IFC-3361) (epic [IFC-3065](https://opsmill.atlassian.net/browse/IFC-3065), idea [INFP-308](https://opsmill.atlassian.net/browse/INFP-308)). A user who manages number pools needs to create a pool with several weighted ranges and an allocation scope, and later change the name, description and ranges of that pool, from the web interface. Prototype: branch `bab-proto-number-pool`, `frontend/app/src/pages/proto/number-pool` (sample data only).
 
-Related specs: [`dev/specs/ifc-3065-number-pool-ranges`](../ifc-3065-number-pool-ranges/spec.md) (ranges and their GraphQL contract), [`dev/specs/ifc-3185-scoped-number-pools`](../ifc-3185-scoped-number-pools/) (allocation scope).
+Related specs: [`dev/specs/ifc-3065-number-pool-ranges`](../ifc-3065-number-pool-ranges/spec.md) (ranges and their GraphQL contract), [`dev/specs/ifc-3185-number-pool-scopes`](../ifc-3185-number-pool-scopes/spec.md) (allocation scope).
 
 ## Clarifications
 
@@ -16,7 +16,7 @@ Related specs: [`dev/specs/ifc-3065-number-pool-ranges`](../ifc-3065-number-pool
 
 - Q: When the server refuses a range right after the pool was created, what does the create form do? → A: The form stays open and switches to editing the newly created pool: it reloads the stored ranges, keeps the rows not yet saved, and shows the server message; saving again applies only the remaining differences.
 - Q: After a refused edit, are the user's unsaved rows kept or replaced by the stored ranges? → A: Kept, the same as after a refused create (Paul Leménager).
-- Plan review (no user question): the scope cannot include the pool's own attribute or a field of a related node, and is stored as bare field names, following [`dev/specs/ifc-3185-scoped-number-pools/data-model.md`](../ifc-3185-scoped-number-pools/data-model.md); "smaller" in FR-008 is defined; FR-003 errors appear after leaving a field or pressing save.
+- Plan review (no user question): the scope cannot include the pool's own attribute or a field of a related node, and is stored as bare field names, following `dev/specs/ifc-3185-scoped-number-pools/data-model.md` (since replaced by the [scope spec](../ifc-3185-number-pool-scopes/spec.md)); "smaller" in FR-008 is defined; FR-003 errors appear after leaving a field or pressing save.
 
 ## User Scenarios & Testing *(mandatory)*
 
