@@ -95,8 +95,17 @@ class InfrahubMultiLock:
         await self.release()
 
     async def acquire(self) -> None:
-        for lock in self.locks:
-            await self.registry.get(name=lock, metrics=self.metrics).acquire()
+        acquired: list[InfrahubLock] = []
+        try:
+            for lock_name in self.locks:
+                lock = self.registry.get(name=lock_name, metrics=self.metrics)
+                await lock.acquire()
+                acquired.append(lock)
+        except BaseException:
+            # The context exit never runs when entering fails, so a partial acquisition is undone here.
+            for lock in reversed(acquired):
+                await lock.release()
+            raise
 
     async def release(self) -> None:
         for lock in reversed(self.locks):
@@ -381,10 +390,20 @@ class InfrahubLockRegistry:
         await self.get(name=LOCAL_SCHEMA_LOCK).event.wait()
 
     def global_schema_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_SCHEMA_LOCK])
+        """Return the lock for a schema update.
+
+        Global locks are always taken before this process's schema lock, so no caller holds the local lock while
+        it waits on another worker and a global lock holder can take the local one without deadlock.
+        """
+        return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK])
 
     def global_graph_lock(self) -> InfrahubMultiLock:
-        return InfrahubMultiLock(lock_registry=self, locks=[LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
+        """Return the lock for a whole-graph change such as a merge or a rebase.
+
+        This process's schema lock stays free during the graph change; a holder that updates this process's
+        schema registry takes it on its own.
+        """
+        return InfrahubMultiLock(lock_registry=self, locks=[GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK])
 
 
 def _init_lock_ttl_seconds() -> int:
