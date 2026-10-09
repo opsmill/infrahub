@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { DataTable } from "@/shared/components/table/data-table";
 import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 
@@ -87,6 +88,38 @@ describe("getRepositoryBranchesColumns", () => {
     await expect.element(row.getByRole("link", { name: "feature-auth" })).toBeVisible();
     await expect.element(row.getByText("In sync", { exact: true })).toBeVisible();
     await expect.element(row.getByText("8f3c2a1", { exact: true })).toBeVisible();
+  });
+
+  it("shows each branch's status on its row", async () => {
+    // GIVEN
+    const nodes = [
+      generateRepositoryBranchStatus({
+        name: { value: "feature-auth" },
+        status: { value: BranchStatus.OPEN },
+      }),
+      generateRepositoryBranchStatus({
+        name: { value: "staging" },
+        status: { value: BranchStatus.NEED_REBASE },
+      }),
+    ];
+
+    // WHEN
+    const component = await renderTable(repositorySchema, nodes);
+
+    // THEN
+    await expect
+      .element(component.getByRole("columnheader", { name: "Status", exact: true }))
+      .toBeVisible();
+    await expect
+      .element(
+        component.getByRole("row", { name: /feature-auth/ }).getByText("Open", { exact: true })
+      )
+      .toBeVisible();
+    await expect
+      .element(
+        component.getByRole("row", { name: /staging/ }).getByText("Rebase needed", { exact: true })
+      )
+      .toBeVisible();
   });
 
   it("marks only the default branch's row as the default", async () => {

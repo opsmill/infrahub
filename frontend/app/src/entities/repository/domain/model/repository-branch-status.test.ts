@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
+
 import {
   mapRepositoryBranchStatusPage,
   mapRepositoryBranchStatusRow,
@@ -51,7 +53,10 @@ describe("mapRepositoryBranchStatusRow", () => {
   });
 
   it("falls back to defaults when every nullable field is absent", () => {
-    const row = mapRepositoryBranchStatusRow({ name: { value: "staging" } });
+    const row = mapRepositoryBranchStatusRow({
+      name: { value: "staging" },
+      status: { value: BranchStatus.OPEN },
+    });
 
     expect(row).toMatchObject({
       isDefault: false,
@@ -59,6 +64,14 @@ describe("mapRepositoryBranchStatusRow", () => {
       syncStatus: null,
       ref: null,
     });
+  });
+
+  it("carries the branch status the payload supplied", () => {
+    const row = mapRepositoryBranchStatusRow(
+      generateRepositoryBranchStatus({ status: { value: BranchStatus.NEED_REBASE } })
+    );
+
+    expect(row.status).toBe(BranchStatus.NEED_REBASE);
   });
 
   it("drops a dropdown carrying no value", () => {

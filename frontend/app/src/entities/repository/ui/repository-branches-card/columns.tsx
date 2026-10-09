@@ -4,10 +4,14 @@ import { CommitHash } from "@/shared/components/display/commit-hash";
 import { COLUMN_MAX_WIDTH } from "@/shared/components/table/style";
 import { TableCell } from "@/shared/components/table/table-cell";
 
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { TableColumnHeader } from "@/entities/nodes/object/ui/object-table/cells/table-column-header";
 import type { RepositoryBranchStatusRow } from "@/entities/repository/domain/model/repository-branch-status";
-import { BRANCH_ROW_FILTER_CONDITIONS } from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
+import {
+  BRANCH_ROW_FILTER_CONDITIONS,
+  BRANCH_STATUS_FIELD_SCHEMA,
+} from "@/entities/repository/ui/repository-branches-card/branch-row-fields";
 import { BranchNameCell } from "@/entities/repository/ui/repository-branches-card/cells/branch-name-cell";
 import { SyncStatusCell } from "@/entities/repository/ui/repository-branches-card/cells/sync-status-cell";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
@@ -87,6 +91,21 @@ export function getRepositoryBranchesColumns(
       ),
       cell: ({ row }) => (
         <BranchNameCell name={row.original.name} isDefault={row.original.isDefault} role="cell" />
+      ),
+    }),
+    columnHelper.display({
+      id: "status",
+      header: () => (
+        <TableColumnHeader
+          columnSchema={BRANCH_STATUS_FIELD_SCHEMA}
+          filterConditions={BRANCH_ROW_FILTER_CONDITIONS}
+          role="columnheader"
+        />
+      ),
+      cell: ({ row }) => (
+        <TableCell role="cell">
+          <BranchStatusBadge status={row.original.status} showOpen />
+        </TableCell>
       ),
     }),
     ...(syncStatus ? [getSyncStatusColumn(syncStatus)] : []),
