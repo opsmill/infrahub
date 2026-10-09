@@ -15,6 +15,19 @@ export interface NumberPoolKeysParams {
   atDate?: Date | null;
 }
 
+export interface NumberPoolUtilizationKeysParams {
+  poolId: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
+export interface NumberPoolAllocationsKeysParams {
+  poolId: string;
+  rangeId?: string;
+  branchName: string;
+  atDate?: Date | null;
+}
+
 export interface NumberPoolsKeysParams {
   branchName: string;
   atDate?: Date | null;
@@ -39,6 +52,32 @@ export const resourceManagerQueryKeys = {
       ...resourceManagerQueryKeys.all,
       "number-pool",
       params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolUtilization: (params: NumberPoolUtilizationKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-utilization",
+      params.poolId,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolAllocations: (params: NumberPoolAllocationsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-allocations",
+      params.poolId,
+      params.rangeId ?? null,
+      params.branchName,
+      params.atDate,
+    ] as const,
+  numberPoolAllocationCount: (params: NumberPoolAllocationsKeysParams) =>
+    [
+      ...resourceManagerQueryKeys.all,
+      "number-pool-allocation-count",
+      params.poolId,
+      params.rangeId ?? null,
       params.branchName,
       params.atDate,
     ] as const,
