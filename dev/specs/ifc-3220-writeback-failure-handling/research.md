@@ -196,8 +196,24 @@ seconds. When the acquire times out, the caller acts as when the store raises (R
 reads a non-empty queue; the delivery clears the queue and finds no held set; the barrier then
 writes its held set, which nobody will release.
 
-**Rejected**: a compare-and-set query in Cypher. It is more code than a lock and it is not a pattern
-this codebase uses for node attributes.
+**Why the transaction also locks the repository node.** A lock with a time to live cannot protect a
+commit. If a transition runs longer than 30 seconds, a second writer takes the state lock, reads the
+old state, and both commit, so one enqueue or one lease is lost. The registry also gives one lock
+object per name in each process, so after such an overrun, the release of the first writer can
+remove the key of the second. So the first statement of each transition's transaction takes the
+Neo4j write lock of the repository node: it sets a property and removes it in the same statement,
+because Cypher has no lock statement. Neo4j holds that lock until the commit or the rollback, with
+no time limit, so a second writer waits there and then reads the committed state. The state lock
+stays: it keeps the bounded acquire and `DeliveryStateUnavailableError`, and it keeps the normal
+waits out of Neo4j. A transition can also wait for another open transaction that writes the
+repository node, and if Neo4j detects a deadlock, the transition raises like any database error.
+
+**Rejected**: a compare-and-set query in Cypher. A version compare alone loses updates at Neo4j's
+read-committed isolation, unless the transaction takes the write lock before it reads, and with
+that lock the counter adds nothing. A Neo4j transaction timeout below the time to live does not
+cover the time between the acquire and the start of the transaction, and it leaves the shared lock
+object. A check that the lock is still held before the commit needs an atomic check in both lock
+backends, Redis and NATS.
 
 ---
 
@@ -512,11 +528,12 @@ error whose reason comes from GitPython's `PushInfo` flags, not from text.
 | push | `RepositoryPushRejectedError`, reason `non-fast-forward` (`REJECTED`) | `remote-advanced` | yes. The remote moved between the fetch and the push, and the next attempt fetches again. |
 | push | `RepositoryPushRejectedError`, reason `unknown` | `unclassified` | no |
 | record | any | `record-failed` | yes. The remote has the content (FR-004). |
-| import | `DatabaseError`, `RepositoryConnectionError`, a GraphQL transport error | `import-interrupted` | yes |
+| import | `RepositoryNotFoundError`, `RepositoryTLSError` | `not-found`, `certificate` | no. Both are subtypes of `RepositoryConnectionError`, but a retry cannot fix them, as at the fetch. |
+| import | `DatabaseError`, any other `RepositoryConnectionError`, a GraphQL transport error | `import-interrupted` | yes |
 | import | any other, for example a configuration or validation error of the content | `import-failed` | no |
-| replay | a merge conflict | `replay-conflict` | no |
+| replay | a merge conflict. Not a row of the classifier: `replay` reports a conflict in `ReplayResult`, not as an exception, and the service sets this cause (R4, step 6). The classifier gives `unclassified` for every exception at this stage. | `replay-conflict` | no |
 | replay | a killed local Git command (`LOCAL_GIT_TIMEOUT_SECONDS`) | `unclassified` | no. The message names the command. |
-| release | any | the cause is left unchanged | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
+| release | any | none. While merges are queued, the repository keeps the cause and the error of its delivery. With an empty queue, the store writes the message with no cause, and the next clear of a lease removes it. | yes, and never a reason for `action-required`. The failed run sets its lease's expiry to now, so the retry takes a new lease and releases again (R10, rule 4). The delivery is done; a release that still fails leaves the held work to the recovery check (R20). |
 | any | anything else | `unclassified` | no |
 
 The cause list is closed and is an enum (Principle III). [data-model.md](data-model.md) has it.
@@ -1092,12 +1109,15 @@ reconciliation runs at the next cycle.
 
 ## R12. The branch-deletion guard (FR-011)
 
-**Decision**: `git/tasks.py::git_branch_delete` asks the store whether any entry of the repository's
-queue names the branch as `source_git_branch`. When one does, it:
+**Decision**: `git/tasks.py::git_branch_delete` calls the store's `request_branch_deletion`. In one call
+under the state lock, it sets `delete_source_git_branch` on every entry of the repository's queue that
+names the branch as `source_git_branch`, and returns whether one did. When one did, the task:
 
-1. sets `delete_source_git_branch` on every such entry, through the store;
-2. skips the remote deletion and logs a warning that names the pending delivery;
-3. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
+1. skips the remote deletion and logs a warning that names the pending delivery;
+2. does **not** send `RefreshGitRepositoryBranchDeleted`, so every worker keeps its local branch.
+
+A separate read before the call would add nothing: the call already answers under the lock, and a read
+outside the lock could disagree with it.
 
 The delivery then deletes the remote branch once the entry is delivered (R4 step 13), when no other
 entry names it. An abandonment keeps it: its content was not delivered, and the remote branch is
