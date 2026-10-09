@@ -10,7 +10,12 @@ import {
 import { FormInput } from "@/shared/components/ui/form";
 
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import type { AttributeSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+
+export function isAllocatableAttribute(attribute: AttributeSchema): boolean {
+  return attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only;
+}
 
 interface AttributeComboboxProps {
   nodeKind?: string;
@@ -21,8 +26,7 @@ interface AttributeComboboxProps {
 export function AttributeCombobox({ nodeKind, value, onSelect }: AttributeComboboxProps) {
   const [open, setOpen] = useState(false);
   const { schema } = useSchema(nodeKind);
-  const options =
-    schema?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
+  const options = schema?.attributes?.filter(isAllocatableAttribute) ?? [];
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>

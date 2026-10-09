@@ -21,6 +21,12 @@ const interfaceSchema = generateNodeSchema({
     generateAttributeSchema({ name: "speed", label: "Speed", kind: "Number" }),
     generateAttributeSchema({ name: "mtu", label: "MTU", kind: "Number" }),
     generateAttributeSchema({
+      name: "oper_speed",
+      label: "Operational speed",
+      kind: "Number",
+      read_only: true,
+    }),
+    generateAttributeSchema({
       name: "if_index",
       label: "Interface index",
       kind: "Number",
@@ -143,6 +149,24 @@ describe("AllocatesBlock", () => {
       // THEN
       await expect.element(component.getByRole("option", { name: "Speed" })).toBeVisible();
       await expect.element(component.getByRole("option", { name: "MTU" })).toBeVisible();
+    });
+
+    test("does not offer a read-only number attribute", async () => {
+      // GIVEN
+      const component = await render(
+        <TestForm defaultValues={{ node: { source: { type: "user" }, value: "InfraInterface" } }}>
+          <AllocatesBlock variant="input" />
+        </TestForm>
+      );
+
+      // WHEN
+      await component.getByRole("combobox", { name: "Attribute *" }).click();
+
+      // THEN
+      await expect.element(component.getByRole("option", { name: "Speed" })).toBeVisible();
+      await expect
+        .element(component.getByRole("option", { name: "Operational speed" }))
+        .not.toBeInTheDocument();
     });
 
     test("clears the attribute and the scope when the node changes", async () => {

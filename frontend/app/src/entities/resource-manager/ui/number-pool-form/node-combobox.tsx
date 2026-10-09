@@ -11,7 +11,7 @@ import {
 } from "@/shared/components/ui/combobox";
 import { FormInput } from "@/shared/components/ui/form";
 
-import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
+import { isAllocatableAttribute } from "@/entities/resource-manager/ui/number-pool-form/attribute-combobox";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -19,12 +19,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 type AllocatableSchema = ModelSchema & { kind: string };
 
 function isAllocatable(schema: ModelSchema): schema is AllocatableSchema {
-  return (
-    !!schema.kind &&
-    !!schema.attributes?.some(
-      (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
-    )
-  );
+  return !!schema.kind && !!schema.attributes?.some(isAllocatableAttribute);
 }
 
 export function NodeLabel({ schema }: { schema: ModelSchema }) {
