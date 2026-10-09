@@ -95,7 +95,13 @@ Every regeneration decision during a proposed change is recorded in the pipeline
 
 An artifact belongs to the branch it was generated on. When a branch merges, Infrahub does not copy its artifacts to the default branch. It regenerates the affected artifacts on the default branch, from the default branch's data and repository commit at the time the regeneration runs. The artifact you reviewed in a [Proposed Change](../proposed-changes/overview) and the artifact on the default branch are separate nodes with different IDs. Their content is the same only when both were generated from the same data and the same repository commit.
 
-If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact. Its content is the same as the artifact you reviewed when both of these are true: no data or Transformation file that the artifact uses changed on the default branch after the branch's `branched_from`, and both the repository merge and the regeneration succeeded. To check both before you deploy, see [Deploy the artifact that was reviewed](#deploy-the-artifact-that-was-reviewed).
+If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact. Its content is the same as the artifact you reviewed when all of these are true:
+
+- No data or Transformation file that the artifact uses changed on the default branch after the branch's `branched_from`.
+- For a `CoreRepository`, the Git merge finished before Infrahub queued the regeneration.
+- The regeneration succeeded.
+
+To check before you deploy, see [Deploy the artifact that was reviewed](#deploy-the-artifact-that-was-reviewed).
 
 ### What happens after a merge
 
@@ -108,16 +114,25 @@ Which artifacts the task regenerates depends on the `INFRAHUB_SELECTIVE_EXECUTIO
 
 See [Configuration](../reference/configuration.mdx) for the setting. Each artifact is generated in its own task.
 
-Infrahub sends the `infrahub.branch.merged` and `infrahub.proposed_change.merged` events once the regeneration has been queued, not once it has finished.
+Infrahub sends the `infrahub.branch.merged` and `infrahub.proposed_change.merged` events once the follow-up task has been queued. At that point, Infrahub may not have selected or started generating any artifact.
+
+#### Which Transformation files the regeneration uses
+
+Infrahub generates each artifact with the Transformation files at the commit stored in the repository's `commit` attribute on the default branch. It reads that attribute when it queues the artifacts of a definition. How the merge changes that attribute depends on the kind of repository:
+
+- **Repository** (`CoreRepository`): Infrahub merges the branch's Git branch into the default branch's Git branch in a separate task, then sets `commit` on the default branch to the resulting commit. Infrahub runs this Git merge only for a branch that has `sync_with_git` set. The resulting commit can include changes that other branches merged before, so it is not always the commit the Proposed Change used.
+- **Read-only repository** (`CoreReadOnlyRepository`): there is no Git merge. The merge sets `ref` and `commit` on the default branch to the branch's values, like any other attribute.
+
+Infrahub queues the Git merge and the follow-up task separately, and neither waits for the other. If Infrahub queues the artifacts of a definition before the Git merge has set `commit`, they are generated with the previous Transformation files.
 
 ### When the default branch artifact differs from the reviewed one
 
 Infrahub generates the artifacts of a Proposed Change on its branch. On that branch, Infrahub reads the default branch's data as it was at the branch's `branched_from`, plus the changes made on the branch, as described in [Parallel branches](../branches/parallel-branches.mdx). The regeneration after the merge reads the default branch as it is when the task runs. The two artifacts differ when the data or the Transformation files that the artifact uses changed in between:
 
 - **The branch was not rebased.** Changes made on the default branch after `branched_from` are not in the reviewed artifact.
-- **Another branch has changes to different data that the same artifact reads.** For example, you change the descriptions of a device's interfaces on one branch and add a BGP session to the same device on another, and the device's configuration artifact reads both. The two branches contain changes to different objects, so Infrahub reports no conflict, and each Proposed Change shows only its own change. After both branches merge, the configuration on the default branch contains both changes, a combination that no Proposed Change showed. Infrahub has no check that blocks a merge in this case.
-- **Another branch changed files that the same Transformation uses.** For example, you change a Jinja2 partial on one branch and the template that includes it on another. Infrahub generates the artifacts of each Proposed Change with the repository commit of that Proposed Change's branch. When a branch merges, Infrahub merges its Git branch into the default branch's Git branch, and the regeneration uses the resulting commit, which contains both changes.
-- **The repository merge failed.** Infrahub merges the Git branch after the data merge is complete. If the Git merge fails, Infrahub logs the failure and keeps the data merge, and the regeneration uses the default branch's previous Transformation files.
+- **Another branch has changes to different data that the same artifact reads.** For example, you change the descriptions of a device's interfaces on one branch and add a BGP session to the same device on another, and the device's configuration artifact reads both. Changes to different objects do not conflict, even when the same artifact reads both. If the second branch merges without a rebase and a new run of its checks after the first merge, each Proposed Change showed only its own change, and the configuration on the default branch contains both, a combination that no Proposed Change showed. Infrahub has no check that blocks a merge in this case.
+- **Another branch changed files that the same Transformation uses, in a `CoreRepository`.** For example, you change a Jinja2 partial on one branch and the template that includes it on another. Infrahub generated the artifacts of each Proposed Change with the commit of its own branch. After both merge, the commit on the default branch contains both changes.
+- **The Git merge failed, or had not finished when Infrahub queued the regeneration.** The regeneration then uses the default branch's previous Transformation files. A failed Git merge does not undo the data merge. To regenerate after the Git merge has finished, click **Re-generate** on the artifact's page.
 - **The default branch changed after the last rebase or the last run of the checks.** A rebase does not re-run the Proposed Change checks. The default branch can also change between the merge and the regeneration.
 - **A Generator that runs after the merge changed data the artifact reads.**
 - **The regeneration failed.** The artifact on the default branch keeps its previous content. See [When the regeneration fails](#when-the-regeneration-fails).
@@ -153,7 +168,7 @@ To find a failure:
 - **Artifact status**: query `status` on the artifact on the default branch, or open the artifact in the web interface.
 - **Task log**: the failed task is named "Generate artifact" followed by the artifact name, and is tagged with the default branch and the target object.
 
-Infrahub sends no event when a generation fails. It sends `infrahub.artifact.created` and `infrahub.artifact.updated` only when a generation succeeds and the content changed, so a regeneration that produces the same content sends no event either.
+Infrahub sends no artifact event when a generation fails. It sends `infrahub.artifact.created` and `infrahub.artifact.updated` only when a generation succeeds and the content changed, so a regeneration that produces the same content sends no artifact event either.
 
 To retry, click **Re-generate** on the artifact's page. To regenerate every artifact of a definition, send `POST /api/artifact/generate/<artifact_definition_id>`.
 
