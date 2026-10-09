@@ -86,12 +86,12 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             "attribute.kind.update": self._made_non_scalar,
             "node.attribute.remove": self._removed,
             "node.relationship.remove": self._removed,
-            "attribute.name.update": self._accepted,
-            "relationship.name.update": self._accepted,
         }
         self._declaration_rules: dict[
             str, Callable[[SchemaConstraintValidatorRequest, str], list[DeclaringAttribute]]
         ] = {
+            "attribute.name.update": self._declarations_reaching_renamed_field,
+            "relationship.name.update": self._declarations_reaching_renamed_field,
             ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: self._changed_declaration,
         }
 
@@ -269,9 +269,6 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             dependency=PoolDependency.SCOPE_ELEMENT, reason="a scope element cannot be removed while the pool exists"
         )
 
-    def _accepted(self, request: SchemaConstraintValidatorRequest, field_name: str) -> ScopeBreakage | None:  # noqa: ARG002
-        return None
-
     async def _check_declarations(
         self, request: SchemaConstraintValidatorRequest, field_name: str, declarations: list[DeclaringAttribute]
     ) -> list[GroupedDataPaths]:
@@ -354,6 +351,33 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             return []
         return self._declaring(kind=kind, attribute=attribute)
 
+    def _declarations_reaching_renamed_field(
+        self,
+        request: SchemaConstraintValidatorRequest,
+        field_name: str,  # noqa: ARG002
+    ) -> list[DeclaringAttribute]:
+        kind = request.schema_path.schema_kind
+        if not request.schema_branch.has(name=kind):
+            return []
+        previous_schemas = self._previous_schemas(request=request)
+        declarations: list[DeclaringAttribute] = []
+        for sharing_kind in sorted(
+            self._kinds_sharing_fields(kind_schema=request.schema_branch.get(name=kind, duplicate=False))
+        ):
+            if not request.schema_branch.has(name=sharing_kind):
+                continue
+            kind_schema = request.schema_branch.get(name=sharing_kind, duplicate=False)
+            for attribute in kind_schema.attributes:
+                # An inherited declaration is compared on the generic that declares it, and a declaration changed by
+                # the same load is compared under its own constraint, so the pool is reported once.
+                if attribute.inherited or any(
+                    self._declaration_changed(previous_schema=previous_schema, kind=sharing_kind, attribute=attribute)
+                    for previous_schema in previous_schemas
+                ):
+                    continue
+                declarations.extend(self._declaring(kind=sharing_kind, attribute=attribute))
+        return declarations
+
     @staticmethod
     def _declaring(kind: str, attribute: AttributeSchema) -> list[DeclaringAttribute]:
         parameters = attribute.parameters
@@ -367,6 +391,15 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                 entries=parameters.allocation_scope,
             )
         ]
+
+    @staticmethod
+    def _declaration_changed(previous_schema: SchemaBranch, kind: str, attribute: AttributeSchema) -> bool:
+        if not isinstance(attribute.parameters, NumberPoolParameters) or not previous_schema.has(name=kind):
+            return False
+        previous = previous_schema.get(name=kind, duplicate=False).get_attribute_or_none(name=attribute.name)
+        if previous is None or not isinstance(previous.parameters, NumberPoolParameters):
+            return False
+        return previous.parameters.allocation_scope != attribute.parameters.allocation_scope
 
     def _kinds_sharing_fields(self, kind_schema: MainSchemaTypes) -> set[str]:
         # A pool on a generic reaches the fields of its implementing kinds, and an inherited field is changed on the

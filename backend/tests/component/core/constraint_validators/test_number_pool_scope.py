@@ -270,6 +270,22 @@ class TestNumberPoolScopeSchemaChange:
     ) -> None:
         assert await self._violations(db=db, branch=default_branch_scope_class, change=case.change) == []
 
+    async def test_renaming_a_scope_element_reaches_the_checker_under_its_new_name(
+        self, db: InfrahubDatabase, default_branch_scope_class: Branch, scoped_pools: dict[str, CoreNumberPool]
+    ) -> None:
+        branch_schema = registry.schema.get_schema_branch(name=default_branch_scope_class.name)
+
+        _, result = evaluate_candidate_schemas(
+            branch_schema=branch_schema, schemas_to_evaluate=[_site_renamed(branch_schema.duplicate())]
+        )
+
+        # Constraints on other fields cannot reach a scope, so only the renamed field's are pinned.
+        assert [
+            (constraint.constraint_name, constraint.path.field_name)
+            for constraint in result.constraints
+            if constraint.path.field_name in {"site", "location"}
+        ] == [("relationship.name.update", "location")]
+
 
 async def test_a_pool_whose_stored_scope_cannot_be_read_only_refuses_the_fields_it_names(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
