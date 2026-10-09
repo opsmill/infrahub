@@ -56,19 +56,28 @@ export function RangesField({ limits }: RangesFieldProps) {
   const formState = useFormState({ control, name: NUMBER_POOL_RANGES_FIELD });
   const [isRemovalPending, setIsRemovalPending] = useState(false);
 
-  function revalidate(changedField?: RangeFieldName) {
+  function revalidate(changed?: { index: number; key: RangeKey }) {
     const current = getValues(NUMBER_POOL_RANGES_FIELD);
     const rowErrors = validateRangeRows(current);
     const fieldNames = current.flatMap((_, index) =>
       RANGE_KEYS.map((key) => ({
         key,
         name: `${NUMBER_POOL_RANGES_FIELD}.${index}.${key}` as const,
-      })).filter(
-        ({ key, name }) =>
-          name === changedField ||
+      })).filter(({ key, name }) => {
+        const isChanged = changed?.index === index && changed.key === key;
+        // The end is checked against the start, so changing one bound re-checks the other once the user has left it.
+        const isOtherBoundLeft =
+          changed?.index === index &&
+          changed.key !== "weight" &&
+          key !== "weight" &&
+          getFieldState(name).isTouched;
+        return (
+          isChanged ||
+          isOtherBoundLeft ||
           getFieldState(name).invalid ||
           (key !== "weight" && !!rowErrors[index]?.row)
-      )
+        );
+      })
     );
     trigger(fieldNames.map(({ name }) => name));
   }
@@ -128,10 +137,10 @@ export function RangesField({ limits }: RangesFieldProps) {
                     {...register(name, {
                       validate: (_value, values) =>
                         getRangeError(values[NUMBER_POOL_RANGES_FIELD], index, key),
-                      onBlur: () => revalidate(name),
+                      onBlur: () => revalidate({ index, key }),
                       onChange: () => {
                         if (formState.isSubmitted || getFieldState(name).isTouched)
-                          revalidate(name);
+                          revalidate({ index, key });
                       },
                     })}
                   />

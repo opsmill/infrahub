@@ -110,6 +110,20 @@ describe("RangesField", () => {
     await expect.element(component.getByText("Must not be lower than start")).toBeVisible();
   });
 
+  test("shows an error on the row after raising the start above an end already left", async () => {
+    // GIVEN
+    const component = await renderRanges([{ start: "100", end: "", weight: "" }]);
+    await component.getByRole("textbox", { name: "End" }).fill("199");
+    await userEvent.tab();
+    await component.getByRole("textbox", { name: "Start" }).fill("300");
+
+    // WHEN
+    await userEvent.tab();
+
+    // THEN
+    await expect.element(component.getByText("Must not be lower than start")).toBeVisible();
+  });
+
   test("does not show an error on a field the user has not left yet", async () => {
     // GIVEN
     const component = await renderRanges([{ start: "", end: "", weight: "" }]);
