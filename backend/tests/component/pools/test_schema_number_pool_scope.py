@@ -14,6 +14,7 @@ from infrahub.core.protocols import CoreNumberPool as CoreNumberPoolProtocol
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.exceptions import ValidationError
 from infrahub.pools.number_pool_repository import NumberPoolRepository
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
@@ -155,6 +156,41 @@ async def test_declared_scope_on_another_branch_stores_the_default_branch_ids_an
     assert pool.allocation_scope.value == [
         {"id": _saved_field_id(kind=SCOPED_DEVICE.kind, name="site"), "name": "site"}
     ]
+
+
+async def test_declared_scope_on_a_branch_differing_from_the_existing_pool_is_not_attached(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    await load_schema(db=db, schema=SCOPED_POOL_SCHEMA, update_db=True)
+    branch = await create_branch(db=db, branch_name="other-scope")
+    main_device = copy.deepcopy(SCOPED_DEVICE)
+    main_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["role"]))
+    await _load_and_provision(db=db, schema=_schema(device=main_device))
+    branch_device = copy.deepcopy(SCOPED_DEVICE)
+    branch_device.attributes.append(_pooled_attribute(name="vlan_index", scope=["site"]))
+
+    await _load_and_provision(db=db, schema=_schema(device=branch_device), branch_name=branch.name)
+
+    pool = await _schema_pool(db=db, kind=SCOPED_DEVICE.kind, attribute="vlan_index")
+    assert pool.allocation_scope.value == [
+        {"id": _saved_field_id(kind=SCOPED_DEVICE.kind, name="role"), "name": "role"}
+    ]
+    branch_attribute = registry.schema.get(name=SCOPED_DEVICE.kind, branch=branch.name, duplicate=False).get_attribute(
+        name="vlan_index"
+    )
+    assert isinstance(branch_attribute.parameters, NumberPoolParameters)
+    assert branch_attribute.parameters.number_pool_id is None
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema, range_store_factory=NumberPoolRepository)
+    with pytest.raises(
+        ValidationError,
+        match=rf"^ScopeDevice\.vlan_index: allocation_scope can't be changed after the pool is created; the pool"
+        rf" ScopeDevice\.vlan_index \[{pool.id}\] is scoped by \['role'\]$",
+    ):
+        await upserter.upsert_number_pool(
+            schema_node=registry.schema.get(name=SCOPED_DEVICE.kind, branch=branch.name, duplicate=False),
+            attribute=branch_attribute,
+            branch_name=branch.name,
+        )
 
 
 @pytest.mark.xfail(
