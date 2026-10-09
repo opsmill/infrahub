@@ -11,6 +11,8 @@ Branches can be deleted in two ways:
 - **Manually** via the branch detail view or any Infrahub interface (CLI, GraphQL).
 - **Automatically after merge** when `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx).
 
+You cannot delete a branch while it is being merged; wait for the merge to finish. A branch whose merge failed (`MERGE_FAILED`) cannot be deleted until an administrator recovers the merge; see [Recovering the failed merge](./merge.mdx#recovering-the-failed-merge).
+
 ## Automatic branch cleanup after merge
 
 Infrahub can automatically delete a branch after it is successfully merged, keeping your branch list tidy without manual cleanup.

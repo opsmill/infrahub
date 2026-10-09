@@ -284,8 +284,19 @@ the bulk merge (`core/diff/query/bulk_merge.py`) touches only `branch_support = 
 attribute never appears in a branch diff or a proposed change, and can never produce a merge
 conflict. That is why nobody has ever had to resolve a conflict on `sync_status`.
 
-`sync_status` still never diffs or conflicts, but it is no longer invisible on a proposed change:
-the repository validator fails the pipeline when the source branch recorded `error-import`.
+`sync_status` still never diffs or conflicts, but it is no longer invisible to a merge. One rule,
+`git/sync_status.py::classify_branch_import`, decides whether a repository's objects on a branch are
+usable: `in-sync` or an inherited value passes, `error-import` is a failed import, and `syncing` or
+`unknown` is an import with no completed result. An inactive repository always passes. Three places
+apply the rule:
+
+- the repository validator fails the proposed change pipeline;
+- the proposed change `merge` action is reported unavailable, with the refusal as its reason;
+- the branch merge orchestrator, through `MergeStartGate` (`core/merge/start_gate.py`), raises
+  `MergeRepositoryImportError`. This covers `BranchMerge`, the SDK and proposed change merges. It checks
+  twice: before the merge write blocker is set, so a refused merge never blocks the import writes it waits
+  for, and again under the blocker, before the merge start is recorded, to catch an import that started
+  or failed in between. A refusal leaves the branch OPEN with nothing to roll back.
 
 Reading a LOCAL value on a branch does not tell you whether the branch wrote it. Branches are
 isolated, so a branch that never imported a repository reads the value its base branch held at

@@ -2,7 +2,7 @@ import asyncio
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, assert_never
 
 from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
@@ -119,7 +119,7 @@ from .sync import (
     import_branch,
     raise_if_branches_failed,
 )
-from .sync_status import RepositoryBranchSyncStatusReader
+from .sync_status import BranchImportVerdict, RepositoryBranchSyncStatusReader, classify_branch_import
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
@@ -158,29 +158,37 @@ class ImportStatusOutcome:
 
 
 def evaluate_import_status(
-    *, sync_status: str | None, internal_status: str, repository_name: str, branch_name: str
+    *,
+    sync_status: RepositorySyncStatus | None,
+    internal_status: RepositoryInternalStatus,
+    repository_name: str,
+    branch_name: str,
 ) -> ImportStatusOutcome:
     """Decide whether the objects of a repository are usable on a branch.
 
     `sync_status` is the status written on the branch itself, or None when the branch only inherits one.
-    A repository that is inactive on the branch passes, so disabling it clears an earlier import failure.
     """
-    if (
-        internal_status == RepositoryInternalStatus.INACTIVE.value
-        or sync_status != RepositorySyncStatus.ERROR_IMPORT.value
-    ):
-        return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+    match classify_branch_import(sync_status=sync_status, internal_status=internal_status):
+        case BranchImportVerdict.USABLE:
+            return ImportStatusOutcome(conclusion=ValidatorConclusion.SUCCESS, severity=Severity.INFO, message="")
+        case BranchImportVerdict.FAILED:
+            message = (
+                f"The last import of the objects from repository '{repository_name}' on branch '{branch_name}' "
+                f"failed, so the objects registered for this repository do not match the content of the branch. "
+                f"Merging would apply the rest of the branch without them. Review the latest 'Import objects' task "
+                f"for this repository, resolve the cause and run the checks again."
+            )
+        case BranchImportVerdict.INCOMPLETE:
+            message = (
+                f"No completed import of the objects from repository '{repository_name}' is recorded on branch "
+                f"'{branch_name}', so the objects registered for this repository may not match the content of the "
+                f"branch. Wait for the import to complete, or run 'Reimport current commit' for this repository on "
+                f"the branch if it does not, then run the checks again."
+            )
+        case _ as unreachable:
+            assert_never(unreachable)
 
-    return ImportStatusOutcome(
-        conclusion=ValidatorConclusion.FAILURE,
-        severity=Severity.CRITICAL,
-        message=(
-            f"The last import of the objects from repository '{repository_name}' on branch '{branch_name}' failed, "
-            f"so the objects registered for this repository do not match the content of the branch. Merging would "
-            f"apply the rest of the branch without them. Review the latest 'Import objects' task for this "
-            f"repository, resolve the cause and run the checks again."
-        ),
-    )
+    return ImportStatusOutcome(conclusion=ValidatorConclusion.FAILURE, severity=Severity.CRITICAL, message=message)
 
 
 @flow(
@@ -1625,7 +1633,7 @@ async def run_check_repository_import_status(model: CheckRepositoryImportStatus)
 
     outcome = evaluate_import_status(
         sync_status=sync_status,
-        internal_status=model.repository_internal_status,
+        internal_status=RepositoryInternalStatus(model.repository_internal_status),
         repository_name=model.repository_name,
         branch_name=model.source_branch,
     )

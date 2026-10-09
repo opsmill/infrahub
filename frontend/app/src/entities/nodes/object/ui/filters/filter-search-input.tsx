@@ -10,25 +10,39 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
   schema?: ModelSchema;
+  /**
+   * The filter this box reads and writes, for a surface whose request narrows on one named field
+   * rather than on any field.
+   */
+  filterName?: string;
 }
 
-export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {
+export const FilterSearchInput = ({
+  schema,
+  className,
+  filterName = SEARCH_ANY_FILTER,
+  ...props
+}: FilterSearchInputProps) => {
   const [filters, setFilters] = useFilters();
-  const [search, setSearch] = useSearch();
+  const [search, setSearch] = useSearch(filterName);
   const [prevSearch, setPrevSearch] = useState(search);
   const [inputValue, setInputValue] = useState(search ?? "");
   const debouncedInputValue = useDebounce(inputValue, 300);
 
   const removeSearchFilter = () => {
-    setFilters(filters.filter((f) => f.name !== SEARCH_ANY_FILTER));
+    setFilters(filters.filter((f) => f.name !== filterName));
   };
 
   // Update URL when debounced value changes
   useEffect(() => {
-    if (debouncedInputValue === search) return;
+    // Skips a value replaced by a URL change during the delay (ex: quick back then forward).
+    if (debouncedInputValue !== inputValue) return;
 
-    if (debouncedInputValue) {
-      setSearch(debouncedInputValue);
+    const nextSearch = debouncedInputValue.trim();
+    if (nextSearch === search) return;
+
+    if (nextSearch) {
+      setSearch(nextSearch);
     } else {
       removeSearchFilter();
     }
@@ -37,7 +51,8 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
   // Sync input when URL changes (ex: browser back/forward)
   if (search !== prevSearch && inputValue === debouncedInputValue) {
     setPrevSearch(search);
-    setInputValue(search);
+    // Keeps a space the user just typed. Otherwise, search would remove it because it's trimmed.
+    if (inputValue.trim() !== search) setInputValue(search);
   }
   return (
     <SearchInput

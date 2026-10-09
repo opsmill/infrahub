@@ -1,7 +1,9 @@
-import { createParser, parseAsArrayOf, useQueryState } from "nuqs";
+import { createParser, parseAsArrayOf, parseAsInteger, useQueryState } from "nuqs";
 
-import { QSP } from "@/shared/config/qsp";
-
+import {
+  SCOPELESS_PAGE_KEY,
+  useFilterScope,
+} from "@/entities/nodes/filters/ui/filter-scope-context";
 import type { Sort } from "@/entities/nodes/sort/domain/model/sort";
 import { getSchemaDefaultSort } from "@/entities/nodes/sort/domain/rules/get-schema-default-sort";
 import { getValidSorts } from "@/entities/nodes/sort/domain/rules/get-valid-sorts";
@@ -25,16 +27,22 @@ type UseSort = (schema: ModelSchema) => {
 };
 
 export const useSort: UseSort = (schema) => {
+  const { sortKey, pageKey } = useFilterScope();
   const [sortInQsp, setSortInQsp] = useQueryState(
-    QSP.SORT,
+    sortKey,
     parseAsArrayOf(sortParser).withOptions({ history: "push" })
   );
+  const [, setPage] = useQueryState(pageKey ?? SCOPELESS_PAGE_KEY, parseAsInteger);
 
   const validSort = getValidSorts(sortInQsp ?? [], schema);
 
   const customSort = validSort.length > 0 ? validSort : null;
-  const setCustomSort = (next: Sort[] | null) =>
+  const setCustomSort = (next: Sort[] | null) => {
     setSortInQsp(next && next.length > 0 ? next : null);
+
+    // The page was chosen against the old order, so its window says nothing about the new one.
+    if (pageKey) setPage(null);
+  };
   const defaultSort = getSchemaDefaultSort(schema);
   const appliedSort = customSort ?? defaultSort ?? [];
 

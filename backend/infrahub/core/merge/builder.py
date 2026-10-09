@@ -16,6 +16,7 @@ from infrahub.core.validators.constraint_merge import build_constraint_info_merg
 from infrahub.core.validators.determiner import build_constraint_validator_determiner
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.git.sync_status import RepositoryBranchSyncStatusReader
 from infrahub.workers.dependencies import get_cache, get_event_service, get_workflow
 
 from .constraints import MergeConstraintValidator
@@ -23,9 +24,11 @@ from .graph_merger import GraphMerger
 from .orchestrator import BranchMergeOrchestrator
 from .post_merge import PostMergeDispatcher
 from .python_target_sources import build_python_target_resolver
+from .repository_import_guard import RepositoryImportGuard
 from .repository_merge_dispatcher import RepositoryMergeDispatcher
 from .rollback_handler import MergeRollbackHandler
 from .schema_analyzer import MergeSchemaAnalyzer
+from .start_gate import MergeStartGate
 from .write_blocker import MergeWriteBlocker
 
 if TYPE_CHECKING:
@@ -33,6 +36,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+
+def build_repository_import_guard(*, db: InfrahubDatabase) -> RepositoryImportGuard:
+    return RepositoryImportGuard(status_reader=RepositoryBranchSyncStatusReader(db=db))
 
 
 async def build_branch_merge_orchestrator(
@@ -129,6 +136,9 @@ async def build_branch_merge_orchestrator(
         rollback_handler=rollback_handler,
         post_merge_dispatcher=post_merge_dispatcher,
         merge_write_blocker=merge_write_blocker,
+        merge_start_gate=MergeStartGate(
+            merge_write_blocker=merge_write_blocker, repository_import_guard=build_repository_import_guard(db=db)
+        ),
         ipam_diff_parser=ipam_diff_parser,
         diff_repository=diff_repository,
         diff_serializer=diff_summary_serializer,

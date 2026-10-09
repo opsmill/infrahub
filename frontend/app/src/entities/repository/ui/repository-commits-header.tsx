@@ -1,11 +1,11 @@
 import { TriangleAlertIcon } from "lucide-react";
 import type React from "react";
 
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
 import { Col, Row } from "@/shared/components/container";
 import { DateDisplay } from "@/shared/components/display/date-display";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import type { RepositoryCommitLog } from "@/entities/repository/domain/model/repository";
 import { repositoriesQueryKeys } from "@/entities/repository/ui/queries/repository.query-keys";
 import {
@@ -72,10 +72,12 @@ function RepositoryCommitsRefreshButton({ repositoryId }: RepositoryCommitsRefre
   return (
     <RefreshButton
       className="rounded-md border-border-strong"
-      queryKey={repositoriesQueryKeys.repository({
-        repositoryId,
-        branchName: currentBranch.name,
-      })}
+      queryKeys={[
+        repositoriesQueryKeys.repository({
+          repositoryId,
+          branchName: currentBranch.name,
+        }),
+      ]}
     />
   );
 }

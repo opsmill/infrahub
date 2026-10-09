@@ -1,14 +1,14 @@
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
-import { Row, type RowProps } from "@/shared/components/container";
+import { RefreshButton } from "@/shared/components/buttons/refresh-button";
+import { HeaderContainer } from "@/shared/components/layout/header-container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/domain/rules/get-node-label";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/metadata/node-metadata-popover";
 import { DetailsButtons } from "@/entities/nodes/object/ui/object-details/action-buttons/details-buttons";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
-import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
@@ -42,7 +42,7 @@ export function ObjectDetailsHeader({
       <CopyToClipboardButton data={getNodeLabel(objectData)} />
       <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
 
-      <RefreshButton className="ml-auto" />
+      <RefreshButton className="ml-auto" queryKeys={[objectQueryKeys.all]} />
 
       <DetailsButtons
         schema={objectSchema}
@@ -56,15 +56,5 @@ export function ObjectDetailsHeader({
         permission={permission}
       />
     </HeaderContainer>
-  );
-}
-
-export function HeaderContainer({ className, ...props }: RowProps) {
-  return (
-    <Row
-      className={classNames("w-full p-2 pb-1.5 pl-3", className)}
-      data-testid="object-header"
-      {...props}
-    />
   );
 }

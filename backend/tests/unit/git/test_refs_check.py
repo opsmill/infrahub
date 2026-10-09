@@ -340,7 +340,7 @@ def build_repository_data(
     *,
     location: str | None = "https://example.com/repo.git",
     branch_info: dict[str, RepositoryBranchInfo],
-    branches: dict[str, str],
+    branches: dict[str, str | None],
 ) -> RepositoryData:
     # model_construct: the declared repository union validates against protocol classes a unit
     # test has no way to build. Nothing here reads that field, so any in-memory Node stands in.

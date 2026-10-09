@@ -2,7 +2,7 @@
 title: Merge a branch
 ---
 
-Once changes are complete, they merge back into the parent branch through a controlled process — almost always via a [Proposed Change](../proposed-changes/overview.mdx). This ensures that all modifications are validated and conflicts are resolved before integration.
+When the changes on a branch are complete, you merge them into the default branch through a [Proposed Change](../proposed-changes/overview.mdx), where the checks run and reviewers approve the change before the merge. You can also merge a branch directly, with **Merge** on the branch details page or the `BranchMerge` mutation. A direct merge runs the same conflict and constraint checks and skips the Proposed Change pipeline.
 
 The merge process creates a permanent record in the commit history that documents what changed and why.
 
@@ -10,14 +10,24 @@ The merge process creates a permanent record in the commit history that document
 
 Infrahub implements a **"latest-value wins"** merge strategy that optimizes for clarity and efficiency. During a merge, only the most recent value for each changed attribute transfers to the destination branch. The complete change history within the branch doesn't carry over — instead, the final state becomes a single change at the merge point.
 
-This approach provides several benefits:
+When a merge starts, Infrahub blocks writes to the branch and to the default branch, then takes the global graph lock. It refreshes the branch's diff and checks conflicts and constraints again against the current default branch, because another branch may have merged after the Proposed Change ran its checks. Infrahub stops the merge if it finds any of these:
 
-- **Maintains immutability** of the main branch by creating a clean, atomic change
-- **Simplifies conflict resolution** by focusing only on the final state rather than intermediate changes
-- **Provides clear merge points** in history that are straightforward to trace and understand
-- **Reduces storage overhead** by not duplicating the entire change history of the branch
+- A conflict with no resolution selected
+- A delete-versus-modify conflict, which no choice of side can clear
+- A constraint violation, such as a duplicate value in a unique attribute
 
-This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
+A merge is not one database transaction. It either completes or is rolled back. If the merge is interrupted, for example because the worker running it stops, Infrahub marks the branch `MERGE_FAILED` until an administrator runs `infrahub recover merge`; see [When a merge fails](#when-a-merge-fails).
+
+## Before the merge starts: repository imports
+
+Infrahub refuses to merge a branch when the sync status that a Git repository recorded on that branch shows that its last import failed or has not completed. The check applies to every merge, whether you merge a Proposed Change, run the `BranchMerge` GraphQL mutation or call `branch.merge` in the Python SDK. Infrahub reads the sync status that each repository that is not inactive recorded on the source branch:
+
+- **Import Error**: the last import of the repository on the branch failed. Push a fix to Git, run **Reimport current commit** for the repository on that branch, or set the repository to inactive on the branch, then merge again.
+- **Syncing** or **Unknown**: no completed import is recorded on the branch. Wait for the import to complete, then merge again. If the status does not change, run **Reimport current commit** for the repository on that branch.
+
+A repository that never imported on the branch shows the status that the default branch had when the branch was created. That status does not block the merge. Inactive repositories are not checked.
+
+A refused merge writes nothing. The branch stays open, the default branch is not modified, and the error message names each repository that blocks the merge.
 
 ## During the merge
 
@@ -27,9 +37,24 @@ While a merge is running, Infrahub temporarily blocks writes to keep the data co
 - **The default branch** (the merge target) rejects modifications until the merge finishes, then becomes writable again.
 - **All other branches** remain fully writable.
 - Creating a new branch, or deleting a branch that is not involved in the merge, is always allowed.
-- Starting another merge or rebase is rejected while a merge is in progress.
+- Starting another merge or rebase is rejected while a merge is in progress. The error that `BranchRebase` returns depends on where you send it. Sent to `/graphql`, as the web interface sends it, `BranchRebase` fails with `MERGE_IN_PROGRESS`. Sent to the endpoint of a branch that is not part of the merge, it fails with the code `UNDEFINED_ERROR` and the message `Cannot rebase a branch while a merge is in progress.`, so automation that posts there has to match the message.
 
-A blocked write fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` The GraphQL error carries the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in its `extensions`, along with the branch being written and the branch being merged:
+```mermaid
+flowchart LR
+  MB["Merge of branch A running"] --> MAIN["Write to the default branch
+blocked, 423, retry shortly"]
+  MB --> SRC["Write to branch A
+blocked, 423, read-only"]
+  MB --> OTH["Write to branch B
+allowed"]
+  MB --> RB["Rebase or merge
+of any branch
+refused"]
+  MB --> BC["Create a branch
+allowed"]
+```
+
+A blocked write on the default branch fails with the message `A merge is currently in progress; writes are temporarily blocked. Please retry shortly.` A blocked write on the branch being merged fails with `Branch '<name>' is being merged and is read-only. No modifications are allowed.` Both GraphQL errors include the structured code `MERGE_IN_PROGRESS` (HTTP status 423) in their `extensions`, along with the branch being written and the branch being merged:
 
 ```json
 {

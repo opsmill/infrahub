@@ -32,6 +32,10 @@ interface DataTableBaseProps<T> extends React.HTMLAttributes<HTMLDivElement> {
   isLoading?: boolean;
   renderEmpty?: () => React.ReactNode;
   gridTemplateColumns?: (columnCount: number) => string;
+  skeletonRowCount?: number;
+  skeletonShowSelection?: boolean;
+  // Requires every rendered header and cell to carry `role="columnheader"` / `role="cell"`.
+  semanticTable?: boolean;
 }
 
 interface NodeDataTableProps<T extends NodeCore> extends DataTableBaseProps<T> {
@@ -107,6 +111,9 @@ function DataTableGrid<T>({
   enableRowSelection,
   getRowId,
   gridTemplateColumns = defaultGridTemplateColumns,
+  skeletonRowCount,
+  skeletonShowSelection,
+  semanticTable = false,
   ...props
 }: DataTableGridProps<T>) {
   const { isAuthenticated } = useAuth();
@@ -141,21 +148,44 @@ function DataTableGrid<T>({
 
   const selectedRows = table.getSelectedRowModel().flatRows.map((row) => row.original);
 
+  // An ARIA table groups its cells into rows, while a plain grid needs them as direct children.
+  const wrapAsRow = (cells: React.ReactNode) =>
+    semanticTable ? (
+      // biome-ignore lint/a11y/useFocusableInteractive: rows are focusable only inside a grid or treegrid; this is a static table, so they stay out of the tab order.
+      <div className="contents" role="row">
+        {cells}
+      </div>
+    ) : (
+      cells
+    );
+
+  const headerCells = allHeaders.map((header) => {
+    return flexRender(header.column.columnDef.header, {
+      ...header.getContext(),
+      key: header.id,
+    });
+  });
+
   // `min-w-max` stops the grid from being squeezed into its scroll container.
   // Without it the tracks compress until columns are unreadably narrow instead of
   // keeping their width and letting the table scroll horizontally.
   return (
-    <div className="grid min-w-max content-start" style={style} {...props}>
-      {allHeaders.map((header) => {
-        return flexRender(header.column.columnDef.header, {
-          ...header.getContext(),
-          key: header.id,
-        });
-      })}
+    <div
+      role={semanticTable ? "table" : undefined}
+      className="grid min-w-max content-start"
+      style={style}
+      {...props}
+    >
+      {wrapAsRow(headerCells)}
 
       {allRows.map((row) => {
         return (
-          <div key={row.id} className="group contents" data-testid="data-table-row">
+          <div
+            key={row.id}
+            role={semanticTable ? "row" : undefined}
+            className="group contents"
+            data-testid="data-table-row"
+          >
             {row.getVisibleCells().map((cell) => {
               return flexRender(cell.column.columnDef.cell, {
                 ...cell.getContext(),
@@ -166,29 +196,50 @@ function DataTableGrid<T>({
         );
       })}
 
-      {!isLoading && allRows.length === 0 && renderEmpty?.()}
+      {!isLoading &&
+        allRows.length === 0 &&
+        renderEmpty &&
+        wrapAsRow(
+          semanticTable ? (
+            <div aria-colspan={allHeaders.length} className="contents" role="cell">
+              {renderEmpty()}
+            </div>
+          ) : (
+            renderEmpty()
+          )
+        )}
 
-      {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
+      {isLoading && (
+        <ObjectTableSkeleton
+          headerCount={allHeaders.length}
+          rowCount={skeletonRowCount}
+          semantic={semanticTable}
+          showSelection={skeletonShowSelection}
+        />
+      )}
 
       {count !== undefined &&
-        Array.from({ length: allHeaders.length }).map((_, index) => (
-          <div
-            key={index}
-            // The whole footer bar has to outrank the sticky body cells, not just its
-            // first cell, or the last row's sticky action menu punches through it.
-            className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
-          >
-            {index === 0 && (
-              <>
-                <Row className="gap-1">
-                  <span className="font-medium">{formatNumberDisplay(count)}</span>
-                  <span className="text-foreground-muted">count{count > 1 && "s"}</span>
-                </Row>
-                <StickyCellShadow side="left" />
-              </>
-            )}
-          </div>
-        ))}
+        wrapAsRow(
+          Array.from({ length: allHeaders.length }).map((_, index) => (
+            <div
+              key={index}
+              // The whole footer bar has to outrank the sticky body cells, not just its
+              // first cell, or the last row's sticky action menu punches through it.
+              className={classNames(cellsStyle, cellFooterStyle, "z-10", index === 0 && "left-0")}
+              role={semanticTable ? "cell" : undefined}
+            >
+              {index === 0 && (
+                <>
+                  <Row className="gap-1">
+                    <span className="font-medium">{formatNumberDisplay(count)}</span>
+                    <span className="text-foreground-muted">count{count > 1 && "s"}</span>
+                  </Row>
+                  <StickyCellShadow side="left" />
+                </>
+              )}
+            </div>
+          ))
+        )}
 
       {selectedRows.length > 0 && renderSelectionToolbar?.(selectedRows, table.resetRowSelection)}
     </div>
