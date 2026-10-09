@@ -15,6 +15,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.database import within_transaction
 from infrahub.pools.models import NumberPoolLockDefinition
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
+from infrahub.pools.scope import AllocationScopeResolver
 
 if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
@@ -112,7 +113,8 @@ class SchemaNumberPoolUpserter:
 
         Check for an existing pool.
         If found, retrieves the pool using registry.manager.get_one().
-        If not found, creates a new pool carrying the ranges the attribute declares.
+        If not found, creates a new pool carrying the ranges and the allocation scope the attribute declares, the scope
+        resolved against the schema of the default branch.
 
         Args:
             schema_node: The schema containing the NumberPool attribute.
@@ -127,6 +129,7 @@ class SchemaNumberPoolUpserter:
 
         Raises:
             ValueError: If the attribute is not a NumberPool type.
+            ValidationError: If the declared scope does not resolve on the schema of the default branch.
 
         """
         if not isinstance(attribute.parameters, NumberPoolParameters):
@@ -168,6 +171,12 @@ class SchemaNumberPoolUpserter:
                 self._cache[pool.id] = pool
                 return pool
 
+            # A scope references the elements of the default branch, whichever branch declares the pool.
+            default_branch_schema = self.schema_manager.get_schema_branch(name=registry.default_branch)
+            allocation_scope = AllocationScopeResolver(schema_branch=default_branch_schema).resolve(
+                kind=pool_kind, entries=attribute.parameters.allocation_scope
+            )
+
             # One transaction, so a pool missing a declared range is never handed back as existing on the next lookup.
             number_pool_id = str(uuid4())
             async with within_transaction(db=self.db) as dbt:
@@ -179,6 +188,7 @@ class SchemaNumberPoolUpserter:
                     node=pool_kind,
                     node_attribute=attribute.name,
                     pool_type=NumberPoolType.SCHEMA.value,
+                    allocation_scope=None if allocation_scope.is_empty else allocation_scope.to_stored(),
                 )
                 await number_pool.save(db=dbt, at=at, user_id=user_id)
 
