@@ -31,6 +31,8 @@ frontend/app/src/shared/api/graphql/generated/types.ts
   s_4e40d3932a4480::t_d8d5f86c7a5d7a 23853,23875-23881,24991
 schema/schema.graphql
   s_4e40d3932a4480::t_3ba59d3002ad32 11798,11822-11829
+frontend/app/src/shared/api/graphql/generated/graphql-cache.d.ts
+  s_4e40d3932a4480::t_efd6d6b80e1c6d 29,32,35,38,41,44,47,50,53,56,59,62,65,68,71,74,77,80,83,86,89,92,95,98,101,104,107,110,113,116,119,122,125,128,131,134,137,140,143,146,149,152,155,158,161,164,167,170,173,176,179,182,185,188,191,194,197,200,203,206,209,212,215,218,221
 ---
 {
   "schema_version": "authorship/3.0.0",
