@@ -160,11 +160,11 @@ Parts A and B of the plan.
       `hold_seq` through `without_window` and goes to the next lease; and the clean-up, where an
       item that a new lease takes from an expired lease moves to it, and an expired lease that
       names no item any more is gone after the same call.
-- [X] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
+- [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
       table of [research.md](research.md) R5, except its `replay-conflict` row, which the service sets
       from `ReplayResult`. Write `backend/infrahub/git/writeback/credentials.py`:
       `scrub_credentials`, which the classifier and the model both apply.
-- [X] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
+- [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
       `enqueue`, `fetch` and `release` stages included, a fetch and a push past their time limit, a
       missing repository and a refused certificate at the import, and a message that never carries
       raw stderr. Write
@@ -179,7 +179,7 @@ Parts A and B of the plan.
       forbids a rename of its stored member names, and
       `backend/infrahub/core/merge/regeneration_dispatcher.py` imports it from there, per
       [data-model.md](data-model.md), "New fallback reasons". `HeldWiden` in T014 needs it.
-- [X] T019 Declare the nine attributes on `CoreRepository` in
+- [ ] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
       `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
@@ -187,15 +187,15 @@ Parts A and B of the plan.
       `delivery_held_regeneration` names the release after a push or an abandonment.
       [contracts/repository_delivery.graphql](contracts/repository_delivery.graphql) repeats the nine
       descriptions word for word. **Gate: schema sign-off.**
-- [X] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
+- [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
       `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**). Gate open:
       the `python_sdk` pointer names a commit of the open SDK PR opsmill/infrahub-sdk-python#1400. It
       moves to `infrahub-develop` after that PR merges.
-- [X] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
+- [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
-- [X] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
+- [ ] T022 Write `WritebackIntentStore` in `backend/infrahub/git/writeback/store.py`: every method
       of contracts section 2, on the default branch, through `NodeManager` and
       `node.save(fields=...)`, under the `repository-delivery` lock with its time to live and
       bounded acquire. `settle_delivery` bounds its lease by the snapshot. Every lease names its
@@ -206,9 +206,9 @@ Parts A and B of the plan.
       `delivery_status` only. Each transition's transaction first takes the Neo4j write lock of the
       repository node (`RepositoryWriteLockQuery` in `queries.py`), so the state stays right after
       the state lock expires.
-- [X] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
+- [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
-- [X] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
+- [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
@@ -217,21 +217,21 @@ Parts A and B of the plan.
       hold the state lock, each through its own lock registry, keeping both entries. A stored JSON
       value, status or cause that the store cannot read raises `DeliveryStateUnreadableError`: a unit
       test in `backend/tests/unit/git/writeback/test_store.py` checks the parse.
-- [X] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
+- [ ] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
       never returns: a case of `backend/tests/component/git/writeback/test_store.py`. The diff, merge
       and branch read of a branch-local attribute of `CoreRepository` are not tested again here:
       `backend/tests/component/git/test_repository_rewrite_branch_safety.py` and the core diff and
       merge tests cover them.
-- [X] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
+- [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
       `CoreRepositoryUpsertInput`. No test checks that a store transition emits no node mutation
       event: the store has no event service, and only the GraphQL mutations emit node events, which
       `backend/tests/component/graphql/test_mutation_update.py` tests.
-- [X] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
-- [X] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
+- [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
+- [ ] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
-- [X] T110 Guard the repository conversion in
+- [ ] T110 Guard the repository conversion in
       `backend/infrahub/core/convert_object_type/repository_conversion.py`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 10: refuse a
       mapping that sets a read-only attribute of the target kind, and refuse the conversion of a
