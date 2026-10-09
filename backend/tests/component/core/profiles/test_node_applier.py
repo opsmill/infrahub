@@ -49,6 +49,47 @@ async def _validate_node_profile_attrs(
             assert updated_source is None
 
 
+async def test_apply_attribute_values_sets_a_default_attribute_in_memory_only(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
+    low_priority = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await low_priority.new(
+        db=db,
+        profile_name="low-priority",
+        color="green",
+        is_false=True,
+        description="from-profile",
+        profile_priority=2000,
+    )
+    await low_priority.save(db=db)
+    high_priority = await Node.init(db=db, branch=branch, schema=profile_schema)
+    await high_priority.new(db=db, profile_name="high-priority", color="blue", profile_priority=1000)
+    await high_priority.save(db=db)
+    node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+    await node.new(
+        db=db,
+        name="not-saved",
+        level=4,
+        description="set-by-user",
+        profiles=[{"hfid": ["low-priority"]}, high_priority],
+    )
+
+    updated_names = await NodeProfilesApplier(db=db, branch=branch).apply_attribute_values(
+        node=node, attr_names=["color", "is_false", "description"]
+    )
+
+    assert updated_names == ["color", "is_false"]
+    assert node.color.value == "blue"
+    assert node.color.is_from_profile is True
+    assert node.color.source_id == high_priority.id
+    assert node.is_false.value is True
+    assert node.is_false.source_id == low_priority.id
+    assert node.description.value == "set-by-user"
+    assert node.description.is_from_profile is False
+    assert await NodeManager.get_many(db=db, branch=branch, ids=[node.id]) == {}
+
+
 async def test_get_many_with_profile(
     db: InfrahubDatabase,
     criticality_schema: NodeSchema,
