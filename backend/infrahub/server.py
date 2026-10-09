@@ -36,6 +36,7 @@ from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
+from infrahub.license.middleware import LicenseStatusHeaderMiddleware
 from infrahub.license.reporting import log_license_state
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
@@ -238,6 +239,7 @@ app.add_middleware(
         "/api/schema",
     ),
 )
+app.add_middleware(LicenseStatusHeaderMiddleware, license_service_provider=get_license_service)
 
 # The gate: load is shed before any downstream work runs, and only CORS is registered after (so
 # outside) it. Its controller and kill-switch are built during startup and read from app.state per
