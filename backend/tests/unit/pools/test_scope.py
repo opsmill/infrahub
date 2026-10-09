@@ -8,8 +8,14 @@ from typing import Any
 
 import pytest
 
+from infrahub.core.attribute import BaseAttribute, Integer, ListAttribute, String
+from infrahub.core.branch import Branch
+from infrahub.core.constants import RelationshipDirection
+from infrahub.core.node import Node
+from infrahub.core.relationship.model import Relationship, RelationshipManager
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import ValidationError
 from infrahub.pools.scope import (
     AllocationScope,
@@ -500,3 +506,159 @@ def test_refresh_names_follows_a_generic_element_renamed_on_an_implementing_kind
     refreshed = resolver.refresh_names(scope=scope, kind=POD_HOLDER_KIND)
 
     assert refreshed.element_names == ("location",)
+
+
+SITE_A_ID = "6a1f0c2e-0000-4000-8000-00000000000a"
+SITE_PATH = DivisionElementPath(name="scope_device__site", relationship_direction=RelationshipDirection.BIDIR)
+HOLDER_SITE_PATH = DivisionElementPath(name="scope_holder__site", relationship_direction=RelationshipDirection.BIDIR)
+ATTRIBUTE_CLASSES: dict[str, type[BaseAttribute]] = {"Text": String, "Number": Integer, "List": ListAttribute}
+
+
+@dataclass
+class UnreadPeers:
+    """Marks a relationship whose stored peers the node has not read."""
+
+
+def _node(
+    schema_branch: SchemaBranch,
+    kind: str = DEVICE_KIND,
+    attributes: dict[str, Any] | None = None,
+    peers: dict[str, str | list[str] | UnreadPeers | None] | None = None,
+) -> Node:
+    """Return a node of the kind holding the given attribute values and peers in memory only.
+
+    A peer is given by its id or default filter value as text, or by its human-friendly id as a list.
+    """
+    branch = Branch(name=schema_branch.name)
+    at = Timestamp()
+    node_schema = schema_branch.get_node(name=kind, duplicate=False)
+    node = Node(schema=node_schema, branch=branch, at=at)
+    node.id = "node-id"
+    for name, value in (attributes or {}).items():
+        attribute_schema = node_schema.get_attribute(name=name)
+        attribute_class = ATTRIBUTE_CLASSES[attribute_schema.kind]
+        setattr(
+            node,
+            name,
+            attribute_class(name=name, schema=attribute_schema, branch=branch, at=at, node=node, data=value),
+        )
+    for name, peer in (peers or {}).items():
+        relationship_schema = node_schema.get_relationship(name=name)
+        manager: RelationshipManager[Node] = RelationshipManager(
+            schema=relationship_schema, branch=branch, at=at, node=node
+        )
+        if not isinstance(peer, UnreadPeers):
+            manager.has_fetched_relationships = True
+        if isinstance(peer, str | list):
+            related = Relationship(schema=relationship_schema, branch=branch, source_kind=kind, at=at, node=node)
+            if isinstance(peer, str):
+                related.set_peer(value=peer)
+            else:
+                related.peer_hfid = peer
+            manager._relationships.append(related)
+        setattr(node, name, manager)
+    return node
+
+
+def _from_node(node: Node, scope: AllocationScope, schema_branch: SchemaBranch) -> Division:
+    element_fields = AllocationScopeResolver(schema_branch=schema_branch).element_fields(
+        kind=node.get_kind(), scope=scope, pool="vlan-per-site", attribute=TRACKED_ATTRIBUTE
+    )
+    return Division.from_node(
+        node=node, element_fields=element_fields, pool="vlan-per-site", attribute=TRACKED_ATTRIBUTE
+    )
+
+
+class TestDivisionFromNode:
+    def test_values_are_read_in_scope_order(self, saved_schema_branch: SchemaBranch) -> None:
+        node = _node(schema_branch=saved_schema_branch, attributes={"role": "leaf"}, peers={"site": SITE_A_ID})
+        scope = AllocationScope(elements=(_element(name="role"), _element(name="site")))
+
+        assert _from_node(node=node, scope=scope, schema_branch=saved_schema_branch) == Division(
+            elements=(
+                DivisionElementPath(name="role"),
+                SITE_PATH,
+            ),
+            values=("leaf", SITE_A_ID),
+        )
+
+    def test_a_number_attribute_keeps_its_stored_type(self, saved_schema_branch: SchemaBranch) -> None:
+        node = _node(schema_branch=saved_schema_branch, attributes={UNIQUE_ATTRIBUTE: 42})
+        scope = AllocationScope(elements=(_element(name=UNIQUE_ATTRIBUTE),))
+
+        assert _from_node(node=node, scope=scope, schema_branch=saved_schema_branch) == Division(
+            elements=(DivisionElementPath(name=UNIQUE_ATTRIBUTE),), values=(42,)
+        )
+
+    def test_an_element_the_node_holds_nothing_for_reads_as_an_empty_string(
+        self, saved_schema_branch: SchemaBranch
+    ) -> None:
+        node = _node(schema_branch=saved_schema_branch, attributes={"role": None}, peers={"site": None})
+        scope = AllocationScope(elements=(_element(name="site"), _element(name="role")))
+
+        assert _from_node(node=node, scope=scope, schema_branch=saved_schema_branch) == Division(
+            elements=(
+                SITE_PATH,
+                DivisionElementPath(name="role"),
+            ),
+            values=("", ""),
+        )
+
+    def test_an_element_inherited_from_the_generic_is_read_on_the_implementing_kind(
+        self, saved_schema_branch: SchemaBranch
+    ) -> None:
+        node = _node(schema_branch=saved_schema_branch, kind=POD_HOLDER_KIND, peers={"site": SITE_A_ID})
+        scope = AllocationScope(elements=(_element(name="site", kind=HOLDER_KIND),))
+
+        assert _from_node(node=node, scope=scope, schema_branch=saved_schema_branch) == Division(
+            elements=(HOLDER_SITE_PATH,),
+            values=(SITE_A_ID,),
+        )
+
+    def test_an_element_renamed_on_the_branch_is_read_under_its_new_name(self) -> None:
+        schema = _saved_scoped_schema()
+        device = next(node for node in schema.nodes if node.kind == DEVICE_KIND)
+        device.get_attribute(name="role").name = "function"
+        branch_schema = _schema_branch(name="branch1", schema=schema)
+        node = _node(schema_branch=branch_schema, attributes={"function": "spine"})
+        scope = AllocationScope(elements=(_element(name="role"),))
+
+        assert _from_node(node=node, scope=scope, schema_branch=branch_schema) == Division(
+            elements=(DivisionElementPath(name="function"),), values=("spine",)
+        )
+
+    def test_an_element_the_branch_does_not_define_is_refused(self, saved_schema_branch: SchemaBranch) -> None:
+        node = _node(schema_branch=saved_schema_branch, attributes={"role": "leaf"})
+        scope = AllocationScope(elements=(_element(name="role"), ScopeElement(id=UNKNOWN_FIELD_ID, name="zone")))
+        expected = (
+            f'the scope element "zone" of pool vlan-per-site does not exist on {DEVICE_KIND} on branch main;'
+            f" rebase the branch to get it at {TRACKED_ATTRIBUTE}.from_pool"
+        )
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            _from_node(node=node, scope=scope, schema_branch=saved_schema_branch)
+
+    def test_an_attribute_holding_more_than_one_value_is_refused(self, saved_schema_branch: SchemaBranch) -> None:
+        node = _node(schema_branch=saved_schema_branch, attributes={"tags": ["red", "blue"]})
+        scope = AllocationScope(elements=(_element(name="tags"),))
+        expected = (
+            f'the scope element "tags" of pool vlan-per-site does not hold a single scalar value on {DEVICE_KIND}'
+            f" on branch main at {TRACKED_ATTRIBUTE}.from_pool"
+        )
+
+        with pytest.raises(ValidationError, match=f"^{re.escape(expected)}$"):
+            _from_node(node=node, scope=scope, schema_branch=saved_schema_branch)
+
+    @pytest.mark.parametrize(
+        "peer",
+        [UnreadPeers(), ["site-a"], "site-a"],
+        ids=["peers-not-read", "peer-by-hfid", "peer-by-default-filter"],
+    )
+    def test_a_peer_not_held_as_a_node_id_is_not_guessed(
+        self, saved_schema_branch: SchemaBranch, peer: str | list[str] | UnreadPeers
+    ) -> None:
+        node = _node(schema_branch=saved_schema_branch, peers={"site": peer})
+        scope = AllocationScope(elements=(_element(name="site"),))
+
+        with pytest.raises(LookupError):
+            _from_node(node=node, scope=scope, schema_branch=saved_schema_branch)

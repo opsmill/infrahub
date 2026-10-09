@@ -9,12 +9,14 @@ from infrahub.core.schema import TemplateSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import InitializationError, NodeNotFoundError, PoolExhaustedError, ValidationError
 from infrahub.pools.intent import FromPoolIntent, FromPoolIntentResolver, FromPoolRequest, Sent
+from infrahub.pools.scope import AllocationScope
 
 if TYPE_CHECKING:
     from infrahub.core.attribute import BaseAttribute
     from infrahub.core.node import Node
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.schema import NonGenericSchemaTypes
+    from infrahub.pools.scope import Division
 
 
 class NumberPoolFinder(Protocol):
@@ -29,6 +31,20 @@ class NumberPoolFinder(Protocol):
 
     async def get_tracking_pool_id(self, attribute_id: str) -> str | None:
         """Return the id of the number pool currently tracking the attribute, or None when none does."""
+        ...
+
+
+class DivisionReader(Protocol):
+    async def read(self, node: Node, scope: AllocationScope, pool_name: str, attribute_name: str) -> Division:
+        """Return the division the node holds for the scope of a pool.
+
+        Raises:
+            ValidationError: When the schema of the node's branch does not define a scope element on the node's
+                kind, or when an attribute element does not hold a single scalar value.
+            NodeNotFoundError: When a relationship element names, by a human-friendly id or a default filter value,
+                a peer that does not exist.
+
+        """
         ...
 
 
@@ -63,6 +79,8 @@ class AttributePoolApplierInterface(Protocol):
 
         Raises:
             ValidationError: When the attribute cannot draw from or be tracked by the pool it names.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
 
         """
         ...
@@ -99,10 +117,12 @@ class AttributePoolApplier:
         pool_finder: NumberPoolFinder,
         number_allocator: AttributeNumberAllocator,
         intent_resolver: FromPoolIntentResolver,
+        division_reader: DivisionReader,
     ) -> None:
         self.pool_finder = pool_finder
         self.number_allocator = number_allocator
         self.intent_resolver = intent_resolver
+        self.division_reader = division_reader
 
     async def apply(
         self,
@@ -113,13 +133,17 @@ class AttributePoolApplier:
     ) -> None:
         """Apply what a write naming a number pool on the attribute asks for.
 
-        Without `allocate` only the pool is resolved, so the lock names can be computed.
+        Without `allocate` nothing is drawn: the pool is resolved and the key of the writer's division of a scoped
+        pool is stored beside the pool id, so the lock names can be computed.
 
         Raises:
             ValidationError: When `from_pool` is used on a template, when no pool ID is provided, when the
                 pool is not provisioned or cannot be found, when the pool cannot be used for the attribute,
-                when the pool is exhausted, or when `from_pool` alone names a pool over a non-default
-                number the attribute holds and that pool does not already track it.
+                when the pool or the writer's division is exhausted, when `from_pool` alone names a pool over
+                a non-default number the attribute holds and that pool does not already track it, or when the
+                schema of the node's branch does not define an element of the pool's scope.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
 
         """
         schema = node.get_schema()
@@ -152,7 +176,12 @@ class AttributePoolApplier:
             # Get the pool's ID in case it was referenced by name.
             attribute.from_pool = {"id": pool.get_id()}
 
-        if not allocate or attribute.from_pool_presence is PayloadPresence.ABSENT:
+        if not allocate:
+            if pool is not None:
+                await self._store_division_key(node=node, pool=pool, attribute=attribute)
+            return
+
+        if attribute.from_pool_presence is PayloadPresence.ABSENT:
             return
 
         if pool is not None:
@@ -200,19 +229,34 @@ class AttributePoolApplier:
                 assert_never(intent)
 
     async def _apply_schema_number_pool(
-        self, node: Node, attribute: BaseAttribute, pool_id: str | None, allocate: bool, user_id: str
+        self,
+        node: Node,
+        attribute: BaseAttribute,
+        pool_id: str | None,
+        allocate: bool,
+        user_id: str,
     ) -> None:
         """Allocate from the pool a NumberPool attribute is declared with, whatever the payload holds.
+
+        Without `allocate` nothing is allocated: the pool id is stored on the attribute, followed by the key of the
+        writer's division when the pool is declared with a scope.
 
         Raises:
             ValidationError: When the pool is not provisioned, cannot be found or used for the attribute,
                 or is exhausted.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
 
         """
         if not pool_id:
             raise ValidationError({f"{attribute.name}": f"The pool for {attribute.name} has not been provisioned yet."})
         attribute.from_pool = {"id": pool_id}
         if not allocate:
+            # Only a pool declared with a scope is read, so a preview of an unscoped pool costs no query.
+            if self._declares_scope(attribute=attribute):
+                pool = await self._find_pool(attribute=attribute, pool_ref=pool_id)
+                attribute.from_pool = {"id": pool.get_id()}
+                await self._store_division_key(node=node, pool=pool, attribute=attribute)
             return
 
         pool = await self._find_pool(attribute=attribute, pool_ref=pool_id)
@@ -231,6 +275,8 @@ class AttributePoolApplier:
 
         Raises:
             ValidationError: When the pool is exhausted.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
 
         """
         attribute.pool_provenance = PoolRecordProvenance.ALLOCATED
@@ -241,6 +287,41 @@ class AttributePoolApplier:
         except PoolExhaustedError as exc:
             raise ValidationError({f"{attribute.name}.from_pool": exc.message}) from exc
         attribute.is_default = False
+
+    async def _read_division(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute) -> Division | None:
+        """Return the writer's division when the pool has a scope, None otherwise.
+
+        Raises:
+            ValidationError: When the stored scope is malformed, or when the schema of the node's branch does not
+                define one of its elements.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
+
+        """
+        scope = AllocationScope.from_stored(value=pool.allocation_scope.value, pool=pool.get_id())
+        if scope.is_empty:
+            return None
+        return await self.division_reader.read(
+            node=node, scope=scope, pool_name=pool.name.value, attribute_name=attribute.name
+        )
+
+    async def _store_division_key(self, node: Node, pool: CoreNumberPool, attribute: BaseAttribute) -> None:
+        """Store the key of the writer's division beside the pool id, so the lock names can divide the pool.
+
+        Raises:
+            ValidationError: When the stored scope is malformed, or when the schema of the node's branch does not
+                define one of its elements.
+            NodeNotFoundError: When a relationship element of the pool's scope names, by a human-friendly id or a
+                default filter value, a peer that does not exist.
+
+        """
+        division = await self._read_division(node=node, pool=pool, attribute=attribute)
+        if division is not None:
+            attribute.from_pool = {"id": pool.get_id(), "division": division.key}
+
+    def _declares_scope(self, attribute: BaseAttribute) -> bool:
+        parameters = attribute.schema.parameters
+        return isinstance(parameters, NumberPoolParameters) and bool(parameters.allocation_scope)
 
     async def _find_pool(self, attribute: BaseAttribute, pool_ref: str) -> CoreNumberPool:
         """Return the pool `pool_ref` names.

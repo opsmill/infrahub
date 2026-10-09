@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, override
 
-from infrahub.core.attribute import String
+from infrahub.core.attribute import ListAttributeOptional, String
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID
 from infrahub.core.node import Node
@@ -38,6 +38,10 @@ class InMemoryNumberPool(CoreNumberPool):
         self.node = String(name="node", schema=node_schema, branch=branch, at=at, node=owner, data=node)
         self.node_attribute = String(
             name="node_attribute", schema=node_attribute_schema, branch=branch, at=at, node=owner, data=node_attribute
+        )
+        scope_schema = AttributeSchema(name="allocation_scope", kind="List", optional=True)
+        self.allocation_scope = ListAttributeOptional(
+            name="allocation_scope", schema=scope_schema, branch=branch, at=at, node=owner, data=None
         )
 
     def get_id(self) -> str:

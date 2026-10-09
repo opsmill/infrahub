@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import GenericSchema
 from infrahub.pools.attribute_pool_applier_factory import build_attribute_pool_applier
+from infrahub.profiles.node_applier import NodeProfilesApplier
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -27,7 +28,12 @@ async def apply_payload_for_lock_names(db: InfrahubDatabase, node: Node, data: d
     """
     node.mark_relationships_as_fetched()
 
-    await node.from_graphql(db=db, data=data, pool_applier=build_attribute_pool_applier(db=db), process_pools=False)
+    pool_applier = build_attribute_pool_applier(
+        profiles_applier=NodeProfilesApplier(db=db, branch=node.get_branch()),
+        db=db,
+        schema_branch=db.schema.get_schema_branch(name=node.get_branch().name),
+    )
+    await node.from_graphql(db=db, data=data, pool_applier=pool_applier, process_pools=False)
 
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
