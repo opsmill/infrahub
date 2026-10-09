@@ -195,11 +195,10 @@ apart, because they drive different outcomes:
   moves a worktree by a hard reset onto the remote head it classified, so a worktree behind the
   remote fast-forwards and the commit imported is the one classified. A worktree that does not lead
   to the remote head, because the remote was rewritten or rewound, loses the commits it held, and
-  that includes a worktree ahead of the remote. Such a commit is rare: `InfrahubRepository.merge`
-  pushes before it records the commit, and resets the destination worktree when either step fails.
-  Only a failed reset, which `merge` logs as needing manual reconciliation, leaves an unpushed merge
-  commit there, and the sync reset then discards it
-  ([Git Integration](git-integration.md#the-writeback-direction-has-no-reconciliation)). A worktree
+  that includes a worktree ahead of the remote. Such a commit is rare: a delivery pushes before it
+  records the commit, and resets the destination worktree when either step fails. Only a failed
+  reset, which the delivery logs, leaves an unpushed merge commit there, and the sync reset then
+  discards it ([Git Integration](git-integration.md#the-push-queue)). A worktree
   already on the remote head stays there. When the graph records another commit, the sync resets the
   worktree onto the same commit, which records it, and imports the branch again: a pull would move
   nothing, so it would record nothing.

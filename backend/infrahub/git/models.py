@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from infrahub.context import InfrahubContext  # noqa: TC001
 from infrahub.core.node import Node  # noqa: TC001
 from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
+from infrahub.git.writeback.models import PendingMerge  # noqa: TC001
 from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
 
 
@@ -160,6 +161,12 @@ class GitRepositoryMerge(BaseModel):
     )
     source_ref: str | None = Field(
         default=None, description="The ref the graph records for the source branch of a read-only repository"
+    )
+    pending_merge: PendingMerge | None = Field(
+        default=None, description="The queue entry of the merge, when its content waits for the push to the remote."
+    )
+    pending_merge_enqueued: bool = Field(
+        default=False, description="The branch merge wrote the queue entry, so the merge flow does not write it again."
     )
 
 

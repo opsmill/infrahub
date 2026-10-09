@@ -25,6 +25,7 @@ backend/infrahub/git/writeback/          # NEW
 ├── queries.py       # RepositoryWriteLockQuery, the write lock of a repository node
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
 ├── runs.py          # delivery_run_tags, PrefectDeliveryRunQuery, the only orchestrator query here
+├── content.py       # read_pending_merges, read_pending_merge_of_commit: whether a merge carries content
 ├── service.py       # RepositoryWritebackService
 ├── abandoner.py     # WritebackAbandoner
 ├── recovery.py      # DeliveryRecoveryCheck
@@ -172,6 +173,7 @@ classifier never stores a credential either.
 class DeliveryGitPort(Protocol):
     async def fetch(self) -> None: ...
     def remote_head(self, *, git_branch: str) -> str | None: ...
+    async def recorded_commit(self) -> str | None: ...
     def is_ancestor(self, *, ancestor: str, descendant: str) -> bool: ...
     def replay(self, *, base: str, commits: Sequence[str]) -> ReplayResult: ...
     async def push(self) -> None: ...
@@ -206,6 +208,12 @@ resets to it. `replay` resets to `base` first, and on a conflict aborts the merg
 says that the clone on this worker has no `origin`, with no path. The service classifies it as
 `unclassified` (`research.md` R5).
 
+`recorded_commit` returns R, the commit that Infrahub records for the repository on the destination
+branch. It reads Infrahub through the API, not Git, so it runs no Git command. A stored value that is
+not a full commit id counts as no recorded commit (`git/commit_id.py::readable_commit`): the API
+stores any text, and Git can compare only a full commit id. The service reads it under the
+repository lock, and a failed read has the stage `record`, so it is retried.
+
 `is_ancestor` returns `True` for equal commits. It returns `False` when the answer is no, or when
 either object is missing locally. It raises `RepositoryError` for every other failure, which the
 service classifies as `unclassified`. The same contract binds IFC-3210's gateway.
@@ -228,7 +236,8 @@ runtime image it stops no direct Git call (open point of R6):
   reset is logged like any failed reset.
 
 `import_at` has no bound (`research.md` R6). `delete_remote_branch` treats a branch that is already
-gone as deleted. The service logs a failed deletion at warning level and never fails the attempt
+gone as deleted, and then also sends `RefreshGitRepositoryBranchDeleted`. It recognises a branch
+already gone on the Git error that the typed error of the deletion keeps as its cause. The service logs a failed deletion at warning level and never fails the attempt
 for it. `notify_branch_deleted` only sends `RefreshGitRepositoryBranchDeleted`.
 
 `RepositoryDeliveryGitAdapter` implements `DeliveryGitPort` over one `InfrahubRepository` and its
@@ -304,7 +313,20 @@ disagree.
 - It never raises for a classified failure that is final: it records it and returns `failed` or
   `unreplayable`. A retryable failure on a non-final attempt is recorded with `retry_due_at`, then
   re-raised as `RetryableDeliveryError`, so the task's `retry_condition_fn` retries it.
-- A `DeliveryStateUnavailableError` is re-raised as retryable.
+- From the push on, the remote can hold the merges, so a failed call of the delivery state has the
+  stage `record`: it is recorded, retried on a non-final attempt, and returns `failed` on the final
+  one. Any other failure outside a step, a `DeliveryStateUnavailableError` included, is re-raised as
+  `RetryableDeliveryError` on a non-final attempt, and returns `failed` on the final one with nothing
+  recorded, so the run ends `Failed` instead of crashing. When the record of a failure fails too, it
+  is logged at warning level and the attempt still ends as that failure says.
+- R comes from `git.recorded_commit()`. When R is `None`, because the repository never recorded a
+  commit or records a value that is not a full commit id, no recorded commit can be discarded: the
+  destination check is skipped, an import is owed, and the resets go to H. Reading such a value as
+  rewritten would block the queue for good, because while a push is pending only a delivery records
+  a new commit. A full R that this clone does not hold makes `is_ancestor` return `False`, so it is
+  read as rewritten, the safe reading of `research.md` R4.
+- A remote with no destination branch has no H to build on, so the attempt is refused with the cause
+  `destination-rewritten` and pushes nothing.
 
 Two flows run the task. The recovery check does not call it itself: it submits the retry flow.
 
@@ -568,9 +590,9 @@ Contract:
 | `git/repository.py::InfrahubRepository.collect_pending_imports` | In the active loop, skips the default branch, and every new or updated remote branch that a pending entry names, while the state is not `none`. Takes the state port as a parameter from the sync flow. `_collect_staging_imports` is unchanged. |
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
-| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Only when `pending_merge_enqueued` is `False`, the default path passes an entry to the task: `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). The task enqueues it as step 0 of each attempt, with `widen=True` (section 5): the save that appends the entry also holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When every attempt fails to enqueue, the run ends `Failed` with an error-level log line. When the flag is `True`, it passes `entry=None` and only delivers (`research.md` R3). |
+| `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Only when `pending_merge_enqueued` is `False`, the default path passes an entry to the task: `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). The task enqueues it as step 0 of each attempt, with `widen=True` (section 5): the save that appends the entry also holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When every attempt fails to enqueue, the run ends `Failed` with an error-level log line. When the flag is `True`, it passes `entry=None` and only delivers (`research.md` R3). When `pending_merge` is `None` and the source branch is already deleted, the flow builds the entry from `model.source_commit`, which the dispatcher reads at the dispatch, and builds none when the default branch records that commit. With no `source_commit` either, the run logs at error level what to merge by hand on the remote and ends `Failed`. |
 | `git/tasks.py::git_branch_delete` | Calls `request_branch_deletion`. When it returns true: skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
-| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Takes two new required constructor parameters: the state port, `state: DeliveryStatePort`, through which it enqueues, and a `sleep` callable, as the barrier does, so a unit test records the delays and returns at once. `core/merge/builder.py` and every test that builds the dispatcher pass both. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
+| `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Retries any error, because the graph merge is done and no failure may stop the merge flows. Takes two new required constructor parameters: `state_for_session: Callable[[InfrahubDatabase], DeliveryStatePort]`, which builds the state port on a database session, and a `sleep` callable, as the barrier does, so a unit test records the delays and returns at once. The enqueues of all repositories run at the same time (`asyncio.gather`), because the branch merge holds the global merge lock meanwhile, so the worst wait is one retry chain. A session serves one coroutine at a time, so each try opens its own session and builds the state port on it. `core/merge/builder.py` and every test that builds the dispatcher pass both. When the content read fails, it submits the merge of each active repository with no entry, and the merge flow reads the content itself. The entry's `source_git_branch` is the Infrahub source branch name: `_get_mapped_remote_branch` changes only Infrahub's default branch, and a merge never comes from it. It queues no merge whose source branch is the remote branch that a delivery pushes to, and logs it: source and destination are then the same Git branch, so there is nothing to push, and the queue refuses such an entry. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
 | `workflows/constants.py::WorkflowTag` | Gains `REPOSITORY_DELIVERY = "repository-delivery"`, which renders as `infrahub.app/repository-delivery`. It marks a delivery run (`research.md` R20). |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
 | `core/merge/python_target_sources.py::GatheredPythonReadSets` | Keeps the repository id per attribute and exposes `owner_of`. |

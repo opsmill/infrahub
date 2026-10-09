@@ -153,6 +153,12 @@ class DeliveryGitPort(Protocol):
     def remote_head(self, *, git_branch: str) -> str | None:
         """Return the commit of the remote branch as last fetched, or None when the remote has no such branch."""
 
+    async def recorded_commit(self) -> str | None:
+        """Return the commit that Infrahub records for the repository on the destination branch, if it records one.
+
+        It reads Infrahub, not the remote, so it runs no Git command.
+        """
+
     def is_ancestor(self, *, ancestor: str, descendant: str) -> bool:
         """Return whether `ancestor` is `descendant` or one of its ancestors; a commit missing locally gives False.
 
