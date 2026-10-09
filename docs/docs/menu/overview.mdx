@@ -9,7 +9,7 @@ Infrahub lets you control the menu on the left side of the web interface.
 
 The menu has two sections. The bottom section is fixed — it lists navigation for built-in Infrahub features. The top section is user-controlled: organize your schema's node types in the order that makes sense for your use case, with custom groupings and icons.
 
-By default, nodes without a menu placement are grouped under **Other**.
+Without a menu file, Infrahub gives each node its own entry at the top level of the menu. To leave a node out of the menu, set `include_in_menu: false` on it. To put its entry under the entry of another node, set `menu_placement`, as described in [Nested menus](./nested-menus).
 
 ## Prerequisites
 
@@ -49,11 +49,11 @@ nodes:
     relationships:
       - name: devices
         kind: Generic
-        peer: NetworkDevice
+        peer: DcimDevice
         cardinality: many
         optional: true
   - name: Device
-    namespace: Network
+    namespace: Dcim
     attributes:
       - name: name
         kind: Text
@@ -69,9 +69,9 @@ nodes:
         kind: Component
         cardinality: many
         optional: true
-        peer: NetworkInterface
+        peer: DcimInterface
   - name: Interface
-    namespace: Network
+    namespace: Dcim
     attributes:
       - name: name
         kind: Text
@@ -81,7 +81,7 @@ nodes:
         kind: Parent
         optional: false
         cardinality: one
-        peer: NetworkDevice
+        peer: DcimDevice
 ```
 
 </details>
@@ -127,16 +127,16 @@ spec:
       icon: "mdi:domain"
       children:
         data:
-          - namespace: Network
+          - namespace: Dcim
             name: Device
             label: Devices
-            kind: NetworkDevice
+            kind: DcimDevice
             icon: "mdi:router"
 
-          - namespace: Network
+          - namespace: Dcim
             name: Interface
             label: Interface
-            kind: NetworkInterface
+            kind: DcimInterface
             icon: "mdi:ethernet"
 ```
 
@@ -178,6 +178,10 @@ See the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for de
 
   </TabItem>
 </Tabs>
+
+After you load the example menu file, the menu shows the **Location** and **Infrastructure** sections. Select **Location** to view its **Countries** and **Sites** entries:
+
+![Infrahub menu with the Location and Infrastructure sections, and the Location section open on its Countries and Sites entries](../media/guides/menu/custom-menu.png)
 
 ## Good practices
 
