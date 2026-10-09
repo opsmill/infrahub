@@ -1100,7 +1100,8 @@ def _describe_lost_merge(repo: InfrahubRepository, model: GitRepositoryMerge) ->
     """Say which merge the remote never receives, and how to push it by hand."""
     try:
         commit = repo.get_commit_value(branch_name=model.source_branch)
-    except ValueError:
+    except Exception:  # noqa: BLE001
+        # The commit only completes the message, so a clone that cannot answer must not hide the lost merge.
         commit = "unknown"
     return (
         f"The branch {model.source_branch} was deleted before its merge was queued, so repository "
