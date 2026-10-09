@@ -128,6 +128,21 @@ async def test_enqueue_appends_the_merge_and_sets_pending(subject: StoreUnderTes
     assert await subject.read() == expected
 
 
+async def test_enqueue_refuses_a_merge_from_the_default_branch_and_writes_nothing(subject: StoreUnderTest) -> None:
+    with pytest.raises(
+        ValueError,
+        match=(
+            rf"^Repository {re.escape(subject.repository_id)} cannot queue merge e1: its source branch main is the "
+            r"branch that the delivery pushes to$"
+        ),
+    ):
+        await subject.store.enqueue(
+            repository_id=subject.repository_id, entry=pending_merge("e1", source_git_branch="main"), widen=False
+        )
+
+    assert await subject.read() == _empty_intent(subject.repository_id)
+
+
 async def test_enqueue_with_widen_holds_a_full_regeneration_in_the_same_save(subject: StoreUnderTest) -> None:
     async with subject.expect_transition(saved={STATUS, QUEUE, HELD_REGENERATION, PROGRESS}):
         await subject.store.enqueue(repository_id=subject.repository_id, entry=pending_merge("e1"), widen=True)

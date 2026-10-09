@@ -79,6 +79,7 @@ class _LockedState:
 
     intent: WritebackIntent
     repository_name: str
+    default_git_branch: str
     now: datetime
 
 
@@ -121,7 +122,9 @@ class WritebackIntentStore:
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         def transition(state: _LockedState) -> tuple[WritebackIntent, WritebackIntent]:
-            appended = state.intent.with_entry(entry=entry, widen=widen, now=state.now)
+            appended = state.intent.with_entry(
+                entry=entry, widen=widen, destination_git_branch=state.default_git_branch, now=state.now
+            )
             if appended is None:
                 return state.intent, state.intent
             return appended, appended
@@ -273,7 +276,10 @@ class WritebackIntentStore:
             current = self._intent_of(node=node)
             updated, result = transition(
                 _LockedState(
-                    intent=current, repository_name=str(node.get_attribute(name="name").value), now=self.clock()
+                    intent=current,
+                    repository_name=str(node.get_attribute(name="name").value),
+                    default_git_branch=str(node.get_attribute(name="default_branch").value),
+                    now=self.clock(),
                 )
             )
             current_values = self._attribute_values(intent=current)

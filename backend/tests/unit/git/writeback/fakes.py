@@ -43,10 +43,16 @@ class InMemoryDeliveryState:
     `failures[<method name>]` is raised by the next call of that method, before it reads or writes anything.
     """
 
-    def __init__(self, *, clock: Clock, repository_names: Mapping[str, str]) -> None:
-        """Start every repository, given by its id and its name, with a delivery state that was never used."""
+    def __init__(self, *, clock: Clock, repository_names: Mapping[str, str], default_git_branch: str = "main") -> None:
+        """Start every repository, given by its id and its name, with a delivery state that was never used.
+
+        Args:
+            default_git_branch: The remote branch that every repository delivers to.
+
+        """
         self.clock = clock
         self.names = dict(repository_names)
+        self.default_git_branch = default_git_branch
         self.intents: dict[str, WritebackIntent] = {
             repository_id: WritebackIntent(
                 repository_id=repository_id,
@@ -77,7 +83,9 @@ class InMemoryDeliveryState:
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent:
         intent = self._enter(method="enqueue", repository_id=repository_id)
-        appended = intent.with_entry(entry=entry, widen=widen, now=self.clock())
+        appended = intent.with_entry(
+            entry=entry, widen=widen, destination_git_branch=self.default_git_branch, now=self.clock()
+        )
         if appended is None:
             return intent
         return self._save(intent=appended)
