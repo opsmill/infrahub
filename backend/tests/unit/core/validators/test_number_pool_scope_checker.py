@@ -864,6 +864,23 @@ DECLARATION_CASES = [
         expected=[],
         expected_ids_read=[],
     ),
+    DeclarationCase(
+        name="declaration-whose-pool-is-not-found-naming-no-element",
+        constraint_name=SCOPE_CONSTRAINT,
+        kind=DEVICE,
+        field_name="vlan_id",
+        path_type=SchemaPathType.ATTRIBUTE,
+        change=_declare_on_device(["site", "function"]),
+        expected=[
+            (
+                DEVICE_SCHEMA_POOL_ID,
+                'ScopeDevice.vlan_id: allocation_scope: "function" is not an attribute or a relationship of'
+                " ScopeDevice on branch main",
+            )
+        ],
+        expected_ids_read=[{DEVICE_SCHEMA_POOL_ID}],
+        pools=(HOLDER_SCHEMA_POOL, POD_HOLDER_SCHEMA_POOL),
+    ),
 ]
 
 

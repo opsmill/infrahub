@@ -7,13 +7,18 @@ from typing import TYPE_CHECKING, Protocol
 
 from infrahub.core.constants import InfrahubKind, PathType, RelationshipCardinality
 from infrahub.core.path import DataPath, GroupedDataPaths
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.validators.enum import ConstraintIdentifier
-from infrahub.core.validators.schema_branch.number_pool_scope_validator import DeclaredScopeComparator
+from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
+    DeclaredScopeComparator,
+    DeclaredScopeValidator,
+    scope_refusal_reason,
+)
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
-from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, AllocationScopeResolver, ScopeElement
+from infrahub.pools.scope import NON_SCALAR_ATTRIBUTE_KINDS, SCOPE_FIELD, AllocationScopeResolver, ScopeElement
 
 from ..interface import ConstraintCheckerInterface
 
@@ -276,6 +281,9 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         pools = {pool.id: pool for pool in read_pools.readable}
         unreadable_pools = {pool.id: pool for pool in read_pools.unreadable}
         comparator = DeclaredScopeComparator(schema_branch=request.schema_branch)
+        validator = DeclaredScopeValidator(
+            candidate=request.schema_branch, default_branch_schema=lambda: self._default_branch_schema(request=request)
+        )
 
         grouped_data_paths = GroupedDataPaths()
         for declaration in declarations:
@@ -288,7 +296,9 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
                     " cannot be checked against this pool"
                 )
             elif pool is None:
-                continue
+                # The load accepted the names it could not resolve as a possible rename, which only a stored scope
+                # can confirm, so a declaration without its pool is checked as a new one.
+                reason = self._new_declaration_refusal(validator=validator, declaration=declaration)
             else:
                 reason = comparator.refusal(kind=declaration.kind, entries=declaration.entries, stored=pool.scope)
             if reason is None:
@@ -312,6 +322,24 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         if request.schema_branch.name != request.branch.name:
             names.append(request.schema_branch.name)
         return [self.schema_source.get_schema_branch(name=name) for name in names]
+
+    def _default_branch_schema(self, request: SchemaConstraintValidatorRequest) -> SchemaBranch:
+        if request.branch.name == registry.default_branch:
+            return request.schema_branch
+        return self.schema_source.get_schema_branch(name=registry.default_branch)
+
+    @staticmethod
+    def _new_declaration_refusal(validator: DeclaredScopeValidator, declaration: DeclaringAttribute) -> str | None:
+        try:
+            validator.validate(
+                kind=declaration.kind,
+                tracked_attribute=declaration.attribute_name,
+                entries=declaration.entries,
+                pool_exists=False,
+            )
+        except ValidationError as exc:
+            return f"{SCOPE_FIELD}: {scope_refusal_reason(error=exc)}"
+        return None
 
     def _changed_declaration(
         self, request: SchemaConstraintValidatorRequest, field_name: str
