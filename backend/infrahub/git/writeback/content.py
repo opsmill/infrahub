@@ -7,13 +7,17 @@ from uuid import uuid4
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreRepository
 from infrahub.core.timestamp import Timestamp
+from infrahub.git.commit_id import readable_commit
 from infrahub.git.writeback.models import PendingMerge
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Collection
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+
+log = get_logger()
 
 
 async def read_pending_merges(
@@ -83,4 +87,16 @@ async def _read_commits(
         filters={"ids": list(repository_ids)},
         fields={"commit": None},
     )
-    return {repository.id: repository.commit.value for repository in repositories if repository.commit.value}
+    commits: dict[str, str] = {}
+    for repository in repositories:
+        value = repository.commit.value
+        commit = readable_commit(value)
+        if commit is not None:
+            commits[repository.id] = commit
+        elif value:
+            # The API stores any text as the commit, and one bad value must not stop the merge of other repositories.
+            log.warning(
+                f"Ignored the commit {value!r} of repository {repository.id} on branch {branch.name}, because it is "
+                "not a full commit id."
+            )
+    return commits

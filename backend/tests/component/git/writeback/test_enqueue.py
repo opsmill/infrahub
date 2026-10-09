@@ -382,6 +382,28 @@ async def test_a_failed_enqueue_of_one_repository_still_submits_the_merge_of_the
     assert (await store.read(repository_id=healthy.id)).queue.entries == (merges["healthy-repository"].pending_merge,)
 
 
+async def test_a_stored_value_that_is_not_a_commit_skips_only_its_own_repository(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    broken = await create_repository_node(db=db, branch=default_branch, name="broken-repository")
+    healthy = await create_repository_node(db=db, branch=default_branch, name="healthy-repository")
+    source_branch = await fork_source_branch(db=db)
+    await set_values(db=db, branch=source_branch, repository_id=broken.id, commit="not a commit")
+    await set_values(db=db, branch=source_branch, repository_id=healthy.id, commit=SOURCE_COMMIT)
+    store = build_store(db=db, default_branch=default_branch)
+
+    workflow = await dispatch_merge(
+        db=db, source_branch=source_branch, default_branch=default_branch, state=store, sleep=RecordingSleep()
+    )
+
+    [merge] = submitted_merges(workflow)
+    assert merge.repository_name == "healthy-repository"
+    assert merge.pending_merge is not None
+    assert merge.pending_merge.source_commit == SOURCE_COMMIT
+    assert (await store.read(repository_id=broken.id)).queue == DeliveryQueue()
+    assert (await store.read(repository_id=healthy.id)).queue.entries == (merge.pending_merge,)
+
+
 async def test_a_failed_read_of_the_content_still_submits_the_merge_flow_of_every_active_repository(
     db: InfrahubDatabase,
     default_branch: Branch,
