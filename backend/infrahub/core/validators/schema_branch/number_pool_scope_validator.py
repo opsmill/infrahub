@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Protocol, override
 
+from infrahub.core.registry import registry
+from infrahub.exceptions import InitializationError
 from infrahub.pools.scope import SCOPE_FIELD, AllocationScopeResolver, AllocationScopeValidator
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.exceptions import ValidationError
@@ -26,19 +30,70 @@ class _DeclaredScopeResolver(AllocationScopeResolver):
         )
 
 
+class SchemaBranchSource(Protocol):
+    def has_schema_branch(self, name: str) -> bool: ...
+
+    def get_schema_branch(self, name: str) -> SchemaBranch: ...
+
+
+def registered_schema_branch(schema_source: SchemaBranchSource, name: str, unloaded_message: str) -> SchemaBranch:
+    """Return the schema registered for the branch, without registering an empty one for a branch not loaded.
+
+    Raises:
+        InitializationError: When the schema of the branch is not loaded, with the message given.
+
+    """
+    if not schema_source.has_schema_branch(name=name):
+        raise InitializationError(unloaded_message)
+    return schema_source.get_schema_branch(name=name)
+
+
+def registered_default_branch_schema(
+    candidate: SchemaBranch, schema_source: SchemaBranchSource | None = None
+) -> SchemaBranch:
+    """Return the schema of the default branch, which is the candidate itself when the candidate is that branch.
+
+    Raises:
+        InitializationError: When the schema of the default branch is not loaded.
+
+    """
+    if candidate.name == registry.default_branch:
+        return candidate
+    return registered_schema_branch(
+        schema_source=schema_source or registry.schema,
+        name=registry.default_branch,
+        unloaded_message=f"The schema of the default branch {registry.default_branch} is not loaded; an allocation"
+        f" scope declared on branch {candidate.name} cannot be resolved",
+    )
+
+
 class DeclaredScopeValidator:
     """Checks the allocation scope a NumberPool attribute declares on a candidate schema."""
 
-    def __init__(self, candidate: SchemaBranch) -> None:
+    def __init__(self, candidate: SchemaBranch, default_branch_schema: Callable[[], SchemaBranch]) -> None:
         self.candidate = candidate
+        self.default_branch_schema = default_branch_schema
 
     def validate(self, kind: str, tracked_attribute: str, entries: list[str] | None) -> None:
         """Refuse a declaration whose elements cannot divide the pool over the kind's tracked attribute.
 
+        A declaration resolves against the schema of the default branch, and its elements must also divide the pool
+        on the candidate.
+
         Raises:
-            ValidationError: When an element cannot divide the pool, naming it with the reason alone.
+            ValidationError: When an element cannot divide the pool, naming it with the reason alone, or when the
+                schema of the default branch does not define the kind.
+            InitializationError: When the schema of the default branch is needed and it is not loaded.
 
         """
+        default_branch_schema = self.default_branch_schema()
+        AllocationScopeValidator(schema_branch=default_branch_schema).validate(
+            kind=kind,
+            tracked_attribute=tracked_attribute,
+            scope=_DeclaredScopeResolver(schema_branch=default_branch_schema).resolve(kind=kind, entries=entries),
+        )
+        if default_branch_schema is self.candidate:
+            return
         AllocationScopeValidator(schema_branch=self.candidate).validate(
             kind=kind,
             tracked_attribute=tracked_attribute,

@@ -6,10 +6,12 @@ from dataclasses import dataclass
 
 import pytest
 
+from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
+from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import InitializationError, ValidationError
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
     SCOPED_HOLDER,
@@ -137,3 +139,77 @@ def test_declared_scope_is_accepted(case: AcceptedDeclarationCase) -> None:
     schema_branch = _unvalidated_schema_branch(name="main", schema=case.schema)
 
     schema_branch.validate_attribute_parameters()
+
+
+def _register_default_branch_schema(monkeypatch: pytest.MonkeyPatch, schema: SchemaRoot | None) -> None:
+    schema_manager = SchemaManager()
+    if schema is not None:
+        schema_manager.set_schema_branch(
+            name=registry.default_branch, schema=_unvalidated_schema_branch(name="main", schema=schema)
+        )
+    monkeypatch.setattr(registry, "_schema", schema_manager)
+
+
+class TestDeclaredScopeOnABranch:
+    """On a branch, the declared names resolve against the schema of the default branch."""
+
+    @pytest.fixture
+    def default_branch_schema(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _register_default_branch_schema(monkeypatch=monkeypatch, schema=_schema())
+
+    @pytest.mark.usefixtures("default_branch_schema")
+    def test_element_only_on_the_branch_is_refused(self) -> None:
+        device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["zone"])
+        device.attributes.append(AttributeSchema(name="zone", kind="Text", optional=False))
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+        with pytest.raises(
+            ValidationError,
+            match="^"
+            + re.escape(
+                'ScopeDevice.vlan_id: allocation_scope: "zone" is not an attribute or a relationship of ScopeDevice'
+                " on branch main"
+            )
+            + "$",
+        ):
+            schema_branch.validate_attribute_parameters()
+
+    @pytest.mark.usefixtures("default_branch_schema")
+    def test_element_of_the_default_branch_is_accepted(self) -> None:
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_device_schema(scope=["site"]))
+
+        schema_branch.validate_attribute_parameters()
+
+    @pytest.mark.usefixtures("default_branch_schema")
+    def test_element_made_optional_by_the_same_load_is_refused(self) -> None:
+        device = _with_pooled_vlan_id(SCOPED_DEVICE, scope=["site"])
+        device.get_relationship(name="site").optional = True
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_schema(device=device))
+
+        with pytest.raises(
+            ValidationError,
+            match="^"
+            + re.escape(
+                'ScopeDevice.vlan_id: allocation_scope: "site" is optional; a scope element must be required on'
+                " ScopeDevice"
+            )
+            + "$",
+        ):
+            schema_branch.validate_attribute_parameters()
+
+    def test_new_declaration_without_the_schema_of_the_default_branch_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _register_default_branch_schema(monkeypatch=monkeypatch, schema=None)
+        schema_branch = _unvalidated_schema_branch(name="branch1", schema=_device_schema(scope=["site"]))
+
+        with pytest.raises(
+            InitializationError,
+            match="^"
+            + re.escape(
+                "The schema of the default branch main is not loaded; an allocation scope declared on branch branch1"
+                " cannot be resolved"
+            )
+            + "$",
+        ):
+            schema_branch.validate_attribute_parameters()

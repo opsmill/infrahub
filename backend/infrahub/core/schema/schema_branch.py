@@ -71,6 +71,7 @@ from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_
 )
 from infrahub.core.validators.schema_branch.number_pool_scope_validator import (
     DeclaredScopeValidator,
+    registered_default_branch_schema,
     scope_refusal_reason,
 )
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
@@ -1406,8 +1407,11 @@ class SchemaBranch:
     def _validate_number_pool_scope(self, kind_schema: NodeSchema | GenericSchema, attribute: AttributeSchema) -> None:
         if not isinstance(attribute.parameters, NumberPoolParameters) or not attribute.parameters.allocation_scope:
             return
+        validator = DeclaredScopeValidator(
+            candidate=self, default_branch_schema=lambda: registered_default_branch_schema(candidate=self)
+        )
         try:
-            DeclaredScopeValidator(candidate=self).validate(
+            validator.validate(
                 kind=kind_schema.kind, tracked_attribute=attribute.name, entries=attribute.parameters.allocation_scope
             )
         except ValidationError as exc:
