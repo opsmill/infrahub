@@ -1,0 +1,25 @@
+backend/infrahub/core/schema/definitions/core/resource_pool.py
+  s_891575f1533d49::t_b3efa38e055fda 231-232
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_891575f1533d49::t_f6adf8fc980817 41-42,114
+frontend/app/src/shared/api/graphql/generated/types.ts
+  s_891575f1533d49::t_cbf2a799769279 10934,11066,11257,11290
+schema/schema.graphql
+  s_891575f1533d49::t_b6eee93686647d 5072,5111,5237,5269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c565cd2719305ce4b44edbe9b754a14f293cd510",
+  "prompts": {},
+  "sessions": {
+    "s_891575f1533d49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0951a63-8f87-4d26-a3e9-1db2106c5ad8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Aaron McCarty <aaron@opsmill.com>"
+    }
+  }
+}
