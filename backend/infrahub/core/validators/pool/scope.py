@@ -277,6 +277,14 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
         read_pools = await self.pool_source.get_by_ids(ids={declaration.pool_id for declaration in declarations})
         pools = {pool.id: pool for pool in read_pools.readable}
         unreadable_pools = {pool.id: pool for pool in read_pools.unreadable}
+        renamed = request.constraint_name != ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value
+        renamed_elements = (
+            self._scope_elements(
+                request=request, schema_branches=self._previous_schemas(request=request), field_name=field_name
+            )
+            if renamed and read_pools.unreadable
+            else []
+        )
         comparator = DeclaredScopeComparator(schema_branch=request.schema_branch)
         validator = DeclaredScopeValidator(
             candidate=request.schema_branch, default_branch_schema=lambda: self._default_branch_schema(request=request)
@@ -287,7 +295,16 @@ class NumberPoolScopeChecker(ConstraintCheckerInterface):
             pool = pools.get(declaration.pool_id)
             reason: str | None
             if unreadable_pool := unreadable_pools.get(declaration.pool_id):
-                # A changed declaration cannot be compared with a stored scope that cannot be read.
+                # A rename is refused only when the unreadable scope may name the renamed field, while a changed
+                # declaration cannot be compared with it at all.
+                if renamed and not self._may_reference(
+                    stored_scope=unreadable_pool.stored_scope, elements=renamed_elements, field_name=field_name
+                ):
+                    log.warning(
+                        f"Not checking {request.schema_path.schema_kind}.{field_name} against"
+                        f" NumberPool={unreadable_pool.id}: {unreadable_pool.reason}"
+                    )
+                    continue
                 reason = (
                     f"{unreadable_pool.reason}; the change to {request.schema_path.schema_kind}.{field_name}"
                     " cannot be checked against this pool"
