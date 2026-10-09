@@ -21,6 +21,7 @@ import type { LabelProps } from "@/shared/components/ui/label";
 import { classNames } from "@/shared/utils/common";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { NUMBER_POOL_KIND } from "@/entities/resource-manager/domain/model/pool";
 
 export const InputUniqueTips = ({ className }: { className?: string }) => (
   <span className={classNames("text-foreground-muted text-xs italic leading-3", className)}>
@@ -96,7 +97,11 @@ const PoolSourceBadge = ({ source }: { source: PoolSource }) => {
     <Tooltip
       message={
         <div className="max-w-60">
-          <p>This value is allocated from the pool:</p>
+          <p>
+            {source.kind === NUMBER_POOL_KIND
+              ? "This number is recorded in the pool:"
+              : "This value is allocated from the pool:"}
+          </p>
           <Link
             to={getObjectDetailsUrl(source.kind, source.id)}
             className="inline-flex items-center gap-1 underline"
