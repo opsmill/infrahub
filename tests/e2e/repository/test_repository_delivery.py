@@ -185,6 +185,8 @@ class TestRepositoryDelivery:
         await admin_page.reload()
         await expect(admin_page.get_by_text("Nothing pending", exact=True)).to_be_visible()
         _git(refused_delivery.remote, "merge-base", "--is-ancestor", refused_delivery.branch_commit, "main")
+        repository = await infrahub_client.get(kind="CoreRepository", id=refused_delivery.repository_id)
+        assert repository.commit.value == _git(refused_delivery.remote, "rev-parse", "main")
 
     async def test_abandon_drops_the_merge_and_advises_a_reimport(
         self, admin_page: Page, infrahub_client: InfrahubClient, refused_delivery: RefusedDelivery
@@ -211,3 +213,4 @@ class TestRepositoryDelivery:
             admin_page.get_by_text("The default branch can hold repository objects that the recorded commit lacks.")
         ).to_be_visible()
         await expect(admin_page.get_by_role("button", name="Reimport current commit")).to_be_visible()
+        assert _git(refused_delivery.remote, "rev-parse", "main") == refused_delivery.trunk_commit
