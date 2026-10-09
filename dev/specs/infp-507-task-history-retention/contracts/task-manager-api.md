@@ -41,7 +41,7 @@ Request gains:
 | Field | Type | Default | Meaning |
 |---|---|---|---|
 | `include_total` | bool | `true` | Compute `total`; otherwise `total` is `null` (field added by PR #10379, kept under its name and default) |
-| `retention_seconds` | int | activity log retention of the task manager | Widest time window |
+| `retention_seconds` | int | Prefect's event retention, which the task manager sets from the activity log retention | Widest time window |
 
 Behaviour changes:
 
