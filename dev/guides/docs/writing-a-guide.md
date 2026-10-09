@@ -110,6 +110,12 @@ Include a verification section that shows:
 - Screenshots of expected results
 - Potential failure points and solutions
 
+A verification step must be able to fail on a broken setup. When the guide turns an input into an
+output, have the reader change the input first, then check the output reflects it — "click
+**Generate** and confirm the content changed" passes and fails for the wrong reasons unless something
+the feature reads changed before the click. A guide that sets up state checks something a broken
+setup would show differently.
+
 ### 6. Link to Related Resources
 
 - Link to related guides for alternative approaches
@@ -155,7 +161,7 @@ Before submitting your guide:
 - [ ] Prerequisites are clearly listed
 - [ ] Each step has a clear action verb
 - [ ] Steps follow a logical sequence
-- [ ] Verification steps are included
+- [ ] Verification steps are included, and each one would fail on a broken setup
 - [ ] No words like "easy", "simple", or "just"
 - [ ] Links to related topics/references are provided
 - [ ] Technical terms are defined on first use

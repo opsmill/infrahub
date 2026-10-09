@@ -54,6 +54,17 @@ Anything a user might bookmark, share, or refresh-and-resume (filters, current s
 
 The page component reads URL params and passes them down. Children should not read `searchParams` for state the page already owns. See `dev/guidelines/frontend/page-architecture.md` for the full state-ownership rules.
 
+## A failed refetch keeps the previous data — resolve one state, with `error` first
+
+TanStack Query retains the last successful `data` when a background refetch fails, so `data` and
+`error` are set at once. A component that derives display booleans from `data` alone then shows a
+stale verdict next to its own error treatment. Resolve a single state value in which pending and
+error outrank the retained data, and drive every rendered detail from it:
+
+```ts
+const state = isPending ? "pending" : error || (data === undefined) ? "check-failed" : data;
+```
+
 ## An effect-driven retry needs a dependency that changes on failure
 
 The REST client sets `retry: false` app-wide (`shared/api/rest/client.ts`), so a failed query stays failed until something re-triggers it. The one exception is a 429 load-shed, replayed in the transport below the cache (see `dev/knowledge/frontend/request-priority.md`). An effect that launches a must-eventually-succeed step re-runs only when a dependency changes; if every dependency is stable after a failure (same name, same boolean, a stable `refetch`), the step never retries and the screen wedges until reload. Give such an effect a fetch-identity dependency — TanStack Query's `dataUpdatedAt` — so each fresh response re-arms it.

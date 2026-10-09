@@ -78,6 +78,12 @@ except Exception as exc:
     key = None                        # explicit, safe (over-executing) fallback signal
 ```
 
+The mirror case is cleanup running while another exception propagates — a reset or release in an
+`except`/`finally` recovery path. Anything the cleanup raises replaces the failure being recovered
+from with a less useful one, so catch `Exception` there and log it with `log.exception`. Cancellation
+still propagates: `asyncio.CancelledError` is a `BaseException`, so state the contract in the helper's
+docstring as "raises nothing but cancellation", not "never raises".
+
 ## `# noqa: BLE001`
 
 Narrowing is the default answer when ruff flags a broad `except Exception` — most call sites raise a
@@ -88,8 +94,9 @@ name which case it is in the comment above it:
 - a loop that turns a per-item failure into a reported result instead of aborting the whole run
 - a best-effort side effect that must not fail the primary operation (see above) — after checking the
   catch is needed at all
+- cleanup in a recovery path that must not mask the failure in flight (see above)
 
-All three still log or record the failure; none discards it.
+All four still log or record the failure; none discards it.
 
 Inside a transaction, catching and returning commits the partial work: `__aexit__` rolls back only
 when an exception leaves the `async with` block. Re-raise inside and convert outside, and write what
