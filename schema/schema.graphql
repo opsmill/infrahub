@@ -11827,6 +11827,103 @@ input NumberAttributeUpdate {
   value: BigInt
 }
 
+"""
+One tracked number as held on one branch. A number held on several branches gives one row per branch.
+"""
+type NumberPoolAllocation {
+  """The branch on which the holding object's attribute holds this value."""
+  branch: String!
+  """The object whose attribute holds the value, read on the row's branch."""
+  holder: NumberPoolHolder!
+  """The identifier given when the number was allocated, if any."""
+  identifier: String
+  """
+  ALLOCATED when the pool picked the number, PROVIDED when a user gave it.
+  """
+  provenance: PoolRecordProvenance!
+  """The range whose bounds hold the value."""
+  range: NumberPoolRangeRef!
+  """The number held."""
+  value: BigInt!
+}
+
+"""A page of the numbers a pool tracks."""
+type NumberPoolAllocations {
+  """The page, ordered by value, then branch, then the holding object's id."""
+  allocations: [NumberPoolAllocation!]!
+  """Number of rows matching the filters, before offset and limit."""
+  count: BigInt!
+}
+
+"""
+One combination of values of the allocation scope, with its own number space.
+"""
+type NumberPoolDivision {
+  """The entries' display labels joined with " / "."""
+  display_label: String!
+  """One entry per scope element, in scope order."""
+  entries: [NumberPoolDivisionEntry!]!
+  """Figures for this division, over all the values the pool can allocate."""
+  figures: NumberPoolUtilizationFigures!
+}
+
+"""
+One attribute or relationship of the allocation scope and the value a division holds for it.
+"""
+type NumberPoolDivisionEntry {
+  """
+  For a relationship, the peer's display label read on any branch, or the peer's id when the peer cannot be read. For an attribute, the value as text.
+  """
+  display_label: String!
+  """The schema element id of the attribute or relationship."""
+  id: String!
+  """The name of the scope attribute or relationship."""
+  path: String!
+  """
+  For a relationship, the peer's kind when the peer can be read. Null otherwise.
+  """
+  peer_kind: String
+  """
+  For a relationship, the peer's id. For an attribute, the value as text. An empty string when the holding object has no value for it.
+  """
+  value: String!
+}
+
+"""
+One attribute or relationship of the allocation scope and the value the requested division holds for it.
+"""
+input NumberPoolDivisionEntryInput {
+  """The name of the scope attribute or relationship."""
+  path: String!
+  """
+  For a relationship, the peer's id. For an attribute, the value as text.
+  """
+  value: String!
+}
+
+"""The divisions of one number pool, each with its figures."""
+type NumberPoolDivisions {
+  """The pool's allocation scope, in scope order."""
+  allocation_scope: [NumberPoolScopeElement!]!
+  """Number of divisions listed."""
+  count: Int!
+  """
+  Every division that holds at least one value the pool tracks on any live branch. Each holding object's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool.
+  """
+  divisions: [NumberPoolDivision!]!
+}
+
+"""The object holding a tracked number."""
+type NumberPoolHolder {
+  display_label: String!
+  """
+  The holding object's human-friendly id. Null when its kind declares none.
+  """
+  hfid: [String!]
+  id: String!
+  kind: String!
+}
+
 input NumberPoolRangeInput {
   """
   Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds of a stored range keeps the stored range's weight; null removes it.
@@ -11836,6 +11933,86 @@ input NumberPoolRangeInput {
   end: BigInt!
   """The first number of the range, included"""
   start: BigInt!
+}
+
+"""A reference to one range of the pool."""
+type NumberPoolRangeRef {
+  display_label: String!
+  id: String!
+}
+
+"""One range of a number pool with its own figures."""
+type NumberPoolRangeUtilization {
+  """The range node's display label."""
+  display_label: String!
+  """Last value of the range, included."""
+  end: BigInt!
+  """
+  Figures over the range's values. On a scoped pool, only the values held in the division passed in the division argument.
+  """
+  figures: NumberPoolUtilizationFigures!
+  """The range node's id."""
+  id: String!
+  """First value of the range, included."""
+  start: BigInt!
+  """The range's allocation weight. 0 when the range declares none."""
+  weight: BigInt!
+}
+
+"""One attribute or relationship of a pool's allocation scope."""
+type NumberPoolScopeElement {
+  """
+  The schema element id of the attribute or relationship, on the default branch.
+  """
+  id: String!
+  """
+  The attribute or relationship name, as currently declared on the default branch.
+  """
+  name: String!
+}
+
+"""
+Utilization of one number pool and of each of its ranges. For a number pool, prefer this over InfrahubResourcePoolUtilization.
+"""
+type NumberPoolUtilization {
+  """
+  The pool's allocation scope, in scope order. Empty for an unscoped pool.
+  """
+  allocation_scope: [NumberPoolScopeElement!]!
+  """The pool's display label."""
+  display_label: String!
+  """
+  Figures over all the values the pool can allocate. On a scoped pool, only the values held in the division passed in the division argument, which is required.
+  """
+  figures: NumberPoolUtilizationFigures!
+  """The pool's id, as given in pool_id."""
+  id: String!
+  """The pool's ranges ordered by start, each with its own figures."""
+  ranges: [NumberPoolRangeUtilization!]!
+}
+
+"""Absolute and relative utilization of a pool, a range or a division."""
+type NumberPoolUtilizationFigures {
+  """
+  Number of values the pool, range or division can allocate. 0 when the pool has no range.
+  """
+  size: BigInt!
+  """
+  Number of these values in use on any branch. A value used on several branches counts once.
+  """
+  used: BigInt!
+  """
+  Number of these values in use only on other branches, not on the default branch.
+  """
+  used_branches: BigInt!
+  """Number of these values in use on the default branch."""
+  used_default_branch: BigInt!
+  """used as a percentage of size. 0 when size is 0."""
+  utilization: Float!
+  """used_branches as a percentage of size. 0 when size is 0."""
+  utilization_branches: Float!
+  """used_default_branch as a percentage of size. 0 when size is 0."""
+  utilization_default_branch: Float!
 }
 
 type ObjectPermission {
@@ -26433,12 +26610,28 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
+  """The numbers one number pool tracks, filtered and paginated."""
+  InfrahubNumberPoolAllocations(branch: String, division: [NumberPoolDivisionEntryInput!], limit: Int, offset: Int, pool_id: String!, provenance: PoolRecordProvenance, range_id: String): NumberPoolAllocations!
+  """
+  The divisions of one number pool that hold at least one value, with their figures over the whole pool.
+  """
+  InfrahubNumberPoolDivisions(pool_id: String!): NumberPoolDivisions!
+  """
+  Utilization of one number pool and of its ranges. On a scoped pool, division is required and the figures are those of that division.
+  """
+  InfrahubNumberPoolUtilization(division: [NumberPoolDivisionEntryInput!], pool_id: String!): NumberPoolUtilization!
   """Find all shortest paths between two nodes in the graph"""
   InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
+  """
+  The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead.
+  """
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
+  """
+  Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead.
+  """
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
   """Retrieve the status of all infrahub workers."""

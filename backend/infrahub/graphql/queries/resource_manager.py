@@ -36,6 +36,18 @@ if TYPE_CHECKING:
     from infrahub.pools.number_ranges import NumberDomain
 
 
+RESOURCE_POOL_UTILIZATION_DESCRIPTION = (
+    "Utilization of one resource pool and of each of its resources. For a number pool, the figures cover "
+    "the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and "
+    "InfrahubNumberPoolDivisions instead."
+)
+RESOURCE_POOL_ALLOCATED_DESCRIPTION = (
+    "The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, "
+    "resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is "
+    "the value itself; read InfrahubNumberPoolAllocations instead."
+)
+
+
 class IPPoolUtilizationResource(ObjectType):
     id = Field(String, required=True, description="The ID of the current resource")
     display_label = Field(String, required=True, description="The common name of the resource")
@@ -421,9 +433,14 @@ InfrahubResourcePoolAllocated = Field(
     offset=Int(required=False),
     resolver=PoolAllocated.resolve,
     required=True,
+    description=RESOURCE_POOL_ALLOCATED_DESCRIPTION,
 )
 
 
 InfrahubResourcePoolUtilization = Field(
-    PoolUtilization, pool_id=String(required=True), resolver=PoolUtilization.resolve, required=True
+    PoolUtilization,
+    pool_id=String(required=True),
+    resolver=PoolUtilization.resolve,
+    required=True,
+    description=RESOURCE_POOL_UTILIZATION_DESCRIPTION,
 )

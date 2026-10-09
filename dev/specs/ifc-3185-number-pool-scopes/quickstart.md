@@ -12,11 +12,11 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 
 | Scenario | Spec reference | Command |
 |----------|----------------|---------|
-| Scope resolver rules, `List` and `JSON` elements, division key | FR-003 to FR-006, FR-009 | `uv run pytest backend/tests/unit/pools/test_scope.py` |
+| Scope resolver rules, refusal of `List`, `JSON` and `Any` elements, division key | FR-003 to FR-006, FR-009 | `uv run pytest backend/tests/unit/pools/test_scope.py` |
 | Allocation per division, parallel writers in two divisions, repeatable identifier, update moving a node to another site, branch whose schema lacks the element | FR-010 to FR-013, FR-016 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope_allocation.py` |
 | Free, used, divisions and allocated queries with a division, read on the request branch | FR-015, FR-020 to FR-022 | `uv run pytest backend/tests/component/core/resource_manager/test_number_pool_scope.py` |
 | Scope on create, every refusal, immutability on update, `null` refused | FR-001 to FR-008 | `uv run pytest backend/tests/component/graphql/resource_manager/number_pools/test_pool_allocation_scope.py` |
-| The fixed dataset of PR #10932 on the `{id, name}` contract (until the resolvers read the database) | FR-018 | `uv run pytest backend/tests/unit/pools/test_number_pool_mock.py backend/tests/unit/graphql/test_number_pool_surface_contract.py` |
+| The fixed dataset of PR #10932 on the `{id, name}` contract (until the resolvers read the database) | FR-018 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | The three dedicated queries on real pools and their refusals | FR-017 to FR-023 | `uv run pytest backend/tests/component/graphql/queries/test_number_pool_surface.py` |
 | Declared scope on a schema-created pool | FR-024 to FR-027 | `uv run pytest backend/tests/component/pools/test_schema_number_pool_scope.py` |
 | Schema checker decision table, without a database | FR-026, FR-028 | `uv run pytest backend/tests/unit/core/validators/test_number_pool_scope_checker.py` |
@@ -59,7 +59,7 @@ Scenarios that prove the feature end to end, with the commands that run them. Co
 1. On branch `b1`, move device D1 from site A to site C. Expected: on `b1`, `InfrahubNumberPoolDivisions` lists site C with D1's number and site A without it; on the default branch, site A still counts D1's number and site C is absent.
 2. On branch `b2`, create a device in site A with `from_pool`. Expected: it receives the lowest number free in site A as read on `b2`.
 3. Merge `b1`. Expected: D1's number is counted under site C only, on every branch.
-4. Known limitation to assert (decision 7, research R5): create R1 on branch `b2` in site A, then R2 on branch `b1` in site A. Expected: both receive the same number, because R1 is invisible from `b1`; after both branches merge, two holders in site A hold that number, and the pool reports it once under site A.
+4. Known limitation to assert (decision 7, research R5): create R1 on branch `b2` in site A, then R2 on branch `b1` in site A. Expected: both receive the same number, because R1 is invisible from `b1`; after both branches merge, two holding objects in site A hold that number, and the pool reports it once under site A.
 5. Create branch `b3`, then add a required relationship `pod` to `InfraDevice` on the default branch and create a pool scoped by `pod`. Allocate from that pool on `b3`. Expected: refused, the error names `pod` and `b3`. Rebase `b3` and allocate again. Expected: accepted.
 
 ## Measurements
@@ -73,7 +73,7 @@ Run on the live stack, with the database reset to the same baseline before each 
 | Pool scoped by one relationship and two attributes | Same figures |
 | Twenty writers, two sites, in parallel | Throughput compared with one site |
 
-Record the figures as ratios against the unscoped variant in `dev/specs/ifc-3185-number-pool-scopes/measurements.md`. If the holder-anchored Cypher order (research R5) is faster by a clear margin, keep it and update the plan.
+Record the figures as ratios against the unscoped variant in `dev/specs/ifc-3185-number-pool-scopes/measurements.md`. If the Cypher order anchored on the holding objects (research R5) is faster by a clear margin, keep it and update the plan.
 
 ## Expected outcome
 

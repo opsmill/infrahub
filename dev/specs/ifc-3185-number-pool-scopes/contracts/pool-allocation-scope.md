@@ -49,9 +49,8 @@ Each refusal is a `ValidationError` on the `allocation_scope` field, naming the 
 | Entry is the pool's tracked attribute | `allocation_scope: "<name>" is the attribute the pool allocates; it cannot divide the pool` |
 | Entry appears twice | `allocation_scope: "<name>" appears more than once` |
 | Pool's kind is a generic and the entry is declared on an implementing node only | `allocation_scope: "<entry>" is not declared on the generic <kind>` |
+| Entry is an attribute of kind `List`, `JSON` or `Any` | `allocation_scope: "<name>" is of kind <attribute kind>; a scope element must hold a single scalar value` |
 | Tracked attribute is `unique: true` | `allocation_scope: <kind>.<node_attribute> is unique; a globally unique number cannot be allocated per division` |
-
-An attribute of kind `List` or `JSON` is accepted (decision 10).
 
 ## Refusal on update
 

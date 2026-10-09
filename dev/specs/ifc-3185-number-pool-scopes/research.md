@@ -27,15 +27,15 @@ Each entry records a decision, the reason, and the alternatives considered. Sour
 
 ## R3. What a scope element may reference
 
-**Decision**: A required attribute of any kind, `List` and `JSON` included, or a required cardinality-one relationship of the pool's kind, declared on that kind (on the generic itself when the pool's kind is a generic), given as the element id or the element name, not a path (no `__`), not the pool's own tracked attribute, not twice. A scope is refused on a pool whose tracked attribute is `unique: true`. The value of a `List` or `JSON` element is compared as stored, with no normalisation.
+**Decision**: A required attribute of a scalar kind (any kind except `List`, `JSON` and `Any`), or a required cardinality-one relationship of the pool's kind, declared on that kind (on the generic itself when the pool's kind is a generic), given as the element id or the element name, not a path (no `__`), not the pool's own tracked attribute, not twice. A scope is refused on a pool whose tracked attribute is `unique: true`.
 
-**Rationale**: PRD FR-015 gives the required and cardinality rules. Jira IFC-3348 adds the generic rule and the `unique: true` rule (a globally unique number cannot repeat per division). Decision 10 accepts `List` and `JSON` attributes, which Jira IFC-3348 refused; comparing their value as stored keeps the division read a plain equality in Cypher, so `["a", "b"]` and `["b", "a"]` are two divisions. The name resolves within the kind because `SchemaBranch` validates that attribute and relationship names are unique together on one kind. The existing `SchemaBranch.validate_schema_path` with `SchemaElementPathType.ATTR_NO_PROP | REL_ONE_MANDATORY_NO_ATTR` gives the required and cardinality rules for a name, and the resolver reuses it.
+**Rationale**: PRD FR-015 gives the required and cardinality rules. Jira IFC-3348 adds the generic rule and the `unique: true` rule (a globally unique number cannot repeat per division). Decision 10, revised on 2026-10-09, refuses `List`, `JSON` and `Any` attributes, as Jira IFC-3348 did: a division then holds only scalar values, so Python equality, the Cypher comparison of stored values and the lock key agree without any normalisation. The name resolves within the kind because `SchemaBranch` validates that attribute and relationship names are unique together on one kind. The existing `SchemaBranch.validate_schema_path` with `SchemaElementPathType.ATTR_NO_PROP | REL_ONE_MANDATORY_NO_ATTR` gives the required and cardinality rules for a name, and the resolver reuses it.
 
 **Alternatives considered**:
 
-- Allowing a path into a related node (`site__region`): the division of a node would then depend on another node's attribute, which can change without touching the holder; the PRD refuses it. Rejected.
+- Allowing a path into a related node (`site__region`): the division of a node would then depend on another node's attribute, which can change without touching the holding object; the PRD refuses it. Rejected.
 - Storing `role__value` as `role` (Jira IFC-3348): a property path is neither a name nor an id. Refused instead (decision 12).
-- Normalising `List` values (sorting) before comparison: would make two stored values one division without a rule the user can see. Rejected by decision 10.
+- Accepting `List` and `JSON` attributes and comparing their stored value: the database stores a document with its keys in write order, so a document written in two key orders would make two divisions in Cypher, while any normalisation in Python would make one. Rejected by the revision of decision 10.
 
 ## R4. Which schema the scope is resolved against
 
@@ -50,19 +50,19 @@ Each entry records a decision, the reason, and the alternatives considered. Sour
 
 ## R5. How the division of a record is read
 
-**Decision**: Not stored. Derived in Cypher from the holder node of the tracked attribute: for each element, the peer id of the relationship (matched by the relationship identifier on the `Relationship` vertex) or the value of the attribute as stored, read on the branch of the request with the normal branch filter (`Branch.get_query_filter_path`, the same one `NumberPoolGetAllocated` already uses), so that a holder not changed on the branch reads as on the default branch. A holder with no peer or no value for an element contributes an empty string. A holder that exists only on another branch has no division on the request branch and is not counted.
+**Decision**: Not stored. Derived in Cypher from the holding object of the tracked attribute: for each element, the peer id of the relationship (matched by the relationship identifier on the `Relationship` vertex) or the value of the attribute as stored, read on the branch of the request with the normal branch filter (`Branch.get_query_filter_path`, the same one `NumberPoolGetAllocated` already uses), so that a holding object not changed on the branch reads as on the default branch. A holding object with no peer or no value for an element contributes an empty string. A holding object that exists only on another branch has no division on the request branch and is not counted.
 
 **Rationale**: Decision 7 and PRD FR-013 (the unavailable numbers are worked out in the database): the division filter has to be a Cypher fragment next to `reserved_values_query()` (`backend/infrahub/core/query/resource_manager.py`). Deriving the division keeps the record model untouched (PRD FR-009) and makes a node that moves to another site count under its new site on the branch of the move.
 
-**Known limitation (decision 7)**: `reserved_values_query()` counts a value held on any live branch, but the division of its holder is read on the request branch. A holder created on `b2` only is invisible from `b1`: its number is not counted in its division on `b1`, so R1 (on `b2`, site A) and R2 (on `b1`, site A) can both receive 1, and both keep it after the merge. The quickstart asserts this case instead of fixing it; the user documentation and the knowledge entry state it.
+**Known limitation (decision 7)**: `reserved_values_query()` counts a value held on any live branch, but the division of its holding object is read on the request branch. A holding object created on `b2` only is invisible from `b1`: its number is not counted in its division on `b1`, so R1 (on `b2`, site A) and R2 (on `b1`, site A) can both receive 1, and both keep it after the merge. The quickstart asserts this case instead of fixing it; the user documentation and the knowledge entry state it.
 
 **Alternatives considered**:
 
 - Reading the division on the branch that holds the counted value, with the default branch as fallback (earlier version of this research): a value is then counted under a division that depends on where the value lives, not on where the request runs, and the figures of two queries on the same branch can disagree. Replaced by decision 7.
-- A union over branches, counting a value in every division its holder occupies on any branch (Jira IFC-3347, IFC-3329): one value in several divisions, the divisions' figures not summing to the pool's. Replaced by decision 7.
-- Storing the division on the `IS_RESERVED` edge at allocation time: cheap to read, wrong as soon as the holder changes site or the value is read on another branch. Rejected.
+- A union over branches, counting a value in every division its holding object occupies on any branch (Jira IFC-3347, IFC-3329): one value in several divisions, the divisions' figures not summing to the pool's. Replaced by decision 7.
+- Storing the division on the `IS_RESERVED` edge at allocation time: cheap to read, wrong as soon as the holding object changes site or the value is read on another branch. Rejected.
 - Reading the division in Python per candidate value: one round trip per candidate, memory proportional to the tracked values. Rejected by PRD FR-013.
-- Two anchor orders for the Cypher (start from the pool's records, or start from the holder nodes of the division): Jira IFC-3349 leaves the choice to measurement. The plan starts from the pool's records, since the free-number fragment already does; the quickstart measurement decides whether the other order is kept.
+- Two anchor orders for the Cypher (start from the pool's records, or start from the holding objects of the division): Jira IFC-3349 leaves the choice to measurement. The plan starts from the pool's records, since the free-number fragment already does; the quickstart measurement decides whether the other order is kept.
 
 ## R6. When the writer's division is read
 
@@ -81,7 +81,7 @@ The lock names of the mutation are computed from a preview node before the node 
 
 **Decision**: `<pool id>` for an unscoped pool, `<pool id>.<division key>` for a scoped one, where the division key is a stable hash of the JSON form of the division tuple. Used by `CoreNumberPool.get_resource` (`backend/infrahub/core/node/resource_manager/number_pool.py`, today `lock.registry.get(name=self.get_id(), namespace=RESOURCE_POOL_LOCK_NAMESPACE)`) and by the mutation-level lock names of `lock_utils.get_lock_names_on_object_mutation` (today `resource_pool.<pool id>`).
 
-**Rationale**: PRD ("The allocator") and Jira IFC-3349: one scoped pool must not serialise every division that a pool per scope used to run in parallel. A hash keeps the lock name short whatever the values hold, `List` and `JSON` values included.
+**Rationale**: PRD ("The allocator") and Jira IFC-3349: one scoped pool must not serialise every division that a pool per scope used to run in parallel. A hash keeps the lock name short whatever the values hold.
 
 **Alternatives considered**:
 
@@ -114,7 +114,7 @@ The lock names of the mutation are computed from a preview node before the node 
 
 **Decision**: Only the divisions that hold at least one tracked value, ordered by utilization descending then by display label, as PR #10932 states and decision 8 confirms.
 
-**Rationale**: Decision 8. Listing every division that has nodes would need a scan of the holder kind that the pool does not otherwise perform, and the PRD forbids a pool from inspecting its attribute (FR-011).
+**Rationale**: Decision 8. Listing every division that has nodes would need a scan of the holding object's kind that the pool does not otherwise perform, and the PRD forbids a pool from inspecting its attribute (FR-011).
 
 **Alternatives considered**:
 
@@ -122,12 +122,12 @@ The lock names of the mutation are computed from a preview node before the node 
 
 ## R11. The changes to the contract of PR #10932
 
-**Decision**: `allocation_scope` becomes `[NumberPoolScopeElement!]!` with `id: String!` and `name: String!` in `NumberPoolUtilization` and `NumberPoolDivisions`. `NumberPoolDivisionEntry` gains `id: String!` and keeps `path` (the element name). `NumberPoolDivisionEntryInput` keeps `path` and `value`. The descriptions and the refusal messages drop "in force on the request's branch" and name the branch only in the refusal of FR-016. Everything else is unchanged. PR #10932 is rebased onto `feature-number-pools-1.12` and its fixed dataset, SDL snapshot and tests are updated to this contract before the resolvers read the database, so that the frontend team builds on the final shape.
+**Decision**: `allocation_scope` becomes `[NumberPoolScopeElement!]!` with `id: String!` and `name: String!` in `NumberPoolUtilization` and `NumberPoolDivisions`. `NumberPoolDivisionEntry` gains `id: String!` and keeps `path` (the element name). `NumberPoolDivisionEntryInput` keeps `path` and `value`. The descriptions and the refusal messages drop "in force on the request's branch" and name the branch only in the refusal of FR-016. Everything else is unchanged. PR #10932 is rebased onto `feature-number-pools-1.12` and its fixed dataset and tests are updated to this contract before the resolvers read the database, so that the frontend team builds on the final shape.
 
 **Rationale**: Decision 5 allows only the change of decision 4 unless a reason is documented. Adding `id` to the division entry is the reason-documented addition: the entry describes one scope element, and the frontend needs the id to match it with the pool's scope. The input keeps `path` by name because the frontend builds the filter from the entries it displays and because a name is readable in a hand-written query; the name is unique within the kind and kept current by R2. The wording change follows decisions 1 and 7, which leave no partial scope per branch.
 
 ## R12. Test fixtures
 
-**Decision**: Reuse the scoped-pool test schema that PR #10932 adds to `backend/tests/helpers/number_pool.py` (`SCOPED_SITE`, `SCOPED_DEVICE`, `SCOPED_POOL_SCHEMA`), extended with a required `Text` attribute, an optional relationship, a many relationship and a `List` attribute, so that one-element, two-element and `List` scopes are tested with one schema. Reuse `backend/tests/helpers/schema/device.py` (`INTERFACE` with a required cardinality-one `device` relationship) where it fits, and `backend/tests/helpers/schema/ticket.py` (`TICKET`, used by the existing scope test) for refusals that need no relationship. The component conftest of `backend/tests/component/core/resource_manager/` already builds pools and holders (`serial_pool`, `pooled_holder`) and is extended with a scoped pool fixture.
+**Decision**: Reuse the scoped-pool test schema that PR #10932 adds to `backend/tests/helpers/number_pool.py` (`SCOPED_SITE`, `SCOPED_DEVICE`, `SCOPED_POOL_SCHEMA`), extended with a required `Text` attribute, an optional relationship, a many relationship and a `List` attribute, so that one-element, two-element and `List` scopes are tested with one schema. Reuse `backend/tests/helpers/schema/device.py` (`INTERFACE` with a required cardinality-one `device` relationship) where it fits, and `backend/tests/helpers/schema/ticket.py` (`TICKET`, used by the existing scope test) for refusals that need no relationship. The component conftest of `backend/tests/component/core/resource_manager/` already builds pools and holding objects (`serial_pool`, `pooled_holder`) and is extended with a scoped pool fixture.
 
 **Rationale**: Constitution IV: reuse fixtures, add a schema only when no existing one suffices. No existing fixture carries a pooled `Number` attribute next to a required relationship; the schema of PR #10932 is the one the mock task lands first.
