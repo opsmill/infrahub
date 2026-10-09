@@ -44,15 +44,14 @@ Prerequisite: a running Infrahub with the `models/base` schema loaded, so the sc
 
 1. **Schema-created pool**: open `/resource-manager`, then open `InfraService.service_identifier [...]`.
    - The header shows the name cut with an ellipsis and a "Managed by schema" tag. Selecting the tag opens the schema viewer on the `service_identifier` attribute of `InfraService`.
-   - The header shows "Allocates to InfraService attribute `service_identifier` with no scope".
+   - The header shows "Allocates to InfraService attribute `service_identifier`".
    - In Actions, Edit, Groups and Delete are disabled. Their tooltip reads "Defined by the schema attribute InfraService.service_identifier".
    - Go to → View schema opens the `CoreNumberPool` schema.
 2. **User-created pool**: create a number pool for `InfraInterface.speed` with range 1 to 10, then open it.
-   - The header shows no managed-by tag, and "Allocates to InfraInterface attribute `speed` with no scope".
+   - The header shows no managed-by tag, and "Allocates to InfraInterface attribute `speed`".
    - Edit, Groups and Delete are enabled.
 3. **Scoped pool**: set `allocation_scope` to `["device", "name"]` on the user-created pool through the GraphQL sandbox, then reload.
-   - The header shows "scoped by" followed by the two field labels from the `InfraInterface` schema, separated by "+".
-   - The kind, the attribute and the two scope fields look the same. Each has a dotted underline, and selecting it opens the schema viewer in a modal on that field, and the page stays where it is.
+   - The header shows no allocation scope.
 4. **Edit**: Actions → Edit, change the description, save. The new description appears in the header without a page reload.
 5. **Reload**: allocate a number from the pool in another tab, then press the reload button. The utilization in the page body updates.
 6. **Delete**: Actions → Delete on the user-created pool. The app opens the resource manager list.

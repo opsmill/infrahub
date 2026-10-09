@@ -91,10 +91,9 @@ IP pools are unchanged.
   - **Setup**: build a `NumberPoolData` literal, set `nodeSchemasAtom` from `@/entities/schema/stores/schema.atom` with a schema for the pool's kind (restore it in `afterAll`), and pass `generatePermission()` from `frontend/app/tests/fake/permission.ts`. Mock the `NumberPoolActionsMenu` module, so these tests cover only the header.
   - **Schema-created pool**: heading level 1 with the name. A `button` "Managed by schema" that opens the `dialog` "Schema viewer" on the attribute (research.md R17).
   - **User-created pool**: no managed-by tag.
-  - **Unscoped pool**: the text "Allocates to", a `button` for the kind, a `button` for the attribute, then "with no scope".
-  - **Scope `["site", "role"]`**: "scoped by", then a `button` "Site" and a `button` "Role", from the schema labels.
-  - **Schema modals**: selecting the kind, or a scope field, opens the `dialog` "Schema viewer".
-  - **Scope field missing from the schema**: the stored field name shows, and no `button` has that name.
+  - **Sentence**: the text "Allocates to", a `button` for the kind and a `button` for the attribute. No scope is shown (research.md R18).
+  - **Scoped pool**: no scope text is shown.
+  - **Schema modals**: selecting the kind opens the `dialog` "Schema viewer".
   - **Kind missing from the schema**: the kind name shows, and no `button` has that name.
   - **Description**: shown when set.
   - **ID**: the full ID shows, and a `button` "Copy ID" is present.
@@ -157,9 +156,9 @@ IP pools are unchanged.
     - User-created: no tag (research.md R17).
   - **First row, right**: the full ID and `CopyToClipboardButton` with `aria-label="Copy ID"`. Then `RefreshButton queryKey={resourceManagerQueryKeys.all}` (research.md R2), and `NumberPoolActionsMenu`.
   - **Description**: a muted paragraph when `pool.description` is set.
-  - **Sentence**: "Allocates to", then the kind, then "attribute", then the attribute name, then either "with no scope" or "scoped by" followed by one `ScopeFieldReference` per name in `pool.allocation_scope.value`, separated by "+".
+  - **Sentence**: "Allocates to", then the kind, then "attribute", then the attribute name. The allocation scope is not shown (research.md R18).
     - Read `kindSchema` with `useSchema(pool.node.value)`.
-    - The kind, the attribute and each scope field are `SchemaReference` elements that open `SchemaViewerModal` (research.md R15).
+    - The kind and the attribute are `SchemaReference` elements that open `SchemaViewerModal` (research.md R15).
   - **Narrow screens**: the name shrinks and is cut first, the tag keeps its size (`shrink-0`), and the sentence wraps (`flex-wrap`).
   - **`NumberPoolHeaderSkeleton`**: a `status` "Loading number pool" with `Skeleton` placeholders for the name and for the Actions button, as `ObjectDetailsHeader` does while pending.
   - T013 must pass.
@@ -174,11 +173,11 @@ IP pools are unchanged.
   - **`test_header_for_user_created_pool`**, after `test_displays_correct_details_for_created_number_pool`: go to `/resource-manager?branch={number_pool_branch}` and open "number pool test for generic". In the `header` that holds the level 1 heading, check:
     - `heading` with that name
     - no "Managed by" tag
-    - "Allocates to", `button` "InfraInterface", and "with no scope"
+    - "Allocates to", `button` "InfraInterface"
     - in Actions, `menuitem` "Edit" and "Delete" are enabled
   - **`test_header_for_schema_created_pool`**, before `test_number_pool_attribute_kind_resource_manager`: open the `link` "InfraService." from the list. In the same `header`, check:
     - `button` "Managed by schema"
-    - "Allocates to", `button` "InfraService", `button` "service_identifier", "with no scope"
+    - "Allocates to", `button` "InfraService", `button` "service_identifier"
     - selecting `button` "InfraService" opens the `dialog` "Schema viewer", and Escape closes it
     - in Actions, "Edit", "Groups" and "Delete" are disabled, and "View schema" links to the `CoreNumberPool` schema
 

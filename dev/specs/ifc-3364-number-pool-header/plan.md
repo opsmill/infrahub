@@ -16,7 +16,7 @@ Replace the generic card title on the number pool details page (`/resource-manag
 The change is frontend only:
 
 - **New number pool page**: `NumberPoolDetailsPage` loads the pool through a new typed fetch path (api → use-case → query) that returns `NumberPoolData`, and passes it to the header. Later work passes the same value to the new body.
-- **New code**: a `ui/number-pool/` folder in the `resource-manager` entity, which later work on the number pool page extends. Scope field labels are looked up inline, and `SchemaReference` picks the schema modal tab from the field (research.md R7).
+- **New code**: a `ui/number-pool/` folder in the `resource-manager` entity, which later work on the number pool page extends. `SchemaReference` picks the schema modal tab from the field. The allocation scope is not shown (research.md R18).
 - **Shared body**: the current page body moves into `ResourcePoolDetailsBody`, which both pages render unchanged.
 - **Reload**: the header uses the existing `RefreshButton` with the `resourceManagerQueryKeys.all` prefix, so one reload covers the pool, its utilization and its allocated resources (research.md R2).
 - **URL builders**: three menu URL builders move into `object-urls.ts`, and all menus use them.

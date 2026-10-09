@@ -29,11 +29,11 @@ Without this header, the details page shows a generic title above a property lis
 
 1. **Given** a pool that the schema created for the attribute `asn` of `InfraAutonomousSystem`, with no allocation scope, **When** the engineer opens it, **Then**:
    - the header shows the pool name and a "Managed by schema" tag
-   - the header shows "Allocates to InfraAutonomousSystem attribute `asn` with no scope"
+   - the header shows "Allocates to InfraAutonomousSystem attribute `asn`"
    - Edit, Groups and Delete in the Actions menu are disabled, and their tooltip names the schema attribute
 2. **Given** a pool that a user created, scoped by the fields `site` and `role`, **When** the engineer opens it, **Then**:
    - the header shows no managed-by tag
-   - the header shows "scoped by Site + Role", using the field labels from the schema
+   - the header shows no allocation scope (showing the scope is out of scope)
    - Edit, Groups and Delete are enabled when the engineer has permission to update and delete the pool
 3. **Given** an engineer without permission to update or delete the pool, **When** they open the Actions menu, **Then** Edit, Groups and Delete are disabled, with the same permission message as on other detail pages.
 4. **Given** a pool with a description, **When** the engineer opens it, **Then** the description appears under the name. **Given** a pool without a description, **Then** no description line appears.
@@ -43,7 +43,6 @@ Without this header, the details page shows a generic title above a property lis
 ### Edge Cases
 
 - The pool's kind is not in the schema of the branch the engineer is viewing (the pool exists on all branches). The header shows the kind name as stored, without a link.
-- An allocation scope field is not in the schema of the current branch. The header shows the field's stored name instead of a label, so no stored value is hidden.
 - A schema-created pool has a long generated name, such as `InfraAutonomousSystem.asn [<id>]`. The name is cut to one line with an ellipsis, the full name appears on hover, and the tag stays visible.
 - The engineer deletes a user-created pool that the schema of a branch still uses. The deletion is refused and the engineer receives the refusal message. The header does not check this in advance.
 - The pool fails to load. The page shows its existing error screen, and the header shows no error of its own.
@@ -60,11 +59,10 @@ Without this header, the details page shows a generic title above a property lis
   - Selecting the tag MUST open the schema of the pool's kind in a modal, on that attribute, without leaving the page. When the kind is not in the schema of the current branch, selecting it MUST do nothing.
 - **FR-004**: The header MUST show the pool's description, and MUST leave out the description line when the pool has none.
 - **FR-005**: The header MUST show the pool's full ID, with a button that copies it.
-- **FR-006**: The header MUST show the sentence "Allocates to `<kind>` attribute `<attribute>`", followed by "scoped by `<fields>`" or by "with no scope".
-  - The kind, the attribute and each scope field MUST share one style.
+- **FR-006**: The header MUST show the sentence "Allocates to `<kind>` attribute `<attribute>`". It MUST NOT show the allocation scope, which the UI does not handle yet.
+  - The kind and the attribute MUST share one style.
   - The kind MUST appear as stored. Selecting it MUST open the schema of that kind in a modal, without leaving the page.
-  - Selecting the attribute or a scope field MUST open the same modal on that field.
-  - Each scope field MUST appear by its label from the schema of the current branch, separated by "+". When the field is not in that schema, it MUST appear by its stored name.
+  - Selecting the attribute MUST open the same modal on that attribute.
   - When the kind or a field is not in the schema of the current branch, selecting it MUST do nothing.
 - **FR-007**: The header MUST contain the reload button and the node metadata (who created or last changed the pool, and when), in the same positions as on other node detail pages.
 - **FR-008**: The reload button MUST reload the pool, its utilization and its allocated resources together.
@@ -87,11 +85,11 @@ Without this header, the details page shows a generic title above a property lis
 
 ### Measurable Outcomes
 
-- **SC-001**: An engineer who opens a number pool can name its kind, attribute, scope fields and manager without opening another page, form or menu. Automated checks verify this as follows:
-  - **End-to-end**, on a schema-created pool and a user-created pool, both without a scope: the name, the managed-by tag or its absence, the kind, the attribute and "with no scope".
-  - **Component tests**: the "scoped by" sentence with the scope field labels, and a scope field or a kind that is missing from the schema of the current branch. No end-to-end data sets an allocation scope.
+- **SC-001**: An engineer who opens a number pool can name its kind, attribute and manager without opening another page, form or menu. Automated checks verify this as follows:
+  - **End-to-end**, on a schema-created pool and a user-created pool: the name, the managed-by tag or its absence, the kind and the attribute.
+  - **Component tests**: a kind that is missing from the schema of the current branch, and a scoped pool that shows no scope.
 - **SC-002**: On a schema-created pool, Edit, Groups and Delete in the header's Actions menu are disabled for every engineer, including one with full permission, and each one names the schema attribute that defines the pool.
-- **SC-003**: For every number pool in the test data, each value in the header (name, description, manager, kind, attribute, scope fields) matches the stored pool, including a scope field that is missing from the schema of the current branch.
+- **SC-003**: For every number pool in the test data, each value in the header (name, description, manager, kind, attribute) matches the stored pool, including a kind that is missing from the schema of the current branch.
 - **SC-004**: The details pages of IP prefix pools and IP address pools are unchanged. Their existing tests pass without changes.
 
 ## Assumptions
@@ -108,5 +106,6 @@ Without this header, the details page shows a generic title above a property lis
 
 - The rest of the new number pool page: the scope picker, the ranges card, the allocations table, the range editor and the create form.
 - Headers of IP prefix pools and IP address pools.
+- Showing the pool's allocation scope. The UI does not handle allocation scopes yet; the scope stays in the loaded pool data for later work.
 - Renaming a schema-created pool, or changing its description, from the UI.
 - Updating screenshots in the user documentation. This happens once the rest of the number pool page is built.

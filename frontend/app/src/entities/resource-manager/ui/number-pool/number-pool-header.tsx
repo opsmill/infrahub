@@ -1,6 +1,6 @@
 import { Tooltip } from "@infrahub/ui";
 import { FileCodeIcon } from "lucide-react";
-import React from "react";
+import type React from "react";
 import { Button as AriaButton, DialogTrigger } from "react-aria-components";
 
 import { CopyToClipboardButton } from "@/shared/components/buttons/copy-to-clipboard-button";
@@ -95,27 +95,6 @@ function SchemaReference({ schema, targetField, className, children }: SchemaRef
   );
 }
 
-interface ScopeFieldReferenceProps {
-  schema: ModelSchema | null;
-  fieldName: string;
-}
-
-function ScopeFieldReference({ schema, fieldName }: ScopeFieldReferenceProps) {
-  const fieldSchema = [...(schema?.attributes ?? []), ...(schema?.relationships ?? [])].find(
-    (field) => field.name === fieldName
-  );
-
-  return (
-    <SchemaReference
-      schema={fieldSchema ? schema : null}
-      targetField={fieldName}
-      className={schemaLinkStyle}
-    >
-      {fieldSchema?.label || fieldName}
-    </SchemaReference>
-  );
-}
-
 interface AllocationSentenceProps {
   pool: NumberPoolData;
 }
@@ -124,7 +103,6 @@ function AllocationSentence({ pool }: AllocationSentenceProps) {
   const kind = pool.node.value;
   const attribute = pool.node_attribute.value;
   const { schema } = useSchema(kind);
-  const scopeFields = pool.allocation_scope.value;
 
   return (
     <Row className="flex-wrap gap-1.5 text-sm">
@@ -136,19 +114,6 @@ function AllocationSentence({ pool }: AllocationSentenceProps) {
       <SchemaReference schema={schema} className={schemaLinkStyle} targetField={attribute}>
         {attribute}
       </SchemaReference>
-      {scopeFields.length === 0 ? (
-        <span className="text-foreground-muted">with no scope</span>
-      ) : (
-        <>
-          <span className="text-foreground-muted">scoped by</span>
-          {scopeFields.map((fieldName, index) => (
-            <React.Fragment key={fieldName}>
-              {index > 0 && <span className="text-foreground-muted">+</span>}
-              <ScopeFieldReference schema={schema} fieldName={fieldName} />
-            </React.Fragment>
-          ))}
-        </>
-      )}
     </Row>
   );
 }

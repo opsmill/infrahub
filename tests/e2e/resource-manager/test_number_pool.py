@@ -96,7 +96,6 @@ class TestNumberPool:
         await expect(header.get_by_text("Managed by")).to_have_count(0)
         await expect(header.get_by_text("Allocates to")).to_be_visible()
         await expect(header.get_by_role("button", name="InfraInterface", exact=True)).to_be_visible()
-        await expect(header.get_by_text("with no scope")).to_be_visible()
 
         await header.get_by_role("button", name="Actions").click()
         await expect(admin_page.get_by_role("menuitem", name="Edit")).not_to_have_attribute("aria-disabled", "true")
@@ -120,7 +119,6 @@ class TestNumberPool:
         await expect(header.get_by_text("Allocates to")).to_be_visible()
         await expect(header.get_by_role("button", name="InfraService", exact=True)).to_be_visible()
         await expect(header.get_by_role("button", name="service_identifier", exact=True)).to_be_visible()
-        await expect(header.get_by_text("with no scope")).to_be_visible()
 
         await header.get_by_role("button", name="InfraService", exact=True).click()
         await expect(admin_page.get_by_role("dialog", name="Schema viewer")).to_be_visible()

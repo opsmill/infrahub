@@ -86,7 +86,7 @@ Each decision below resolves an open point in the plan's technical context. Code
 - **Rationale**: the value is part of the `pool_type` enum that the backend defines (`backend/infrahub/core/constants/__init__.py::NumberPoolType`). Comparing against it is vocabulary, like the kind constants in the same file, not a mirrored default.
 - **Alternatives considered**: read the enum from the attribute schema at runtime. Rejected: it gives no extra safety, because the comparison still needs the literal.
 
-## R7. Labels of the allocation scope fields, and the schema modal tab
+## R7. Labels of the allocation scope fields, and the schema modal tab (scope display removed, see R18)
 
 - **Decision**:
   - `ScopeFieldReference` looks up each scope field inline: one `find` by name over the kind schema's attributes and relationships. The label is the field's `label`, or its name when the label is empty or the field is missing. A field missing from the schema, or a kind missing from the current branch, shows the stored name and opens nothing.
@@ -138,7 +138,6 @@ Each decision below resolves an open point in the plan's technical context. Code
     - `test_header_for_user_created_pool`: the user-created pool "number pool test for generic" that the class already creates
 - **Rationale**:
   - Constitution principle IV requires an end-to-end test for user-facing features. Extending the existing spec reuses its branch fixture and pools.
-  - No end-to-end data sets `allocation_scope`, so the "scoped by" sentence and the missing-field fallback are covered by component tests.
 - **Effect on existing tests**: `tests/e2e/resource-manager/test_resource_pool.py` and `tests/e2e/test_breadcrumb.py` test IP prefix pools, so this change does not affect them. `test_number_pool.py::test_number_pool_attribute_kind_resource_manager` saves a documentation screenshot of the schema-created pool. The new header changes that screenshot, and docs screenshots are updated once the rest of the number pool page is built.
 
 ## R12. Known limitation that is not addressed: the edit form on multi-range pools
@@ -179,4 +178,10 @@ Each decision below resolves an open point in the plan's technical context. Code
 - **Decision**: the header shows the "Managed by schema" tag only when `pool_type` is `"Schema"`. User-created pools show no tag. Selecting the tag opens `SchemaViewerModal` for the pool's kind, on the attributes tab, focused on `node_attribute`. The tooltip naming the attribute stays.
 - **Rationale**: most pools are created by users, so only the exception needs a label. Opening the attribute in a modal matches the schema references in the sentence (R15) and lands on the exact field that created the pool, which the schema page cannot do.
 - **Alternatives considered**: a "Managed by users" tag on user-created pools. Rejected: it labels the common case.
+
+## R18. The header does not show the allocation scope
+
+- **Decision**: the sentence ends after the attribute: "Allocates to `<kind>` attribute `<attribute>`". The "scoped by …" and "with no scope" parts and `ScopeFieldReference` are removed. `allocation_scope` stays in `NumberPoolData`.
+- **Rationale**: the user decided that the UI does not handle allocation scopes yet, so the header should not describe them. Keeping the field in the loaded data lets later work show the scope without changing the fetch path.
+- **Still valid from R7**: `SchemaReference` keeps picking the modal tab from `targetField`.
 

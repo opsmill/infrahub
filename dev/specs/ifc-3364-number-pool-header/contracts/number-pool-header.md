@@ -56,7 +56,7 @@ Layout of `NumberPoolHeader`, from top to bottom:
    - "Managed by schema" tag, for schema-created pools only.
    - On the right: full ID with copy button, reload button (`RefreshButton queryKey={resourceManagerQueryKeys.all}`), Actions menu.
 2. **Description**: shown only when the pool has one.
-3. **Allocation sentence**: `Allocates to <kind> attribute <attribute>`, then `scoped by <label> + <label>` or `with no scope`.
+3. **Allocation sentence**: `Allocates to <kind> attribute <attribute>`. The allocation scope is not shown.
 
 Accessible names that tests rely on:
 
@@ -69,7 +69,7 @@ Accessible names that tests rely on:
 | Actions menu | `button` "Actions" |
 | Managed-by tag, schema-created pool | `button` "Managed by schema"; opens `dialog` "Schema viewer" |
 | Kind in the sentence, kind in the schema | `button`, the kind name; opens `dialog` "Schema viewer" |
-| Attribute and scope fields, field in the schema | `button`, the field name or label; opens `dialog` "Schema viewer" |
+| Attribute, kind in the schema | `button`, the attribute name; opens `dialog` "Schema viewer" |
 
 ## `NumberPoolActionsMenu`
 

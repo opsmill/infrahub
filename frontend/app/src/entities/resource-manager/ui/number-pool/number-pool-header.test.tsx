@@ -106,7 +106,7 @@ describe("NumberPoolHeader", () => {
     await expect.element(component.getByText(/Managed by/)).not.toBeInTheDocument();
   });
 
-  it("states the kind and attribute an unscoped pool allocates to", async () => {
+  it("states the kind and attribute the pool allocates to", async () => {
     // WHEN
     const component = await renderHeader(schemaPool);
 
@@ -118,21 +118,14 @@ describe("NumberPoolHeader", () => {
     await expect
       .element(component.getByRole("button", { name: "speed", exact: true }))
       .toBeVisible();
-    await expect.element(component.getByText("with no scope")).toBeVisible();
   });
 
-  it("lists the scope fields of a scoped pool by their schema labels", async () => {
+  it("does not show the allocation scope of a scoped pool", async () => {
     // WHEN
     const component = await renderHeader(userPool);
 
     // THEN
-    await expect.element(component.getByText("scoped by")).toBeVisible();
-    await expect
-      .element(component.getByRole("button", { name: "Site", exact: true }))
-      .toBeVisible();
-    await expect
-      .element(component.getByRole("button", { name: "Role", exact: true }))
-      .toBeVisible();
+    await expect.element(component.getByText(/scope/)).not.toBeInTheDocument();
   });
 
   it("opens the schema of the kind in a modal", async () => {
@@ -144,29 +137,6 @@ describe("NumberPoolHeader", () => {
 
     // THEN
     await expect.element(component.getByRole("dialog", { name: "Schema viewer" })).toBeVisible();
-  });
-
-  it("opens the schema of a scope field in a modal", async () => {
-    // GIVEN
-    const component = await renderHeader(userPool);
-
-    // WHEN
-    await component.getByRole("button", { name: "Site", exact: true }).click();
-
-    // THEN
-    await expect.element(component.getByRole("dialog", { name: "Schema viewer" })).toBeVisible();
-  });
-
-  it("shows a scope field missing from the schema by its stored name, without a modal", async () => {
-    // WHEN
-    const component = await renderHeader({
-      ...userPool,
-      allocation_scope: { value: ["site", "vrf"] },
-    });
-
-    // THEN
-    await expect.element(component.getByText("vrf", { exact: true })).toBeVisible();
-    await expect.element(component.getByRole("button", { name: "vrf" })).not.toBeInTheDocument();
   });
 
   it("shows a kind missing from the schema without a modal", async () => {

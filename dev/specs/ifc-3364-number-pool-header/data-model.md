@@ -15,7 +15,7 @@ The work adds no entity and changes no stored data. The header reads existing fi
 | `pool_type` | Text, read-only | `"User"` or `"Schema"` | Managed-by tag, schema lock on Edit, Groups and Delete |
 | `node` | Text | a kind name, such as `InfraAutonomousSystem` | "Allocates to `<kind>`", schema links |
 | `node_attribute` | Text | an attribute name, such as `asn` | "attribute `<attribute>`", schema lock message |
-| `allocation_scope` | List | `string[]` or `null` | "scoped by `<labels>`" or "with no scope" |
+| `allocation_scope` | List | `string[]` or `null` | Not shown; the UI does not handle allocation scopes yet |
 
 The header does not read `start_range`, `end_range` or `ranges`.
 
@@ -45,8 +45,6 @@ The mapper (`api/number-pool.mappers.ts::mapToNumberPoolData`) fills the missing
 
 | Field | Header use |
 |-------|-----------|
-| `attributes[].name`, `attributes[].label` | Labels of the scope fields |
-| `relationships[].name`, `relationships[].label` | Labels of the scope fields |
 
 The pool's own schema (`CoreNumberPool`) provides `documentation` for the Documentation menu item.
 
@@ -59,23 +57,13 @@ The pool's own schema (`CoreNumberPool`) provides `documentation` for the Docume
 | `"Schema"` | "Managed by schema" | Opens `SchemaViewerModal` for `node`, attributes tab, focused on `node_attribute` | Disabled: `Defined by the schema attribute <node>.<node_attribute>` |
 | `"User"` | none | | Edit and Groups follow `permission.update`, Delete follows `permission.delete` |
 
-### Allocation scope fields
-
-Each stored name is looked up in the kind schema's attributes and relationships, in the stored order:
-
-1. When a field has this name: its label (or the name when the label is empty).
-2. Otherwise, including when the kind's schema is `null`: the stored name, and nothing opens.
-
-When `allocation_scope` is `null` or `[]`, the header shows "with no scope".
-
 ### Schema references in the sentence
 
-The kind, the attribute and each scope field use the same style: medium weight with a dotted underline that turns solid on hover, the style of a link.
+The kind and the attribute use the same style: medium weight with a dotted underline that turns solid on hover, the style of a link.
 
 | Reference | Text | When selected |
 |------|------|---------------|
 | Kind | the kind name | `SchemaViewerModal` with the kind's schema |
 | Attribute | the attribute name | `SchemaViewerModal`, attributes tab, focused on the attribute |
-| Scope field | its label | `SchemaViewerModal`, relationships tab when the field is a relationship, otherwise attributes tab, focused on the field |
 
-When the kind's schema is missing on the current branch, or a scope field is not in it, the reference is shown in medium weight, without an underline, and opens nothing.
+When the kind's schema is missing on the current branch, the reference is shown in medium weight, without an underline, and opens nothing.
