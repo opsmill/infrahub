@@ -8,12 +8,14 @@ from typing import TYPE_CHECKING
 import httpx
 import typer
 from infrahub_sdk.async_typer import AsyncTyper
+from prefect.cli.server import start_services as start_prefect_services
 from prefect.client.orchestration import get_client
 from prefect.client.schemas.objects import StateType
 from rich.filesize import decimal
 
 from infrahub import config
 from infrahub.core.migrations.shared import get_migration_console
+from infrahub.prefect_server.app import apply_infrahub_settings_to_prefect
 from infrahub.prefect_server.task_history_models import CleanupJob, CleanupRewrite
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.flow_run.cleanup import (
@@ -32,6 +34,8 @@ from infrahub.workflows.models import WorkerPoolDefinition
 from .constants import ERROR_BADGE
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from prefect.client.orchestration import PrefectClient
     from rich.console import Console
 
@@ -84,6 +88,20 @@ async def execute(
             workflow=DUMMY_FLOW, parameters={"data": DummyInput(firstname="John", lastname="Doe")}
         )  # type: ignore[var-annotated]
         print(result)
+
+
+def run_background_services(config_file: str, start_services: Callable[[], None]) -> None:
+    """Apply the retention of the configuration to Prefect's settings, then run the services until they stop."""
+    apply_infrahub_settings_to_prefect(config_file=config_file)
+    start_services()
+
+
+@app.command()
+def background_services(
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Run the task manager's background services in the foreground, with the retention set in the configuration."""
+    run_background_services(config_file=config_file, start_services=start_prefect_services)
 
 
 flush_app = AsyncTyper()
