@@ -41,6 +41,11 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
     )
 
 
+async def get_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
+    """Resolve the permission checker on the event loop, since FastAPI runs a sync dependency in a worker thread."""
+    return build_graphql_query_permission_checker()
+
+
 def build_graphql_app() -> InfrahubGraphQLApp:
     return InfrahubGraphQLApp(
         build_graphql_query_permission_checker(),
