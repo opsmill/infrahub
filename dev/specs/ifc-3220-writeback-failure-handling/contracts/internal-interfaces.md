@@ -451,9 +451,11 @@ cannot forget it.
 | `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids`. In a release, `_submit_full_terminal_regeneration` holds nothing and submits the terminal trigger with `include_repository_ids=[releasing]`, because a release covers only the definitions of its repository (SC-004) | the repository |
 | `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetResolver.owner_of(kind, attribute_name, branch)` |
 | `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the repository of each gathered trigger |
+| `HeldRegenerationReleaser`, the Python submissions of a release, with `releasing` set | `PythonTargetRequest` | the released repository when it owns the attribute, else `None` |
 
-`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and the
-schema-scoped recompute each gain a required `barrier: RegenerationBarrier` constructor parameter.
+`PostMergeRegenerationDispatcher`, `MergeRecomputeCoordinator`, `RecomputeChainSubmitter` and
+`HeldRegenerationReleaser` each gain a required `barrier: RegenerationBarrier` constructor parameter.
+The schema-scoped recompute builds its barrier inside its flow.
 The rebase builder and every test pass one too: on a non-default branch it admits everything without
 a read.
 
@@ -467,6 +469,7 @@ class HeldRegenerationReleaser:
         self,
         dispatcher: PostMergeRegenerationDispatcher,
         python_submitter: CoalescedRecomputeSubmitter,
+        barrier: RegenerationBarrier,
         definitions: HeldDefinitionResolver,
         narrowed: NarrowedHoldCache,
         default_branch_name: str,
@@ -501,8 +504,10 @@ Contract:
 4. Dispatch the generator and artifact requests through `PostMergeRegenerationDispatcher`, with
    `releasing=repository_id`, so the cascade runs as on a merge and every dispatch passes through the
    barrier.
-5. Submit each Python attribute: the cached narrowed submission, or a whole-kind recompute with
-   `coalesced=True` and `widened=True`.
+5. Submit each Python attribute: the cached narrowed target (`PythonTargetRequest`), or a
+   whole-kind recompute with `coalesced=True` and `widened=True`. Each target first passes the
+   barrier with `releasing=repository_id`. An attribute that the repository owns is admitted. Any
+   other attribute has no known owner, so it stays held under every other pending repository.
 6. Renew the lease after each awaited step, through a callback the caller passes.
 7. Raise on a dispatch failure. The releaser only raises. Its caller, the service or the
    abandoner, sets the lease's expiry to now through `expire_lease`, then handles the failure.
