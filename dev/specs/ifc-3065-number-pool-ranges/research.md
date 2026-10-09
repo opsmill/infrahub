@@ -108,9 +108,9 @@ The schema-load flow does not read `CONSTRAINT_VALIDATOR_MAP`: `schema_path_vali
 
 ### D10. Upserter and synchronizer own the range nodes of schema pools
 
-**Decision**: `SchemaNumberPoolUpserter.upsert_number_pool` creates the range nodes from `effective_ranges()` right after the pool, under the same lock and timestamp, then calls `NumberPoolShorthandMirror.sync`. `SchemaNumberPoolSynchronizer._update_pool_from_schema` reconciles: desired ranges sorted by start are matched positionally to existing ranges sorted by start; matched ranges are updated in place (bounds and weight), extra ranges are deleted, missing ranges are created; then the shorthand is synced. The `pool_type == Schema` gate is unchanged.
+**Decision**: `SchemaNumberPoolUpserter.upsert_number_pool` creates the range nodes from `effective_ranges()` right after the pool, under the same lock and timestamp, then calls `NumberPoolShorthandMirror.sync`. `SchemaNumberPoolSynchronizer._update_pool_from_schema` reconciles by bounds: an existing range declared with the same bounds is kept and its weight rewritten when it differs, every other declared range is created and every other existing range is deleted; then the shorthand is synced. The `pool_type == Schema` gate is unchanged.
 
-**Rationale**: in-place update keeps range identity for the common case (one range edited); the migration in `node_attribute_add.py` allocates immediately after upsert, so ranges must exist at that point.
+**Rationale**: no allocated number is tied to a range, so keeping a range's identity across a change of bounds protects no data, while it would report a replaced range as updated in events, history and permissions. The migration in `node_attribute_add.py` allocates immediately after upsert, so ranges must exist at that point.
 
 ### D11. GraphQL mutations and guards
 
