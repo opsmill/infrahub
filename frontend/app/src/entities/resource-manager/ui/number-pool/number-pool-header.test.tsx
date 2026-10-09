@@ -126,6 +126,8 @@ describe("NumberPoolHeader", () => {
 
     // THEN
     await expect.element(component.getByText(/scope/)).not.toBeInTheDocument();
+    await expect.element(component.getByText("Site", { exact: true })).not.toBeInTheDocument();
+    await expect.element(component.getByText("Role", { exact: true })).not.toBeInTheDocument();
   });
 
   it("opens the schema of the kind in a modal", async () => {
