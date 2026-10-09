@@ -11078,7 +11078,7 @@ export type CoreNumberPoolCreateInput = {
   node?: InputMaybe<TextAttributeCreate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeCreate>;
-  ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
    * @deprecated start_range is deprecated, use ranges instead
@@ -11270,7 +11270,7 @@ export type CoreNumberPoolUpdateInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
-  ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
    * @deprecated start_range is deprecated, use ranges instead
@@ -11303,7 +11303,7 @@ export type CoreNumberPoolUpsertInput = {
   node?: InputMaybe<TextAttributeUpdate>;
   /** The attribute of the selected model */
   node_attribute?: InputMaybe<TextAttributeUpdate>;
-  ranges?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  ranges?: InputMaybe<Array<NumberPoolRangeInput>>;
   /**
    * The start of the pool's single range. Null unless the pool holds exactly one range.
    * @deprecated start_range is deprecated, use ranges instead
@@ -23878,6 +23878,15 @@ export type NumberAttributeUpdate = {
   owner?: InputMaybe<Scalars['String']['input']>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
+};
+
+export type NumberPoolRangeInput = {
+  /** Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds of a stored range keeps the stored range's weight; null removes it. */
+  allocation_weight?: InputMaybe<Scalars['BigInt']['input']>;
+  /** The last number of the range, included */
+  end: Scalars['BigInt']['input'];
+  /** The first number of the range, included */
+  start: Scalars['BigInt']['input'];
 };
 
 export type ObjectPermission = {
