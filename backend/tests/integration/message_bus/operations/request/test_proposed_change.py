@@ -37,6 +37,7 @@ from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
 )
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.log import FakeLogger
 from tests.adapters.message_bus import BusRecorder
 from tests.adapters.repository_record_store import build_in_memory_recorder
@@ -109,6 +110,7 @@ async def sync_repository(repo: InfrahubRepository) -> None:
         importer=RepositoryFileImporter(),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        state=build_idle_delivery_state(),
     )
     outcome = await syncer.sync(repo)
     assert outcome.failed == ()

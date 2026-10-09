@@ -7,6 +7,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.sync import RepositorySyncer
 from tests.adapters.cache import MemoryCache
+from tests.adapters.delivery_state import build_idle_delivery_state
 from tests.adapters.lock import LockTimeline, RecordingImporter, RecordingLockRegistry
 from tests.adapters.repository_record_store import build_in_memory_recorder
 
@@ -29,6 +30,7 @@ async def test_repository_lock_scopes_import_build_and_apply(
         importer=RecordingImporter(timeline),
         recorder=build_in_memory_recorder(),
         retarget_markers=RetargetMarkers(cache=MemoryCache()),
+        state=build_idle_delivery_state(),
     )
 
     await syncer.sync(git_repo_04)

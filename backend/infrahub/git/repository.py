@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from infrahub.git.divergence.protocols import TrackedTargetReader
     from infrahub.git.divergence.recorder import HistoryRewriteRecorder
     from infrahub.git.divergence.suppression import RetargetMarkers
+    from infrahub.git.writeback.ports import DeliveryStatePort
 
 log = get_run_logger()
 
@@ -410,6 +411,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None = None,
         recorder: HistoryRewriteRecorder | None = None,
         retarget_markers: RetargetMarkers | None = None,
+        state: DeliveryStatePort | None = None,
     ) -> CollectedImports:
         """Run the git and branch-setup side of a sync and return the imports it produced.
 
@@ -433,6 +435,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 the trunk. A marker that applied to this cycle is cleared when the collection ends with
                 the trunk on the remote head of the default branch. Without them, every lineage break of
                 the trunk is a rewrite.
+            state: While an active repository has pending pushes, its default branch and the source
+                branch of each pending merge are left out. Without it, no branch is left out for a
+                pending push.
 
         Raises:
             RepositoryConnectionError: When the remote repository is unreachable.
@@ -451,6 +456,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             graph_commits=graph_commits,
             recorder=recorder,
             trunk_retargeted=trunk_retargeted,
+            state=state,
         )
 
         # A marker written after the read is left alone here, and the next cycle reads it.
@@ -487,6 +493,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         graph_commits: Mapping[str, str | None] | None,
         recorder: HistoryRewriteRecorder | None,
         trunk_retargeted: bool,
+        state: DeliveryStatePort | None,
     ) -> CollectedImports:
         log.info("Starting the synchronization of %s.", self.name)
 
@@ -535,6 +542,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             new_branches, updated_branches = self._exclude_read_only_branches(
                 new_branches=new_branches, updated_branches=updated_branches, graph_branches=graph_branches
             )
+            if state is not None:
+                new_branches, updated_branches = await self._exclude_pending_delivery_branches(
+                    state=state, new_branches=new_branches, updated_branches=updated_branches
+                )
 
             for branch_name in new_branches:
                 if self.validate_remote_branch(branch_name=branch_name):
@@ -989,6 +1000,33 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 for name in updated_branches
                 if name not in orphaned and self._get_mapped_target_branch(branch_name=name) not in read_only
             ],
+        )
+
+    async def _exclude_pending_delivery_branches(
+        self, state: DeliveryStatePort, new_branches: list[str], updated_branches: list[str]
+    ) -> tuple[list[str], list[str]]:
+        """Drop the default branch and the source branch of each merge while the repository has pending pushes.
+
+        An import of the default branch at the remote head would remove the objects of the pending
+        merges, and a source branch kept on the remote for them would be imported again, as a new
+        Infrahub branch or onto the one still open.
+        """
+        repository_id = str(self.id)
+        if repository_id not in await state.pending_repository_ids():
+            return new_branches, updated_branches
+
+        intent = await state.read(repository_id=repository_id)
+        deferred = {self.default_branch, *(entry.source_git_branch for entry in intent.queue.entries)}
+        skipped = sorted(deferred.intersection([*new_branches, *updated_branches]))
+        if skipped:
+            log.info(
+                "Deferred the synchronization of %s of repository %s until its pending pushes reach the remote",
+                ", ".join(skipped),
+                self.name,
+            )
+        return (
+            [name for name in new_branches if name not in deferred],
+            [name for name in updated_branches if name not in deferred],
         )
 
     async def push(self, branch_name: str, timeout_seconds: float | None = None) -> bool:
