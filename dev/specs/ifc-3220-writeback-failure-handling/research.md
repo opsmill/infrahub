@@ -261,7 +261,7 @@ such a run would queue an entry that FR-005 forbids.
 |---|---|
 | `entry_id` | A new UUID. |
 | `source_branch` | The Infrahub source branch name. |
-| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. |
+| `source_git_branch` | The remote branch, through `_get_mapped_remote_branch`. For a merge source it is the Infrahub branch name, because the mapping changes only Infrahub's default branch and a merge never comes from it. |
 | `source_commit` | `CoreRepository.commit` read on the **source** branch, which is what Infrahub imported and merged. |
 | `merged_at` | The merge time. |
 | `delete_source_git_branch` | `False`. The branch-deletion guard sets it (R12). |

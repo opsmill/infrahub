@@ -313,8 +313,9 @@ SC-002, SC-007.
       with the default branch's commit at `branched_from` and with the recorded commit). Guard each
       enqueue on its own, and pass `widen=False`. Retry a failed enqueue `ENQUEUE_RETRIES` times,
       after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. The constructor takes two new required
-      parameters, the state port and a `sleep` callable, and
-      `backend/infrahub/core/merge/builder.py` passes both. If the last retry fails too, log at
+      parameters, a function that builds the state port on a database session
+      (`state_for_session`) and a `sleep` callable, and `backend/infrahub/core/merge/builder.py`
+      passes both. If the last retry fails too, log at
       error level and still submit. Pass `pending_merge` and the merge's `context` to the workflow.
       Set `pending_merge_enqueued` to `True` only when one of this repository's tries returned (R3).
       Submit no merge workflow for an `active` repository whose merge carries no content. Add
