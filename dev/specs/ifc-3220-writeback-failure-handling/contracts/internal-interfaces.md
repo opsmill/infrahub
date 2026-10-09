@@ -148,7 +148,11 @@ classifier. The table of `research.md` R5 is the contract of `classify_delivery_
 `replay-conflict` row: the service sets that cause from `ReplayResult`, and the classifier gives
 `unclassified` for every exception at the replay stage. A
 `RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
-error gives its typed message, never raw stderr. Every message passes through `scrub_credentials`,
+error gives its typed message, unless the message repeats the text of the error that it was raised
+`from`, as every raise of the Git error enrichment does: then it gives a sentence that names the step
+and the error type, so raw stderr does not reach the repository. The guard sees only that case. A
+message that wraps Git output in a longer sentence, or an error raised without `from`, keeps its
+text, with the credentials removed. Every message passes through `scrub_credentials`,
 which removes `user:password@` and `user@` from every URL it finds. A password can hold `@`, `/`, `?` or
 `#`, so it removes everything from the scheme to the last `@` of the URL. The URL ends at the next
 whitespace, `"`, `<` or `>`, which a URL never holds raw. A `'` does not end it, as a password can hold
