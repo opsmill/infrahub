@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, override
 from uuid import uuid4
 
 import pytest
+from structlog.testing import capture_logs
 
 from infrahub import lock
 from infrahub.auth.session import AccountSession
@@ -418,6 +419,29 @@ async def test_a_stored_value_that_is_not_a_commit_skips_only_its_own_repository
     assert merge.pending_merge.source_commit == SOURCE_COMMIT
     assert (await store.read(repository_id=broken.id)).queue == DeliveryQueue()
     assert (await store.read(repository_id=healthy.id)).queue.entries == (merge.pending_merge,)
+
+
+async def test_a_merge_from_the_remote_branch_that_the_delivery_pushes_to_queues_nothing(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    repository = await create_repository_node(db=db, branch=default_branch, name=REPOSITORY_NAME)
+    # The remote branch of the source branch is then the trunk that a delivery pushes to.
+    await set_values(db=db, branch=default_branch, repository_id=repository.id, default_branch=SOURCE_BRANCH)
+    source_branch = await fork_source_branch(db=db)
+    await set_values(db=db, branch=source_branch, repository_id=repository.id, commit=SOURCE_COMMIT)
+    sleep = RecordingSleep()
+
+    with capture_logs() as records:
+        workflow = await dispatch_merge(db=db, source_branch=source_branch, default_branch=default_branch, sleep=sleep)
+
+    assert submitted_merges(workflow) == []
+    assert sleep.delays == []
+    assert [record["event"] for record in records if record["log_level"] == "warning"] == [
+        f"Skipped the merge of branch {SOURCE_BRANCH} for repository {REPOSITORY_NAME}: the remote branch "
+        f"{SOURCE_BRANCH} is the one that a delivery pushes to, so there is nothing to push."
+    ]
+    intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
+    assert intent.queue == DeliveryQueue()
 
 
 async def test_the_retries_of_every_repository_run_at_the_same_time(

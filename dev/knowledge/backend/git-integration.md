@@ -116,7 +116,7 @@ worktree that does not lead to it:
 | Periodic sync | `git.tasks.sync_remote_repositories` | Cron `* * * * *`, `concurrency_limit=1`, `CANCEL_NEW` (`workflows/catalogue.py::GIT_REPOSITORIES_SYNC`). Pull direction only; it never pushes. |
 | Add repository | `git.tasks.add_git_repository` / `..._read_only` | Clone, import, broadcast. |
 | Create branch | `git.tasks.create_branch` | Create in git, push, broadcast. |
-| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Queue the merge of a read-write repository and deliver the queue ([The push queue](#the-push-queue)); copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records no commit, or the commit that the default branch recorded at the fork of the branch or records now, gets no queue entry and no merge flow: there is nothing to push (`git/writeback/content.py::read_pending_merges`). |
+| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Queue the merge of a read-write repository and deliver the queue ([The push queue](#the-push-queue)); copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records no commit, or the commit that the default branch recorded at the fork of the branch or records now, or whose branch has the name of the remote branch that a delivery pushes to, gets no queue entry and no merge flow: there is nothing to push (`git/writeback/content.py::read_pending_merges`). |
 | Read-only pull | `git.tasks.pull_read_only` | On-demand fetch latest. |
 
 The merge trigger is **not ordered against post-merge regeneration**.
