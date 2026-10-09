@@ -15,7 +15,9 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
   const isListViewDisabled = MENU_EXCLUDELIST.includes(schema.kind as string);
 
   const documentationUrl = schema.documentation
-    ? `${INFRAHUB_DOC_LOCAL}${schema.documentation}`
+    ? schema.documentation.startsWith("http")
+      ? schema.documentation
+      : `${INFRAHUB_DOC_LOCAL}${schema.documentation}`
     : INFRAHUB_DOC_LOCAL;
 
   return (
