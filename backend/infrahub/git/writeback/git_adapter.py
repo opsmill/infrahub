@@ -216,8 +216,10 @@ class RepositoryDeliveryGitAdapter:
     async def delete_remote_branch(self, *, git_branch: str) -> None:
         try:
             await self.repository.delete_remote_branch(branch_name=git_branch, timeout_seconds=PUSH_TIMEOUT_SECONDS)
-        except GitCommandError as exc:
-            if MISSING_REMOTE_BRANCH_TEXT not in str(exc.stderr):
+        except RepositoryError as exc:
+            # The typed error keeps the Git error as its cause, and only that error tells that the branch is gone.
+            cause = exc.__cause__
+            if not (isinstance(cause, GitCommandError) and MISSING_REMOTE_BRANCH_TEXT in str(cause.stderr)):
                 raise
         await self.notify_branch_deleted(git_branch=git_branch)
 
