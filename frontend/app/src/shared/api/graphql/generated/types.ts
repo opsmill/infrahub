@@ -10931,7 +10931,7 @@ export type CoreNodeUpdateInput = {
 /** A pool of number resources */
 export type CoreNumberPool = CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreNumberPool';
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope: Maybe<ListAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
@@ -11063,7 +11063,7 @@ export type CoreNumberPoolCreate = {
 };
 
 export type CoreNumberPoolCreateInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /**
@@ -11254,7 +11254,7 @@ export type CoreNumberPoolUpdate = {
 };
 
 export type CoreNumberPoolUpdateInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
@@ -11287,7 +11287,7 @@ export type CoreNumberPoolUpsert = {
 };
 
 export type CoreNumberPoolUpsertInput = {
-  /** Fields of the kind that divide the pool's space; allocation returns the lowest free number within the writer's division */
+  /** Ordered fields that divide the pool's space, each as {id, name}: the field's schema id on the default branch and its name */
   allocation_scope?: InputMaybe<ListAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /**
