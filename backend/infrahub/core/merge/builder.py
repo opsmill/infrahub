@@ -237,6 +237,7 @@ async def build_held_regeneration_releaser(
             db=db, branch=default_branch, barrier=barrier, workflow=workflow, log=log
         ),
         python_submitter=CoalescedRecomputeSubmitter(workflow=workflow),
+        barrier=barrier,
         definitions=HeldDefinitionResolver(
             artifact_selector=ArtifactSelector(client=client, gate=gate, impacted_resolver=impacted_resolver, log=log),
             generator_selector=GeneratorSelector(
