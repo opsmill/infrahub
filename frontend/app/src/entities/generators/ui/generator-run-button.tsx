@@ -4,11 +4,11 @@ import type React from "react";
 import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/object/ui/routing/object-urls";
+import { getTaskDetailsUrl } from "@/entities/tasks/ui/routing/task-urls";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;
@@ -34,7 +34,7 @@ export function GeneratorRunButton({
           const url =
             objectKind && objectId
               ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
-              : constructPath(`/tasks/${taskId}`);
+              : getTaskDetailsUrl(taskId);
 
           toast(
             <Alert

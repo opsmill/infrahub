@@ -10,17 +10,27 @@ import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 
 interface FilterSearchInputProps extends Omit<SearchInputProps, "onChange" | "value"> {
   schema?: ModelSchema;
+  /**
+   * The filter this box reads and writes, for a surface whose request narrows on one named field
+   * rather than on any field.
+   */
+  filterName?: string;
 }
 
-export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchInputProps) => {
+export const FilterSearchInput = ({
+  schema,
+  className,
+  filterName = SEARCH_ANY_FILTER,
+  ...props
+}: FilterSearchInputProps) => {
   const [filters, setFilters] = useFilters();
-  const [search, setSearch] = useSearch();
+  const [search, setSearch] = useSearch(filterName);
   const [prevSearch, setPrevSearch] = useState(search);
   const [inputValue, setInputValue] = useState(search ?? "");
   const debouncedInputValue = useDebounce(inputValue, 300);
 
   const removeSearchFilter = () => {
-    setFilters(filters.filter((f) => f.name !== SEARCH_ANY_FILTER));
+    setFilters(filters.filter((f) => f.name !== filterName));
   };
 
   // Update URL when debounced value changes

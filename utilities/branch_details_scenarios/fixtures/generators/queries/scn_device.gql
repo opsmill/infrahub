@@ -1,0 +1,12 @@
+query scn_device($name: String!) {
+  InfraDevice(name__value: $name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
