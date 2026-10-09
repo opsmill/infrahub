@@ -448,7 +448,7 @@ cannot forget it.
 |---|---|---|
 | `PostMergeRegenerationDispatcher.dispatch`, on the built plan | `RequestGeneratorDefinitionRun`, `RequestArtifactDefinitionGenerate` | `generator_definition.repository_id`, `repository_id` |
 | `PostMergeRegenerationDispatcher._submit`, after the cascade | `RequestArtifactDefinitionGenerate` | `repository_id` |
-| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids` | the repository |
+| `PostMergeRegenerationDispatcher._full_regeneration`, `_submit_full_terminal_regeneration`, and the flag-off path of `post_process_branch_merge` | a `widen` marker per pending repository, with the reason of the fallback (data model, "New fallback reasons"), then the blanket triggers with `exclude_repository_ids`. In a release, `_submit_full_terminal_regeneration` holds nothing and submits the terminal trigger with `include_repository_ids=[releasing]`, because a release covers only the definitions of its repository (SC-004) | the repository |
 | `recompute_coalescing.py::_resolve_python_targets` | `AffectedTarget` of the Python family | `PythonTargetSource.owner_of(kind, attribute)` |
 | `computed_attribute/tasks.py::computed_attribute_setup_python`, on the default branch | the selected `(kind, attribute)` pairs | the same owner map |
 
@@ -486,10 +486,11 @@ Contract:
 1. If `held.widen` has scope `all`, run the full `widen` release of the repository, log the
    marker's own `reason`, and stop. Else, if any held identifier does not resolve, run the same
    release, log `HELD_SET_UNRESOLVED`, and stop. `HELD_SET_UNRESOLVED` is only for an identifier
-   that does not resolve. The full release submits both blanket triggers with
-   `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every Python computed
-   attribute whose transform the repository owns. It covers every held item, so the other steps have
-   nothing to dispatch.
+   that does not resolve. A held generator definition that exists but no longer runs after a merge
+   resolves: the release logs it and runs nothing for it. The full release submits both blanket
+   triggers with `include_repository_ids=[repository_id]`, plus a whole-kind recompute of every
+   Python computed attribute whose transform the repository owns. It covers every held item, so the
+   other steps have nothing to dispatch.
 2. If `held.widen` has scope `terminals`, log the marker's `reason`, submit the artifact trigger
    with `include_repository_ids=[repository_id]`, then continue at step 3. The trigger covers the
    artifact items of the window, so steps 3 and 4 skip them. It does not cover the generator items or the

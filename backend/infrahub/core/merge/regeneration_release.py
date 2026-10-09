@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Protocol, assert_never
 
-from infrahub_sdk.protocols import CoreTransformPython
+from infrahub_sdk.protocols import CoreGeneratorDefinition, CoreTransformPython
 
 from infrahub.computed_attribute.recompute_resolution import RecomputeResolver
 from infrahub.core.constants import FullRegenerationReason
@@ -46,8 +46,11 @@ class HeldDefinitionSource(Protocol):
 
     async def generator_requests(
         self, *, branch: str, ids: Collection[str]
-    ) -> dict[str, RequestGeneratorDefinitionRun]:
-        """Return the request with no target narrowing of each generator definition that exists, by its id."""
+    ) -> dict[str, RequestGeneratorDefinitionRun | None]:
+        """Return the request with no target narrowing of each generator definition that exists, by its id.
+
+        A definition that exists but does not run after a merge maps to None.
+        """
 
     async def python_attributes(self, *, branch: str, repository_id: str) -> list[DeclaredAttribute]:
         """Return the Python computed attributes whose transform the repository owns."""
@@ -75,8 +78,15 @@ class HeldDefinitionResolver:
 
     async def generator_requests(
         self, *, branch: str, ids: Collection[str]
-    ) -> dict[str, RequestGeneratorDefinitionRun]:
-        return await self._unnarrowed_requests(selector=self.generator_selector, branch=branch, ids=ids)
+    ) -> dict[str, RequestGeneratorDefinitionRun | None]:
+        runs = await self._unnarrowed_requests(selector=self.generator_selector, branch=branch, ids=ids)
+        requests: dict[str, RequestGeneratorDefinitionRun | None] = dict(runs)
+        missing = [definition_id for definition_id in ids if definition_id not in requests]
+        if missing:
+            # The selector loads only the definitions that run after a merge, so a missing one can still exist.
+            existing = await self.client.filters(kind=CoreGeneratorDefinition, ids=missing, branch=branch)
+            requests.update(dict.fromkeys((generator.id for generator in existing), None))
+        return requests
 
     async def python_attributes(self, *, branch: str, repository_id: str) -> list[DeclaredAttribute]:
         transforms = await self.client.filters(kind=CoreTransformPython, branch=branch, repository__ids=[repository_id])
@@ -156,6 +166,7 @@ class HeldRegenerationReleaser:
         generators = await self.definitions.generator_requests(
             branch=self.default_branch_name, ids=[item.id for item in held.generator_definitions]
         )
+        await renew()
         unresolved = sorted(
             ({item.id for item in held.artifact_definitions} - artifacts.keys())
             | ({item.id for item in held.generator_definitions} - generators.keys())
@@ -170,14 +181,19 @@ class HeldRegenerationReleaser:
             )
             return
 
+        not_run = sorted(definition_id for definition_id, request in generators.items() if request is None)
+        if not_run:
+            log.info(
+                "The held generator definitions no longer run after a merge, so the release runs nothing for them",
+                repository_id=repository_id,
+                generator_definition_ids=not_run,
+            )
         generator_runs = [
             await self._narrowed_request(
-                repository_id=repository_id,
-                item=item,
-                unnarrowed=generators[item.id],
-                narrowing={"target_members"},
+                repository_id=repository_id, item=item, unnarrowed=request, narrowing={"target_members"}
             )
             for item in held.generator_definitions
+            if (request := generators[item.id]) is not None
         ]
         artifact_generates: list[RequestArtifactDefinitionGenerate] = []
         if terminals_reason is not None:
@@ -205,6 +221,8 @@ class HeldRegenerationReleaser:
             ]
 
         if generator_runs or artifact_generates:
+            # The narrowed requests were read from the cache since the last renewal.
+            await renew()
             await self.dispatcher.dispatch_requests(
                 context=self.context,
                 target_branch=self.default_branch_name,
@@ -238,6 +256,7 @@ class HeldRegenerationReleaser:
         )
         await renew()
         owned = await self.definitions.python_attributes(branch=self.default_branch_name, repository_id=repository_id)
+        await renew()
         # A held attribute whose owner was unknown at its hold is not in the owned list.
         await self._recompute_whole_kinds(
             attributes=[

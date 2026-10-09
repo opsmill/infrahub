@@ -981,7 +981,9 @@ scope `terminals` covers only the artifact definitions. If its release stopped a
 the clear would remove the held generator items and Python items without a dispatch (FR-016).
 
 An identifier that no longer resolves, for example a deleted definition, turns the release into the
-full `widen` release of that repository, as for scope `all` (FR-016). The PRD names this as "a
+full `widen` release of that repository, as for scope `all` (FR-016). A held generator definition
+that exists but no longer runs after a merge resolves: the merge path would not run it either, so
+the release logs it and runs nothing for it. The PRD names this as "a
 further named fallback reason": `FullRegenerationReason.HELD_SET_UNRESOLVED` is added beside the
 four that exist.
 
