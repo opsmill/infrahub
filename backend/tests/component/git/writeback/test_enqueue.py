@@ -744,6 +744,30 @@ async def test_a_merge_flow_whose_source_branch_is_gone_queues_nothing_for_the_r
     assert intent.held == HeldRegeneration()
 
 
+async def test_a_merge_flow_whose_entry_the_branch_merge_queued_never_queues_it_again(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    cloned_repository: ClonedRepository,
+) -> None:
+    """A user can abandon the queue while the run waits, so the run must not put the entry back."""
+    repository = cloned_repository
+    entry = pending_merge(entry_id=str(uuid4()), source_git_branch=SOURCE_BRANCH)
+
+    state = await run_merge_flow(
+        dependency_provider=dependency_provider,
+        client=repository.client,
+        model=repository.merge_model(entry=entry, enqueued=True),
+    )
+
+    assert state.is_completed()
+    assert state.message == f"The delivery to repository {REPOSITORY_NAME} ended with the outcome nothing-pending."
+    intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
+    assert intent.queue == DeliveryQueue()
+    assert intent.held == HeldRegeneration()
+
+
 async def test_a_merge_flow_with_no_entry_and_no_content_queues_nothing(
     db: InfrahubDatabase,
     default_branch: Branch,
