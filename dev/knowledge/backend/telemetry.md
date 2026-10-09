@@ -1,11 +1,14 @@
 # Telemetry
 
-> Part of: `dev/knowledge/backend/` | Related: [Events System](events.md), [Asynchronous Tasks](async-tasks.md)
+> Part of: `dev/knowledge/backend/` | Related: [Events System](events.md), [Asynchronous Tasks](async-tasks.md), [Licensing](licensing.md)
 
-Infrahub gathers an anonymous usage snapshot once a day. The snapshot is always stored locally
+Infrahub gathers a usage snapshot once a day. The snapshot is always stored locally
 (so air-gapped and opted-out deployments still retain their own history) and, unless the
 operator opts out, is also sent to the OpsMill telemetry endpoint. It exists to understand
-adoption and scale, never to capture customer data.
+adoption and scale, never to capture customer data. A snapshot from Infrahub Community is
+anonymous. A deployment that requires a license also reports its license ID, which OpsMill can map
+to the customer it issued the license to, so that snapshot is not anonymous. It never carries the
+customer name (see [License block](#license-block)).
 
 ## Collection flow
 
@@ -39,6 +42,7 @@ distinction that matters operationally is each category's **temporal model** (be
 | Database | database type, node/relationship counts, server + host system info |
 | Prefect | event tally, automation counts, work-pool state |
 | Activity (24h) | logins, checks, artifacts, branch actions, webhook deliveries |
+| License | license state, ID, type, tiers, dates and issuer; `null` when no license is required |
 
 ### Activity (24h) field semantics
 
@@ -50,13 +54,42 @@ distinction that matters operationally is each category's **temporal model** (be
 | `branches_created` / `_merged` / `_deleted` | Branch lifecycle events. |
 | `webhooks_fired_success` / `_failure` | Terminal `webhook-process` flow-run states. |
 
+### License block
+
+`license` holds the license state of the deployment. The daily flow runs on a task worker, so
+`license/reporting.py::license_block` builds it from the task worker's license service:
+
+| Field | Value |
+|-------|-------|
+| `state` | One of the license states (see [Licensing](licensing.md#states)) |
+| `license_id` | ID of the license, set when the state carries one |
+| `license_type` | Type exactly as the license states it, normally `evaluation` or `commercial` |
+| `product_tier` / `support_tier` | Tiers the license grants |
+| `starts_at` / `ends_at` | First instant the license is valid, and the first instant it no longer is |
+| `issuer` | Who issued the license |
+
+- The customer name is never included, although the license carries it. The license ID is enough
+  for OpsMill to match a snapshot to the license it issued.
+- `license` is `null` when no license is required: Infrahub Community, or an edition that registers
+  no license service. For `unlicensed` and `invalid` only `state` is set, because no license was
+  verified.
+- The block is gathered through `safe_metric` like every other source: a block that cannot be built
+  is logged and stored as `null`. A license service that raises yields `state: invalid` (see
+  [Licensing](licensing.md#failure-containment)).
+- It is part of the stored snapshot, so it is kept when sending is turned off and the air-gapped
+  export carries it.
+
+`TELEMETRY_VERSION` in `telemetry/constants.py` is the snapshot's `payload_format`; formats from
+`20261004` carry the `license` field.
+
 ## Temporal models (the important part)
 
 Not every number means the same thing over time. There are three kinds:
 
 1. **Point-in-time snapshot** — most metrics (node/relationship counts, accounts, branches,
-   schema, features, workers, database info) are the *current* value at gather time. Re-running
-   the flow reflects the graph as it is now.
+   schema, features, workers, database info, license) are the *current* value at gather time.
+   Re-running the flow reflects the graph as it is now, and the license state at the task worker's
+   current time.
 
 2. **Cumulative over Prefect retention (~7 days)** — the `prefect.events` tally is a raw count
    of each event type that Prefect *still retains*. Prefect expires events after ~7 days, so
@@ -116,9 +149,11 @@ both gated on the `READ_TELEMETRY` global permission.
 | `backend/infrahub/telemetry/utils.py` | Degradation helper, 24h window functions, infrahub-type detection |
 | `backend/infrahub/telemetry/database.py` | Database and node-count metrics |
 | `backend/infrahub/telemetry/models.py` | Payload schema |
+| `backend/infrahub/license/reporting.py` | License block (`license_block`) |
 | `backend/infrahub/workflows/catalogue.py` | Registers the `anonymous_telemetry_send` deployment |
 
 ## See Also
 
 - [Events System](events.md) — the Prefect events the activity metrics count
 - [Asynchronous Tasks](async-tasks.md) — how the daily flow is scheduled and run
+- [Licensing](licensing.md) — the license service the license block reads

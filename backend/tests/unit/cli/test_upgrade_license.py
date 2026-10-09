@@ -5,13 +5,16 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
+from uuid import uuid4
 
 import pytest
 import typer
 
+from infrahub import config
 from infrahub.cli import upgrade
 from infrahub.cli.upgrade import _print_license_section, _upgrade_check, _upgrade_execute, console
 from infrahub.license.models import License, LicenseFailureReason, LicenseState, LicenseStatus, NoticeMode
+from infrahub.license.service import LicenseServiceCommunity
 from infrahub.workers.dependencies import build_license_service
 from tests.adapters.license import FailingLicenseService, FailingNoticeModeLicenseService, RecordingLicenseService
 from tests.helpers.dependency_override import override_dependency
@@ -98,6 +101,42 @@ def test_print_license_section_logs_and_skips_a_section_that_cannot_be_built(
     assert [(payload["level"], payload["event"], payload["exc_info"]) for payload in infrahub_log_payloads(caplog)] == [
         ("error", "The license section of the upgrade output could not be built; skipping it", True)
     ]
+
+
+LICENSE_KEY = f"leak-sentinel-{uuid4()}"
+
+
+@dataclass
+class LicenseKeyLeakCase:
+    name: str
+    service: LicenseService
+    printed: str
+    """What the section prints, with the log time, styling and line wrapping removed."""
+
+
+LICENSE_KEY_LEAK_CASES: list[LicenseKeyLeakCase] = [
+    LicenseKeyLeakCase(name="community_default", service=LicenseServiceCommunity(), printed=""),
+    LicenseKeyLeakCase(
+        name="enforcing_service_with_an_expiring_license",
+        service=RecordingLicenseService(
+            status=LicenseStatus(state=LicenseState.EXPIRING, license=LICENSE, days_remaining=12),
+            notice_mode=NoticeMode.ENFORCE,
+        ),
+        printed="License: ACME [emea] Ltd, commercial, expires in 12 days (2027-09-30)",
+    ),
+]
+
+
+@pytest.mark.parametrize("test_case", [pytest.param(tc, id=tc.name) for tc in LICENSE_KEY_LEAK_CASES])
+def test_print_license_section_never_prints_the_license_key(
+    test_case: LicenseKeyLeakCase, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(config.SETTINGS.license, "key", LICENSE_KEY)
+
+    printed = _printed_words(service=test_case.service)
+
+    assert printed == test_case.printed
+    assert LICENSE_KEY not in printed
 
 
 def test_print_license_section_reports_a_failing_status_read_as_an_internal_error() -> None:

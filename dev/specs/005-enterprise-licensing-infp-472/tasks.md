@@ -233,22 +233,21 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T047 [P] Write `backend/tests/component/api/test_license_key_never_leaks.py`. Set `INFRAHUB_LICENSE_KEY` to a unique sentinel and assert it never appears in:
-  - the startup log (`caplog`);
-  - the `/api/info` and `/api/config` responses;
-  - the stored telemetry snapshot;
-  - the upgrade license lines.
+- [X] T047 [P] Set `INFRAHUB_LICENSE_KEY` to a unique sentinel and assert it never appears in:
+  - the startup log (`caplog`) and the `/api/info` and `/api/config` responses, in `backend/tests/component/api/test_license_key_never_leaks.py`;
+  - the stored telemetry snapshot, in `backend/tests/component/telemetry/test_tasks.py::test_stored_snapshot_never_carries_the_license_key`;
+  - the upgrade license lines, in `backend/tests/unit/cli/test_upgrade_license.py::test_print_license_section_never_prints_the_license_key`.
 - [X] T048 [P] Regenerate `docs/docs/reference/configuration.mdx` with `uv run invoke docs.generate` and check the only change is the license key setting
-- [ ] T049 [P] Write `dev/knowledge/backend/licensing.md`:
+- [X] T049 [P] Write `dev/knowledge/backend/licensing.md`:
   - the service contract and how Enterprise overrides it;
   - the state table and the banner table;
   - the surfaces and their failure containment;
   - where the key is read.
 
   Follow `dev/guidelines/documentation.md`. Add it to the knowledge index if one lists backend pages.
-- [ ] T050 [P] Add the license block to `dev/knowledge/backend/telemetry.md` (fields, no customer name, stored even when sending is turned off)
+- [X] T050 [P] Add the license block to `dev/knowledge/backend/telemetry.md` (fields, no customer name, stored even when sending is turned off)
 - [ ] T051 Release gate: confirm with the owner of the cloud telemetry processor that the new `TELEMETRY_VERSION` is accepted before the release containing this feature is cut. Record the answer and date in `dev/specs/005-enterprise-licensing-infp-472/checklists/release-gate.md`
-- [ ] T052 Run the checks in quickstart.md §6:
+- [X] T052 Run the checks in quickstart.md §6:
   - `uv run invoke format lint`;
   - `uv run ruff check . --exclude python_sdk`;
   - mypy through lint;
