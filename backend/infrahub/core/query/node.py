@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import ipaddress
 from collections import defaultdict
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
@@ -52,6 +53,8 @@ from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from neo4j.graph import Node as Neo4jNode
 
     from infrahub.core.attribute import AttributeCreateData, BaseAttribute
@@ -69,6 +72,20 @@ if TYPE_CHECKING:
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
 NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
+
+IP_ATTRIBUTE_KINDS = frozenset({"IPHost", "IPNetwork", "IPAddress"})
+
+
+def _compress_ipv6(text: str) -> str:
+    """Return a complete IPv6 address or interface in its compressed form.
+
+    Raises:
+        ValueError: When the text is not a complete IPv6 address or interface.
+
+    """
+    if "/" in text:
+        return ipaddress.IPv6Interface(text).with_prefixlen
+    return str(ipaddress.IPv6Address(text))
 
 
 @dataclass
@@ -2223,14 +2240,53 @@ WITH %(tracked_vars)s,
         index: int,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for an attribute/relationship filter."""
+        if isinstance(attr_value, Enum):
+            attr_value = attr_value.value
         return FieldAttributeRequirement(
             field_name=field_name,
             field=field,
             field_attr_name=attr_name,
-            field_attr_value=attr_value.value if isinstance(attr_value, Enum) else attr_value,
+            field_attr_value=self._normalize_ip_filter_value(
+                field_name=field_name, field=field, attr_name=attr_name, attr_value=attr_value
+            ),
             index=index,
             types=[FieldAttributeRequirementType.FILTER],
         )
+
+    def _normalize_ip_filter_value(
+        self,
+        field_name: str,
+        field: AttributeSchema | RelationshipSchema | None,
+        attr_name: str,
+        attr_value: Any,
+    ) -> Any:
+        """Return an IP filter value in the form IP values are saved in, so any valid notation of it matches.
+
+        A value that does not parse as an IP is returned unchanged.
+        """
+        if attr_name not in ("value", "values"):
+            return attr_value
+
+        normalize: Callable[[str], str]
+        if field is None and field_name in ("any", "attribute"):
+            normalize = _compress_ipv6
+        elif isinstance(field, AttributeSchema) and field.kind in IP_ATTRIBUTE_KINDS:
+            # A full conversion would append a prefix length to IPv4 text, which then no longer matches as a substring.
+            normalize = _compress_ipv6 if self.partial_match else field.get_class()._normalize_value
+        else:
+            return attr_value
+
+        def _normalize(value: Any) -> Any:
+            if not isinstance(value, str):
+                return value
+            try:
+                return normalize(value)
+            except ValueError:
+                return value
+
+        if isinstance(attr_value, list):
+            return [_normalize(value) for value in attr_value]
+        return _normalize(attr_value)
 
     def _get_filter_requirements(self, start_index: int) -> list[FieldAttributeRequirement]:
         """Build filter requirements from self.filters.
