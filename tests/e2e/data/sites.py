@@ -19,9 +19,11 @@ Faithful transcription of ``models/infrastructure_edge.py``:
   ``connected_endpoint``) and ``generate_site`` (lines 1384-1879), sequenced
   site by site exactly like ``run()`` (lines 2772-2794) so every pool
   allocation (loopbacks, management addresses, peer-link /31s,
-  upstream/peering /29s) happens in the script's order — tests assert the
-  resulting next-free values (172.16.0.31/16 management, 10.0.0.<n>/32
-  loopback of device #n).
+  upstream/peering /29s) happens in the script's order. NB: only atl1 and den1
+  are built (see KEPT_SITES below), so the next-free pool values differ from
+  the full 5-site script (e.g. management next-free is 172.16.0.13/16 after the
+  12 device addresses, loopback 10.0.0.<n>/32 of built device #n) — tests assert
+  the 2-site values.
 
 Preserved script quirks (NOT deviations):
 
@@ -82,6 +84,16 @@ ACTIVE_STATUS = "active"
 
 # PROFILES["medium"] (line 53): 5 sites, 6 devices per site.
 NUM_SITES = 5
+
+# SLIM DEVIATION (not in the script): the e2e suite references only two of the five
+# medium-profile sites — atl1 (139 refs) and den1 (20). The other three (ord1/jfk1/dfw1)
+# were pure parity ballast. We still run `_site_generator(NUM_SITES)` so each kept site
+# keeps its exact definition (atl=Atlanta/Bailey Li, den=Denver/Francesca Wilcox) and its
+# device-pattern order, but build ONLY these two — cutting ~60% of the devices/interfaces/
+# mesh. Allocation order therefore changes (den1 is the 2nd built site, not the 4th), so the
+# deterministic values tests assert were re-pinned to the 2-site dataset (see the IPAM specs
+# and tests/e2e/data/ history). The backbone table in topology.py is rewritten to atl1<->den1.
+KEPT_SITES = ("atl1", "den1")
 
 # name / country / city / contact, cycled by _site_generator (lines 402-413)
 SITES = (
@@ -867,23 +879,19 @@ async def _generate_site(ctx: _SiteContext, site: dict[str, str]) -> _SiteState:
     return state
 
 
-@pytest.fixture(scope="session")
-async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+async def _build_site_context(
     data_client: InfrahubClient,
-    schema_base: None,
     data_rbac: RbacHandle,
     data_locations: LocationsHandle,
     data_org_registry: OrgRegistryHandle,
     data_ipam_pools: IpamPoolsHandle,
-    infrahub_provisioned_externally: bool,
-) -> SitesHandle:
-    """The five sites and everything ``generate_site`` created inside them."""
-    if infrahub_provisioned_externally:
-        return SitesHandle.external()
+) -> _SiteContext:
+    """Build the cross-site context ``generate_site`` reads.
 
-    # The resource-pool NODES generate_site allocates from (the script passed the created
-    # pool objects straight through run(); here they are refetched once from the handle ids).
-    ctx = _SiteContext(
+    The script passed the created pool objects straight through run(); here the
+    resource-pool NODES are refetched from the handle ids.
+    """
+    return _SiteContext(
         client=data_client,
         account_pop_id=data_rbac.accounts["pop-builder"],
         account_crm_id=data_rbac.accounts["crm-sync"],
@@ -908,6 +916,14 @@ async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixt
         ),
     )
 
+
+async def _generate_sites(ctx: _SiteContext, site_names: tuple[str, ...]) -> SitesHandle:
+    """Build the named KEPT sites (in ``_site_generator`` order) and return their handle.
+
+    The full medium-profile list is generated (so each kept site keeps its exact
+    definition) but only ``site_names`` are built; the rest are skipped, preserving
+    pool-allocation order (atl1 #1-6, den1 #7-12; ord1/jfk1/dfw1 never built).
+    """
     sites: dict[str, str] = {}
     devices: dict[str, str] = {}
     loopback_ips: dict[str, str] = {}
@@ -915,6 +931,8 @@ async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixt
     vlans: dict[str, str] = {}
 
     for site in _site_generator(nbr_site=NUM_SITES):
+        if site["name"] not in site_names:
+            continue
         state = await _generate_site(ctx=ctx, site=site)
         sites[state.site_name] = state.site_obj.id
         devices.update({name: node.id for name, node in state.device_nodes.items()})
@@ -932,3 +950,62 @@ async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixt
         backbone_interface_ids=backbone_interface_ids,
         vlans=vlans,
     )
+
+
+def _merge_site_handles(first: SitesHandle, second: SitesHandle) -> SitesHandle:
+    """Union of two site handles (atl1 + den1) — every id map combined."""
+    return SitesHandle(
+        sites={**first.sites, **second.sites},
+        devices={**first.devices, **second.devices},
+        loopback_ips={**first.loopback_ips, **second.loopback_ips},
+        backbone_interface_ids={**first.backbone_interface_ids, **second.backbone_interface_ids},
+        vlans={**first.vlans, **second.vlans},
+    )
+
+
+@pytest.fixture(scope="session")
+async def data_site_atl1(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+    data_client: InfrahubClient,
+    schema_base: None,
+    data_rbac: RbacHandle,
+    data_locations: LocationsHandle,
+    data_org_registry: OrgRegistryHandle,
+    data_ipam_pools: IpamPoolsHandle,
+    infrahub_provisioned_externally: bool,
+) -> SitesHandle:
+    """Just atl1 (the first KEPT site) and everything ``generate_site`` built in it.
+
+    A lighter dependency for specs that only touch atl1 and need neither den1, the
+    cross-site BGP mesh/backbone (``data_topology``), nor any 2-site count/next-free
+    value. ``data_sites`` builds den1 ON TOP of this, so atl1's deterministic
+    allocations are identical whether a spec depends on ``data_site_atl1`` or
+    ``data_sites``. NB: this only saves load in ISOLATED runs — in a full shard any
+    den1-dependent spec pulls ``data_sites``, loading both sites once for the session.
+    """
+    if infrahub_provisioned_externally:
+        return SitesHandle.external()
+    ctx = await _build_site_context(data_client, data_rbac, data_locations, data_org_registry, data_ipam_pools)
+    return await _generate_sites(ctx, KEPT_SITES[:1])
+
+
+@pytest.fixture(scope="session")
+async def data_sites(  # noqa: PLR0913, PLR0917  (each argument is a pytest fixture dependency)
+    data_client: InfrahubClient,
+    data_site_atl1: SitesHandle,
+    data_rbac: RbacHandle,
+    data_locations: LocationsHandle,
+    data_org_registry: OrgRegistryHandle,
+    data_ipam_pools: IpamPoolsHandle,
+    infrahub_provisioned_externally: bool,
+) -> SitesHandle:
+    """The two kept sites (atl1 + den1) and everything ``generate_site`` built in them.
+
+    Depends on ``data_site_atl1`` (atl1 built first), then builds the remaining kept
+    site(s) — den1 — ON TOP, so pool-allocation order matches the script run (atl1
+    devices #1-6, den1 #7-12). Returns the union of both site handles.
+    """
+    if infrahub_provisioned_externally:
+        return SitesHandle.external()
+    ctx = await _build_site_context(data_client, data_rbac, data_locations, data_org_registry, data_ipam_pools)
+    rest = await _generate_sites(ctx, KEPT_SITES[1:])
+    return _merge_site_handles(data_site_atl1, rest)

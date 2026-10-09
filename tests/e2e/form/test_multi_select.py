@@ -2,7 +2,7 @@
 
 Verify multi-select behaviour: select multiple tags, remove a tag from its
 selected badge, and create a new tag directly from the multi-select. Runs on a
-throwaway branch and relies on data_sites (the Ethernet11 interface; the
+throwaway branch and relies on data_site_atl1 (the Ethernet11 interface; the
 blue/green/red tags come transitively).
 """
 
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 class TestVerifyMultiSelectBehaviour:
     @pytest.fixture
-    async def branch(self, branch_api: BranchAPI, data_sites: SitesHandle) -> AsyncGenerator[str, None]:
+    async def branch(self, branch_api: BranchAPI, data_site_atl1: SitesHandle) -> AsyncGenerator[str, None]:
         name = generate_random_branch_name("multi-select")
         await branch_api.create(name)
         yield name
