@@ -116,7 +116,7 @@ worktree that does not lead to it:
 | Periodic sync | `git.tasks.sync_remote_repositories` | Cron `* * * * *`, `concurrency_limit=1`, `CANCEL_NEW` (`workflows/catalogue.py::GIT_REPOSITORIES_SYNC`). Pull direction only; it never pushes. |
 | Add repository | `git.tasks.add_git_repository` / `..._read_only` | Clone, import, broadcast. |
 | Create branch | `git.tasks.create_branch` | Create in git, push, broadcast. |
-| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Merge and push for a read-write repository; copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records the commit of its trunk gets no Git merge: there is nothing to push. |
+| Branch merge, also from a proposed change | `core/merge/repository_merge_dispatcher.py` → `git.tasks.merge_git_repository` | Queue the merge of a read-write repository and deliver the queue ([The push queue](#the-push-queue)); copy the ref and commit of the source branch for a read-only one. A read-write repository whose branch records no commit, or the commit that the default branch recorded at the fork of the branch or records now, gets no queue entry and no merge flow: there is nothing to push (`git/writeback/content.py::read_pending_merges`). |
 | Read-only pull | `git.tasks.pull_read_only` | On-demand fetch latest. |
 
 The merge trigger is **not ordered against post-merge regeneration**.
@@ -149,36 +149,37 @@ named after the remote one, which is the case whenever the trunk is not Infrahub
 `push` sent the worktree HEAD, that bare refspec failed with `src refspec <branch> does not match any`
 while the merge still reported success; sending HEAD is what closed that gap.
 
-### The writeback direction has no reconciliation
+### The push queue
 
-The pull direction has the once-a-minute loop. The push direction has nothing equivalent.
+Each merge of a git-synced branch that changes the content of a read-write repository becomes an
+entry in the push queue of that repository (`git/writeback/`). The branch merge writes the entry
+before it submits `merge_git_repository`, and the flow delivers the whole queue through
+`git/writeback/service.py::RepositoryWritebackService.deliver`. Under the repository lock, an attempt:
 
-`InfrahubRepository.merge` merges into the destination worktree, pushes, and only then creates the
-commit worktree and writes the new commit to the graph. A rejected push therefore records nothing.
-After a rejected push, and after a failure to record a pushed commit, `merge` tries to reset the
-destination worktree to its pre-merge commit. The reset is best-effort: it never raises, so the
-original failure propagates unmasked.
+- fetches, and checks the queue against the remote, as the next section describes;
+- resets the destination worktree to the remote head, replays each queued source commit by its id,
+  and pushes once;
+- records the new commit on the default branch, and imports it when the remote head had moved ahead
+  of the recorded commit;
+- removes the delivered entries from the queue in the save that ends the attempt.
 
-- When the reset succeeds, a re-run of the merge re-derives it instead of finding nothing to merge.
-  After a failed record, the reset leaves the worktree behind the remote, and the periodic sync then
-  resets the worktree onto the pushed commit and records it.
-- When the reset fails, `merge` logs the failure and says that manual reconciliation may be
-  required. The worktree can stay on a merge commit that the graph does not record, and a re-run can
-  then find nothing to merge, until the next sync resets the worktree onto the remote head.
+A failed attempt resets the worktree to the commit recorded before the attempt. The repository
+records the cause, and for a refused push the remote's own `remote:` lines
+(`git/writeback/classifier.py`). The entries stay in the queue, and the next merge flow of the
+repository delivers them with its own. A clone with no `origin` fails the attempt and keeps the
+queue. The periodic sync still only reads from the remote: it never pushes a queued merge.
 
-What remains is that nothing ever re-pushes. `push()` is reachable only from branch creation and
-`merge()`, the periodic sync only reads from the remote, and `merge_git_repository` has no retry. A rejected push
-stays undelivered until a later merge into the same destination, and nothing on the repository
-records that it failed: the only trace is the failed flow run.
+With `git.use_explicit_merge_commit` at its default of `False` a replay fast-forwards where it can,
+and the resulting SHA is the source commit, which the remote already has. When the remote head has
+moved past the fork of the source, or when that setting is enabled, Git creates a real merge commit
+whose SHA embeds a timestamp and is therefore not reproducible. A failed attempt discards it, and the
+next attempt replays the queued source commit again on any worker.
 
-With `git.use_explicit_merge_commit` at its default of `False` the merge fast-forwards where it can
-and the resulting SHA is the source commit, which the remote already has. When the destination has
-diverged, or when that setting is enabled, git creates a real merge commit whose SHA embeds a
-timestamp and is therefore not reproducible. A reset that succeeds discards it, so a later attempt
-re-derives the merge from `(source_branch, source_commit, dest_branch)` on any worker.
-
-> **Volatile section.** A delivery queue with retry and abandon actions is specified in
-> `dev/specs/ifc-3220-writeback-failure-handling/`. Update this section when that lands.
+> **Volatile section.** The automatic retry of an attempt, the recovery of a lost attempt, and the
+> retry and abandon actions on the repository are specified in
+> `dev/specs/ifc-3220-writeback-failure-handling/` and land with the rest of it. Until then, the run of
+> a failed attempt ends failed, and nothing runs the queue again until the next merge flow of the
+> repository. Update this section when they land.
 
 Per-ref push rejections do **not** flow through the error classifier below. GitPython reports them on
 the push result, not by raising `GitCommandError`, so `push()` raises `RepositoryPushRejectedError`
@@ -387,8 +388,10 @@ to reconcile divergent branches", because only `git pull` writes that text and n
   `infrahub.repository.update_commit` in its events set. It is not a working signal; wiring anything
   to it means introducing the first consumer. The merge path does not emit it at all, and the
   `RefreshGitFetch` handler explicitly suppresses the commit write that would.
-- **Remote branch deletion is not gated on writeback state.** `git.tasks.git_branch_delete` deletes
-  the remote branch gated only on `origin_has_branch`, and `BRANCH_DELETE` is submitted concurrently
-  with the repository merge (`core/merge/post_merge.py`). With `delete_branch_after_merge` enabled, a
-  rejected push plus a successful branch delete can leave the remote holding neither the source commit
-  nor the merged content.
+- **Remote branch deletion is not gated on the push queue.** `git.tasks.git_branch_delete` deletes
+  the remote branch gated only on `origin_has_branch`, and `BRANCH_DELETE` is submitted right after the
+  repository merge (`core/merge/post_merge.py`). With `main.delete_branch_after_merge` and
+  `git.delete_git_branch_after_merge` enabled, the deletion can run before the delivery, or after a
+  failed one. The delivery is then refused with `source-discarded`, the remote holds neither the
+  source commit nor the merged content, and the refusal blocks every later merge of the repository.
+  The branch-deletion guard of `dev/specs/ifc-3220-writeback-failure-handling/` closes this.
