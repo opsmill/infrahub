@@ -1412,7 +1412,10 @@ class SchemaBranch:
         )
         try:
             validator.validate(
-                kind=kind_schema.kind, tracked_attribute=attribute.name, entries=attribute.parameters.allocation_scope
+                kind=kind_schema.kind,
+                tracked_attribute=attribute.name,
+                entries=attribute.parameters.allocation_scope,
+                pool_exists=attribute.parameters.number_pool_id is not None,
             )
         except ValidationError as exc:
             raise ValidationError(

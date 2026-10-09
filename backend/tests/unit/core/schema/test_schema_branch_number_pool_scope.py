@@ -21,8 +21,12 @@ from tests.helpers.number_pool import (
     SCOPED_SITE,
 )
 
+EXISTING_POOL_ID = "8c0f3e52-0000-4000-8000-000000000001"
 
-def _with_pooled_vlan_id[SchemaT: (NodeSchema, GenericSchema)](schema: SchemaT, scope: list[str] | None) -> SchemaT:
+
+def _with_pooled_vlan_id[SchemaT: (NodeSchema, GenericSchema)](
+    schema: SchemaT, scope: list[str] | None, number_pool_id: str | None = None
+) -> SchemaT:
     pooled: SchemaT = copy.deepcopy(schema)
     pooled.attributes = [attribute for attribute in pooled.attributes if attribute.name != "vlan_id"]
     pooled.attributes.append(
@@ -31,7 +35,9 @@ def _with_pooled_vlan_id[SchemaT: (NodeSchema, GenericSchema)](schema: SchemaT, 
             kind="NumberPool",
             optional=False,
             read_only=True,
-            parameters=NumberPoolParameters(start_range=1, end_range=100, allocation_scope=scope),
+            parameters=NumberPoolParameters(
+                start_range=1, end_range=100, allocation_scope=scope, number_pool_id=number_pool_id
+            ),
         )
     )
     return pooled
@@ -41,8 +47,8 @@ def _schema(device: NodeSchema = SCOPED_DEVICE, holder: GenericSchema = SCOPED_H
     return SchemaRoot(generics=[holder], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, device, SCOPED_POD_HOLDER])
 
 
-def _device_schema(scope: list[str] | None) -> SchemaRoot:
-    return _schema(device=_with_pooled_vlan_id(SCOPED_DEVICE, scope=scope))
+def _device_schema(scope: list[str] | None, number_pool_id: str | None = None) -> SchemaRoot:
+    return _schema(device=_with_pooled_vlan_id(SCOPED_DEVICE, scope=scope, number_pool_id=number_pool_id))
 
 
 def _unvalidated_schema_branch(name: str, schema: SchemaRoot) -> SchemaBranch:
@@ -107,6 +113,18 @@ REFUSED_DECLARATION_CASES = [
         schema=_schema(holder=_with_pooled_vlan_id(SCOPED_HOLDER, scope=["pod"])),
         message='ScopeHolder.vlan_id: allocation_scope: "pod" is not declared on the generic ScopeHolder',
     ),
+    RefusedDeclarationCase(
+        name="optional-relationship-once-the-pool-exists",
+        schema=_device_schema(scope=["rack"], number_pool_id=EXISTING_POOL_ID),
+        message='ScopeDevice.vlan_id: allocation_scope: "rack" is optional; a scope element must be required on'
+        " ScopeDevice",
+    ),
+    RefusedDeclarationCase(
+        name="path-once-the-pool-exists",
+        schema=_device_schema(scope=["site", "site__name"], number_pool_id=EXISTING_POOL_ID),
+        message='ScopeDevice.vlan_id: allocation_scope: "site__name" is a path; a scope element must be an attribute'
+        " or a relationship of ScopeDevice itself",
+    ),
 ]
 
 
@@ -122,6 +140,10 @@ ACCEPTED_DECLARATION_CASES = [
     AcceptedDeclarationCase(
         name="element-declared-on-the-generic",
         schema=_schema(holder=_with_pooled_vlan_id(SCOPED_HOLDER, scope=["site"])),
+    ),
+    AcceptedDeclarationCase(
+        name="unknown-name-once-the-pool-exists",
+        schema=_device_schema(scope=["site", "location"], number_pool_id=EXISTING_POOL_ID),
     ),
 ]
 
@@ -196,6 +218,21 @@ class TestDeclaredScopeOnABranch:
             + "$",
         ):
             schema_branch.validate_attribute_parameters()
+
+    def test_existing_pool_on_a_kind_the_default_branch_no_longer_defines_is_accepted(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _register_default_branch_schema(
+            monkeypatch=monkeypatch,
+            schema=SchemaRoot(
+                generics=[SCOPED_HOLDER], nodes=[SCOPED_SITE, SCOPED_RACK, SCOPED_LINK, SCOPED_POD_HOLDER]
+            ),
+        )
+        schema_branch = _unvalidated_schema_branch(
+            name="branch1", schema=_device_schema(scope=["site"], number_pool_id=EXISTING_POOL_ID)
+        )
+
+        schema_branch.validate_attribute_parameters()
 
     def test_new_declaration_without_the_schema_of_the_default_branch_is_refused(
         self, monkeypatch: pytest.MonkeyPatch

@@ -4,7 +4,15 @@ from typing import TYPE_CHECKING, Protocol, override
 
 from infrahub.core.registry import registry
 from infrahub.exceptions import InitializationError
-from infrahub.pools.scope import SCOPE_FIELD, AllocationScopeResolver, AllocationScopeValidator
+from infrahub.pools.scope import (
+    SCOPE_FIELD,
+    SCOPE_SEPARATOR,
+    AllocationScope,
+    AllocationScopeResolver,
+    AllocationScopeValidator,
+    ScopeElement,
+    UnknownScopeElementError,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -74,31 +82,48 @@ class DeclaredScopeValidator:
         self.candidate = candidate
         self.default_branch_schema = default_branch_schema
 
-    def validate(self, kind: str, tracked_attribute: str, entries: list[str] | None) -> None:
+    def validate(self, kind: str, tracked_attribute: str, entries: list[str] | None, pool_exists: bool) -> None:
         """Refuse a declaration whose elements cannot divide the pool over the kind's tracked attribute.
 
-        A declaration resolves against the schema of the default branch, and its elements must also divide the pool
-        on the candidate.
+        A new declaration resolves against the schema of the default branch, and its elements must also divide the
+        pool on the candidate. Once the pool exists, the declaration is checked on the candidate only and a name that
+        resolves to nothing is accepted here, since only the stored scope can tell a renamed element from a changed
+        declaration.
 
         Raises:
             ValidationError: When an element cannot divide the pool, naming it with the reason alone, or when the
-                schema of the default branch does not define the kind.
-            InitializationError: When the schema of the default branch is needed and it is not loaded.
+                schema of the default branch does not define the kind of a new declaration.
+            InitializationError: When a new declaration needs the schema of the default branch and it is not loaded.
 
         """
-        default_branch_schema = self.default_branch_schema()
-        AllocationScopeValidator(schema_branch=default_branch_schema).validate(
-            kind=kind,
-            tracked_attribute=tracked_attribute,
-            scope=_DeclaredScopeResolver(schema_branch=default_branch_schema).resolve(kind=kind, entries=entries),
-        )
-        if default_branch_schema is self.candidate:
-            return
+        if pool_exists:
+            scope = self._resolve_known_entries(kind=kind, entries=entries)
+        else:
+            default_branch_schema = self.default_branch_schema()
+            AllocationScopeValidator(schema_branch=default_branch_schema).validate(
+                kind=kind,
+                tracked_attribute=tracked_attribute,
+                scope=_DeclaredScopeResolver(schema_branch=default_branch_schema).resolve(kind=kind, entries=entries),
+            )
+            if default_branch_schema is self.candidate:
+                return
+            scope = _DeclaredScopeResolver(schema_branch=self.candidate).resolve(kind=kind, entries=entries)
+
         AllocationScopeValidator(schema_branch=self.candidate).validate(
-            kind=kind,
-            tracked_attribute=tracked_attribute,
-            scope=_DeclaredScopeResolver(schema_branch=self.candidate).resolve(kind=kind, entries=entries),
+            kind=kind, tracked_attribute=tracked_attribute, scope=scope
         )
+
+    def _resolve_known_entries(self, kind: str, entries: list[str] | None) -> AllocationScope:
+        resolver = _DeclaredScopeResolver(schema_branch=self.candidate)
+        elements: list[ScopeElement] = []
+        for entry in entries or []:
+            try:
+                elements.extend(resolver.resolve(kind=kind, entries=[entry]).elements)
+            except UnknownScopeElementError:
+                if SCOPE_SEPARATOR in entry:
+                    raise
+                continue
+        return AllocationScope(elements=tuple(elements))
 
 
 def scope_refusal_reason(error: ValidationError) -> str:
