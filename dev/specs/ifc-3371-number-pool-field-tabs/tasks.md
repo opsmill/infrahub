@@ -77,11 +77,11 @@ Row IDs (C1, E5, …) refer to [contracts/form-submission.md](contracts/form-sub
 
 **Independent test**: Row C3.
 
-- [ ] T010 [P] [US2] Add a failing test for row C3 in
+- [X] T010 [P] [US2] Add a failing test for row C3 in
   `shared/components/form/utils/mutations/getCreateMutationFromFormData.test.ts`
-- [ ] T011 [US2] Make row C3 pass; it should need no code beyond T003 and T006 — if it does,
+- [X] T011 [US2] Make row C3 pass; it should need no code beyond T003 and T006 — if it does,
   fix the helper rather than the caller
-- [ ] T012 [P] [US2] Component test in `shared/components/form/fields/number.field.test.tsx`:
+- [X] T012 [P] [US2] Component test in `shared/components/form/fields/number.field.test.tsx`:
   typing 42 in the pool tab stores `value.from_pool.number === 42`
 
 **Checkpoint**: attach on create works.
