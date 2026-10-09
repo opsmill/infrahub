@@ -27,6 +27,7 @@ builtin_ipam = GenericSchema(
     branch=BranchSupportType.AWARE,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
+    documentation="/ipam/use-namespaces/",
     attributes=[
         Attr(name="name", kind="Text", unique=True, branch=BranchSupportType.AWARE, order_weight=1000),
         Attr(name="description", kind="Text", optional=True, branch=BranchSupportType.AWARE, order_weight=2000),
@@ -67,6 +68,7 @@ builtin_ip_prefix = GenericSchema(
     icon="mdi:ip-network",
     branch=BranchSupportType.AWARE,
     hierarchical=True,
+    documentation="/ipam/overview/",
     attributes=[
         Attr(
             name="prefix",
@@ -196,6 +198,7 @@ builtin_ip_address = GenericSchema(
     display_label="address__value",
     icon="mdi:ip-outline",
     branch=BranchSupportType.AWARE,
+    documentation="/ipam/overview/",
     attributes=[
         Attr(
             name="address",
@@ -276,6 +279,7 @@ core_ipam_namespace = NodeSchema(
     icon="mdi:format-list-group",
     branch=BranchSupportType.AWARE,
     inherit_from=[InfrahubKind.IPNAMESPACE],
+    documentation="/ipam/use-namespaces/",
     attributes=[
         Attr(
             name="default",

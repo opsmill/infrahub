@@ -48,7 +48,7 @@ class TestSchemaVisualizer:
         await expect(page.get_by_test_id("schema-help-menu-content")).not_to_be_visible()
 
         # help menu for a schema without documentation and no list view link
-        await page.get_by_text("CoreThread - Artifact").click()
+        await page.get_by_text("CoreArtifact Validator", exact=True).click()
         await page.get_by_test_id("schema-help-menu-trigger").click()
         await expect(page.get_by_role("menuitem", name="Documentation")).to_be_disabled()
         await expect(page.get_by_role("menuitem", name="Open list view")).to_be_disabled()

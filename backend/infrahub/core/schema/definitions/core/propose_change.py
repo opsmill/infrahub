@@ -25,7 +25,7 @@ core_proposed_change = NodeSchema(
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.TASKTARGET],
-    documentation="/topics/proposed-change",
+    documentation="/proposed-changes/overview/",
     attributes=[
         Attr(name="name", kind="Text", optional=False),
         Attr(name="description", kind="TextArea", optional=True),

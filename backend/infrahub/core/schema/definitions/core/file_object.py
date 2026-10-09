@@ -9,6 +9,7 @@ core_file_object = GenericSchema(
     description="A file object for storing and managing file attachments",
     label="File Object",
     include_in_menu=False,
+    documentation="/schema/file-object/",
     attributes=[
         Attr(
             name="file_name",

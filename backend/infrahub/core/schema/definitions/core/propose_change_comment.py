@@ -22,6 +22,7 @@ core_propose_change_comment = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     restricted_namespaces=["Core"],
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[
         Attr(name="text", kind="TextArea", description="Content of the comment", unique=False, optional=False),
     ],
@@ -36,6 +37,7 @@ core_thread = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
     restricted_namespaces=["Core"],
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[
         Attr(name="label", kind="Text", optional=True),
         Attr(
@@ -75,6 +77,7 @@ core_change_thread = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
 )
 
 core_file_thread = NodeSchema(
@@ -86,6 +89,7 @@ core_file_thread = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[
         Attr(name="file", kind="Text", description="Path to the file being discussed", optional=True),
         Attr(name="commit", kind="Text", description="Git commit hash the thread refers to", optional=True),
@@ -111,6 +115,7 @@ core_artifact_thread = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[
         Attr(
             name="artifact_id",
@@ -134,6 +139,7 @@ core_object_thread = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.THREAD],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[
         Attr(name="object_path", kind="Text", description="Path to the object being discussed", optional=False),
     ],
@@ -150,6 +156,7 @@ core_change_comment = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.COMMENT],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
     relationships=[
         Rel(
             name="change",
@@ -172,6 +179,7 @@ core_thread_comment = NodeSchema(
     branch=BranchSupportType.AGNOSTIC,
     inherit_from=[InfrahubKind.COMMENT],
     generate_profile=False,
+    documentation="/proposed-changes/review-and-stamp/",
     attributes=[],
     relationships=[
         Rel(
