@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 from uuid import UUID  # noqa: TC003
 
 from cachetools import TTLCache
@@ -17,7 +17,6 @@ from prefect.cache_policies import NONE
 from pydantic import Field
 from pydantic import ValidationError as PydanticValidationError
 
-from infrahub import config
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
     InfrahubKind,
@@ -1034,65 +1033,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return True
 
-    async def merge(self, source_branch: str, dest_branch: str, push_remote: bool = True) -> str | Literal[False]:
-        """Merge the source branch into the destination branch.
-
-        After the rebase we need to resync the data
-
-        On any failure the destination worktree is reset to its pre-merge commit. Whether the remote
-        received the merge is not always knowable, since a push can be accepted just before the
-        connection drops, so the reset leaves the destination either at the pre-merge state, where a
-        later merge attempt re-derives the merge, or trailing the remote, which the periodic
-        synchronization repairs by resetting onto the pushed merge commit and recording it.
-
-        Raises:
-            RepositoryError: When no worktree exists for the destination branch, when the
-                underlying ``git merge`` command fails, or when the remote rejects the push.
-
-        """
-        repo = self.get_git_repo_worktree(identifier=dest_branch)
-
-        commit_before = str(repo.head.commit)
-        commit = self.get_commit_value(branch_name=source_branch, remote=False)
-
-        try:
-            if config.SETTINGS.git.use_explicit_merge_commit:
-                repo.git.merge(commit, "--no-ff", m="Merged by Infrahub")
-            else:
-                repo.git.merge(commit)
-        except GitCommandError as exc:
-            repo.git.merge("--abort")
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
-
-        commit_after = str(repo.head.commit)
-
-        if commit_after == commit_before:
-            return False
-
-        if self.has_origin and push_remote:
-            pushed = False
-            try:
-                await self.push(branch_name=dest_branch)
-                pushed = True
-            finally:
-                if not pushed:
-                    # Left on the unpushed merge commit, a retry would find nothing to merge
-                    # and return before ever reaching the push again.
-                    self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
-
-        recorded = False
-        try:
-            self.create_commit_worktree(commit_after)
-            await self.update_commit_value(branch_name=dest_branch, commit=commit_after)
-            recorded = True
-        finally:
-            if not recorded:
-                # Trailing the remote is a state the periodic synchronization repairs by resetting
-                # onto the missing commit and recording it.
-                self._reset_to_pre_merge_commit(repo=repo, dest_branch=dest_branch, commit_before=commit_before)
-
-        return str(commit_after)
-
     def _reset_to_pre_merge_commit(
         self, repo: Repo, dest_branch: str, commit_before: str, timeout_seconds: float | None = None
     ) -> None:
@@ -1114,20 +1054,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 commit_before,
                 extra={"repository": self.name, "branch": dest_branch},
             )
-
-    async def rebase(
-        self, branch_name: str, source_branch: str = "main", push_remote: bool = True
-    ) -> str | Literal[False]:
-        """Rebase the current branch with main.
-
-        Technically we are not doing a Git rebase because it will change the git history
-        We'll merge the content of the source_branch into branch_name instead to keep the history clear.
-
-        TODO need to see how we manage conflict
-
-        After the rebase we need to resync the data
-        """
-        return await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):

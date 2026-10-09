@@ -589,69 +589,6 @@ async def test_pull_main(git_repo_05: InfrahubRepository) -> None:
     assert response == str(commit2)
 
 
-async def test_merge_branch01_into_main(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
-    repo = git_repo_01
-    await repo.fetch()
-    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
-
-    commit_before = repo.get_commit_value(branch_name="main", remote=False)
-
-    response = await repo.merge(source_branch=branch01.name, dest_branch="main")
-
-    commit_after = repo.get_commit_value(branch_name="main", remote=False)
-    assert str(commit_before) != str(commit_after)
-    assert response == str(commit_after)
-
-
-async def test_merge_writes_back_to_non_main_default_branch(
-    git_upstream_repo_01: dict[str, str | Path],
-    git_repos_dir: Path,
-    branch01: BranchData,
-) -> None:
-    """Merging into Infrahub main writes the merge commit back to a non-main git default branch.
-
-    Reproduces a worker whose clone only ever checked out `main`, so it holds `develop` only as a
-    remote-tracking ref with no local branch of that name -- the state a worker is left in when the
-    configured trunk is changed after it cloned. The push that maps Infrahub `main` onto the
-    configured git default branch must still advance the remote `develop`.
-    """
-    upstream_path = str(git_upstream_repo_01["path"])
-    upstream = Repo(upstream_path)
-    upstream.git.branch("develop", "main")
-
-    repo_id = UUIDT.new()
-    client = InfrahubClient(config=Config(requester=dummy_async_request))
-    await clone_repository(
-        id=repo_id,
-        name=git_upstream_repo_01["name"],
-        location=upstream_path,
-        default_branch="main",
-        client=client,
-    )
-
-    # The trunk has since been changed to `develop`, so the next construction resolves it while the
-    # on-disk clone still has only a local `main`.
-    repo = await open_repository(
-        id=repo_id,
-        name=git_upstream_repo_01["name"],
-        location=upstream_path,
-        default_branch="develop",
-        client=client,
-    )
-    await repo.fetch()
-
-    local_branch_names = {branch.name for branch in repo.get_git_repo_main().branches}
-    assert local_branch_names == {"main"}
-
-    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
-
-    develop_before = Repo(upstream_path).commit("develop").hexsha
-    merge_commit = await repo.merge(source_branch=branch01.name, dest_branch="main")
-
-    assert merge_commit != develop_before
-    assert Repo(upstream_path).commit("develop").hexsha == merge_commit
-
-
 async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -721,30 +658,6 @@ async def test_merge_flow_advances_the_trunk_without_a_trunk_on_the_model(
     upstream = Repo(upstream_path)
     assert upstream.commit("develop").hexsha != develop_before
     assert upstream.is_ancestor(merged_commit, "develop")
-
-
-async def test_rebase(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
-    repo = git_repo_01
-    await repo.fetch()
-
-    await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
-
-    # Add a new commit in the main branch to have something to rebase.
-    git_repo = repo.get_git_repo_main()
-    first_file = find_first_file_in_directory(repo.directory_default)
-    assert first_file
-    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
-        await file.write("new line\n")
-    git_repo.index.add([first_file])
-    git_repo.index.commit("Change first file")
-
-    commit_before = repo.get_commit_value(branch_name=branch01.name, remote=False)
-    response = await repo.rebase(branch_name=branch01.name, source_branch="main")
-
-    commit_after = repo.get_commit_value(branch_name=branch01.name, remote=False)
-
-    assert str(commit_before) != str(commit_after)
-    assert str(response) == str(commit_after)
 
 
 async def _sync(repo: InfrahubRepository, staging_branch: str | None = None) -> SyncOutcome:
@@ -1451,8 +1364,6 @@ async def test_calculate_diff_between_commits(
     #     git_repo.index.add([sports_file])
     #     git_repo.index.commit("Change sport file")
 
-    # repo.merge(source_branch="branch01", dest_branch="main", push_remote=False)
-
     # commit_main = repo.get_commit_value(branch_name="main", remote=False)
 
     commit_branch01 = repo.get_commit_value(branch_name=branch01.name, remote=False)
@@ -1669,19 +1580,6 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
     assert sorted(filtered_remote_branches.keys()) == ["branch01", "branch02", "clean-branch", "main"]
-
-
-async def test_repo_merge_use_explicit_merge_commit(
-    git_repo_01: InfrahubRepository,
-    branch02: BranchData,
-    git_user_config: None,
-    git_use_explicit_merge_commit_config: None,
-) -> None:
-    repo = git_repo_01
-    await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
-    response = await repo.merge(source_branch=branch02.name, dest_branch="main")
-    commit = repo.get_git_repo_main().commit(response)
-    assert commit.message.strip() == "Merged by Infrahub"
 
 
 async def test_init_reinitialized_after_missing_directory(
