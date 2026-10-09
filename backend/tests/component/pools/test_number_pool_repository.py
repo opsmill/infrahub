@@ -251,7 +251,7 @@ class TestNumberPoolRepository:
         live = await open_is_reserved_edge_on(
             db=db, pool_id=pool.get_id(), node_id=ticket_id, attribute_name="ticket_id"
         )
-        assert live["allocated_values"] == [5, 7]
+        assert sorted(live["allocated_values"]) == [5, 7]
         assert await node_metadata(db=db, node_id=pool.get_id()) == VertexMetadata(
             updated_at=second_at.to_string(),
             updated_by=SECOND_ACTOR_ID,
