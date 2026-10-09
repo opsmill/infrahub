@@ -16,6 +16,7 @@ from infrahub.pools.scope import (
     AllocationScopeResolver,
     AllocationScopeValidator,
     Division,
+    DivisionElementPath,
     ScopeElement,
     UnknownScopeElementError,
 )
@@ -73,7 +74,6 @@ DISTINCT_DIVISIONS_CASES = [
     DistinctDivisionsCase(name="scalar", first=("site-a-id",), second=("site-b-id",)),
     DistinctDivisionsCase(name="order", first=("site-a-id", "leaf"), second=("leaf", "site-a-id")),
     DistinctDivisionsCase(name="no-value-against-value", first=("",), second=("site-a-id",)),
-    DistinctDivisionsCase(name="text-against-number", first=("1",), second=(1,)),
 ]
 
 
@@ -121,31 +121,33 @@ class TestAllocationScopeStoredForm:
             AllocationScope.from_stored(value="site", pool="vlan-per-site")
 
 
+def _division(*values: str | int) -> Division:
+    return Division(
+        elements=tuple(DivisionElementPath(name=f"element-{idx}") for idx in range(len(values))), values=values
+    )
+
+
 class TestDivisionKey:
     @pytest.mark.parametrize("case", DIVISION_VALUES_CASES, ids=[case.name for case in DIVISION_VALUES_CASES])
     def test_equal_divisions_share_a_key(self, case: DivisionValuesCase) -> None:
-        first = Division(values=case.values)
-        second = Division(values=copy.deepcopy(case.values))
+        first = _division(*case.values)
+        second = _division(*copy.deepcopy(case.values))
 
         assert first == second
         assert first.key == second.key
         assert {first, second} == {first}
 
-    def test_key_of_a_value_holding_a_lone_surrogate_is_computed(self) -> None:
-        # A text value can hold a lone surrogate, which UTF-8 cannot encode.
-        division = Division(values=("\ud83d",))
-
-        assert division.key != Division(values=("",)).key
-
-    def test_key_is_the_same_in_every_process(self) -> None:
-        division = Division(values=("site-a-id", "leaf", 42))
-
-        assert division.key == "ee0417abeedcbfc0f9d05a07954f6dcf4f3941ebf2e1f013fdaefa3920abfaa3"
+    def test_key_is_the_values_joined_by_dots(self) -> None:
+        assert _division("site-a-id", "leaf", 42).key == "site-a-id.leaf.42"
 
     @pytest.mark.parametrize("case", DISTINCT_DIVISIONS_CASES, ids=[case.name for case in DISTINCT_DIVISIONS_CASES])
     def test_different_divisions_have_different_keys(self, case: DistinctDivisionsCase) -> None:
-        assert Division(values=case.first) != Division(values=case.second)
-        assert Division(values=case.first).key != Division(values=case.second).key
+        assert _division(*case.first) != _division(*case.second)
+        assert _division(*case.first).key != _division(*case.second).key
+
+    def test_a_division_needs_one_value_per_element(self) -> None:
+        with pytest.raises(ValueError, match=r"^A division holds one value per scope element$"):
+            Division(elements=(DivisionElementPath(name="role"),), values=())
 
 
 DEVICE_KIND = SCOPED_DEVICE.kind

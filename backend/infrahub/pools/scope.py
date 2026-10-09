@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
@@ -84,19 +83,36 @@ class AllocationScope:
 
 
 @dataclass(frozen=True)
+class DivisionElementPath:
+    """Where a Node keeps the value of one scope element: an attribute by name, or a relationship by identifier."""
+
+    name: str
+    relationship_direction: RelationshipDirection | None = None
+
+    @property
+    def is_relationship(self) -> bool:
+        return self.relationship_direction is not None
+
+
+@dataclass(frozen=True)
 class Division:
-    """The values an object has for the scope elements, in scope order; one division is one space of the pool.
+    """The values a Node has for the scope elements, in scope order; one division is one space of the pool.
 
     A scope element is a relationship or a scalar attribute, so each value is a peer id or a scalar as stored.
+    `elements` says where a Node keeps each value on the branch the division was read on.
     """
 
+    elements: tuple[DivisionElementPath, ...]
     values: tuple[str | int | float | bool, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.elements) != len(self.values):
+            raise ValueError("A division holds one value per scope element")
 
     @property
     def key(self) -> str:
-        """Return a hash of the values that stays the same across processes, used to name the division's lock."""
-        encoded = json.dumps(list(self.values), separators=(",", ":"), ensure_ascii=True)
-        return hashlib.sha256(encoded.encode("ascii")).hexdigest()
+        """Return the values joined by dots, used to name the division's lock."""
+        return ".".join(str(value) for value in self.values)
 
 
 def _get_kind_schema(schema_branch: SchemaBranch, kind: str) -> MainSchemaTypes:
