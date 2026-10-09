@@ -22,12 +22,14 @@ from infrahub.core.merge.recompute_coalescing import (
     MergeRecomputeCoordinator,
     PythonTargetRequest,
     ReaderLookup,
+    RecomputeChainSubmitter,
     owned_python_target,
     whole_kind_python_target,
 )
 from infrahub.core.merge.regeneration_barrier import NarrowedHoldCache, OwnedRegeneration, RegenerationBarrier
 from infrahub.core.merge.selective_regen.definition_selector.artifact_selector import ArtifactSelector
 from infrahub.core.merge.selective_regen.gate import DefinitionGate
+from infrahub.core.recompute.bulk_write import WrittenNode
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.schema.schema_branch_computed import TransformReadSet
 from infrahub.events.models import EventBranchContext, EventContext
@@ -959,6 +961,42 @@ async def test_the_coalesced_recompute_holds_the_python_targets_of_each_pending_
     }
     assert _cached_python_requests(cache) == test_case.expected_cached
     assert sleep.delays == []
+
+
+async def test_the_next_level_of_a_recompute_chain_holds_the_python_targets_of_a_pending_repository() -> None:
+    state = await _state(queued=(REPOSITORY_X,))
+    cache = MemoryCache()
+    chain = RecomputeChainSubmitter(
+        builder=CoalescedRecomputeBuilder(schema_branch=_python_schema_branch()),
+        submitter=CoalescedRecomputeSubmitter(workflow=WorkflowRecorder()),
+        python_resolver=_indexed_resolver(
+            _python_read_set(attribute_name="digest", repository_id=REPOSITORY_X),
+            _python_read_set(attribute_name="label", repository_id=REPOSITORY_Y),
+        ),
+        barrier=_barrier(state=state, cache=cache, sleep=RecordedSleep()),
+    )
+
+    submissions = await chain.submit(
+        written=[WrittenNode(node_id=PROBE_ID, kind=PYTHON_KIND, fields=("name",))],
+        branch=DEFAULT_BRANCH,
+        context=EventContext(branch=EventBranchContext(name=DEFAULT_BRANCH), account_id=""),
+        depth=0,
+    )
+
+    assert [
+        (submission.attribute_name, submission.node_ids, submission.whole_kind)
+        for submission in submissions
+        if submission.family == PYTHON_COMPUTED_ATTRIBUTE
+    ] == [("label", (PROBE_ID,), False)]
+    assert _held_by_repository(state) == {
+        repository_id: _held_python("digest") if repository_id == REPOSITORY_X else HeldRegeneration()
+        for repository_id in REPOSITORIES
+    }
+    assert _cached_python_requests(cache) == {
+        _python_key(repository_id=REPOSITORY_X, attribute_name="digest"): PythonTargetRequest(
+            target=_narrowed_target(attribute_name="digest")
+        )
+    }
 
 
 @dataclass
