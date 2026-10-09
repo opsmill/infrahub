@@ -196,8 +196,8 @@ class ScopeRefusalTestCase:
     """The refusal's text before the `at allocation_scope` suffix."""
     attribute: str = SCOPED_DEVICE_ATTRIBUTE
     kind: str = SCOPED_DEVICE_KIND
-    refused_on_lookup: bool = False
-    """Whether the entries name no element of the kind, which an update refuses with the same message as a create."""
+    malformed: bool = False
+    """Whether the payload is not a list of entries, which an update refuses with the same message as a create."""
 
 
 SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
@@ -226,7 +226,6 @@ SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
         scope=["site__name"],
         message=f'"site__name" is a path; a scope element must be an attribute or a relationship of {SCOPED_DEVICE_KIND}'
         " itself",
-        refused_on_lookup=True,
     ),
     ScopeRefusalTestCase(
         name="tracked-attribute",
@@ -238,14 +237,12 @@ SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
         name="undefined-on-kind",
         scope=["zone"],
         message=f'"zone" is not an attribute or a relationship of {SCOPED_DEVICE_KIND} on branch main',
-        refused_on_lookup=True,
     ),
     ScopeRefusalTestCase(
         name="declared-on-an-implementing-node-only",
         scope=["pod"],
         message=f'"pod" is not declared on the generic {SCOPED_HOLDER_KIND}',
         kind=SCOPED_HOLDER_KIND,
-        refused_on_lookup=True,
     ),
     ScopeRefusalTestCase(
         name="unique-tracked-attribute",
@@ -254,8 +251,8 @@ SCOPE_REFUSAL_TEST_CASES: list[ScopeRefusalTestCase] = [
         " a globally unique number cannot be allocated per division",
         attribute=UNIQUE_ATTRIBUTE,
     ),
-    ScopeRefusalTestCase(name="not-a-list", scope="site", message=NOT_A_LIST_REFUSED, refused_on_lookup=True),
-    ScopeRefusalTestCase(name="list-of-int", scope=[1], message=NOT_A_LIST_REFUSED, refused_on_lookup=True),
+    ScopeRefusalTestCase(name="not-a-list", scope="site", message=NOT_A_LIST_REFUSED, malformed=True),
+    ScopeRefusalTestCase(name="list-of-int", scope=[1], message=NOT_A_LIST_REFUSED, malformed=True),
 ]
 DEVICE_POOL_REFUSAL_TEST_CASES = [
     test_case
@@ -375,7 +372,7 @@ class TestNumberPoolAllocationScope:
 
         result = await save_scope(db=db, branch=default_branch_scope_class, pool_id=pool["id"], scope=test_case.scope)
 
-        expected = create_refusal(test_case.message) if test_case.refused_on_lookup else SCOPE_UPDATE_REFUSED
+        expected = create_refusal(test_case.message) if test_case.malformed else SCOPE_UPDATE_REFUSED
         assert error_messages(result) == [expected]
         assert await read_stored_scope(db=db, pool_id=pool["id"]) == expected_scope(
             kind=SCOPED_DEVICE_KIND, names=["site"]
@@ -578,9 +575,7 @@ class TestNumberPoolScopeOnBranchSchema:
 
         result = await save_scope(db=db, branch=pod_branch, pool_id=pool["id"], scope=["site", "function"])
 
-        assert error_messages(result) == [
-            create_refusal(f'"function" is not an attribute or a relationship of {SCOPED_DEVICE_KIND} on branch main')
-        ]
+        assert error_messages(result) == [SCOPE_UPDATE_REFUSED]
 
 
 class TestNumberPoolScopeAfterFieldReachesDefaultBranch:

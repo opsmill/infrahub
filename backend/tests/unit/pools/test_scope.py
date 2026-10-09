@@ -17,6 +17,7 @@ from infrahub.pools.scope import (
     AllocationScopeValidator,
     Division,
     ScopeElement,
+    UnknownScopeElementError,
 )
 from tests.helpers.number_pool import (
     SCOPED_DEVICE,
@@ -367,6 +368,18 @@ def test_the_resolver_returns_the_elements_that_only_the_validator_refuses(
 
 
 @pytest.mark.parametrize(
+    "test_case",
+    [test_case for test_case in ALLOCATION_SCOPE_REFUSAL_TEST_CASES if test_case.refused_on_lookup],
+    ids=lambda test_case: test_case.name,
+)
+def test_the_resolver_refuses_an_entry_that_names_no_element_as_unknown(
+    resolver: AllocationScopeResolver, test_case: AllocationScopeRefusalTestCase
+) -> None:
+    with pytest.raises(UnknownScopeElementError):
+        resolver.resolve(kind=test_case.kind, entries=test_case.entries)
+
+
+@pytest.mark.parametrize(
     "entries",
     ["site", {"id": "site"}, [1], ["site", None], [{"name": "site"}], [{"id": 1, "name": "site"}]],
     ids=["string", "object", "int", "none-entry", "object-without-id", "id-not-a-string"],
@@ -378,6 +391,7 @@ def test_the_resolver_refuses_entries_that_are_not_a_list_of_names_ids_or_object
         _resolve(resolver=resolver, entries=entries)
 
     assert exc.value.message == "the allocation scope must be a list of entries at allocation_scope"
+    assert not isinstance(exc.value, UnknownScopeElementError)
 
 
 def test_the_resolver_refuses_a_kind_the_schema_does_not_define(resolver: AllocationScopeResolver) -> None:
@@ -385,6 +399,7 @@ def test_the_resolver_refuses_a_kind_the_schema_does_not_define(resolver: Alloca
         _resolve(resolver=resolver, entries=["site"], kind="ScopeGone")
 
     assert exc.value.message == "ScopeGone is not defined on branch main at allocation_scope"
+    assert not isinstance(exc.value, UnknownScopeElementError)
 
 
 def test_the_resolver_refuses_an_element_whose_schema_is_not_saved() -> None:
