@@ -431,6 +431,22 @@ LDAP authentication configuration.
 | `FORWARD_APPLICATION_LOGS` | Forward application log messages to this destination. | boolean | False |
 | `MIN_LOG_SEVERITY` | Minimum Python log severity to forward when application log forwarding is enabled. | string (CRITICAL, ERROR, WARNING, INFO, DEBUG) | WARNING |
 
+## Task manager
+
+How long the task manager keeps its task history and activity log.
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_TASK_MANAGER_RETENTION` | How long each kind of record is kept. | object | Check nested parameters |
+
+### INFRAHUB_TASK_MANAGER_RETENTION
+
+| Name | Description | Type | Default |
+|------|-------------|------|---------|
+| `INFRAHUB_TASK_MANAGER_RETENTION_TASK_HISTORY` | How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) or an ISO 8601 duration (`P30D`), from 1 to 36500 days. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and `PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set. | string | 30d |
+| `INFRAHUB_TASK_MANAGER_RETENTION_ACTIVITY_LOG` | How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 duration (`P7D`), from 1 to 36500 days. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name `PREFECT_EVENTS_RETENTION_PERIOD`, takes precedence when set. | string | 7d |
+| `INFRAHUB_TASK_MANAGER_RETENTION_PREFECT_OWN_EVENTS` | How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 duration (`P7D`), from 1 to 36500 days; a value longer than `activity_log` is capped to it. `PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set. | string | 7d |
+
 ## Logging
 
 These variables configure logging at process startup. They are read directly from the environment and are not part of a `.toml` configuration file.

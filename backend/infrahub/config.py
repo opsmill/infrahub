@@ -5,6 +5,7 @@ import re
 import sys
 import tomllib
 from dataclasses import dataclass
+from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
@@ -17,7 +18,9 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
+    TypeAdapter,
     ValidationError,
+    ValidationInfo,
     computed_field,
     field_validator,
     model_validator,
@@ -676,6 +679,104 @@ class WorkflowSettings(BaseSettings):
             url += f":{self.port}"
         url += "/api"
         return url
+
+
+_RETENTION_IN_DAYS = re.compile(r"(\d+)d")
+_ISO_8601_DURATION = re.compile(
+    r"P(?=\d|T\d)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?=\d)(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?"
+)
+_MINIMUM_RETENTION = timedelta(days=1)
+# Prefect's cutoff of now minus the retention must stay a valid date, which a century keeps far from overflowing.
+_MAXIMUM_RETENTION = timedelta(days=36500)
+_TIMEDELTA_ADAPTER: TypeAdapter[timedelta] = TypeAdapter(timedelta)
+
+
+def _days(count: str) -> timedelta:
+    try:
+        return timedelta(days=int(count))
+    except (OverflowError, ValueError):
+        # Still a number of days, so it is refused by the upper bound rather than as an unreadable value.
+        return timedelta.max
+
+
+def _parse_retention(value: Any) -> timedelta | None:
+    if isinstance(value, timedelta):
+        return value
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if match := _RETENTION_IN_DAYS.fullmatch(text):
+        return _days(count=match.group(1))
+    # Pydantic also reads forms such as "1 day, 00:00:00", which are not part of the documented contract.
+    if not text.startswith("P"):
+        return None
+    try:
+        return _TIMEDELTA_ADAPTER.validate_python(text)
+    except ValidationError:
+        # A well-formed duration too large to read is refused by the upper bound rather than as an unreadable value.
+        return timedelta.max if _ISO_8601_DURATION.fullmatch(text) else None
+
+
+class TaskManagerRetentionSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_RETENTION_")
+
+    task_history: timedelta = Field(
+        default="30d",
+        validate_default=True,
+        description=(
+            "How long finished task runs are kept, with their logs and artifacts, as a number of days (`30d`) "
+            "or an ISO 8601 duration (`P30D`), from 1 to 36500 days. `PREFECT_SERVER_SERVICES_DB_VACUUM_ENABLED` and "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_RETENTION_PERIOD` take precedence when set."
+        ),
+    )
+    activity_log: timedelta = Field(
+        default="7d",
+        validate_default=True,
+        description=(
+            "How long the events of the activity log are kept, as a number of days (`7d`) or an ISO 8601 "
+            "duration (`P7D`), from 1 to 36500 days. `PREFECT_SERVER_EVENTS_RETENTION_PERIOD`, or its legacy name "
+            "`PREFECT_EVENTS_RETENTION_PERIOD`, takes precedence when set."
+        ),
+    )
+    prefect_own_events: timedelta = Field(
+        default="7d",
+        validate_default=True,
+        description=(
+            "How long the task manager's own Prefect events are kept, as a number of days (`7d`) or an ISO 8601 "
+            "duration (`P7D`), from 1 to 36500 days; a value longer than `activity_log` is capped to it. "
+            "`PREFECT_SERVER_SERVICES_DB_VACUUM_EVENT_RETENTION_OVERRIDES` takes precedence when set."
+        ),
+    )
+
+    @field_validator("task_history", "activity_log", "prefect_own_events", mode="before")
+    @classmethod
+    def validate_retention_from_one_to_36500_days(cls, value: Any, info: ValidationInfo) -> timedelta:
+        """Read a number of days such as `30d` or an ISO 8601 duration such as `P30D`.
+
+        Raises:
+            ValueError: When the value is in neither form, is shorter than 1 day or is longer than 36500 days.
+
+        """
+        retention = _parse_retention(value)
+        if retention is None:
+            raise ValueError(
+                f"Invalid task manager retention: {info.field_name} must be a number of days such as 30d "
+                "or an ISO 8601 duration such as P30D"
+            )
+        if retention < _MINIMUM_RETENTION:
+            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at least 1 day")
+        if retention > _MAXIMUM_RETENTION:
+            raise ValueError(f"Invalid task manager retention: {info.field_name} must be at most 36500 days")
+        return retention
+
+
+class TaskManagerSettings(BaseSettings):
+    """How long the task manager keeps its task history and activity log."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_TASK_MANAGER_")
+    retention: TaskManagerRetentionSettings = Field(
+        default_factory=TaskManagerRetentionSettings, description="How long each kind of record is kept."
+    )
 
 
 class ApiSettings(BaseSettings):
@@ -2080,6 +2181,10 @@ class ConfiguredSettings:
         return self.active_settings.experimental_features
 
     @property
+    def task_manager(self) -> TaskManagerSettings:
+        return self.active_settings.task_manager
+
+    @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
         return self.active_settings.enterprise_features
@@ -2109,6 +2214,8 @@ class Settings(BaseSettings):
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
     log_forwarding: LogForwardingSettings = LogForwardingSettings()
+    # Built when the configuration loads, so an invalid retention fails the load instead of the module import.
+    task_manager: TaskManagerSettings = Field(default_factory=TaskManagerSettings)
 
     @model_validator(mode="after")
     def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
