@@ -111,16 +111,20 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/extensions', label: 'Schema extensions' },
           ],
         },
+        { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
         // ── Schema operations ─────────────────────────────────
         {
           type: 'category',
           label: 'Schema operations',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'schema/operations' }, // hub
           items: [
             { type: 'doc', id: 'schema/build-your-schema', label: 'Build your schema with AI' },
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
-            { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
-            { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
+            { type: 'doc', id: 'schema/change-nodes-and-attributes', label: 'Changing nodes and attributes' },
+            { type: 'doc', id: 'schema/change-generics', label: 'Changing generics' },
+            { type: 'doc', id: 'schema/renaming-schema-element', label: 'Renaming' },
+            { type: 'doc', id: 'schema/removing-schema-element', label: 'Removing' },
+            { type: 'doc', id: 'schema/troubleshooting', label: 'Troubleshooting' },
           ],
         },
         // ── Advanced schema features ──────────────────────────

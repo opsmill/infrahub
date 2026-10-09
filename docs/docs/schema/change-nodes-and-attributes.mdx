@@ -1,0 +1,215 @@
+---
+title: Change nodes and attributes
+description: What happens to existing objects when you add an attribute, make it mandatory or unique, change its kind, or move attributes and relationships onto a generic.
+---
+
+# Change nodes and attributes
+
+When a node already has objects, Infrahub handles each schema change differently. For some changes it writes new values into every object, for others it accepts the change only when every object already satisfies the new rule, and it refuses a few whether or not objects exist. Before it applies a change to the schema, Infrahub checks every existing object and refuses the load if one object fails a new rule. See [Schema operations](./operations) for details.
+
+## Add an attribute
+
+What Infrahub does with the existing objects depends on whether the new attribute is mandatory:
+
+- **Optional attribute**: Infrahub adds it with no value on the existing objects.
+- **Mandatory attribute with `default_value`**: Infrahub writes the default value into every existing object.
+- **Mandatory attribute without `default_value`**: Infrahub refuses the load, because no existing object has a value. The error lists each object:
+
+  ```text
+  Node-level 'attribute' constraint violation on schema 'InfraDevice'. Node (InfraDevice(ID: 18dc3640-a35d-e006-36a4-c5146bdc5c04)) is not compliant.
+  ```
+
+  Add a `default_value`, or add the attribute as optional, fill in the values, and then make it mandatory.
+- **`NumberPool` attribute**: Infrahub creates the pool and allocates a number from it to every existing object. If the range between `start_range` and `end_range` holds fewer numbers than there are objects, Infrahub refuses the load. See [Number pools](./number-pool).
+
+## Make an attribute mandatory or unique
+
+Setting `optional: false` or `unique: true` on an existing attribute does not change its values. Infrahub first checks that the objects already satisfy the rule, and refuses the load if one does not:
+
+- **Mandatory**: every object must have a value.
+- **Unique**: no two objects can have the same value.
+
+The error names each object that does not comply:
+
+```text
+Attribute-level 'optional' constraint violation on schema 'InfraDevice'. Node (InfraDevice(ID: 18dc3640-af1a-c8ea-36a2-c516b4afaa59)) is not compliant.
+```
+
+Correct those objects on the branch where you load the schema, then load it again. A change to `choices` or `regex` works the same way: every existing value must be valid under the new rule.
+
+Setting `unique: true` also removes the attribute, and the values set for it, from the Profiles and Object Templates of the node, because a Profile or an Object Template cannot set a unique attribute.
+
+## Change the kind of an attribute
+
+Infrahub does not convert stored values when you change an attribute's `kind`. It accepts the change only when every existing value is already valid for the new kind, and refuses it otherwise. Empty values are always accepted.
+
+Infrahub checks each stored value against the new kind. It looks at the type of the value, at its content, and at whether it is already written in the form the new kind uses. The examples below show how that plays out:
+
+- **`Text` to `URL`**: succeeds when every value is a valid URL, such as `http://test.com`. A value such as `test.com` is refused.
+- **`URL` to `Text`**: succeeds, because every URL is also valid text.
+- **`Text` to `MacAddress`**: succeeds for values already written in the form Infrahub stores, such as `AA:BB:CC:DD:EE:FF`. A value such as `aa-bb-cc-dd-ee-ff` is refused, even though it is a valid MAC address, because Infrahub does not rewrite it.
+- **`IPHost` to `IPNetwork`**: succeeds when every value is already a network address, such as `10.0.0.0/24`.
+- **`IPHost` to `IPAddress`, or `IPAddress` to `IPHost`**: refused when objects hold values. An `IPHost` value carries a prefix (`10.0.0.1/32`) and an `IPAddress` value does not (`10.0.0.1`).
+- **`Text` to `Number`**: refused when objects hold values, because a text value such as `"42"` is not a number. It succeeds only when no object has a value for the attribute.
+- **`Number` to `Text`**: refused when objects hold values, because Infrahub does not convert stored numbers into text.
+- **`TextArea` to `Text`**: succeeds only when every value is short enough for a `Text` attribute.
+
+In every case, an object with no value for the attribute never blocks the change.
+
+:::warning
+
+You cannot change the `kind` of an attribute while one of its values is not valid for the new kind, for example from `Text` to `Number` while objects have text values. Use a new attribute instead:
+
+1. Add a new attribute with the `kind` you want.
+2. Copy the value of the old attribute into the new one on every object, converting each value to the new kind, with a script or another tool outside Infrahub.
+3. Check the new values, then remove the old attribute with `state: absent`. See [Remove schema elements](./removing-schema-element).
+
+There is a risk of data loss. Contact OpsMill to review your plan, on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com).
+
+:::
+
+## Move attributes and relationships onto a generic
+
+You can add a [generic](./generics-and-inheritance) to a schema whose nodes already have objects, and move the attributes and relationships of existing nodes onto it. You would do this to:
+
+- Add a node that has the same attributes and relationships as an existing node, without defining them twice.
+- Replace attributes and relationships that several nodes define separately with one definition on a generic.
+
+The existing objects keep their values and their relationships.
+
+In this example, `IpamVLAN` is a node, and you want to add a node for Q-in-Q VLANs with the same attributes and relationships. You move the attributes and relationships of `IpamVLAN` onto a new generic, `IpamGenericVLAN`, that both nodes inherit from. Before:
+
+```yaml
+nodes:
+  - name: VLAN
+    namespace: Ipam
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+
+  - name: VLANGroup
+    namespace: Ipam
+    label: VLAN Group
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: vlans
+        peer: IpamVLAN
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: vlan_group__vlan
+```
+
+1. **Define the attributes and relationships on the generic.** Copy their definitions from the node to the generic. Give each relationship the same `identifier` as on the node: Infrahub stores the links between objects under the relationship's identifier, so it keeps the existing links only when the identifier is the same.
+2. **Add the generic to `inherit_from` on the node.**
+3. **Change incoming relationships to point to the generic.** Change the `peer` of every relationship that points to the node to the generic instead. Infrahub accepts the new peer when every object already linked through that relationship belongs to a node that inherits from the generic.
+4. **Remove the node's own definitions.** As long as `IpamVLAN` defines `name`, `vlan_id` and `vlan_group` itself, it [overrides](./generics-and-inheritance#override) the generic's definitions, and later changes on the generic do not apply to it. Copy the `id` of each of them from **Object Management > Schemas**, add each `id` to the node in your file, and mark all three `state: absent`. See [Remove an override](./change-generics#remove-an-override).
+
+After, in one file and one load:
+
+```yaml
+generics:
+  - name: GenericVLAN
+    namespace: Ipam
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+      - name: vlan_id
+        kind: Number
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+
+nodes:
+  - name: VLAN
+    namespace: Ipam
+    inherit_from: [IpamGenericVLAN]
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        id: 18dc8071-7eea-2b24-3883-c51fd0b01804  # the id of the node's attribute, from your instance
+        state: absent
+      - name: vlan_id
+        kind: Number
+        id: 18dc8071-7f31-6c0a-3883-c51a4e2b7a12  # the id of the node's attribute, from your instance
+        state: absent
+    relationships:
+      - name: vlan_group
+        peer: IpamVLANGroup
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: vlan_group__vlan
+        id: 18dc8071-8b90-45cd-3884-c51c2c0256ce  # the id of the node's relationship, from your instance
+        state: absent
+
+  - name: QinQVLAN
+    namespace: Ipam
+    label: Q-in-Q VLAN
+    inherit_from: [IpamGenericVLAN]
+    # attributes and relationships specific to Q-in-Q VLANs
+
+  - name: VLANGroup
+    namespace: Ipam
+    label: VLAN Group
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        optional: false
+    relationships:
+      - name: vlans
+        peer: IpamGenericVLAN  # now points to the generic
+        kind: Component
+        cardinality: many
+        optional: true
+        identifier: vlan_group__vlan
+```
+
+Every `IpamVLAN` object keeps its `name` and `vlan_id` values and its VLAN group. VLAN groups keep their `vlans` relationship, which now accepts objects of every node that inherits from `IpamGenericVLAN`, including `IpamQinQVLAN`. A later change to `name`, `vlan_id` or `vlan_group` on the generic applies to both nodes. See [Change generics](./change-generics).
+
+Infrahub refuses to add a generic to `inherit_from` when it conflicts with the node's own definition: an attribute of a different `kind`, a relationship with a different `peer`.
+
+## Change branch support
+
+:::warning
+
+You cannot change `branch` on a node, a generic, an attribute or a relationship once it is loaded. Infrahub refuses the load whether or not objects exist.
+
+:::
+
+Choose the branch support of each element before you first load it. See [Branch awareness](./branch-awareness).
+
+## Remove a generic from a node
+
+:::warning
+
+You cannot remove a generic from a node's `inherit_from`. Infrahub refuses the load whether or not the node has objects.
+
+:::
+
+## Next
+
+- [Change generics](./change-generics) — Which changes on a generic apply to the nodes that inherit from it, and how to remove an override
+- [Rename schema elements](./renaming-schema-element) — Rename a node, attribute or relationship and keep its data
+- [Remove schema elements](./removing-schema-element) — Remove a node, attribute, relationship or dropdown choice

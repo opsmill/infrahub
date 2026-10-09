@@ -4,186 +4,216 @@ title: Generics & inheritance
 
 # Generics & inheritance
 
-A `Generic` in Infrahub is a reusable base that shares attributes and relationships across multiple node types. They work similarly to abstract base classes or interfaces in object-oriented programming — you define common structure once, and node types that `inherit_from` a generic receive that structure automatically.
+A generic defines attributes and relationships that several nodes share. Every node that lists the generic in `inherit_from` receives them, in addition to the attributes and relationships the node defines itself. A generic works like an abstract class in object-oriented programming: you cannot create an object of a generic, only objects of the nodes that inherit from it.
 
 ## When to use a generic
 
-Use a `Node` when you need to represent a concrete object in your infrastructure model with specific attributes and relationships.
+Define a node for each type of object you store. Add a generic when several nodes have the same attributes or relationships, such as routers, switches and firewalls that all have a serial number and a location.
 
-Use a `Generic` when you want to share common attributes or relationships across multiple node types. This helps to avoid redundancy and ensures consistency across your schema. For example, if you have different types of network interfaces (physical, logical) that share common attributes like name and description, you can define a `Generic` interface with these attributes and have the specific interface types inherit from it.
+With a generic:
 
-`Generic`s can also be used to connect multiple types of Nodes to the same relationship.
+- You define the shared attributes and relationships once. A later change to them on the generic applies to every node that inherits them. See [Change generics](./change-generics).
+- A relationship whose `peer` is a generic accepts objects of every node that inherits from it. A location's `devices` relationship can then link routers, switches and firewalls. See [Generic node relationships](./relationships#generic-node-relationships).
+- You can query the generic in GraphQL to list the objects of every node that inherits from it.
 
-:::info Instantiation Requirement
-A `Generic` cannot exist independently; it must be instantiated by at least one `Node`.
-:::
+## Define a generic
 
-:::warning Limitations
+You define a generic in the `generics` section of a schema file. Like a node, it has a `name`, a `namespace`, and attributes and relationships. A generic has no `inherit_from` property: only nodes inherit from generics. See the [generic schema reference](../reference/schema/generic) for every property.
 
-Two limitations could have an impact on your choice of node vs generic:
-
-- computed attributes can only be used on Nodes, see [computed attributes](../computed-attributes/overview) for more information.
-- Generic's properties are propagated to Nodes only during the first import — see [Inherited properties](#inherited-properties) below.
-
-:::
-
-## Defining a generic
-
-A generic can be used to:
-
-- Share multiple attributes or relationships between different types of nodes.
-- Connect multiple types of Node to the same relationship.
-- Define Attribute and Relationship on a specific list of nodes and avoid creating attributes for everything.
-
-In the example below, `Car` is a generic with 2 attributes and 1 relationship and 2 models. `ElectricCar` and `GazCar` are referencing it.
-In the GraphQL schema, `ElectricCar` and `GazCar` will have all the attributes and the relationships of `Car` in addition to the ones defined under their respective section.
+This example defines two generics. `DcimPhysicalDevice` defines what every physical device has: a `serial_number` and a `location`. `LocationPhysical` defines what every physical location has: a `name` and the list of `devices` installed there.
 
 ```yaml showLineNumbers
 generics:
-  - name: Car
-    namespace: Example1
+  - name: PhysicalDevice
+    namespace: Dcim
+    description: Attributes and relationships of every physical device.
+    icon: mdi:server
     attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - name: color
-        kind: Color
-    relationships:
-      - cardinality: one
-        identifier: person__car
-        name: owner
-        optional: false
-        peer: Example1Person
-nodes:
-  - name: ElectricCar
-    namespace: Example1
-    attributes:
-      - kind: Number
-        name: nbr_engine
-    inherit_from: [ Example1Car ]
-  - name: GazCar
-    namespace: Example1
-    attributes:
-      - kind: Number
-        name: mpg
-    inherit_from: [ Example1Car ]
-  - name: Person
-    namespace: Example1
-    attributes:
-      - kind: Text
-        name: name
-        unique: true
-      - kind: Number
-        name: height
+      - name: serial_number
+        kind: Text
         optional: true
     relationships:
-      - cardinality: many
-        identifier: person__car
-        name: cars
-        peer: Example1Car
-```
+      - name: location
+        peer: LocationPhysical
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: physical_device__physical_location
 
-## Inheritance between generics and nodes
-
-### Basic inheritance
-
-Inheritance allows Nodes to derive properties from Generics. This relationship ensures that Nodes maintain a consistent set of attributes defined at the Generic level, reducing redundancy and simplifying updates.
-
-### Single generic inheritance
-
-When a Node is derived from a single Generic, it inherits all properties defined in that Generic unless overridden at the Node level.
-
-```yaml
-generics:
-  - name: GenericDevice
-    namespace: Infra
-    description: "Generic Device object."
-    label: "Device"
-    icon: "mdi:server"
-    human_friendly_id: ["name__value"]
-    order_by:
-      - name__value
-    display_label: "{{ name__value }}"
+  - name: Physical
+    namespace: Location
+    description: Attributes and relationships of every physical location, such as a site or a rack.
     attributes:
       - name: name
         kind: Text
         unique: true
-        order_weight: 1000
-      - name: description
-        kind: Text
-        optional: true
-        order_weight: 1100
+    relationships:
+      - name: devices
+        peer: DcimPhysicalDevice
+        kind: Generic
+        cardinality: many
+        identifier: physical_device__physical_location
+```
 
+## Inherit from a generic
+
+To make a node inherit from a generic, list the generic's kind in the node's `inherit_from` property. The node receives every attribute and relationship of the generic.
+
+```yaml showLineNumbers
 nodes:
   - name: Device
-    namespace: Infra
+    namespace: Dcim
     inherit_from:
-      - "GenericDevice"
-    attributes:
-      - name: role
-        kind: Dropdown
-        optional: true
-        choices:
-          - name: core
-            label: Core Router
-            description: Central part of the network.
-            color: "#7f7fff"
-          - name: spine
-            label: Spine Router
-            description: "Aggregation router part of a Fabric."
-            color: "#aeeeee"
-          - name: leaf
-            label: Leaf Switch
-            description: "Top of Rack part of a Fabric."
-            color: "#e6e6fa"
-        order_weight: 1400
+      - DcimPhysicalDevice
+    # Attributes and relationships specific to DcimDevice
+
+  - name: Firewall
+    namespace: Security
+    inherit_from:
+      - DcimPhysicalDevice
+    # Attributes and relationships specific to SecurityFirewall
+
+  - name: Rack
+    namespace: Location
+    inherit_from:
+      - LocationPhysical
+    # Attributes and relationships specific to LocationRack
 ```
 
-### Multiple generics inheritance
+`DcimDevice` and `SecurityFirewall` both have the `serial_number` attribute and the `location` relationship of `DcimPhysicalDevice`. `LocationRack` has the `name` attribute and the `devices` relationship of `LocationPhysical`, so a rack can hold both devices and firewalls.
 
-When multiple Generics are involved, determining which properties to inherit can be challenging. The implemented solution prioritizes the first Generic listed in the `inherited_from` array.
+### Inherit from several generics
 
-:::info First Generic Preference
-
-Properties will be inherited from the first Generic in the `inherited_from` list if not explicitly defined at the Node level. This approach simplifies conflict resolution.
-
-:::
+A node can inherit from several generics. It receives the attributes and relationships of each one.
 
 ```yaml
 generics:
-  - name: GenericDevice
-    namespace: Infra
-    icon: "mdi:router"
-    human_friendly_id: ["name__value"]
-    attributes:
-      - name: name
-        kind: Text
-        unique: true
-        order_weight: 1000
-
   - name: Asset
-    namespace: Infra
-    icon: "mdi:server"
+    namespace: Dcim
+    icon: mdi:barcode
     attributes:
       - name: asset_tag
-        label: Asset Tag
         kind: Text
         unique: true
-        order_weight: 1000
 
 nodes:
   - name: Device
-    namespace: Infra
+    namespace: Dcim
     inherit_from:
-      - "InfraGenericDevice"
-      - "InfraAsset"
+      - DcimPhysicalDevice
+      - DcimAsset
 ```
 
-### Restricting inheritance by namespace
+`DcimDevice` has `serial_number` and `location` from `DcimPhysicalDevice`, and `asset_tag` from `DcimAsset`.
 
-The `restricted_namespaces` property on a generic limits which namespaces are allowed to define nodes that inherit from it. When set, any node with `inherit_from` referencing that generic must belong to one of the listed namespaces — schema validation fails otherwise.
+When two generics define an attribute or a relationship with the same name, the node receives one attribute or relationship under that name, if the two definitions are compatible:
 
-This is useful when a generic is designed to be implemented only by a specific, known set of nodes. Without the restriction, the generic appears available to anyone, which can mislead schema authors into creating node types that look valid but behave incorrectly at runtime.
+- **Attribute**: both definitions must have the same `kind`. Infrahub refuses the load otherwise:
+
+  ```text
+  DcimDevice.asset_tag inherited from DcimAsset must be the same kind ["Number", "Text"]
+  ```
+
+  When the kinds are the same, the other properties of the attribute, such as `label` or `optional`, come from the generic listed last in `inherit_from`. Define the attribute the same way on both generics so that the result does not depend on the order of `inherit_from`.
+
+- **Relationship**: both definitions must have the same `peer`, `kind`, `identifier`, `cardinality`, `optional` and other properties that define the stored links. Only properties such as `label` and `description` can differ. Infrahub refuses the load otherwise:
+
+  ```text
+  DcimDevice inherits from 'DcimPhysicalDevice' & 'DcimAsset' with different 'peer' on the 'location' relationship
+  ```
+
+### Node-level properties {#inherited-properties}
+
+A node also receives these properties from its generics, when the node does not set them itself:
+
+- `human_friendly_id`
+- `display_label`
+- `default_filter`
+- `uniqueness_constraints`
+- `order_by`
+- `icon`
+- `menu_placement`
+
+When several generics set the same property, the node receives the value of the first generic in `inherit_from` that sets it. In the example above, both generics set `icon`, so `DcimDevice` receives `mdi:server` from `DcimPhysicalDevice`.
+
+A node receives these properties when it is first loaded, and keeps them afterwards. If you change one of them on the generic later, Infrahub does not apply the change to a node that already has a value for it: set the new value on each node. See [Change generics](./change-generics#change-node-level-properties-on-a-generic).
+
+## Override an inherited attribute or relationship {#override}
+
+A node inherits an attribute or relationship of its generic as long as the node's own definition does not include one with the same name. To give one node a different definition, for example a different `label`, define the attribute or relationship on the node with the same `name`. The node then overrides it:
+
+```yaml
+generics:
+  - name: PhysicalDevice
+    namespace: Dcim
+    attributes:
+      - name: serial_number
+        kind: Text
+        optional: true
+
+nodes:
+  - name: Device
+    namespace: Dcim
+    inherit_from: [DcimPhysicalDevice]
+    attributes:
+      - name: serial_number            # overrides the attribute of DcimPhysicalDevice
+        kind: Text
+        optional: true
+        label: Chassis serial number   # used on DcimDevice only
+```
+
+The node's definition replaces the generic's definition completely, so set every property you need on it, not only the one you change. A later change to `serial_number` on `DcimPhysicalDevice` does not apply to `DcimDevice`, because `DcimDevice` uses its own definition. Other nodes that inherit `serial_number` still receive the change.
+
+Each time you load the schema, Infrahub checks that the override is compatible with the generic's definition, and refuses the load otherwise:
+
+- An attribute must have the same `kind`. A `Number` override of a `Text` attribute is refused.
+- A relationship must have the same `peer`.
+
+A node can inherit some attributes and relationships of a generic and override others. In the schema explorer, under **Object Management > Schemas**, the **Inherited** row of an attribute or relationship shows `true` when the node inherits it, and `false` when the node defines it itself. To make a node inherit an attribute or relationship again, see [Remove an override](./change-generics#remove-an-override).
+
+## Limit how nodes use a generic
+
+By default, any node can inherit from a generic and override any of its attributes and relationships. Two properties restrict this. Use them on a generic that only a known set of nodes should inherit from, or whose attributes must have the same definition on every node.
+
+### Prevent nodes from overriding an attribute or relationship
+
+Set `allow_override` on an attribute or relationship of a generic:
+
+- `any` (default): a node that inherits from the generic can override the attribute or relationship.
+- `none`: Infrahub refuses to load a node that overrides it.
+
+```yaml
+generics:
+  - name: PhysicalDevice
+    namespace: Dcim
+    attributes:
+      - name: serial_number
+        kind: Text
+        optional: true
+        allow_override: none
+    relationships:
+      - name: location
+        peer: LocationPhysical
+        kind: Attribute
+        cardinality: one
+        optional: false
+        identifier: physical_device__physical_location
+        allow_override: none
+
+nodes:
+  - name: Device
+    namespace: Dcim
+    inherit_from: [DcimPhysicalDevice]
+    attributes:
+      - name: serial_number   # refused: DcimPhysicalDevice does not allow an override
+        kind: Text
+```
+
+With `allow_override: none`, every node that inherits the attribute or relationship uses the generic's definition, so a change to it on the generic applies to all of them.
+
+### Restrict which namespaces can inherit from a generic
+
+Set `restricted_namespaces` on a generic to list the namespaces whose nodes can inherit from it. Infrahub refuses to load a node from any other namespace that lists the generic in `inherit_from`.
 
 ```yaml
 generics:
@@ -200,7 +230,7 @@ generics:
 
 nodes:
   - name: SingleSiteService
-    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    namespace: Customer     # allowed: Customer is in restricted_namespaces
     inherit_from:
       - CustomerGenericService
     attributes:
@@ -208,45 +238,28 @@ nodes:
         kind: Text
 
   - name: CloudService
-    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    namespace: Customer     # allowed: Customer is in restricted_namespaces
     inherit_from:
       - CustomerGenericService
 
   - name: HttpService
-    namespace: Dcim         # Error — Dcim is not in restricted_namespaces
+    namespace: Dcim         # refused: Dcim is not in restricted_namespaces
     inherit_from:
       - CustomerGenericService
 ```
 
-:::info
-`restricted_namespaces` is optional. When not set on a generic, nodes from any namespace can inherit from it.
-:::
+When `restricted_namespaces` is not set, nodes from any namespace can inherit from the generic.
 
-Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository` and `CoreWebhook` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
-
-## Inherited properties {#inherited-properties}
-
-### List of inheritable properties
-
-- **human_friendly_id**: A user-friendly identifier for the entity (also known as HFID).
-- **display_label**: Label used for display purposes.
-- **menu_placement**: Defines where the entity appears in menus.
-- **uniqueness_constraints**: Constraints ensuring unique values for certain attributes.
-- **icon**: The icon representing the entity.
-- **order_by**: The default order in which entities are listed.
-
-:::warning Limitations and Considerations
-Inheritance of properties occurs only during the first import. If a Generic's properties are updated after the Node has been created, these updates will not be propagated to the Node. Users must manually update Nodes if they want to reflect changes made to Generics.
-:::
+Infrahub sets `restricted_namespaces` on several of its own generics, such as `CoreGenericRepository` and `CoreWebhook`, because their behavior depends on Infrahub code written for specific nodes. Only nodes in the `Core` namespace can inherit from them.
 
 ## Reserved namespaces
 
-Some namespaces like `Core`, `Infrahub`, `Profile`, and `Builtin` are reserved and cannot be used by users to define new Nodes and Generics.
-
-In a similar fashion, some attribute names cannot be used, like `attribute` or `relationship`.
+Infrahub refuses a schema that uses one of its reserved namespaces for a node or a generic: `Account`, `Branch`, `Builtin`, `Core`, `Deprecated`, `Diff`, `Infrahub`, `Internal`, `Lineage`, `Profile`, `Schema` and `Template`. Some attribute and relationship names, such as `attribute` and `relationship`, are also reserved.
 
 ## Related concepts
 
+- [Change generics](./change-generics) — Which changes on a generic apply to the nodes that inherit from it, and how to remove an override
 - [Nodes & attributes](./nodes-and-attributes) — Node properties and attribute kinds
+- [Relationships](./relationships) — Relationship kinds, identifiers and relationships to a generic
 - [Hierarchy](./hierarchy) — Hierarchical generics for tree structures
 - [Schema extensions](./extensions) — Adding to existing nodes without redefining them

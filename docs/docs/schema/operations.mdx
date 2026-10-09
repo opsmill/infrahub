@@ -1,0 +1,94 @@
+---
+title: Schema operations
+description: How a load applies your schema files to an Infrahub instance, what Infrahub checks before it changes anything, and how to change, rename and remove schema elements without losing data.
+---
+
+# Schema operations
+
+Your schema files describe the data model you want in Infrahub: a node for your circuits, an attribute that every device needs, a relationship you want to rename. They are YAML files that you write and store outside Infrahub, often in a Git repository.
+
+Infrahub does not read these files directly. When you load them, Infrahub translates this description into the schema that it stores in its database. Each branch has its own schema, so two branches can hold different ones. You load your files with `infrahubctl schema load`, or from a Git repository connected to the instance. A change you load on a branch stays on that branch until you merge it. For both methods, see [Load a schema file](./create-and-load#load-a-schema-file).
+
+## How a load works
+
+During a load, Infrahub compares your files with the schema of the branch you load into. It then updates that schema to match the schema elements in your files (nodes, generics, attributes and relationships), and updates the stored objects that the change affects. Before it changes anything, Infrahub runs three checks, and refuses the whole load if one of them fails:
+
+- **The schema is consistent on its own.** For example, the peer of every relationship exists, and every entry in `inherit_from` is a generic.
+- **Infrahub can apply the change to the schema that is already loaded.** Some changes are always refused, such as a new value for the `branch` property of an element.
+- **The existing objects satisfy every new rule.** For example, when you make an attribute mandatory, every object must already have a value for it.
+
+## Changes to a schema that is already loaded
+
+When you load files into a branch that already has a schema, Infrahub merges the definition in your files with the current schema. It adds the elements that are new and updates the elements that already exist. Your files do not have to describe the complete schema, and an element that is missing from your files is left unchanged, with its objects and values:
+
+- **Deleting an element from your file does not remove it from Infrahub.** To remove it, mark it with `state: absent` in your file and load the file. See [Remove schema elements](./removing-schema-element).
+- **Changing the name of an element in your file does not rename it.** Infrahub matches each element in your file with a loaded element by its name, unless the file includes the element's `id`. Without the `id`, Infrahub creates a second element under the new name. See [Rename schema elements](./renaming-schema-element).
+
+Infrahub works this way because the schema of an instance is often defined in several places: several schema files, several Git repositories, [schema extensions](./extensions) that add attributes and relationships to nodes defined in another file, and changes loaded through the API. Infrahub stores only the schema that results from all these loads. It does not record which file, repository or extension defined each element. So when an element is missing from your files, Infrahub cannot tell whether you deleted it. If Infrahub removed every missing element, loading one file would remove the elements that the other sources define, and delete their objects and values. You therefore state each removal on the element itself, with `state: absent`.
+
+As a result, you can load one of these parts on its own, without listing the elements defined in the others. Infrahub checks that the whole schema stays consistent, but it checks and migrates only the objects of the elements that your load changes.
+
+Some changes to an element that is already loaded are always refused, whether or not it has objects. For example, you cannot change the `branch` property of any element, or the `direction` of a relationship. For the full list, see [The four outcomes of a schema change](#the-four-outcomes-of-a-schema-change).
+
+## Infrahub checks your objects before it changes the schema
+
+When the branch already holds objects of the nodes you change, Infrahub checks every object against each rule the change introduces. When you make an attribute mandatory, Infrahub checks for objects with no value. When you change the `kind` of an attribute, it checks for values that the new kind does not accept.
+
+If one object fails a check, Infrahub refuses the whole load, and the error lists each object that fails by its ID. Correct those objects, or change your schema file, and load it again.
+
+### Operations that run the checks
+
+Infrahub runs the checks again in each of these operations, because each one can involve objects that Infrahub has not checked yet:
+
+| Operation | Validations | Migrations |
+| --- | --- | --- |
+| `infrahubctl schema check` | Yes | No |
+| Schema load | Yes | Yes |
+| Proposed Change | Yes | No |
+| Branch rebase | Yes | Yes |
+| Branch merge | Yes | Yes, on the branch you merge into |
+
+An object created on the default branch after you loaded your change on a branch can fail the new rule. The Proposed Change checks report it, and Infrahub refuses the rebase or merge until you correct the object.
+
+## The four outcomes of a schema change
+
+Each property of each element has one of four statuses. When you change the value of a property, Infrahub acts according to that status:
+
+- **Infrahub updates the schema only** (`allowed`). Existing objects are not affected. Changing a `label` or a `description` is in this group.
+- **Infrahub updates the schema and migrates the existing data** (`migration_required`). Infrahub converts the current values to the new definition where it can. Changing the kind of an attribute is in this group.
+- **Infrahub accepts the change only when every existing object already satisfies it** (`validate_constraint`). Infrahub checks that all existing objects match the new constraint and refuses the change if any object does not. Changing an attribute from `optional: true` to `optional: false` is in this group.
+- **Infrahub always refuses the change** (`not_supported`). You cannot change `branch` on any element, or `identifier`, `direction` and `hierarchical` on a relationship.
+
+The [schema update reference](../reference/schema/validator-migration) lists the status of every property of nodes, generics, attributes and relationships.
+
+## Make schema changes in a controlled way
+
+A change that Infrahub accepts on an empty development instance can still be refused on production, where existing objects can fail the new rules. It can also cause errors in the queries, Transformations and Generators that read the changed elements. To find these problems before the change reaches production:
+
+- **Load the change on an instance that holds production data.** Restore a recent [backup of your production instance](../deploy-manage/maintain-upgrade/database-backup/backup-and-restore) into a development instance, and check and load the change there first. Infrahub then refuses, during development, a change that your production objects do not satisfy.
+- **Test the automation that depends on the schema.** An [integration test with Testcontainers](../development-resources/testcontainers) starts a temporary Infrahub instance, loads your schema and data into it, and runs your queries, Transformations and Generators against the new schema.
+- **Load the change on a branch.** Open a Proposed Change so that a colleague can review the change, then merge it into the default branch. If the change does not do what you need, delete the branch: the default branch is not affected. See [Load a schema file](./create-and-load#load-a-schema-file).
+
+## Best practices
+
+### Write each changed element in full
+
+When you edit an element in your schema file, list it with every property you set before, not only the property you change. Infrahub resets a property you leave out to its default. `optional`, `unique` and `read_only` default to `false`, so loading this attribute, which was optional before, makes it mandatory:
+
+```yaml
+attributes:
+  - name: description
+    kind: Text      # optional: true is missing, so the attribute becomes mandatory
+```
+
+If some objects have no value for `description`, Infrahub refuses the load. See [Make an attribute mandatory or unique](./change-nodes-and-attributes#make-an-attribute-mandatory-or-unique).
+
+## In this section
+
+- [Build your schema with AI](./build-your-schema) — Describe a schema change in plain language and review the YAML your assistant produces
+- [Create and load schema](./create-and-load) — Write, check, load and export schema files
+- [Change nodes and attributes](./change-nodes-and-attributes) — Add attributes, make them mandatory or unique, change their kind, and move them onto a generic
+- [Change generics](./change-generics) — Which changes on a generic apply to the nodes that inherit from it, and how to remove an override
+- [Rename schema elements](./renaming-schema-element) — Rename a node, attribute or relationship and keep its data
+- [Remove schema elements](./removing-schema-element) — Remove a node, attribute, relationship or dropdown choice
+- [Troubleshooting schema updates](./troubleshooting) — Recover from a rename that created a second element, a change on a generic that does not apply to some nodes, a load that seems to hang, and a refused load

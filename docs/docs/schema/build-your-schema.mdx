@@ -5,7 +5,7 @@ description: Describe a schema change in plain language and have your assistant 
 
 Describe a schema change in plain language and your assistant produces the schema YAML for it, using the same top-level keys and conventions covered in [Create and load schema](./create-and-load) — nodes, generics, attributes, relationships, hierarchies.
 
-Working from the [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) skill, your assistant searches the [Marketplace](./marketplace) for a published schema you can reuse or adapt before modeling anything from scratch, and runs `infrahubctl schema check` against the result before handing it back. For a change to a schema you already have, it also plans the migration — see [Schema migration](./migration) for the attribute-level sequencing it applies: safe addition, removal via `state: absent`, two-step renames, and type changes.
+Working from the [Schema Manager](https://docs.infrahub.app/skills/skills-reference/managing-schemas) skill, your assistant searches the [Marketplace](./marketplace) for a published schema you can reuse or adapt before modeling anything from scratch, and runs `infrahubctl schema check` against the result before handing it back. For a change to a schema you already have, it also plans the steps — see [Schema operations](./operations) for what Infrahub does with each change, including additions, removal with `state: absent`, renames with the element's `id`, and kind changes.
 
 Use this for direct, well-scoped changes — adding or modifying nodes, attributes, and relationships. Designing a whole new schema domain is a larger job: describe the domain and have your assistant produce a plan you review before it writes any files. [Build your first schema](../learn/tutorials/build-your-first-schema) builds one by hand, which is the quickest way to learn the modeling decisions your assistant is making on your behalf.
 
@@ -67,6 +67,6 @@ Review the schema diff in the web interface, then open a Proposed Change to merg
 
 - [Create and load schema](./create-and-load) — Write and load schema YAML by hand
 - [Marketplace](./marketplace) — Published schemas to search before modeling from scratch
-- [Schema migration](./migration) — The sequencing rules for changing a schema you already have
+- [Schema operations](./operations) — What happens when you change a schema that already holds objects
 - [Set up your AI assistant](../overview/build-with-ai/setup.mdx) — Install the Infrahub Skills and connect the MCP server
 - [Schema Manager skill reference](https://docs.infrahub.app/skills/skills-reference/managing-schemas) — Full behavior

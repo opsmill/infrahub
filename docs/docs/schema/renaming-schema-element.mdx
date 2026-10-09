@@ -1,0 +1,98 @@
+---
+title: Rename schema elements
+description: Rename a node, attribute or relationship on an instance that holds objects, and keep its objects and values.
+---
+
+# Rename schema elements
+
+To rename a node, an attribute or a relationship and keep its objects and values, add the element's `id` to your schema file next to the new name. Without the `id`, Infrahub does not rename anything: it creates a second element under the new name.
+
+## Why a rename needs the element's id
+
+Infrahub matches each element in your schema file with an existing element by its name, unless the file includes the element's `id`. When you change only the name, Infrahub finds no element with the new name and treats it as a new one:
+
+- **Attribute**: Infrahub adds a new attribute with no values, and the attribute with the old name keeps every value. If the new attribute is mandatory and has no `default_value`, Infrahub refuses the load instead.
+- **Node**: Infrahub creates a new node kind with no objects, and the node with the old name keeps every object.
+- **Relationship**: Infrahub adds a new relationship, and the relationship with the old name is left in place.
+
+The element with the old name is not in your file anymore, so Infrahub leaves it unchanged. `infrahubctl schema check` shows the mistake before you load: the new name appears under `added`, and nothing appears under `removed`.
+
+With the `id`, Infrahub matches the element in the file with the existing element, so it renames the existing element and keeps its data.
+
+## Rename an element
+
+1. **Find the element's `id`.** In the web interface, open **Object Management > Schemas**, select the node, and read the **ID** row of the node, or of the attribute or relationship. The `id` is also in the `id` field of each element returned by the REST API at `/api/schema?branch=<branch>`.
+2. **Add the `id` and change the name.** Put the `id` on the element you rename, next to the new name:
+
+   ```yaml
+   nodes:
+     - name: Rack
+       namespace: Infra
+       attributes:
+         - id: 18dc3660-1bc9-da23-36a6-c51fc5edb56e  # the id from your instance
+           name: rack_name                           # was: name
+           kind: Text
+   ```
+
+3. **Check the change.** Run `infrahubctl schema check <file> --branch <branch>`. A rename appears under `changed`, with `name` as the changed property:
+
+   ```yaml
+   changed:
+     InfraRack:
+       changed:
+         attributes:
+           changed:
+             rack_name:
+               changed:
+                 name: null
+   ```
+
+   If the new name appears under `added`, the `id` is missing or does not match an element on this instance. Correct it before you load.
+4. **Load the change on a branch**, and merge it through a Proposed Change.
+5. **Remove the `id` from the file once the rename is merged.** The `id` is valid only on this instance. See [The id belongs to one instance](#the-id-belongs-to-one-instance).
+
+## Rename by element type
+
+### Attribute
+
+Infrahub renames the attribute on every object and keeps the values.
+
+### Attribute inherited from a generic
+
+An inherited attribute has no `id` of its own on the node. Rename it on the generic, with the `id` of the generic's attribute. Every node that inherits it receives the new name, and the values are kept. Properties that refer to the attribute by name, such as `order_by` and `human_friendly_id`, are updated. See [Change generics](./change-generics).
+
+### Node, including a change of namespace
+
+Changing the `name` or the `namespace` of a node changes its kind, for example from `InfraFirewall` to `SecurityFirewall`. With the node's `id`, Infrahub changes every existing object to the new kind and keeps its values and relationships.
+
+In the same load, change every relationship that has the old kind as its `peer`. Infrahub refuses the load while a relationship refers to a kind that no longer exists:
+
+```text
+Unable to load the schema:
+  InfraDevice: Relationship 'firewall' is referring an invalid peer 'InfraFirewall'
+```
+
+GraphQL queries, Transformations, Generators and checks that use the old kind name do not change with the schema. Update them to the new kind name.
+
+### Relationship
+
+Infrahub stores the links between objects under the relationship's `identifier`, not its name. Renaming a relationship with its `id` changes the name in the schema and in the GraphQL API, and the existing links are kept.
+
+## The id belongs to one instance
+
+:::warning
+
+Infrahub generates the `id` of an element when it first loads the element, so the same element has a different `id` on each instance. If you load a schema file with an `id` from one instance into another instance, Infrahub does not rename the element there: it creates a second element, as when the `id` is missing.
+
+:::
+
+To apply the same rename to several instances, for example development, staging and production, look up the `id` on each instance and load a file with that instance's `id`. This also applies to a schema loaded from a [Git repository](../git-integration/overview): a repository connected to several instances cannot contain an `id` that is valid on all of them.
+
+## If you already have two elements
+
+If a rename without the `id` already created a second element, see [Two elements after a rename](./troubleshooting#two-elements-after-a-rename) to remove the new element and rename the original one.
+
+## Next
+
+- [Remove schema elements](./removing-schema-element) — Remove a node, attribute, relationship or dropdown choice
+- [Troubleshooting schema updates](./troubleshooting) — Recover from a rename that created a second element
