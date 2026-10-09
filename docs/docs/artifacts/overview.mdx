@@ -93,7 +93,7 @@ Every regeneration decision during a proposed change is recorded in the pipeline
 
 ## How artifacts reach the default branch
 
-An artifact belongs to the branch it was generated on. When a branch merges, Infrahub does not copy its artifacts to the default branch. It regenerates the affected artifacts on the default branch, from the default branch's data and Transformation code at the time the regeneration runs. The artifact you reviewed in a [Proposed Change](../proposed-changes/overview) and the artifact on the default branch are separate nodes with different IDs. Their content is the same only when both were generated from the same data and code.
+An artifact belongs to the branch it was generated on. When a branch merges, Infrahub does not copy its artifacts to the default branch. It regenerates the affected artifacts on the default branch, from the default branch's data and repository commit at the time the regeneration runs. The artifact you reviewed in a [Proposed Change](../proposed-changes/overview) and the artifact on the default branch are separate nodes with different IDs. Their content is the same only when both were generated from the same data and the same repository commit.
 
 If automation deploys artifacts from the default branch, such as device configurations pushed to the network after a merge, it deploys the regenerated artifact, not the one you reviewed.
 
@@ -112,10 +112,12 @@ Infrahub sends the `infrahub.branch.merged` and `infrahub.proposed_change.merged
 
 ### When the default branch artifact differs from the reviewed one
 
-Infrahub generates the artifacts of a Proposed Change on its branch. On that branch, Infrahub reads the default branch's data as it was at the branch's `branched_from`, plus the changes made on the branch, as described in [Parallel branches](../branches/parallel-branches.mdx). The regeneration after the merge reads the default branch as it is when the task runs. The two artifacts differ when data or code that the artifact reads changed in between:
+Infrahub generates the artifacts of a Proposed Change on its branch. On that branch, Infrahub reads the default branch's data as it was at the branch's `branched_from`, plus the changes made on the branch, as described in [Parallel branches](../branches/parallel-branches.mdx). The regeneration after the merge reads the default branch as it is when the task runs. The two artifacts differ when the data or the Transformation files that the artifact uses changed in between:
 
 - **The branch was not rebased.** Changes made on the default branch after `branched_from` are not in the reviewed artifact.
 - **Another branch has changes to different data that the same artifact reads.** For example, you change the descriptions of a device's interfaces on one branch and add a BGP session to the same device on another, and the device's configuration artifact reads both. The two branches contain changes to different objects, so Infrahub reports no conflict, and each Proposed Change shows only its own change. After both branches merge, the configuration on the default branch contains both changes, a combination that no Proposed Change showed. Infrahub has no check that blocks a merge in this case.
+- **Another branch changed files that the same Transformation uses.** For example, you change a Jinja2 partial on one branch and the template that includes it on another. Infrahub generates the artifacts of each Proposed Change with the repository commit of that Proposed Change's branch. When a branch merges, Infrahub merges its Git branch into the default branch's Git branch, and the regeneration uses the resulting commit, which contains both changes.
+- **The repository merge failed.** Infrahub merges the Git branch after the data merge is complete. If the Git merge fails, Infrahub logs the failure and keeps the data merge, and the regeneration uses the default branch's previous Transformation files.
 - **The default branch changed after the last rebase or the last run of the checks.** A rebase does not re-run the Proposed Change checks. The default branch can also change between the merge and the regeneration.
 - **A Generator that runs after the merge changed data the artifact reads.**
 - **The regeneration failed.** The artifact on the default branch keeps its previous content. See [When the regeneration fails](#when-the-regeneration-fails).
