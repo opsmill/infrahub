@@ -174,7 +174,11 @@ class NumberPoolRepository(NumberPoolRangeStore):
         return [item for item in used if item is not None]
 
     async def get_divisions(
-        self, pool: CoreNumberPool, branch: Branch, space: EffectiveSpace, elements: Sequence[DivisionElementPath]
+        self,
+        pool: CoreNumberPool,
+        branch: Branch,
+        space: EffectiveSpace,
+        elements: Sequence[DivisionElementPath],
     ) -> list[NumberPoolDivisionResult]:
         """Return the figures of every division holding a number inside `space`.
 

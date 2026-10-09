@@ -37,6 +37,10 @@ class UtilizationFigures:
     used_branches: int
 
     @property
+    def used(self) -> int:
+        return self.used_default_branch + self.used_branches
+
+    @property
     def utilization(self) -> float:
         return _percentage(self.used_default_branch + self.used_branches, self.size)
 
