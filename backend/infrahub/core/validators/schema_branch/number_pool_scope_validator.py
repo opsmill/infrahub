@@ -126,6 +126,48 @@ class DeclaredScopeValidator:
         return AllocationScope(elements=tuple(elements))
 
 
+class DeclaredScopeComparator:
+    """Compares the allocation scope a schema declares for the pool it created with the scope that pool stores."""
+
+    def __init__(self, schema_branch: SchemaBranch) -> None:
+        self.schema_branch = schema_branch
+
+    def refusal(self, kind: str, entries: list[str] | None, stored: AllocationScope) -> str | None:
+        """Return why the declaration cannot stand for the stored scope, or None when both hold the same element ids.
+
+        Names resolve on the schema branch, so a declaration that follows a renamed element keeps the stored ids.
+
+        Raises:
+            ValidationError: When the schema branch does not define the kind.
+
+        """
+        resolver = _DeclaredScopeResolver(schema_branch=self.schema_branch)
+        declared_ids: list[str | None] = []
+        for entry in entries or []:
+            try:
+                declared_ids.append(resolver.resolve(kind=kind, entries=[entry]).elements[0].id)
+            except UnknownScopeElementError:
+                if new_name := self._new_name(resolver=resolver, kind=kind, entry=entry, stored=stored):
+                    return f'{SCOPE_FIELD}: "{entry}" was renamed to "{new_name}"; update {SCOPE_FIELD} to the new name'
+                declared_ids.append(None)
+
+        if declared_ids == [element.id for element in stored.elements]:
+            return None
+        return f"{SCOPE_FIELD} can't be changed after the pool is created"
+
+    @staticmethod
+    def _new_name(resolver: AllocationScopeResolver, kind: str, entry: str, stored: AllocationScope) -> str | None:
+        for element in stored.elements:
+            if element.name != entry:
+                continue
+            try:
+                current = resolver.resolve(kind=kind, entries=[{"id": element.id}]).elements[0]
+            except UnknownScopeElementError:
+                return None
+            return current.name if current.name != entry else None
+        return None
+
+
 def scope_refusal_reason(error: ValidationError) -> str:
     """Return the reason of a scope refusal without the field it is attached to."""
     if isinstance(error.input_value, dict) and isinstance(reason := error.input_value.get(SCOPE_FIELD), str):
