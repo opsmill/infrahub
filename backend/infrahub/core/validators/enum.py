@@ -11,4 +11,5 @@ class ConstraintIdentifier(StrEnum):
     ATTRIBUTE_PARAMETERS_END_RANGE_UPDATE = "attribute.parameters.end_range.update"
     ATTRIBUTE_PARAMETERS_START_RANGE_UPDATE = "attribute.parameters.start_range.update"
     ATTRIBUTE_PARAMETERS_RANGES_UPDATE = "attribute.parameters.ranges.update"
+    ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE = "attribute.parameters.allocation_scope.update"
     NODE_UNIQUENESS_CONSTRAINTS_UPDATE = "node.uniqueness_constraints.update"
