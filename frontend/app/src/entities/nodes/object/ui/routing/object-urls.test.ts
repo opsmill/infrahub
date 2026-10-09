@@ -1,9 +1,45 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
+import { store } from "@/shared/stores";
 
-import { getDocumentationUrl, getObjectGraphqlSandboxUrl, getObjectTasksUrl } from "./object-urls";
+import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/domain/model/pool";
+import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+
+import { generateNodeSchema } from "../../../../../../tests/fake/schema";
+import {
+  getDocumentationUrl,
+  getObjectDetailsUrl,
+  getObjectGraphqlSandboxUrl,
+  getObjectTasksUrl,
+} from "./object-urls";
+
+describe("getObjectDetailsUrl for a resource pool", () => {
+  const initialNodeSchemas = store.get(nodeSchemasAtom);
+
+  afterEach(() => {
+    store.set(nodeSchemasAtom, initialNodeSchemas);
+  });
+
+  it("appends the tab segment to the pool's address", () => {
+    // GIVEN
+    store.set(nodeSchemasAtom, [
+      generateNodeSchema({
+        kind: "CoreNumberPool",
+        name: "NumberPool",
+        namespace: "Core",
+        inherit_from: [RESOURCE_GENERIC_KIND],
+      }),
+    ]);
+
+    // WHEN
+    const url = getObjectDetailsUrl("CoreNumberPool", "pool-id", undefined, "ranges/range-id");
+
+    // THEN
+    expect(url).toBe("/resource-manager/pool-id/ranges/range-id");
+  });
+});
 
 describe("getObjectTasksUrl", () => {
   it("filters the tasks list on the node id", () => {

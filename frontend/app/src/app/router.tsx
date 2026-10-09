@@ -303,6 +303,9 @@ export const router = createBrowserRouter([
                         path: "resources/:resourceId",
                         lazy: () => import("@/pages/resource-manager/resource-allocation-details"),
                       },
+                      {
+                        path: "ranges/:rangeId",
+                      },
                     ],
                   },
                 ],

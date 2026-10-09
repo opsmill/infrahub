@@ -1,0 +1,1 @@
+Changed the number pool details page to list the pool's ranges in the order the pool fills them, with how much of each is used, next to a table of the numbers in the selected range that shows the node holding each one, its branch and whether the pool allocated it or a user provided it.

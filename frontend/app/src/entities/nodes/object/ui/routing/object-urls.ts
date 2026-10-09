@@ -43,7 +43,8 @@ export function getObjectDetailsUrl(
   }
 
   if (isOfKind(RESOURCE_GENERIC_KIND, schema)) {
-    return constructPathForIpam(`/resource-manager/${objectId ?? ""}`, overrideParams);
+    const path = objectId ? `/resource-manager/${objectId}${tab}` : "/resource-manager/";
+    return constructPathForIpam(path, overrideParams);
   }
 
   if (isOfKind(PROPOSED_CHANGE_OBJECT, schema)) {
