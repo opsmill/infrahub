@@ -171,13 +171,15 @@ PoolExhaustedError
 
 ## Schema-created pool reconciliation
 
-Input: `effective_ranges()` of the default-branch declaration, sorted by start. Existing ranges of the pool, sorted by start.
+Input: `effective_ranges()` of the default-branch declaration. Existing ranges of the pool. Ranges are matched by their bounds.
 
-| Position | Action |
-|----------|--------|
-| both present | update bounds and weight in place when they differ |
-| desired only | create |
+| Bounds | Action |
+|--------|--------|
+| declared and existing | keep the range, rewrite its weight when it differs |
+| declared only | create |
 | existing only | delete |
 | after any change | `NumberPoolShorthandMirror.sync` |
+
+A range never changes bounds through reconciliation: new bounds are a new range. The same reconciliation applies to `ranges` written through the pool mutations.
 
 Records are never touched by reconciliation.

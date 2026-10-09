@@ -42,7 +42,7 @@ mutation CreateRangeByPoolHfid($pool_name: String!, $start: BigInt!, $end: BigIn
 """
 
 UPDATE_POOL_RANGES_BY_HFID = """
-mutation UpdatePoolRangesByHfid($pool_name: String!, $ranges: [RelatedNodeInput]) {
+mutation UpdatePoolRangesByHfid($pool_name: String!, $ranges: [NumberPoolRangeInput!]) {
     CoreNumberPoolUpdate(data: { hfid: [$pool_name], ranges: $ranges }) {
         ok
     }
@@ -50,7 +50,7 @@ mutation UpdatePoolRangesByHfid($pool_name: String!, $ranges: [RelatedNodeInput]
 """
 
 UPSERT_POOL_RANGES_BY_ID = """
-mutation UpsertPoolRangesById($pool_id: String!, $ranges: [RelatedNodeInput]) {
+mutation UpsertPoolRangesById($pool_id: String!, $ranges: [NumberPoolRangeInput!]) {
     CoreNumberPoolUpsert(data: { id: $pool_id, ranges: $ranges }) {
         ok
     }
@@ -58,7 +58,7 @@ mutation UpsertPoolRangesById($pool_id: String!, $ranges: [RelatedNodeInput]) {
 """
 
 UPSERT_POOL_RANGES_BY_HFID = """
-mutation UpsertPoolRangesByHfid($pool_name: String!, $ranges: [RelatedNodeInput]) {
+mutation UpsertPoolRangesByHfid($pool_name: String!, $ranges: [NumberPoolRangeInput!]) {
     CoreNumberPoolUpsert(data: { hfid: [$pool_name], ranges: $ranges }) {
         ok
     }
@@ -153,25 +153,25 @@ SCHEMA_POOL_WRITE_TEST_CASES: list[SchemaPoolWriteTestCase] = [
     SchemaPoolWriteTestCase(
         name="pool_update_ranges_by_id",
         source=UPDATE_POOL_RANGES,
-        variables=lambda pool: {"pool_id": pool.pool_id, "ranges": [{"id": pool.range_ids[1]}]},
+        variables=lambda pool: {"pool_id": pool.pool_id, "ranges": [{"start": 200, "end": 300}]},
         expected_error=SCHEMA_POOL_RANGES_REFUSED,
     ),
     SchemaPoolWriteTestCase(
         name="pool_update_ranges_by_hfid",
         source=UPDATE_POOL_RANGES_BY_HFID,
-        variables=lambda pool: {"pool_name": pool.name, "ranges": [{"id": pool.range_ids[1]}]},
+        variables=lambda pool: {"pool_name": pool.name, "ranges": [{"start": 200, "end": 300}]},
         expected_error=SCHEMA_POOL_RANGES_REFUSED,
     ),
     SchemaPoolWriteTestCase(
         name="pool_upsert_ranges_by_id",
         source=UPSERT_POOL_RANGES_BY_ID,
-        variables=lambda pool: {"pool_id": pool.pool_id, "ranges": [{"id": pool.range_ids[1]}]},
+        variables=lambda pool: {"pool_id": pool.pool_id, "ranges": [{"start": 200, "end": 300}]},
         expected_error=SCHEMA_POOL_RANGES_REFUSED,
     ),
     SchemaPoolWriteTestCase(
         name="pool_upsert_ranges_by_hfid",
         source=UPSERT_POOL_RANGES_BY_HFID,
-        variables=lambda pool: {"pool_name": pool.name, "ranges": [{"id": pool.range_ids[1]}]},
+        variables=lambda pool: {"pool_name": pool.name, "ranges": [{"start": 200, "end": 300}]},
         expected_error=SCHEMA_POOL_RANGES_REFUSED,
     ),
     SchemaPoolWriteTestCase(

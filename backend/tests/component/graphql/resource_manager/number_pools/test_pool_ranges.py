@@ -657,7 +657,7 @@ async def test_shorthand_mirrors_the_range_set_after_every_write(
     assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [(10, 20), (30, 40)])
 
     first_range_id = (await NumberPoolRepository(db=db).get_ranges(pool_id=pool_id))[0].get_id()
-    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"id": first_range_id}, {"id": second_range_id}]})
+    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"start": 10, "end": 20}, {"start": 30, "end": 40}]})
     assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((None, None), [(10, 20), (30, 40)])
 
     await run(DELETE_RANGE, {"range_id": second_range_id})
@@ -666,7 +666,7 @@ async def test_shorthand_mirrors_the_range_set_after_every_write(
     await run(UPDATE_RANGE, {"range_id": first_range_id, "start": 12, "end": 22})
     assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((12, 22), [(12, 22)])
 
-    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"id": first_range_id}]})
+    await run(UPDATE_POOL_RANGES, {"pool_id": pool_id, "ranges": [{"start": 12, "end": 22}]})
     assert await _shorthand_and_ranges(db=db, pool_id=pool_id) == ((12, 22), [(12, 22)])
 
 
@@ -683,16 +683,21 @@ async def test_pool_update_with_ranges_recomputes_the_shorthand_from_the_stored_
         db=db,
         branch=default_branch,
         source=UPDATE_POOL_RANGES,
-        variables={"pool_id": pool.get_id(), "ranges": [{"id": low.get_id()}, {"id": high.get_id()}]},
+        variables={"pool_id": pool.get_id(), "ranges": [{"start": 10, "end": 20}, {"start": 30, "end": 40}]},
     )
 
     assert not result.errors
     assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((None, None), [(10, 20), (30, 40)])
+    assert [item.get_id() for item in await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())] == [
+        low.get_id(),
+        high.get_id(),
+    ]
 
 
-async def test_pool_ranges_edit_is_refused_while_its_ranges_overlap(
+async def test_pool_update_with_valid_ranges_repairs_a_pool_whose_stored_ranges_overlap(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
+    """The overlapping range is saved outside the mutations, which refuse to store it."""
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     pool, low = await _create_pool_with_range(db=db, start=10, end=20)
     high = await add_pool_range(db=db, pool=pool, start=15, end=25)
@@ -701,8 +706,11 @@ async def test_pool_ranges_edit_is_refused_while_its_ranges_overlap(
         db=db,
         branch=default_branch,
         source=UPDATE_POOL_RANGES,
-        variables={"pool_id": pool.get_id(), "ranges": [{"id": low.get_id()}, {"id": high.get_id()}]},
+        variables={"pool_id": pool.get_id(), "ranges": [{"start": 10, "end": 20}, {"start": 30, "end": 40}]},
     )
 
-    assert [error.message for error in result.errors or []] == [f"Range 10-20 overlaps 15-25 ({high.get_id()})"]
-    assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((10, 20), [(10, 20), (15, 25)])
+    assert not result.errors
+    assert await _shorthand_and_ranges(db=db, pool_id=pool.get_id()) == ((None, None), [(10, 20), (30, 40)])
+    kept_id, new_id = [item.get_id() for item in await NumberPoolRepository(db=db).get_ranges(pool_id=pool.get_id())]
+    assert kept_id == low.get_id()
+    assert new_id != high.get_id()

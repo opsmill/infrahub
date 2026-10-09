@@ -17,6 +17,8 @@ async def define_permissions(
     db: InfrahubDatabase,
     object_permissions: list[ObjectPermission] | None = None,
     global_permissions: list[GlobalPermission] | None = None,
+    role_name: str = "chief-people-officer",
+    group_name: str = "hr",
 ) -> None:
     object_permissions = object_permissions or []
     global_permissions = global_permissions or []
@@ -44,11 +46,11 @@ async def define_permissions(
         permissions.append(obj)
 
     role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-    await role.new(db=db, name="chief-people-officer", permissions=permissions)
+    await role.new(db=db, name=role_name, permissions=permissions)
     await role.save(db=db)
 
     group = await Node.init(db=db, schema=CoreAccountGroup)
-    await group.new(db=db, name="hr", roles=[role])
+    await group.new(db=db, name=group_name, roles=[role])
     await group.save(db=db)
 
     await group.members.add(db=db, data={"id": account.id})

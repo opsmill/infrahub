@@ -5123,7 +5123,7 @@ input CoreNumberPoolCreateInput {
   node: TextAttributeCreate
   """The attribute of the selected model"""
   node_attribute: TextAttributeCreate
-  ranges: [RelatedNodeInput]
+  ranges: [NumberPoolRangeInput!]
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
@@ -5250,7 +5250,7 @@ input CoreNumberPoolUpdateInput {
   node: TextAttributeUpdate
   """The attribute of the selected model"""
   node_attribute: TextAttributeUpdate
-  ranges: [RelatedNodeInput]
+  ranges: [NumberPoolRangeInput!]
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
@@ -5282,7 +5282,7 @@ input CoreNumberPoolUpsertInput {
   node: TextAttributeUpdate
   """The attribute of the selected model"""
   node_attribute: TextAttributeUpdate
-  ranges: [RelatedNodeInput]
+  ranges: [NumberPoolRangeInput!]
   """
   The start of the pool's single range. Null unless the pool holds exactly one range.
   """
@@ -11825,6 +11825,17 @@ input NumberAttributeUpdate {
   owner: String
   source: String
   value: BigInt
+}
+
+input NumberPoolRangeInput {
+  """
+  Ranges with a higher weight are allocated from first. Left out, a range declared with the bounds of a stored range keeps the stored range's weight; null removes it.
+  """
+  allocation_weight: BigInt
+  """The last number of the range, included"""
+  end: BigInt!
+  """The first number of the range, included"""
+  start: BigInt!
 }
 
 type ObjectPermission {
