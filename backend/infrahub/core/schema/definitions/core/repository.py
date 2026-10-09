@@ -3,9 +3,12 @@ from infrahub.core.constants import (
     BranchSupportType,
     InfrahubKind,
     RelationshipDeleteBehavior,
+    RepositoryDeliveryFailureCause,
+    RepositoryDeliveryStatus,
     RepositoryInternalStatus,
     RepositoryOperationalStatus,
     RepositorySyncStatus,
+    SchemaAttributeDisplay,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -52,6 +55,197 @@ core_repository = NodeSchema(
             optional=True,
             branch=BranchSupportType.LOCAL,
             order_weight=7000,
+        ),
+        Attr(
+            name="delivery_status",
+            kind="Dropdown",
+            label="Push to remote",
+            description=(
+                "Whether merged changes wait to be pushed to the remote, and whether a user must act. "
+                "Live on the default branch only."
+            ),
+            choices=[
+                DropdownChoice(
+                    name=RepositoryDeliveryStatus.NONE.value,
+                    label="Nothing pending",
+                    description="No merged change waits to be pushed to the remote.",
+                    color="#9ca3af",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryStatus.PENDING.value,
+                    label="Pending",
+                    description="A push runs, a push is about to run, or an automatic retry waits.",
+                    color="#60a5fa",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryStatus.ACTION_REQUIRED.value,
+                    label="Action required",
+                    description="No automatic push will run. A user must act.",
+                    color="#f87171",
+                ),
+            ],
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6100,
+        ),
+        Attr(
+            name="delivery_failure_cause",
+            kind="Dropdown",
+            label="Push failure cause",
+            description=(
+                "Why the last push to the remote, or the import that follows it, failed. "
+                "Live on the default branch only."
+            ),
+            choices=[
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.REMOTE_UNREACHABLE.value, label="Remote unreachable"
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.REMOTE_ADVANCED.value, label="Remote moved during the push"
+                ),
+                DropdownChoice(name=RepositoryDeliveryFailureCause.RECORD_FAILED.value, label="Pushed, not recorded"),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.NOT_FOUND.value, label="Repository not found on the remote"
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.CERTIFICATE.value, label="Certificate verification failed"
+                ),
+                DropdownChoice(name=RepositoryDeliveryFailureCause.CREDENTIALS.value, label="Credentials rejected"),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.PERMISSION.value, label="Push refused by the remote"
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.IMPORT_INTERRUPTED.value,
+                    label="Import of the delivered commit was interrupted",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.IMPORT_FAILED.value,
+                    label="Import of the delivered commit failed",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.REPLAY_CONFLICT.value,
+                    label="A pending merge conflicts with the remote",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.SOURCE_DISCARDED.value,
+                    label="A source commit is no longer on the remote",
+                ),
+                DropdownChoice(
+                    name=RepositoryDeliveryFailureCause.DESTINATION_REWRITTEN.value,
+                    label="The remote branch history was rewritten",
+                ),
+                DropdownChoice(name=RepositoryDeliveryFailureCause.UNCLASSIFIED.value, label="Unclassified failure"),
+            ],
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6200,
+        ),
+        Attr(
+            name="delivery_error",
+            kind="TextArea",
+            label="Push error",
+            description=(
+                "Message of the last failed push, import or release step, with credentials removed. "
+                "Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6300,
+        ),
+        Attr(
+            name="delivery_queue",
+            kind="JSON",
+            label="Pending pushes",
+            description=(
+                "Merged changes that wait to be pushed to the remote, in merge order. Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6400,
+        ),
+        Attr(
+            name="delivery_held_regeneration",
+            kind="JSON",
+            label="Held regeneration",
+            description=(
+                "Definitions and Python computed attributes held until a release after a push or an abandonment. "
+                "Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6500,
+        ),
+        Attr(
+            name="delivery_last_abandonment",
+            kind="JSON",
+            label="Last abandoned push",
+            description=(
+                "Who abandoned the last pending pushes, when, and which merged changes were dropped. "
+                "Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6600,
+        ),
+        Attr(
+            name="delivery_last_delivered_commit",
+            kind="Text",
+            label="Last pushed commit",
+            description="Commit of the last push that reached the remote. Live on the default branch only.",
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6700,
+        ),
+        Attr(
+            name="delivery_reverted",
+            kind="JSON",
+            label="Reverted push",
+            description=(
+                "A pushed commit that a rewrite of the remote branch history discarded. "
+                "Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6800,
+        ),
+        Attr(
+            name="delivery_progress",
+            kind="JSON",
+            label="Push progress",
+            description=(
+                "Times when the push attempt started and last moved, and when the next automatic retry is due. "
+                "Live on the default branch only."
+            ),
+            optional=True,
+            read_only=True,
+            branch=BranchSupportType.LOCAL,
+            display=SchemaAttributeDisplay.EXTRA,
+            allow_override=AllowOverrideType.NONE,
+            order_weight=6900,
         ),
     ],
 )
