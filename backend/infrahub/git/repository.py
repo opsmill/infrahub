@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID  # noqa: TC003
@@ -44,7 +43,6 @@ from infrahub.git.graph_settings import resolve_graph_settings
 from infrahub.git.import_errors import describe_import_error
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.git.models import PushRejectionReason
-from infrahub.git.writeback.models import RevertedDelivery
 from infrahub.log import get_run_logger
 
 if TYPE_CHECKING:
@@ -875,12 +873,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 commit=pushed_commit, discarded_commit=discarded_commit, new_head=new_head
             ):
                 return
-            await state.record_reverted(
-                repository_id=repository_id,
-                reverted=RevertedDelivery(
-                    delivered_commit=pushed_commit, new_head=new_head, detected_at=datetime.now(tz=UTC)
-                ),
-            )
+            if not await state.record_reverted(
+                repository_id=repository_id, delivered_commit=pushed_commit, new_head=new_head
+            ):
+                return
         # The graph already records the new commit, so an error that escapes would lose the imports of the cycle.
         except Exception as exc:
             reason = exc.message if isinstance(exc, Error) else f"{type(exc).__name__}: {exc}"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -21,6 +21,7 @@ from infrahub.git.divergence.models import ReconciledBranch, RefClassification, 
 from infrahub.git.divergence.recorder import HistoryRewriteRecorder
 from infrahub.git.divergence.suppression import RetargetMarkers
 from infrahub.git.repository import FailedImport, ImportStep, PendingObjectImport
+from infrahub.git.writeback.models import RevertedDelivery
 from tests.adapters.cache import MemoryCache
 from tests.adapters.repository_record_store import (
     FailingRepositoryRecordStore,
@@ -1144,19 +1145,22 @@ async def test_a_marker_written_after_the_read_is_left_for_the_next_cycle(
     assert await is_marked(markers, tracked, target="main")
 
 
-def pushed_state(tracked: TrackedRepository, last_delivered_commit: str) -> InMemoryDeliveryState:
+def pushed_state(
+    tracked: TrackedRepository, last_delivered_commit: str, reverted: RevertedDelivery | None = None
+) -> InMemoryDeliveryState:
     """A delivery state with no pending push, whose last push delivered the given commit."""
     repository_id = str(tracked.repository.id)
     state = InMemoryDeliveryState(
         clock=FixedClock(now=REWRITTEN_AT), repository_names={repository_id: tracked.repository.name}
     )
-    state.intents[repository_id] = replace(state.intents[repository_id], last_delivered_commit=last_delivered_commit)
+    state.intents[repository_id] = replace(
+        state.intents[repository_id], last_delivered_commit=last_delivered_commit, reverted=reverted
+    )
     return state
 
 
-def reverted_push(state: InMemoryDeliveryState, tracked: TrackedRepository) -> tuple[str, str] | None:
-    reverted = state.intents[str(tracked.repository.id)].reverted
-    return (reverted.delivered_commit, reverted.new_head) if reverted else None
+def reverted_push(state: InMemoryDeliveryState, tracked: TrackedRepository) -> RevertedDelivery | None:
+    return state.intents[str(tracked.repository.id)].reverted
 
 
 @pytest.mark.parametrize(
@@ -1191,11 +1195,37 @@ async def test_a_rewrite_of_the_default_branch_that_discards_the_pushed_commit_r
     )
 
     assert collected.failed_imports == []
-    assert reverted_push(state, tracked) == (pushed, rewritten_trunk)
+    assert reverted_push(state, tracked) == RevertedDelivery(
+        delivered_commit=pushed, new_head=rewritten_trunk, detected_at=REWRITTEN_AT
+    )
     assert (
         f"The rewrite of branch main of repository tracked-repo discarded the pushed commit {pushed}, "
         f"the branch now points to {rewritten_trunk}"
     ) in caplog.messages
+
+
+async def test_a_later_rewrite_keeps_the_reverted_push_already_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A clone that never fetched the pushed commit finds it off the remote again at every later rewrite."""
+    tracked = await clone_with_tracked_branches(tmp_path=tmp_path, monkeypatch=monkeypatch)
+    pushed = tracked.remote.commit(branch_name="main", files={"data.txt": "main v2\n"})
+    tracked.remote.repo.git.reset("--hard", tracked.trunk_commit)
+    imported_trunk = tracked.remote.commit(branch_name="main", files={"data.txt": "main v3\n"})
+    await tracked.repository.fetch()
+    tracked.remote.commit(branch_name="main", files={"data.txt": "main v4\n"}, amend=True)
+    first_record = RevertedDelivery(
+        delivered_commit=pushed, new_head=imported_trunk, detected_at=REWRITTEN_AT - timedelta(days=1)
+    )
+    state = pushed_state(tracked, last_delivered_commit=pushed, reverted=first_record)
+
+    collected = await tracked.repository.collect_pending_imports(
+        graph_commits=tracked.graph_commits(main=imported_trunk), state=state
+    )
+
+    assert collected.failed_imports == []
+    assert reverted_push(state, tracked) == first_record
+    assert not [message for message in caplog.messages if message.startswith("The rewrite of branch main")]
 
 
 async def test_a_rewrite_of_the_default_branch_that_keeps_the_pushed_commit_records_nothing(

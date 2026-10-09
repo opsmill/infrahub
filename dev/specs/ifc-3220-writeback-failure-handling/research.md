@@ -1178,8 +1178,16 @@ did too.
 **Gate.** Plan part L waits for the rewrite classification of IFC-3210. Without it, a rewrite of the
 default branch makes the synchronisation fail, and nothing reaches the check.
 
+**A clone that lacks a commit.** A worker that cloned after the rewrite never fetched the
+discarded history, and Git cannot compare an absent commit. A fetch brings every ancestor of the
+new head, so a delivered commit that the clone lacks is off the remote, and the reconciliation
+records it. When the clone lacks only the commit it discards, it cannot tell whether an earlier
+rewrite discarded the delivered commit, and it records it too.
+
 **Not cleared.** Like the sibling's rewrite record, it is a fact and not an alert. A later
-reverted delivery overwrites it.
+reverted delivery of another commit overwrites it. A record of the same delivered commit is kept,
+with its first new head and time, because a later rewrite only finds that commit off the remote
+again.
 
 ---
 
