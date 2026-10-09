@@ -1,41 +1,34 @@
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { type FieldValues, useForm, useFormContext } from "react-hook-form";
-import { toast } from "react-toastify";
+import { useState } from "react";
+import { type FieldValues, useForm, useWatch } from "react-hook-form";
 
 import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
-import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
-import NumberField from "@/shared/components/form/fields/number.field";
 import type { ObjectFormProps } from "@/shared/components/form/object-form";
-import type { FormAttributeValue, FormFieldValue } from "@/shared/components/form/type";
-import { getCurrentFieldValue } from "@/shared/components/form/utils/getFieldDefaultValue";
-import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
-import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
-import { isRequired } from "@/shared/components/form/utils/validation";
+import type { FormAttributeValue } from "@/shared/components/form/type";
+import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Badge } from "@/shared/components/ui/badge";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/shared/components/ui/combobox";
-import { Form, FormField, FormInput, FormMessage, FormSubmit } from "@/shared/components/ui/form";
+import { Form, FormSubmit } from "@/shared/components/ui/form";
 
-import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
-import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { NumberPoolForEditing } from "@/entities/resource-manager/domain/model/number-pool";
+import { EMPTY_RANGE_ROW } from "@/entities/resource-manager/domain/model/number-pool-range";
 import {
-  NUMBER_POOL_KIND,
   NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
   NUMBER_POOL_NODE_FIELD,
+  NUMBER_POOL_RANGES_FIELD,
 } from "@/entities/resource-manager/domain/model/pool";
+import { toRangeRows } from "@/entities/resource-manager/domain/rules/plan-range-changes";
+import type { RangeLimits } from "@/entities/resource-manager/domain/rules/validate-range-rows";
+import { useSaveNumberPool } from "@/entities/resource-manager/ui/hooks/use-save-number-pool";
+import { AllocatesBlock } from "@/entities/resource-manager/ui/number-pool-form/allocates-block";
+import {
+  RangesField,
+  ReadOnlyRangesField,
+} from "@/entities/resource-manager/ui/number-pool-form/ranges-field";
+import { useGetNumberPoolForEditing } from "@/entities/resource-manager/ui/queries/get-number-pool-for-editing.query";
 import { ATTRIBUTE_KIND } from "@/entities/schema/domain/model/attribute-kind";
-import type { AttributeSchema, ModelSchema } from "@/entities/schema/domain/model/schema";
-import { genericSchemasAtom, nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface NumberPoolFormProps {
   currentObject?: ObjectFormProps["currentObject"];
@@ -43,92 +36,97 @@ interface NumberPoolFormProps {
   onSuccess?: ObjectFormProps["onSuccess"];
 }
 
-export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoolFormProps) => {
-  const createObject = useCreateObjectMutation();
-  const updateObject = useUpdateObjectMutation();
+function useRangeLimits(kind?: string, attributeName?: string): RangeLimits | null {
+  const { schema } = useSchema(kind);
+  const attribute = schema?.attributes?.find(({ name }) => name === attributeName);
+  if (attribute?.kind !== ATTRIBUTE_KIND.NUMBER) return null;
 
-  const defaultValues = {
-    name: getCurrentFieldValue("name", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    description: getCurrentFieldValue("description", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    node: getCurrentFieldValue("node", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    node_attribute:
-      getCurrentFieldValue("node_attribute", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    start_range: getCurrentFieldValue("start_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-    end_range: getCurrentFieldValue("end_range", currentObject) ?? DEFAULT_FORM_FIELD_VALUE,
-  };
+  const { min_value, max_value } = attribute.parameters ?? {};
+  return { attribute: attribute.name, min: min_value, max: max_value };
+}
 
-  const form = useForm<FieldValues>({
-    defaultValues,
-  });
+function toFieldValue(value: string) {
+  return value ? { source: { type: "user" }, value } : DEFAULT_FORM_FIELD_VALUE;
+}
 
-  async function handleSubmit(data: Record<string, FormFieldValue>) {
-    const newObject = getCreateMutationFromFormDataOnly(data, currentObject);
+export const NumberPoolForm = ({ currentObject, ...props }: NumberPoolFormProps) => {
+  const poolId = typeof currentObject?.id === "string" ? currentObject.id : "";
+  const [mountedAt] = useState(() => Date.now());
+  const { data, dataUpdatedAt, isFetchedAfterMount } = useGetNumberPoolForEditing(
+    { poolId },
+    { enabled: !!poolId, refetchOnMount: "always" }
+  );
+  // The rows are diffed against the stored ranges on save, so they must start from a read made after opening, not the cache.
+  const initialPool = dataUpdatedAt >= mountedAt ? data : undefined;
 
-    if (!Object.keys(newObject).length) {
-      return;
-    }
-
-    if (currentObject) {
-      await updateObject.mutateAsync(
-        {
-          objectKind: NUMBER_POOL_KIND,
-          data: {
-            id: currentObject.id,
-            ...newObject,
-          },
-        },
-        {
-          onSuccess: async (updatedNode) => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool updated" />, {
-              toastId: "alert-success-number-pool-update",
-            });
-            if (onSuccess) await onSuccess(updatedNode);
-          },
-          onError: (error) => {
-            console.error("An error occurred while creating the object: ", error);
-          },
-        }
-      );
-    } else {
-      await createObject.mutateAsync(
-        {
-          objectKind: NUMBER_POOL_KIND,
-          data: newObject,
-        },
-        {
-          onSuccess: async (newNode) => {
-            toast(<Alert type={ALERT_TYPES.SUCCESS} message="Number pool created" />, {
-              toastId: "alert-success-number-pool-create",
-            });
-
-            if (onSuccess) await onSuccess(newNode);
-          },
-          onError: async (error: unknown) => {
-            console.error("An error occurred while creating the object: ", error);
-          },
-        }
-      );
-    }
+  if (!poolId) return <NumberPoolFormContent {...props} />;
+  if (initialPool) return <NumberPoolFormContent initialPool={initialPool} {...props} />;
+  if (isFetchedAfterMount) {
+    return <Alert type={ALERT_TYPES.ERROR} message="Unable to load the number pool" />;
   }
+
+  return <LoadingIndicator className="p-4" />;
+};
+
+interface NumberPoolFormContentProps extends Omit<NumberPoolFormProps, "currentObject"> {
+  initialPool?: NumberPoolForEditing;
+}
+
+const NumberPoolFormContent = ({
+  initialPool,
+  onSuccess,
+  onCancel,
+}: NumberPoolFormContentProps) => {
+  const { poolId, saveError, save } = useSaveNumberPool({ initialPool, onSuccess });
+  const isSchemaPool = initialPool?.poolType === "Schema";
+  const { data: storedPool } = useGetNumberPoolForEditing(
+    { poolId: poolId ?? "" },
+    { enabled: !!poolId }
+  );
+
+  // Default values are read once at mount, so a background refetch of the pool never resets the rows being typed.
+  const form = useForm<FieldValues>({
+    defaultValues: {
+      name: initialPool ? toFieldValue(initialPool.name) : DEFAULT_FORM_FIELD_VALUE,
+      description: initialPool ? toFieldValue(initialPool.description) : DEFAULT_FORM_FIELD_VALUE,
+      [NUMBER_POOL_RANGES_FIELD]: initialPool
+        ? toRangeRows(initialPool.ranges)
+        : [{ ...EMPTY_RANGE_ROW }],
+    },
+  });
+  const [selectedNode, selectedAttribute]: Array<FormAttributeValue | undefined> = useWatch({
+    control: form.control,
+    name: [NUMBER_POOL_NODE_FIELD, NUMBER_POOL_NODE_ATTRIBUTE_FIELD],
+  });
+  const rangeLimits = useRangeLimits(
+    storedPool?.node ?? selectedNode?.value?.toString(),
+    storedPool?.nodeAttribute ?? selectedAttribute?.value?.toString()
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-auto bg-content">
-      <Form form={form} onSubmit={handleSubmit}>
+      <Form form={form} onSubmit={save}>
         <InputField name="name" label="Name" rules={{ required: true }} />
         <InputField name="description" label="Description" />
-        {!currentObject && <NodeAttributesSelects />}
-        <NumberField
-          name="start_range"
-          label="Start range"
-          description="The start range for the pool"
-          rules={{ required: true }}
-        />
-        <NumberField
-          name="end_range"
-          label="End range"
-          description="The end range for the pool"
-          rules={{ required: true }}
-        />
+
+        {poolId ? (
+          <AllocatesBlock
+            variant="read-only"
+            node={storedPool?.node ?? ""}
+            attribute={storedPool?.nodeAttribute ?? ""}
+            scope={storedPool?.allocationScope ?? []}
+          />
+        ) : (
+          <AllocatesBlock variant="input" />
+        )}
+
+        {saveError && <Alert type={ALERT_TYPES.ERROR} message={saveError} />}
+        {isSchemaPool ? (
+          <ReadOnlyRangesField ranges={storedPool?.ranges ?? initialPool.ranges} />
+        ) : (
+          <RangesField limits={rangeLimits} />
+        )}
+
         <Row className="justify-end">
           {onCancel && (
             <Button variant="outline" onPress={onCancel}>
@@ -140,154 +138,5 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
         </Row>
       </Form>
     </div>
-  );
-};
-
-const NodeAttributesSelects = () => {
-  const nodes = useAtomValue(nodeSchemasAtom);
-  const generics = useAtomValue(genericSchemasAtom);
-
-  const options = [...generics, ...nodes];
-
-  const form = useFormContext();
-  const selectedNodeField: FormAttributeValue = form.watch(NUMBER_POOL_NODE_FIELD);
-  const selectedNode = options.find((node) => node.kind === selectedNodeField?.value);
-
-  const nodesWithNumberAttributes: Array<ModelSchema> = options.filter((node) =>
-    node.attributes?.some(
-      (attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER && !attribute.read_only
-    )
-  );
-
-  const numberAttributeOptions: Array<AttributeSchema> =
-    selectedNode?.attributes?.filter((attribute) => attribute.kind === ATTRIBUTE_KIND.NUMBER) ?? [];
-
-  useEffect(() => {
-    const firstAttribute = numberAttributeOptions[0];
-    if (firstAttribute) {
-      form.setValue(
-        NUMBER_POOL_NODE_ATTRIBUTE_FIELD,
-        updateFormFieldValue(firstAttribute.name, DEFAULT_FORM_FIELD_VALUE)
-      );
-    } else {
-      form.resetField(NUMBER_POOL_NODE_ATTRIBUTE_FIELD);
-    }
-  }, [selectedNode?.kind]);
-
-  return (
-    <>
-      <FormField
-        name={NUMBER_POOL_NODE_FIELD}
-        rules={{ validate: { required: isRequired } }}
-        defaultValue={DEFAULT_FORM_FIELD_VALUE}
-        render={({ field }) => {
-          const [open, setOpen] = useState(false);
-
-          return (
-            <div className="flex flex-col gap-2">
-              <LabelFormField
-                label="Node"
-                description="The model of the object that requires integers to be allocated"
-                required
-              />
-
-              <Combobox open={open} onOpenChange={setOpen}>
-                <FormInput>
-                  <ComboboxTrigger>
-                    {selectedNode && (
-                      <div className="flex w-full justify-between">
-                        {selectedNode.label} <Badge>{selectedNode.namespace}</Badge>
-                      </div>
-                    )}
-                  </ComboboxTrigger>
-                </FormInput>
-
-                <ComboboxContent>
-                  <ComboboxList>
-                    {nodesWithNumberAttributes.map((node) => (
-                      <ComboboxItem
-                        key={node.id}
-                        selectedValue={selectedNode?.kind}
-                        value={node.kind!}
-                        keywords={[node.label as string]}
-                        onSelect={() => {
-                          const newValue = node.kind === selectedNode?.kind ? null : node.kind;
-                          field.onChange(
-                            updateFormFieldValue(newValue ?? null, DEFAULT_FORM_FIELD_VALUE)
-                          );
-
-                          setOpen(false);
-                        }}
-                      >
-                        <div className="flex w-full justify-between">
-                          {node.label} <Badge>{node.namespace}</Badge>
-                        </div>
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-
-              <FormMessage />
-            </div>
-          );
-        }}
-      />
-
-      <FormField
-        name={NUMBER_POOL_NODE_ATTRIBUTE_FIELD}
-        rules={{ validate: { required: isRequired } }}
-        defaultValue={DEFAULT_FORM_FIELD_VALUE}
-        render={({ field }) => {
-          const [open, setOpen] = useState(false);
-          const selectedAttribute: FormFieldValue = field.value;
-
-          return (
-            <div className="flex flex-col gap-2">
-              <LabelFormField
-                label="Number Attribute"
-                description="The number attribute of the selected model"
-                required
-              />
-
-              <Combobox open={open} onOpenChange={setOpen}>
-                <FormInput>
-                  <ComboboxTrigger disabled={!selectedNode}>
-                    {
-                      numberAttributeOptions.find(
-                        (attribute) => attribute.name === selectedAttribute?.value
-                      )?.label
-                    }
-                  </ComboboxTrigger>
-                </FormInput>
-
-                <ComboboxContent>
-                  <ComboboxList>
-                    {numberAttributeOptions.map((attribute) => (
-                      <ComboboxItem
-                        key={attribute.id}
-                        selectedValue={selectedAttribute?.value?.toString()}
-                        value={attribute.name}
-                        keywords={[attribute.label as string]}
-                        onSelect={() => {
-                          const newValue =
-                            attribute.name === selectedNode?.name ? null : attribute.name;
-                          field.onChange(updateFormFieldValue(newValue, DEFAULT_FORM_FIELD_VALUE));
-                          setOpen(false);
-                        }}
-                      >
-                        {attribute.label}
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-
-              <FormMessage />
-            </div>
-          );
-        }}
-      />
-    </>
   );
 };

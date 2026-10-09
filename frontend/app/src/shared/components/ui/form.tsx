@@ -18,8 +18,19 @@ import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 
+type FormValues = Record<string, any>;
+
+/** A submit handler resolves to this to reset the form to values other than the submitted ones. */
+export interface FormSubmitResult {
+  resetTo: FormValues;
+}
+
+function isFormSubmitResult(value: unknown): value is FormSubmitResult {
+  return typeof value === "object" && value !== null && "resetTo" in value;
+}
+
 export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
-  onSubmit?: (v: Record<string, any>) => void;
+  onSubmit?: (v: FormValues) => unknown;
   onCancel?: () => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
@@ -62,8 +73,8 @@ export const Form = ({
 
           if (onSubmit) {
             currentForm.handleSubmit(async (data) => {
-              await onSubmit(data);
-              currentForm.reset(data);
+              const result = await onSubmit(data);
+              currentForm.reset(isFormSubmitResult(result) ? result.resetTo : data);
             })(event);
           }
         }}

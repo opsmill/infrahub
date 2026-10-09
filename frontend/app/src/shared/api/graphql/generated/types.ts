@@ -24823,7 +24823,7 @@ export type PoolAllocatedNode = {
   provenance: Maybe<PoolRecordProvenance>;
 };
 
-/** What a number pool's record says about one value the attribute holds: the pool allocated it or a user provided it. */
+/** Whether the pool allocated a value or a user provided it. */
 export const PoolRecordProvenance = {
   ALLOCATED: 'ALLOCATED',
   PROVIDED: 'PROVIDED'

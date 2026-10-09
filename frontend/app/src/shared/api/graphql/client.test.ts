@@ -12,7 +12,7 @@ import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/a
 import { __navigation } from "@/entities/authentication/domain/use-cases/redirect-to-login";
 
 import { shedResponse } from "../../../../tests/fake/shed-response";
-import { graphqlClient } from "./client";
+import { graphqlClient, isGraphQLRequestError } from "./client";
 import { handleGraphQLErrors } from "./error-handling";
 
 function combinedError(code: string, message = "boom") {
@@ -66,6 +66,27 @@ describe("graphqlClient — endpoint targeting", () => {
     expect(fetchSpy.mock.calls[0]?.[0]).toBe(
       `${INFRAHUB_API_SERVER_URL}/graphql/feature?at=2026-01-01T00:00:00.000Z`
     );
+  });
+
+  it("returns integers above 2^53 as exact strings when the operation asks for it", async () => {
+    // GIVEN
+    const body = '{"data":{"end":9223372036854775807,"start":1}}';
+    fetchSpy.mockImplementation(() =>
+      Promise.resolve(
+        new Response(body, { status: 200, headers: { "Content-Type": "application/json" } })
+      )
+    );
+
+    // WHEN
+    const exact = await graphqlClient.query({
+      query: PING,
+      context: { keepLargeIntegersExact: true },
+    });
+    const rounded = await graphqlClient.query({ query: PING });
+
+    // THEN
+    expect(exact.data).toEqual({ end: "9223372036854775807", start: 1 });
+    expect(rounded.data).toEqual({ end: Number("9223372036854775807"), start: 1 });
   });
 
   it("stamps X-Priority: high on every operation", async () => {
@@ -396,5 +417,19 @@ describe("graphqlClient — token refresh integration", () => {
 
     // THEN
     await expect(mutating).rejects.toThrow("Cannot delete Device 'x'.");
+  });
+});
+
+describe("isGraphQLRequestError", () => {
+  it("accepts an error thrown for a GraphQL error response", () => {
+    expect(isGraphQLRequestError(new Error("boom", { cause: combinedError("SOME_CODE") }))).toBe(
+      true
+    );
+  });
+
+  it("rejects an error that has no GraphQL cause", () => {
+    expect(isGraphQLRequestError(new Error("boom"))).toBe(false);
+    expect(isGraphQLRequestError(new Error("boom", { cause: new Error("network") }))).toBe(false);
+    expect(isGraphQLRequestError("boom")).toBe(false);
   });
 });

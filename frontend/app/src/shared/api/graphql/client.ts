@@ -1,7 +1,7 @@
 import {
   type AnyVariables,
   Client,
-  type CombinedError,
+  CombinedError,
   type DocumentInput,
   fetchExchange,
   formatDocument,
@@ -12,6 +12,7 @@ import { authExchange } from "@urql/exchange-auth";
 
 import { ERROR_CODES } from "@/shared/api/errors";
 import { handleGraphQLErrors, hasCatalogueCode } from "@/shared/api/graphql/error-handling";
+import { fetchKeepingLargeIntegersExact } from "@/shared/api/graphql/large-integers";
 import type { GraphQLRequestContext, GraphQLResult } from "@/shared/api/graphql/types";
 import { DEFAULT_PRIORITY, PRIORITY_HEADER } from "@/shared/api/priority";
 import { retryingFetch } from "@/shared/api/rate-limit/retrying-fetch";
@@ -76,6 +77,10 @@ function createGraphqlClient(branch?: string | null, date?: Date | null): Client
   });
 }
 
+export function isGraphQLRequestError(error: unknown): error is Error & { cause: CombinedError } {
+  return error instanceof Error && error.cause instanceof CombinedError;
+}
+
 // Map urql result to the preserved `{ data, errors }` shape and run error routing.
 function toGraphQLResult<TData>(
   data: TData | undefined,
@@ -119,7 +124,11 @@ export const graphqlClient = {
     args: QueryArgs<TData, TVars>
   ): Promise<GraphQLResult<TData>> {
     const result = await createGraphqlClient(args.context?.branch, args.context?.date)
-      .query<TData, TVars>(args.query, args.variables as TVars)
+      .query<TData, TVars>(
+        args.query,
+        args.variables as TVars,
+        args.context?.keepLargeIntegersExact ? { fetch: fetchKeepingLargeIntegersExact } : undefined
+      )
       .toPromise();
     return toGraphQLResult(result.data, result.error, args.context);
   },
