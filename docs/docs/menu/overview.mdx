@@ -179,6 +179,73 @@ See the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for de
   </TabItem>
 </Tabs>
 
+Loading a menu file creates the items that do not exist yet and updates the ones that do, matching each item on its namespace and name. `infrahubctl menu load` never deletes an item: if you remove an entry from the file and load the file again, the item stays in the menu and the command still reports success. To remove an item from the menu, see [Remove menu items](#remove-menu-items).
+
+## Remove menu items
+
+How you remove a menu item depends on how it was loaded. An item loaded with `infrahubctl` stays until you delete it. An item loaded from a repository's `.infrahub.yml` is deleted when you remove it from the menu file.
+
+Menu files have no `state` key. `state: absent` applies to [schema files](../schema/migration.mdx) only, and a menu item with a `state` key fails validation with `state is not a valid attribute or relationship for CoreMenuItem`.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+These steps need `infrahubctl` 1.20 or later. Pass the same `--branch` you used when you loaded the menu, because menu items exist per branch.
+
+1. List the menu items on the branch:
+
+   ```bash
+   infrahubctl object get CoreMenuItem --branch <branch>
+   ```
+
+2. Find the item to remove. Each item is identified by its namespace and name, the same two values as in the menu file.
+
+3. Delete the item, passing the namespace and name separated by `/`:
+
+   ```bash
+   infrahubctl object delete CoreMenuItem Location/Mainmenu --branch <branch>
+   ```
+
+   The command asks for confirmation. Add `--yes` to skip the prompt.
+
+4. Delete the item's children as well. Deleting a parent item does not delete its children: they stay without a parent, and the menu shows each of them as a top-level item. Run the delete command once for each child, for example `Location/Country` and `Location/Site`.
+
+5. Reload the web interface and check that the items are gone from the menu.
+
+See [Manage objects from the command line](../objects/manage-from-cli.mdx) for the other `infrahubctl object` options.
+
+  </TabItem>
+  <TabItem value="graphql" label="GraphQL">
+
+Delete an item with the `CoreMenuItemDelete` mutation, identifying it by namespace and name:
+
+```graphql
+mutation {
+  CoreMenuItemDelete(data: { hfid: ["Location", "Mainmenu"] }) {
+    ok
+  }
+}
+```
+
+As with `infrahubctl`, children of the deleted item are not deleted, so run the mutation for each child as well. The mutation refuses to delete protected items, which are the built-in items in the `Builtin` namespace.
+
+  </TabItem>
+  <TabItem value="git" label="Git integration">
+
+Remove the item from the menu file and commit the change. On the next import, Infrahub deletes the items that this repository loaded earlier and that are no longer in any of its menu files.
+
+When the next import runs depends on the repository type:
+
+- A read-write repository is imported again each time Infrahub syncs it with the remote.
+- A read-only repository is imported again only when its commit or ref changes, or when you [import its latest commit](../git-integration/connect-repository.mdx#import-latest-commit).
+
+Infrahub only deletes items that the repository itself loaded. An item loaded with `infrahubctl` stays until you delete it with the steps in the **infrahubctl** tab.
+
+If the menu files no longer contain any items at all, for example after you remove the last entry or the whole `menus` list, the import does not detect the removal and the items stay. Delete them with `infrahubctl` or GraphQL.
+
+  </TabItem>
+</Tabs>
+
 ## Good practices
 
 ### Disable schema-driven menu entries
