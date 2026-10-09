@@ -1,0 +1,177 @@
+---
+title: Review and merge a change
+---
+
+# Review and merge a change
+
+When you use Infrahub data for network automation, changes to sites, devices, interfaces, addressing, and their relationships can affect what downstream automation generates or deploys. Before those changes become part of the default branch, you may want another person to review what changed and confirm that the change passed the automated checks.
+
+With branches and Proposed Changes, you can make changes separately from the default branch, inspect what you changed, review automated checks, ask someone to review the change, and then merge it into `main`.
+
+In this tutorial, you will continue the work you started in the [Quickstart](../../overview/quickstart). You will review the two sites you added on `add-locations`, check that they pass Infrahub's automated checks, and merge them into `main`. You can also create a second account if you want to see an approval recorded as part of the workflow.
+
+## Before you start
+
+After completing the Quickstart, you have a branch called `add-locations` where you added two sites that have not been merged into `main`.
+
+If you are not continuing directly from the Quickstart, you can follow the same steps with another branch where you have made at least one change that has not been merged yet.
+
+You need an Infrahub instance you can sign in to and a branch where you have made at least one change that has not been merged yet.
+
+You do not need a connected Git repository. Infrahub runs built-in checks on Proposed Changes without one. You can add custom checks from a Git repository later to validate requirements specific to your environment.
+
+## Step 1: Review the change on your branch
+
+Open the branch and review the changes you made.
+
+1. Select **Branches** in the left menu.
+2. Select `add-locations`.
+3. Open the **Data** tab.
+
+You can see the differences between `add-locations` and `main`. Denver DC1 and Paris DC1 appear as additions. Expand either site to review the attribute values you added.
+
+If the changes are what you expect, continue to the next step.
+
+## Step 2: Request a review
+
+After you have finished making the changes you want to propose and checked the diff, open a Proposed Change so someone else can review the changes before they are merged into `main`.
+
+Reviewers can use the Proposed Change to see what will change, review the results of automated checks, discuss the change, and record whether they approve or reject it.
+
+From the `add-locations` branch:
+
+1. Select **Propose change**.
+2. Confirm that `add-locations` is the **Source Branch**.
+3. Confirm that the **Destination Branch** is `main`. Infrahub sets this to the default branch and
+   you cannot change it.
+4. Enter `Add Denver and Paris sites` as the **Name**.
+5. Add a **Description** explaining why you are making the change.
+6. If another user can review the change, add them under **Reviewers**. If you are the only user on your instance, you can continue without adding a reviewer and choose how to handle approval in Step 4.
+7. Open the Proposed Change.
+
+The diff already shows what you changed, so use the description to explain why you are making the change. For example, you might include the request that initiated it, a new site being brought online, or a related ticket.
+
+If you are still making changes and do not want a reviewer to make a decision yet, you can open the Proposed Change as a draft instead.
+
+## Step 3: Review the automated checks
+
+When you open a Proposed Change, Infrahub runs built-in checks against the proposed changes.
+
+Open the **Checks** tab to see which checks ran and whether each one passed or failed.
+
+The built-in checks include:
+
+- **Data integrity** — checks that the branch remains consistent with `main` and that references between objects still resolve.
+- **Merge conflict detection** — identifies attributes that have been changed on both `add-locations` and `main`.
+- **Schema validation** — validates changes to the data model.
+- **Git repository integration** — reports conflicts in a connected Git repository when one is configured.
+
+You do not need a Git repository for the other built-in checks to run.
+
+If a check fails, use the failure information to identify what needs to change and update the branch before continuing. A failed check prevents the Proposed Change from being merged.
+
+You can also add custom checks for technical or business requirements in your environment. For example, you might check that device names follow a naming convention or that certain devices have connections to two separate network devices.
+
+[Build a check](./build-a-check) walks through creating a custom check and running it against a Proposed Change.
+
+## Step 4: Review and optionally approve the change
+
+In a team workflow, a reviewer who did not create the Proposed Change reviews it before it is merged.
+
+The reviewer:
+
+1. Opens the **Data** tab and reviews the proposed changes.
+2. Opens the **Checks** tab and reviews the check results.
+3. Adds comments if they have questions or want something changed.
+4. Selects **Approve** if the change is ready to merge, or **Reject** if it needs additional changes.
+
+Infrahub does not accept a review from the person who opened the Proposed Change. The person who reviews the change must be different from the person who created it.
+
+If you are following this tutorial on the local instance you created in the Quickstart, you are probably the only user. You have two ways to continue.
+
+### Option 1: Record an approval
+
+If you want to see an approval recorded as part of the workflow:
+
+1. [Create a second account](../../deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions#creating-a-new-account)
+   and add it to the **Infrahub Users** group. That group carries the role that allows an account to
+   review a Proposed Change, and assigning a group is optional when you create an account.
+2. Sign out of your original account and sign in with the second account.
+3. Open the Proposed Change.
+4. Review the changes and check results.
+5. Select **Approve**.
+6. Sign out and sign back in with your original account.
+
+The Proposed Change now records the second user as the reviewer who approved it.
+
+### Option 2: Continue without an approval
+
+If you do not want to create another account for this tutorial, continue directly to Step 5.
+
+In Infrahub Community, an approval is not required before you merge a Proposed Change. You will not see an approval recorded, but you can complete the rest of the tutorial in the same way.
+
+Whether a reviewer approves the Proposed Change in this tutorial or you continue without an approval, approval and merge remain separate actions. When someone approves a Proposed Change, Infrahub records who approved it and when. Approving the change does not merge it, so one person can review and approve a change while another person performs the merge.
+
+:::info What Infrahub Enterprise adds
+
+If you use Infrahub Enterprise, you can configure approval policies that require review before a Proposed Change can be merged.
+
+For example, you can:
+
+- Require a specified number of approvals before a Proposed Change can be merged.
+- Automatically withdraw an approval when someone changes the branch after it was approved, so the updated change must be reviewed again.
+
+This tutorial does not require an approval policy. [Implement a change approval workflow](../../change-approval/change-approval-workflow) explains how to configure these requirements.
+
+:::
+
+## Step 5: Merge the change into `main`
+
+After the checks pass and you have completed the review steps you want to follow for this tutorial, merge the change into `main`.
+
+Select **Merge**.
+
+When the merge finishes:
+
+1. Switch the branch selector back to `main`.
+2. Find Denver DC1 and Paris DC1.
+
+Both sites are now available on `main`.
+
+After the merge, you can no longer make changes on `add-locations`. You can still open the branch to inspect its history unless your instance is configured to delete merged branches.
+
+See [Branches](../../branches/overview) for more information about what happens to a branch after you merge it.
+
+## What you learned
+
+You have now taken a change through the basic review and merge workflow:
+
+- **Make the change on a branch.** You added data on `add-locations` without changing `main`.
+- **Review what you changed.** You compared your branch with `main` and checked the values you added.
+- **Request a review.** You opened a Proposed Change and explained why you were making the change.
+- **Review the automated checks.** You checked whether the proposed change passed Infrahub's built-in checks.
+- **Understand the review decision.** You learned how another user can approve or reject a Proposed Change and, if you created a second account, recorded an approval yourself.
+- **Merge the change.** You merged the changes into `main`.
+
+You can follow the same workflow for other changes you manage in Infrahub, including changes to data and schemas.
+
+## Not covered here
+
+### Rebasing
+
+If `main` changes while your Proposed Change is open, you may need to rebase your branch before you can merge it.
+
+See [Rebase a branch](../../branches/rebase).
+
+### Conflicts
+
+If you change the same attribute on both branches, you need to choose which value to keep before you can merge the change.
+
+See [Resolve conflicts](../../branches/resolve-conflicts) and [Resolve a proposed-change conflict](../../proposed-changes/resolve-conflict).
+
+## Next steps
+
+- [Build a check](./build-a-check) to validate technical or business requirements when you propose a change.
+- [Implement a change approval workflow](../../change-approval/change-approval-workflow) to require approvals before changes can be merged.
+- [Proposed Changes](../../proposed-changes/overview) to learn about drafts, review, checks, conflicts, and the complete Proposed Change lifecycle.
+- [Branches](../../branches/overview) to learn about branch types, rebasing, merging, and branch lifecycle.
