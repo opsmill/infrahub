@@ -877,10 +877,10 @@ class NumberPoolGetTaken(Query):
 class NumberPoolSetReserved(Query):
     """Record that a number pool accounts for an attribute.
 
-    Takes a write lock on the Attribute vertex, then keeps this pool's live IS_RESERVED edge unless the write
-    allocates a number the record does not list yet. When no edge is kept, it ends every live IS_RESERVED edge
-    on the attribute and creates this pool's record, whose `allocated_values` carries every number the pool
-    allocated to the attribute so far plus the one allocated now, if any.
+    Takes a write lock on the Attribute vertex and then on the pool's vertex, then keeps this pool's live
+    IS_RESERVED edge unless the write allocates a number the record does not list yet. When no edge is kept, it
+    ends every live IS_RESERVED edge on the attribute and creates this pool's record, whose `allocated_values`
+    carries every number the pool allocated to the attribute so far plus the one allocated now, if any.
 
     The list is never changed in place: extending it closes the record and creates a new one, which keeps the
     history and stamps the pool like any other record change. The list is only ever tested for membership, so
@@ -932,11 +932,15 @@ class NumberPoolSetReserved(Query):
         WITH pool, attr
         LIMIT 1
         // ----------
-        // Lock the Attribute vertex until the transaction ends, so a concurrent write to this attribute waits
-        // and then reads the IS_RESERVED edges this one commits
+        // Lock the Attribute vertex, so a concurrent write waits to read the new IS_RESERVED edge
         // ----------
         SET attr._number_pool_lock = TRUE
         REMOVE attr._number_pool_lock
+        // ----------
+        // Lock the NumberPool vertex, so concurrent writes do not deadlock adding IS_RESERVED
+        // ----------
+        SET pool._number_pool_lock = TRUE
+        REMOVE pool._number_pool_lock
         WITH pool, attr
         // ----------
         // Keep this pool's live IS_RESERVED edge unless the write allocates a number it does not list yet
