@@ -48,7 +48,7 @@ Each entry records a decision this plan needed, the reason, and what was rejecte
 
 ## R8. The upgrade command
 
-- **Decision**: A pure `license_report_lines(status, notice_mode, enforcing_release) -> list[str]` in `backend/infrahub/license/reporting.py`, printed at the end of `cli/upgrade.py::_upgrade_check` and `_upgrade_execute` through the existing migration console. Empty list when no license is required. Errors while building the report are caught at that call site, logged, and never change the exit code.
+- **Decision**: A pure `license_report_lines(status, notice_mode, enforcing_release) -> list[str]` in `backend/infrahub/license/reporting.py`, printed through the existing migration console after "Upgrade complete" in `cli/upgrade.py::_upgrade_execute`, and before the closing "Run 'infrahub upgrade'" line in `_upgrade_check`. Empty list when no license is required. Errors while building the report are caught at that call site, logged, and never change the exit code.
 - **Rationale**: Text built by a pure function is testable without running migrations. The upgrade command runs in the server container through the Enterprise command line (`infrahub_enterprise/cli.py` calls `set_enterprise_dependencies()` first), so it sees the Enterprise service when one is registered.
 - **Alternatives considered**: refusing the upgrade (rejected by design D5).
 

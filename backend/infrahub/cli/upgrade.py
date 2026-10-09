@@ -21,12 +21,16 @@ from infrahub.core.migrations.shared import get_migration_console, suppress_inte
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import DatabaseError
+from infrahub.license.reporting import license_report_lines
+from infrahub.license.service import read_license_status
 from infrahub.lock import initialize_lock
+from infrahub.log import get_logger
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
 from infrahub.trigger.tasks import trigger_configure_all
+from infrahub.workers.dependencies import get_license_service
 from infrahub.workflows.initialization import (
     setup_blocks,
     setup_deployments,
@@ -49,9 +53,11 @@ if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.license.service import LicenseService
 
 app = AsyncTyper()
 console = get_migration_console()
+log = get_logger()
 
 
 async def validate_prerequisites(db: InfrahubDatabase) -> bool:
@@ -219,6 +225,7 @@ async def _upgrade_execute(
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
     console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
+    _print_license_section(service=get_license_service())
 
 
 async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:
@@ -256,7 +263,25 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
     else:
         console.log("  No branches need rebase")
 
+    _print_license_section(service=get_license_service())
     console.log("\nRun 'infrahub upgrade' to apply all changes.")
+
+
+def _print_license_section(service: LicenseService) -> None:
+    """Print the license state and what to set; never prompts or raises, so the license never blocks an upgrade."""
+    try:
+        lines = license_report_lines(
+            status=read_license_status(service=service),
+            notice_mode=service.notice_mode,
+            enforcing_release=service.enforcing_release,
+        )
+    # Best-effort side effect: the section is only a reminder, so failing to build it must not fail an upgrade.
+    except Exception:
+        log.exception("The license section of the upgrade output could not be built; skipping it")
+        return
+    if lines:
+        # The customer name comes from the license and may contain square brackets that Rich would read as markup.
+        console.log("\n" + "\n".join(lines), markup=False)
 
 
 async def upgrade_menu(db: InfrahubDatabase) -> None:

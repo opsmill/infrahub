@@ -213,19 +213,19 @@ Web application: backend in `backend/infrahub/` with tests in `backend/tests/`, 
 
 **Independent Test**: With a test service in each state, call the license section helper and check its output and that it returns normally (quickstart.md §3).
 
-- [ ] T043 [P] [US6] Write tests for `license_report_lines(status, notice_mode, enforcing_release)` in `backend/tests/unit/license/test_reporting.py`, matching every example in contracts/upgrade-output.md:
+- [X] T043 [P] [US6] Write tests for `license_report_lines(status, notice_mode, enforcing_release)` in `backend/tests/unit/license/test_reporting.py`, matching every example in contracts/upgrade-output.md:
   - empty for `not_required`;
   - quiet mode with and without `enforcing_release`;
   - enforce mode;
   - `valid`, `expiring`, `expired`, `not_yet_valid` and `invalid`;
   - the end date shown as the last covered day in UTC.
-- [ ] T044 [US6] Implement `license_report_lines(...)` in `backend/infrahub/license/reporting.py`; make T043 pass
-- [ ] T045 [P] [US6] Write `backend/tests/unit/cli/test_upgrade_license.py` for `_print_license_section()` in `backend/infrahub/cli/upgrade.py`:
+- [X] T044 [US6] Implement `license_report_lines(...)` in `backend/infrahub/license/reporting.py`; make T043 pass
+- [X] T045 [P] [US6] Write `backend/tests/unit/cli/test_upgrade_license.py` for `_print_license_section()` in `backend/infrahub/cli/upgrade.py`:
   - it prints the report lines through the migration console;
   - it prints nothing for `not_required`;
   - a service that raises is logged and skipped;
   - it never calls `typer.confirm` and never raises `typer.Exit`.
-- [ ] T046 [US6] Implement `_print_license_section()` in `backend/infrahub/cli/upgrade.py` and call it at the end of `_upgrade_check` (before the final "Run 'infrahub upgrade'" line) and at the end of `_upgrade_execute` (after "Upgrade complete"); make T045 pass
+- [X] T046 [US6] Implement `_print_license_section()` in `backend/infrahub/cli/upgrade.py` and call it in `_upgrade_check` just before the final "Run 'infrahub upgrade'" line and at the end of `_upgrade_execute`, after "Upgrade complete"; make T045 pass
 
 **Checkpoint**: All six stories are done.
 

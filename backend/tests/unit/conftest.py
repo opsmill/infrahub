@@ -1,3 +1,5 @@
+from collections.abc import Generator
+
 import pytest
 
 from infrahub.core import registry
@@ -8,11 +10,22 @@ from infrahub.core.constants import (
     RelationshipKind,
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
+from infrahub.license import service as license_service
 
 
 @pytest.fixture(autouse=True)
 def set_registry_default_branch() -> None:
     registry._default_branch = "main"
+
+
+@pytest.fixture(autouse=True)
+def unreported_license_failures() -> Generator[None, None, None]:
+    """Start with no license service failure reported and put the record back, so log assertions hold in any order."""
+    saved = set(license_service._reported_failure_types)
+    license_service._reported_failure_types.clear()
+    yield
+    license_service._reported_failure_types.clear()
+    license_service._reported_failure_types.update(saved)
 
 
 @pytest.fixture
