@@ -604,8 +604,16 @@ class WritebackIntent:
             return cleared
         return replace(cleared, cause=None, error=None)
 
-    def with_reverted(self, *, reverted: RevertedDelivery) -> WritebackIntent:
-        return replace(self, reverted=reverted)
+    def with_reverted(self, *, delivered_commit: str, new_head: str, now: datetime) -> WritebackIntent | None:
+        """Record the delivered commit that a rewrite discarded, or return None when the record already names it.
+
+        A later rewrite only finds the commit off the remote again, so the first record keeps its new head and time.
+        """
+        if self.reverted is not None and self.reverted.delivered_commit == delivered_commit:
+            return None
+        return replace(
+            self, reverted=RevertedDelivery(delivered_commit=delivered_commit, new_head=new_head, detected_at=now)
+        )
 
     def _with_status_of_queue(self) -> WritebackIntent:
         if self.queue.entries:

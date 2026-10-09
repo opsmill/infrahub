@@ -15,7 +15,6 @@ if TYPE_CHECKING:
         HoldReceipt,
         PendingMerge,
         ReleaseLease,
-        RevertedDelivery,
         WritebackIntent,
     )
 
@@ -132,8 +131,11 @@ class DeliveryStatePort(Protocol):
     async def touch(self, *, repository_id: str) -> None:
         """Move the time of the last progress after a recovery submission, as at a step boundary of an attempt."""
 
-    async def record_reverted(self, *, repository_id: str, reverted: RevertedDelivery) -> None:
-        """Replace the record of the delivered commit that a rewrite of the remote discarded."""
+    async def record_reverted(self, *, repository_id: str, delivered_commit: str, new_head: str) -> bool:
+        """Record now that a rewrite of the remote discarded the delivered commit, and return whether it did.
+
+        Writes nothing when the record already names the delivered commit.
+        """
 
 
 class DeliveryGitPort(Protocol):
