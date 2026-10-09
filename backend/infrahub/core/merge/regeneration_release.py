@@ -241,17 +241,15 @@ class HeldRegenerationReleaser:
             )
 
         if held.python_attributes:
-            await self._recompute(
-                repository_id=repository_id,
-                targets=[
-                    await self._held_python_target(repository_id=repository_id, item=item)
-                    for item in held.python_attributes
-                ],
-                owned=await self.definitions.python_attributes(
-                    branch=self.default_branch_name, repository_id=repository_id
-                ),
-                renew=renew,
+            targets = [
+                await self._held_python_target(repository_id=repository_id, item=item)
+                for item in held.python_attributes
+            ]
+            owned = await self.definitions.python_attributes(
+                branch=self.default_branch_name, repository_id=repository_id
             )
+            await renew()
+            await self._recompute(repository_id=repository_id, targets=targets, owned=owned, renew=renew)
 
     async def _release_repository(
         self,

@@ -488,7 +488,7 @@ async def test_a_held_python_attribute_is_released_with_the_target_kept_at_its_h
     )
 
     assert _calls(recorder) == test_case.expected_calls
-    assert renew.after_calls == [0, 1]
+    assert renew.after_calls == [0, 0, 1]
 
 
 @dataclass
@@ -718,7 +718,7 @@ async def test_a_marker_of_scope_terminals_still_releases_the_held_generators_an
         ("execute", REQUEST_GENERATOR_DEFINITION_RUN, {"model": _generator_run(definition_id="gd-x")}),
         _python_recompute(CAR_DESCRIPTION),
     ]
-    assert renew.after_calls == [0, 1, 1, 2, 2, 3]
+    assert renew.after_calls == [0, 1, 1, 2, 2, 2, 3]
 
 
 async def test_the_released_repository_dispatches_its_work_while_another_pending_repository_holds() -> None:
@@ -874,7 +874,7 @@ DISPATCH_FAILURE_TEST_CASES: list[DispatchFailureTestCase] = [
         error=ServiceUnavailableError,
         match=r"^The recompute of the Python computed attributes TestCar\.description could not be submitted\.$",
         expected_calls=[_python_recompute(CAR_DESCRIPTION)],
-        expected_renewals=[0],
+        expected_renewals=[0, 0],
     ),
 ]
 
