@@ -646,6 +646,27 @@ async def sync_remote_repository(
     )
 
 
+async def _check_lost_delivery(db: InfrahubDatabase, repository_data: RepositoryData) -> None:
+    log = get_run_logger()
+    repository: CoreRepository = repository_data.repository
+    try:
+        async with db.start_session() as dbs, get_prefect_client(sync_client=False) as prefect_client:
+            recovery = await build_recovery_check(db=dbs, prefect_client=prefect_client)
+            await recovery.run(
+                repository=RepositoryRef(
+                    id=repository_data.repository_id,
+                    name=repository_data.repository_name,
+                    destination_git_branch=repository.default_branch.value,
+                )
+            )
+    # A failed check must not stop the synchronization of this repository or of the others.
+    except Exception:
+        log.exception(
+            f"Unable to check repository {repository_data.repository_name} for a lost delivery, "
+            "continuing with its synchronization"
+        )
+
+
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
 async def sync_remote_repositories() -> None:
     db = await get_database()
@@ -654,26 +675,18 @@ async def sync_remote_repositories() -> None:
     log = get_run_logger()
 
     branches = await client.branch.all()
-    async with db.start_session() as dbs, get_prefect_client(sync_client=False) as prefect_client:
+    async with db.start_session() as dbs:
         repositories = await get_repositories_commit_per_branch(db=dbs, kind=InfrahubKind.REPOSITORY)
-        recovery = await build_recovery_check(db=dbs, prefect_client=prefect_client)
 
-        for repo_name, repository_data in repositories.items():
-            repository: CoreRepository = repository_data.repository
-            await recovery.run(
-                repository=RepositoryRef(
-                    id=repository_data.repository_id,
-                    name=repo_name,
-                    destination_git_branch=repository.default_branch.value,
-                )
+    for repo_name, repository_data in repositories.items():
+        await _check_lost_delivery(db=db, repository_data=repository_data)
+        try:
+            await sync_remote_repository(
+                repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
             )
-            try:
-                await sync_remote_repository(
-                    repo_name=repo_name, repository_data=repository_data, branches=branches, client=client
-                )
-            # One repository that fails must not stop the cycle for the repositories after it.
-            except Exception:
-                log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
+        # One repository that fails must not stop the cycle for the repositories after it.
+        except Exception:
+            log.exception(f"Unable to synchronize repository {repo_name}, continuing with the other repositories")
 
 
 @task(
