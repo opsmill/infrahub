@@ -51,12 +51,16 @@ Each refusal is a `ValidationError` on the `allocation_scope` field, naming the 
 | Pool's kind is a generic and the entry is declared on an implementing node only | `allocation_scope: "<entry>" is not declared on the generic <kind>` |
 | Entry is an attribute of kind `List`, `JSON` or `Any` | `allocation_scope: "<name>" is of kind <attribute kind>; a scope element must hold a single scalar value` |
 | Tracked attribute is `unique: true` | `allocation_scope: <kind>.<node_attribute> is unique; a globally unique number cannot be allocated per division` |
+| The payload is not a list | `allocation_scope: the allocation scope must be a list of entries` |
+| The pool's kind is not defined in the default branch's schema | `allocation_scope: <kind> is not defined on branch <default branch>` |
+| The element has no id because the kind's schema is not saved | `allocation_scope: "<name>" has no id; the schema of <kind> is not saved on branch <default branch>` |
 
 ## Refusal on update
 
 | Case | Message |
 |------|---------|
 | `allocation_scope` in the payload differs from the stored list (ids or order), or is `null` | `allocation_scope can't be changed after the pool is created` |
+| The payload is not a list | `allocation_scope: the allocation scope must be a list of entries` |
 
 The same list, in any accepted input form, is not a change. The refusal applies to user-created and schema-created pools alike. Today's behaviour, where `null` on update clears the scope, goes away with its test.
 
