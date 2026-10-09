@@ -43,8 +43,8 @@ RESOURCE_POOL_UTILIZATION_DESCRIPTION = (
 )
 RESOURCE_POOL_ALLOCATED_DESCRIPTION = (
     "The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, "
-    "resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is "
-    "the value itself; read InfrahubNumberPoolAllocations instead."
+    "resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is "
+    "listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead."
 )
 
 

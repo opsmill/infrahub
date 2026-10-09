@@ -220,8 +220,9 @@ class NumberPoolDivisions(ObjectType):
         List(NonNull(NumberPoolDivision)),
         required=True,
         description=(
-            "Every division that holds at least one value the pool tracks on any live branch. Each holding object's "
-            "division is read on the request's branch. Ordered by utilization descending, then by display_label. "
+            "Every division that holds at least one value the pool tracks on any live branch. Each holding object "
+            "counts under every division it occupies on any live branch. Ordered by utilization descending, then by "
+            "display_label. "
             "Empty for an unscoped pool."
         ),
     )
