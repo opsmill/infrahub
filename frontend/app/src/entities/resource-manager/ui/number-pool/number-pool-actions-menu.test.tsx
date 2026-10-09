@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
 
 import type { Permission } from "@/entities/permission/domain/model/permission";
 import type { NumberPoolData } from "@/entities/resource-manager/domain/model/number-pool";
@@ -71,6 +72,19 @@ describe("NumberPoolActionsMenu", () => {
 
     // THEN
     await expect.element(component.getByRole("tooltip", { name: SCHEMA_LOCK })).toBeVisible();
+  });
+
+  it("moves to an item when the user types its first letter", async () => {
+    // GIVEN
+    const component = await openMenu({ pool: userPool });
+
+    // WHEN
+    await userEvent.keyboard("g");
+
+    // THEN
+    await expect
+      .element(component.getByRole("menuitem", { name: "GraphQL sandbox" }))
+      .toHaveFocus();
   });
 
   it("links to the number pool schema", async () => {

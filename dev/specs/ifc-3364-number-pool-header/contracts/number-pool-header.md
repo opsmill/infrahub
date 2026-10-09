@@ -52,8 +52,9 @@ Layout of `NumberPoolHeader`, from top to bottom:
 
 1. **First row**:
    - Name: one line, ellipsis, full name on hover.
+   - Metadata popover, next to the name, as on other node detail pages.
    - "Managed by schema" tag, for schema-created pools only.
-   - On the right: full ID with copy button, metadata popover, reload button, Actions menu.
+   - On the right: full ID with copy button, reload button (`RefreshButton queryKey={resourceManagerQueryKeys.all}`), Actions menu.
 2. **Description**: shown only when the pool has one.
 3. **Allocation sentence**: `Allocates to <kind> attribute <attribute>`, then `scoped by <label> + <label>` or `with no scope`.
 
@@ -64,6 +65,7 @@ Accessible names that tests rely on:
 | Name | `heading`, level 1, the pool name |
 | Copy ID button | `button` "Copy ID" |
 | Metadata popover | `button` "View node metadata" (unchanged) |
+| Reload button | `button` "Refresh data"; invalidates `resourceManagerQueryKeys.all` |
 | Actions menu | `button` "Actions" |
 | Managed-by tag, schema-created pool | `button` "Managed by schema"; opens `dialog` "Schema viewer" |
 | Kind in the sentence, kind in the schema | `button`, the kind name; opens `dialog` "Schema viewer" |
@@ -81,17 +83,20 @@ interface NumberPoolActionsMenuProps {
 }
 ```
 
-| Section | Item | Shown when | Disabled when (tooltip) |
-|---------|------|-----------|-------------------------|
-| Actions | Copy ID | always | never |
-| Actions | Copy HFID | the pool has an HFID | never |
-| Go to | Tasks | always | never |
-| Go to | View schema (`/schema?kind=CoreNumberPool`) | always | never |
-| Go to | GraphQL sandbox | always | never |
-| Go to | Documentation | the schema has `documentation` | never |
-| Manage | Edit | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
-| Manage | Groups | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
-| Manage | Delete | always | schema-created (schema lock message), else `!permission.delete.isAllowed` (permission message) |
+| Section | Item | Icon | Shown when | Disabled when (tooltip) |
+|---------|------|------|-----------|-------------------------|
+| Actions | Copy ID | lucide `CopyIcon` (from `CopyToClipboardMenuItem`) | always | never |
+| Actions | Copy HFID | lucide `CopyIcon` (from `CopyToClipboardMenuItem`) | `pool.hfid` is set | never |
+| Go to | Tasks | `TasksStatusIcon` | always | never |
+| Go to | View schema (`/schema?kind=CoreNumberPool`) | `mdi:code-json` | always | never |
+| Go to | GraphQL sandbox | `mdi:graphql` | always | never |
+| Go to | Documentation (opens in a new tab) | lucide `BookTextIcon` | `schema.documentation` is set | never |
+| Manage | Edit | lucide `PencilLineIcon` | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
+| Manage | Groups | lucide `GroupIcon` | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
+| Manage | Delete | lucide `Trash2Icon` | always | schema-created (schema lock message), else `!permission.delete.isAllowed` (permission message) |
+
+- **Schema lock message**: `Defined by the schema attribute <node>.<node_attribute>`. On a schema-created pool it replaces the permission message, even when the user also lacks permission.
+- **Keyboard**: every item sets `textValue`, so typing a letter moves focus to the first item whose label starts with it.
 
 After the user acts:
 

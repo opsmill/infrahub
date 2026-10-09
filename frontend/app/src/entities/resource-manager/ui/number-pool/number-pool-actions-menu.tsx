@@ -60,32 +60,39 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
         <Popover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
-              <CopyToClipboardMenuItem textToCopy={pool.id}>Copy ID</CopyToClipboardMenuItem>
+              <CopyToClipboardMenuItem textToCopy={pool.id} textValue="Copy ID">
+                Copy ID
+              </CopyToClipboardMenuItem>
               {pool.hfid && (
-                <CopyToClipboardMenuItem textToCopy={pool.hfid.toString()}>
+                <CopyToClipboardMenuItem textToCopy={pool.hfid.toString()} textValue="Copy HFID">
                   Copy HFID
                 </CopyToClipboardMenuItem>
               )}
             </MenuSection>
 
             <MenuSection title="Go to">
-              <MenuItem href={getObjectTasksUrl(pool.id)}>
+              <MenuItem href={getObjectTasksUrl(pool.id)} textValue="Tasks">
                 <TasksStatusIcon width="12" height="12" className="ml-0.5" />
                 Tasks
               </MenuItem>
               <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: NUMBER_POOL_KIND }])}
+                textValue="View schema"
               >
                 <Icon icon="mdi:code-json" />
                 View schema
               </MenuItem>
-              <MenuItem href={getObjectGraphqlSandboxUrl(NUMBER_POOL_KIND, pool.id)}>
+              <MenuItem
+                href={getObjectGraphqlSandboxUrl(NUMBER_POOL_KIND, pool.id)}
+                textValue="GraphQL sandbox"
+              >
                 <Icon icon="mdi:graphql" />
                 GraphQL sandbox
               </MenuItem>
               {schema.documentation && (
                 <MenuItem
                   href={getDocumentationUrl(schema.documentation)}
+                  textValue="Documentation"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -99,6 +106,7 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
               <MenuItem
                 isDisabled={!updateDecision.isAllowed}
                 tooltip={updateDecision.message}
+                textValue="Edit"
                 onAction={() => setIsEditOpen(true)}
               >
                 <PencilLineIcon />
@@ -107,6 +115,7 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
               <MenuItem
                 isDisabled={!updateDecision.isAllowed}
                 tooltip={updateDecision.message}
+                textValue="Groups"
                 onAction={() => setIsGroupsOpen(true)}
               >
                 <GroupIcon />
@@ -116,6 +125,7 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
                 isDisabled={!deleteDecision.isAllowed}
                 tooltip={deleteDecision.message}
                 className="text-danger"
+                textValue="Delete"
                 onAction={() => setIsDeleteOpen(true)}
               >
                 <Trash2Icon />

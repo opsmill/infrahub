@@ -2,7 +2,7 @@
 
 **Branch**: `number-pool-header-ifc-3364` | **Date**: 2026-10-08 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/006-number-pool-header/spec.md`
+**Input**: Feature specification from `dev/specs/ifc-3364-number-pool-header/spec.md`
 
 ## Summary
 
@@ -62,12 +62,12 @@ IP prefix pools and IP address pools keep the current header.
 | I. Schema-Driven Integrity | Pass | Scope labels and the documentation link are read from the loaded schema. No generated file is edited. |
 | II. Branch-Safe by Default | Pass | The pool exists on all branches, while its kind's schema depends on the branch. The header handles a kind or a field that is missing from the current branch's schema (data-model.md, "Allocation scope labels"). No writes. |
 | III. Type Safety | Pass | No `any`. The response is typed from the generated GraphQL schema, and the mapper narrows `allocation_scope` with a type guard, not a cast. |
-| IV. Test Discipline | Pass | Unit test for the rule, component tests for the header and the menu, and an extended end-to-end spec (research.md R11). |
+| IV. Test Discipline | Pass | Unit tests for the mapper and the use-case, component tests for the header, the menu and the page, and an extended end-to-end spec (research.md R11). |
 | V. Query Performance | Pass | The new query asks only for the fields the page shows. The body's existing request stays until the body work replaces it. |
 | VI. Security & Input Boundaries | Pass | Disabled menu items only make the UI clearer. The backend still refuses range writes on schema-created pools and checks permissions. |
 | VII. Simplicity | Pass | URL builders are extracted only because three callers exist (R4). The permission and schema-lock decision stays inline because it has one caller (R5). A dedicated menu is preferred to adding single-caller options to `ObjectDetailsMenu` (R3). |
 | Changelog gate | Pass | `changelog/+ifc-3364-number-pool-header.changed.md` (R13). |
-| Documentation requirement | Deferred | User docs and screenshots are updated at the end of the epic, as agreed for this work. See Complexity Tracking. |
+| Documentation requirement | Deferred | User docs and screenshots are updated once the rest of the number pool page is built. See Complexity Tracking. |
 
 Post-design re-check: no change. The design adds no violation.
 
@@ -76,7 +76,8 @@ Post-design re-check: no change. The design adds no violation.
 ### Documentation (this feature)
 
 ```text
-specs/006-number-pool-header/
+dev/specs/ifc-3364-number-pool-header/
+├── spec.md
 ├── plan.md
 ├── research.md
 ├── data-model.md
@@ -99,8 +100,7 @@ frontend/app/src/
 │   │   └── number-pool.mappers.test.ts                     # new
 │   ├── domain/
 │   │   ├── model/number-pool.ts                            # + NumberPoolData
-│   │   ├── model/pool.ts                                   # + NUMBER_POOL_TYPE_SCHEMA
-│   │   ├── rules/
+│   │   ├── model/pool.ts                                   # + NUMBER_POOL_TYPE_SCHEMA, NUMBER_POOL_TYPE_USER, NumberPoolType
 │   │   └── use-cases/
 │   │       ├── get-number-pool.ts                          # new
 │   │       └── get-number-pool.test.ts                     # new
@@ -115,7 +115,9 @@ frontend/app/src/
 ├── entities/nodes/object/ui/
 │   ├── object-details/
 │   │   └── object-details-menu.tsx                         # use the moved URL builders
-│   └── routing/object-urls.ts                              # + 3 URL builders
+│   └── routing/
+│       ├── object-urls.ts                                  # + 3 URL builders
+│       └── object-urls.test.ts                             # + one test per builder
 ├── entities/artifacts/ui/artifact-details-menu.tsx         # use the moved URL builders
 └── pages/resource-manager/
     ├── resource-pool-details.tsx                           # renders NumberPoolDetailsPage for CoreNumberPool
@@ -134,17 +136,17 @@ changelog/+ifc-3364-number-pool-header.changed.md           # new
 - **The page owns the pool data**: `NumberPoolDetailsPage` loads `NumberPoolData` through `useGetNumberPool` and handles loading and errors. The header, and later the body, receive it as a prop.
 - **The fetch path follows the entity layers**: the API query and the mapper live in `api/`, the type in `domain/model/`, the use-case in `domain/use-cases/`, and the hook and key in `ui/queries/`.
 - **The route stays shared**: `/resource-manager/:resourcePoolId` serves every pool kind and picks the number pool page only after it knows the kind (research.md R10).
-- **The prototype under `pages/proto/number-pool/` is not touched**, and no production file imports from it.
 
 ## Complexity Tracking
 
 | Deviation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| User documentation not updated in this work (constitution: "New features MUST be documented in `docs/`") | The user decided that docs and screenshots are updated once at the end of the number pools epic, after the page body changes too | Updating the docs now would describe a page that changes again in the same epic |
+| User documentation not updated in this work (constitution: "New features MUST be documented in `docs/`") | Docs and screenshots are updated once, after the page body of the number pool page changes too | Updating the docs now would describe a page that changes again in the next piece of work |
 
 ## Risks
 
 - **The edit form cannot save multi-range pools**: `NumberPoolForm` requires `start_range` and `end_range`, which are null on a pool with several ranges, so Actions → Edit cannot save there. This is existing behaviour, outside this work (research.md R12).
-- **The documentation screenshot changes**: `test_number_pool_attribute_kind_resource_manager` saves a screenshot of the schema-created pool, and the new header changes it. Screenshots are refreshed at the end of the epic.
-- **The number pool page loads the pool three times until the body work**: the existing kind lookup, the new `GET_NUMBER_POOL`, and the unchanged body's own `useGetObject` call. It was twice before this work (research.md R1).
-- **The page body still offers Edit on schema-created pools**: the edit button on the property list stays enabled until the page body work removes it (spec Assumptions).
+- **The documentation screenshot changes**: `test_number_pool_attribute_kind_resource_manager` saves a screenshot of the schema-created pool, and the new header changes it. Screenshots are refreshed once the rest of the number pool page is built.
+- **The number pool page loads the pool three times until the body work**: the existing kind lookup, the new `GET_NUMBER_POOL`, and the unchanged body's own `useGetObject` call. Without the header, the page loads it twice (research.md R1).
+- **The page body offers Edit on schema-created pools**: the Edit button on the property list (`ObjectEditSlideOverTrigger` in `pages/resource-manager/resource-pool-details-body.tsx::ResourcePoolDetailsBody`) ignores the schema lock. Separate work replaces this body (spec Assumptions).
+- **The property list can show old values after a reload**: it reads the pool through the `"objects"` query, which the header's reload button does not reload (research.md R2).

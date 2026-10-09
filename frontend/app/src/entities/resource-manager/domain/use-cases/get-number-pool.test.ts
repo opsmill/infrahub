@@ -30,10 +30,12 @@ describe("getNumberPool", () => {
     vi.resetAllMocks();
   });
 
-  it("returns the pool data", async () => {
+  it("returns the pool in its domain shape", async () => {
     // GIVEN
     vi.mocked(getNumberPoolFromApi).mockResolvedValue({
-      data: { CoreNumberPool: { edges: [{ node: poolNode }] } },
+      data: {
+        CoreNumberPool: { edges: [{ node: { ...poolNode, allocation_scope: { value: null } } }] },
+      },
     } as unknown as ApiResult);
 
     // WHEN
@@ -50,7 +52,7 @@ describe("getNumberPool", () => {
       pool_type: { value: "Schema" },
       node: { value: "InfraInterface" },
       node_attribute: { value: "speed" },
-      allocation_scope: { value: ["device"] },
+      allocation_scope: { value: [] },
     });
   });
 

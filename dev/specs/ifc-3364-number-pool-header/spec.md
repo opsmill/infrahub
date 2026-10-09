@@ -4,9 +4,9 @@
 
 **Created**: 2026-10-08
 
-**Status**: Draft
+**Status**: Implemented
 
-**Input**: User description: "In `/proto/number-pool` we defined a new header for the details page of a number pool. Build it to production quality and use it in the app." Ticket: [IFC-3364](https://opsmill.atlassian.net/browse/IFC-3364). Prototype: `/proto/number-pool` (Details variant).
+**Input**: build the header of the number pool details page to production quality and use it in the app. Ticket: [IFC-3364](https://opsmill.atlassian.net/browse/IFC-3364).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -19,9 +19,9 @@ A network or automation engineer opens a number pool, from the resource manager 
 - whether the schema or users manage the pool
 - which actions they can take on the pool
 
-Today the details page shows a generic title above a property list. The engineer has to read the kind, the attribute and the pool type as separate raw rows. Nothing shows whether the schema controls the pool. Edit stays available for pools that the schema created, and the change is refused only when the engineer saves it.
+Without this header, the details page shows a generic title above a property list. The engineer has to read the kind, the attribute and the pool type as separate raw rows. Nothing shows whether the schema controls the pool. Edit stays available for pools that the schema created, and the change is refused only when the engineer saves it.
 
-**Why this priority**: this is the only story. It is the part of the prototype that can ship without the backend work that the rest of the prototype's page needs.
+**Why this priority**: this is the only story. It is the part of the new number pool page that can ship without the backend work that the rest of that page needs.
 
 **Independent Test**: open a schema-created pool and a user-created pool. For each, check every value in the header against the stored pool and check which actions are available.
 
@@ -47,7 +47,7 @@ Today the details page shows a generic title above a property list. The engineer
 - A schema-created pool has a long generated name, such as `InfraAutonomousSystem.asn [<id>]`. The name is cut to one line with an ellipsis, the full name appears on hover, and the tag stays visible.
 - The engineer deletes a user-created pool that the schema of a branch still uses. The deletion is refused and the engineer receives the refusal message. The header does not check this in advance.
 - The pool fails to load. The page shows its existing error screen, and the header shows no error of its own.
-- On a narrow window, the tag and the "Allocates to" sentence wrap onto new lines instead of being cut.
+- On a narrow window, the name is cut first so the tag stays visible, and the "Allocates to" sentence wraps onto new lines instead of being cut.
 
 ## Requirements *(mandatory)*
 
@@ -69,7 +69,7 @@ Today the details page shows a generic title above a property list. The engineer
 - **FR-007**: The header MUST contain the reload button and the node metadata (who created or last changed the pool, and when), in the same positions as on other node detail pages.
 - **FR-008**: The reload button MUST reload the pool, its utilization and its allocated resources together.
 - **FR-009**: The header MUST contain an Actions menu with these sections:
-  - **Actions:** Copy ID, and Copy HFID
+  - **Actions:** Copy ID, and Copy HFID (only when the pool has an HFID)
   - **Go to:** Tasks for this pool, View schema (the number pool schema, for every pool), GraphQL sandbox, and Documentation (only when the schema defines a documentation link)
   - **Manage:** Edit, Groups and Delete
 - **FR-010**: System MUST disable Edit, Groups and Delete in the Actions menu when the schema created the pool, with a tooltip that names the schema attribute, so a schema-managed pool cannot be changed from the page.
@@ -87,8 +87,10 @@ Today the details page shows a generic title above a property list. The engineer
 
 ### Measurable Outcomes
 
-- **SC-001**: An engineer who opens a number pool can name its kind, attribute, scope fields and manager without opening another page, form or menu. Verified by acceptance scenarios 1 and 2 in an end-to-end test.
-- **SC-002**: On a schema-created pool, an engineer cannot start an edit or a deletion from the header. No range change started from the header is refused.
+- **SC-001**: An engineer who opens a number pool can name its kind, attribute, scope fields and manager without opening another page, form or menu. Automated checks verify this as follows:
+  - **End-to-end**, on a schema-created pool and a user-created pool, both without a scope: the name, the managed-by tag or its absence, the kind, the attribute and "with no scope".
+  - **Component tests**: the "scoped by" sentence with the scope field labels, and a scope field or a kind that is missing from the schema of the current branch. No end-to-end data sets an allocation scope.
+- **SC-002**: On a schema-created pool, Edit, Groups and Delete in the header's Actions menu are disabled for every engineer, including one with full permission, and each one names the schema attribute that defines the pool.
 - **SC-003**: For every number pool in the test data, each value in the header (name, description, manager, kind, attribute, scope fields) matches the stored pool, including a scope field that is missing from the schema of the current branch.
 - **SC-004**: The details pages of IP prefix pools and IP address pools are unchanged. Their existing tests pass without changes.
 
@@ -96,16 +98,15 @@ Today the details page shows a generic title above a property list. The engineer
 
 - The pool type and the allocation scope are already stored on every number pool. No change to the data model or the API is needed.
 - Actions → Edit opens the existing number pool edit form.
-- The page body below the header does not change. In particular:
-  - the property list still shows the ID, name, description, kind, attribute and pool type that the header also shows
-  - the edit button on the property list stays enabled for schema-created pools
-  - both are removed in later work on the page body
-- The `/proto/number-pool` prototype stays as it is. Its copy of the header may differ from the production header until the prototype is deleted.
+- The page body below the header does not change. This leaves these limitations until separate work replaces the body:
+  - The property list shows the ID, name, description, kind, attribute and pool type that the header also shows.
+  - The Edit button on the property list ignores the schema lock, so it stays enabled for schema-created pools.
+  - The property list reads the pool through a separate query that the header's reload button does not reload, so it can show old values after a reload.
 - The change is visible to users, so it needs a changelog entry.
 
 ### Out of Scope
 
-- The rest of the prototype's page: the scope picker, the ranges card, the allocations table, the range editor and the create form.
+- The rest of the new number pool page: the scope picker, the ranges card, the allocations table, the range editor and the create form.
 - Headers of IP prefix pools and IP address pools.
 - Renaming a schema-created pool, or changing its description, from the UI.
-- Updating screenshots in the user documentation. This happens at the end of the epic.
+- Updating screenshots in the user documentation. This happens once the rest of the number pool page is built.

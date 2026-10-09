@@ -33,4 +33,4 @@
 
 - Passed on the first validation pass.
 - "GraphQL sandbox" in FR-009 is the label of a menu item that users see, not an implementation choice.
-- The spec names menu labels and tag text from the prototype at `/proto/number-pool`. Planning may adjust the wording, but not the behaviour.
+- The spec names the menu labels and the tag text that users see. Planning may adjust the wording, but not the behaviour.

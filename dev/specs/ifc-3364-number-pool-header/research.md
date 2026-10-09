@@ -43,11 +43,11 @@ Each decision below resolves an open point in the plan's technical context. Code
 - **Rationale**:
   - FR-007 asks for the same reload button as other detail pages, which is `RefreshButton`, with its "Last data refresh" tooltip.
   - FR-008 asks the reload to cover the pool, its utilization and its allocated resources. All three query keys start with `"resource-manager"`, and so do the queries of the new page body, so one prefix covers them.
-  - The reload no longer refetches the unrelated queries mounted on the page, such as the branch list, the schema and permissions.
-- **Cost**: the old body's properties card reads the pool through the `"objects"` query, which this reload does not cover. It shows stale values after a reload until the page body work replaces that card.
+  - The reload does not refetch the unrelated queries mounted on the page, such as the branch list, the schema and permissions.
+- **Cost**: the page body's properties card reads the pool through the `"objects"` query, which this reload does not cover. It can show old values after a reload until separate work replaces that body.
 - **Alternatives considered**:
-  - `queryKey={[]}`, which TanStack matches as a prefix of every key. It was the first decision, and covered the properties card too, but every reload refetched every query on the page. Replaced by the user on 2026-10-09.
-  - Change `RefreshButton` to take a list of prefixes (`queryKeys`). Implemented first, then dropped by the user to keep the shared component out of this change.
+  - An empty query key, which TanStack matches as a prefix of every key. Rejected: it also reloads the properties card, but every reload refetches every query on the page.
+  - Change `RefreshButton` to take a list of prefixes (`queryKeys`). Rejected: it changes a shared component that this work keeps unchanged.
   - Put the number pool key under `objectQueryKeys.all`. Rejected: the utilization and allocated-resource keys would still not reload, and the key would mix two entities' prefixes.
   - Use the page's `handleRefetchAll` with the generic `Retry` button. Rejected: it gives a different control from other detail pages, against FR-007.
 
@@ -58,9 +58,11 @@ Each decision below resolves an open point in the plan's technical context. Code
   - the "Manage groups" `Sheet` with `GroupsManager`
   - the edit `Sheet` with `ObjectEdit`
   - `entities/nodes/object/ui/modal-delete-object.tsx::ModalDeleteObject`
+
+  Every menu item sets `textValue`, so typing a letter moves focus to the first item whose label starts with it.
 - **Rationale**:
-  - `ObjectDetailsMenu` can disable Edit and Delete only from `permission`. FR-010 needs a second reason, the schema lock, with its own tooltip.
-  - `ObjectDetailsMenu` shows "Find paths" and "Convert object type", which the prototype leaves out. Converting a pool to another kind has no meaning.
+  - `ObjectDetailsMenu` can disable its Manage items only from `permission`. FR-010 needs a second reason, the schema lock, with its own tooltip.
+  - `ObjectDetailsMenu` shows "Find paths" and "Convert object type", which the number pool menu does not offer. Converting a pool to another kind has no meaning.
   - Adding props for disabling, extra items and hidden items to `ObjectDetailsMenu` would add options that only one caller uses.
 - **Alternatives considered**: extend `ObjectDetailsMenu` with `editDecision`, `deleteDecision`, `extraGoToItems` and `hiddenItems` props. Rejected for the reasons above.
 
@@ -74,7 +76,7 @@ Each decision below resolves an open point in the plan's technical context. Code
 
 - **Decision**: the menu builds the decision for each item inline:
   - **Edit, Groups and Delete**: when `pool_type` is `"Schema"`, disabled with the message `Defined by the schema attribute <kind>.<attribute>`. Otherwise, Edit and Groups use `permission.update` and Delete uses `permission.delete`.
-  - **Why Groups is locked too**: changing a pool's groups is an update of the pool, and a schema-managed pool must not be changed from the page at all (decided by the user on 2026-10-09; Groups were allowed in the first version of this decision).
+  - **Why Groups is locked too**: changing a pool's groups is an update of the pool, and a schema-managed pool must not be changed from the page at all.
 - **Rationale**: the schema lock applies to every user, so its message is the more useful one when both reasons apply. The derivation is two lines with one caller, so it stays inline and is not a domain rule.
 - **Alternatives considered**: a `combinePermission` helper in `entities/permission/domain/rules/`. Rejected: it would have one caller.
 
@@ -93,9 +95,9 @@ Each decision below resolves an open point in the plan's technical context. Code
   - The tab is fully determined by the field, so callers should not compute it. Keeping the computation in `SchemaReference` leaves the shared `SchemaViewer` unchanged.
   - The lookup is one `find` with one caller, so it stays in the component rather than becoming a domain rule. The header component tests cover the fallback cases.
 - **Alternatives considered**:
-  - A pure rule `getAllocationScopeFields` returning `{ name, label, fieldType }`. Implemented first, then removed.
-  - Checking `isRelationshipSchema` on the found field in `ScopeFieldReference` and passing `defaultTab`. Replaced by the computation in `SchemaReference`.
-  - Letting `SchemaViewer` derive the tab from `targetField` for every caller. Not chosen, to keep the shared component unchanged.
+  - A pure domain rule that returns each scope field's name, label and field type. Rejected: the lookup is one `find` with one caller.
+  - Checking `isRelationshipSchema` on the found field in `ScopeFieldReference` and passing `defaultTab`. Rejected: the tab follows from the field, so each caller would repeat the computation.
+  - Letting `SchemaViewer` derive the tab from `targetField` for every caller. Rejected: it changes a shared component that this work keeps unchanged.
 
 ## R8. Delete destination
 
@@ -104,8 +106,9 @@ Each decision below resolves an open point in the plan's technical context. Code
 
 ## R9. Pool ID
 
-- **Decision**: the header renders the full ID, without a tooltip, and `shared/components/buttons/copy-to-clipboard-button.tsx::CopyToClipboardButton` for the full ID, as the prototype does.
-- **Rationale**: `shared/components/ui/id.tsx::Id` shows the node label, not the ID, and fetches the label again. No other shared component shows an ID with a copy button. The prototype showed the first 8 characters with the full ID in a tooltip; the user chose the full ID after testing.
+- **Decision**: the header renders the full ID, without a tooltip, and `shared/components/buttons/copy-to-clipboard-button.tsx::CopyToClipboardButton` for the full ID.
+- **Rationale**: `shared/components/ui/id.tsx::Id` shows the node label, not the ID, and fetches the label again. No other shared component shows an ID with a copy button.
+- **Alternatives considered**: show the first 8 characters, with the full ID in a tooltip. Rejected: the engineer has to hover to read or compare the ID.
 
 ## R10. How the route reaches the number pool page
 
@@ -131,12 +134,12 @@ Each decision below resolves an open point in the plan's technical context. Code
     - `number-pool-header.test.tsx` and `number-pool-actions-menu.test.tsx`. They pass a `NumberPoolData` value, set `nodeSchemasAtom`, and use `tests/fake/permission.ts::generatePermission`. No query hook is mocked for the header.
     - `pages/resource-manager/number-pool-details.test.tsx`: mocks `useGetNumberPool` and checks the three page states. While loading, `NumberPoolHeaderSkeleton` shows (FR-014). On error or when the pool is not found, the error screen shows. When loaded, the header shows.
   - **End-to-end test**: extend `tests/e2e/resource-manager/test_number_pool.py::TestNumberPool` (repository root):
-    - the schema-created pool `InfraService.service_identifier`, which `models/base/service.yml` creates in every data slice
-    - the user-created pool "number pool test for generic" that the class already creates
+    - `test_header_for_schema_created_pool`: the schema-created pool `InfraService.service_identifier`, which `models/base/service.yml` creates in every test data set
+    - `test_header_for_user_created_pool`: the user-created pool "number pool test for generic" that the class already creates
 - **Rationale**:
   - Constitution principle IV requires an end-to-end test for user-facing features. Extending the existing spec reuses its branch fixture and pools.
   - No end-to-end data sets `allocation_scope`, so the "scoped by" sentence and the missing-field fallback are covered by component tests.
-- **Effect on existing tests**: `tests/e2e/resource-manager/test_resource_pool.py` and `tests/e2e/test_breadcrumb.py` test IP prefix pools, so this change does not affect them. `test_number_pool.py::test_number_pool_attribute_kind_resource_manager` saves a documentation screenshot of the schema-created pool. The screenshot will change, and docs screenshots are updated at the end of the epic.
+- **Effect on existing tests**: `tests/e2e/resource-manager/test_resource_pool.py` and `tests/e2e/test_breadcrumb.py` test IP prefix pools, so this change does not affect them. `test_number_pool.py::test_number_pool_attribute_kind_resource_manager` saves a documentation screenshot of the schema-created pool. The new header changes that screenshot, and docs screenshots are updated once the rest of the number pool page is built.
 
 ## R12. Known limitation that is not addressed: the edit form on multi-range pools
 
@@ -156,19 +159,24 @@ Each decision below resolves an open point in the plan's technical context. Code
 
 ## R15. Schema references open the schema in a modal
 
-- **Decision**: in the sentence, the kind, the attribute and each scope field use the style the kind had as a link: medium weight with a dotted underline that turns solid on hover. Selecting one opens `entities/schema/ui/schema-viewer-modal.tsx::SchemaViewerModal` inside a react-aria `DialogTrigger`. For a field, the modal opens on the matching tab with `targetField`.
-- **Rationale**: the user reported, after testing, that the three references looked different and that leaving the page to read the schema was disruptive. `SchemaViewerModal` already serves the field labels on object detail rows (`entities/nodes/object/ui/object-details/object-data-display/object-data-row.tsx::ObjectDataRow`) with the same trigger pattern.
+- **Decision**: in the sentence, the kind, the attribute and each scope field share one style: medium weight with a dotted underline that turns solid on hover. Each is a button. Selecting one opens `entities/schema/ui/schema-viewer-modal.tsx::SchemaViewerModal` inside a react-aria `DialogTrigger`. For a field, the modal opens on the matching tab with `targetField`.
+- **Rationale**:
+  - One style shows that the three references are the same kind of element.
+  - A modal lets the engineer read the schema without leaving the pool page.
+  - `SchemaViewerModal` already serves the field labels on object detail rows (`entities/nodes/object/ui/object-details/object-data-display/object-data-row.tsx::ObjectDataRow`) with the same trigger pattern.
+- **Alternatives considered**: link the kind to the schema page. Rejected: the engineer leaves the pool page, and the schema page cannot open a single field.
 - **Same pattern on the tag**: the "Managed by schema" tag opens the same modal on the attribute that created the pool (R17).
 
 ## R16. "View schema" instead of "Schema attribute" in the Actions menu
 
-- **Decision**: the Go to section shows "View schema" for every pool, linking to the `CoreNumberPool` schema page. The "Schema attribute" item from the prototype is removed.
-- **Rationale**: "Schema attribute" went to the schema page of the pool's kind, because the schema page cannot open a single attribute, so the label promised more than it delivered. "View schema" matches the object details menu, and its label matches its destination. The defining attribute stays reachable from the header sentence (schema modal on the attribute) and the "Managed by schema" tag.
-- **Icon**: the iconify `mdi:code-json` the object details menu uses, so both menus show the same icons. Tasks and GraphQL sandbox also reuse that menu's icons (`TasksStatusIcon`, `mdi:graphql`), as the user asked on 2026-10-09.
+- **Decision**: the Go to section shows "View schema" for every pool, linking to the `CoreNumberPool` schema page.
+- **Rationale**: "View schema" matches the object details menu, and its label matches its destination. The attribute that defines a schema-created pool is reachable from the header sentence (schema modal on the attribute) and from the "Managed by schema" tag.
+- **Icons**: the Go to items use the same icons as `ObjectDetailsMenu`, so both menus look the same: `TasksStatusIcon` for Tasks, iconify `mdi:code-json` for View schema, `mdi:graphql` for GraphQL sandbox, and lucide `BookTextIcon` for Documentation.
+- **Alternatives considered**: a "Schema attribute" item that links to the schema page of the pool's kind. Rejected: the schema page cannot open a single attribute, so the label promises more than the link delivers.
 
 ## R17. The managed-by tag shows only for schema-created pools and opens the attribute
 
 - **Decision**: the header shows the "Managed by schema" tag only when `pool_type` is `"Schema"`. User-created pools show no tag. Selecting the tag opens `SchemaViewerModal` for the pool's kind, on the attributes tab, focused on `node_attribute`. The tooltip naming the attribute stays.
-- **Rationale**: the user decided after testing that only the exception needs a label, since most pools are created by users. Opening the attribute in a modal matches the schema references in the sentence (R15) and lands on the exact field that created the pool, which the schema page cannot do.
-- **Alternatives considered**: keep a "Managed by users" tag. Rejected by the user.
+- **Rationale**: most pools are created by users, so only the exception needs a label. Opening the attribute in a modal matches the schema references in the sentence (R15) and lands on the exact field that created the pool, which the schema page cannot do.
+- **Alternatives considered**: a "Managed by users" tag on user-created pools. Rejected: it labels the common case.
 

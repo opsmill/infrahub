@@ -34,7 +34,7 @@ const interfaceSchema = generateNodeSchema({
   name: "Interface",
   label: "Interface",
   attributes: [
-    generateAttributeSchema({ name: "speed", label: "Speed" }),
+    generateAttributeSchema({ id: "speed-attribute-id", name: "speed", label: "Speed" }),
     generateAttributeSchema({ name: "role", label: "Role" }),
   ],
   relationships: [generateRelationshipSchema({ name: "site", label: "Site" })],
@@ -95,6 +95,7 @@ describe("NumberPoolHeader", () => {
 
     // THEN
     await expect.element(component.getByRole("dialog", { name: "Schema viewer" })).toBeVisible();
+    await expect.element(component.getByText("speed-attribute-id")).toBeVisible();
   });
 
   it("shows no managed-by tag for a user-created pool", async () => {
