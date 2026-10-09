@@ -246,6 +246,38 @@ class InfrahubMutationMixin:
         return mutation
 
     @classmethod
+    async def _create_object(
+        cls,
+        data: dict[str, Any],
+        db: InfrahubDatabase,
+        branch: Branch,
+        user_id: str,
+    ) -> Node:
+        return await create_node(
+            data=data,
+            db=db,
+            branch=branch,
+            schema=cls._meta.active_schema,
+            user_id=user_id,
+        )
+
+    @classmethod
+    @retry_db_transaction(name="object_create")
+    async def _create_object_with_retry(
+        cls,
+        data: dict[str, Any],
+        db: InfrahubDatabase,
+        branch: Branch,
+        user_id: str,
+    ) -> Node:
+        """Create the node, retrying transient database errors.
+
+        The retried scope must stay inside the creation transaction. Anything replayed after that
+        transaction commits would create a second node instead of retrying the first one.
+        """
+        return await cls._create_object(data=data, db=db, branch=branch, user_id=user_id)
+
+    @classmethod
     async def mutate_create(
         cls,
         info: GraphQLResolveInfo,
@@ -256,18 +288,21 @@ class InfrahubMutationMixin:
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
         db = database or graphql_context.db
-        schema = cls._meta.active_schema
 
         create_data = dict(data)
         create_data.update(override_data or {})
 
-        obj = await create_node(
-            data=create_data,
-            db=db,
-            branch=branch,
-            schema=schema,
-            user_id=graphql_context.assigned_user_id,
-        )
+        if db.is_transaction:
+            # A transient error has already put the caller's transaction in a failed state, so
+            # replaying the creation on it can only raise neo4j's TransactionError. Whoever opened
+            # the transaction owns the retry, because only they can roll it back and start a new one.
+            obj = await cls._create_object(
+                data=create_data, db=db, branch=branch, user_id=graphql_context.assigned_user_id
+            )
+        else:
+            obj = await cls._create_object_with_retry(
+                data=create_data, db=db, branch=branch, user_id=graphql_context.assigned_user_id
+            )
 
         graphql_response = await build_graphql_response(info=info, db=db, obj=obj)
         return obj, cls(**graphql_response)
