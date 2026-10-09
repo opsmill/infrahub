@@ -57,8 +57,7 @@ the pool lists 42 as used. Allocate again from the same pool and confirm 42 is n
 1. **Given** the pool tab, **When** the user picks a pool, types a number and saves, **Then** the
    node holds that number and the pool reports it as used.
 2. **Given** a number already held by another node on a unique attribute, **When** the user saves
-   it through the pool tab, **Then** the form shows the uniqueness error that the backend returns,
-   on the field.
+   it through the pool tab, **Then** the form shows the uniqueness error that the backend returns.
 3. **Given** a number outside the pool's ranges, **When** the user saves it through the pool tab,
    **Then** the save succeeds, because the pool refuses no number a user provides.
 
@@ -125,8 +124,8 @@ tab is active with the pool and number shown. Save without changes and confirm n
 - **Pool tab, pool picked, number emptied, same pool already tracks the node**: the backend
   returns the number it already reserved for the node, so the number does not change. The form
   sends the request; the result is the existing number.
-- **Pool tab, no pool picked, number typed**: the form cannot be saved with a number and no pool
-  in the pool tab; the field asks for a pool. A number alone belongs in the Value tab.
+- **Pool tab, no pool picked**: the number input is not shown until a pool is picked, the same way
+  the IP overrides appear only once a pool is picked. A number alone belongs in the Value tab.
 - **Required attribute, pool tab, pool picked, number empty**: valid. The pool provides the
   number.
 - **Template-backed field** (the `<attribute>_from_resource_pool` relationship on object
@@ -137,7 +136,7 @@ tab is active with the pool and number shown. Save without changes and confirm n
 - **No pool targets this kind and attribute**: no tabs, as today.
 - **The backend refuses a pool without a number over a held number** (contract rows 10 and 12):
   the form never sends that combination, because it always sends the number key with the pool.
-  If the backend still returns the refusal, the form shows the backend message on the field.
+  If the backend still returns the refusal, the form shows the backend message.
 - **Bulk update form and filter forms**: out of scope; they keep their current behaviour.
 
 ## Requirements *(mandatory)*
@@ -150,9 +149,9 @@ tab is active with the pool and number shown. Save without changes and confirm n
   address fields.
 - **FR-002**: A Number attribute that no number pool targets MUST render as it does today, with
   no tabs.
-- **FR-003**: The pool tab MUST show the pool picker on its own line and a number input below it.
-  The number input MUST carry a visible label and an explanation stating that leaving it empty
-  allocates the next free number from the pool.
+- **FR-003**: The pool tab MUST show the pool picker on its own line and, once a pool is picked, a
+  number input below it. The number input MUST carry a visible label and an explanation stating
+  that leaving it empty allocates the next free number from the pool.
 - **FR-004**: The pool picker MUST list only the number pools that target this node's kind (or a
   generic it inherits from) and this attribute.
 - **FR-005**: Saving from the pool tab with a number MUST send the number and the pool together,
@@ -175,18 +174,22 @@ tab is active with the pool and number shown. Save without changes and confirm n
   value it held when the form opened. Visiting a tab without choosing anything MUST NOT cause
   anything to be sent.
 - **FR-013**: A field whose value has not changed since the form opened MUST NOT be sent.
-- **FR-014**: In the pool tab, a number without a pool MUST block saving with a message on the
-  field asking for a pool.
-- **FR-014a**: Picking a pool MUST pre-fill the number input with the number the node holds on an
+- **FR-014**: Picking a pool MUST pre-fill the number input with the number the node holds on an
   edit form, so the held number is kept unless the user empties the input. On a create form, and
   when the current value comes from the schema default, a profile or a template, the input MUST
   start empty.
 - **FR-015**: An error the backend returns for the field (uniqueness, refusal, pool not attached
-  to this kind and attribute) MUST be shown to the user.
-- **FR-016**: A field the user may not edit MUST NOT allow either tab to be used.
-- **FR-017**: The template-backed pool path and the `NumberPool` attribute kind MUST keep their
+  to this kind and attribute) MUST be shown to the user through the form's existing error
+  handling.
+- **FR-016**: When a pool tracks the attribute, the Value tab's number input MUST show the current
+  number as its placeholder, so a user who wants to keep the number without the pool can see what
+  to type.
+- **FR-017**: For a number pool, the pool badge on the label MUST say that the number is recorded
+  in the pool, not that the pool allocated it, because an attached number was provided by a user.
+- **FR-018**: A field the user may not edit MUST NOT allow either tab to be used.
+- **FR-019**: The template-backed pool path and the `NumberPool` attribute kind MUST keep their
   current behaviour.
-- **FR-018**: Automated tests MUST cover each row of the submission table in the plan (create and
+- **FR-020**: Automated tests MUST cover each row of the submission table in the plan (create and
   edit, each tab, with and without a number, same and different pool), and the edit-mode tab
   selection.
 

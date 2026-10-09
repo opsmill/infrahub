@@ -64,8 +64,10 @@ Re-check after Phase 1 design: unchanged, all pass.
 `AttributeValueFromPool.value.from_pool` gains an optional `number?: number | null`, registered as
 the nested form field `<name>.value.from_pool.number`, the same way the IP prefix-length override
 registers `<name>.value.from_pool.prefixLength` (`shared/components/inputs/pool-select.tsx::PoolPrefixLengthField`).
-A new `PoolNumberField` in the same file renders it only when the pool kind is `CoreNumberPool`
-and the field is not template-backed. `PoolAllocationPanel` renders it below the pool picker.
+A new `PoolNumberField` in the same file renders it only when a pool is picked (the staged value
+has `from_pool`, as `getPendingFromPool` checks for the IP overrides), the pool kind is
+`CoreNumberPool` and the field is not template-backed. A number cannot be typed before a pool is
+picked, so there is no "number without a pool" state to validate. `PoolAllocationPanel` renders it below the pool picker.
 
 ### D2. Payload builders always pair `from_pool` with `value`
 
@@ -105,12 +107,20 @@ form allocates by default. This makes "pick pool B and keep the number" (spec US
 no retyping, and avoids allocating a new number over an existing node by accident. Re-picking the
 original pool restores the default as today.
 
-### D7. Validation in the pool tab
+### D7. Number input validation
 
-The pool tab requires a pool when a number is typed (FR-014): a `validate` rule on the host field
-returns "Select a pool, or use the Value tab for a number without a pool" when the staged value
-has a number and no pool. The number input accepts whole numbers only; no range check
-(contract, FR-029 deleted).
+The number input accepts whole numbers only; no range check (contract, FR-029 deleted).
+
+### D8. Value tab placeholder on a tracked field
+
+When `defaultValue.source.type === "pool"` and the field holds that default, `NumberField` shows
+the current number (`defaultValue.value.from_pool.number`) as the Value tab input's placeholder,
+with an empty value. Typing a number stages a user value, which D3 sends with `from_pool: null`.
+
+### D9. Badge text for number pools
+
+`fields/common.tsx::PoolSourceBadge` says "This number is recorded in the pool:" when the source
+kind is `CoreNumberPool`, and keeps the current text for IP pools.
 
 Full row-by-row behaviour: [contracts/form-submission.md](contracts/form-submission.md).
 Decisions and rejected options: [research.md](research.md).
@@ -140,7 +150,8 @@ frontend/app/src/shared/components/
 │   ├── type.ts                                   # AttributeValueFromPool.from_pool.number
 │   ├── pool-backed-field.tsx                     # initialTab prop
 │   ├── pool-allocation-panel.tsx                 # renders PoolNumberField
-│   ├── fields/number.field.tsx                   # initialTab, keep number on pool change
+│   ├── fields/number.field.tsx                   # initialTab, pre-fill number, placeholder
+│   ├── fields/common.tsx                         # badge text for number pools
 │   ├── fields/number.field.test.tsx
 │   └── utils/
 │       ├── getFieldDefaultValue.ts               # number-pool default value shape
