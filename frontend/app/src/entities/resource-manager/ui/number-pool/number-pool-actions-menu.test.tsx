@@ -39,20 +39,27 @@ const openMenu = async ({
 };
 
 describe("NumberPoolActionsMenu", () => {
-  it("locks Edit and Delete on a schema-created pool and keeps Groups available", async () => {
+  it("locks Edit, Groups and Delete on a schema-created pool", async () => {
     // WHEN
     const component = await openMenu({ pool: schemaPool });
 
     // THEN
-    await expect
-      .element(component.getByRole("menuitem", { name: "Edit" }))
-      .toHaveAttribute("aria-disabled", "true");
-    await expect
-      .element(component.getByRole("menuitem", { name: "Delete" }))
-      .toHaveAttribute("aria-disabled", "true");
-    await expect
-      .element(component.getByRole("menuitem", { name: "Groups" }))
-      .not.toHaveAttribute("aria-disabled");
+    for (const name of ["Edit", "Groups", "Delete"]) {
+      await expect
+        .element(component.getByRole("menuitem", { name }))
+        .toHaveAttribute("aria-disabled", "true");
+    }
+  });
+
+  it("explains the schema lock on Groups", async () => {
+    // GIVEN
+    const component = await openMenu({ pool: schemaPool, trackPointer: true });
+
+    // WHEN
+    await component.getByRole("menuitem", { name: "Groups" }).hover();
+
+    // THEN
+    await expect.element(component.getByRole("tooltip", { name: SCHEMA_LOCK })).toBeVisible();
   });
 
   it("explains the schema lock on a locked item", async () => {

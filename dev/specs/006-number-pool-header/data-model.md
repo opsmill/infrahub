@@ -12,7 +12,7 @@ The work adds no entity and changes no stored data. The header reads existing fi
 | `hfid` | string[] | `[name]` | Copy HFID |
 | `name` | Text | any | Heading, cut to one line |
 | `description` | Text | may be empty | Line under the heading, left out when empty |
-| `pool_type` | Text, read-only | `"User"` or `"Schema"` | Managed-by tag, schema lock on Edit and Delete |
+| `pool_type` | Text, read-only | `"User"` or `"Schema"` | Managed-by tag, schema lock on Edit, Groups and Delete |
 | `node` | Text | a kind name, such as `InfraAutonomousSystem` | "Allocates to `<kind>`", schema links |
 | `node_attribute` | Text | an attribute name, such as `asn` | "attribute `<attribute>`", schema lock message |
 | `allocation_scope` | List | `string[]` or `null` | "scoped by `<labels>`" or "with no scope" |
@@ -54,12 +54,10 @@ The pool's own schema (`CoreNumberPool`) provides `documentation` for the Docume
 
 ### Managed by
 
-| `pool_type` | Tag | Tag target | Edit and Delete |
+| `pool_type` | Tag | Tag target | Edit, Groups and Delete |
 |-------------|-----|------------|-----------------|
 | `"Schema"` | "Managed by schema" | Opens `SchemaViewerModal` for `node`, attributes tab, focused on `node_attribute` | Disabled: `Defined by the schema attribute <node>.<node_attribute>` |
-| `"User"` | none | | Follow `permission.update` and `permission.delete` |
-
-Groups follows `permission.update` for both pool types.
+| `"User"` | none | | Edit and Groups follow `permission.update`, Delete follows `permission.delete` |
 
 ### Allocation scope fields
 

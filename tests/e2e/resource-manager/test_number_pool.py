@@ -129,6 +129,7 @@ class TestNumberPool:
 
         await header.get_by_role("button", name="Actions").click()
         await expect(admin_page.get_by_role("menuitem", name="Edit")).to_have_attribute("aria-disabled", "true")
+        await expect(admin_page.get_by_role("menuitem", name="Groups")).to_have_attribute("aria-disabled", "true")
         await expect(admin_page.get_by_role("menuitem", name="Delete")).to_have_attribute("aria-disabled", "true")
         await expect(admin_page.get_by_role("menuitem", name="View schema")).to_have_attribute(
             "href", re.compile(r"kind=CoreNumberPool")

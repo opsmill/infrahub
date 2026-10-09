@@ -1,19 +1,13 @@
 import { Button, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Sheet } from "@infrahub/ui";
-import {
-  BookTextIcon,
-  BracesIcon,
-  ChevronDownIcon,
-  CodeIcon,
-  GroupIcon,
-  ListChecksIcon,
-  PencilLineIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import React from "react";
 import { useNavigate } from "react-router";
 
+import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
+
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Icon } from "@/shared/components/display/icon";
 import { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { CopyToClipboardMenuItem } from "@/shared/components/menu/copy-to-clipboard-menu-item";
 
@@ -53,7 +47,7 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
     isAllowed: false,
     message: `Defined by the schema attribute ${pool.node.value}.${pool.node_attribute.value}`,
   };
-  const editDecision = isSchemaManaged ? schemaLock : permission.update;
+  const updateDecision = isSchemaManaged ? schemaLock : permission.update;
   const deleteDecision = isSchemaManaged ? schemaLock : permission.delete;
 
   return (
@@ -76,17 +70,17 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
 
             <MenuSection title="Go to">
               <MenuItem href={getObjectTasksUrl(pool.id)}>
-                <ListChecksIcon />
+                <TasksStatusIcon width="12" height="12" className="ml-0.5" />
                 Tasks
               </MenuItem>
               <MenuItem
                 href={constructPath("/schema", [{ name: "kind", value: NUMBER_POOL_KIND }])}
               >
-                <BracesIcon />
+                <Icon icon="mdi:code-json" />
                 View schema
               </MenuItem>
               <MenuItem href={getObjectGraphqlSandboxUrl(NUMBER_POOL_KIND, pool.id)}>
-                <CodeIcon />
+                <Icon icon="mdi:graphql" />
                 GraphQL sandbox
               </MenuItem>
               {schema.documentation && (
@@ -103,16 +97,16 @@ export function NumberPoolActionsMenu({ pool, schema, permission }: NumberPoolAc
 
             <MenuSection title="Manage">
               <MenuItem
-                isDisabled={!editDecision.isAllowed}
-                tooltip={editDecision.message}
+                isDisabled={!updateDecision.isAllowed}
+                tooltip={updateDecision.message}
                 onAction={() => setIsEditOpen(true)}
               >
                 <PencilLineIcon />
                 <span>Edit</span>
               </MenuItem>
               <MenuItem
-                isDisabled={!permission.update.isAllowed}
-                tooltip={permission.update.message}
+                isDisabled={!updateDecision.isAllowed}
+                tooltip={updateDecision.message}
                 onAction={() => setIsGroupsOpen(true)}
               >
                 <GroupIcon />

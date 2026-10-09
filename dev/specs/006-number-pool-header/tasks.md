@@ -45,7 +45,7 @@ description: "Task list for the number pool details header"
 
 **⚠️ CRITICAL**: finish this phase before Phase 3.
 
-- [X] T003 [P] ~~Add `queryKeys` tests to `refresh-button.test.tsx`~~. Reverted: research.md R2 now uses `queryKey={[]}`, and `refresh-button.test.tsx` is unchanged.
+- [X] T003 [P] ~~Add `queryKeys` tests to `refresh-button.test.tsx`~~. Reverted: research.md R2 keeps `RefreshButton` unchanged, and `refresh-button.test.tsx` is unchanged.
 - [X] T004 ~~Change `RefreshButton` to take `queryKeys`~~. Reverted: `refresh-button.tsx` is unchanged (research.md R2).
 - [X] T005 ~~Move `task-items.tsx` to `queryKeys`~~. Reverted: `task-items.tsx` is unchanged.
 - [X] T006 [P] Add three URL builders to `src/entities/nodes/object/ui/routing/object-urls.ts` (research.md R4; contract "URL builders (moved)"). Move their bodies from `src/entities/nodes/object/ui/object-details/object-details-menu.tsx::ObjectDetailsMenu`, which builds them inline today:
@@ -102,10 +102,10 @@ IP pools are unchanged.
   - **Header controls**: a `button` "View node metadata" and a `button` "Refresh data" are present.
   - **`NumberPoolHeaderSkeleton`**: renders placeholders and no heading.
 - [X] T014 [P] [US1] Component tests for `NumberPoolActionsMenu` in `src/entities/resource-manager/ui/number-pool/number-pool-actions-menu.test.tsx` (contract table "NumberPoolActionsMenu"). Open the menu by pressing `button` "Actions". Cases:
-  - **Schema-created pool with full permission**: `menuitem` Edit and Delete are disabled, and their tooltip reads `Defined by the schema attribute <kind>.<attribute>`. Groups is enabled. "View schema" links to the `CoreNumberPool` schema for every pool.
+  - **Schema-created pool with full permission**: `menuitem` Edit, Groups and Delete are disabled, and their tooltip reads `Defined by the schema attribute <kind>.<attribute>`. "View schema" links to the `CoreNumberPool` schema for every pool.
   - **User-created pool with full permission**: Edit, Groups and Delete are enabled.
   - **User-created pool with `generatePermission({ update: false, delete: false })`**: Edit, Groups and Delete are disabled with the permission message.
-  - **Schema-created pool with no permission**: Edit and Delete show the schema lock message, and Groups shows the permission message.
+  - **Schema-created pool with no permission**: Edit, Groups and Delete show the schema lock message.
   - **Documentation**: present only when `schema.documentation` is set, and its link uses `getDocumentationUrl`.
   - **Copy HFID**: present only when `hfid` is set.
 
@@ -138,12 +138,11 @@ IP pools are unchanged.
   - **Actions section**: `CopyToClipboardMenuItem` Copy ID. Copy HFID when `pool.hfid` is set.
   - **Go to section**:
     - Tasks: `getObjectTasksUrl(pool.id)`.
-    - View schema: for every pool, `href` `/schema?kind=CoreNumberPool` built with `constructPath`, icon `BracesIcon` (research.md R16).
+    - View schema: for every pool, `href` `/schema?kind=CoreNumberPool` built with `constructPath`, icon `mdi:code-json` (research.md R16).
     - GraphQL sandbox: `getObjectGraphqlSandboxUrl(NUMBER_POOL_KIND, pool.id)`.
     - Documentation: only when `schema.documentation` is set, `getDocumentationUrl`, `target="_blank"`.
   - **Manage section**:
-    - Edit and Delete: when `pool.pool_type.value === NUMBER_POOL_TYPE_SCHEMA`, use `{ isAllowed: false, message: \`Defined by the schema attribute ${pool.node.value}.${pool.node_attribute.value}\` }`. Otherwise use `permission.update` and `permission.delete`. Build this inline (R5).
-    - Groups: `permission.update`.
+    - Edit, Groups and Delete: when `pool.pool_type.value === NUMBER_POOL_TYPE_SCHEMA`, use `{ isAllowed: false, message: \`Defined by the schema attribute ${pool.node.value}.${pool.node_attribute.value}\` }`. Otherwise Edit and Groups use `permission.update` and Delete uses `permission.delete`. Build this inline (R5).
   - **Overlays**, rendered after the menu as `ObjectDetailsMenu` does:
     - The "Manage groups" `Sheet` with `GroupsManager` (`schema`, `objectId: pool.id`).
     - The edit `Sheet` with `ObjectEdit` (`objectKind: NUMBER_POOL_KIND`, `objectId: pool.id`). Its `onUpdateComplete` invalidates `objectQueryKeys.all` and then `resourceManagerQueryKeys.all`, then closes the sheet (R14).
@@ -154,7 +153,7 @@ IP pools are unchanged.
   - **First row, left**: an `h1` with the name (`truncate`, `title={pool.name.value}`), then the managed-by tag:
     - Schema-created: a button with `FileCodeIcon` and "Managed by schema" that opens `SchemaViewerModal` on the attribute (research.md R17). Its tooltip reads `Created from the ${pool.node.value}.${pool.node_attribute.value} schema attribute. Change its ranges in the schema.`
     - User-created: no tag (research.md R17).
-  - **First row, right**: the full ID and `CopyToClipboardButton` with `aria-label="Copy ID"`. Then `NodeMetadataPopover objectKind={NUMBER_POOL_KIND} objectId={pool.id}`, `RefreshButton queryKey={[]}` (research.md R2), and `NumberPoolActionsMenu`.
+  - **First row, right**: the full ID and `CopyToClipboardButton` with `aria-label="Copy ID"`. Then `NodeMetadataPopover objectKind={NUMBER_POOL_KIND} objectId={pool.id}`, `RefreshButton queryKey={resourceManagerQueryKeys.all}` (research.md R2), and `NumberPoolActionsMenu`.
   - **Description**: a muted paragraph when `pool.description` is set.
   - **Sentence**: "Allocates to", then the kind, then "attribute", then the attribute name, then either "with no scope" or "scoped by" followed by one `ScopeFieldReference` per name in `pool.allocation_scope.value`, separated by "+".
     - Read `kindSchema` with `useSchema(pool.node.value)`.

@@ -30,12 +30,12 @@ Today the details page shows a generic title above a property list. The engineer
 1. **Given** a pool that the schema created for the attribute `asn` of `InfraAutonomousSystem`, with no allocation scope, **When** the engineer opens it, **Then**:
    - the header shows the pool name and a "Managed by schema" tag
    - the header shows "Allocates to InfraAutonomousSystem attribute `asn` with no scope"
-   - Edit and Delete in the Actions menu are disabled, and their tooltip names the schema attribute
+   - Edit, Groups and Delete in the Actions menu are disabled, and their tooltip names the schema attribute
 2. **Given** a pool that a user created, scoped by the fields `site` and `role`, **When** the engineer opens it, **Then**:
    - the header shows no managed-by tag
    - the header shows "scoped by Site + Role", using the field labels from the schema
-   - Edit and Delete are enabled when the engineer has permission to update and delete the pool
-3. **Given** an engineer without permission to update or delete the pool, **When** they open the Actions menu, **Then** Edit and Delete are disabled, with the same permission message as on other detail pages.
+   - Edit, Groups and Delete are enabled when the engineer has permission to update and delete the pool
+3. **Given** an engineer without permission to update or delete the pool, **When** they open the Actions menu, **Then** Edit, Groups and Delete are disabled, with the same permission message as on other detail pages.
 4. **Given** a pool with a description, **When** the engineer opens it, **Then** the description appears under the name. **Given** a pool without a description, **Then** no description line appears.
 5. **Given** the engineer saves a new name or description from Actions → Edit, **When** the save succeeds, **Then** the header shows the new values without a page reload.
 6. **Given** the engineer deletes a pool from Actions → Delete, **When** the delete succeeds, **Then** they are taken to the resource manager list.
@@ -72,7 +72,7 @@ Today the details page shows a generic title above a property list. The engineer
   - **Actions:** Copy ID, and Copy HFID
   - **Go to:** Tasks for this pool, View schema (the number pool schema, for every pool), GraphQL sandbox, and Documentation (only when the schema defines a documentation link)
   - **Manage:** Edit, Groups and Delete
-- **FR-010**: System MUST disable Edit and Delete in the Actions menu when the schema created the pool, with a tooltip that names the schema attribute.
+- **FR-010**: System MUST disable Edit, Groups and Delete in the Actions menu when the schema created the pool, with a tooltip that names the schema attribute, so a schema-managed pool cannot be changed from the page.
 - **FR-011**: System MUST disable Edit, Groups and Delete when the engineer lacks the matching permission, with the same permission message as on other node detail pages.
 - **FR-012**: After a successful edit from the Actions menu, the header MUST show the saved values without a page reload.
 - **FR-013**: After a successful delete from the Actions menu, System MUST take the engineer to the resource manager list.

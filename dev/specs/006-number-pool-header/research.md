@@ -39,13 +39,14 @@ Each decision below resolves an open point in the plan's technical context. Code
 
 ## R2. Reload that covers the pool, its utilization and its allocated resources
 
-- **Decision**: the header renders the existing `entities/nodes/object/ui/object-details/refresh-button.tsx::RefreshButton` with `queryKey={[]}`. `RefreshButton` does not change.
+- **Decision**: the header renders the existing `entities/nodes/object/ui/object-details/refresh-button.tsx::RefreshButton` with `queryKey={resourceManagerQueryKeys.all}`. `RefreshButton` does not change.
 - **Rationale**:
   - FR-007 asks for the same reload button as other detail pages, which is `RefreshButton`, with its "Last data refresh" tooltip.
-  - FR-008 asks the reload to cover utilization and allocated resources. Their keys start with `"resource-manager"`, while the body's object query starts with `"objects"`, and `RefreshButton` accepts one prefix.
-  - TanStack matches an empty key as a prefix of every key, so `queryKey={[]}` invalidates and watches every query. This covers both families without changing the shared component.
-- **Cost**: a reload also refetches the other queries mounted on the page, such as the branch list, the schema and permissions. The spinner shows while any query fetches. No query on this page polls (the branch action buttons that poll every 5 seconds are not on it), so the button behaves normally.
+  - FR-008 asks the reload to cover the pool, its utilization and its allocated resources. All three query keys start with `"resource-manager"`, and so do the queries of the new page body, so one prefix covers them.
+  - The reload no longer refetches the unrelated queries mounted on the page, such as the branch list, the schema and permissions.
+- **Cost**: the old body's properties card reads the pool through the `"objects"` query, which this reload does not cover. It shows stale values after a reload until the page body work replaces that card.
 - **Alternatives considered**:
+  - `queryKey={[]}`, which TanStack matches as a prefix of every key. It was the first decision, and covered the properties card too, but every reload refetched every query on the page. Replaced by the user on 2026-10-09.
   - Change `RefreshButton` to take a list of prefixes (`queryKeys`). Implemented first, then dropped by the user to keep the shared component out of this change.
   - Put the number pool key under `objectQueryKeys.all`. Rejected: the utilization and allocated-resource keys would still not reload, and the key would mix two entities' prefixes.
   - Use the page's `handleRefetchAll` with the generic `Retry` button. Rejected: it gives a different control from other detail pages, against FR-007.
@@ -69,11 +70,11 @@ Each decision below resolves an open point in the plan's technical context. Code
 - **Rationale**: the same three builders are already written inline in two menus, and the new menu would add a third copy. Constitution principle VII allows extraction once two callers exist. The entity guideline puts URL builders in `ui/routing/`.
 - **Alternatives considered**: inline a third copy. Rejected: three copies of a URL format drift apart.
 
-## R5. Edit and Delete state when a pool is schema-created and the user lacks permission
+## R5. Edit, Groups and Delete state when a pool is schema-created and the user lacks permission
 
 - **Decision**: the menu builds the decision for each item inline:
-  - **Edit and Delete**: when `pool_type` is `"Schema"`, disabled with the message `Defined by the schema attribute <kind>.<attribute>`. Otherwise, they use `permission.update` and `permission.delete`.
-  - **Groups**: always uses `permission.update`. Groups are allowed on schema-created pools.
+  - **Edit, Groups and Delete**: when `pool_type` is `"Schema"`, disabled with the message `Defined by the schema attribute <kind>.<attribute>`. Otherwise, Edit and Groups use `permission.update` and Delete uses `permission.delete`.
+  - **Why Groups is locked too**: changing a pool's groups is an update of the pool, and a schema-managed pool must not be changed from the page at all (decided by the user on 2026-10-09; Groups were allowed in the first version of this decision).
 - **Rationale**: the schema lock applies to every user, so its message is the more useful one when both reasons apply. The derivation is two lines with one caller, so it stays inline and is not a domain rule.
 - **Alternatives considered**: a `combinePermission` helper in `entities/permission/domain/rules/`. Rejected: it would have one caller.
 
@@ -163,7 +164,7 @@ Each decision below resolves an open point in the plan's technical context. Code
 
 - **Decision**: the Go to section shows "View schema" for every pool, linking to the `CoreNumberPool` schema page. The "Schema attribute" item from the prototype is removed.
 - **Rationale**: "Schema attribute" went to the schema page of the pool's kind, because the schema page cannot open a single attribute, so the label promised more than it delivered. "View schema" matches the object details menu, and its label matches its destination. The defining attribute stays reachable from the header sentence (schema modal on the attribute) and the "Managed by schema" tag.
-- **Icon**: lucide `BracesIcon`, not the iconify `mdi:code-json` the object details menu uses, following the preference for lucide icons in new code.
+- **Icon**: the iconify `mdi:code-json` the object details menu uses, so both menus show the same icons. Tasks and GraphQL sandbox also reuse that menu's icons (`TasksStatusIcon`, `mdi:graphql`), as the user asked on 2026-10-09.
 
 ## R17. The managed-by tag shows only for schema-created pools and opens the attribute
 

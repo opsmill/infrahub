@@ -17,6 +17,7 @@ import {
   NUMBER_POOL_TYPE_SCHEMA,
 } from "@/entities/resource-manager/domain/model/pool";
 import { NumberPoolActionsMenu } from "@/entities/resource-manager/ui/number-pool/number-pool-actions-menu";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import type { ModelSchema } from "@/entities/schema/domain/model/schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { SchemaViewerModal } from "@/entities/schema/ui/schema-viewer-modal";
@@ -176,7 +177,7 @@ export function NumberPoolHeader({ pool, schema, permission }: NumberPoolHeaderP
         </Col>
 
         <PoolId id={pool.id} className="h-8" />
-        <RefreshButton queryKey={[]} />
+        <RefreshButton queryKey={resourceManagerQueryKeys.all} />
         <NumberPoolActionsMenu pool={pool} schema={schema} permission={permission} />
       </Row>
 

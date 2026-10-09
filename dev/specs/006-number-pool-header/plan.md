@@ -11,14 +11,14 @@ Replace the generic card title on the number pool details page (`/resource-manag
 - the pool's name and description
 - who manages the pool (the schema or users)
 - what the pool allocates to
-- an Actions menu that blocks Edit and Delete on pools the schema created
+- an Actions menu that blocks Edit, Groups and Delete on pools the schema created
 
 The change is frontend only:
 
 - **New number pool page**: `NumberPoolDetailsPage` loads the pool through a new typed fetch path (api → use-case → query) that returns `NumberPoolData`, and passes it to the header. Later work passes the same value to the new body.
 - **New code**: a `ui/number-pool/` folder in the `resource-manager` entity, which later work on the number pool page extends. Scope field labels are looked up inline, and `SchemaReference` picks the schema modal tab from the field (research.md R7).
 - **Shared body**: the current page body moves into `ResourcePoolDetailsBody`, which both pages render unchanged.
-- **Reload**: the header uses the existing `RefreshButton` with an empty key prefix, so one reload covers every query on the page (research.md R2).
+- **Reload**: the header uses the existing `RefreshButton` with the `resourceManagerQueryKeys.all` prefix, so one reload covers the pool, its utilization and its allocated resources (research.md R2).
 - **URL builders**: three menu URL builders move into `object-urls.ts`, and all menus use them.
 
 IP prefix pools and IP address pools keep the current header.

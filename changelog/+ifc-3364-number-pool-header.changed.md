@@ -1,1 +1,1 @@
-The number pool details page has a new header that shows when the schema manages the pool, what the pool allocates to and how the allocation is scoped, and locks editing and deletion of pools that the schema created.
+The number pool details page has a new header that shows when the schema manages the pool, what the pool allocates to and how the allocation is scoped, and blocks editing, group changes and deletion of pools that the schema created.

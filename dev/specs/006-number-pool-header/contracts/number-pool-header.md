@@ -90,7 +90,7 @@ interface NumberPoolActionsMenuProps {
 | Go to | GraphQL sandbox | always | never |
 | Go to | Documentation | the schema has `documentation` | never |
 | Manage | Edit | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
-| Manage | Groups | always | `!permission.update.isAllowed` (permission message) |
+| Manage | Groups | always | schema-created (schema lock message), else `!permission.update.isAllowed` (permission message) |
 | Manage | Delete | always | schema-created (schema lock message), else `!permission.delete.isAllowed` (permission message) |
 
 After the user acts:

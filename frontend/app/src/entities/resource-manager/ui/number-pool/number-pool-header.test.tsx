@@ -196,7 +196,7 @@ describe("NumberPoolHeader", () => {
     await expect.element(component.getByRole("button", { name: "Copy ID" })).toBeVisible();
   });
 
-  it("refreshes every query when the refresh button is pressed", async () => {
+  it("refreshes the number pool queries when the refresh button is pressed", async () => {
     // GIVEN
     const invalidateQueriesSpy = vi
       .spyOn(queryClient, "invalidateQueries")
@@ -207,7 +207,7 @@ describe("NumberPoolHeader", () => {
     await component.getByRole("button", { name: "Refresh data" }).click();
 
     // THEN
-    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: [] });
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["resource-manager"] });
     invalidateQueriesSpy.mockRestore();
   });
 
