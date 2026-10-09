@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from infrahub import config, lock
 from infrahub.core.merge.builder import build_held_regeneration_releaser
 from infrahub.core.registry import registry
+from infrahub.git.writeback.abandoner import WritebackAbandoner
 from infrahub.git.writeback.constants import LOCAL_GIT_TIMEOUT_SECONDS
 from infrahub.git.writeback.git_adapter import RepositoryDeliveryGitAdapter
 from infrahub.git.writeback.ports import RepositoryRef
@@ -38,10 +39,38 @@ async def build_writeback_service(
         context: The context of the regeneration that a delivery releases.
 
     """
+    return await _build(RepositoryWritebackService, db=db, repository=repository, context=context, log=log)
+
+
+async def build_writeback_abandoner(
+    *,
+    db: InfrahubDatabase,
+    repository: InfrahubRepository,
+    context: InfrahubContext,
+    log: Logger | LoggerAdapter[Logger],
+) -> WritebackAbandoner:
+    """Build the abandoner of the repository, with its delivery state, Git adapter and regeneration releaser.
+
+    Args:
+        db: A session that the flow opened for the life of the abandoner.
+        context: The context of the regeneration that an abandonment releases.
+
+    """
+    return await _build(WritebackAbandoner, db=db, repository=repository, context=context, log=log)
+
+
+async def _build[ComponentT: (RepositoryWritebackService, WritebackAbandoner)](
+    component: type[ComponentT],
+    *,
+    db: InfrahubDatabase,
+    repository: InfrahubRepository,
+    context: InfrahubContext,
+    log: Logger | LoggerAdapter[Logger],
+) -> ComponentT:
     default_branch = await registry.get_branch(db=db)
     clock = partial(datetime.now, UTC)
     state = WritebackIntentStore(db=db, lock_registry=lock.registry, default_branch=default_branch, clock=clock)
-    return RepositoryWritebackService(
+    return component(
         repository=RepositoryRef(
             id=str(repository.id), name=repository.name, destination_git_branch=repository.default_branch
         ),

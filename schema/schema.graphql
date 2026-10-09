@@ -10072,6 +10072,10 @@ type Mutation {
   InfrahubRecomputeComputedAttribute(context: ContextInput, data: InfrahubComputedAttributeRecomputeInput!): RecomputeComputedAttribute
   InfrahubRepositoryConnectivity(data: IdentifierInput!): ValidateRepositoryConnectivity
   """
+  Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch is deleted. Repository objects of the abandoned merges can stay on the default branch until the current commit is reimported.
+  """
+  InfrahubRepositoryDeliveryAbandon(data: RepositoryDeliveryAbandonInput!): RepositoryDeliveryAbandon
+  """
   Push every pending merge of a repository to its remote, in order, in a single push.
   """
   InfrahubRepositoryDeliveryRetry(data: RepositoryDeliveryRetryInput!): RepositoryDeliveryRetry
@@ -27187,6 +27191,20 @@ type RelationshipRemove {
 type Relationships {
   count: Int!
   edges: [RelationshipNode!]!
+}
+
+type RepositoryDeliveryAbandon {
+  ok: Boolean
+  task: TaskInfo
+}
+
+input RepositoryDeliveryAbandonInput {
+  """The id of the CoreRepository"""
+  id: String!
+  """
+  The version of the delivery queue the user saw. The request is refused if the queue changed since.
+  """
+  queue_version: Int!
 }
 
 type RepositoryDeliveryRetry {

@@ -10,16 +10,19 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 import git
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
+from prefect import flow
 
 from infrahub import config, lock
 from infrahub.auth.session import AnonymousSession
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import (
+    FullRegenerationReason,
     InfrahubKind,
     RepositoryDeliveryFailureCause,
     RepositoryDeliveryStatus,
@@ -31,17 +34,28 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.exceptions import RepositoryCredentialsError, RepositoryError, RepositoryPermissionError
+from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.git.constants import WRITE_ACCESS_PROBE_REF
 from infrahub.git.convergence import WorktreeConverger
+from infrahub.git.models import GitRepositoryMerge
 from infrahub.git.remote_refs import ensure_write_access, list_remote_refs
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
-from infrahub.git.tasks import sync_remote_repositories
+from infrahub.git.tasks import merge_git_repository, sync_remote_repositories
 from infrahub.git.writeback.factory import build_writeback_service
-from infrahub.git.writeback.models import DeliveryOutcome
+from infrahub.git.writeback.models import (
+    AbandonmentRecord,
+    DeliveryOutcome,
+    HeldRegeneration,
+    HeldWiden,
+    PendingMerge,
+)
 from infrahub.git.writeback.store import WritebackIntentStore
 from infrahub.message_bus.messages import RefreshGitFetch
 from infrahub.message_bus.messages.refresh_git_fetch import BranchCommitPair
+from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
+from infrahub.workflows.catalogue import TRIGGER_ARTIFACT_DEFINITION_GENERATE, TRIGGER_GENERATOR_DEFINITION_RUN
 from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.workflow_override import override_workflow
 from tests.integration.git.conftest import (
     GOGS_ADMIN,
     TrackedBranchRepository,
@@ -60,16 +74,37 @@ from tests.integration.git.conftest import (
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Generator
 
+    from fast_depends import Provider
     from infrahub_sdk import InfrahubClient
+    from prefect.client.schemas.objects import State
     from testcontainers.core.container import DockerContainer
 
-    from infrahub.core.protocols import CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
+    from infrahub.core.protocols import CoreAccount, CoreGraphQLQuery, CoreReadOnlyRepository, CoreRepository
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from infrahub.git.writeback.models import DeliveryAttemptResult, WritebackIntent
+    from infrahub.workflows.constants import WorkflowPriority
+    from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
     from tests.adapters.message_bus import BusSimulator
     from tests.helpers.git import GogsServer
 
 SYNC_LOGGER = "infrahub.tasks"
+
+ABANDON_DELIVERY = """
+mutation AbandonDelivery($id: String!, $queue_version: Int!) {
+    InfrahubRepositoryDeliveryAbandon(data: {id: $id, queue_version: $queue_version}) {
+        ok
+    }
+}
+"""
+
+ABANDONMENT_WRITER = """
+query AbandonmentWriter($id: ID!) {
+    CoreRepository(ids: [$id]) {
+        edges { node { delivery_last_abandonment { updated_by { id } } } }
+    }
+}
+"""
 
 
 def _push_commit_to_remote(container: DockerContainer, repo_name: str, filename: str, branch: str = "main") -> None:
@@ -145,15 +180,37 @@ def _remote_branch_contains(container: DockerContainer, repo_name: str, branch: 
     return result.exit_code == 0
 
 
-async def _delivery_state(db: InfrahubDatabase, repository_id: str) -> WritebackIntent:
-    """Return the delivery state of the repository, which lives on the default branch."""
-    store = WritebackIntentStore(
+def _merge_on_remote(container: DockerContainer, repo_name: str, branch: str) -> str:
+    """Merge a branch into main in the remote, as a user does by hand, and return the new head of main.
+
+    The merge keeps the content of main, because a delivery checks only that main holds the commits of the branch.
+    """
+    script = (
+        f"set -e && "
+        f"cd /tmp/{repo_name} && "
+        f"git fetch origin && "
+        f"git checkout -B main origin/main && "
+        f"git merge --no-edit -s ours origin/{branch} && "
+        f"git push origin main"
+    )
+    result = container.get_wrapped_container().exec_run(["bash", "-c", script], user="git")
+    assert result.exit_code == 0, f"Remote merge failed (exit {result.exit_code}): {result.output.decode()}"
+    return gogs_repo_branch_commit(container, repo_name, "main")
+
+
+async def _delivery_store(db: InfrahubDatabase) -> WritebackIntentStore:
+    """Return the store of the delivery state of the repositories, which lives on the default branch."""
+    return WritebackIntentStore(
         db=db,
         lock_registry=lock.registry,
         default_branch=await registry.get_branch(db=db),
         clock=partial(datetime.now, UTC),
     )
-    return await store.read(repository_id=repository_id)
+
+
+async def _delivery_state(db: InfrahubDatabase, repository_id: str) -> WritebackIntent:
+    """Return the delivery state of the repository."""
+    return await (await _delivery_store(db=db)).read(repository_id=repository_id)
 
 
 async def _recorded_commit(db: InfrahubDatabase, repository_id: str) -> str | None:
@@ -162,6 +219,26 @@ async def _recorded_commit(db: InfrahubDatabase, repository_id: str) -> str | No
         db=db, id=repository_id, kind=InfrahubKind.REPOSITORY, raise_on_error=True
     )
     return repository.commit.value
+
+
+class RecordingLocalWorkflow(WorkflowLocalExecution):
+    """Run each workflow in this process, as the test stack does, and keep each submission in order."""
+
+    def __init__(self) -> None:
+        self.submitted: list[tuple[str, dict[str, Any]]] = []
+
+    async def submit_workflow(
+        self,
+        workflow: WorkflowDefinition,
+        context: InfrahubContext | EventContext | None = None,
+        parameters: dict[str, Any] | None = None,
+        tags: list[str] | None = None,
+        priority: WorkflowPriority | None = None,
+    ) -> WorkflowInfo:
+        self.submitted.append((workflow.name, dict(parameters or {})))
+        return await super().submit_workflow(
+            workflow=workflow, context=context, parameters=parameters, tags=tags, priority=priority
+        )
 
 
 @dataclass(frozen=True)
@@ -1059,7 +1136,37 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
                 context=InfrahubContext(branch=BranchContext(name=registry.default_branch), account=AnonymousSession()),
                 log=logging.getLogger(__name__),
             )
-            return await service.deliver(final_attempt=True, manual=True, entry=None)
+
+            # The import step tags its flow run, so the attempt runs inside a flow, as in production.
+            @flow(name="git-repository-delivery-retry-for-test")
+            async def retry() -> DeliveryAttemptResult:
+                return await service.deliver(final_attempt=True, manual=True, entry=None)
+
+            return await retry()
+
+    async def _run_merge_flow(
+        self, client: InfrahubClient, repository: SyncedBranchRepository, entry: PendingMerge, enqueued: bool
+    ) -> State:
+        """Run the Git merge flow that the merge of the branch of the repository submits.
+
+        Args:
+            enqueued: The branch merge queued `entry`, so the flow does not queue it again.
+
+        """
+        main = await client.branch.get(branch_name=registry.default_branch)
+        model = GitRepositoryMerge(
+            repository_id=repository.node_id,
+            repository_name=repository.name,
+            internal_status=RepositoryInternalStatus.ACTIVE.value,
+            source_branch=repository.branch_name,
+            destination_branch=main.name,
+            destination_branch_id=main.id,
+            repository_kind=InfrahubKind.REPOSITORY,
+            pending_merge=entry,
+            pending_merge_enqueued=enqueued,
+        )
+        context = InfrahubContext(branch=BranchContext(name=main.name), account=AnonymousSession())
+        return await merge_git_repository(model=model, context=context, return_state=True)
 
     async def test_delivery_visible(
         self,
@@ -1210,6 +1317,205 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         )
         assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == rewritten
         assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.trunk_commit
+
+    async def test_conflict_then_abandon(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        admin_account: CoreAccount,
+        dependency_provider: Provider,
+        tmp_path: Path,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+    ) -> None:
+        """A merge that conflicts with the remote pushes nothing, and its abandonment records who dropped it.
+
+        The abandonment empties the queue, releases the held regeneration once and leaves the remote as it is. It runs
+        on a worker with no clone and makes none, so it works when the remote is gone.
+        """
+        repository = await synced_branch_repository("delivery-conflict-abandon")
+        remote_head = commit_to_remote_branch(
+            gogs_server.container, repository.name, branch="main", files={f"{repository.branch_name}.txt": "remote\n"}
+        )
+
+        await client.branch.merge(branch_name=repository.branch_name)
+
+        # A blanket regeneration of the default branch holds this marker under each repository with queued merges.
+        await (await _delivery_store(db=db)).hold(
+            repository_id=repository.node_id,
+            held=HeldRegeneration(
+                widen=HeldWiden(scope="all", reason=FullRegenerationReason.SUMMARY_UNAVAILABLE, hold_seq=0)
+            ),
+        )
+        pending = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert pending.held.widen is not None
+        entries = pending.queue.entries
+        assert [(entry.source_branch, entry.source_git_branch, entry.source_commit) for entry in entries] == [
+            (repository.branch_name, repository.branch_name, repository.source_commit)
+        ]
+        assert (pending.status, pending.cause, pending.error) == (
+            RepositoryDeliveryStatus.ACTION_REQUIRED,
+            RepositoryDeliveryFailureCause.REPLAY_CONFLICT,
+            f"The merge {entries[0].entry_id} of branch {repository.branch_name} at commit {repository.source_commit} "
+            f"conflicts with the remote branch main of repository {repository.name} at {remote_head}, "
+            "so nothing was pushed.",
+        )
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == remote_head
+        abandon_started = datetime.now(UTC)
+        fresh_worker = tmp_path / "fresh-worker-repositories"
+        fresh_worker.mkdir()
+
+        with (
+            repositories_directory(fresh_worker),
+            override_workflow(RecordingLocalWorkflow(), dependency_provider=dependency_provider) as workflow,
+        ):
+            await client.execute_graphql(
+                query=ABANDON_DELIVERY, variables={"id": repository.node_id, "queue_version": pending.queue.version}
+            )
+
+        assert list(fresh_worker.iterdir()) == []
+        abandoned = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert workflow.submitted == [
+            (
+                TRIGGER_ARTIFACT_DEFINITION_GENERATE.name,
+                {"branch": registry.default_branch, "include_repository_ids": [repository.node_id]},
+            ),
+            (
+                TRIGGER_GENERATOR_DEFINITION_RUN.name,
+                {
+                    "branch": registry.default_branch,
+                    "source": GeneratorDefinitionRunSource.MERGE,
+                    "include_repository_ids": [repository.node_id],
+                },
+            ),
+        ]
+        record = abandoned.last_abandonment
+        assert record is not None
+        assert abandon_started <= record.abandoned_at <= datetime.now(UTC)
+        assert record == AbandonmentRecord(
+            abandoned_at=record.abandoned_at,
+            account_id=admin_account.id,
+            account_name=admin_account.name.value,
+            queue_version=pending.queue.version,
+            recorded_commit=repository.trunk_commit,
+            entries=entries,
+        )
+        assert (abandoned.status, abandoned.cause, abandoned.error, abandoned.queue.entries) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+        )
+        assert (abandoned.held.is_empty, abandoned.held.release_leases) == (True, ())
+        written = await client.execute_graphql(query=ABANDONMENT_WRITER, variables={"id": repository.node_id})
+        [repository_edge] = written["CoreRepository"]["edges"]
+        assert repository_edge["node"]["delivery_last_abandonment"]["updated_by"] == {"id": admin_account.id}
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == remote_head
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, repository.branch_name) == (
+            repository.source_commit
+        )
+
+    async def test_conflict_resolved_on_remote(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+    ) -> None:
+        """A retry clears a conflicting merge that a user merged by hand on the remote, with no replay and no push."""
+        repository = await synced_branch_repository("delivery-conflict-resolved")
+        commit_to_remote_branch(
+            gogs_server.container, repository.name, branch="main", files={f"{repository.branch_name}.txt": "remote\n"}
+        )
+        await client.branch.merge(branch_name=repository.branch_name)
+        assert (await _delivery_state(db=db, repository_id=repository.node_id)).cause == (
+            RepositoryDeliveryFailureCause.REPLAY_CONFLICT
+        )
+        merged = _merge_on_remote(gogs_server.container, repository.name, branch=repository.branch_name)
+
+        result = await self._retry_delivery(db=db, client=client, repository=repository)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert (result.outcome, result.commit) == (DeliveryOutcome.OBSERVED, merged)
+        assert (state.status, state.cause, state.error, state.queue.entries, state.queue.import_owed_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            None,
+            None,
+            (),
+            None,
+        )
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == merged
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == merged
+
+    async def test_late_first_attempt_does_not_resurrect(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+        reject_pushes_to_main: Callable[[str], Callable[[], None]],
+    ) -> None:
+        """A merge flow that starts after its queued merge was abandoned queues nothing and pushes nothing."""
+        repository = await synced_branch_repository("delivery-late-first-attempt")
+        lift_rejection = reject_pushes_to_main(repository.name)
+        await client.branch.merge(branch_name=repository.branch_name)
+        pending = await _delivery_state(db=db, repository_id=repository.node_id)
+        await client.execute_graphql(
+            query=ABANDON_DELIVERY, variables={"id": repository.node_id, "queue_version": pending.queue.version}
+        )
+        abandoned = await _delivery_state(db=db, repository_id=repository.node_id)
+        lift_rejection()
+
+        flow_state = await self._run_merge_flow(
+            client=client, repository=repository, entry=pending.queue.entries[0], enqueued=True
+        )
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert flow_state.message == (
+            f"The delivery to repository {repository.name} ended with the outcome nothing-pending."
+        )
+        assert (state.status, state.queue, state.last_abandonment) == (
+            RepositoryDeliveryStatus.NONE,
+            abandoned.queue,
+            abandoned.last_abandonment,
+        )
+        assert abandoned.queue.entries == ()
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.trunk_commit
+        assert not _remote_branch_contains(
+            gogs_server.container, repository.name, branch="main", commit=repository.source_commit
+        )
+
+    async def test_first_attempt_queues_a_merge_never_queued(
+        self,
+        db: InfrahubDatabase,
+        client: InfrahubClient,
+        gogs_server: GogsServer,
+        fast_forward_merges: None,
+        synced_branch_repository: Callable[[str], Awaitable[SyncedBranchRepository]],
+    ) -> None:
+        """A merge flow queues the merge that the branch merge could not queue, and delivers it."""
+        repository = await synced_branch_repository("delivery-unqueued-first-attempt")
+        entry = PendingMerge(
+            entry_id=str(uuid4()),
+            source_branch=repository.branch_name,
+            source_git_branch=repository.branch_name,
+            source_commit=repository.source_commit,
+            merged_at=datetime.now(UTC),
+        )
+
+        flow_state = await self._run_merge_flow(client=client, repository=repository, entry=entry, enqueued=False)
+
+        state = await _delivery_state(db=db, repository_id=repository.node_id)
+        assert flow_state.message == f"The delivery to repository {repository.name} ended with the outcome delivered."
+        assert (state.status, state.queue.entries, state.queue.removed_entry_ids, state.last_delivered_commit) == (
+            RepositoryDeliveryStatus.NONE,
+            (),
+            (entry.entry_id,),
+            repository.source_commit,
+        )
+        assert (state.held.is_empty, state.held.release_leases) == (True, ())
+        assert await _recorded_commit(db=db, repository_id=repository.node_id) == repository.source_commit
+        assert gogs_repo_branch_commit(gogs_server.container, repository.name, "main") == repository.source_commit
 
 
 async def _tracked_graph_state(db: InfrahubDatabase, tracked: TrackedBranchRepository) -> tuple[str | None, str | None]:

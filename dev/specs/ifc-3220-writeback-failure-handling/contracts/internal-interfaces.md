@@ -319,14 +319,16 @@ class WritebackAbandoner:
 
 `Actor` comes from the workflow's `InfrahubContext`.
 
-Runs `research.md` R8: under the repository lock, `state.abandon(...)`, then
-`git.notify_branch_deleted(...)` for every abandoned entry that carried the deletion flag; then,
-with the lock released, `releaser.release(...)` on the lease window, then
+Runs `research.md` R8: under the repository lock, `git.recorded_commit()` for the record, then
+`state.abandon(...)`, then `git.notify_branch_deleted(...)` for every abandoned entry that carried
+the deletion flag; then, with the lock released, `releaser.release(...)` on the lease window, then
 `state.clear_released(...)`. If the release raises, it calls `state.expire_lease(...)` on its lease
 and re-raises, so the recovery check releases the held items (`research.md` R10, rule 4). It uses
-the Git port only for that notification: it changes no Git state, deletes no remote branch and
-imports nothing. `DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`,
-so the task run fails with the message of the GraphQL contract.
+the Git port only for these two calls, and neither runs a Git command: `recorded_commit` reads
+Infrahub, and the notification is a message to the workers. It changes no Git state, deletes no
+remote branch and imports nothing, so its flow builds the repository object without a clone.
+`DeliveryQueueChangedError` and `NothingPendingError` subclass `ValidationError`, so the task run
+fails with the message of the GraphQL contract.
 
 ---
 

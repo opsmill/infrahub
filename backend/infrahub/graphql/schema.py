@@ -34,6 +34,7 @@ from .mutations.relationship import RelationshipAdd, RelationshipRemove
 from .mutations.repository import (
     ProcessRepository,
     ReadOnlyRepositoryImportLastCommit,
+    RepositoryDeliveryAbandon,
     RepositoryDeliveryRetry,
     ValidateRepositoryConnectivity,
 )
@@ -143,6 +144,13 @@ class InfrahubBaseMutation(ObjectType):
     InfrahubRepositoryProcess = ProcessRepository.Field()
     InfrahubRepositoryDeliveryRetry = RepositoryDeliveryRetry.Field(
         description="Push every pending merge of a repository to its remote, in order, in a single push."
+    )
+    InfrahubRepositoryDeliveryAbandon = RepositoryDeliveryAbandon.Field(
+        description=(
+            "Abandon every pending merge of a repository. Nothing is removed from the remote, and no remote branch "
+            "is deleted. Repository objects of the abandoned merges can stay on the default branch until the current "
+            "commit is reimported."
+        )
     )
     InfrahubRepositoryConnectivity = ValidateRepositoryConnectivity.Field()
     InfrahubUpdateComputedAttribute = UpdateComputedAttribute.Field()
