@@ -138,6 +138,32 @@ describe("NumberField", () => {
     await expect.element(component.getByTestId("pool-number-input")).toHaveValue(null);
   });
 
+  test("stores the number typed in the pool tab alongside the picked pool", async () => {
+    const onSubmit = vi.fn();
+    const component = await render(
+      <TestForm onSubmit={onSubmit}>
+        <NumberField {...poolProps} />
+      </TestForm>
+    );
+
+    await component.getByRole("tab", { name: "From pool" }).click();
+    await component.getByTestId("select-open-pool-option-button").click();
+    await component.getByRole("option", { name: "VLAN ids pool" }).click();
+    await component.getByRole("spinbutton", { name: "Number" }).fill("42");
+    await component.getByRole("button", { name: "Submit" }).click();
+
+    await expect.poll(() => onSubmit.mock.calls.length).toBeGreaterThan(0);
+    expect(onSubmit.mock.calls[0]?.[0]?.vlan_id).toEqual({
+      source: {
+        type: "pool",
+        id: "number-pool-1",
+        kind: "CoreNumberPool",
+        label: "VLAN ids pool",
+      },
+      value: { from_pool: { id: "number-pool-1", number: 42 } },
+    });
+  });
+
   test("offers no number input for a pool that comes from a template", async () => {
     const component = await render(
       <TestForm>

@@ -332,6 +332,36 @@ describe("getCreateMutationFromFormData", () => {
       });
     });
 
+    it("sends the typed number with the picked pool so the pool records it", () => {
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: {
+          source: { type: "pool", label: "VLAN ids pool", id: "pool-b", kind: "CoreNumberPool" },
+          value: { from_pool: { id: "pool-b", number: 42 } },
+        },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({
+        vlan_id: { value: 42, from_pool: { id: "pool-b" } },
+      });
+    });
+
+    it("sends a typed 0 rather than treating it as empty", () => {
+      const formData: Record<string, FormAttributeValue> = {
+        vlan_id: {
+          source: { type: "pool", label: "VLAN ids pool", id: "pool-b", kind: "CoreNumberPool" },
+          value: { from_pool: { id: "pool-b", number: 0 } },
+        },
+      };
+
+      const mutationData = getCreateMutationFromFormData([numberPoolField], formData);
+
+      expect(mutationData).to.deep.equal({
+        vlan_id: { value: 0, from_pool: { id: "pool-b" } },
+      });
+    });
+
     it("sends nothing after the pool tab was visited and left without picking", () => {
       const formData: Record<string, FormFieldValue> = {
         vlan_id: { source: null, value: null },
