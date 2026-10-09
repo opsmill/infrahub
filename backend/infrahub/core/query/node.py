@@ -829,7 +829,8 @@ CALL (a, av) {
       AND (reserved.to IS NULL OR reserved.to > $tracking_pool_at)
     RETURN
         tracking_pool.uuid AS tracking_pool_uuid,
-        reserved.allocated_values IS NOT NULL AND NOT toInteger(av.value) IN reserved.allocated_values
+        reserved.allocated_values IS NOT NULL
+            AND NOT coalesce(toInteger(av.value) IN reserved.allocated_values, FALSE)
             AS tracking_pool_is_provided
     ORDER BY reserved.from DESC
     LIMIT 1

@@ -51,6 +51,20 @@ mutation CreateRackFromTemplate($name: String!, $template_id: String!) {
 """
 
 
+async def tracking_pool_ids(client: InfrahubClient, kind: str, attribute: str, ids: list[str]) -> dict[str, str | None]:
+    """The id of the number pool each node's attribute reports through `from_pool`, read over GraphQL."""
+    query = """
+    query TrackingPools($ids: [ID!]) {
+        %(kind)s(ids: $ids) { edges { node { id %(attribute)s { from_pool { pool { id } } } } } }
+    }
+    """ % {"kind": kind, "attribute": attribute}
+    data = await client.execute_graphql(query=query, variables={"ids": ids})
+    return {
+        edge["node"]["id"]: ((edge["node"][attribute]["from_pool"] or {}).get("pool") or {}).get("id")
+        for edge in data[kind]["edges"]
+    }
+
+
 class TestTemplateResourcePoolCreation(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def device_schema(self, db: InfrahubDatabase, initialize_registry: None) -> None:
@@ -584,11 +598,16 @@ class TestTemplateNumberPoolAttributes(TestInfrahubApp):
         )
         rack_id = create_result["InfraRackCreate"]["object"]["id"]
 
-        rack = await NodeManager.get_one(id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE)
+        rack = await NodeManager.get_one(
+            id=rack_id, db=db, include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL
+        )
         assert rack.name.value == "rack-from-pool-template"
         assert rack.slot_id.value is not None
         assert 1 <= rack.slot_id.value <= 100
-        assert rack.slot_id.source_id == slot_pool.id
+        assert rack.slot_id.source_id is None
+        tracking_pool = await rack.slot_id.get_tracking_pool(db=db)
+        assert tracking_pool is not None
+        assert tracking_pool.pool_id == slot_pool.id
 
     async def test_rack_explicit_slot_overrides_pool_template(
         self, db: InfrahubDatabase, template_with_pool_slot: InfrahubNode, client: InfrahubClient
@@ -974,21 +993,21 @@ class TestTemplateNestedComponentPoolAllocations(TestInfrahubApp):
 
             # Device rack_unit from number pool
             assert device.rack_unit.value is not None, "Device should have rack_unit from number pool"
-            assert device.rack_unit.source.id == rack_unit_pool.id, (
-                f"rack_unit source should be the number pool, got {device.rack_unit.source}"
-            )
+            assert await tracking_pool_ids(
+                client=client, kind="InfraDevice", attribute="rack_unit", ids=[device_id]
+            ) == {device_id: rack_unit_pool.id}, "rack_unit should be tracked by the rack unit number pool"
             rack_units.add(device.rack_unit.value)
 
             # Interface attributes from pools
             interfaces = await client.filters(kind="InfraInterface", device__ids=[device_id], property=True)
             assert len(interfaces) == 8, "Device should have 8 interfaces from template"
+            assert await tracking_pool_ids(
+                client=client, kind="InfraInterface", attribute="vlan_id", ids=[iface.id for iface in interfaces]
+            ) == {iface.id: vlan_pool.id for iface in interfaces}, "vlan_id should be tracked by the VLAN number pool"
 
             for iface in interfaces:
                 # Interface VLAN from number pool
                 assert iface.vlan_id.value is not None, "Interface should have vlan_id from number pool"
-                assert iface.vlan_id.source.id == vlan_pool.id, (
-                    f"vlan_id source should be the VLAN number pool, got {iface.vlan_id.source}"
-                )
                 vlans.add(iface.vlan_id.value)
 
                 # Interface prefix from IP prefix pool
