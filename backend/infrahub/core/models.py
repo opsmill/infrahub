@@ -435,7 +435,7 @@ class HashableModel(BaseModel):
                 continue
 
             value = getattr(self, field_name)
-            signatures = self._get_signature_field(value)
+            signatures = self._get_field_signature(field_name=field_name, value=value)
             for item in signatures:
                 values.append(item)
                 md5hash.update(item)
@@ -451,6 +451,10 @@ class HashableModel(BaseModel):
             return value.get_hash().encode()
 
         return str(value).encode()
+
+    def _get_field_signature(self, field_name: str, value: Any) -> list[bytes]:  # noqa: ARG002
+        """Return the signature of one field's value, which ignores the order of a list."""
+        return self._get_signature_field(value)
 
     @classmethod
     def _get_signature_field(cls, value: Any) -> list[bytes]:
@@ -638,8 +642,8 @@ class HashableModel(BaseModel):
 
             local_value = getattr(self, field_name)
             other_value = getattr(other, field_name)
-            local_signatures = self._get_signature_field(local_value)
-            other_signatures = other._get_signature_field(other_value)
+            local_signatures = self._get_field_signature(field_name=field_name, value=local_value)
+            other_signatures = other._get_field_signature(field_name=field_name, value=other_value)
 
             if local_signatures != other_signatures:
                 if isinstance(local_value, HashableModel) and isinstance(other_value, HashableModel):
