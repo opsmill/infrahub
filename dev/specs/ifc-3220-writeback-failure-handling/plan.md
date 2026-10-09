@@ -62,7 +62,7 @@ image it stops no direct Git call (`research.md` R6, open point). The import has
 Git commands inside it have none either. While the import holds the repository lock, the recovery check starts no second attempt
 (`research.md` R6, R20).
 
-**Scale/Scope**: one new package of twelve files (`backend/infrahub/git/writeback/`), two new
+**Scale/Scope**: one new package of fourteen files (`backend/infrahub/git/writeback/`), two new
 modules in `core/merge/`, about twenty-five existing backend modules touched, and one frontend
 entity folder, `frontend/app/src/entities/repository/`. The stored history of the queue grows with
 the square of the merges in one outage: about 1.2 MB for 100 merges (`research.md` R23). The task
@@ -132,10 +132,12 @@ backend/infrahub/
 │   │   ├── constants.py                   # retry bounds, barrier read retries, Git timeouts,
 │   │   │                                  # stale bound, cache bounds
 │   │   ├── models.py                      # queue, held set, records, intent, outcomes, actor
-│   │   ├── classifier.py                  # classify_delivery_failure, scrub_credentials
+│   │   ├── classifier.py                  # classify_delivery_failure
+│   │   ├── credentials.py                 # scrub_credentials
 │   │   ├── ports.py                       # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort,
 │   │   │                                  # DeliveryRunQuery
 │   │   ├── store.py                       # WritebackIntentStore, the only read/write path
+│   │   ├── queries.py                     # RepositoryWriteLockQuery
 │   │   ├── git_adapter.py                 # the only Git code of the package
 │   │   ├── runs.py                        # delivery run tags, the only orchestrator query
 │   │   ├── service.py                     # RepositoryWritebackService.deliver
@@ -186,7 +188,7 @@ frontend/app/src/entities/
 backend/tests/
 ├── unit/git/writeback/                    # classifier, scrubber, models, service, abandoner, recovery
 ├── unit/core/merge/                       # barrier, release plan building
-├── component/git/writeback/               # store, branch safety, no events, data-only skip, long queue
+├── component/git/writeback/               # store, mutation inputs, data-only skip, long queue
 ├── component/graphql/                     # mutations: branch and permissions
 ├── component/core/merge/                  # held regeneration end to end
 └── integration/git/test_git_live_remote.py   # the Gogs scenarios
@@ -288,7 +290,7 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 | 2 | Provisional label "Push to remote". Names never carry the label. | `spec.md` decision 2. To settle with INFP-671. |
 | 3 | The state lives on `CoreRepository`, read and written on the default branch only. | `research.md` R1. |
 | 4 | Writes go through the core node API, not the SDK, so they emit no node event. | `research.md` R2. |
-| 5 | A second, short lock with a time to live guards the state. | `research.md` R2. |
+| 5 | A second, short lock with a time to live guards the state, and each transition's transaction also takes the Neo4j write lock of the repository node. | `research.md` R2. |
 | 6 | The queue entry carries the source commit from the graph. A merge that carries no content is not queued. | `research.md` R3. |
 | 7 | The delivery records, with a prior import obligation, then imports, then releases outside the lock. | `research.md` R4. |
 | 8 | Both mutations refuse off the default branch and require what an update of the repository on the default branch requires. | `research.md` R7. |
@@ -307,6 +309,6 @@ the default branch. No setting falls back to the old merge path (`research.md` R
 
 | Violation | Why needed | Simpler alternative rejected because |
 |---|---|---|
-| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The branch merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query is more code and has no precedent for node attributes here. |
+| A second lock, `repository-delivery`, which is new coordination state (Principle VII). | The barrier's check-and-hold and the delivery's take-and-clear must not interleave, or held work is dropped (`research.md` R2). The branch merge flow must not wait for Git. | The repository lock makes a branch merge wait behind a sync or a push. A compare-and-set query loses updates at read-committed isolation unless it takes the node's write lock first, which the store does without a counter. |
 | Four JSON attributes, which are structured values (Principle VII, and the sibling's rejection of a structured record). | The queue and the held set are lists by nature, and an abandonment record carries a list of entries. | One attribute per entry field cannot hold a list. A related node per entry is diff-visible and needs its own permission model, which the PRD rejects. The status, the cause, the message and the last commit, which a server-side query or a display needs, stay scalar. |
 | A cache of narrowed selections, which is a second store for held work (Principle VII). | Without it, nearly every git-synced merge that carries content would recompute whole kinds (SC-008). | Persisting the narrowing in the graph breaks FR-014. Waiting for the first attempt delays every git-synced merge, by minutes when the remote is down. A miss only over-executes. |

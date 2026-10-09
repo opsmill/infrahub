@@ -18,9 +18,11 @@ backend/infrahub/git/writeback/          # NEW
 │                    # STALE_AFTER, cache time to live and size bound
 ├── models.py        # DeliveryQueue, PendingMerge, HeldRegeneration, AbandonmentRecord,
 │                    # RevertedDelivery, WritebackIntent, DeliveryFailure, DeliveryAttemptResult, Actor
-├── classifier.py    # classify_delivery_failure, scrub_credentials
+├── classifier.py    # classify_delivery_failure
+├── credentials.py   # scrub_credentials
 ├── ports.py         # DeliveryStatePort, DeliveryGitPort, RegenerationReleasePort, DeliveryRunQuery
 ├── store.py         # WritebackIntentStore, the only read and write path
+├── queries.py       # RepositoryWriteLockQuery, the write lock of a repository node
 ├── git_adapter.py   # RepositoryDeliveryGitAdapter, the only Git code here
 ├── runs.py          # delivery_run_tags, PrefectDeliveryRunQuery, the only orchestrator query here
 ├── service.py       # RepositoryWritebackService
@@ -33,7 +35,7 @@ backend/infrahub/core/merge/
 └── regeneration_release.py   # NEW: HeldRegenerationReleaser
 ```
 
-`models.py`, `classifier.py`, `service.py`, `abandoner.py` and `recovery.py` import no Git library
+`models.py`, `classifier.py`, `credentials.py`, `service.py`, `abandoner.py` and `recovery.py` import no Git library
 and no database code, so their tests need neither. `recovery.py` reads the orchestrator only through
 `DeliveryRunQuery`, so its tests need no orchestrator either.
 
@@ -45,7 +47,6 @@ and no database code, so their tests need neither. `recovery.py` reads the orche
 class DeliveryStatePort(Protocol):
     async def read(self, *, repository_id: str) -> WritebackIntent: ...
     async def pending_repository_ids(self) -> frozenset[str]: ...
-    async def references_source_branch(self, *, repository_id: str, git_branch: str) -> bool: ...
 
     async def enqueue(self, *, repository_id: str, entry: PendingMerge, widen: bool) -> WritebackIntent: ...
     async def start_attempt(self, *, repository_id: str) -> WritebackIntent: ...
@@ -72,31 +73,53 @@ class DeliveryStatePort(Protocol):
 
 
 class WritebackIntentStore:  # implements DeliveryStatePort
-    def __init__(self, db: InfrahubDatabase, lock_registry: InfrahubLockRegistry, default_branch: Branch) -> None: ...
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        lock_registry: InfrahubLockRegistry,
+        default_branch: Branch,
+        clock: Clock,
+        acquire_seconds: float = STATE_LOCK_ACQUIRE_SECONDS,
+    ) -> None: ...
 ```
 
-Every method except the first three runs under the delivery-state lock (30-second time to live,
-10-second bounded acquire). A timed-out acquire raises `DeliveryStateUnavailableError`.
+`Clock` is `Callable[[], datetime]` and returns a timezone-aware time. The store stamps every
+transition with it.
+
+Every method except the first two runs under the delivery-state lock (30-second time to live,
+10-second bounded acquire, `acquire_seconds`, so a test can pass a shorter one). A timed-out acquire
+raises `DeliveryStateUnavailableError`. A stored JSON
+value that does not match its model, or a stored status or cause that is not a member of its enum,
+raises `DeliveryStateUnreadableError`, which names the repository and the attribute, on every method
+that reads the state. No method clears such a value: [data-model.md](../data-model.md), "A change of a
+stored format", has the rules that keep a new format or member from reaching a worker that cannot
+read it.
+
+Every transition commits its own transaction before it releases the state lock. The first statement
+of that transaction, `RepositoryWriteLockQuery`, takes the Neo4j write lock of the repository node,
+which Neo4j holds until the commit or the rollback. Two transitions that both hold the state lock,
+because the time to live of the first one ended, therefore still run one after the other. A transition on a
+store whose database is already in a transaction raises `ValueError` before it takes the lock. The
+Neo4j driver would refuse the second transaction anyway, but only after the lock is taken.
 
 | Method | Contract |
 |---|---|
 | `read` | A consistent snapshot of one node on the default branch. |
 | `pending_repository_ids` | One query on the scalar `delivery_status`: every `CoreRepository` on the default branch whose status is not `none`. The barrier's fast path. An owed import implies a non-empty queue, so the status covers it. |
-| `references_source_branch` | The guard of FR-011. |
-| `enqueue` | Appends unless the id is present, in `removed_entry_ids`, or in the last abandonment record. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. The refusals are the second guard of FR-005b. The first guard is the flag `pending_merge_enqueued` of section 10. With `widen=True`, and only when it appends, the same save holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP` and the next hold sequence, as `hold` does. `merge_git_repository` passes `True`, and the dispatcher passes `False` (`research.md` R3). `widen` has no default, so a caller cannot forget it. |
+| `enqueue` | Appends unless the id is present, in `removed_entry_ids`, or in the last abandonment record. Bumps the version. Sets `pending` and `last_progress_at`. Idempotent. The refusals are the second guard of FR-005b. The first guard is the flag `pending_merge_enqueued` of section 10. With `widen=True`, and only when it appends, the same save holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP` and the next hold sequence, as `hold` does. `merge_git_repository` passes `True`, and the dispatcher passes `False` (`research.md` R3). `widen` has no default, so a caller cannot forget it. Raises `ValueError` when the entry's `source_git_branch` is the repository's `default_branch`, the branch that the delivery pushes to. |
 | `start_attempt` | Returns the snapshot. Stamps `attempt_started_at` and `last_progress_at`, and clears `retry_due_at`. Sets `pending` only when the queue is non-empty. Keeps the cause, so a waiting retry still shows the last failure. |
-| `record_failure` | Writes the cause, the scrubbed message, `last_progress_at`, and `retry_due_at`. With a non-empty queue, `final=True` sets `action-required` and clears `retry_due_at`. With an empty queue it never changes the status. |
+| `record_failure` | Writes the cause, the scrubbed message, `last_progress_at`, and `retry_due_at`. With a non-empty queue, `final=True` sets `action-required` and clears `retry_due_at`. With an empty queue it never changes the status. While the queue is not empty, a failure with no cause (a failed enqueue or release) keeps the stored cause and error. Otherwise the cause and the error both come from the failure, so they always describe the same failure. |
 | `progress` | Moves `last_progress_at` at a step boundary. |
-| `owe_import` | Sets `import_owed_commit`. Called before the commit is recorded. |
+| `owe_import` | Sets `import_owed_commit`. Called before the commit is recorded. Writes nothing when the queue is empty, because an owed import needs a queued merge. |
 | `settle_import` | Clears `import_owed_commit` when it still names `commit` **and** the queue did not grow past the snapshot. Returns whether it cleared it. |
-| `request_branch_deletion` | Sets `delete_source_git_branch` on every entry that names the branch. Returns whether any did. |
+| `request_branch_deletion` | The guard of FR-011. Sets `delete_source_git_branch` on every entry that names the branch. Returns whether any did, so the caller learns in the same locked call whether a pending merge needs the branch. |
 | `hold` | Returns `None` and writes nothing when the queue is empty. Otherwise adds or refreshes the items with the next sequence, and returns a `HoldReceipt`: the new sequence and, for every refreshed item, its previous sequence. |
-| `settle_delivery` | Called under the repository lock. Removes the snapshot's entries into `removed_entry_ids` and bumps the version, writes `delivered_commit` when it is not `None`, sets the status from what remains, and adds a lease that names each held item that no live lease covers and whose `hold_seq` is not above the snapshot's highest, with that `hold_seq`. One save. Returns the lease, or `None` when no item was uncovered. |
-| `abandon` | Called under the repository lock. Refuses with `DeliveryQueueChangedError` when `queue_version` is not the current version, and with `NothingPendingError` when the queue is empty. Otherwise removes every entry into `removed_entry_ids`, bumps the version, clears the owed import, writes the record, sets `none`, and adds a lease that names every held item that no live lease covers, with no sequence bound, in one save that passes `actor.account_id` as `user_id`. |
+| `settle_delivery` | Called under the repository lock. Removes the snapshot's entries into `removed_entry_ids` and bumps the version, writes `delivered_commit` when it is not `None`, sets the status from what remains, and adds a lease that names each held item that no live lease covers and whose `hold_seq` is not above the snapshot's highest, with that `hold_seq`. One save. Returns the lease, or `None` when no item was uncovered. Raises `ValueError` and saves nothing when it would leave an owed import with an empty queue, which no attempt would then run. |
+| `abandon` | Called under the repository lock. Raises `ValueError` when the record names another `queue_version`, account id or account name than the call and its `actor`. Refuses with `DeliveryQueueChangedError` when `queue_version` is not the current version, and with `NothingPendingError` when the queue is empty. Otherwise removes every entry into `removed_entry_ids`, bumps the version, clears the owed import, writes the record, sets `none`, and adds a lease that names every held item that no live lease covers, with no sequence bound, in one save that passes `actor.account_id` as `user_id`. |
 | `lease_owed_release` | For a held-only run, which needs an empty queue: adds a lease that names every held item that no live lease covers, with no sequence bound, or returns `None` and writes nothing when a live lease covers them all. |
 | `renew_lease` | Moves the lease's `expires_at`. |
 | `expire_lease` | Sets the lease's `expires_at` to now, and keeps the items of its window held. The lease then protects nothing, the same as the lease of a dead worker (`research.md` R10, rules 3 and 4). The next lease takes those items, and they move to it. The run that took the lease calls it when its release fails. Does nothing when the lease is gone. |
-| `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. |
+| `clear_released` | Removes each item that the lease names and that still has the named `hold_seq`, then the lease itself. An item held again after the lease was taken has a higher `hold_seq`, so it stays. Does nothing when the lease is gone, because a newer lease then owns its items. When the queue is empty, the same save clears the cause and the error, which only a failed release can have left. |
 | `touch` | Moves `last_progress_at`. The recovery check calls it after it submits. |
 | `record_reverted` | Overwrites `delivery_reverted`. |
 
@@ -107,8 +130,9 @@ Every method that adds or clears a lease also cleans up the expired leases in th
 - An expired lease drops each item that the held set no longer holds at the named `hold_seq`.
 - An expired lease that names no item any more is removed.
 
-The store is the only code that writes the nine attributes. A test asserts that no other module
-names them in a write.
+The store is the only code that writes the nine attributes. Its constants for the attribute names are
+private. A test asserts that no other module names an attribute, and that no other module imports or
+uses a private name of the store.
 
 ---
 
@@ -119,10 +143,22 @@ def classify_delivery_failure(*, error: BaseException, stage: DeliveryStage) -> 
 def scrub_credentials(*, text: str) -> str: ...
 ```
 
-Pure. The table of `research.md` R5 is the full contract of `classify_delivery_failure`. A
+Pure. `scrub_credentials` lives in `credentials.py`, so that `models.py` can use it without importing the
+classifier. The table of `research.md` R5 is the contract of `classify_delivery_failure`, except its
+`replay-conflict` row: the service sets that cause from `ReplayResult`, and the classifier gives
+`unclassified` for every exception at the replay stage. A
 `RepositoryPushRejectedError` gives its `remote_message` and ref summary as the message. Any other
 error gives its typed message, never raw stderr. Every message passes through `scrub_credentials`,
-which removes `user:password@` and `user@` from every URL it finds.
+which removes `user:password@` and `user@` from every URL it finds. A password can hold `@`, `/`, `?` or
+`#`, so it removes everything from the scheme to the last `@` of the URL. The URL ends at the next
+whitespace, `"`, `<` or `>`, which a URL never holds raw. A `'` does not end it, as a password can hold
+one. An `@` in the path of a URL with no credentials therefore removes the part before it too, and so
+does an `@` after a URL in single quotes with no whitespace between them. That loses text but never
+leaks a credential.
+
+`WritebackIntent.with_failure` passes every message through `scrub_credentials` again, so the store and
+its in-memory double store the same message, and a failure that the service builds outside the
+classifier never stores a credential either.
 
 ---
 
@@ -156,8 +192,9 @@ class DeliveryRunQuery(Protocol):
 `held` holds the window of one lease: the items that it names, each with the named `hold_seq`,
 under which the release reads the narrowed cache. `renew` moves that lease's expiry.
 
-`ReplayResult` is a frozen dataclass: `head: str`, or `conflicting_commit: str` when a merge
-conflicted. `replay` resets to `base` first, and on a conflict aborts the merge and resets to
+`ReplayResult` is a frozen dataclass: `head: str` and `conflicting_commit: str | None = None`. On a
+conflict, `conflicting_commit` names the merge that conflicted, and `head` is `base`, because the replay
+resets to it. `replay` resets to `base` first, and on a conflict aborts the merge and resets to
 `base` again.
 
 `fetch` raises `RepositoryError` on a clone with no `origin`. `InfrahubRepositoryBase.fetch` returns
@@ -528,7 +565,7 @@ Contract:
 | `git/tasks.py::bootstrap_local_repository` | Skips the seed import of the default branch while the state is not `none`. |
 | `git/tasks.py::sync_remote_repositories` | Runs `DeliveryRecoveryCheck.run` for every repository in its loop, before the bootstrap and whatever the sync outcome, under its own guard. |
 | `git/tasks.py::merge_git_repository` | The default path builds the service and calls `deliver_pending_merges`. The read-only path and the staging path are unchanged. No path merges and records locally: a clone with no `origin` fails the attempt at the fetch and keeps the queue (`research.md` R3). Only when `pending_merge_enqueued` is `False`, the default path passes an entry to the task: `pending_merge`, or, when that is `None`, the entry it builds from the source branch's graph commit, after the content test of `research.md` R3 (no entry for a merge that carries no content). The task enqueues it as step 0 of each attempt, with `widen=True` (section 5): the save that appends the entry also holds a `widen` marker of scope `all`, with the reason `UNHELD_FOLLOW_UP`, because the follow-ups of that merge ran without a hold. When `enqueue` refuses the id, no marker is held. When every attempt fails to enqueue, the run ends `Failed` with an error-level log line. When the flag is `True`, it passes `entry=None` and only delivers (`research.md` R3). |
-| `git/tasks.py::git_branch_delete` | When `references_source_branch` is true: calls `request_branch_deletion`, skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
+| `git/tasks.py::git_branch_delete` | Calls `request_branch_deletion`. When it returns true: skips the remote deletion, and does not send `RefreshGitRepositoryBranchDeleted`. |
 | `core/merge/repository_merge_dispatcher.py::RepositoryMergeDispatcher.merge_core_repositories` | For an `active` repository, on a branch that syncs with Git, whose source commit carries content (`research.md` R3): builds the `PendingMerge`, enqueues it under its own guard with `widen=False`, passes it in the model, and passes the merge's `context`. Retries a failed enqueue `ENQUEUE_RETRIES` times, after the delays of `ENQUEUE_RETRY_DELAYS_SECONDS`. If the last retry fails too, it logs at error level and still submits the merge. Takes two new required constructor parameters: the state port, `state: DeliveryStatePort`, through which it enqueues, and a `sleep` callable, as the barrier does, so a unit test records the delays and returns at once. `core/merge/builder.py` and every test that builds the dispatcher pass both. Sets `pending_merge_enqueued` to `True` only when one of its tries returned. Submits no merge workflow for an `active` repository whose source commit carries no content. Passes `tags=delivery_run_tags(repository_id)` when it submits the merge of an `active` repository, so a run that waits in the queue counts as a waiting delivery run (`research.md` R20). |
 | `workflows/constants.py::WorkflowTag` | Gains `REPOSITORY_DELIVERY = "repository-delivery"`, which renders as `infrahub.app/repository-delivery`. It marks a delivery run (`research.md` R20). |
 | `core/merge/regeneration_dispatcher.py::PostMergeRegenerationDispatcher` | Consults the barrier at the sites of section 8. `dispatch` and `_dispatch_plan` take `releasing`. |
@@ -537,4 +574,5 @@ Contract:
 | `git/tasks.py::generate_artifact_definition`, `generators/tasks.py::run_generator_definition` | Accept `exclude_repository_ids` and `include_repository_ids`. |
 | `computed_attribute/tasks.py::computed_attribute_setup_python` | On the default branch, passes the selected pairs through the barrier. |
 | `graphql/mutations/repository.py::ProcessRepository` | Refuses on every branch while the state is not `none`. |
+| `core/convert_object_type/repository_conversion.py::convert_repository_type` | Takes the state port, `delivery_state: DeliveryStatePort`, which the `ConvertObjectType` mutation builds. Under the repository lock, before it deletes the node, it refuses the conversion of a `CoreRepository` with `DeliveryPendingError` while the status is not `none`, and while held regeneration waits, which can stay after a settle or an abandonment with the status `none`. The deletion would drop the queue or the held regeneration with no abandonment record. The read takes no state lock, so a merge that enqueues between the read and the deletion is still dropped. Before it takes the lock, it also refuses, with `ValidationError`, a mapping that sets a read-only attribute of the target kind through `source_field` or `data`, so a conversion from a read-only repository cannot write the delivery state around the store. The check covers the repository conversion only: other kinds have read-only attributes that the automatic mapping copies. |
 | IFC-3210's reconciliation | Calls `state.record_reverted` when the condition of `research.md` R13 holds. Gated on IFC-3210. |

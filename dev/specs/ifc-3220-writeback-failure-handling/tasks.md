@@ -124,7 +124,7 @@ Parts A and B of the plan.
 
 ### State model and classifier (plan part B, no database)
 
-- [ ] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
+- [X] T013 [P] Write `backend/infrahub/git/writeback/constants.py`: `DELIVERY_RETRIES`,
       `DELIVERY_RETRY_DELAYS_SECONDS`, `FETCH_TIMEOUT_SECONDS`, `PUSH_TIMEOUT_SECONDS`,
       `LOCAL_GIT_TIMEOUT_SECONDS`, `STALE_AFTER_SECONDS`, `REMOVED_ENTRY_IDS_KEPT`,
       `NARROWED_HOLD_TTL_SECONDS` (derived from the delays and the fetch and push timeouts, not a
@@ -132,8 +132,10 @@ Parts A and B of the plan.
       `STATE_LOCK_TTL_SECONDS`, `STATE_LOCK_ACQUIRE_SECONDS`, `ENQUEUE_RETRIES`,
       `ENQUEUE_RETRY_DELAYS_SECONDS`, `BARRIER_STATE_READ_RETRIES` and
       `BARRIER_STATE_READ_DELAYS_SECONDS`, with the values of
-      [research.md](research.md) R2, R3, R6, R9, R10 and R20.
-- [ ] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
+      [research.md](research.md) R2, R3, R6, R9, R10 and R20. A unit test asserts that
+      `NARROWED_HOLD_TTL_SECONDS` exceeds the retry delays plus every fetch and push time limit, and
+      that the enqueue and barrier read retry delays add up to at least `STATE_LOCK_TTL_SECONDS`.
+- [X] T014 Write `backend/infrahub/git/writeback/models.py`: `DeliveryQueue`, `PendingMerge`,
       `DeliveryProgress`, `HeldRegeneration` with `HeldItem`, `HeldPythonAttribute`, `HeldWiden`
       (with its `reason`) and `ReleaseLease`, `AbandonmentRecord`, `RevertedDelivery`,
       `WritebackIntent` with `is_stale(now, lock_free, run_queued)` and `has_work(now)`,
@@ -141,14 +143,17 @@ Parts A and B of the plan.
       `DeliveryAttemptResult`, `HoldReceipt` and `Actor`, per [data-model.md](data-model.md). A
       `ReleaseLease` names its items, each with the `hold_seq` it had when the lease was taken, and
       `HeldRegeneration` has `lease_window`, `with_lease` and `without_window`, with the clean-up of
-      expired leases. Every JSON model carries `format: Literal[1]`.
-- [ ] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
+      expired leases. Every JSON model carries `format: Literal[1]`, and [data-model.md](data-model.md)
+      states how a new format or enum member rolls out. `with_failure` keeps the stored
+      cause and error for a failure with no cause only while merges are queued.
+- [X] T015 [P] Write `backend/tests/unit/git/writeback/test_models.py`: idempotent append, refusal
       of a removed id and of an id in the last abandonment record, the bound of `removed_entry_ids`,
       a version that moves only on add or remove, `with_hold` raising the sequence of a repeated
       identifier and reporting the previous one, `lease_window` skipping the items that a live lease
       covers and returning the items of an expired one, a wider `widen` scope replacing a narrower
-      one while a narrower hold keeps the wider scope and its reason, `is_stale` at each of its five
-      conditions, and SHA validation. Add these lease cases: gaps, where an expired lease A, a live
+      one while a narrower hold keeps the wider scope and its reason, and `is_stale` at each of its
+      five conditions. The SHA pattern of `source_commit` is a Pydantic field constraint, so no test
+      checks it. Add these lease cases: gaps, where an expired lease A, a live
       lease B and then new holds after B give a new lease that names A's items and the new holds;
       an overlap that must not happen, where that new lease never names B's items and B's clear
       still removes them; a re-held item, held again after a lease was taken, that keeps its higher
@@ -156,28 +161,37 @@ Parts A and B of the plan.
       item that a new lease takes from an expired lease moves to it, and an expired lease that
       names no item any more is gone after the same call.
 - [ ] T016 Write `backend/infrahub/git/writeback/classifier.py`: `classify_delivery_failure` per the
-      table of [research.md](research.md) R5, and `scrub_credentials`.
+      table of [research.md](research.md) R5, except its `replay-conflict` row, which the service sets
+      from `ReplayResult`. Write `backend/infrahub/git/writeback/credentials.py`:
+      `scrub_credentials`, which the classifier and the model both apply.
 - [ ] T017 [P] Write `backend/tests/unit/git/writeback/test_classifier.py`: every row of R5, the
       `enqueue`, `fetch` and `release` stages included, a fetch and a push past their time limit, a
-      message that never carries raw stderr, and `scrub_credentials` on `user:token@`, `user@` and
-      several URLs in one text.
+      missing repository and a refused certificate at the import, and a message that never carries
+      raw stderr. Write
+      `backend/tests/unit/git/writeback/test_credentials.py`: `scrub_credentials` on `user:token@`,
+      `user@`, a password that holds a `'`, and several URLs in one text.
 
 ### Schema and store (plan part B)
 
-- [ ] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
-      `backend/infrahub/core/constants/__init__.py`, beside `RepositorySyncStatus`. Move
-      `FullRegenerationReason` there from `backend/infrahub/core/merge/regeneration_dispatcher.py`,
-      which then imports it from its new place, and add `UNHELD_FOLLOW_UP`, per
+- [X] T018 Add `RepositoryDeliveryStatus` and `RepositoryDeliveryFailureCause` to
+      `backend/infrahub/core/constants/__init__.py`, beside `RepositorySyncStatus`.
+      `FullRegenerationReason` lives in the same module, with `UNHELD_FOLLOW_UP` and a docstring that
+      forbids a rename of its stored member names, and
+      `backend/infrahub/core/merge/regeneration_dispatcher.py` imports it from there, per
       [data-model.md](data-model.md), "New fallback reasons". `HeldWiden` in T014 needs it.
 - [ ] T019 Declare the nine attributes on `CoreRepository` in
       `backend/infrahub/core/schema/definitions/core/repository.py`, per
       [data-model.md](data-model.md): `LOCAL`, `read_only`, optional, no default, `display=extra`,
       `allow_override=NONE`, the labels, the descriptions (each within the 128-character limit of
-      `AttributeSchema.description`) and the order weights. **Gate: schema
-      sign-off.**
+      `AttributeSchema.description`) and the order weights. The description of
+      `delivery_held_regeneration` names the release after a push or an abandonment.
+      [contracts/repository_delivery.graphql](contracts/repository_delivery.graphql) repeats the nine
+      descriptions word for word. **Gate: schema sign-off.**
 - [ ] T020 Regenerate: `uv run invoke backend.generate`, `uv run invoke schema.generate-graphqlschema`,
       then `pnpm codegen` and `pnpm codegen:graphql` in `frontend/app`. The change to
-      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**).
+      `python_sdk/infrahub_sdk/protocols.py` goes into the shared SDK PR first (**gate**). Gate open:
+      the `python_sdk` pointer names a commit of the open SDK PR opsmill/infrahub-sdk-python#1400. It
+      moves to `infrahub-develop` after that PR merges.
 - [ ] T021 Write `backend/infrahub/git/writeback/ports.py`: `DeliveryStatePort`, `DeliveryGitPort`,
       `RegenerationReleasePort`, `DeliveryRunQuery`, `ReplayResult`, `RepositoryRef` and `Clock`, per
       [contracts/internal-interfaces.md](contracts/internal-interfaces.md) sections 2 and 4.
@@ -189,25 +203,42 @@ Parts A and B of the plan.
       leases. `clear_released` removes only the named items that keep their `hold_seq`.
       `expire_lease` sets the lease's expiry to now and keeps its items. `abandon` passes the
       actor's account id as `user_id`. `pending_repository_ids` filters on the scalar
-      `delivery_status` only.
+      `delivery_status` only. Each transition's transaction first takes the Neo4j write lock of the
+      repository node (`RepositoryWriteLockQuery` in `queries.py`), so the state stays right after
+      the state lock expires.
 - [ ] T023 [P] Write an in-memory `DeliveryStatePort` and a fixed `Clock` in
       `backend/tests/unit/git/writeback/fakes.py`, with the same transition rules as the store.
 - [ ] T024 Write `backend/tests/component/git/writeback/test_store.py`: every transition of the data
       model's table, one save per transition, the lock time to live, a timed-out acquire raising
       `DeliveryStateUnavailableError`, the abandonment edge naming the account, a status that never
       changes on an empty queue, a progress write that leaves `delivery_queue` untouched, an
-      `expire_lease` call whose items move to the lease of the next `lease_owed_release`, and the
-      expired lease that then names no item removed in that same save.
-- [ ] T025 [P] Write `backend/tests/component/git/writeback/test_branch_safety.py`: no delivery
-      attribute in a branch diff or a proposed change, never merged, and a branch created while the
-      default branch holds a queue reads a copy that the store never returns.
+      `expire_lease` call whose items move to the lease of the next `lease_owed_release`, the
+      expired lease that then names no item removed in that same save, and two writers that both
+      hold the state lock, each through its own lock registry, keeping both entries. A stored JSON
+      value, status or cause that the store cannot read raises `DeliveryStateUnreadableError`: a unit
+      test in `backend/tests/unit/git/writeback/test_store.py` checks the parse.
+- [ ] T025 [P] A branch created while the default branch holds a queue holds a copy that the store
+      never returns: a case of `backend/tests/component/git/writeback/test_store.py`. The diff, merge
+      and branch read of a branch-local attribute of `CoreRepository` are not tested again here:
+      `backend/tests/component/git/test_repository_rewrite_branch_safety.py` and the core diff and
+      merge tests cover them.
 - [ ] T026 [P] Write `backend/tests/component/git/writeback/test_schema_contract.py`: the nine
       attributes are absent from `CoreRepositoryCreateInput`, `CoreRepositoryUpdateInput` and
-      `CoreRepositoryUpsertInput`, and a store transition emits no node mutation event.
+      `CoreRepositoryUpsertInput`. No test checks that a store transition emits no node mutation
+      event: the store has no event service, and only the GraphQL mutations emit node events, which
+      `backend/tests/component/graphql/test_mutation_update.py` tests.
 - [ ] T027 [P] Add a 200-entry queue case to `backend/tests/component/git/writeback/test_store.py`.
 - [ ] T028 [P] Write `backend/tests/unit/git/writeback/test_single_writer.py`: no module under
       `backend/infrahub/` other than `store.py`, the schema definition and the generated files names
       any of the nine attribute names.
+- [ ] T110 Guard the repository conversion in
+      `backend/infrahub/core/convert_object_type/repository_conversion.py`, per
+      [contracts/internal-interfaces.md](contracts/internal-interfaces.md) section 10: refuse a
+      mapping that sets a read-only attribute of the target kind, and refuse the conversion of a
+      `CoreRepository` while its status is not `none` or held regeneration waits. The
+      `ConvertObjectType` mutation passes the store. Test each refusal through the mutation in
+      `backend/tests/component/git/writeback/test_repository_conversion.py`. The check takes no state
+      lock, so a merge queued between the check and the deletion is still dropped (spec edge case).
 
 **Checkpoint**: the state can be read and written, by one store, on the default branch only.
 
@@ -606,9 +637,9 @@ and is not re-imported; retry; the branch is gone.
 
 **Maps to**: FR-010, FR-011. **In the deployment rule.**
 
-- [ ] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: when
-      `references_source_branch` is true, call `request_branch_deletion`, skip the remote deletion,
-      log why, and do not send `RefreshGitRepositoryBranchDeleted`.
+- [ ] T095 [US6] Change `git_branch_delete` in `backend/infrahub/git/tasks.py`: call
+      `request_branch_deletion`, and when it returns true, skip the remote deletion, log why, and do
+      not send `RefreshGitRepositoryBranchDeleted`.
 - [ ] T096 [US6] Confirm step 13 of `RepositoryWritebackService.deliver` deletes a flagged branch that no
       remaining entry names, and add the case to `backend/tests/unit/git/writeback/test_service.py`.
 - [ ] T097 [US6] Add `test_remote_branch_kept_while_pending` to
@@ -731,7 +762,7 @@ covers only the success path covers nothing that matters.
 | Phase | Tasks |
 |---|---|
 | 1 Setup | 4 |
-| 2 Foundational | 24 |
+| 2 Foundational | 25 |
 | 3 US1 visible failure | 21 |
 | 4 US2 one retry | 11 |
 | 5 US3 held regeneration | 16 |
@@ -740,4 +771,4 @@ covers only the success path covers nothing that matters.
 | 8 US6 branch kept | 4 |
 | 9 US7 rewrites | 3 |
 | 10 Documentation and polish | 8 |
-| **Total** | **109** |
+| **Total** | **110** |
