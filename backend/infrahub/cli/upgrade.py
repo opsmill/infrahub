@@ -26,6 +26,8 @@ from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
 from infrahub.menu.repository import MenuRepository
 from infrahub.menu.utils import create_default_menu
+from infrahub.prefect_server.task_history_models import CleanupRewrite
+from infrahub.task_manager.flow_run.cleanup import POLL_INTERVAL
 from infrahub.trigger.tasks import trigger_configure_all
 from infrahub.workflows.initialization import (
     setup_blocks,
@@ -44,8 +46,15 @@ from .db import (
     trigger_rebase_branches,
     update_core_schema,
 )
+from .tasks import TASK_HISTORY_CLEANUP_RERUN_HINT, clean_task_history
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import timedelta
+
+    from prefect.client.orchestration import PrefectClient
+    from rich.console import Console
+
     from infrahub.cli.context import CliContext
     from infrahub.core.branch.models import Branch
     from infrahub.database import InfrahubDatabase
@@ -108,6 +117,15 @@ async def upgrade_cmd(
             "and are not controlled by this flag."
         ),
     ),
+    no_task_history_cleanup: bool = typer.Option(
+        False,
+        "--no-task-history-cleanup",
+        help=(
+            "Leave out the task history cleanup, for an upgrade that runs while the instance still serves, "
+            "such as the upgrade hook of the Helm chart. Run `infrahub tasks flush flow-runs --rewrite` "
+            "in a maintenance window afterwards."
+        ),
+    ),
 ) -> None:
     """Upgrade Infrahub to the latest version.
 
@@ -147,6 +165,7 @@ async def upgrade_cmd(
         rebase_branches=rebase_branches,
         interactive=interactive,
         verbose=verbose,
+        skip_task_history_cleanup=no_task_history_cleanup,
     )
 
     await dbdriver.close()
@@ -158,9 +177,10 @@ async def _upgrade_execute(
     rebase_branches: bool = False,
     interactive: bool = False,
     verbose: bool = False,
+    skip_task_history_cleanup: bool = False,
 ) -> None:
     """Execute the full upgrade sequence with structured step output."""
-    console.log("[bold]Step 1/6: Database migrations[/bold]")
+    console.log("[bold]Step 1/7: Database migrations[/bold]")
     migrations = await detect_migration_to_run(current_graph_version=root_node_graph_version)
 
     if verbose:
@@ -173,22 +193,22 @@ async def _upgrade_execute(
                 console.log(f"Upgrade cancelled due to migration failure. {FAILED_BADGE}")
                 return
 
-    console.log("[bold]Step 2/6: Internal schema[/bold]")
+    console.log("[bold]Step 2/7: Internal schema[/bold]")
     await initialize_internal_schema()
     console.log("Internal schema initialized")
 
-    console.log("[bold]Step 3/6: Core schema[/bold]")
+    console.log("[bold]Step 3/7: Core schema[/bold]")
     if verbose:
         await update_core_schema(db=db, initialize=False)
     else:
         with suppress_internal_logs():
             await update_core_schema(db=db, initialize=False)
 
-    console.log("[bold]Step 4/6: Internal objects[/bold]")
+    console.log("[bold]Step 4/7: Internal objects[/bold]")
     await upgrade_menu(db=db)
     await upgrade_permissions(db=db)
 
-    console.log("[bold]Step 5/6: Task manager[/bold]")
+    console.log("[bold]Step 5/7: Task manager[/bold]")
     async with get_client(sync_client=False) as client:
         await setup_blocks()
         await setup_worker_pools(client=client)
@@ -196,7 +216,10 @@ async def _upgrade_execute(
         await trigger_configure_all()
     console.log("Task manager configured")
 
-    console.log("[bold]Step 6/6: Branch rebase[/bold]")
+    console.log("[bold]Step 6/7: Task history cleanup[/bold]")
+    await upgrade_task_history(skip=skip_task_history_cleanup, client_factory=_task_manager_client, console=console)
+
+    console.log("[bold]Step 7/7: Branch rebase[/bold]")
     branches = await mark_branches_needing_rebase(db=db)
     plural = len(branches) != 1
     console.log(
@@ -219,6 +242,36 @@ async def _upgrade_execute(
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
     console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
+
+
+async def upgrade_task_history(
+    skip: bool,
+    client_factory: Callable[[], PrefectClient],
+    console: Console,
+    poll_interval: timedelta = POLL_INTERVAL,
+) -> None:
+    """Delete the task history older than its retention, reporting a failure without stopping the upgrade.
+
+    The tables are rewritten only when more than half of their disk space is free after the deletes, including the
+    space of runs the task manager deleted before.
+    """
+    if skip:
+        console.log("Task history cleanup skipped")
+        return
+    async with client_factory() as client:
+        failure = await clean_task_history(
+            client=client, rewrite=CleanupRewrite.IF_FREED, console=console, poll_interval=poll_interval
+        )
+    if failure is not None:
+        # Each committed day stays deleted and a failed rewrite leaves its table intact, so the upgrade can go on.
+        console.log(f"{ERROR_BADGE} Task history cleanup failed: {failure.error}")
+        if failure.committed is not None:
+            console.log(failure.committed)
+        console.log(TASK_HISTORY_CLEANUP_RERUN_HINT)
+
+
+def _task_manager_client() -> PrefectClient:
+    return get_client(sync_client=False)
 
 
 async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:
@@ -245,6 +298,13 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
     # Best-effort dry-run report: a failed schema probe is reported inline and the remaining checks still run
     except Exception as exc:  # noqa: BLE001
         console.log(f"  Unable to check: {exc}")
+
+    console.log("\nTask history:")
+    console.log("  Finished task runs older than the task manager's task history retention will be deleted")
+    console.log(
+        "  The task history tables will be rewritten if more than half of their disk space is free after the deletes"
+    )
+    console.log("  --no-task-history-cleanup leaves this out")
 
     console.log("\nBranches:")
     branches = await get_branches_needing_rebase(db=db)
