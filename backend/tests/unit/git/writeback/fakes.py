@@ -144,6 +144,7 @@ class InMemoryDeliveryState:
         abandoned, lease = intent.abandoned(
             repository_name=self.names[repository_id],
             queue_version=queue_version,
+            actor=actor,
             record=record,
             lease_id=self._next_lease_id(),
             now=self.clock(),

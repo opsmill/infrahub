@@ -197,6 +197,7 @@ class WritebackIntentStore:
             abandoned, lease = state.intent.abandoned(
                 repository_name=state.repository_name,
                 queue_version=queue_version,
+                actor=actor,
                 record=record,
                 lease_id=str(uuid4()),
                 now=state.now,
