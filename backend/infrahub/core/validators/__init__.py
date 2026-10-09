@@ -15,6 +15,7 @@ from .node.generate_profile import NodeGenerateProfileChecker
 from .node.hierarchy import NodeHierarchyChecker
 from .node.inherit_from import NodeInheritFromChecker
 from .node.relationship import NodeRelationshipAddChecker
+from .pool.scope import NumberPoolScopeChecker
 from .relationship.count import RelationshipCountChecker
 from .relationship.optional import RelationshipOptionalChecker
 from .relationship.peer import RelationshipPeerChecker, RelationshipPeerParentChecker
@@ -51,4 +52,9 @@ CONSTRAINT_VALIDATOR_MAP: dict[str, type[ConstraintCheckerInterface] | None] = {
     "node.generate_profile.update": NodeGenerateProfileChecker,
     "node.attribute.add": NodeAttributeAddChecker,
     "node.relationship.add": NodeRelationshipAddChecker,
+    "node.attribute.remove": NumberPoolScopeChecker,
+    "node.relationship.remove": NumberPoolScopeChecker,
+    "attribute.name.update": NumberPoolScopeChecker,
+    "relationship.name.update": NumberPoolScopeChecker,
+    ConstraintIdentifier.ATTRIBUTE_PARAMETERS_ALLOCATION_SCOPE_UPDATE.value: NumberPoolScopeChecker,
 }

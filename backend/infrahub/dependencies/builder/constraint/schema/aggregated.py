@@ -13,6 +13,7 @@ from .generate_profile import SchemaGenerateProfileConstraintDependency
 from .inherit_from import SchemaInheritFromConstraintDependency
 from .node_attribute import SchemaNodeAttributeAddConstraintDependency
 from .node_relationship import SchemaNodeRelationshipAddConstraintDependency
+from .number_pool_scope import SchemaNumberPoolScopeConstraintDependency
 from .relationship_count import SchemaRelationshipCountConstraintDependency
 from .relationship_optional import SchemaRelationshipOptionalConstraintDependency
 from .relationship_peer import SchemaRelationshipPeerParentConstraintDependency
@@ -40,6 +41,7 @@ class AggregatedSchemaConstraintsDependency(DependencyBuilder[AggregatedConstrai
                 SchemaNodeAttributeAddConstraintDependency.build(context=context),
                 SchemaNodeRelationshipAddConstraintDependency.build(context=context),
                 SchemaRelationshipPeerParentConstraintDependency.build(context=context),
+                SchemaNumberPoolScopeConstraintDependency.build(context=context),
             ],
             db=context.db,
             branch=context.branch,
