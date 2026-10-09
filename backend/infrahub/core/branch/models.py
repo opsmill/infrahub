@@ -168,7 +168,7 @@ class Branch(StandardNode):
     async def get_list(
         cls,
         db: InfrahubDatabase,
-        limit: int = 1000,
+        limit: int | None = 1000,
         offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
@@ -179,6 +179,26 @@ class Branch(StandardNode):
         exclude_terminal: bool = False,
         **kwargs: Any,  # noqa: ARG003
     ) -> list[Self]:
+        """Return the branches matching the filters.
+
+        Args:
+            db: Database connection instance.
+            limit: Page size, or None to read every match. None leaves the underlying query without
+                a LIMIT, so it is served in chunks of the configured query size limit instead.
+            offset: Number of matches to skip. Pairing it with `limit=None` issues one unbounded
+                query that bypasses the query size limit, so callers must not combine the two.
+            ids: Restrict to these branch UUIDs, when `branch_filters` carries none.
+            name: Restrict to this branch name, when `branch_filters` carries none.
+            node_ordering: Ordering to apply; defaults to ascending database id.
+            branch_filters: The full set of branch list filters.
+            exclude_global: Drop the global branch from the result.
+            exclude_default: Drop the default branch from the result.
+            exclude_terminal: Drop MERGED and DELETING branches rather than only DELETING.
+
+        Returns:
+            The matching branches.
+
+        """
         if branch_filters is None:
             branch_filters = BranchListFilters(name=name, ids=ids)
         else:

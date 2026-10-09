@@ -5,6 +5,7 @@ COMMITS_DIRECTORY_NAME = "commits"
 BRANCHES_DIRECTORY_NAME = "branches"
 TEMPORARY_DIRECTORY_NAME = "temp"
 
+<<<<<<< HEAD
 READ_ONLY_FETCH_TIMEOUT_SECONDS: Final = 900
 """Ceiling on a read-only repository's fetch, after which git and every process it started are told
 to stop. Generous: a first transfer of a large repository is legitimately slow."""
@@ -17,6 +18,10 @@ READ_ONLY_FETCH_STOP_GRACE_SECONDS: Final = 10
 REMOTE_TRANSPORT_ENVIRONMENT: Final[Mapping[str, str]] = MappingProxyType(
     {"GIT_HTTP_LOW_SPEED_LIMIT": "1000", "GIT_HTTP_LOW_SPEED_TIME": "20"}
 )
+=======
+# Branch names resolved per query when reading a repository's per-branch commit and internal status.
+REPOSITORY_BRANCH_READ_CHUNK_SIZE = 100
+>>>>>>> origin/develop
 
 # Ref targeted by the write-access probe. The probe never mutates the remote because it runs under
 # --dry-run; this name is merely improbable, so the probe is meaningful even on a remote that happens

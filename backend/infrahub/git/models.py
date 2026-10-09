@@ -350,10 +350,14 @@ class RepositoryData(BaseModel):
     repository: CoreRepository | CoreReadOnlyRepository | Node = Field(
         ..., description="InfrahubNode representing a Repository"
     )
+<<<<<<< HEAD
     location: str | None = Field(..., description="External URL of the repository, absent when it has none")
     branches: dict[str, str] = Field(
+=======
+    branches: dict[str, str | None] = Field(
+>>>>>>> origin/develop
         ...,
-        description="Dictionary with the name of the branch as the key and the active commit id as the value",
+        description="Dictionary with the name of the branch as the key and the active commit id as the value, None when the branch has no commit",
     )
 
     branch_info: dict[str, RepositoryBranchInfo] = Field(default_factory=dict)

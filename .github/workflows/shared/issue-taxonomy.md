@@ -3,8 +3,8 @@
 Shared by `issue-triage-labeler` (per-issue, on open) and `issue-triage-sweep`
 (weekly backfill). Edit here only, both workflows read this file at runtime.
 
-Apply **at most two** labels per issue: one `group/*` (always) and one
-`category/*` (bugs only).
+Apply **at most three** labels per issue: one `group/*` (always), one primary
+`category/*` (bugs only), and `category/derived-values` on top of it when it applies.
 
 **Never apply a priority label.** Priority is assigned by a human.
 
@@ -55,6 +55,11 @@ Pick the **single best** primary category:
 - **One primary category.** Many bugs touch two areas. Pick where the fix belongs.
   A slow diff on a large branch is `category/scaling` if volume is the trigger and
   `category/branching` if the diff is wrong regardless of size.
+- **`category/derived-values` is the one extra category.** Add it on top of the primary
+  category when the bug is about a computed attribute, a display label or an HFID: a
+  wrong or stale value, or a recompute that is missing or too slow. A computed attribute
+  that keeps its old value after a merge is `category/branching` plus
+  `category/derived-values`. If no other category fits, it can stand alone.
 - **A proposed-change pipeline bug takes the category of the stage that misbehaved**,
   not `category/branching`. Reserve `category/branching` for the branch and
   proposed-change lifecycle itself: creating, diffing, rebasing, merging, conflict
@@ -71,3 +76,5 @@ Pick the **single best** primary category:
 - **If no category clearly fits, apply none.** A missing label is cheap to add later,
   a wrong one is misleading. Do not force a fit.
 - **Never replace an existing label.** Only fill in an axis that is missing.
+  `category/derived-values` counts as its own axis: add it when it applies and is
+  missing, even if the issue already has a primary category.
