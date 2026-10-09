@@ -14,6 +14,7 @@ from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdate
 from infrahub.events.branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent
 from infrahub.events.utils import get_all_events
 from infrahub.events.validator_action import ValidatorFailedEvent, ValidatorPassedEvent, ValidatorStartedEvent
+from infrahub.telemetry.models import TelemetryActivity24hData
 from infrahub.telemetry.task_manager import (
     count_webhook_runs,
     count_windowed_event,
@@ -80,8 +81,25 @@ async def prefect_client(prefect_test_fixture: Generator[None]) -> AsyncGenerato
         yield client
 
 
+def _increase(after: int | None, before: int | None) -> int:
+    assert after is not None
+    assert before is not None
+    return after - before
+
+
 @pytest.fixture(scope="module")
-async def seeded_logins(prefect_client: PrefectClient) -> str:
+async def activity_before_seeding(prefect_client: PrefectClient) -> TelemetryActivity24hData:
+    """The window's counts before this module seeds it.
+
+    Other test modules on the same worker post events to the same Prefect server, some of them into
+    the previous UTC day, so the checks compare what the seeding added rather than the totals. The
+    seeding fixtures request it so that it is counted first.
+    """
+    return await gather_activity_24h.fn(client=prefect_client)
+
+
+@pytest.fixture(scope="module")
+async def seeded_logins(prefect_client: PrefectClient, activity_before_seeding: TelemetryActivity24hData) -> str:
     """Seed login events around the previous-UTC-day window; return the shared account suffix.
 
     The window the production code computes from "now" is the previous full UTC calendar day
@@ -132,7 +150,10 @@ _ACTIVITY_IN_WINDOW_COUNTS: dict[str, int] = {
 
 
 @pytest.fixture(scope="module")
-async def seeded_activity(prefect_client: PrefectClient) -> dict[str, int]:
+async def seeded_activity(
+    prefect_client: PrefectClient,
+    activity_before_seeding: TelemetryActivity24hData,
+) -> dict[str, int]:
     """Seed validator/artifact/branch events around the previous-UTC-day window.
 
     For each event name, places its mapped number of events inside the window and exactly one a
@@ -168,7 +189,9 @@ async def test_floor_to_midnight_utc() -> None:
     assert floored == datetime(2026, 6, 28, 0, 0, 0, tzinfo=UTC)
 
 
-async def test_windowed_logins_count(prefect_client: PrefectClient, seeded_logins: str) -> None:
+async def test_windowed_logins_count(
+    prefect_client: PrefectClient, activity_before_seeding: TelemetryActivity24hData, seeded_logins: str
+) -> None:
     window_start, window_end = get_activity_window()
     count = await count_windowed_event.fn(
         client=prefect_client,
@@ -179,10 +202,12 @@ async def test_windowed_logins_count(prefect_client: PrefectClient, seeded_login
     # Four in-window logins (two from account a, one from account b, one at exactly
     # window_start). The event at exactly window_end and the before/after events are excluded —
     # proving the interval is half-open and anchored to midnight, not to now.
-    assert count == 4
+    assert _increase(count, activity_before_seeding.logins) == 4
 
 
-async def test_windowed_unique_logins_count(prefect_client: PrefectClient, seeded_logins: str) -> None:
+async def test_windowed_unique_logins_count(
+    prefect_client: PrefectClient, activity_before_seeding: TelemetryActivity24hData, seeded_logins: str
+) -> None:
     window_start, window_end = get_activity_window()
     unique = await count_windowed_unique_resources.fn(
         client=prefect_client,
@@ -191,7 +216,7 @@ async def test_windowed_unique_logins_count(prefect_client: PrefectClient, seede
         window_end=window_end,
     )
     # Three distinct accounts in-window (a, b, atstart); account a's repeat login collapses.
-    assert unique == 3
+    assert _increase(unique, activity_before_seeding.unique_logins) == 3
 
 
 async def test_windowed_logins_exclude_out_of_window(prefect_client: PrefectClient, seeded_logins: str) -> None:
@@ -252,12 +277,14 @@ async def test_webhook_split_excludes_out_of_window(prefect_client: PrefectClien
     assert failure == 0
 
 
-async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_logins: str) -> None:
+async def test_gather_activity_24h_logins(
+    prefect_client: PrefectClient, activity_before_seeding: TelemetryActivity24hData, seeded_logins: str
+) -> None:
     data = await gather_activity_24h.fn(client=prefect_client)
     # Login fields reflect exactly the in-window seeded events (incl. the one at exactly
     # window_start; the one at exactly window_end belongs to the next day).
-    assert data.logins == 4
-    assert data.unique_logins == 3
+    assert _increase(data.logins, activity_before_seeding.logins) == 4
+    assert _increase(data.unique_logins, activity_before_seeding.unique_logins) == 3
     # Webhook fields are present (an empty window is 0, not null). Webhook runs seeded by
     # other tests are stamped at "today", which is after the previous-day window the gather
     # computes, so this assertion does not depend on cross-test ordering for a 0.
@@ -266,20 +293,23 @@ async def test_gather_activity_24h_logins(prefect_client: PrefectClient, seeded_
 
 
 async def test_gather_activity_24h_checks_artifacts_branches(
-    prefect_client: PrefectClient, seeded_activity: dict[str, int]
+    prefect_client: PrefectClient, activity_before_seeding: TelemetryActivity24hData, seeded_activity: dict[str, int]
 ) -> None:
-    # Each field equals exactly the in-window seeded count for its mapped event; the single
+    # Each field grows by exactly the in-window seeded count for its mapped event; the single
     # out-of-window event per name is excluded, so the count never inflates past the in-window
     # total. One gather covers every field: the flow computes them all in a single pass.
     data = await gather_activity_24h.fn(client=prefect_client)
-    assert data.checks_started == seeded_activity[ValidatorStartedEvent.event_name]
-    assert data.checks_passed == seeded_activity[ValidatorPassedEvent.event_name]
-    assert data.checks_failed == seeded_activity[ValidatorFailedEvent.event_name]
-    assert data.artifacts_created == seeded_activity[ArtifactCreatedEvent.event_name]
-    assert data.artifacts_updated == seeded_activity[ArtifactUpdatedEvent.event_name]
-    assert data.branches_created == seeded_activity[BranchCreatedEvent.event_name]
-    assert data.branches_merged == seeded_activity[BranchMergedEvent.event_name]
-    assert data.branches_deleted == seeded_activity[BranchDeletedEvent.event_name]
+    before = activity_before_seeding
+    assert {
+        ValidatorStartedEvent.event_name: _increase(data.checks_started, before.checks_started),
+        ValidatorPassedEvent.event_name: _increase(data.checks_passed, before.checks_passed),
+        ValidatorFailedEvent.event_name: _increase(data.checks_failed, before.checks_failed),
+        ArtifactCreatedEvent.event_name: _increase(data.artifacts_created, before.artifacts_created),
+        ArtifactUpdatedEvent.event_name: _increase(data.artifacts_updated, before.artifacts_updated),
+        BranchCreatedEvent.event_name: _increase(data.branches_created, before.branches_created),
+        BranchMergedEvent.event_name: _increase(data.branches_merged, before.branches_merged),
+        BranchDeletedEvent.event_name: _increase(data.branches_deleted, before.branches_deleted),
+    } == seeded_activity
 
 
 async def test_gather_prefect_events_unchanged(prefect_client: PrefectClient, seeded_logins: str) -> None:
