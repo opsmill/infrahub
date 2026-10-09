@@ -192,12 +192,14 @@ This is a cost of the move, not an independent feature.
 |---|---|---|
 | Pool written to `HAS_SOURCE` | yes, branch-aware, inheriting the attribute's branch | **never** |
 | User may set `source` on a pooled attribute | refused (FR-030a) | **allowed** (FR-030a deleted) |
-| `source` read resolution | the stored `HAS_SOURCE` edge | user's `HAS_SOURCE` if one resolves active, else the pool reached by the inbound `-global-` `IS_RESERVED` edge on the same attribute |
-| GraphQL field and type | `source: LineageSource` | **unchanged** — only what populates it moves |
+| `source` read resolution | the stored `HAS_SOURCE` edge | the user's `HAS_SOURCE` if one resolves active, else null; **never the pool** |
+| Where the tracking pool is reported | `source` | the `from_pool` output field on `NumberAttribute`, read from the inbound `-global-` `IS_RESERVED` edge on the same attribute into a property of its own (`tracking_pool`), with the provenance of the branch-resolved value |
+| GraphQL field and type | `source: LineageSource` | `source` **unchanged**; `from_pool: NumberAttributeFromPool` added |
 | Appears in branch diffs | yes | **no** — accepted cost, changelog entry required |
 
-`CoreNumberPool` already inherits `LineageSource`, and the existing source subquery already matches
-undirected and unlabelled, so nothing about the published shape changes.
+The tracking pool never enters the source property, so a save after a re-pool or a detach cannot
+store the pool as a source. The `source` change does not show in the generated schema; `from_pool`
+does.
 
 **The derivation must return the pool vertex, not its uuid.** Extraction builds
 `AttributeNodePropertyFromDB(uuid=…, labels=…)` from the returned node's labels, and those labels are
@@ -227,9 +229,8 @@ migration**, captured before behaviour 3 runs — or behaviour 4 must run before
 Otherwise: behaviour 3 collapses several pools' records onto one attribute and kills the losers, so
 losing pool A no longer has a live record; behaviour 4 then looks for "a live record from that same
 pool for that same attribute", does not find one, and **leaves A's legacy `HAS_SOURCE` in place**.
-That edge wins the read slot forever, so the attribute reports pool A as its source while pool B
-actually tracks the number — precisely the failure FR-030b exists to prevent, reintroduced by
-ordering.
+That edge keeps reporting pool A as `source` while `from_pool` reports pool B, which actually tracks
+the number — precisely the failure FR-030b exists to prevent, reintroduced by ordering.
 
 Component test: two pools with live records on one attribute, both carrying legacy pool
 `HAS_SOURCE` edges. After the migration the attribute reports the **surviving** pool and has **no**
@@ -295,23 +296,23 @@ pool for any pre-upgrade object re-pooled through the old overwrite-the-source p
 ### 4. Delete legacy pool `HAS_SOURCE` edges
 
 Scoped to `(a:Attribute)-[:HAS_SOURCE]->(pool:CoreNumberPool)` **where a live record from that same
-pool exists for that same attribute**. Left in place they would win the read slot forever, so the
-derivation would never fire for pre-upgrade data — and, being branch-aware edges carrying what is now
+pool exists for that same attribute**. Left in place they would keep reporting the pool as `source`
+for pre-upgrade data, where a current attribute reads null — and, being branch-aware edges carrying what is now
 a `-global-` fact, they would reproduce the detach orphaning for exactly the objects most likely to
 be detached during brownfield cleanup.
 
 The predicate cannot catch a user source pointing elsewhere, and that is correct: it should not.
-Where a user deliberately set the source to the tracking pool, deleting the edge changes nothing
-visible — the derivation returns the same pool.
+Where a user deliberately set the source to the tracking pool, deleting the edge removes the pool
+from `source`; `from_pool` still reports it.
 
 ### Indexing
 
 `core/graph/index.py::rel_indexes` gives every property edge type a `branch` range index —
 `HAS_ATTRIBUTE`, `HAS_VALUE`, `IS_RELATED`, `IS_PROTECTED`, `HAS_SOURCE`, `HAS_OWNER`, `IS_PART_OF` —
 and **nothing for `IS_RESERVED`**. That was defensible while the edge was touched only by pool
-queries. It stops being defensible here: FR-030b puts an `OPTIONAL MATCH` for the record inside
-`NodeListGetAttributeQuery`, which runs for **every attribute of every kind** read with metadata, the
-overwhelming majority of which have no reservation at all.
+queries. It stops being defensible here: the `from_pool` read puts an `OPTIONAL MATCH` for the record
+inside `NodeListGetAttributeQuery`, which runs for **every number attribute** read with `from_pool`
+selected, the overwhelming majority of which have no reservation at all.
 
 Add:
 
@@ -354,8 +355,9 @@ vertex is swept automatically. Only the *anchoring* matches are typed (`HAS_ATTR
 and those select candidate vertices, not edges to close.
 
 The rename bug matters more after FR-030b: the record is now the sole storage of the pool's claim, so
-relocating it onto a branch makes it invisible to a derivation matching only `-global-` edges — the
-attribute then reports **no source at all** while the ledger still holds the number reserved.
+relocating it onto a branch makes it invisible to the `from_pool` read, which matches only `-global-`
+edges — the attribute then reads **`from_pool: null`** while the ledger still holds the number
+reserved.
 
 ---
 

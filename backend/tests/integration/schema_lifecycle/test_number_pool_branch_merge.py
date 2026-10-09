@@ -6,11 +6,12 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import NumberPoolType
+from infrahub.core.constants import NumberPoolType, PoolRecordProvenance
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreNumberPool
+from infrahub.core.query.resource_manager import TrackingPoolRecord
 from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.exceptions import ValidationError
 from infrahub.log import get_logger
@@ -575,9 +576,11 @@ class TestInheritedNumberPoolReusesExistingPool(TestInfrahubApp):
         assert 1000 <= incident.ticket_number.value <= 9999, (
             f"ticket_number value {incident.ticket_number.value} is outside pool range 1000-9999"
         )
-        ticket_number_source = await incident.get_attribute("ticket_number").get_source(db=db)
-        assert ticket_number_source is not None
-        assert ticket_number_source.id == run_synchronizer_for_generic
+        ticket_number = incident.get_attribute("ticket_number")
+        assert await ticket_number.get_source(db=db) is None, "the pool is never reported as the attribute's source"
+        assert await ticket_number.get_tracking_pool(db=db) == TrackingPoolRecord(
+            pool_id=run_synchronizer_for_generic, provenance=PoolRecordProvenance.ALLOCATED
+        )
 
 
 class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
@@ -771,6 +774,8 @@ class TestAddNumberPoolToExistingGenericWithInheritingNode(TestInfrahubApp):
         assert 100000 <= device.asset_tag.value <= 999999, (
             f"asset_tag value {device.asset_tag.value} is outside pool range 100000-999999"
         )
-        asset_tag_source = await device.get_attribute("asset_tag").get_source(db=db)
-        assert asset_tag_source is not None
-        assert asset_tag_source.id == expected_pool_id
+        asset_tag = device.get_attribute("asset_tag")
+        assert await asset_tag.get_source(db=db) is None, "the pool is never reported as the attribute's source"
+        assert await asset_tag.get_tracking_pool(db=db) == TrackingPoolRecord(
+            pool_id=expected_pool_id, provenance=PoolRecordProvenance.ALLOCATED
+        )

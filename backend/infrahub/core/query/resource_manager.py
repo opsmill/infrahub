@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Generator, Unpack
 
 from infrahub.core import registry
@@ -12,6 +13,23 @@ if TYPE_CHECKING:
     from infrahub.core.protocols import CoreNumberPool
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
+
+
+@dataclass(frozen=True)
+class TrackingPoolRecord:
+    """The number pool whose live record covers an attribute, and what that record says about one value."""
+
+    pool_id: str
+    provenance: PoolRecordProvenance
+
+
+class TrackingPoolUnread(Enum):
+    """Typed sentinel for a tracking pool that has not been read from the database."""
+
+    token = 0
+
+
+TRACKING_POOL_UNREAD = TrackingPoolUnread.token
 
 
 @dataclass(frozen=True)

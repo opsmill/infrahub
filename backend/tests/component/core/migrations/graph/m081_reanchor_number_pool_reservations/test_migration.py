@@ -14,9 +14,10 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core import registry
-from infrahub.core.constants import InfrahubKind, PoolRecordProvenance
+from infrahub.core.constants import InfrahubKind, MetadataOptions, PoolRecordProvenance
 from infrahub.core.initialization import create_branch
-from infrahub.core.query.resource_manager import NumberPoolGetAllocated
+from infrahub.core.manager import NodeManager
+from infrahub.core.query.resource_manager import NumberPoolGetAllocated, TrackingPoolRecord
 from infrahub.core.timestamp import Timestamp
 from infrahub.database.validation import GraphCheck, collect_graph_violations
 from infrahub.pools.number import NumberUtilizationGetter
@@ -923,6 +924,23 @@ class TestMigration081:
                 db=db, node_id=migrated.tickets["attribute_gone"].id, attribute_name=RENAMED_ATTRIBUTE_NAME
             )
             == []
+        )
+
+    async def test_a_migrated_attribute_reports_its_pool_and_no_source(
+        self, db: InfrahubDatabase, migrated: MigratedDatabase
+    ) -> None:
+        """The stored source edge is gone, and the record now lists the branch's number as the one the pool allocated."""
+        ticket = await NodeManager.get_one(
+            db=db,
+            id=migrated.tickets["on_main_a"].id,
+            branch=migrated.default_branch,
+            include_metadata=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL,
+            raise_on_error=True,
+        )
+        attribute = ticket.get_attribute(TRACKED_ATTRIBUTE_NAME)
+        assert await attribute.get_source(db=db) is None
+        assert await attribute.get_tracking_pool(db=db) == TrackingPoolRecord(
+            pool_id=migrated.pools["alpha"].id, provenance=PoolRecordProvenance.ALLOCATED
         )
 
     async def test_every_figure_a_pool_reports_survives_the_re_anchoring(

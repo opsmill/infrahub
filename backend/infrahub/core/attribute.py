@@ -35,6 +35,7 @@ from infrahub.core.query.attribute import (
     AttributeUpdateValueQuery,
 )
 from infrahub.core.query.node import AttributeFromDB, NodeListGetAttributeQuery
+from infrahub.core.query.resource_manager import TRACKING_POOL_UNREAD, TrackingPoolRecord, TrackingPoolUnread
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
@@ -148,6 +149,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value_presence = PayloadPresence.ABSENT
         self.from_pool_presence = PayloadPresence.ABSENT
         self.pool_provenance = PoolRecordProvenance.ALLOCATED
+        self._tracking_pool: TrackingPoolRecord | TrackingPoolUnread | None = TRACKING_POOL_UNREAD
 
         self._init_node_property_mixin(kwargs)
         self._init_flag_property_mixin(kwargs)
@@ -367,6 +369,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         self.value = self.value_from_db(data=data)
         self.is_default = data.is_default
         self.is_from_profile = data.is_from_profile
+        self._tracking_pool = data.tracking_pool
 
         self.id = data.attr_uuid
         self.db_id = data.attr_id
@@ -622,6 +625,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[field_name] = {"update_value": permissions["update"]} if permissions else None
                 continue
 
+            if field_name == "from_pool":
+                response[field_name] = await self._from_pool_to_graphql(db=db, related_node_ids=related_node_ids)
+                continue
+
             if field_name in ["source", "owner"]:
                 node_attr_getter = getattr(self, f"get_{field_name}")
                 node_attr = await node_attr_getter(db=db)
@@ -659,6 +666,18 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         return response
 
+    async def _from_pool_to_graphql(self, db: InfrahubDatabase, related_node_ids: set | None) -> dict[str, Any] | None:
+        """Render the `from_pool` output field from the tracking pool record, never from the `from_pool` input."""
+        tracking_pool = await self.get_tracking_pool(db=db)
+        if tracking_pool is None:
+            return None
+        if related_node_ids is not None:
+            related_node_ids.add(tracking_pool.pool_id)
+        return {
+            "pool": {"id": tracking_pool.pool_id, "__kind__": InfrahubKind.NUMBERPOOL},
+            "provenance": tracking_pool.provenance,
+        }
+
     def _filter_sensitive(self, value: str, filter_sensitive: bool) -> str:
         if filter_sensitive and self.schema.kind in ["HashedPassword", "Password"]:
             return "***"
@@ -689,6 +708,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 changed = True
         if "from_pool" in data:
             self.from_pool = data["from_pool"]
+            self._tracking_pool = TRACKING_POOL_UNREAD
             if process_pools:
                 await pool_applier.apply(node=self.node, attribute=self, allocate=True, user_id=user_id)
             changed = True
@@ -722,16 +742,34 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return AttributeDBNodeType.DEFAULT
         return AttributeDBNodeType.INDEXED
 
-    async def get_source(self, db: InfrahubDatabase) -> Node | None:
-        """Return what the value came from: a caller-set source, or the pool that allocated it.
+    async def get_tracking_pool(self, db: InfrahubDatabase) -> TrackingPoolRecord | None:
+        """Return the number pool tracking this attribute and the provenance of its value, or None.
 
-        An attribute still in memory reports the same source a later read of it will report.
+        The record is read with the attribute when the caller asks for it; otherwise it is read here at the
+        current time, so an attribute still in memory after a mutation reports the record that mutation wrote.
         """
-        if source := await super().get_source(db=db):
-            return source
-        if self.from_pool and (pool_id := self.from_pool.get("id")):
-            return await registry.manager.get_one(db=db, id=pool_id, branch=self.branch, at=self.at)
-        return None
+        if self._tracking_pool is not TRACKING_POOL_UNREAD:
+            return self._tracking_pool
+        if not self.id:
+            return None
+
+        query = await NodeListGetAttributeQuery.init(
+            db=db,
+            ids=[self.node.id],
+            fields={self.name: True},
+            branch=self.branch,
+            at=Timestamp(),
+            include_metadata=MetadataOptions.TRACKING_POOL,
+        )
+        await query.execute(db=db)
+        try:
+            data, _ = query.get_result_by_id_and_name(self.node.id, self.name)
+        except IndexError:
+            return None
+        if isinstance(data.tracking_pool, TrackingPoolUnread):
+            return None
+        self._tracking_pool = data.tracking_pool
+        return self._tracking_pool
 
     def get_create_data(self, node_schema: MainSchemaTypes) -> AttributeCreateData:
         branch = self.branch
@@ -818,7 +856,6 @@ class HashedPasswordOptional(HashedPassword):
 class Integer(BaseAttribute):
     type = int
     value: int
-    from_pool: str | None = None
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:

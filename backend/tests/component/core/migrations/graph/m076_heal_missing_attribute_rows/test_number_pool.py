@@ -119,7 +119,9 @@ class TestNumberPoolHeal:
             db=db,
             branch=default_branch_scope_class,
             ids=[*seeded.damaged_uuids, seeded.runtime_server_uuid],
-            include_metadata=MetadataQueryOptions(attribute_level=MetadataOptions.SOURCE),
+            include_metadata=MetadataQueryOptions(
+                attribute_level=MetadataOptions.SOURCE | MetadataOptions.TRACKING_POOL
+            ),
         )
         rack_units = {node_id: node.get_attribute(name="rack_unit").value for node_id, node in nodes.items()}
         assert set(rack_units) == {*seeded.damaged_uuids, seeded.runtime_server_uuid}
@@ -128,7 +130,11 @@ class TestNumberPoolHeal:
         assert rack_units[seeded.runtime_server_uuid] == 1
         assert {rack_units[uuid] for uuid in seeded.damaged_uuids} == {2, 3, 4}
         for node in nodes.values():
-            assert node.get_attribute(name="rack_unit").source_id == seeded.pool_uuid
+            rack_unit = node.get_attribute(name="rack_unit")
+            assert rack_unit.source_id is None
+            tracking_pool = await rack_unit.get_tracking_pool(db=db)
+            assert tracking_pool is not None
+            assert tracking_pool.pool_id == seeded.pool_uuid
 
     async def test_every_allocation_left_a_reservation_record(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, seeded: PoolSeed, healed: PoolHealRun

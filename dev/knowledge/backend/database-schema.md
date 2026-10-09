@@ -196,6 +196,23 @@ number the attribute no longer holds stays listed and stays inert. The label is 
 not per branch, so it cannot tell a number the pool allocated on one branch from the same number a user
 provided on another: both rows read `"allocated"`.
 
+A number attribute reports the pool tracking it through the `from_pool` output field, and nowhere
+else. When a read asks for it (`MetadataOptions.TRACKING_POOL`), the attribute query follows the
+attribute's active `-global-` `IS_RESERVED` edge and returns the pool's uuid with the provenance of the
+value the branch holds, read from `allocated_values` as above. The read does not check that the pool
+node is live: a live edge implies a live pool, because deleting a pool ends every edge it holds. The
+result is loaded into the attribute's `_tracking_pool` property, read through `get_tracking_pool()`, which
+no save path reads.
+`source` is populated only by a stored `HAS_SOURCE` edge: the pool is never written there, and the
+read never puts it there, so a save after a re-pool or a detach cannot store the pool as a source.
+
+Deleting a number pool ends every live `IS_RESERVED` edge it holds in the same transaction as the
+delete (`pools/number_pool_repository.py::NumberPoolRepository.delete_pool`): each edge gets `to` and
+`to_user_id` set and keeps `status = "active"`, the attribute keeps its number, and no branch reports
+the pool any more. Both delete paths use it, the pool delete mutation under the pool lock and the
+schema synchronizer removing the pool of a `NumberPool` attribute kind. The IP pools keep their edges
+on delete.
+
 A number pool's record stores no value. Every read resolves it forward instead — from the attribute
 to the values its object holds — so a record whose object holds no value in range reports nothing.
 The read carries no branch filter, which is what makes a number taken while *any* branch holds it:

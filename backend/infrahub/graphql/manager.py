@@ -57,6 +57,7 @@ from .resolvers.resolver import (
     parent_field_name_resolver,
     single_relationship_resolver,
 )
+from .resolvers.tracking_pool import tracking_pool_resolver
 from .schema import InfrahubBaseMutation, InfrahubBaseQuery
 from .subscription import InfrahubBaseSubscription
 from .types import (
@@ -70,9 +71,10 @@ from .types import (
     Upload,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
-from .types.attribute import TextAttributeType
+from .types.attribute import NumberAttributeType, TextAttributeType
 from .types.branch import InfrahubBranchEdge
 from .types.context import ContextInput
+from .types.enums import PoolRecordProvenance
 from .types.event import EVENT_TYPES
 from .types.node import InfrahubObjectWithoutMeta
 from .types.task import TASK_TYPES
@@ -444,6 +446,9 @@ class GraphQLSchemaManager:
                     schema=node_schema, edge=nested_node_type_edged, nested=True, populate_cache=True
                 )
 
+        # The number pool object type only exists once the node object types are generated
+        self.define_number_attribute_from_pool()
+
         # Extend all types and related types with Relationships
         for node_name, node_schema in full_schema.items():
             node_type = self.get_type(name=node_name)
@@ -737,6 +742,35 @@ class GraphQLSchemaManager:
         relationship_property = type(type_name, (graphene.ObjectType,), main_attrs)
 
         self.set_type(name=type_name, graphql_type=relationship_property)
+
+    def define_number_attribute_from_pool(self) -> None:
+        """Give the number attribute type its `from_pool` field, typed against this schema's number pool object.
+
+        The attribute types are static classes shared by every schema, so the field is patched in place
+        the same way `source` and `owner` are.
+        """
+        if InfrahubKind.NUMBERPOOL not in self._graphql_types:
+            # only runs if CoreNumberPool is not in the schema
+            NumberAttributeType._meta.fields.pop("from_pool", None)
+            return
+        number_pool_type = self.get_type(name=InfrahubKind.NUMBERPOOL)
+        type_name = "NumberAttributeFromPool"
+
+        meta_attrs = {
+            "name": type_name,
+            "description": "The number pool tracking a number attribute and how the value it holds got there",
+        }
+        main_attrs = {
+            "pool": graphene.Field(number_pool_type, required=True, resolver=tracking_pool_resolver),
+            "provenance": graphene.Field(PoolRecordProvenance, required=True),
+            "Meta": type("Meta", (object,), meta_attrs),
+        }
+        from_pool_type = type(type_name, (graphene.ObjectType,), main_attrs)
+        self.set_type(name=type_name, graphql_type=from_pool_type)
+
+        current_field = NumberAttributeType._meta.fields.get("from_pool")
+        if current_field is None or current_field.type != from_pool_type:
+            NumberAttributeType._meta.fields["from_pool"] = graphene.Field(from_pool_type, required=False)
 
     def define_node_metadata(self, account_type: type[InfrahubObject]) -> None:
         meta_attrs = {

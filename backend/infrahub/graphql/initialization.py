@@ -14,6 +14,7 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.graphql.resolvers.many_relationship import ManyRelationshipResolver
 from infrahub.graphql.resolvers.single_relationship import SingleRelationshipResolver
+from infrahub.graphql.resolvers.tracking_pool import TrackingPoolResolver
 from infrahub.permissions import PermissionManager
 
 if TYPE_CHECKING:
@@ -41,6 +42,7 @@ class GraphqlContext:
     single_relationship_resolver: SingleRelationshipResolver
     many_relationship_resolver: ManyRelationshipResolver
     account_metadata_resolver: AccountMetadataResolver
+    tracking_pool_resolver: TrackingPoolResolver
     service: InfrahubServices | None = None
     at: Timestamp | None = None
     related_node_ids: set | None = None
@@ -138,6 +140,7 @@ async def prepare_graphql_params(
             single_relationship_resolver=SingleRelationshipResolver(),
             many_relationship_resolver=ManyRelationshipResolver(),
             account_metadata_resolver=AccountMetadataResolver(),
+            tracking_pool_resolver=TrackingPoolResolver(),
             at=Timestamp(at),
             types=gqlm.get_graphql_types(),
             related_node_ids=set(),

@@ -23850,6 +23850,7 @@ export type NonRequiredStringValueField = {
 /** Attribute of type Number */
 export type NumberAttribute = AttributeInterface & {
   __typename: 'NumberAttribute';
+  from_pool: Maybe<NumberAttributeFromPool>;
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
@@ -23869,6 +23870,13 @@ export type NumberAttributeCreate = {
   owner?: InputMaybe<Scalars['String']['input']>;
   source?: InputMaybe<Scalars['String']['input']>;
   value?: InputMaybe<Scalars['BigInt']['input']>;
+};
+
+/** The number pool tracking a number attribute and how the value it holds got there */
+export type NumberAttributeFromPool = {
+  __typename: 'NumberAttributeFromPool';
+  pool: CoreNumberPool;
+  provenance: PoolRecordProvenance;
 };
 
 export type NumberAttributeUpdate = {
