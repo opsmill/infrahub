@@ -962,13 +962,13 @@ async def _create_ticket(db: InfrahubDatabase, kind: str, pool: CoreNumberPool, 
     return ticket
 
 
-async def _query_allocation(gql_params: GraphqlParams, pool_id: str) -> dict[str, Any]:
+async def _query_allocation(gql_params: GraphqlParams, pool_id: str, resource_id: str | None = None) -> dict[str, Any]:
     allocation = await graphql(
         schema=gql_params.schema,
         source=POOL_ALLOCATION,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={"pool_id": pool_id, "resource_id": pool_id},
+        variable_values={"pool_id": pool_id, "resource_id": resource_id or pool_id},
     )
     assert not allocation.errors
     assert allocation.data
@@ -1032,6 +1032,67 @@ async def test_number_pool_allocation_lists_only_the_numbers_inside_the_current_
             }
         }
         for number, ticket in ((1, first), (4, fourth))
+    ]
+
+
+async def test_number_pool_allocation_of_one_range_lists_only_the_numbers_inside_it(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+    low = await add_pool_range(db=db, pool=pool, start=1, end=2)
+    high = await add_pool_range(db=db, pool=pool, start=10, end=20)
+    first, second, third = [
+        await _create_ticket(db=db, kind=TICKET.kind, pool=pool, title=title) for title in ("first", "second", "third")
+    ]
+
+    def edges(*allocated: tuple[int, Node]) -> list[dict[str, Any]]:
+        return [
+            {
+                "node": {
+                    "branch": default_branch.name,
+                    "display_label": str(number),
+                    "id": ticket.get_id(),
+                    "identifier": ticket.get_id(),
+                    "kind": TICKET.kind,
+                }
+            }
+            for number, ticket in allocated
+        ]
+
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id(), resource_id=low.get_id()) == {
+        "count": 2,
+        "edges": edges((1, first), (2, second)),
+    }
+    assert await _query_allocation(gql_params=gql_params, pool_id=pool.get_id(), resource_id=high.get_id()) == {
+        "count": 1,
+        "edges": edges((10, third)),
+    }
+    assert (await _query_allocation(gql_params=gql_params, pool_id=pool.get_id()))["count"] == 3
+
+
+async def test_number_pool_allocation_rejects_a_range_of_another_pool(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    gql_params = await _ticket_graphql_params(db=db, default_branch=default_branch, schema=TICKET)
+    pool = await create_range_only_pool(db=db, kind=TICKET.kind)
+    await add_pool_range(db=db, pool=pool, start=1, end=10)
+    other_pool = await CoreNumberPool.init(db=db, schema=InfrahubKind.NUMBERPOOL)
+    await other_pool.new(db=db, name="other", node=TICKET.kind, node_attribute="ticket_id")
+    await other_pool.save(db=db)
+    foreign_range = await add_pool_range(db=db, pool=other_pool, start=1, end=10)
+
+    allocation = await graphql(
+        schema=gql_params.schema,
+        source=POOL_ALLOCATION,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"pool_id": pool.get_id(), "resource_id": foreign_range.get_id()},
+    )
+
+    assert allocation.errors
+    assert [error.message for error in allocation.errors] == [
+        f"The selected pool_id={pool.get_id()} doesn't contain the requested resource_id={foreign_range.get_id()}"
     ]
 
 

@@ -108,6 +108,7 @@ class PoolAllocated(ObjectType):
                     graphql_context=graphql_context,
                     domains=SchemaAttributeDomains(schema=graphql_context.db.schema, branch=graphql_context.branch),
                     pool=pool,
+                    resource_id=resource_id,
                     fields=fields,
                     offset=offset,
                     limit=limit,
@@ -307,15 +308,26 @@ async def resolve_number_pool_allocation(
     graphql_context: GraphqlContext,
     domains: SchemaAttributeDomains,
     pool: Node,
+    resource_id: str,
     fields: dict,
     offset: int,
     limit: int,
 ) -> dict:
+    """Returns the numbers the pool allocated, from all its ranges when `resource_id` is the pool, or from one range.
+
+    Raises:
+        ValidationError: when `resource_id` is neither the pool nor one of its ranges.
+
+    """
     response: dict[str, Any] = {}
-    space = EffectiveSpace(
-        ranges=await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id()),
-        domain=_pool_domain(domains=domains, pool=pool),
-    )
+    ranges = await NumberPoolRepository(db=db).get_pool_ranges(pool_id=pool.get_id())
+    if resource_id != pool.get_id():
+        ranges = [pool_range for pool_range in ranges if pool_range.id == resource_id]
+        if not ranges:
+            raise ValidationError(
+                input_value=f"The selected pool_id={pool.get_id()} doesn't contain the requested resource_id={resource_id}"
+            )
+    space = EffectiveSpace(ranges=ranges, domain=_pool_domain(domains=domains, pool=pool))
     if space.is_empty:
         if "count" in fields:
             response["count"] = 0
