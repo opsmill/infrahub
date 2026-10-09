@@ -91,9 +91,10 @@ infrahub:
     backgroundServices:
       messaging:
         redis:
-          # prefect-redis discovers the master through the Sentinel nodes and follows failover when
-          # given a redis+sentinel:// URL (via PREFECT_REDIS_MESSAGING_URL), the same as the cache above.
-          url: "redis+sentinel://cache-redis:26379/mymaster"
+          # Passed to Prefect as PREFECT_REDIS_MESSAGING_URL: messaging discovers the master through the
+          # Sentinel nodes and follows failover, the same as the cache above. A URL replaces the db
+          # setting, so /1 keeps messaging on database 1, apart from the cache on database 0.
+          url: "redis+sentinel://cache-redis:26379/mymaster/1"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

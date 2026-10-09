@@ -71,7 +71,13 @@ These examples are for reference purposes and may require customization for your
 
   :::note
 
-  Prefect's messaging Redis (`prefect-server.backgroundServices.messaging.redis`) follows master failover when it is pointed at the Sentinel nodes through a `redis+sentinel://` URL, the same as the cache. See [Prefect messaging over TLS](#prefect-messaging-over-tls) below for how to configure it (including TLS).
+  Prefect's messaging Redis also follows master failover when it connects through a `redis+sentinel://` URL. `infrahub-values.yaml` below sets that URL with `prefect-server.backgroundServices.messaging.redis.url`, and the chart passes it to Prefect as `PREFECT_REDIS_MESSAGING_URL`. A URL replaces the chart's separate `host`, `port`, `db`, `username`, `password` and `ssl` settings:
+
+- Put the database number in the URL. `/mymaster/1` selects database 1, which keeps messaging apart from the cache on database 0.
+- If Redis requires a password, put it in the URL, and percent-encode the characters that have a meaning in URLs, such as `/`, `?`, `#`, `@`, `:` and `%`.
+- To keep a URL that contains a password out of the values file, store the URL in a Kubernetes Secret. Then set `existingSecret` to the Secret name and `existingSecretUrlKey` to the key that holds the URL, instead of `url`.
+
+  See [Prefect messaging over TLS](#prefect-messaging-over-tls) below for the TLS options.
 
   :::
 
@@ -183,7 +189,7 @@ When verifying against a CA bundle, the client also verifies the hostname. Senti
 
 ### Prefect messaging over TLS
 
-Infrahub's `INFRAHUB_CACHE_URL` configures only the cache and distributed-lock connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which accepts the same URL grammar — use a `redis+sentinel://` URL so messaging discovers the master through the Sentinel nodes and follows failover, plus the `ssl_*` query parameters for TLS:
+Infrahub's `INFRAHUB_CACHE_URL` configures the cache, distributed-lock and task result storage connections. Prefect's messaging Redis is configured separately through the `PREFECT_REDIS_MESSAGING_URL` environment variable, which the Helm chart sets from `prefect-server.backgroundServices.messaging.redis.url`. It accepts the same URL grammar: use a `redis+sentinel://` URL so messaging discovers the master through the Sentinel nodes and follows failover, and add the `ssl_*` query parameters for TLS:
 
 ```bash
 export PREFECT_REDIS_MESSAGING_URL='rediss+sentinel://:mypassword@cache-redis:26379/mymaster?ssl_cert_reqs=none&ssl_check_hostname=false'
