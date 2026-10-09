@@ -40,13 +40,10 @@ Create a pool for VLAN IDs:
 Navigate to **Object Management** → **Resource Manager** and create a new Number Pool with:
 
 - **Name**: `My VLAN ID Pool`
-- **What it allocates**:
-  - **Node**: `IpamVLAN`
-  - **Attribute**: `vlan_id`
-  - **Scoped by**: leave empty, so every VLAN shares one sequence of IDs
-- **Ranges**: one range with **Start** `100` and **End** `1000`
-
-A pool can hold several ranges. Infrahub allocates from the range with the highest **Weight** first, and from the lowest start when weights are equal. Ranges must not overlap.
+- **Node**: `IpamVLAN`
+- **Node attribute**: `vlan_id`
+- **Start range**: `100`
+- **End range**: `1000`
 
 ![Creating Number Pool](../media/guides/resources-manager/resource_manager_pool_vlan.png)
 
@@ -60,7 +57,8 @@ mutation {
       name: {value: "My VLAN ID Pool"}
       node: {value: "IpamVLAN"}
       node_attribute: {value: "vlan_id"}
-      ranges: [{start: 100, end: 1000}]
+      start_range: {value: 100}
+      end_range: {value: 1000}
     }
   ) {
     ok
@@ -86,7 +84,7 @@ Save the pool ID for allocation operations!
 <Tabs groupId="method" queryString>
   <TabItem value="web" label="Web interface" default>
 
-  Navigate to **VLAN** → **Add VLAN**. Next to the VLAN ID field, click the pool button, labeled "select a pool", and choose your number pool.
+  Navigate to **VLAN** → **Add VLAN**. On the **VLAN ID** field, open the **From pool** tab and select your number pool. Leave **Number** empty to allocate the next free number, or type a number to record that number in the pool.
 
   ![Allocating Number Pool - Before](../media/guides/resources-manager/resource_manager_pool_vlan_before.png)
   ![Allocating Number Pool - After](../media/guides/resources-manager/resource_manager_pool_vlan_after.png)
