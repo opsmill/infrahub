@@ -180,3 +180,30 @@ async def scoped_device(
         == IsReservedEdge.OPEN
     )
     return device
+
+
+async def scoped_device_holding(
+    db: InfrahubDatabase,
+    branch: Branch,
+    pool: CoreNumberPool,
+    name: str,
+    site: Node,
+    number: int,
+    role: str = "leaf",
+) -> Node:
+    """A device of the site holding a `vlan_id` it provided, which the pool tracks without allocating it."""
+    device = await Node.init(db=db, schema=SCOPED_DEVICE.kind, branch=branch)
+    await device.new(
+        db=db,
+        name=name,
+        role=role,
+        tags=["red"],
+        site=site,
+        vlan_id={"value": number, "from_pool": {"id": pool.id}},
+    )
+    await device.save(db=db)
+    assert (
+        await is_reserved_edge_on(db=db, pool_id=pool.id, node_id=device.id, attribute_name=SCOPED_ATTRIBUTE_NAME)
+        == IsReservedEdge.OPEN
+    )
+    return device
