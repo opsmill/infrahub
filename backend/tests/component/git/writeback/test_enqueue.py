@@ -29,10 +29,11 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge.repository_merge_dispatcher import RepositoryMergeDispatcher
 from infrahub.core.node import Node
 from infrahub.exceptions import DeliveryStateUnavailableError
-from infrahub.git.models import GitRepositoryMerge
-from infrahub.git.tasks import merge_git_repository
+from infrahub.git.models import GitRepositoryDeliveryRetry, GitRepositoryMerge
+from infrahub.git.tasks import merge_git_repository, retry_repository_delivery
 from infrahub.git.writeback.constants import STATE_LOCK_ACQUIRE_SECONDS, STATE_LOCK_TTL_SECONDS
 from infrahub.git.writeback.models import DeliveryQueue, HeldRegeneration, HeldWiden
+from infrahub.git.writeback.service import REPOSITORY_LOCK_NAMESPACE
 from infrahub.git.writeback.store import STATE_LOCK_NAMESPACE, WritebackIntentStore
 from infrahub.workers.dependencies import build_client, build_message_bus
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_MERGE
@@ -56,6 +57,8 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.git.repository import InfrahubRepository
     from infrahub.git.writeback.models import PendingMerge, WritebackIntent
+    from infrahub.lock import InfrahubLock
+    from tests.adapters.lock.timeline import LockTimeline
 
 REPOSITORY_NAME = "delivery-repository"
 SOURCE_BRANCH = "feature-1"
@@ -219,15 +222,26 @@ async def run_merge_flow(dependency_provider: Provider, client: InfrahubClient, 
         return await merge_git_repository(model=model, return_state=True)
 
 
+async def run_retry_flow(dependency_provider: Provider, client: InfrahubClient, repository_id: str) -> State:
+    bus = BusRecorder()
+    with (
+        override_dependency(build_client, lambda: client, dependency_provider=dependency_provider),
+        override_dependency(build_message_bus, lambda: bus, dependency_provider=dependency_provider),
+    ):
+        return await retry_repository_delivery(
+            model=GitRepositoryDeliveryRetry(repository_id=repository_id, repository_name=REPOSITORY_NAME),
+            return_state=True,
+        )
+
+
 @asynccontextmanager
-async def held_state_lock(repository_id: str) -> AsyncIterator[None]:
-    """Keep the delivery-state lock of the repository taken, as a worker that stopped with it would."""
-    state_lock = lock.registry.get(name=repository_id, namespace=STATE_LOCK_NAMESPACE, ttl=STATE_LOCK_TTL_SECONDS)
+async def held_lock(held: InfrahubLock) -> AsyncIterator[None]:
+    """Keep the lock taken by another worker for the time of the block."""
     taken = asyncio.Event()
     released = asyncio.Event()
 
     async def hold() -> None:
-        async with state_lock:
+        async with held:
             taken.set()
             await released.wait()
 
@@ -562,7 +576,10 @@ async def test_a_merge_flow_that_cannot_queue_its_entry_fails_and_names_the_merg
     repository = cloned_repository
     entry = pending_merge(entry_id=str(uuid4()), source_git_branch=SOURCE_BRANCH)
 
-    async with held_state_lock(repository_id=repository.id):
+    # A worker that stopped with the delivery-state lock still holds it.
+    async with held_lock(
+        lock.registry.get(name=repository.id, namespace=STATE_LOCK_NAMESPACE, ttl=STATE_LOCK_TTL_SECONDS)
+    ):
         with caplog.at_level(logging.ERROR, logger=RUN_LOGGER):
             state = await run_merge_flow(
                 dependency_provider=dependency_provider,
@@ -684,3 +701,39 @@ async def test_a_merge_flow_whose_source_branch_is_gone_fails_and_says_how_to_pu
     ]
     intent = await build_store(db=db, default_branch=default_branch).read(repository_id=repository.id)
     assert intent.queue == DeliveryQueue()
+
+
+async def test_a_retry_that_waits_for_a_running_attempt_finds_nothing_to_push(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    recording_lock_timeline: LockTimeline,
+    cloned_repository: ClonedRepository,
+) -> None:
+    repository = cloned_repository
+    store = build_store(db=db, default_branch=default_branch)
+    await store.enqueue(repository_id=repository.id, entry=pending_merge(entry_id=str(uuid4())), widen=False)
+    repository_lock = lock.registry.get(name=REPOSITORY_NAME, namespace=REPOSITORY_LOCK_NAMESPACE)
+
+    async with held_lock(repository_lock):
+        retry = asyncio.create_task(
+            run_retry_flow(
+                dependency_provider=dependency_provider, client=repository.client, repository_id=repository.id
+            )
+        )
+        async with asyncio.timeout(30):
+            while recording_lock_timeline.waiting(repository_lock.name) != 1:  # noqa: ASYNC110
+                await asyncio.sleep(0.01)
+        # The running attempt settles the queue before it lets the waiting retry in.
+        snapshot = await store.start_attempt(repository_id=repository.id)
+        await store.settle_delivery(repository_id=repository.id, snapshot=snapshot, delivered_commit=None)
+
+    state = await retry
+    assert (state.is_completed(), state.message) == (
+        True,
+        f"The delivery to repository {REPOSITORY_NAME} ended with the outcome nothing-pending.",
+    )
+    intent = await store.read(repository_id=repository.id)
+    assert (intent.status, intent.queue.entries) == (RepositoryDeliveryStatus.NONE, ())
+    assert repository.clone.get_commit_value(branch_name="main", remote=False) == repository.trunk_commit
