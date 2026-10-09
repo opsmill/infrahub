@@ -358,8 +358,8 @@ SC-002, SC-007.
       git-synced Infrahub branch whose repository file differs from the default branch, on
       `protected_branch_dataset`. Reuse `rejected_push_to_main`. Done with a fixture that builds its
       own remote and repository for each test instead of `protected_branch_dataset`, because each
-      test changes the remote and the delivery state of its repository. `rejected_push_to_main` calls
-      the factory `reject_pushes_to_main`, which the new tests reuse.
+      test changes the remote and the delivery state of its repository. `rejected_push_to_main`
+      became the factory `reject_pushes_to_main`, which each test calls for its own repository.
 - [X] T043 [US1] Add `test_a_merge_that_the_remote_refuses_stays_queued_with_the_remote_message` to
       `backend/tests/integration/git/test_git_live_remote.py` (US1 #1 to #3): one entry,
       `action-required`, cause `permission`, the hook's `remote:` line verbatim, the commit unchanged.

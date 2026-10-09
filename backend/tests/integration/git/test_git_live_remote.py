@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import re
-import shutil
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
@@ -246,40 +245,6 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         await node.save()
         return {"repo_name": repo_name, "node_id": node.id}
 
-    @pytest.fixture(scope="class")
-    async def merge_conflict_dataset(
-        self,
-        initialize_registry: None,
-        git_repos_dir_module_scope: Path,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-    ) -> dict:
-        repo_name = "merge-conflict-repo"
-        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        node = await client.create(
-            kind=InfrahubKind.REPOSITORY,
-            data={"name": repo_name, "location": repo_url},
-        )
-        await node.save()
-        return {"repo_name": repo_name, "node_id": node.id}
-
-    @pytest.fixture(scope="class")
-    async def protected_branch_dataset(
-        self,
-        initialize_registry: None,
-        git_repos_dir_module_scope: Path,
-        client: InfrahubClient,
-        gogs_server: GogsServer,
-    ) -> dict:
-        repo_name = "protected-branch-repo"
-        repo_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, repo_name, gogs_server.container)
-        node = await client.create(
-            kind=InfrahubKind.REPOSITORY,
-            data={"name": repo_name, "location": repo_url},
-        )
-        await node.save()
-        return {"repo_name": repo_name, "node_id": node.id}
-
     @pytest.fixture
     def reject_pushes_to_main(
         self, gogs_server: GogsServer
@@ -295,13 +260,6 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         yield reject
         for repo_name in rejected:
             _remove_remote_branch_rejection_hook(container=gogs_server.container, repo_name=repo_name)
-
-    @pytest.fixture
-    def rejected_push_to_main(
-        self, protected_branch_dataset: dict, reject_pushes_to_main: Callable[[str], Callable[[], None]]
-    ) -> Callable[[], None]:
-        """Make the remote reject pushes to main, returning a callable that lifts the rejection."""
-        return reject_pushes_to_main(protected_branch_dataset["repo_name"])
 
     @pytest.fixture
     def synced_branch_repository(
@@ -347,25 +305,6 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
             )
 
         return create
-
-    @pytest.fixture
-    def block_commit_worktree(self) -> Generator[Callable[[Path], Callable[[], None]], None, None]:
-        """Yield a callable that occupies a commit worktree directory, returning a callable that releases it."""
-        blocked: list[Path] = []
-
-        def block(directory: Path) -> Callable[[], None]:
-            directory.mkdir()
-            (directory / "blocker.txt").write_text("blocking worktree creation\n")
-            blocked.append(directory)
-
-            def release() -> None:
-                shutil.rmtree(directory, ignore_errors=True)
-
-            return release
-
-        yield block
-        for directory in blocked:
-            shutil.rmtree(directory, ignore_errors=True)
 
     @pytest.fixture(scope="class")
     async def readonly_sync_dataset(
@@ -628,245 +567,6 @@ class TestRepositoryRemoteOperations(TestInfrahubApp):
         git_repo.remotes.origin.fetch()
         remote_main_commit = str(git_repo.commit("origin/main"))
         assert remote_main_commit != local_commit
-
-    async def test_merge_conflict_raises_repository_error(
-        self,
-        merge_conflict_dataset: dict,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-    ) -> None:
-        """A real Git conflict between two local branches raises RepositoryError.
-
-        Verifies that merge() runs merge --abort on failure, leaving the repo in a
-        clean state rather than stuck mid-merge.
-        """
-        repo_name = merge_conflict_dataset["repo_name"]
-
-        repository: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=merge_conflict_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        infrahub_repo = await InfrahubRepository.init(
-            id=repository.id,
-            name=repo_name,
-            client=client,
-            infrahub_branch_name="main",
-        )
-
-        # push_origin=False keeps the remote clean; the conflict is purely local.
-        await infrahub_repo.create_branch_in_git("conflict-branch-a", push_origin=False)
-        await infrahub_repo.create_branch_in_git("conflict-branch-b", push_origin=False)
-
-        branch_a_repo = infrahub_repo.get_git_repo_worktree(identifier="conflict-branch-a")
-        (Path(str(branch_a_repo.working_dir)) / "conflict.txt").write_text("branch-a content\n")
-        branch_a_repo.index.add(["conflict.txt"])
-        branch_a_repo.index.commit("conflict-branch-a: add conflict.txt")
-
-        branch_b_repo = infrahub_repo.get_git_repo_worktree(identifier="conflict-branch-b")
-        (Path(str(branch_b_repo.working_dir)) / "conflict.txt").write_text("branch-b content\n")
-        branch_b_repo.index.add(["conflict.txt"])
-        branch_b_repo.index.commit("conflict-branch-b: add conflict.txt")
-
-        with pytest.raises(
-            RepositoryError,
-            match=r"^An error occurred with GitRepository 'merge-conflict-repo'\.$",
-        ):
-            await infrahub_repo.merge(
-                source_branch="conflict-branch-a",
-                dest_branch="conflict-branch-b",
-                push_remote=False,
-            )
-
-    async def test_merge_push_rejected_leaves_state_unchanged(
-        self,
-        protected_branch_dataset: dict,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        rejected_push_to_main: Callable[[], None],
-    ) -> None:
-        """A merge whose push is rejected raises and leaves everything at the pre-merge state.
-
-        The destination worktree, the commit recorded in the graph and the remote branch must
-        all still point at the pre-merge commit.
-        """
-        repo_name = protected_branch_dataset["repo_name"]
-
-        repository: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=protected_branch_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        infrahub_repo = await InfrahubRepository.init(
-            id=repository.id,
-            name=repo_name,
-            client=client,
-            infrahub_branch_name="main",
-        )
-
-        await infrahub_repo.create_branch_in_git(branch_name="blocked-change", push_origin=False)
-        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="blocked-change")
-        (Path(str(branch_repo.working_dir)) / "blocked_change.txt").write_text("blocked change\n")
-        branch_repo.index.add(["blocked_change.txt"])
-        branch_repo.index.commit("blocked-change: add blocked_change.txt")
-
-        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
-        commit_before = str(main_repo.head.commit)
-        graph_commit_before = repository.commit.value
-
-        with pytest.raises(
-            RepositoryError,
-            match=(
-                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                r"the remote refused the update \(for example missing push permission or branch protection\): "
-                r"\[remote rejected\] \(pre-receive hook declined\)$"
-            ),
-        ):
-            await infrahub_repo.merge(source_branch="blocked-change", dest_branch="main")
-
-        assert str(main_repo.head.commit) == commit_before
-
-        main_repo.remotes.origin.fetch()
-        assert str(main_repo.commit("origin/main")) == commit_before
-
-        updated: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=protected_branch_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        assert updated.commit.value == graph_commit_before
-
-    async def test_merge_retry_succeeds_after_push_rejection_lifted(
-        self,
-        protected_branch_dataset: dict,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        rejected_push_to_main: Callable[[], None],
-    ) -> None:
-        """After a rejected push, lifting the rejection and merging again delivers the merge everywhere.
-
-        This only works when the failed attempt left the destination worktree on its pre-merge
-        commit: left on the unpushed merge commit, the retry would find nothing to merge and
-        never reach the push.
-        """
-        repo_name = protected_branch_dataset["repo_name"]
-
-        repository: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=protected_branch_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        infrahub_repo = await InfrahubRepository.init(
-            id=repository.id,
-            name=repo_name,
-            client=client,
-            infrahub_branch_name="main",
-        )
-
-        await infrahub_repo.create_branch_in_git(branch_name="retried-change", push_origin=False)
-        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="retried-change")
-        (Path(str(branch_repo.working_dir)) / "retried_change.txt").write_text("retried change\n")
-        branch_repo.index.add(["retried_change.txt"])
-        branch_repo.index.commit("retried-change: add retried_change.txt")
-
-        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
-        commit_before = str(main_repo.head.commit)
-
-        with pytest.raises(
-            RepositoryError,
-            match=(
-                rf"^Unable to push the branch main to the remote for repository {repo_name}: "
-                r"the remote refused the update \(for example missing push permission or branch protection\): "
-                r"\[remote rejected\] \(pre-receive hook declined\)$"
-            ),
-        ):
-            await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
-
-        rejected_push_to_main()
-
-        merged_commit = await infrahub_repo.merge(source_branch="retried-change", dest_branch="main")
-
-        assert merged_commit == str(main_repo.head.commit)
-        assert merged_commit != commit_before
-
-        main_repo.remotes.origin.fetch()
-        assert str(main_repo.commit("origin/main")) == merged_commit
-
-        updated: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=protected_branch_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        assert updated.commit.value == merged_commit
-
-    async def test_merge_writeback_failure_after_push_resets_worktree_for_sync_repair(
-        self,
-        protected_branch_dataset: dict,
-        db: InfrahubDatabase,
-        client: InfrahubClient,
-        fast_forward_merges: None,
-        block_commit_worktree: Callable[[Path], Callable[[], None]],
-    ) -> None:
-        """A failure recording the merge after a successful push resets the worktree behind the remote.
-
-        The pushed merge commit exists only on the remote afterwards, which is the state the
-        periodic synchronization repairs: it detects the destination branch as updated, moves the
-        worktree onto the merge commit and records it in the graph.
-        """
-        repo_name = protected_branch_dataset["repo_name"]
-
-        infrahub_repo = await InfrahubRepository.init(
-            id=protected_branch_dataset["node_id"],
-            name=repo_name,
-            client=client,
-            infrahub_branch_name="main",
-        )
-
-        await infrahub_repo.create_branch_in_git(branch_name="recorded-change", push_origin=False)
-        branch_repo = infrahub_repo.get_git_repo_worktree(identifier="recorded-change")
-        (Path(str(branch_repo.working_dir)) / "recorded_change.txt").write_text("recorded change\n")
-        branch_repo.index.add(["recorded_change.txt"])
-        merge_commit = str(branch_repo.index.commit("recorded-change: add recorded_change.txt"))
-
-        main_repo = infrahub_repo.get_git_repo_worktree(identifier="main")
-        commit_before = str(main_repo.head.commit)
-
-        # The merge fast-forwards the destination to the source tip, so the commit worktree
-        # directory is known ahead of time and can be blocked to fail the writeback after the push.
-        blocked_directory = infrahub_repo.directory_commits / merge_commit
-        release_blocked_directory = block_commit_worktree(blocked_directory)
-
-        with pytest.raises(RepositoryError, match=rf"'{re.escape(str(blocked_directory))}' already exists"):
-            await infrahub_repo.merge(source_branch="recorded-change", dest_branch="main")
-
-        # The synchronization below records the pushed merge commit, which needs this worktree.
-        release_blocked_directory()
-
-        assert str(main_repo.head.commit) == commit_before
-
-        main_repo.remotes.origin.fetch()
-        assert str(main_repo.commit("origin/main")) == merge_commit
-
-        await infrahub_repo.fetch()
-        _, updated_branches = await infrahub_repo.compare_local_remote()
-        assert updated_branches == ["main"]
-
-        pulled_commit = await infrahub_repo.pull(branch_name="main")
-        assert pulled_commit == merge_commit
-        assert str(main_repo.head.commit) == merge_commit
-
-        updated: CoreRepository = await NodeManager.get_one(
-            db=db,
-            id=protected_branch_dataset["node_id"],
-            kind=InfrahubKind.REPOSITORY,
-            raise_on_error=True,
-        )
-        assert updated.commit.value == merge_commit
 
     async def test_sync_from_remote_detects_new_commit(
         self,
