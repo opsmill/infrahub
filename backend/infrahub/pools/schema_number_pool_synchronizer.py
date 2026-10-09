@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from itertools import zip_longest
 from typing import TYPE_CHECKING, cast
 
 from infrahub import lock
@@ -13,6 +12,7 @@ from infrahub.core.schema.attribute_parameters import NumberPoolParameters
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import within_transaction
 from infrahub.log import get_logger
+from infrahub.pools.number_pool_range_reconciler import NumberPoolRangeReconciler
 from infrahub.pools.number_pool_shorthand import NumberPoolShorthandMirror
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
@@ -100,9 +100,8 @@ class SchemaNumberPoolSynchronizer:
     async def _update_pool_from_schema(self, schema_number_pool: CoreNumberPool, user_id: str = SYSTEM_USER_ID) -> None:
         """Reconcile a pool's ranges with the declaration on the default branch.
 
-        Declared and existing ranges, both ordered by start, are matched by position: a matched range is
-        rewritten in place so it keeps its identity, a declared range without a match is created and an
-        existing range without a match is deleted. The numbers the pool has handed out are left untouched.
+        A range keeps its identity whenever the reconciliation can rewrite it in place, and the numbers the pool
+        has handed out are left untouched.
         """
         schema = self.schema_manager.get(
             name=schema_number_pool.node.value, branch=registry.default_branch, duplicate=False
@@ -125,45 +124,16 @@ class SchemaNumberPoolSynchronizer:
             pool_node = await NodeManager.get_one(
                 db=dbt, id=pool_id, kind=InfrahubKind.NUMBERPOOL, branch_agnostic=True, raise_on_error=True
             )
-            existing_ranges = await repository.get_ranges(pool_id=pool_id)
-            changed = False
-            for declared, existing in zip_longest(declared_ranges, existing_ranges):
-                if declared is None:
-                    await repository.delete_range(pool_range=existing, at=at, user_id=user_id)
-                    changed = True
-                elif existing is None:
-                    await repository.create_range(
-                        pool=pool_node,
-                        start=declared.start,
-                        end=declared.end,
-                        weight=declared.weight,
-                        at=at,
-                        user_id=user_id,
-                    )
-                    changed = True
-                elif (existing.start.value, existing.end.value, existing.allocation_weight.value) != (
-                    declared.start,
-                    declared.end,
-                    declared.weight,
-                ):
-                    await repository.save_range(
-                        pool_range=existing,
-                        start=declared.start,
-                        end=declared.end,
-                        weight=declared.weight,
-                        at=at,
-                        user_id=user_id,
-                    )
-                    changed = True
-
-            if changed:
+            reconciliation = await NumberPoolRangeReconciler(range_store=repository).reconcile(
+                pool=pool_node, declared=declared_ranges, at=at, user_id=user_id
+            )
+            if reconciliation.changed:
                 self.log.info(
                     f"Updating NumberPool={pool_id} based on changes in the schema on {registry.default_branch}"
                 )
-                existing_ranges = await repository.get_ranges(pool_id=pool_id)
 
             await NumberPoolShorthandMirror(repository=repository).sync(
-                pool=pool_node, ranges=existing_ranges, at=at, user_id=user_id
+                pool=pool_node, ranges=reconciliation.ranges, at=at, user_id=user_id
             )
 
     async def _process_all_branches(self, user_id: str) -> set[str]:
