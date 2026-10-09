@@ -25,9 +25,11 @@ schema = db.schema.get(name="MyNode", branch=branch)
 schema = registry.schema.get(name="MyNode")
 ```
 
-Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary. The next step is an accessor like the existing `get_database()` / `get_component()` so entry points can drop `registry` entirely.
+Components already accept `schema_manager` (the merge orchestrator, diff calculator, schema update coordinator, …); entry points still pass `registry.schema`, concentrating the access at the boundary.
 
 Exception: `registry` stays for hot (per-request) in-memory reads where a DB round-trip is a real regression (e.g. `registry.branch`); cold paths (daily tasks) use the DB. New-code preference — don't sweep existing call sites.
+
+When a read must reflect what a branch itself defines (a branch that removed a kind must not see it), pass `check_branch_only=True` to `schema.get`. Without it the lookup silently falls back to the default-branch schema and returns stale definitions.
 
 ## Query Lifecycle
 

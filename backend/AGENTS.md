@@ -109,6 +109,7 @@ already exists.
 - `dev/guidelines/backend/testing.md` - Testing standards — load before adding, moving, or deleting a test (tier choice, what not to test, finding the coverage that already exists)
 - `dev/guidelines/backend/asgi-middleware.md` - ASGI middleware — load when adding, changing or reviewing middleware in `server.py`
 - `dev/guidelines/backend/prefect-payloads.md` - Prefect payloads — load when adding, changing or reviewing a `@flow` or `@task`, or passing data across one (return values, task arguments, subflow parameters)
+- `dev/guidelines/backend/component-design.md` - Component design and dependency injection — load before adding a backend class, reshaping responsibilities, or reviewing a change that does; construct collaborators at the entry point and inject them, including the node manager and the repository
 - `dev/guidelines/backend/checklist.md` - feature checklist — walk when planning, implementing or reviewing a backend feature (migrations, query efficiency, permissions)
 - Use the `creating-changelog-entries` skill - Changelog fragment creation
 
