@@ -23947,7 +23947,7 @@ export type NumberPoolDivisions = {
   allocation_scope: Array<NumberPoolScopeElement>;
   /** Number of divisions listed. */
   count: Scalars['Int']['output'];
-  /** Every division that holds at least one value the pool tracks on any live branch. Each holding object's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool. */
+  /** Every division that holds at least one value the pool tracks on any live branch. Each holding object counts under every division it occupies on any live branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool. */
   divisions: Array<NumberPoolDivision>;
 };
 
@@ -26233,7 +26233,7 @@ export type Query = {
   InfrahubPermissions: AccountPermissionsEdges;
   /** Find all nodes of specified kinds reachable from a source node */
   InfrahubReachableNodes: ReachableNodesResultType;
-  /** The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead. */
+  /** The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead. */
   InfrahubResourcePoolAllocated: PoolAllocated;
   /** Utilization of one resource pool and of each of its resources. For a number pool, the figures cover the whole pool and ignore its allocation scope; read InfrahubNumberPoolUtilization and InfrahubNumberPoolDivisions instead. */
   InfrahubResourcePoolUtilization: PoolUtilization;

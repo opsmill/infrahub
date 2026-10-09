@@ -11908,7 +11908,7 @@ type NumberPoolDivisions {
   """Number of divisions listed."""
   count: Int!
   """
-  Every division that holds at least one value the pool tracks on any live branch. Each holding object's division is read on the request's branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool.
+  Every division that holds at least one value the pool tracks on any live branch. Each holding object counts under every division it occupies on any live branch. Ordered by utilization descending, then by display_label. Empty for an unscoped pool.
   """
   divisions: [NumberPoolDivision!]!
 }
@@ -26626,7 +26626,7 @@ type Query {
   """Find all nodes of specified kinds reachable from a source node"""
   InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   """
-  The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id is ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead.
+  The IP prefixes or IP addresses inside one resource of a pool, paginated. For a number pool, resource_id and the allocation scope are ignored, every value the pool tracks inside its bounds is listed and display_label is the value itself; read InfrahubNumberPoolAllocations instead.
   """
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   """
