@@ -1,0 +1,20 @@
+backend/tests/component/core/resource_manager/conftest.py
+  s_760cbcf248de37::t_e9f3dfb0b7fad7 192-213
+  s_760cbcf248de37::t_b7c04a8fdc6670 111-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "090fda2f3e401ee03dc51299cb8d7d0b3781bb6f",
+  "prompts": {},
+  "sessions": {
+    "s_760cbcf248de37": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9796f03b-7c77-4706-bad0-f6d8a85686f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

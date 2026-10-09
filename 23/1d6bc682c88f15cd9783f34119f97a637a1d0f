@@ -1,0 +1,21 @@
+docs/docs/reference/schema/validator-migration.mdx
+  s_9a65b7e7908928::t_c2ac634225ac98 83
+backend/infrahub/core/schema/generated/relationship_schema.py
+  s_9a65b7e7908928::t_3e1d1b33835bfb 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "231d6bc682c88f15cd9783f34119f97a637a1d0f",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}

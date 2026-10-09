@@ -1,0 +1,35 @@
+backend/infrahub/pools/scoped_number_pool_reader.py
+  s_9a65b7e7908928::t_62f12d95e164cb 46,48-72
+  s_9a65b7e7908928::t_bef89d4feb0d4c 18
+backend/tests/component/core/constraint_validators/test_number_pool_scope.py
+  s_9a65b7e7908928::t_8c2831a41152e8 272-284
+backend/infrahub/pools/scope_declaration.py
+  s_9a65b7e7908928::t_ebb449505526cb 103,114,116
+  s_9a65b7e7908928::t_1d157f5bbd9111 77-102,104-113,115,117-118
+backend/tests/unit/core/validators/test_number_pool_scope_checker.py
+  s_9a65b7e7908928::t_5630f95db93fe8 488,491-492,494,496,499,513-515,520-527,564,567,703-708,710-721
+  s_9a65b7e7908928::t_509ff6cb441678 12-13,168,175-179,484-487,489-490,493,495,497-498,500-512,516-519,528-563,565-566,568-702,709,722-757
+backend/infrahub/core/validators/pool/scope.py
+  s_9a65b7e7908928::t_ebb449505526cb 260,263
+  s_9a65b7e7908928::t_1c2386714e0b24 10,14,31-32,45-49,51-54,79-85,93,100-104,174-199,201-203,208-217,221-249,254-259,261-262,264
+  s_9a65b7e7908928::t_e24838eb6b7908 50,200,205-207,218-220,250-253
+  s_9a65b7e7908928::t_db7abfce35edf9 204
+dev/specs/ifc-3185-number-pool-scopes/tasks.md
+  s_9a65b7e7908928::t_fd91e7eef05e8c 116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91fad2416b5f1a431950f4ce4c2f16a2adda4e8f",
+  "prompts": {},
+  "sessions": {
+    "s_9a65b7e7908928": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60976836-eea3-41a5-9ac8-f10bf4fbc0fc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Pol Michel <polmichel29@gmail.com>"
+    }
+  }
+}
