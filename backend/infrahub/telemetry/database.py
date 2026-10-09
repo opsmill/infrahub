@@ -14,6 +14,9 @@ from .models import TelemetryDatabaseData, TelemetryDatabaseServerData, Telemetr
 from .queries import CountNodesByKindsQuery
 from .utils import safe_metric
 
+# The Neo4j setting for how many CPUs its parallel query engine uses; the default, 0, means all of them, so no cap.
+DB_WORKER_LIMIT_SETTING = "server.cypher.parallel.worker_limit"
+
 
 async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerData]:
     data: list[TelemetryDatabaseServerData] = []
@@ -34,6 +37,42 @@ async def get_server_info(db: InfrahubDatabase) -> list[TelemetryDatabaseServerD
     return data
 
 
+def _worker_limit_from_value(value: object) -> int | None:
+    """Turn the raw setting value into a number of CPUs, or ``None`` when no cap is set.
+
+    Only a positive whole number is a cap. ``0`` (the default), a missing value or
+    anything that is not a positive number means no cap.
+    """
+    if not isinstance(value, (str, int)):
+        return None
+    try:
+        limit = int(value)
+    except ValueError:
+        return None
+    return limit if limit > 0 else None
+
+
+async def get_processor_assigned(db: InfrahubDatabase) -> int | None:
+    """Read how many CPUs the database's parallel query engine is set to use, or ``None`` when no cap is set.
+
+    A failure to run the query is raised, not hidden here.
+    """
+    query = """
+    SHOW SETTINGS YIELD name, value
+    WHERE name = $setting_name
+    RETURN value AS value
+    """
+    results = await db.execute_query(
+        query=query,
+        params={"setting_name": DB_WORKER_LIMIT_SETTING},
+        name="get_processor_assigned",
+        type=QueryType.READ,
+    )
+    if not results:
+        return None
+    return _worker_limit_from_value(results[0]["value"])
+
+
 async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoData:
     query = """
     CALL dbms.queryJmx("java.lang:type=OperatingSystem")
@@ -49,6 +88,9 @@ async def get_system_info(db: InfrahubDatabase) -> TelemetryDatabaseSystemInfoDa
         memory_total=results[0]["memory_total"]["value"],
         memory_available=results[0]["memory_available"]["value"],
         processor_available=results[0]["processor_available"]["value"],
+        # Wrapped independently so this read degrades to None on its own rather
+        # than failing the whole system-info block.
+        processor_assigned=await safe_metric(get_processor_assigned(db=db)),
     )
 
 

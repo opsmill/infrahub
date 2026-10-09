@@ -443,6 +443,14 @@ such a call. A blip between one worker and the cache while the cleanup's worker 
 remains the one way a live holder can lose a lock; the merge watcher's grace period absorbs that,
 the deadlock cleanup has no equivalent.
 
+<!-- Extracted from specs/infp-631-resource-telemetry on 2026-10-08 -->
+Each beat also carries the process's CPU and memory reading for telemetry, under
+`workers:resources:{component}:worker:{worker_id}` with the same 15-second expiry, so a reading
+exists exactly as long as the process counts as alive. The reading itself is taken on the main loop
+every 10 seconds and handed to the thread through `LatestResourceReading` in
+`services/component.py`, because the thread only writes to the cache: reading the limit files there
+could stall the beat. See [Telemetry](telemetry.md#cpu-and-memory-figures).
+
 ## Key Locations
 
 | Component | Location |

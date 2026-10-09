@@ -234,6 +234,9 @@ The following information is included in telemetry:
 - Anonymous counters about the graph, schema, and features in use
 - Adoption counts: active accounts, account groups, and open branches
 - Database, worker, and infrastructure statistics
+- CPU cores and memory that the database, API server, and workers can use, plus:
+  - For the API server and workers, the CPU limit set on their container, once one is set
+  - For the database, the number of cores it can use for parallel queries, once that number is configured
 - Daily activity over the previous day: logins, validation checks, artifact generation, branch operations, and webhook deliveries
 
 This information is used as aggregated analysis to better understand what and how to improve the project. All information collected is anonymous and the implementation is open source on GitHub.

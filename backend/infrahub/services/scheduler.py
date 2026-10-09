@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from infrahub import config
 from infrahub.components import ComponentType
 from infrahub.log import get_logger
-from infrahub.tasks.recurring import trigger_branch_refresh
+from infrahub.tasks.recurring import trigger_branch_refresh, trigger_resource_refresh
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices, ServiceFunction
@@ -54,6 +54,10 @@ class InfrahubScheduler:
                 Schedule(
                     name="branch_refresh", interval=900, function=trigger_branch_refresh, start_delay=random_number
                 )
+            )
+            # Often enough that a live limit change reaches the next snapshot; startup already published one.
+            self.schedules.append(
+                Schedule(name="resource_refresh", interval=10, function=trigger_resource_refresh, start_delay=10)
             )
 
     async def start_schedule(self) -> None:

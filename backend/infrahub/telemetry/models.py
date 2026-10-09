@@ -1,6 +1,27 @@
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import BaseModel, Field, PlainSerializer
 
 from .constants import InfrahubType
+
+
+def _whole_number_as_integer(value: float | None) -> float | int | None:
+    if value is not None and value.is_integer():
+        return int(value)
+    return value
+
+
+# The telemetry endpoint recomputes the checksum in JavaScript, which writes 2.0 as 2, so a whole number is sent as 2.
+ProcessorShare = Annotated[float | None, PlainSerializer(_whole_number_as_integer, when_used="json")]
+
+
+class TelemetryPerWorkerData(BaseModel):
+    """One worker's share of its container's CPU and memory; multiplied by the active count it gives the total."""
+
+    processor_available: ProcessorShare = None
+    processor_assigned: ProcessorShare = None
+    memory_total: int | None = None
+    memory_available: int | None = None
 
 
 class TelemetryWorkerData(BaseModel):
@@ -48,6 +69,15 @@ class TelemetryDatabaseSystemInfoData(BaseModel):
     memory_total: int
     memory_available: int
     processor_available: int
+    processor_assigned: int | None = Field(default=None, ge=0)
+
+
+class TelemetryComponentData(BaseModel):
+    """One component's processes, counted like the workers block, with one worker's CPU and memory."""
+
+    total: int | None = None
+    active: int | None = None
+    per_worker: TelemetryPerWorkerData = Field(default_factory=TelemetryPerWorkerData)
 
 
 class TelemetryDatabaseData(BaseModel):
@@ -79,6 +109,8 @@ class TelemetryData(BaseModel):
     python_version: str
     platform: str
     workers: TelemetryWorkerData
+    server: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
+    task_workers: TelemetryComponentData = Field(default_factory=TelemetryComponentData)
     branches: TelemetryBranchData
     accounts: TelemetryAccountData = Field(default_factory=TelemetryAccountData)
     activity_24h: TelemetryActivity24hData = Field(default_factory=TelemetryActivity24hData)
